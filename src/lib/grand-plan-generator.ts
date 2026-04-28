@@ -1241,6 +1241,10 @@ function buildContentLimitsBlock(sources: GrandPlanSources): string {
   if (l.landingPages) parts.push(`landing pages: max ${l.landingPages}`);
   if (l.blogPosts) parts.push(`blog posts: max ${l.blogPosts} (across the whole plan)`);
   if (l.linkTargets) parts.push(`link targets: max ${l.linkTargets}`);
+  // Pillar pages explicitly disabled — landing pages cover the same ground.
+  const noPillars = l.pillarPages === 0;
+  if (noPillars) parts.push(`pillar pages: NONE — do not produce any pillar/mega-guide pages; landing pages cover dedicated topic pushes`);
+  else if (l.pillarPages) parts.push(`pillar pages: max ${l.pillarPages}`);
   if (!parts.length) return "";
   return `\n\nCONTENT OUTPUT CAPS (contracted scope \u2014 DO NOT exceed): ${parts.join(", ")}.`;
 }

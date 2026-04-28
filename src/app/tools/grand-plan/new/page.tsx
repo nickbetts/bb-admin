@@ -21,6 +21,44 @@ interface Client {
   name: string;
   website?: string;
   semrushDomain?: string;
+  /** JSON string. Stratos persists per-client production rates under
+   *  `grandPlan.hoursPerItem` so future plans pre-fill the capacity form. */
+  contractedHours?: string | null;
+}
+
+// ─── Capacity allocator ─────────────────────────────────────────────────
+//
+// Strategist enters total hours available across the plan window and
+// allocates them across four output types. The form derives the
+// quantities the AI will produce (page optimisations, landing pages,
+// blog posts, social posts). Pillar pages are explicitly dropped per
+// the locked scope — landing pages cover dedicated campaign topics.
+
+type OutputKey = "pageOptimisations" | "landingPages" | "blogPosts" | "socialPosts";
+
+interface OutputDef {
+  key: OutputKey;
+  label: string;
+  hoursPerItem: number;
+  sprintHours: number;
+  hint: string;
+}
+
+const OUTPUT_DEFS: readonly OutputDef[] = [
+  { key: "pageOptimisations", label: "Page optimisations", hoursPerItem: 1,    sprintHours: 8,  hint: "Title/meta/H1 rewrite, schema, internal links" },
+  { key: "landingPages",      label: "Landing pages",      hoursPerItem: 6,    sprintHours: 12, hint: "LP build, copy, tracking, ad set — one per campaign" },
+  { key: "blogPosts",         label: "Blog posts",         hoursPerItem: 2,    sprintHours: 16, hint: "Research, write, on-page, publish" },
+  { key: "socialPosts",       label: "Social posts",       hoursPerItem: 0.25, sprintHours: 24, hint: "Caption + asset spec" },
+];
+
+type OutputCapacity = Record<OutputKey, { hoursPerItem: number; allocatedHours: number }>;
+
+function defaultOutputCapacity(scale: number): OutputCapacity {
+  const out: Partial<OutputCapacity> = {};
+  for (const def of OUTPUT_DEFS) {
+    out[def.key] = { hoursPerItem: def.hoursPerItem, allocatedHours: def.sprintHours * scale };
+  }
+  return out as OutputCapacity;
 }
 
 interface AudienceSuggestion {
@@ -111,11 +149,11 @@ export default function NewGrandPlanPage() {
   const [competitorInput, setCompetitorInput] = useState("");
   const [validatingCompetitor, setValidatingCompetitor] = useState(false);
 
-  // Content volume — drives the calendar and organic social cadence
-  const [postsPerMonth, setPostsPerMonth] = useState(4);
-  const [socialPostsPerMonth, setSocialPostsPerMonth] = useState(8);
-  // Pillar-page count — caps the number of topic-cluster pillars the AI returns.
-  const [pillarCount, setPillarCount] = useState(3);
+  // Team capacity — strategist allocates total hours across output types,
+  // form derives the quantities the AI will produce. Defaults assume a
+  // 90-day sprint (60h total). Annual plans scale ×4 (240h, 12 months).
+  const [outputCapacity, setOutputCapacity] = useState<OutputCapacity>(() => defaultOutputCapacity(1));
+  const [totalCapacityHours, setTotalCapacityHours] = useState<number>(60);
 
   // Plan duration mode — "annual" (default) or "sprint90" (12-week sprint).
   // Sprint mode reframes calendar, roadmap, quick wins and exec summary
@@ -169,9 +207,48 @@ export default function NewGrandPlanPage() {
       if (client) {
         if (!title) setTitle(`${client.name} — Go-to-Market Plan`);
         if (client.website && !website) setWebsite(client.website);
+        // Pre-fill per-item hours from the client's stored production rates
+        // (set last time a Grand Plan was created for them). Allocations
+        // stay at the current sprint/annual defaults — the strategist
+        // re-allocates per plan.
+        if (client.contractedHours) {
+          try {
+            const parsed = JSON.parse(client.contractedHours);
+            const stored = parsed?.grandPlan?.hoursPerItem as Partial<Record<OutputKey, number>> | undefined;
+            if (stored && typeof stored === "object") {
+              setOutputCapacity((prev) => {
+                const next = { ...prev };
+                for (const def of OUTPUT_DEFS) {
+                  const v = stored[def.key];
+                  if (typeof v === "number" && v > 0) {
+                    next[def.key] = { ...next[def.key], hoursPerItem: v };
+                  }
+                }
+                return next;
+              });
+            }
+          } catch {
+            // Ignore parse errors — older clients may have non-JSON values.
+          }
+        }
       }
     }
   }, [clientId, clients, title, website]);
+
+  // Annual plans get 4× the default sprint allocation. Reset only when
+  // the strategist hasn't customised the totals — otherwise leave their
+  // values alone so flipping mode after editing is non-destructive.
+  useEffect(() => {
+    const scale = planMode === "annual" ? 4 : 1;
+    const expectedSprint = OUTPUT_DEFS.reduce((s, d) => s + d.sprintHours, 0);
+    const currentSum = Object.values(outputCapacity).reduce((s, v) => s + v.allocatedHours, 0);
+    const isDefault = currentSum === expectedSprint || currentSum === expectedSprint * 4;
+    if (isDefault) {
+      setOutputCapacity(defaultOutputCapacity(scale));
+      setTotalCapacityHours(expectedSprint * scale);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planMode]);
 
   // Suggest a sprint-flavoured title when sprint mode flips on. Only sets
   // a title if one hasn't been customised already.
@@ -424,25 +501,83 @@ export default function NewGrandPlanPage() {
           sector: sector || undefined,
           competitors: finalCompetitors,
           previousPlanId: planMode === "sprint90" && previousPlanId ? previousPlanId : undefined,
-          config: {
-            sections: enabledSections,
-            postsPerMonth,
-            socialPostsPerMonth,
-            planMode,
-            ...(sector ? { sector } : {}),
-            ...(manualPageUrls.length ? { manualPageUrls } : {}),
-            contentLimits: { pillarPages: pillarCount },
-            ...(website ? { kwBrief: { website, brief, monthlyBudget: channelBudgets.googleAds || monthlyBudget } } : {}),
-            ...(domain ? { contentBrief: { domain, brief, competitors: finalCompetitors.map((c) => c.domain).join(",") } } : {}),
-            ...(Object.keys(channelBudgets).length > 0 ? { channelBudgets: Object.fromEntries(
-              Object.entries(channelBudgets).filter(([, v]) => v && Number(v.replace(/[^0-9.]/g, "")) > 0)
-                .map(([k, v]) => [k, Number(v.replace(/[^0-9.]/g, ""))])
-            ) } : {}),
-          },
+          config: (() => {
+            const monthsInWindow = planMode === "annual" ? 12 : 3;
+            const counts = OUTPUT_DEFS.reduce((acc, def) => {
+              const row = outputCapacity[def.key];
+              acc[def.key] = row.hoursPerItem > 0 ? Math.floor(row.allocatedHours / row.hoursPerItem) : 0;
+              return acc;
+            }, {} as Record<OutputKey, number>);
+            // Derive per-month cadence for the calendar / social generators
+            // (existing generator code expects per-month numbers).
+            const derivedPostsPerMonth = Math.max(1, Math.round(counts.blogPosts / monthsInWindow) || 1);
+            const derivedSocialPerMonth = Math.max(0, Math.round(counts.socialPosts / monthsInWindow));
+            const capacityItems = OUTPUT_DEFS.reduce((acc, def) => {
+              acc[def.key] = {
+                hoursPerItem: outputCapacity[def.key].hoursPerItem,
+                allocatedHours: outputCapacity[def.key].allocatedHours,
+                count: counts[def.key],
+              };
+              return acc;
+            }, {} as Record<OutputKey, { hoursPerItem: number; allocatedHours: number; count: number }>);
+            return {
+              sections: enabledSections,
+              postsPerMonth: derivedPostsPerMonth,
+              socialPostsPerMonth: derivedSocialPerMonth,
+              planMode,
+              ...(sector ? { sector } : {}),
+              ...(manualPageUrls.length ? { manualPageUrls } : {}),
+              // Pillar pages set to 0 — landing pages cover dedicated campaign topics.
+              contentLimits: {
+                ...(counts.pageOptimisations > 0 ? { pageOptimisations: counts.pageOptimisations } : {}),
+                ...(counts.landingPages > 0 ? { landingPages: counts.landingPages } : {}),
+                ...(counts.blogPosts > 0 ? { blogPosts: counts.blogPosts } : {}),
+                pillarPages: 0,
+              },
+              capacity: {
+                totalHours: totalCapacityHours,
+                window: planMode === "annual" ? "annual" : "90d",
+                monthsInWindow,
+                items: capacityItems,
+              },
+              ...(website ? { kwBrief: { website, brief, monthlyBudget: channelBudgets.googleAds || monthlyBudget } } : {}),
+              ...(domain ? { contentBrief: { domain, brief, competitors: finalCompetitors.map((c) => c.domain).join(",") } } : {}),
+              ...(Object.keys(channelBudgets).length > 0 ? { channelBudgets: Object.fromEntries(
+                Object.entries(channelBudgets).filter(([, v]) => v && Number(v.replace(/[^0-9.]/g, "")) > 0)
+                  .map(([k, v]) => [k, Number(v.replace(/[^0-9.]/g, ""))])
+              ) } : {}),
+            };
+          })(),
         }),
       });
       if (res.ok) {
         const data = await res.json();
+        // Persist the per-item hours back onto the client so future plans
+        // pre-fill from the same baseline. Allocations stay per-plan.
+        if (clientId) {
+          try {
+            const client = clients.find((c) => c.id === clientId);
+            const existing = (() => {
+              if (!client?.contractedHours) return {};
+              try { return JSON.parse(client.contractedHours) ?? {}; } catch { return {}; }
+            })();
+            const hoursPerItem = OUTPUT_DEFS.reduce((acc, def) => {
+              acc[def.key] = outputCapacity[def.key].hoursPerItem;
+              return acc;
+            }, {} as Record<OutputKey, number>);
+            const merged = {
+              ...existing,
+              grandPlan: { ...(existing?.grandPlan ?? {}), hoursPerItem },
+            };
+            await fetch(`/api/clients/${clientId}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ contractedHours: JSON.stringify(merged) }),
+            });
+          } catch {
+            // Non-fatal — the plan is already saved.
+          }
+        }
         // Redirect with autoStart so the view page kicks off generation
         // immediately — the user shouldn't have to press another button.
         router.push(`/tools/grand-plan/${data.grandPlan.id}?autoStart=1`);
@@ -775,45 +910,158 @@ export default function NewGrandPlanPage() {
               <span className="form-hint">Auto-detect uses SEMrush keyword overlap. Manual entries are scraped for headlines/CTAs when SEMrush has no data.</span>
             </div>
 
-            {/* Content Volume */}
-            <div>
-              <label className="form-label">Content Volume</label>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+            {/* Team capacity — derives the AI's output quantities */}
+            {(() => {
+              const monthsInWindow = planMode === "annual" ? 12 : 3;
+              const windowLabel = planMode === "annual" ? "12 months" : "90 days";
+              const allocatedSum = Object.values(outputCapacity).reduce((s, v) => s + v.allocatedHours, 0);
+              const remaining = totalCapacityHours - allocatedSum;
+              const overBudget = remaining < 0;
+              const counts: Record<OutputKey, number> = OUTPUT_DEFS.reduce((acc, def) => {
+                const row = outputCapacity[def.key];
+                acc[def.key] = row.hoursPerItem > 0 ? Math.floor(row.allocatedHours / row.hoursPerItem) : 0;
+                return acc;
+              }, {} as Record<OutputKey, number>);
+
+              function updateRow(key: OutputKey, patch: Partial<{ hoursPerItem: number; allocatedHours: number }>) {
+                setOutputCapacity((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } }));
+              }
+
+              function autoAllocateEvenly() {
+                const empty = OUTPUT_DEFS.filter((d) => outputCapacity[d.key].allocatedHours === 0);
+                const target = empty.length ? empty : OUTPUT_DEFS;
+                const pool = empty.length ? remaining : totalCapacityHours;
+                if (pool <= 0 || target.length === 0) return;
+                const slice = pool / target.length;
+                setOutputCapacity((prev) => {
+                  const next = { ...prev };
+                  for (const def of target) {
+                    next[def.key] = { ...next[def.key], allocatedHours: Math.round(slice * 4) / 4 };
+                  }
+                  return next;
+                });
+              }
+
+              function resetDefaults() {
+                const scale = planMode === "annual" ? 4 : 1;
+                setOutputCapacity(defaultOutputCapacity(scale));
+                setTotalCapacityHours(OUTPUT_DEFS.reduce((s, d) => s + d.sprintHours, 0) * scale);
+              }
+
+              return (
                 <div>
-                  <input
-                    className="form-input"
-                    type="number"
-                    min={1}
-                    max={20}
-                    value={postsPerMonth}
-                    onChange={(e) => setPostsPerMonth(Math.max(1, Number(e.target.value) || 1))}
-                  />
-                  <span className="form-hint">Blog posts per month</span>
+                  <label className="form-label">Team capacity</label>
+                  <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 10, marginTop: -4 }}>
+                    Allocate the hours you have available across {windowLabel}. The form derives how many of each output the AI will produce.
+                  </div>
+
+                  {/* Total + summary row */}
+                  <div style={{ display: "grid", gridTemplateColumns: "200px 1fr", gap: 12, alignItems: "center", marginBottom: 12 }}>
+                    <div>
+                      <input
+                        className="form-input"
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={totalCapacityHours}
+                        onChange={(e) => setTotalCapacityHours(Math.max(0, Number(e.target.value) || 0))}
+                      />
+                      <span className="form-hint">Total hours over {windowLabel}</span>
+                    </div>
+                    <div style={{
+                      fontSize: 13, fontWeight: 600,
+                      color: overBudget ? "var(--danger)" : "var(--text-2)",
+                    }}>
+                      {allocatedSum}h allocated · {remaining}h {overBudget ? "over budget" : "remaining"}
+                    </div>
+                  </div>
+
+                  {/* Per-output rows */}
+                  <div style={{
+                    border: "1px solid var(--border)", borderRadius: "var(--r-sm)",
+                    padding: "8px 12px", display: "flex", flexDirection: "column", gap: 8,
+                  }}>
+                    <div style={{
+                      display: "grid",
+                      gridTemplateColumns: "1.4fr 1fr 1fr 1fr",
+                      gap: 10, fontSize: 11, fontWeight: 700,
+                      textTransform: "uppercase", letterSpacing: "0.5px",
+                      color: "var(--text-3)", paddingBottom: 6,
+                      borderBottom: "1px solid var(--border)",
+                    }}>
+                      <div>Output</div>
+                      <div>Hours / item</div>
+                      <div>Hours allocated</div>
+                      <div>Quantity</div>
+                    </div>
+                    {OUTPUT_DEFS.map((def) => {
+                      const row = outputCapacity[def.key];
+                      const count = counts[def.key];
+                      return (
+                        <div key={def.key} style={{
+                          display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1fr",
+                          gap: 10, alignItems: "center", padding: "4px 0",
+                        }}>
+                          <div>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{def.label}</div>
+                            <div style={{ fontSize: 11, color: "var(--text-3)" }}>{def.hint}</div>
+                          </div>
+                          <input
+                            className="form-input"
+                            type="number"
+                            min={0}
+                            step={0.25}
+                            value={row.hoursPerItem}
+                            onChange={(e) => updateRow(def.key, { hoursPerItem: Math.max(0, Number(e.target.value) || 0) })}
+                            style={{ padding: "6px 10px", fontSize: 13 }}
+                          />
+                          <input
+                            className="form-input"
+                            type="number"
+                            min={0}
+                            step={0.25}
+                            value={row.allocatedHours}
+                            onChange={(e) => updateRow(def.key, { allocatedHours: Math.max(0, Number(e.target.value) || 0) })}
+                            style={{ padding: "6px 10px", fontSize: 13 }}
+                          />
+                          <div style={{
+                            fontSize: 13, fontWeight: 600, color: "var(--accent)",
+                            background: "var(--accent-soft, rgba(99,102,241,0.1))",
+                            padding: "6px 10px", borderRadius: "var(--r-sm)",
+                            textAlign: "center",
+                          }}>
+                            {count} {count === 1 ? "item" : "items"}
+                            {def.key === "socialPosts" && monthsInWindow > 0 && count > 0 && (
+                              <span style={{ fontWeight: 400, opacity: 0.8 }}> · ~{Math.round(count / monthsInWindow)}/mo</span>
+                            )}
+                            {def.key === "blogPosts" && monthsInWindow > 0 && count > 0 && (
+                              <span style={{ fontWeight: 400, opacity: 0.8 }}> · ~{Math.round(count / monthsInWindow)}/mo</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div style={{ display: "flex", gap: 10, marginTop: 8, fontSize: 12 }}>
+                    <button type="button" className="btn btn-secondary btn-sm" onClick={autoAllocateEvenly}>
+                      Auto-allocate evenly
+                    </button>
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={resetDefaults}>
+                      Reset to defaults
+                    </button>
+                    {overBudget && (
+                      <span style={{ color: "var(--danger)", alignSelf: "center" }}>
+                        Over budget by {Math.abs(remaining)}h — submit allowed but worth a sanity check.
+                      </span>
+                    )}
+                  </div>
+                  <span className="form-hint" style={{ marginTop: 6, display: "block" }}>
+                    Pillar pages are intentionally excluded — landing pages cover dedicated campaign topics, and pillar setup is included in the landing-page hours.
+                  </span>
                 </div>
-                <div>
-                  <input
-                    className="form-input"
-                    type="number"
-                    min={0}
-                    max={60}
-                    value={socialPostsPerMonth}
-                    onChange={(e) => setSocialPostsPerMonth(Math.max(0, Number(e.target.value) || 0))}
-                  />
-                  <span className="form-hint">Social posts per month</span>
-                </div>
-                <div>
-                  <input
-                    className="form-input"
-                    type="number"
-                    min={1}
-                    max={6}
-                    value={pillarCount}
-                    onChange={(e) => setPillarCount(Math.max(1, Math.min(6, Number(e.target.value) || 1)))}
-                  />
-                  <span className="form-hint">Pillar pages (1–6)</span>
-                </div>
-              </div>
-            </div>
+              );
+            })()}
 
             {/* Platforms */}
             <div>

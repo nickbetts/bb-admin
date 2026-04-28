@@ -813,6 +813,7 @@ ${limits.pageOptimisations ? `- Page optimisations: ${limits.pageOptimisations}`
 ${limits.landingPages ? `- Landing pages: ${limits.landingPages}` : ""}
 ${limits.blogPosts ? `- Blog posts: ${limits.blogPosts}` : ""}
 ${limits.linkTargets ? `- Link targets: ${limits.linkTargets}` : ""}
+${limits.pillarPages === 0 ? `- Pillar pages: NONE — do NOT produce any pillar/mega-guide pages. Landing pages cover dedicated campaign topics.` : limits.pillarPages ? `- Pillar pages: ${limits.pillarPages}` : ""}
 ` : ""}
 ${competitorContexts && competitorContexts.length > 0 ? `
 ═══ MANUALLY-ADDED COMPETITOR INTELLIGENCE (site-scraped, no SEMrush data) ═══
