@@ -1711,46 +1711,130 @@ function renderSeoFoundations(data: SeoFoundationsData): string {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function renderContentCalendar(months: any[]): string {
-  const first = months[0] ?? {};
-  const blogCount = Array.isArray(first.blogPosts) ? first.blogPosts.length : 0;
-  const socialCount = Array.isArray(first.socialPosts) ? first.socialPosts.length : 0;
-  const socialPerWeek = socialCount ? Math.round(socialCount / 4) : 0;
-  const cadenceBits: string[] = [];
-  if (blogCount) cadenceBits.push(`${blogCount} blog post${blogCount === 1 ? "" : "s"}/month`);
-  if (socialPerWeek) cadenceBits.push(`${socialPerWeek} social post${socialPerWeek === 1 ? "" : "s"}/week`);
-  const cadenceLabel = cadenceBits.length ? ` Cadence: ${cadenceBits.join(" \u00b7 ")}.` : "";
-  const monthsHtml = months
-    .map((m) => {
-      const blogs = (m.blogPosts ?? [])
-        .map((b: { title: string; intent: string; targetKeyword: string; angle?: string }) =>
-          `<div class="cal-item cal-blog"><span class="cal-type">Blog</span><span class="cal-topic">${esc(b.title)}${b.angle ? `<span class="cal-angle" title="${escAttr(b.angle)}" style="display:block;font-size:11px;color:var(--mid);margin-top:2px;font-style:italic">${esc(b.angle)}</span>` : ""}</span><span class="intent-badge intent-${b.intent}">${esc(b.intent)}</span></div>`)
-        .join("\n");
+  // Item taxonomy — each row in the Gantt has a fixed type, label, and colour.
+  // Pillar pages are detected by title containing "pillar" so they get their
+  // own row even though the upstream type is just "blog".
+  type Slot = { type: string; label: string; topic: string; meta?: string; intent?: string };
+  type RowDef = { key: string; label: string; cls: string };
+  const ROWS: RowDef[] = [
+    { key: "pillar",    label: "Pillar Page", cls: "row-pillar" },
+    { key: "blog",      label: "Blog",        cls: "row-blog" },
+    { key: "reel",      label: "Reel",        cls: "row-reel" },
+    { key: "carousel",  label: "Carousel",    cls: "row-carousel" },
+    { key: "static",    label: "Static Post", cls: "row-static" },
+    { key: "story",     label: "Story",       cls: "row-story" },
+  ];
 
-      const social = (m.socialPosts ?? [])
-        .map((s: { platform: string; type: string; topic: string }) =>
-          `<div class="cal-item cal-social"><span class="cal-type">${esc(s.type)}</span><span class="cal-topic">${esc(s.topic)}</span><span class="cal-platform">${esc(s.platform)}</span></div>`)
-        .join("\n");
+  // Normalise each month into a list of typed slots, then split into 4 weeks.
+  const monthBuckets: { label: string; focus?: string; weeks: Slot[][] }[] = months.map((m) => {
+    const blogs: Slot[] = (m.blogPosts ?? []).map((b: { title: string; intent: string; targetKeyword: string; angle?: string }) => {
+      const isPillar = /pillar/i.test(b.title || "");
+      return {
+        type: isPillar ? "pillar" : "blog",
+        label: isPillar ? "PILLAR" : "BLOG",
+        topic: b.title || "",
+        meta: b.angle || b.targetKeyword || "",
+        intent: b.intent,
+      };
+    });
+    const socials: Slot[] = (m.socialPosts ?? []).map((s: { platform: string; type: string; topic: string }) => {
+      const t = (s.type || "static").toLowerCase();
+      const key = ["reel", "carousel", "static", "story"].includes(t) ? t : "static";
+      return {
+        type: key,
+        label: key.toUpperCase(),
+        topic: s.topic || "",
+        meta: s.platform || "",
+      };
+    });
+    // Spread items across 4 weeks. Blog/pillar first, then social — keeps the
+    // hero asset early in the week and saturates social through the rest.
+    const all = [...blogs, ...socials];
+    const weeks: Slot[][] = [[], [], [], []];
+    all.forEach((slot, i) => {
+      // For blogs/pillars: spread evenly across the month.
+      // For socials: round-robin starting at week 0.
+      let wk: number;
+      if (slot.type === "blog" || slot.type === "pillar") {
+        wk = blogs.length <= 1 ? 0 : Math.min(3, Math.floor((i / Math.max(1, blogs.length)) * 4));
+      } else {
+        wk = (i - blogs.length) % 4;
+      }
+      weeks[wk].push(slot);
+    });
+    return { label: m.month, focus: m.focusLabel, weeks };
+  });
 
-      return `
-      <details class="cal-month" open>
-        <summary>
-          <div class="cal-month-header">
-            <h4>${esc(m.month)}</h4>
-            ${m.focusLabel ? `<span class="cal-focus">${esc(m.focusLabel)}</span>` : ""}
-          </div>
-        </summary>
-        <div class="cal-items">${blogs}${social}</div>
-      </details>`;
-    })
-    .join("\n");
+  // Cell renderer: count + a few stacked chips with tooltip
+  const renderCell = (slots: Slot[]): string => {
+    if (!slots.length) return `<div class="cal-cell cal-cell-empty"></div>`;
+    const chips = slots.slice(0, 3).map((s) => `<span class="cal-pill cal-pill-${s.type}" title="${escAttr(s.topic + (s.meta ? ` — ${s.meta}` : ""))}">${esc(s.label)}</span>`).join("");
+    const more = slots.length > 3 ? `<span class="cal-pill cal-pill-more" title="${escAttr(slots.slice(3).map(s => s.topic).join(" • "))}">+${slots.length - 3}</span>` : "";
+    return `<div class="cal-cell">${chips}${more}</div>`;
+  };
+
+  // Build a row across all months, grouped by type. View switches between
+  // monthly (one cell per month) and weekly (four cells per month).
+  const monthlyHeader = monthBuckets.map((m) => `<div class="cal-th"><div class="cal-th-month">${esc(m.label)}</div>${m.focus ? `<div class="cal-th-focus">${esc(m.focus)}</div>` : ""}</div>`).join("");
+  const weeklyHeader = monthBuckets.map((m) =>
+    [1,2,3,4].map((wk) => `<div class="cal-th cal-th-week"><div class="cal-th-week-num">W${wk}</div>${wk === 1 ? `<div class="cal-th-month-mini">${esc(m.label.split(" ")[0])}</div>` : ""}</div>`).join("")
+  ).join("");
+
+  const monthlyRows = ROWS.map((row) => {
+    const cells = monthBuckets.map((m) => {
+      const slots = m.weeks.flat().filter((s) => s.type === row.key);
+      return renderCell(slots);
+    }).join("");
+    const total = monthBuckets.reduce((sum, m) => sum + m.weeks.flat().filter((s) => s.type === row.key).length, 0);
+    if (total === 0) return ""; // hide empty rows
+    return `<div class="cal-row ${row.cls}"><div class="cal-row-label"><span class="cal-row-dot"></span>${esc(row.label)}<span class="cal-row-count">${total}</span></div>${cells}</div>`;
+  }).filter(Boolean).join("");
+
+  const weeklyRows = ROWS.map((row) => {
+    const cells = monthBuckets.map((m) =>
+      m.weeks.map((wk) => renderCell(wk.filter((s) => s.type === row.key))).join("")
+    ).join("");
+    const total = monthBuckets.reduce((sum, m) => sum + m.weeks.flat().filter((s) => s.type === row.key).length, 0);
+    if (total === 0) return "";
+    return `<div class="cal-row ${row.cls}"><div class="cal-row-label"><span class="cal-row-dot"></span>${esc(row.label)}<span class="cal-row-count">${total}</span></div>${cells}</div>`;
+  }).filter(Boolean).join("");
+
+  const monthCount = monthBuckets.length;
+  const weekCount = monthCount * 4;
+
+  // Cadence summary stays as a quick at-a-glance line under the toggle.
+  const totals = ROWS.map((row) => {
+    const n = monthBuckets.reduce((sum, m) => sum + m.weeks.flat().filter((s) => s.type === row.key).length, 0);
+    return n > 0 ? `${n} ${row.label}${n === 1 ? "" : "s"}` : "";
+  }).filter(Boolean).join(" · ");
 
   return `
     <section id="content-calendar" class="section alt">
       <div class="section-inner">
         <div class="section-kicker">Publishing</div>
         <h2>Content Calendar</h2>
-      <p class="section-intro">A 6-month publishing schedule across blog content and organic social, aligned to campaign focus periods.${cadenceLabel}</p>
-      <div class="calendar-grid">${monthsHtml}</div>
+        <p class="section-intro">Visual ${monthCount}-month publishing schedule. Toggle between months and weeks; hover any pill for the topic.</p>
+        <div class="cal-toolbar">
+          <div class="cal-view-toggle" role="tablist" aria-label="Calendar view">
+            <button type="button" class="cal-view-btn active" data-cal-view="month" role="tab" aria-selected="true">Months</button>
+            <button type="button" class="cal-view-btn" data-cal-view="week" role="tab" aria-selected="false">Weeks</button>
+          </div>
+          ${totals ? `<div class="cal-totals">${esc(totals)}</div>` : ""}
+        </div>
+        <div class="cal-gantt" data-cal-view="month" style="--col-count:${monthCount};--col-count-week:${weekCount}">
+          <div class="cal-gantt-inner">
+            <div class="cal-grid cal-grid-month">
+              <div class="cal-th cal-th-corner">Type</div>
+              ${monthlyHeader}
+              ${monthlyRows}
+            </div>
+            <div class="cal-grid cal-grid-week">
+              <div class="cal-th cal-th-corner">Type</div>
+              ${weeklyHeader}
+              ${weeklyRows}
+            </div>
+          </div>
+        </div>
       </div>
     </section>`;
 }
@@ -2609,25 +2693,48 @@ a{color:var(--accent);text-decoration:none}
 .ag-heading-row{display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-top:1.5rem;flex-wrap:wrap}
 /* Callout box */
 .callout{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:1.15rem 1.3rem;margin-top:1.25rem;font-size:13.5px;color:var(--text);line-height:1.6}
-/* Collapsible calendar months */
-details.cal-month{padding:0}
-details.cal-month > summary{list-style:none;cursor:pointer}
-details.cal-month > summary::-webkit-details-marker{display:none}
-details.cal-month .cal-month-header::after{content:"+";font-size:1rem;font-weight:700;color:rgba(255,255,255,.65);margin-left:8px;transition:transform .2s}
-details.cal-month[open] .cal-month-header::after{content:"\\2212"}
-/* Content calendar */
-.calendar-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1rem}
-.cal-month{background:var(--white);border-radius:12px;overflow:hidden;border:1px solid var(--border);box-shadow:0 2px 12px rgba(0,0,0,.03)}
-.cal-month-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--ink);color:#fff}
-.cal-month-header h4{font-size:14px;font-weight:700;margin:0;color:#fff}
-.cal-focus{background:rgba(255,255,255,.15);padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600}
-.cal-items{padding:12px 16px;display:flex;flex-direction:column;gap:6px}
-.cal-item{display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg);border-radius:6px;font-size:13px}
-.cal-type{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:2px 6px;border-radius:4px;flex-shrink:0}
-.cal-blog .cal-type{background:#dbeafe;color:#1e40af}
-.cal-social .cal-type{background:#ede9fe;color:#7c3aed}
-.cal-topic{flex:1}
-.cal-platform{font-size:11px;color:var(--mid)}
+/* Content calendar — Gantt view */
+.cal-toolbar{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1rem}
+.cal-view-toggle{display:inline-flex;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:3px}
+.cal-view-btn{padding:6px 14px;background:transparent;border:none;border-radius:6px;font-size:12.5px;font-weight:600;color:var(--mid);cursor:pointer;font-family:inherit;letter-spacing:-.005em;transition:background .15s,color .15s}
+.cal-view-btn.active{background:var(--ink);color:#fff;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.cal-view-btn:not(.active):hover{color:var(--text)}
+.cal-totals{font-size:12.5px;color:var(--mid);font-weight:500}
+.cal-gantt{background:var(--white);border:1px solid var(--border);border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.03);overflow:hidden}
+.cal-gantt-inner{overflow-x:auto}
+.cal-grid{display:grid;min-width:100%}
+.cal-grid-month{grid-template-columns:140px repeat(var(--col-count),minmax(110px,1fr))}
+.cal-grid-week{grid-template-columns:140px repeat(var(--col-count-week),minmax(70px,1fr));display:none}
+.cal-gantt[data-cal-view="week"] .cal-grid-month{display:none}
+.cal-gantt[data-cal-view="week"] .cal-grid-week{display:grid}
+.cal-th{padding:10px 12px;background:var(--ink);color:#fff;font-size:12px;font-weight:700;border-right:1px solid rgba(255,255,255,.08);border-bottom:1px solid rgba(255,255,255,.08)}
+.cal-th-corner{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:rgba(255,255,255,.7);position:sticky;left:0;z-index:2;background:var(--ink)}
+.cal-th-month{font-size:12.5px}
+.cal-th-focus{font-size:10.5px;color:rgba(255,255,255,.7);font-weight:500;margin-top:2px}
+.cal-th-week{padding:8px 6px;text-align:center}
+.cal-th-week-num{font-size:11px;font-weight:700}
+.cal-th-month-mini{font-size:9.5px;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.04em;margin-top:2px}
+.cal-row{display:contents}
+.cal-row-label{padding:10px 12px;background:var(--bg);font-size:12.5px;font-weight:600;color:var(--text);border-bottom:1px solid var(--border);border-right:1px solid var(--border);position:sticky;left:0;z-index:1;display:flex;align-items:center;gap:8px}
+.cal-row-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:var(--mid)}
+.row-pillar .cal-row-dot{background:#7c3aed}
+.row-blog .cal-row-dot{background:#1e40af}
+.row-reel .cal-row-dot{background:#dc2626}
+.row-carousel .cal-row-dot{background:#ea580c}
+.row-static .cal-row-dot{background:#0891b2}
+.row-story .cal-row-dot{background:#16a34a}
+.cal-row-count{margin-left:auto;font-size:10.5px;font-weight:600;color:var(--mid);background:var(--white);padding:1px 7px;border-radius:10px;border:1px solid var(--border)}
+.cal-cell{padding:8px 6px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);background:var(--white);display:flex;flex-wrap:wrap;align-content:flex-start;gap:3px;min-height:42px}
+.cal-cell-empty{background:repeating-linear-gradient(45deg,var(--bg),var(--bg) 4px,var(--white) 4px,var(--white) 8px);opacity:.55}
+.cal-pill{display:inline-flex;align-items:center;padding:2px 7px;border-radius:10px;font-size:9.5px;font-weight:700;letter-spacing:.04em;line-height:1.4;cursor:default;color:#fff}
+.cal-pill-pillar{background:#7c3aed}
+.cal-pill-blog{background:#1e40af}
+.cal-pill-reel{background:#dc2626}
+.cal-pill-carousel{background:#ea580c}
+.cal-pill-static{background:#0891b2}
+.cal-pill-story{background:#16a34a}
+.cal-pill-more{background:var(--mid);color:#fff}
+@media (max-width:640px){.cal-grid-month{grid-template-columns:110px repeat(var(--col-count),minmax(90px,1fr))}.cal-grid-week{grid-template-columns:110px repeat(var(--col-count-week),minmax(56px,1fr))}.cal-row-label,.cal-th-corner{padding:8px 10px}}
 /* Organic social */
 .social-freq{background:var(--bg);padding:1rem 1.25rem;border-radius:10px;font-size:14px;margin-bottom:1.5rem;border:1px solid var(--border)}
 .mix-chart{display:flex;flex-direction:column;gap:10px;margin-bottom:2rem}
@@ -3264,6 +3371,22 @@ const JS = `
     else{document.getElementById('auth-error').textContent='Incorrect password';}
   });
 })();
+
+// Content calendar Gantt — month/week view toggle
+document.addEventListener('click', function(e){
+  var t=e.target;
+  if(!t||!t.classList||!t.classList.contains('cal-view-btn'))return;
+  var view=t.getAttribute('data-cal-view');
+  if(!view)return;
+  var gantt=t.closest('.section').querySelector('.cal-gantt');
+  if(!gantt)return;
+  gantt.setAttribute('data-cal-view',view);
+  t.parentElement.querySelectorAll('.cal-view-btn').forEach(function(b){
+    var active=b.getAttribute('data-cal-view')===view;
+    b.classList.toggle('active',active);
+    b.setAttribute('aria-selected',active?'true':'false');
+  });
+});
 
 // Copy URL buttons (on-page optimisations)
 document.addEventListener('click', function(e){
