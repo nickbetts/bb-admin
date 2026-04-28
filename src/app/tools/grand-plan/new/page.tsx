@@ -70,9 +70,7 @@ const PLATFORMS: { id: PlatformId; label: string; description: string; sections:
 // Sections that can be toggled on/off independently of platform selection.
 const ALWAYS_ON_SECTIONS: { key: string; label: string }[] = [
   { key: "executiveSummary",  label: "Executive Summary" },
-  { key: "strategyPlan",      label: "Strategy Plan" },
   { key: "audiences",         label: "Audiences" },
-  { key: "quickWins",         label: "Quick Wins" },
   { key: "contentStrategy",   label: "Content Strategy" },
   { key: "contentCalendar",   label: "Content Calendar" },
   { key: "exampleArticles",   label: "Example Articles" },

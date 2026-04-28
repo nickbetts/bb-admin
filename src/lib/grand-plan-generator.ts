@@ -987,7 +987,6 @@ export async function generateGrandPlan(
   const sectionNames: string[] = [];
   if (isEnabled("audiences")) sectionNames.push("Audiences");
   if (isEnabled("executiveSummary")) sectionNames.push("Executive Summary");
-  if (isEnabled("strategyPlan")) sectionNames.push("Strategy Plan");
   if (isEnabled("contentStrategy") && !contentData) sectionNames.push("Content Clusters");
   if (isEnabled("seoFoundations")) sectionNames.push("SEO Foundations");
   if (isEnabled("metaCampaigns") && sources.keywordResearch) sectionNames.push("Meta Campaigns");
@@ -999,7 +998,6 @@ export async function generateGrandPlan(
   if (isEnabled("emailMarketing")) sectionNames.push("Email Marketing");
   if (isEnabled("linkedInAds")) sectionNames.push("LinkedIn Ads");
   if (isEnabled("competitorIntel") && sources.keywordResearch) sectionNames.push("Competitor Intel");
-  if (isEnabled("quickWins")) sectionNames.push("Quick Wins");
 
   let completedCount = 0;
   const total = sectionNames.length;
@@ -1024,13 +1022,10 @@ export async function generateGrandPlan(
   if (onProgress) await onProgress(`Generating ${total} AI sections...`);
 
   // Batch 1: core sections (errors are isolated — one failure does not abort the rest)
-  const [executiveSummary, strategyPlan, metaCampaigns, contentCalendar, organicSocial, exampleArticles, , aiNegatives, aiContentClusters] =
+  const [executiveSummary, metaCampaigns, contentCalendar, organicSocial, exampleArticles, , aiNegatives, aiContentClusters] =
     await Promise.all([
       isEnabled("executiveSummary")
         ? runSection("Executive Summary", "executiveSummary", () => generateExecutiveSummary(anthropic, contextSummary, sources))
-        : Promise.resolve(undefined),
-      isEnabled("strategyPlan")
-        ? runSection("Strategy Plan", "strategyPlan", () => generateStrategyPlan(anthropic, contextSummary, sources))
         : Promise.resolve(undefined),
       isEnabled("metaCampaigns") && sources.keywordResearch
         ? runSection("Meta Campaigns", "metaCampaigns", () => generateMetaCampaigns(anthropic, contextSummary, adGroups, sources))
@@ -1058,7 +1053,7 @@ export async function generateGrandPlan(
     ]);
 
   // Batch 2: supplementary sections
-  const [emailMarketing, linkedInAds, competitorIntel, audiences, quickWins, seoFoundations] =
+  const [emailMarketing, linkedInAds, competitorIntel, audiences, seoFoundations] =
     await Promise.all([
       isEnabled("emailMarketing")
         ? runSection("Email Marketing", "emailMarketing", () => generateEmailMarketing(anthropic, contextSummary, sources))
@@ -1071,9 +1066,6 @@ export async function generateGrandPlan(
         : Promise.resolve(undefined),
       isEnabled("audiences")
         ? runSection("Audiences", "audiences", () => generateAudiences(anthropic, contextSummary, sources))
-        : Promise.resolve(undefined),
-      isEnabled("quickWins")
-        ? runSection("Quick Wins", "quickWins", () => generateQuickWins(anthropic, contextSummary, sources))
         : Promise.resolve(undefined),
       isEnabled("seoFoundations")
         ? runSection("SEO Foundations", "seoFoundations", () => generateSeoFoundations(anthropic, contextSummary, sources))
@@ -1145,7 +1137,6 @@ export async function generateGrandPlan(
     sections: {
       audiences: audiences?.value,
       executiveSummary,
-      strategyPlan,
       googleAdsCampaigns,
       metaCampaigns,
       contentStrategy: contentStrategySection,
@@ -1157,7 +1148,6 @@ export async function generateGrandPlan(
       emailMarketing: emailMarketing?.value,
       linkedInAds: linkedInAds?.value,
       competitorIntel: competitorIntel?.value,
-      quickWins,
     },
     grounding: Object.keys(grounding).length ? grounding : undefined,
     dataSources: dataSources.length ? dataSources : undefined,

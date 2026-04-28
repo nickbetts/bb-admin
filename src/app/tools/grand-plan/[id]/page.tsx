@@ -41,7 +41,6 @@ import {
 
 const ALL_SECTIONS: { key: string; label: string; description: string; aiPowered: boolean }[] = [
   { key: "executiveSummary", label: "Executive Summary", description: "AI-generated overview of the strategy", aiPowered: true },
-  { key: "strategyPlan", label: "Strategy Plan", description: "Phased rollout plan (Month 1 / 2-3 / 4+)", aiPowered: true },
   { key: "audiences", label: "Audiences", description: "Target audience profiles, pain points and channel mapping", aiPowered: true },
   { key: "googleAdsCampaigns", label: "Google Ads Campaigns", description: "Campaign structure from keyword research", aiPowered: false },
   { key: "googleAdsForecast", label: "Google Ads Forecast", description: "Estimated clicks, conversions, CPA from keyword data", aiPowered: false },
@@ -53,7 +52,6 @@ const ALL_SECTIONS: { key: string; label: string; description: string; aiPowered
   { key: "emailMarketing", label: "Email Marketing", description: "Automated flows, campaigns, segmentation", aiPowered: true },
   { key: "exampleArticles", label: "Example Articles", description: "3 sample blog posts with SEO metadata", aiPowered: true },
   { key: "competitorIntel", label: "Competitor Intelligence", description: "AI-generated competitive analysis", aiPowered: true },
-  { key: "quickWins", label: "Quick Wins", description: "High-impact, low-effort actions achievable in 30 days", aiPowered: true },
   { key: "seoFoundations", label: "SEO Foundations", description: "Quick wins on existing pages, internal linking structure, and link-building plan", aiPowered: true },
   { key: "servicesInvestment", label: "Services & Investment", description: "Pricing and timeline from proposal", aiPowered: false },
 ];
