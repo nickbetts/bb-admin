@@ -48,7 +48,6 @@ const ALL_SECTIONS: { key: string; label: string; description: string; aiPowered
   { key: "linkedInAds", label: "LinkedIn Ads", description: "AI-generated LinkedIn campaign structures", aiPowered: true },
   { key: "contentStrategy", label: "Content Strategy", description: "Page optimisations, landing pages, blog posts", aiPowered: false },
   { key: "contentCalendar", label: "Content Calendar", description: "12-month blog and social posting schedule", aiPowered: true },
-  { key: "organicSocial", label: "Organic Social", description: "Social pillars, posting frequency, hashtags", aiPowered: true },
   { key: "emailMarketing", label: "Email Marketing", description: "Automated flows, campaigns, segmentation", aiPowered: true },
   { key: "competitorIntel", label: "Competitor Intelligence", description: "AI-generated competitive analysis", aiPowered: true },
   { key: "seoFoundations", label: "SEO Foundations", description: "Quick wins on existing pages, internal linking structure, and link-building plan", aiPowered: true },

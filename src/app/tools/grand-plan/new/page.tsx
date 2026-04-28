@@ -57,13 +57,12 @@ const SECTORS = [
 // like Executive Summary, Strategy Plan, Audiences, Content Calendar,
 // Competitor Intel, Example Articles and Media Plan are added separately
 // regardless of platform selection.
-type PlatformId = "googleAds" | "metaAds" | "linkedInAds" | "organicSocial" | "emailMarketing";
+type PlatformId = "googleAds" | "metaAds" | "linkedInAds" | "emailMarketing";
 
 const PLATFORMS: { id: PlatformId; label: string; description: string; sections: string[] }[] = [
   { id: "googleAds", label: "Google Ads", description: "Search campaigns, RSA ad copy", sections: ["googleAdsCampaigns"] },
   { id: "metaAds", label: "Meta Ads", description: "Facebook & Instagram audience-led campaigns", sections: ["metaCampaigns"] },
   { id: "linkedInAds", label: "LinkedIn Ads", description: "B2B targeting and ad mockups", sections: ["linkedInAds"] },
-  { id: "organicSocial", label: "Organic Social", description: "Content pillars and posting cadence", sections: ["organicSocial"] },
   { id: "emailMarketing", label: "Email Marketing", description: "Lifecycle and nurture flows", sections: ["emailMarketing"] },
 ];
 
@@ -135,7 +134,7 @@ export default function NewGrandPlanPage() {
   const [loadingPriorSprints, setLoadingPriorSprints] = useState(false);
 
   // Platforms — controls which paid/organic channels the AI focuses on
-  const [platforms, setPlatforms] = useState<PlatformId[]>(["googleAds", "metaAds", "linkedInAds", "organicSocial", "emailMarketing"]);
+  const [platforms, setPlatforms] = useState<PlatformId[]>(["googleAds", "metaAds", "linkedInAds", "emailMarketing"]);
 
   function togglePlatform(id: PlatformId) {
     setPlatforms((prev) => (prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]));
@@ -935,7 +934,6 @@ export default function NewGrandPlanPage() {
               { label: "Google Ads",     on: platforms.includes("googleAds") },
               { label: "Meta Campaigns", on: platforms.includes("metaAds") },
               { label: "LinkedIn Ads",   on: platforms.includes("linkedInAds") },
-              { label: "Organic Social", on: platforms.includes("organicSocial") },
               { label: "Email Marketing",on: platforms.includes("emailMarketing") },
             ] as { label: string; on: boolean }[]).map((item) => (
               <span

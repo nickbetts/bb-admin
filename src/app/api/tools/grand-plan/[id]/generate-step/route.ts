@@ -49,7 +49,7 @@ export const dynamic = "force-dynamic";
 // Valid AI/computed section keys that can be generated individually
 const SECTION_KEYS = [
   "executiveSummary", "audiences", "googleAdsCampaigns", "metaCampaigns",
-  "contentStrategy", "contentCalendar", "organicSocial",
+  "contentStrategy", "contentCalendar",
   "servicesInvestment", "emailMarketing",
   "linkedInAds", "competitorIntel", "seoFoundations",
 ];

@@ -307,16 +307,6 @@ interface ContentCalendarMonth {
   socialPosts: { platform: string; type: string; topic: string }[];
 }
 
-interface OrganicSocialPlan {
-  pillars: { name: string; description: string; examplePosts: string[] }[];
-  postingFrequency: string;
-  contentMix: { type: string; percentage: number }[];
-  hashtagStrategy: string[];
-  /** Indexes (into hashtagStrategy) of tags flagged as low-confidence by validation.
-   * Renderer surfaces a soft ⚠️ chip rather than a hard rejection. */
-  hashtagWarnings?: number[];
-}
-
 interface EmailMarketingPlan {
   flows: { name: string; trigger: string; emails: { subject: string; purpose: string; delay?: string }[] }[];
   campaigns: { name: string; frequency: string; audience: string; objectiveText: string }[];
@@ -519,7 +509,6 @@ export interface StrategyBrain {
     linkedIn?: string;
     email?: string;
     content?: string;
-    organicSocial?: string;
     calendar?: string;
     competitorIntel?: string;
     quickWins?: string;
@@ -553,7 +542,6 @@ export interface GrandPlanData {
     contentStrategy?: string;
     metaCampaigns?: string;
     googleAdsCampaigns?: string;
-    organicSocial?: string;
   };
   /** Audience name → 1-line "why this audience matters" rationale, built from
    * customerVoice pain points at assemble time. No AI call. */
@@ -587,7 +575,6 @@ export interface GrandPlanData {
     /** SEO foundations: on-page quick wins, internal linking structure, outbound link-building plan. */
     seoFoundations?: SeoFoundations;
     contentCalendar?: ContentCalendarMonth[];
-    organicSocial?: OrganicSocialPlan;
     servicesInvestment?: {
       services: ServiceItem[];
       timeline: { phase: string; items: string[] }[] | TimelinePhase[];
@@ -885,7 +872,7 @@ Return ONLY valid JSON (no markdown fences) matching this exact schema:
   "targetGeographies": string[],
   "directives": {
     "audiences": string, "googleAds": string, "meta": string, "linkedIn": string,
-    "email": string, "content": string, "organicSocial": string, "calendar": string,
+    "email": string, "content": string, "calendar": string,
     "competitorIntel": string, "quickWins": string
   }
 }
@@ -990,7 +977,6 @@ export async function generateGrandPlan(
   if (isEnabled("seoFoundations")) sectionNames.push("SEO Foundations");
   if (isEnabled("metaCampaigns") && sources.keywordResearch) sectionNames.push("Meta Campaigns");
   if (isEnabled("contentCalendar")) sectionNames.push("Content Calendar");
-  if (isEnabled("organicSocial")) sectionNames.push("Organic Social");
   if (isEnabled("googleAdsCampaigns") && sources.keywordResearch && adGroups.length > 0) sectionNames.push("Ad Copy");
   if (isEnabled("googleAdsCampaigns") && sources.keywordResearch && adGroups.length > 0) sectionNames.push("Negative Keywords");
   if (isEnabled("emailMarketing")) sectionNames.push("Email Marketing");
@@ -1020,7 +1006,7 @@ export async function generateGrandPlan(
   if (onProgress) await onProgress(`Generating ${total} AI sections...`);
 
   // Batch 1: core sections (errors are isolated — one failure does not abort the rest)
-  const [executiveSummary, metaCampaigns, contentCalendar, organicSocial, , aiNegatives, aiContentClusters] =
+  const [executiveSummary, metaCampaigns, contentCalendar, , aiNegatives, aiContentClusters] =
     await Promise.all([
       isEnabled("executiveSummary")
         ? runSection("Executive Summary", "executiveSummary", () => generateExecutiveSummary(anthropic, contextSummary, sources))
@@ -1030,9 +1016,6 @@ export async function generateGrandPlan(
         : Promise.resolve(undefined),
       isEnabled("contentCalendar")
         ? runSection("Content Calendar", "contentCalendar", () => generateContentCalendar(anthropic, contextSummary, contentData, sources))
-        : Promise.resolve(undefined),
-      isEnabled("organicSocial")
-        ? runSection("Organic Social", "organicSocial", () => generateOrganicSocial(anthropic, contextSummary, contentData, sources))
         : Promise.resolve(undefined),
       // Ad copy generation removed — Google Ads is now research-only (keywords +
       // negatives + ad-group structure). The PPC team writes the actual copy.
@@ -1137,7 +1120,6 @@ export async function generateGrandPlan(
       contentStrategy: contentStrategySection,
       seoFoundations,
       contentCalendar,
-      organicSocial,
       servicesInvestment,
       emailMarketing: emailMarketing?.value,
       linkedInAds: linkedInAds?.value,
@@ -1857,62 +1839,6 @@ ${context}${buildSharedContextBlocks(sources, "calendar")}`,
   return padded;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function generateOrganicSocial(anthropic: Anthropic, context: string, contentData: any, sources: GrandPlanSources): Promise<OrganicSocialPlan> {
-  const socialPerMonth = sources.socialPostsPerMonth
-    ?? ((sources.socialPostsPerWeek ?? 2) * 4);
-  const socialPerWeek = Math.max(1, Math.round(socialPerMonth / 4));
-  const res = await withAnthropicRetry("organicSocial", () => anthropic.messages.create({
-    model: MODEL_LIGHT_FN(),
-    max_tokens: 2200,
-    messages: [
-      {
-        role: "user",
-        content: `You are a social media strategist at i3media. Create an organic social media plan for Meta (Instagram + Facebook).
-
-Return a JSON object:
-- pillars: array of { name: string, description: string, examplePosts: string[] (3 examples each) } — 4-6 pillars
-- postingFrequency: string (state ${socialPerWeek} posts per week across Instagram and Facebook)
-- contentMix: array of { type: "reel"|"carousel"|"static"|"story", percentage: number } (must total 100)
-- hashtagStrategy: string[] (10-15 relevant hashtags)
-
-Rules:
-- Pillars must serve the named target audiences — each pillar should explicitly help at least one audience.
-- Example posts must reference real audience pain points or moments, not generic platitudes.
-- British English, no AI jargon
-- Return ONLY valid JSON, no markdown fences
-
-Client: ${sources.clientName}
-Brief: ${sources.clientBrief || sources.keywordResearch?.brief || ""}
-${contentData?.blogPosts ? `Blog topics: ${contentData.blogPosts.slice(0, 10).map((b: { title?: string }) => b.title).filter(Boolean).join(", ")}` : ""}
-Context:
-${context}${buildSharedContextBlocks(sources, "organicSocial")}`,
-      },
-    ],
-  }));
-
-  const raw = extractText(res);
-  const plan = safeJsonParse<OrganicSocialPlan>(raw, {
-    pillars: [],
-    postingFrequency: "3-4 posts per week",
-    contentMix: [],
-    hashtagStrategy: [],
-  });
-  // Soft validation: flag hashtags that are very long, contain non-tag punctuation,
-  // or are obvious filler (e.g. #1, #love alone). The renderer shows a ⚠️ chip
-  // — we never silently delete what the AI produced.
-  const warnings: number[] = [];
-  (plan.hashtagStrategy ?? []).forEach((tag, i) => {
-    const t = (tag ?? "").trim();
-    const body = t.replace(/^#/, "");
-    if (!body || body.length > 30 || body.length < 3) { warnings.push(i); return; }
-    if (/[^a-z0-9_]/i.test(body)) { warnings.push(i); return; }
-    if (/^(love|life|insta|photooftheday|follow|like4like|1)$/i.test(body)) { warnings.push(i); return; }
-  });
-  if (warnings.length) plan.hashtagWarnings = warnings;
-  return plan;
-}
-
 
 // ─── Google Ads ad copy generator ───────────────────────────────────────────
 
@@ -2125,7 +2051,6 @@ const PLATFORM_CHANNEL_MAP: Record<string, string> = {
   googleAdsCampaigns: "Google Ads",
   metaCampaigns: "Meta Ads",
   linkedInAds: "LinkedIn Ads",
-  organicSocial: "Organic Social",
   emailMarketing: "Email Marketing",
 };
 
@@ -2164,7 +2089,6 @@ function buildFallbackMediaPlan(
     googleAdsCampaigns: forecast && forecast.cost > 0 ? 5 : 4,
     metaCampaigns: 3,
     linkedInAds: 2,
-    organicSocial: 1,
     emailMarketing: 1,
   };
   const totalWeight = platforms.reduce((s, p) => s + (WEIGHTS[p] ?? 1), 0);
@@ -2380,7 +2304,6 @@ export async function generateSectionIntros(
     contentStrategy: !!data.sections.contentStrategy,
     metaCampaigns: !!data.sections.metaCampaigns?.length,
     googleAdsCampaigns: !!data.sections.googleAdsCampaigns,
-    organicSocial: !!data.sections.organicSocial,
   };
   const wanted = Object.entries(want).filter(([, v]) => v).map(([k]) => k);
   if (wanted.length === 0) return {};
@@ -2405,7 +2328,7 @@ Return ONLY a JSON object with the keys listed below. Each value is ONE paragrap
 Required keys: ${wanted.map((k) => `"${k}"`).join(", ")}.
 
 Section briefs:
-${want.contentStrategy ? '- contentStrategy: "Topic-cluster SEO content plan: pillar page, mega guides, supporting articles, on-page optimisations."\n' : ""}${want.metaCampaigns ? '- metaCampaigns: "Audience-led Meta (Facebook + Instagram) paid social plan, with creative angles and pillar topics."\n' : ""}${want.googleAdsCampaigns ? '- googleAdsCampaigns: "Google Ads search campaigns with ad groups, keywords, RSA copy and a forecast."\n' : ""}${want.organicSocial ? '- organicSocial: "Organic Meta plan: pillars, content mix, posting cadence and hashtag strategy."\n' : ""}
+${want.contentStrategy ? '- contentStrategy: "Topic-cluster SEO content plan: pillar page, mega guides, supporting articles, on-page optimisations."\n' : ""}${want.metaCampaigns ? '- metaCampaigns: "Audience-led Meta (Facebook + Instagram) paid social plan, with creative angles and pillar topics."\n' : ""}${want.googleAdsCampaigns ? '- googleAdsCampaigns: "Google Ads search campaigns with ad groups, keywords, RSA copy and a forecast."\n' : ""}
 
 Client: ${data.clientName}
 ${audienceLines ? `Audiences:\n${audienceLines}` : ""}`,
@@ -2996,8 +2919,8 @@ Return ONLY valid JSON (no markdown fences) matching this schema:
 Hard rules:
 - ABSOLUTE URL RULE: Every "url", "targetUrl", "fromUrl" and "hubUrl" field MUST be copied verbatim from the KNOWN PAGES list below. Do NOT invent, guess, modify or extrapolate URLs. If you cannot find a suitable known page for a quick win, hub, or link-building target, OMIT that entry rather than fabricate a URL. Returning fewer entries that are accurate is far better than the requested count with invented URLs.
 - "intro": one paragraph (2 sentences) framing the SEO foundations work as the multiplier on top of the content cluster.
-- "quickWins": UP TO 6 entries (fewer is fine if KNOWN PAGES is short). Pick existing commercial / service / category pages from the KNOWN PAGES list — not blog posts.
-  - PRIORITY ORDER: Any pages marked "← PRIORITY (client requested)" in the KNOWN PAGES list MUST appear in quickWins first, in the same order. Use the <priority_pages> intel block (page title / H1 / meta / current ranking keywords) as the rewrite anchor.
+- "quickWins": You MUST include a quickWin entry for EVERY page marked "← PRIORITY (client requested)" in the KNOWN PAGES list — no exceptions, even if the list is long. After all priority pages are covered, you MAY add up to 4 additional commercial / service / category pages from the rest of KNOWN PAGES (do not pick blog posts). Pick existing pages only.
+  - PRIORITY ORDER: All "← PRIORITY (client requested)" pages MUST appear first in quickWins, in the same order they appear in KNOWN PAGES. Use the <priority_pages> intel block (page title / H1 / meta / current ranking keywords) as the rewrite anchor.
   - INTENT BIAS: Prefer transactional and commercial-intent keywords (people ready to buy, enquire, get a quote, book) for the "primary" keyword on every quick win — especially the priority pages. Push purely informational keywords into "longTail" only.
   - "keywords.primary": ONE keyword. Must be commercial / transactional unless the page is unambiguously informational. If the page already ranks for related keywords (see <priority_pages>), choose a primary that lifts an existing position 4–20 keyword over the line.
   - "keywords.secondary": 2–4 supporting keywords (mix of commercial and longer-tail commercial variants).
@@ -3042,7 +2965,43 @@ ${context}${buildSharedContextBlocks(sources, "content")}`;
     internalLinking: { overview: "", hubs: [] },
     linkBuilding: { overallStrategy: "", targets: [], outreachChannels: [] },
   };
-  return safeJsonParse<SeoFoundations>(extractText(res), fallback);
+  const parsed = safeJsonParse<SeoFoundations>(extractText(res), fallback);
+
+  // Backfill: every manually-entered URL MUST appear in quickWins. If the AI
+  // omitted any, synthesise a stub entry so the renderer still emits a card.
+  if (manualUrls.length > 0) {
+    const present = new Set((parsed.quickWins ?? []).map((q) => (q.url || "").trim().toLowerCase()));
+    const missing = manualUrls.filter((u) => !present.has(u.trim().toLowerCase()));
+    if (missing.length > 0) {
+      const stubs: SeoQuickWinPage[] = missing.map((url) => ({
+        url,
+        pageTitle: "",
+        rationale: "Awaiting deeper analysis — page submitted manually but the AI did not return a quick win for it.",
+        intent: "commercial",
+        keywords: { primary: "", secondary: [], longTail: [] },
+        newTitleTag: "",
+        newMetaDescription: "",
+        onPageSuggestions: [],
+        crossLinksToAdd: [],
+        suggestedFaq: [],
+        suggestedSchema: [],
+        estimatedTimeToImpact: "3–4 weeks",
+        effort: "medium",
+      }));
+      // Priority pages (manual) come first — interleave so manual order is preserved.
+      const manualOrder = new Map(manualUrls.map((u, i) => [u.trim().toLowerCase(), i]));
+      const priority: SeoQuickWinPage[] = [];
+      const rest: SeoQuickWinPage[] = [];
+      for (const q of [...(parsed.quickWins ?? []), ...stubs]) {
+        const key = (q.url || "").trim().toLowerCase();
+        if (manualOrder.has(key)) priority.push(q); else rest.push(q);
+      }
+      priority.sort((a, b) => (manualOrder.get((a.url || "").trim().toLowerCase()) ?? 0) - (manualOrder.get((b.url || "").trim().toLowerCase()) ?? 0));
+      parsed.quickWins = [...priority, ...rest];
+    }
+  }
+
+  return parsed;
 }
 
 // ─── Email Marketing generator ──────────────────────────────────────────────

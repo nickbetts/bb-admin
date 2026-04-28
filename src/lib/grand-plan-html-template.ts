@@ -102,7 +102,7 @@ export function renderGrandPlanHtml(plan: GrandPlanData, isPublicView = false): 
   // are no longer rendered. Channel sections carry the strategy through directly.
   const hasPaidSearch = !!s.googleAdsCampaigns;
   const hasPaidSocial = s.metaCampaigns?.length || s.linkedInAds?.length;
-  const hasContent = s.contentStrategy || s.contentCalendar?.length || s.organicSocial;
+  const hasContent = s.contentStrategy || s.contentCalendar?.length;
   const hasResearch = s.competitorIntel?.length;
   const hasCommercial = s.servicesInvestment || s.emailMarketing;
 
@@ -120,7 +120,6 @@ export function renderGrandPlanHtml(plan: GrandPlanData, isPublicView = false): 
     if (s.contentStrategy) navItems.push({ id: "content-strategy", label: "Content Strategy" });
     if (s.seoFoundations) navItems.push({ id: "seo-foundations", label: "SEO Foundations" });
     if (s.contentCalendar?.length) navItems.push({ id: "content-calendar", label: "Content Calendar" });
-    if (s.organicSocial) navItems.push({ id: "organic-social", label: "Organic Social" });
   }
   if (hasResearch) {
     addChapter("Research");
@@ -171,8 +170,6 @@ export function renderGrandPlanHtml(plan: GrandPlanData, isPublicView = false): 
   if (s.contentCalendar?.length) contentStats.push({ num: String(s.contentCalendar.length), label: "Calendar Months" });
 
   const organicStats: StatItem[] = [];
-  if (s.organicSocial?.pillars?.length) organicStats.push({ num: String(s.organicSocial.pillars.length), label: "Social Pillars" });
-  if (s.organicSocial?.hashtagStrategy?.length) organicStats.push({ num: String(s.organicSocial.hashtagStrategy.length), label: "Hashtags" });
   if (s.emailMarketing?.flows?.length) organicStats.push({ num: String(s.emailMarketing.flows.length), label: "Email Flows" });
   if (s.emailMarketing?.segmentation?.segments?.length) {
     organicStats.push({ num: String(s.emailMarketing.segmentation.segments.length), label: "Email Segments" });
@@ -334,7 +331,7 @@ function buildChapteredSections(s: any, clientName: string, brief?: string, camp
   // Strategy chapter (Strategy Plan + Quick Wins) removed — channel chapters open the plan directly.
   const hasPaidSearch = !!s.googleAdsCampaigns;
   const hasPaidSocial = s.metaCampaigns?.length || s.linkedInAds?.length;
-  const hasContent = s.contentStrategy || s.contentCalendar?.length || s.organicSocial;
+  const hasContent = s.contentStrategy || s.contentCalendar?.length;
   const hasResearch = s.competitorIntel?.length;
   const hasCommercial = s.servicesInvestment || s.emailMarketing;
 
@@ -360,11 +357,10 @@ function buildChapteredSections(s: any, clientName: string, brief?: string, camp
   }
 
   if (hasContent) {
-    parts.push(ch("Content & SEO", "Content strategy, publishing calendar, organic social, and example content assets."));
+    parts.push(ch("Content & SEO", "Content strategy, publishing calendar, and example content assets."));
     if (s.contentStrategy) parts.push(renderContentStrategy(s.contentStrategy, sectionIntros?.contentStrategy, audienceRationales));
     if (s.seoFoundations) parts.push(renderSeoFoundations(s.seoFoundations));
     if (s.contentCalendar?.length) parts.push(renderContentCalendar(s.contentCalendar));
-    if (s.organicSocial) parts.push(renderOrganicSocial(s.organicSocial, sectionIntros?.organicSocial));
   }
 
   if (hasResearch) {
@@ -647,18 +643,6 @@ function renderTldrView(plan: GrandPlanData): string {
     ));
   }
 
-  // Organic Social
-  if (s.organicSocial) {
-    const pillars = (s.organicSocial.pillars ?? []).slice(0, 5).map((p) => `<span class="tldr-tag">${esc(p.name)}</span>`).join("");
-    cards.push(card(
-      "organic-social",
-      "Organic Social",
-      `<div class="tldr-muted" style="margin-bottom:.5rem">${esc(s.organicSocial.postingFrequency ?? "")}</div><div class="tldr-tag-row">${pillars}</div>`,
-      "Content & SEO",
-    ));
-  }
-
-
   // Keyword Research TLDR card removed — keywords now live inside the Google Ads section.
 
   // Services & Investment
@@ -930,32 +914,68 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
 
   const aiNegReasoned = ((data.aiNegativesWithReason ?? []) as { keyword: string; reason: string }[])
     .filter((n) => n.keyword && n.reason);
-  const aiNegHtml = aiNegReasoned.length > 0 ? `
-        <div class="neg-reasoned-list">
-          ${aiNegReasoned.map((n) => `
-            <div class="neg-reason-item">
-              <span class="neg-chip">${esc(n.keyword)}</span>
-              <span class="neg-reason-text">${esc(n.reason)}</span>
-            </div>`).join("")}
-        </div>` : "";
 
-  const reasonedSet = new Set(aiNegReasoned.map((n) => n.keyword.toLowerCase()));
-  const flatExtras = ((data.negativeKeywords ?? []) as string[])
-    .filter((k) => k && !reasonedSet.has(k.toLowerCase()));
-  const flatExtrasHtml = flatExtras.length > 0
-    ? `<div class="neg-list" style="margin-top:.75rem">${flatExtras.map((k) => `<span class="neg-chip">${esc(k)}</span>`).join(" ")}</div>`
-    : "";
+  // Build ONE consolidated negatives pill list from every source (campaign-level
+  // reasoned, campaign-level extras, and every ad group's adGroupNegatives).
+  // Dedup case-insensitively, preserving first-seen order. Reasoned ones go
+  // first so the user gets the highest-context items at the top.
+  const adGroupsRaw = ((data.adGroups ?? []) as {
+    name: string;
+    keywords: { keyword: string; matchType: string; volume?: number; cpc?: number }[];
+    hiddenLowVolumeCount?: number;
+    audience?: string;
+    adGroupNegatives?: string[];
+  }[]);
+  const negSeen = new Set<string>();
+  const consolidatedNegatives: { keyword: string; reason?: string; source: "campaign" | "group"; groupName?: string }[] = [];
+  for (const n of aiNegReasoned) {
+    const key = n.keyword.trim().toLowerCase();
+    if (!key || negSeen.has(key)) continue;
+    negSeen.add(key);
+    consolidatedNegatives.push({ keyword: n.keyword, reason: n.reason, source: "campaign" });
+  }
+  for (const k of ((data.negativeKeywords ?? []) as string[])) {
+    const key = (k || "").trim().toLowerCase();
+    if (!key || negSeen.has(key)) continue;
+    negSeen.add(key);
+    consolidatedNegatives.push({ keyword: k, source: "campaign" });
+  }
+  for (const g of adGroupsRaw) {
+    for (const k of (g.adGroupNegatives ?? [])) {
+      const key = (k || "").trim().toLowerCase();
+      if (!key || negSeen.has(key)) continue;
+      negSeen.add(key);
+      consolidatedNegatives.push({ keyword: k, source: "group", groupName: g.name });
+    }
+  }
 
-  const adGroupsHtml = ((data.adGroups ?? []) as { name: string; keywords: { keyword: string; matchType: string; volume?: number; cpc?: number }[]; hiddenLowVolumeCount?: number; audience?: string; adGroupNegatives?: string[] }[])
+  const negChipsHtml = consolidatedNegatives.length > 0
+    ? `<div class="neg-chip-list">${consolidatedNegatives.map((n) => `<span class="neg-chip kw-text" title="${esc(n.reason ?? (n.source === "group" ? `Ad group: ${n.groupName ?? ""}` : "Campaign-level negative"))}">${esc(n.keyword)}</span>`).join(" ")}</div>`
+    : `<p class="section-intro" style="font-style:italic;color:var(--mid)">No negative keywords recommended for this account yet.</p>`;
+
+  const reasonedListHtml = aiNegReasoned.length > 0 ? `
+        <details class="neg-reasoned-toggle">
+          <summary>Show reasoning for ${aiNegReasoned.length} key negative${aiNegReasoned.length === 1 ? "" : "s"}</summary>
+          <div class="neg-reasoned-list">
+            ${aiNegReasoned.map((n) => `
+              <div class="neg-reason-item">
+                <span class="neg-chip">${esc(n.keyword)}</span>
+                <span class="neg-reason-text">${esc(n.reason)}</span>
+              </div>`).join("")}
+          </div>
+        </details>` : "";
+
+  const adGroupsHtml = adGroupsRaw
     .map((g, i) => {
-      const kwRows = (g.keywords ?? [])
+      const kwChips = (g.keywords ?? [])
         .map((k) => {
           const display = k.matchType === "exact" ? `[${k.keyword}]` : k.matchType === "phrase" ? `"${k.keyword}"` : k.keyword;
           const badge = k.matchType === "exact" ? "match-exact" : k.matchType === "phrase" ? "match-phrase" : "match-broad";
           const badgeLabel = k.matchType === "exact" ? "Exact" : k.matchType === "phrase" ? "Phrase" : "Broad";
-          return `<tr><td class="kw-text">${esc(display)}</td><td><span class="match-badge ${badge}">${badgeLabel}</span></td>${k.volume != null ? `<td class="kw-vol">${k.volume.toLocaleString()}</td>` : ""}</tr>`;
+          const volTitle = k.volume != null ? ` title="Volume: ${k.volume.toLocaleString()}"` : "";
+          return `<span class="kw-chip"${volTitle}><span class="kw-text">${esc(display)}</span><span class="match-badge ${badge}">${badgeLabel}</span></span>`;
         })
-        .join("\n");
+        .join(" ");
 
       const hiddenNote = g.hiddenLowVolumeCount && g.hiddenLowVolumeCount > 0
         ? `<p class="kw-hidden-note" style="font-size:12px;color:var(--mid);margin:.5rem 0 0">${g.hiddenLowVolumeCount} low/zero-volume keyword${g.hiddenLowVolumeCount === 1 ? "" : "s"} hidden from this view.</p>`
@@ -971,17 +991,9 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
           <span class="ag-chevron">+</span>
         </div>
         <div class="ag-body">
-          <table class="kw-tbl">
-            <thead><tr><th>Keyword</th><th>Match Type</th>${g.keywords[0]?.volume != null ? "<th>Volume</th>" : ""}</tr></thead>
-            <tbody>${kwRows}</tbody>
-          </table>
+          <div class="kw-chip-list">${kwChips}</div>
           ${hiddenNote}
-          <button class="copy-btn" onclick="copyAgKeywords(this)">Copy Keywords</button>
-          ${(g.adGroupNegatives && g.adGroupNegatives.length > 0) ? `
-          <div class="ag-neg-section">
-            <h5>Ad Group Negatives</h5>
-            <div class="neg-list">${g.adGroupNegatives.map((n) => `<span class="neg-chip">${esc(n)}</span>`).join(" ")}</div>
-          </div>` : ""}
+          <div class="ag-actions"><button class="copy-btn" onclick="copyAgKeywords(this)">Copy all keywords in this group</button></div>
         </div>
       </div>`;
     })
@@ -1001,13 +1013,17 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
           ${locationsHtml}
         </div>
         <div class="neg-section">
-          <h4>Campaign-Level Negative Keywords</h4>
-          ${aiNegHtml ? `${aiNegHtml}` : `<p class="section-intro" style="font-style:italic;color:var(--mid)">No campaign-level negatives recommended for this account yet.</p>`}
-          ${flatExtras.length > 0 ? `<h5 style="margin-top:1.25rem;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--mid)">Sector & brief negatives</h5>${flatExtrasHtml}` : ""}
+          <div class="neg-section-head">
+            <h4>Negative Keywords</h4>
+            ${consolidatedNegatives.length > 0 ? `<button class="copy-btn" onclick="copyAllNegatives(this)">Copy all negatives</button>` : ""}
+          </div>
+          <p class="section-intro" style="margin-top:.25rem">Single combined list across the campaign and every ad group. Click "Copy all negatives" to grab them in one go.</p>
+          ${negChipsHtml}
+          ${reasonedListHtml}
         </div>
         <div class="ag-heading-row">
           <h3 class="ag-heading">Ad Groups</h3>
-          <button class="copy-btn" onclick="copyAllCampaignKws(this)">Copy All Keywords</button>
+          <button class="copy-btn" onclick="copyAllCampaignKws(this)">Copy all valid keywords (every group)</button>
         </div>
         ${adGroupsHtml}
       </div>
@@ -1025,10 +1041,6 @@ function renderMetaCampaigns(campaigns: any[], clientWebsite?: string, intro?: s
         ...(c.audienceTargeting?.lookalikes ?? []).map((l: string) => `<span class="audience-chip lookalike">${esc(l)}</span>`),
       ].join(" ");
 
-      const captions = (c.captionCopyBank ?? [])
-        .map((cap: string) => `<div class="caption-item"><p>${esc(cap)}</p><button class="copy-btn-sm" onclick="copySingle(this,'${escAttr(cap)}')">Copy</button></div>`)
-        .join("\n");
-
       const pillars = (c.contentPillars ?? [])
         .map((p: string) => `<li>${esc(p)}</li>`)
         .join("\n");
@@ -1045,8 +1057,6 @@ function renderMetaCampaigns(campaigns: any[], clientWebsite?: string, intro?: s
         <div class="meta-campaign-body">
           <h5>Audience Targeting</h5>
           <div class="audience-list">${audiences}</div>
-          <h5>Caption Copy Bank</h5>
-          <div class="captions-list">${captions}</div>
           ${pillars ? `<h5>Content Pillars</h5><ul class="pillars-list">${pillars}</ul>` : ""}
           ${(c.complianceNotes ?? []).length ? `<div class="compliance-callout"><strong>Platform / compliance notes</strong><ul>${(c.complianceNotes ?? []).map((n: string) => `<li>${esc(n)}</li>`).join("")}</ul></div>` : ""}
         </div>
@@ -1059,7 +1069,7 @@ function renderMetaCampaigns(campaigns: any[], clientWebsite?: string, intro?: s
       <div class="section-inner">
         <div class="section-kicker">Paid Social</div>
         <h2>Meta Campaigns</h2>
-      <p class="section-intro">${intro ? esc(intro) : "Facebook and Instagram campaign structures with audience targeting, ad creative, and caption banks."}</p>
+      <p class="section-intro">${intro ? esc(intro) : "Facebook and Instagram campaign structures with audience targeting and content pillars."}</p>
       ${campaignsHtml}
       </div>
     </section>`;
@@ -1552,12 +1562,17 @@ function renderSeoFoundations(data: SeoFoundationsData): string {
         const intentClass = (q.intent || "").toLowerCase();
         const faqItems = (q as { suggestedFaq?: { question: string; answer: string }[] }).suggestedFaq ?? [];
         const schemaItems = (q as { suggestedSchema?: { type: string; jsonLd: string }[] }).suggestedSchema ?? [];
-        // Build modal payloads as base64 to dodge HTML-escaping headaches in jsonLd.
-        const faqPayload = faqItems.length
-          ? Buffer.from(JSON.stringify({ url: q.url, items: faqItems }), "utf-8").toString("base64")
+        // Embed payloads as inline <script type="application/json"> blocks keyed
+        // by id. Far more robust than base64 in attributes for nested JSON-LD.
+        const safeJsonForScript = (obj: unknown): string =>
+          JSON.stringify(obj).replace(/<\/(script)/gi, "<\\/$1");
+        const faqId = `qw-faq-data-${qi}`;
+        const schemaId = `qw-schema-data-${qi}`;
+        const faqDataScript = faqItems.length
+          ? `<script type="application/json" id="${faqId}">${safeJsonForScript({ url: q.url, items: faqItems })}</script>`
           : "";
-        const schemaPayload = schemaItems.length
-          ? Buffer.from(JSON.stringify({ url: q.url, items: schemaItems }), "utf-8").toString("base64")
+        const schemaDataScript = schemaItems.length
+          ? `<script type="application/json" id="${schemaId}">${safeJsonForScript({ url: q.url, items: schemaItems })}</script>`
           : "";
         return `
         <div class="qw-card" id="qw-card-${qi}">
@@ -1610,9 +1625,10 @@ function renderSeoFoundations(data: SeoFoundationsData): string {
           </div>` : ""}
           ${(faqItems.length || schemaItems.length) ? `
           <div class="qw-actions">
-            ${faqItems.length ? `<button type="button" class="qw-action-btn qw-action-faq" data-qw-modal="faq" data-qw-payload="${faqPayload}"><span class="qw-action-ico">&#x2753;</span>Suggested FAQs<span class="qw-action-count">${faqItems.length}</span></button>` : ""}
-            ${schemaItems.length ? `<button type="button" class="qw-action-btn qw-action-schema" data-qw-modal="schema" data-qw-payload="${schemaPayload}"><span class="qw-action-ico">&lt;/&gt;</span>Suggested schema<span class="qw-action-count">${schemaItems.length}</span></button>` : ""}
-          </div>` : ""}
+            ${faqItems.length ? `<button type="button" class="qw-action-btn qw-action-faq" data-qw-modal="faq" data-qw-target="${faqId}"><span class="qw-action-ico">&#x2753;</span>Suggested FAQs<span class="qw-action-count">${faqItems.length}</span></button>` : ""}
+            ${schemaItems.length ? `<button type="button" class="qw-action-btn qw-action-schema" data-qw-modal="schema" data-qw-target="${schemaId}"><span class="qw-action-ico">&lt;/&gt;</span>Suggested schema<span class="qw-action-count">${schemaItems.length}</span></button>` : ""}
+          </div>
+          ${faqDataScript}${schemaDataScript}` : ""}
         </div>`;
       }).join("\n")}
     </div>` : "";
@@ -1738,58 +1754,6 @@ function renderContentCalendar(months: any[]): string {
       </div>
     </section>`;
 }
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function renderOrganicSocial(data: any, intro?: string): string {
-  const pillarsHtml = (data.pillars ?? [])
-    .map((p: { name: string; description: string; examplePosts: string[] }) => `
-    <div class="pillar-card">
-      <h4>${esc(p.name)}</h4>
-      <p>${esc(p.description)}</p>
-      <div class="pillar-examples">
-        ${p.examplePosts.map((ex: string) => `<div class="pillar-example">${esc(ex)}</div>`).join("\n")}
-      </div>
-    </div>`)
-    .join("\n");
-
-  const mixItems = (Array.isArray(data.contentMix) ? data.contentMix : [])
-    .map((m: { type: string; percentage: number | string }) => ({
-      type: String(m?.type ?? "").trim(),
-      pct: Math.max(0, Math.min(100, Number(m?.percentage) || 0)),
-    }))
-    .filter((m: { type: string; pct: number }) => m.type && m.pct > 0);
-  const mixHtml = mixItems.length
-    ? mixItems
-        .map((m: { type: string; pct: number }) =>
-          `<div class="mix-item"><span class="mix-type">${esc(m.type)}</span><div class="mix-bar"><div class="mix-fill" style="width:${m.pct}%"></div></div><span class="mix-pct">${m.pct}%</span></div>`)
-        .join("\n")
-    : `<p class="section-intro" style="font-style:italic;color:var(--mid)">Content mix not yet provided.</p>`;
-
-  const warnSet = new Set<number>(Array.isArray(data.hashtagWarnings) ? data.hashtagWarnings : []);
-  const hashtags = (data.hashtagStrategy ?? [])
-    .map((h: string, i: number) => {
-      const cleaned = h.replace(/^#/, "");
-      const isWarn = warnSet.has(i);
-      return `<span class="hashtag${isWarn ? " hashtag-warn" : ""}"${isWarn ? ` title="Low-confidence tag — review before posting"` : ""}>#${esc(cleaned)}${isWarn ? ' <span class="hashtag-warn-icon" aria-hidden="true">⚠</span>' : ""}</span>`;
-    })
-    .join(" ");
-
-  return `
-    <section id="organic-social" class="section">
-      <div class="section-inner">
-        <div class="section-kicker">Social Media</div>
-        <h2>Organic Social — Meta</h2>
-      <p class="section-intro">${intro ? esc(intro) : "Content pillars, posting frequency, and content type mix for Instagram and Facebook."}</p>
-      <div class="social-freq"><strong>Posting frequency:</strong> ${esc(data.postingFrequency ?? "")}</div>
-      <h3>Content Mix</h3>
-      <div class="mix-chart">${mixHtml}</div>
-      <h3>Content Pillars</h3>
-      <div class="pillars-grid">${pillarsHtml}</div>
-      ${hashtags ? `<h3>Hashtag Strategy</h3><div class="hashtag-list">${hashtags}</div>` : ""}
-      </div>
-    </section>`;
-}
-
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function renderServicesInvestment(data: any): string {
@@ -2291,6 +2255,23 @@ a{color:var(--accent);text-decoration:none}
 .section.dark .neg-section h4{color:#fff}
 .neg-chip{display:inline-block;background:rgba(220,38,38,.12);color:#dc2626;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:500;margin:3px 4px 3px 0}
 .section.dark .neg-chip{background:rgba(220,38,38,.2);color:#fca5a5}
+.neg-section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:.25rem}
+.neg-section-head .copy-btn{margin-top:0}
+.neg-chip-list{display:flex;flex-wrap:wrap;gap:4px;margin-top:.75rem}
+.neg-reasoned-toggle{margin-top:1rem}
+.neg-reasoned-toggle summary{cursor:pointer;font-size:12.5px;font-weight:600;color:var(--mid);padding:6px 0;user-select:none}
+.neg-reasoned-toggle summary:hover{color:var(--text)}
+.section.dark .neg-reasoned-toggle summary{color:#94a3b8}
+.section.dark .neg-reasoned-toggle summary:hover{color:#e2e8f0}
+.neg-reasoned-toggle[open] summary{margin-bottom:.75rem}
+/* Valid keyword pills (replaces the kw-tbl table layout) */
+.kw-chip-list{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:.75rem}
+.kw-chip{display:inline-flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--border);padding:4px 10px;border-radius:20px;font-size:12.5px;line-height:1.4}
+.section.dark .kw-chip{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.08)}
+.kw-chip .kw-text{font-family:'SF Mono','Fira Code','Courier New',monospace;font-size:12.5px;color:var(--text)}
+.section.dark .kw-chip .kw-text{color:#e2e8f0}
+.kw-chip .match-badge{font-size:10px;padding:1px 6px}
+.ag-actions{display:flex;justify-content:flex-end;margin-top:.5rem}
 /* Ad groups */
 .ag-heading{font-size:1.1rem;font-weight:700;color:var(--heading);margin-bottom:1rem}
 .section.dark .ag-heading{color:#fff}
@@ -3297,11 +3278,12 @@ document.addEventListener('click', function(e){
   });
 });
 
-// Copy all keywords across every ad group in a section
+// Copy all keywords across every ad group in a section (valid keywords only,
+// negatives are excluded — they live in .neg-chip-list).
 function copyAllCampaignKws(btn){
   var sec=btn.closest('section');
   if(!sec)return;
-  var cells=sec.querySelectorAll('.kw-text');
+  var cells=sec.querySelectorAll('.kw-chip-list .kw-text');
   var seen={};
   var lines=[];
   Array.from(cells).forEach(function(c){
@@ -3311,21 +3293,42 @@ function copyAllCampaignKws(btn){
     seen[t]=1;
     lines.push(t);
   });
-  navigator.clipboard.writeText(lines.join('\n')).then(function(){
+  navigator.clipboard.writeText(lines.join('\\n')).then(function(){
     var orig=btn.textContent;
     btn.textContent='Copied!';
     setTimeout(function(){btn.textContent=orig;},1800);
   });
 }
 
-// Copy ad group keywords
+// Copy ad group keywords (valid only — negatives are no longer rendered per group)
 function copyAgKeywords(btn){
   var body=btn.closest('.ag-body');
-  var cells=body.querySelectorAll('.kw-text');
+  var cells=body.querySelectorAll('.kw-chip-list .kw-text');
   var text=Array.from(cells).map(function(c){return c.textContent.trim()}).join('\\n');
   navigator.clipboard.writeText(text).then(function(){
+    var orig=btn.textContent;
     btn.textContent='Copied!';
-    setTimeout(function(){btn.textContent='Copy Keywords';},1800);
+    setTimeout(function(){btn.textContent=orig;},1800);
+  });
+}
+
+// Copy every consolidated negative keyword in a section
+function copyAllNegatives(btn){
+  var sec=btn.closest('section');
+  if(!sec)return;
+  var chips=sec.querySelectorAll('.neg-chip-list .neg-chip');
+  var seen={};
+  var lines=[];
+  Array.from(chips).forEach(function(c){
+    var t=(c.textContent||'').trim();
+    if(!t||seen[t])return;
+    seen[t]=1;
+    lines.push(t);
+  });
+  navigator.clipboard.writeText(lines.join('\\n')).then(function(){
+    var orig=btn.textContent;
+    btn.textContent='Copied!';
+    setTimeout(function(){btn.textContent=orig;},1800);
   });
 }
 
@@ -3511,10 +3514,12 @@ document.querySelectorAll('.lp-iframe[data-lp-html]').forEach(function(iframe){
       setTimeout(function(){btn.textContent=orig;btn.classList.remove('qw-copied');},1500);
     });
   }
-  function openModal(kind,payloadB64){
+  function openModal(kind,targetId){
     var data;
-    try{data=JSON.parse(decodeURIComponent(escape(atob(payloadB64))));}
-    catch(e){try{data=JSON.parse(atob(payloadB64));}catch(e2){return;}}
+    var src=targetId&&document.getElementById(targetId);
+    if(!src){console.warn('qw-modal: missing data block',targetId);return;}
+    try{data=JSON.parse(src.textContent||'{}');}
+    catch(e){console.warn('qw-modal: JSON parse failed',e);return;}
     var url=data.url||'';
     urlEl.textContent=url;
     urlEl.setAttribute('href',url);
@@ -3563,7 +3568,7 @@ document.querySelectorAll('.lp-iframe[data-lp-html]').forEach(function(iframe){
     var trigger=t.closest&&t.closest('[data-qw-modal]');
     if(trigger){
       e.preventDefault();
-      openModal(trigger.getAttribute('data-qw-modal'),trigger.getAttribute('data-qw-payload'));
+      openModal(trigger.getAttribute('data-qw-modal'),trigger.getAttribute('data-qw-target'));
       return;
     }
     if(t.hasAttribute&&t.hasAttribute('data-qw-close')){closeModal();return;}
