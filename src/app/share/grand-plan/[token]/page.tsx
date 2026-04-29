@@ -22,7 +22,9 @@ export default function GrandPlanSharePage({
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
   useEffect(() => {
-    fetch(`/api/share/grand-plan/${token}`)
+    const viewParam = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("view") : null;
+    const qs = viewParam === "presentation" ? "?view=presentation" : "";
+    fetch(`/api/share/grand-plan/${token}${qs}`)
       .then((r) => r.json())
       .then((data) => {
         if (data.error) {
@@ -61,7 +63,9 @@ export default function GrandPlanSharePage({
     setSubmitting(true);
     setError("");
     try {
-      const res = await fetch(`/api/share/grand-plan/${token}`, {
+      const viewParam = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("view") : null;
+      const qs = viewParam === "presentation" ? "?view=presentation" : "";
+      const res = await fetch(`/api/share/grand-plan/${token}${qs}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password }),

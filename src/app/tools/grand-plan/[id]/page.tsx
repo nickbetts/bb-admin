@@ -35,6 +35,7 @@ import {
   Circle,
   ChevronRight,
   Upload,
+  Presentation,
 } from "lucide-react";
 
 // ─── Section configuration ─────────────────────────────────────────────────
@@ -80,6 +81,7 @@ interface GrandPlanFull {
   purpose: string;
   generatedHtml: string | null;
   planDataJson: string | null;
+  presentationGeneratedAt: string | null;
   clientBrief: string | null;
   shareToken: string | null;
   sharePassword: string | null;
@@ -134,6 +136,11 @@ export default function GrandPlanViewPage({ params }: Props) {
   const [iframeLoaded, setIframeLoaded] = useState(false);
   const [iframeSections, setIframeSections] = useState<IframeSection[]>([]);
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
+
+  // Presentation deck (top-level client-facing distillation of the plan)
+  const [viewMode, setViewMode] = useState<"plan" | "presentation">("plan");
+  const [presentationBusy, setPresentationBusy] = useState(false);
+  const [presentationCacheBust, setPresentationCacheBust] = useState(0);
 
   // Share state
   const [sharingBusy, setSharingBusy] = useState(false);
@@ -577,6 +584,34 @@ export default function GrandPlanViewPage({ params }: Props) {
     const url = `${window.location.origin}/share/grand-plan/${plan.shareToken}`;
     await navigator.clipboard.writeText(url);
     toast("Link copied", "success");
+  }
+
+  async function handleCopyPresentationLink() {
+    if (!plan?.shareToken) return;
+    const url = `${window.location.origin}/share/grand-plan/${plan.shareToken}?view=presentation`;
+    await navigator.clipboard.writeText(url);
+    toast("Presentation link copied", "success");
+  }
+
+  async function handleGeneratePresentation() {
+    if (!plan) return;
+    setPresentationBusy(true);
+    try {
+      const res = await fetch(`/api/tools/grand-plan/${id}/presentation`, { method: "POST" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast(data.error || "Failed to generate presentation", "error");
+        return;
+      }
+      toast("Presentation ready", "success");
+      await loadPlan();
+      setPresentationCacheBust((n) => n + 1);
+      setViewMode("presentation");
+    } catch {
+      toast("Failed to generate presentation", "error");
+    } finally {
+      setPresentationBusy(false);
+    }
   }
 
   async function handleDelete() {
@@ -1152,6 +1187,18 @@ export default function GrandPlanViewPage({ params }: Props) {
               >
                 <Printer style={{ width: 13, height: 13 }} aria-hidden /> Print
               </button>
+              <button
+                className="btn btn-ghost btn-sm"
+                style={{ gap: 5 }}
+                onClick={handleGeneratePresentation}
+                disabled={presentationBusy}
+                title={plan.presentationGeneratedAt ? "Regenerate the client-facing presentation deck" : "Create a top-level client-facing presentation deck"}
+              >
+                {presentationBusy
+                  ? <Loader2 style={{ width: 13, height: 13 }} className="animate-spin" aria-hidden />
+                  : <Presentation style={{ width: 13, height: 13 }} aria-hidden />}
+                {plan.presentationGeneratedAt ? "Regenerate Presentation" : "Create Presentation"}
+              </button>
               {!plan.shareToken && (
                 <button
                   className="btn btn-ghost btn-sm"
@@ -1181,6 +1228,16 @@ export default function GrandPlanViewPage({ params }: Props) {
                   >
                     <Eye style={{ width: 13, height: 13 }} aria-hidden /> Preview
                   </Link>
+                  {plan.presentationGeneratedAt && (
+                    <button
+                      className="btn btn-ghost btn-sm"
+                      style={{ gap: 4, color: "var(--accent)" }}
+                      onClick={handleCopyPresentationLink}
+                      title="Copy public link to the presentation deck"
+                    >
+                      <Presentation style={{ width: 13, height: 13 }} aria-hidden /> Copy presentation link
+                    </button>
+                  )}
                   {plan.shareExpiresAt && (
                     <span
                       style={{
@@ -1593,18 +1650,68 @@ export default function GrandPlanViewPage({ params }: Props) {
               minHeight: 600,
             }}
           >
+            {/* Plan / Presentation tab toggle — only shown when a presentation exists */}
+            {plan.presentationGeneratedAt && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  padding: "10px 12px",
+                  borderBottom: "1px solid var(--border)",
+                  background: "var(--bg)",
+                }}
+              >
+                <button
+                  type="button"
+                  className={`btn btn-sm ${viewMode === "plan" ? "btn-primary" : "btn-ghost"}`}
+                  onClick={() => setViewMode("plan")}
+                  style={{ gap: 5 }}
+                >
+                  <Eye style={{ width: 13, height: 13 }} aria-hidden /> Plan
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn-sm ${viewMode === "presentation" ? "btn-primary" : "btn-ghost"}`}
+                  onClick={() => setViewMode("presentation")}
+                  style={{ gap: 5 }}
+                >
+                  <Presentation style={{ width: 13, height: 13 }} aria-hidden /> Presentation
+                </button>
+                {viewMode === "presentation" && (
+                  <>
+                    <span style={{ fontSize: 11, color: "var(--text-3)", marginLeft: 8 }}>
+                      Updated {new Date(plan.presentationGeneratedAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                    <div style={{ flex: 1 }} />
+                    <a
+                      href={`/api/tools/grand-plan/${plan.id}/presentation?ts=${presentationCacheBust}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn-ghost btn-sm"
+                      style={{ gap: 5 }}
+                      title="Open presentation in a new tab for full-screen presenting"
+                    >
+                      <ArrowUpRight style={{ width: 13, height: 13 }} aria-hidden /> Open full-screen
+                    </a>
+                  </>
+                )}
+              </div>
+            )}
             {!iframeLoaded && <DocumentSkeleton />}
             <iframe
               ref={iframeRef}
-              src={blobUrl}
+              src={viewMode === "presentation" && plan.presentationGeneratedAt
+                ? `/api/tools/grand-plan/${plan.id}/presentation?ts=${presentationCacheBust}`
+                : blobUrl ?? undefined}
               style={{
                 width: "100%",
                 height: "80vh",
                 border: "none",
                 display: "block",
               }}
-              title={plan.title}
-              sandbox="allow-scripts"
+              title={viewMode === "presentation" ? `${plan.title} (Presentation)` : plan.title}
+              sandbox={viewMode === "presentation" ? "allow-scripts allow-same-origin" : "allow-scripts"}
               onLoad={() => {
                 // Fallback in case the in-document script didn't postMessage
                 try {

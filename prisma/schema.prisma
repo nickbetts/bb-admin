@@ -918,6 +918,13 @@ model GrandPlan {
   // Generated output
   planDataJson             String? // JSON: structured plan data for interactive viewer
   generatedHtml            String? // Full standalone HTML deliverable
+  // Client-facing presentation deck — top-level distillation of the plan.
+  // Generated on demand via the "Create Presentation" button; not auto-regenerated
+  // when the plan is regenerated, so the strategist controls when the client-facing
+  // artefact is refreshed.
+  presentationHtml         String? // Self-contained HTML deck (8–12 slides)
+  presentationDataJson     String? // JSON: structured slide data for re-render
+  presentationGeneratedAt  DateTime? // Last presentation generation timestamp
   // Customisation
   configJson               String                  @default("{}") // JSON: { sections: string[], brandingOverrides?: {} }
   campaignFocusPeriodsJson String                  @default("[]") // JSON: Array<{ startMonth: number, endMonth: number, label: string, description?: string }>

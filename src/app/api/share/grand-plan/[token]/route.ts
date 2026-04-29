@@ -3,8 +3,27 @@ import { prisma } from "@/lib/prisma";
 import crypto from "crypto";
 import { renderGrandPlanHtml } from "@/lib/grand-plan-html-template";
 import type { GrandPlanData } from "@/lib/grand-plan-generator";
+import { renderPresentationHtml } from "@/lib/grand-plan-presentation-template";
+import type { PresentationData } from "@/lib/grand-plan-presentation-generator";
 
-function buildPublicHtml(plan: { planDataJson: string | null; generatedHtml: string | null }): string {
+type SharePlanFields = {
+  planDataJson: string | null;
+  generatedHtml: string | null;
+  presentationDataJson: string | null;
+  presentationHtml: string | null;
+};
+
+function buildPublicHtml(plan: SharePlanFields, view: "plan" | "presentation"): string {
+  if (view === "presentation") {
+    if (plan.presentationDataJson) {
+      try {
+        return renderPresentationHtml(JSON.parse(plan.presentationDataJson) as PresentationData, true);
+      } catch {
+        // fall through to stored HTML on parse error
+      }
+    }
+    return plan.presentationHtml ?? "";
+  }
   if (plan.planDataJson) {
     try {
       return renderGrandPlanHtml(JSON.parse(plan.planDataJson) as GrandPlanData, true);
@@ -15,14 +34,20 @@ function buildPublicHtml(plan: { planDataJson: string | null; generatedHtml: str
   return plan.generatedHtml ?? "";
 }
 
+function parseView(req: NextRequest): "plan" | "presentation" {
+  const v = req.nextUrl.searchParams.get("view");
+  return v === "presentation" ? "presentation" : "plan";
+}
+
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ token: string }> }
 ) {
   const { token } = await params;
   if (!token || token.length < 10) {
     return NextResponse.json({ error: "Invalid token" }, { status: 400 });
   }
+  const view = parseView(req);
 
   const plan = await prisma.grandPlan.findUnique({
     where: { shareToken: token },
@@ -33,6 +58,8 @@ export async function GET(
       shareExpiresAt: true,
       generatedHtml: true,
       planDataJson: true,
+      presentationHtml: true,
+      presentationDataJson: true,
       enquiryFormEnabled: true,
       prospectName: true,
       client: { select: { name: true } },
@@ -56,6 +83,7 @@ export async function GET(
       clientName: displayName,
       passwordRequired: true,
       enquiryFormEnabled: plan.enquiryFormEnabled,
+      hasPresentation: !!(plan.presentationHtml || plan.presentationDataJson),
     });
   }
 
@@ -73,7 +101,9 @@ export async function GET(
     clientName: displayName,
     passwordRequired: false,
     enquiryFormEnabled: plan.enquiryFormEnabled,
-    html: buildPublicHtml(plan),
+    hasPresentation: !!(plan.presentationHtml || plan.presentationDataJson),
+    view,
+    html: buildPublicHtml(plan, view),
   });
 }
 
@@ -85,6 +115,7 @@ export async function POST(
   if (!token || token.length < 10) {
     return NextResponse.json({ error: "Invalid token" }, { status: 400 });
   }
+  const view = parseView(request);
 
   const plan = await prisma.grandPlan.findUnique({
     where: { shareToken: token },
@@ -95,6 +126,8 @@ export async function POST(
       shareExpiresAt: true,
       generatedHtml: true,
       planDataJson: true,
+      presentationHtml: true,
+      presentationDataJson: true,
       enquiryFormEnabled: true,
       prospectName: true,
       client: { select: { name: true } },
@@ -117,7 +150,9 @@ export async function POST(
       title: plan.title,
       clientName: displayName,
       enquiryFormEnabled: plan.enquiryFormEnabled,
-      html: buildPublicHtml(plan),
+      hasPresentation: !!(plan.presentationHtml || plan.presentationDataJson),
+      view,
+      html: buildPublicHtml(plan, view),
     });
   }
 
@@ -144,6 +179,8 @@ export async function POST(
     title: plan.title,
     clientName: displayName,
     enquiryFormEnabled: plan.enquiryFormEnabled,
-    html: buildPublicHtml(plan),
+    hasPresentation: !!(plan.presentationHtml || plan.presentationDataJson),
+    view,
+    html: buildPublicHtml(plan, view),
   });
 }
