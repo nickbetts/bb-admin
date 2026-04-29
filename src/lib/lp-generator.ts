@@ -581,9 +581,11 @@ Identify the highest-impact improvements as a JSON array.`;
 
 // ── UI / design sector audit ─────────────────────────────────────────────────
 
-const DESIGN_AUDIT_SYSTEM_PROMPT = `You are a senior UI/UX designer and brand strategist auditing a landing page for sector relevance and visual design quality.
+const DESIGN_AUDIT_SYSTEM_PROMPT = `You are a senior UI/UX designer and brand strategist auditing a landing page for sector relevance, visual design quality, and correct image usage.
 
-Your job: identify whether the page LOOKS and FEELS like it belongs to the specific industry. A football academy page should feel energetic and sporty. A law firm should feel authoritative. A luxury spa should feel premium and serene. Generic "agency" design that could belong to any sector is a failure.
+You will be given the page HTML and the actual images (attached as vision blocks). Study both carefully.
+
+Your job: identify whether the page LOOKS and FEELS like it belongs to the specific industry, and whether all available images are actually being used. A football academy page should feel energetic and sporty. A law firm should feel authoritative. A luxury spa should feel premium and serene. Generic "agency" design that could belong to any sector is a failure.
 
 Audit across these dimensions:
 1. **Sector visual language** — do the colour treatment, typography, imagery use, and overall aesthetic immediately signal this specific sector?
@@ -594,6 +596,8 @@ Audit across these dimensions:
 6. **Animation and energy** — does the page feel alive (CSS transitions, hover effects, entrance animations) or static and flat?
 7. **Iconography and illustration style** — are icons consistent and sector-relevant, or generic defaults with no personality?
 8. **Overall premium feel** — does this look like a specialist agency designed it for this exact sector, or a generic template?
+9. **Missing images** — compare the attached images against the HTML: are any of the provided image URLs missing from the page HTML (not appearing as <img src="..."> or CSS background-image)? For each missing image, specify exactly which section it should be added to and how (e.g. "Add image 2 as a full-bleed background to the benefits card 'On-Site Accommodation' — replace the CSS gradient with background-image: url('...')").
+10. **CSS gradient masking real photos** — are any sections using a dark CSS gradient as a background when a real photo from the attached images would be stronger? Flag these with a specific fix.
 
 Return ONLY a valid JSON array of critique items. Each item must have:
 - "area": short label (e.g. "Hero Background", "Card Style", "Typography", "Section Transitions")
@@ -610,6 +614,7 @@ export async function auditDesignAndSector(opts: {
   campaignType: string;
   brandContext: BrandContext;
   targetAudience?: string;
+  uploadedImageUrls?: string[];
 }): Promise<LPCritiqueItem[]> {
   const anthropic = await getAnthropicClient();
 
@@ -619,7 +624,17 @@ export async function auditDesignAndSector(opts: {
     .map((c) => `  ${c.role}: ${c.hex}`)
     .join("\n");
 
-  const userPrompt = `Audit the UI design and sector relevance of this landing page.
+  // Build numbered image list so the prompt can reference images by number
+  const allImageUrls = [
+    ...(opts.uploadedImageUrls ?? []),
+    ...opts.brandContext.imageryUrls,
+  ].filter((u) => /^https?:\/\//i.test(u) && !/\.svg(\?|$)/i.test(u)).slice(0, 8);
+
+  const numberedImageList = allImageUrls.length
+    ? allImageUrls.map((u, i) => `  Image ${i + 1}: ${u}`).join("\n")
+    : "  None available";
+
+  const userPrompt = `Audit the UI design, sector relevance, and image usage of this landing page.
 
 ## Sector context
 Campaign type: ${opts.campaignType}
@@ -631,16 +646,27 @@ ${opts.brandContext.companyName ?? "Unknown"}${opts.brandContext.tagline ? ` —
 ## Brand colours available
 ${colourBlock || "  Not specified"}
 
+## Available image URLs (these should all appear in the page HTML)
+${numberedImageList}
+
 ## The landing page HTML to audit
 ${opts.html}
 
-Identify sector-relevance and design quality issues as a JSON array.`;
+The images are attached above as vision blocks — study them and check they are being used in the HTML. Identify sector-relevance, design quality, and image usage issues as a JSON array.`;
+
+  // Fetch images as vision blocks so Claude can see what each image depicts
+  // and accurately check whether they're used in the HTML
+  const imageBlocks = await buildImageBlocks(opts.brandContext.imageryUrls, opts.uploadedImageUrls, 8);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const userContent: any = imageBlocks.length
+    ? [...imageBlocks, { type: "text", text: userPrompt }]
+    : userPrompt;
 
   const response = await anthropic.messages.create({
     model: MODEL,
     max_tokens: 4000,
     system: DESIGN_AUDIT_SYSTEM_PROMPT,
-    messages: [{ role: "user", content: userPrompt }],
+    messages: [{ role: "user", content: userContent }],
   });
 
   const block = response.content[0];
@@ -1011,6 +1037,13 @@ export interface LPSectionPlan {
   contentItems: string[];
   /** Visual layout suggestion (optional). */
   layoutHint?: string;
+  /**
+   * Image URLs explicitly assigned to this section during the plan phase.
+   * Fetched as vision blocks when generating the section so Claude can see
+   * what each image depicts and use the right one in the right place.
+   * If empty/absent, falls back to the full brand imagery pool.
+   */
+  imageUrls?: string[];
 }
 
 export interface LPPagePlan {
@@ -1087,8 +1120,16 @@ Output ONLY in this exact tagged format. No text outside the tags.
 <!-- Sticky bar HTML -->
 </STICKY_BAR>
 
+## Image assignment rules
+The imagery list below shows all available image URLs (numbered). For each section, look at the images and decide which 1-2 images best suit that section based on their visual content. Assign them in the section's "imageUrls" array using the exact URLs. Rules:
+- Hero: assign the most dramatic, action-packed image (stadium, crowd, sport in motion)
+- Benefits/features cards: assign a different image per card where possible so cards vary visually
+- Testimonials: use a team/people photo if available
+- If an image fits multiple sections, prefer assigning it to the most prominent one
+- Sections with no suitable image (e.g. FAQ, stats strip) should have an empty imageUrls array
+
 <SECTIONS>
-[{"id":"hero","name":"Hero","angle":"...","contentItems":["..."],"layoutHint":"..."},...]
+[{"id":"hero","name":"Hero","angle":"...","contentItems":["..."],"layoutHint":"...","imageUrls":["https://..."]},...]
 </SECTIONS>
 
 Use British English throughout. No em dashes (use commas or colons instead).`;
@@ -1141,15 +1182,19 @@ Type: ${opts.campaignType}
 Brief: ${opts.brief}
 ${opts.targetAudience ? `Target audience: ${opts.targetAudience}` : ""}${opts.additionalInstructions ? `\nAdditional instructions: ${opts.additionalInstructions}` : ""}
 
-Available imagery — images are visually attached for analysis. Identify what each depicts (people, products, settings, brand style) and use them as <img src="..."> where they genuinely improve the page. Reference these exact URLs:
+Available imagery — images are visually attached for analysis. Study each one: what people, locations, products, or actions are depicted? These are real photos from the client's brand — use them to populate sections with genuine visual content.
+
+Assign each image to the section(s) where it creates the most visual impact. Include the exact URLs in each section's "imageUrls" array in the SECTIONS output.
+
+Numbered image list (reference these exact URLs in imageUrls arrays):
 ${
   (() => {
-    const labelled = labelledImageUrls(
-      opts.brandContext.imageryUrls,
-      opts.uploadedImageUrls,
-      8,
-    );
-    return labelled || "  None scraped — use CSS gradients and bold typography.";
+    const combined = [
+      ...(opts.uploadedImageUrls ?? []),
+      ...opts.brandContext.imageryUrls,
+    ].filter((u) => /^https?:\/\//i.test(u) && !/\.svg(\?|$)/i.test(u)).slice(0, 8);
+    if (!combined.length) return "  None available — sections should use CSS gradients and bold typography.";
+    return combined.map((u, i) => `  Image ${i + 1}: ${u}`).join("\n");
   })()
 }
 
@@ -1181,10 +1226,16 @@ function buildSectionUserPrompt(params: {
 }): string {
   const { plan, section, previousSectionsHtml, brandContext, uploadedImageUrls } = params;
 
-  const labelled = labelledImageUrls(brandContext.imageryUrls, uploadedImageUrls, 4);
+  // Use section-assigned images if the plan provided them; fall back to the
+  // general brand pool. This ensures each section gets the right images rather
+  // than every section competing for the same generic pool.
+  const sectionImageUrls = section.imageUrls?.length
+    ? section.imageUrls
+    : brandContext.imageryUrls;
+  const labelled = labelledImageUrls(sectionImageUrls, uploadedImageUrls, 4);
   const imagery = labelled
-    ? `Images are visually attached for analysis. Use these exact URLs in <img src> tags where they suit this section (identify what each depicts):\n${labelled}`
-    : "No images available — use CSS gradients and bold typography.";
+    ? `Images are visually attached for analysis. These images have been specifically selected for this section — use them as <img src="URL"> in the HTML. Every image in this list should appear somewhere in this section's markup:\n${labelled}\n\nIMPORTANT: Do NOT use a CSS gradient as a background when a real photo is available above. Use the photo.`
+    : "No images available for this section — use CSS gradients, bold typography, and brand colours for visual impact.";
 
   const prevHtml = previousSectionsHtml.length > 3000
     ? "...(earlier sections)...\n" + previousSectionsHtml.slice(-3000)
@@ -1268,8 +1319,13 @@ async function generateSectionHtml(params: {
 }): Promise<string> {
   const anthropic = await getAnthropicClient();
 
-  // 4 images max per section — keeps token budget predictable
-  const imageBlocks = await buildImageBlocks(params.brandContext.imageryUrls, params.uploadedImageUrls, 4);
+  // Use section-assigned images if available, otherwise fall back to full pool.
+  // This mirrors what buildSectionUserPrompt does for the text prompt so the
+  // vision blocks and the listed URLs are always consistent.
+  const sectionImagePool = params.section.imageUrls?.length
+    ? params.section.imageUrls
+    : params.brandContext.imageryUrls;
+  const imageBlocks = await buildImageBlocks(sectionImagePool, params.uploadedImageUrls, 4);
   const sectionPrompt = buildSectionUserPrompt(params);
   const userContent = imageBlocks.length
     ? [...imageBlocks, { type: "text" as const, text: sectionPrompt }]
@@ -1357,12 +1413,12 @@ ${sectionsBody}
 </html>`;
 }
 
-// ── Section-by-section orchestrator ──────────────────────────────────────────
+// ── Reusable audit pass helper ─────────────────────────────────────────────────
 
 /**
- * Reusable helper: run an audit function, extract actionable fixes, apply one
- * refinement pass, and return the updated HTML. Silently returns the input
- * HTML on any failure so later passes still run.
+ * Run an audit function, extract actionable fixes, apply one refinement pass,
+ * and return the updated HTML. Silently returns the input HTML on any failure
+ * so later passes still run.
  */
 async function runAuditPass(opts: {
   html: string;
@@ -1411,6 +1467,8 @@ async function runAuditPass(opts: {
   }
 }
 
+// ── Section-by-section orchestrator ──────────────────────────────────────────
+
 /**
  * Generates a landing page in three phases for dramatically higher quality:
  *
@@ -1419,13 +1477,8 @@ async function runAuditPass(opts: {
  * 2. Sections — one call per section (max 8), each with its own 8 K-token
  *    budget and the visual context of previously generated sections.
  * 3. Assembly — CSS is consolidated into <head>, sections stitched together.
- * 4. CRO audit — 10-dimension critique, top 5 fixes applied.
- * 5. Design/sector audit — UI and visual sector-relevance critique, top 5 fixes applied.
- * 6. Copy audit — direct-response copy quality critique, top 5 fixes applied.
  *
- * Phases 4-6 run sequentially (each refine gets the output of the previous)
- * so each audit sees the already-improved page. Falls back to
- * generateLandingPage() silently if the plan call fails.
+ * Falls back to generateLandingPage() silently if the plan call fails.
  */
 export async function generateLandingPageSectionBySection(
   opts: GenerateLPOptions & { onProgress?: (msg: string) => Promise<void> | void },
@@ -1488,11 +1541,16 @@ export async function generateLandingPageSectionBySection(
   if (onProgress) await onProgress("Assembling final page...");
   let html = assemblePageFromSections(plan, sectionHtmls);
 
+  // Phases 4-6: three sequential audit-and-refine passes. Each uses its own
+  // 32K-token refinement budget and sees the already-improved page from the
+  // prior pass. auditFn closures reference `html` by variable so they
+  // automatically audit the latest version when called inside runAuditPass.
+
   // Phase 4 — CRO audit (conversion rate optimisation)
   html = await runAuditPass({
     html,
     auditLabel: "CRO",
-    promptIntro: "Apply the following targeted CRO improvements identified by a self-critique pass. Each is a small, specific change — do not rewrite anything not mentioned.",
+    promptIntro: "Apply the following targeted CRO improvements. Each is a small, specific change — do not rewrite anything not mentioned.",
     auditFn: () => critiqueLandingPage({
       html,
       brief: genOpts.brief,
@@ -1505,17 +1563,20 @@ export async function generateLandingPageSectionBySection(
     onProgress,
   });
 
-  // Phase 5 — UI/design and sector relevance audit
+  // Phase 5 — UI/design, sector relevance, and image usage audit
+  // Vision-enabled: passes scraped images as base64 blocks so Claude can
+  // verify which images are actually used in the HTML vs missing.
   html = await runAuditPass({
     html,
     auditLabel: "Design & Sector",
-    promptIntro: "Apply the following targeted UI and sector-relevance improvements. Make the design feel native to the specific sector — update CSS, layout, visual treatments, and styling as instructed. Do not change copy unless explicitly told to.",
+    promptIntro: "Apply the following targeted UI, sector-relevance, and image-usage improvements. Where an image is flagged as missing, add it to the HTML using the exact URL provided. Make the design feel native to the specific sector — update CSS, layout, visual treatments, and styling as instructed. Do not change copy unless explicitly told to.",
     auditFn: () => auditDesignAndSector({
       html,
       brief: genOpts.brief,
       campaignType: genOpts.campaignType,
       brandContext: genOpts.brandContext,
       targetAudience: genOpts.targetAudience,
+      uploadedImageUrls: genOpts.uploadedImageUrls,
     }),
     brandContext: genOpts.brandContext,
     maxFixes: 5,
