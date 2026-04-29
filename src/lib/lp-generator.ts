@@ -579,6 +579,175 @@ Identify the highest-impact improvements as a JSON array.`;
   }
 }
 
+// ── UI / design sector audit ─────────────────────────────────────────────────
+
+const DESIGN_AUDIT_SYSTEM_PROMPT = `You are a senior UI/UX designer and brand strategist auditing a landing page for sector relevance and visual design quality.
+
+Your job: identify whether the page LOOKS and FEELS like it belongs to the specific industry. A football academy page should feel energetic and sporty. A law firm should feel authoritative. A luxury spa should feel premium and serene. Generic "agency" design that could belong to any sector is a failure.
+
+Audit across these dimensions:
+1. **Sector visual language** — do the colour treatment, typography, imagery use, and overall aesthetic immediately signal this specific sector?
+2. **Hero visual impact** — is the hero bold, dramatic, and sector-appropriate in its background treatment, font choices, and imagery placement?
+3. **Colour palette application** — are the brand colours used boldly and in ways that fit the sector's visual conventions?
+4. **Typography personality** — do the font sizes, weights, and letter-spacing choices match top performers in this sector?
+5. **Card and section styling** — do cards, borders, shadows, and layouts feel sector-native (e.g. sports = dynamic/angled; luxury = minimal whitespace; tech = dark, sharp)?
+6. **Animation and energy** — does the page feel alive (CSS transitions, hover effects, entrance animations) or static and flat?
+7. **Iconography and illustration style** — are icons consistent and sector-relevant, or generic defaults with no personality?
+8. **Overall premium feel** — does this look like a specialist agency designed it for this exact sector, or a generic template?
+
+Return ONLY a valid JSON array of critique items. Each item must have:
+- "area": short label (e.g. "Hero Background", "Card Style", "Typography", "Section Transitions")
+- "issue": one sentence describing what is generically wrong or sector-mismatched
+- "fix": a concrete, specific CSS/HTML instruction the refinement model can execute directly (e.g. "Change the hero background to a dark radial gradient from #0a0a1a to #1a0a00 and add a diagonal striped SVG overlay pattern to convey speed and energy — sector: sports")
+- "severity": "high" | "medium" | "low"
+
+Return between 4 and 8 items. Only flag genuine sector-mismatch or design quality issues — skip areas that are already sector-strong.
+Use British English. JSON array only, no markdown fences, no commentary.`;
+
+export async function auditDesignAndSector(opts: {
+  html: string;
+  brief: string;
+  campaignType: string;
+  brandContext: BrandContext;
+  targetAudience?: string;
+}): Promise<LPCritiqueItem[]> {
+  const anthropic = await getAnthropicClient();
+
+  const colourBlock = opts.brandContext.colors
+    .filter((c) => c.role !== "unknown")
+    .slice(0, 6)
+    .map((c) => `  ${c.role}: ${c.hex}`)
+    .join("\n");
+
+  const userPrompt = `Audit the UI design and sector relevance of this landing page.
+
+## Sector context
+Campaign type: ${opts.campaignType}
+Brief: ${opts.brief}
+${opts.targetAudience ? `Target audience: ${opts.targetAudience}\n` : ""}
+## Company
+${opts.brandContext.companyName ?? "Unknown"}${opts.brandContext.tagline ? ` — ${opts.brandContext.tagline}` : ""}
+
+## Brand colours available
+${colourBlock || "  Not specified"}
+
+## The landing page HTML to audit
+${opts.html}
+
+Identify sector-relevance and design quality issues as a JSON array.`;
+
+  const response = await anthropic.messages.create({
+    model: MODEL,
+    max_tokens: 4000,
+    system: DESIGN_AUDIT_SYSTEM_PROMPT,
+    messages: [{ role: "user", content: userPrompt }],
+  });
+
+  const block = response.content[0];
+  let text = block.type === "text" ? block.text.trim() : "";
+  text = stripMarkdownFences(text).trim();
+
+  try {
+    const parsed = JSON.parse(text) as unknown;
+    if (!Array.isArray(parsed)) {
+      console.warn("[lp-generator] Design audit response was not an array, ignoring");
+      return [];
+    }
+    return parsed.filter(
+      (item): item is LPCritiqueItem =>
+        typeof item === "object" &&
+        item !== null &&
+        typeof (item as LPCritiqueItem).area === "string" &&
+        typeof (item as LPCritiqueItem).issue === "string" &&
+        typeof (item as LPCritiqueItem).fix === "string",
+    );
+  } catch (err) {
+    console.warn("[lp-generator] Design audit JSON parse failed:", err);
+    return [];
+  }
+}
+
+// ── Copy quality audit ────────────────────────────────────────────────────────
+
+const COPY_AUDIT_SYSTEM_PROMPT = `You are a senior direct-response copywriter and conversion specialist auditing a landing page for copy quality and effectiveness.
+
+Your job: identify weak, generic, or mismatched copy and provide specific rewrites or targeted improvements.
+
+Audit across these dimensions:
+1. **Hero headline** — is the H1 specific, benefit-led, and emotionally resonant? Or is it a vague tagline that fits any company?
+2. **Hero sub-headline** — does it add genuinely new information, or just repeat the headline in different words?
+3. **CTA button copy** — is it action-specific and outcome-focused ("Book My Free Consultation") or generic ("Submit" / "Get Started")?
+4. **Benefits language** — are benefits truly benefit-led (outcome for the customer) or feature-led (what the product does)?
+5. **Social proof specificity** — are stats and testimonials specific and credible, or vague ("highly rated", "great service", "many years experience")?
+6. **Objection handling** — does the FAQ or copy directly address the 3 most likely objections a buyer in this sector has?
+7. **Urgency and scarcity** — is genuine urgency present where relevant, or is it absent or obviously manufactured?
+8. **Readability** — are sentences short and punchy? Are there long paragraphs that kill conversion?
+9. **Sector vocabulary** — does the copy use the specific terminology and phrases that resonate with buyers in this exact sector?
+10. **Tone consistency** — is the tone consistent throughout, or does it shift between formal, casual, and corporate?
+
+Return ONLY a valid JSON array of critique items. Each item must have:
+- "area": short label (e.g. "Hero Headline", "CTA Copy", "Benefits", "Testimonials", "FAQ")
+- "issue": one sentence describing the copy weakness
+- "fix": a concrete instruction — where possible, provide the actual improved copy text to use (e.g. "Rewrite the hero H1 to: 'Train at Premier League Venues This Summer — Limited Places Available'")
+- "severity": "high" | "medium" | "low"
+
+Return between 4 and 8 items. Prioritise changes that will most directly lift conversion. Do not flag areas that are already copy-strong.
+Use British English. JSON array only, no markdown fences, no commentary.`;
+
+export async function auditCopyQuality(opts: {
+  html: string;
+  brief: string;
+  campaignType: string;
+  brandContext: BrandContext;
+  targetAudience?: string;
+}): Promise<LPCritiqueItem[]> {
+  const anthropic = await getAnthropicClient();
+
+  const userPrompt = `Audit the copy quality and conversion effectiveness of this landing page.
+
+## Campaign context
+Type: ${opts.campaignType}
+Brief: ${opts.brief}
+${opts.targetAudience ? `Target audience: ${opts.targetAudience}\n` : ""}
+## Company
+${opts.brandContext.companyName ?? "Unknown"}${opts.brandContext.tagline ? ` — ${opts.brandContext.tagline}` : ""}
+
+## The landing page HTML to audit
+${opts.html}
+
+Identify copy quality and conversion issues as a JSON array.`;
+
+  const response = await anthropic.messages.create({
+    model: MODEL,
+    max_tokens: 4000,
+    system: COPY_AUDIT_SYSTEM_PROMPT,
+    messages: [{ role: "user", content: userPrompt }],
+  });
+
+  const block = response.content[0];
+  let text = block.type === "text" ? block.text.trim() : "";
+  text = stripMarkdownFences(text).trim();
+
+  try {
+    const parsed = JSON.parse(text) as unknown;
+    if (!Array.isArray(parsed)) {
+      console.warn("[lp-generator] Copy audit response was not an array, ignoring");
+      return [];
+    }
+    return parsed.filter(
+      (item): item is LPCritiqueItem =>
+        typeof item === "object" &&
+        item !== null &&
+        typeof (item as LPCritiqueItem).area === "string" &&
+        typeof (item as LPCritiqueItem).issue === "string" &&
+        typeof (item as LPCritiqueItem).fix === "string",
+    );
+  } catch (err) {
+    console.warn("[lp-generator] Copy audit JSON parse failed:", err);
+    return [];
+  }
+}
+
 // ── Generate, critique, and iteratively refine ──────────────────────────────
 
 export interface GenerateAndRefineOptions extends GenerateLPOptions {
@@ -1191,6 +1360,58 @@ ${sectionsBody}
 // ── Section-by-section orchestrator ──────────────────────────────────────────
 
 /**
+ * Reusable helper: run an audit function, extract actionable fixes, apply one
+ * refinement pass, and return the updated HTML. Silently returns the input
+ * HTML on any failure so later passes still run.
+ */
+async function runAuditPass(opts: {
+  html: string;
+  auditLabel: string;
+  promptIntro: string;
+  auditFn: () => Promise<LPCritiqueItem[]>;
+  brandContext: BrandContext;
+  maxFixes?: number;
+  onProgress?: (msg: string) => Promise<void> | void;
+}): Promise<string> {
+  const { html, auditLabel, promptIntro, auditFn, brandContext, maxFixes = 5, onProgress } = opts;
+  try {
+    if (onProgress) await onProgress(`Running ${auditLabel} audit...`);
+    const issues = await auditFn();
+
+    const severityRank = { high: 0, medium: 1, low: 2 } as const;
+    const actionable = issues
+      .filter((c) => c.severity === "high" || c.severity === "medium")
+      .sort((a, b) => severityRank[a.severity] - severityRank[b.severity])
+      .slice(0, maxFixes);
+
+    if (actionable.length === 0) {
+      console.log(`[lp-generator] ${auditLabel} audit: no high/medium issues found, skipping refinement.`);
+      return html;
+    }
+
+    console.log(
+      `[lp-generator] ${auditLabel} audit: ${issues.length} issues found, applying ${actionable.length} fixes — ` +
+        actionable.map((c) => `[${c.severity}] ${c.area}`).join(", "),
+    );
+
+    if (onProgress) await onProgress(`Applying ${actionable.length} ${auditLabel} improvements...`);
+
+    const instructions = actionable
+      .map((item, idx) => `${idx + 1}. [${item.area}] ${item.fix}`)
+      .join("\n");
+
+    return await refineLandingPage({
+      currentHtml: html,
+      brandContext,
+      prompt: `${promptIntro}\n\n${instructions}`,
+    });
+  } catch (err) {
+    console.warn(`[lp-generator] ${auditLabel} audit pass failed (keeping previous version):`, err);
+    return html;
+  }
+}
+
+/**
  * Generates a landing page in three phases for dramatically higher quality:
  *
  * 1. Plan — one call decides section structure, writes the CSS design system
@@ -1198,8 +1419,13 @@ ${sectionsBody}
  * 2. Sections — one call per section (max 8), each with its own 8 K-token
  *    budget and the visual context of previously generated sections.
  * 3. Assembly — CSS is consolidated into <head>, sections stitched together.
+ * 4. CRO audit — 10-dimension critique, top 5 fixes applied.
+ * 5. Design/sector audit — UI and visual sector-relevance critique, top 5 fixes applied.
+ * 6. Copy audit — direct-response copy quality critique, top 5 fixes applied.
  *
- * Falls back to generateLandingPage() silently if the plan call fails.
+ * Phases 4-6 run sequentially (each refine gets the output of the previous)
+ * so each audit sees the already-improved page. Falls back to
+ * generateLandingPage() silently if the plan call fails.
  */
 export async function generateLandingPageSectionBySection(
   opts: GenerateLPOptions & { onProgress?: (msg: string) => Promise<void> | void },
@@ -1262,52 +1488,56 @@ export async function generateLandingPageSectionBySection(
   if (onProgress) await onProgress("Assembling final page...");
   let html = assemblePageFromSections(plan, sectionHtmls);
 
-  // Phase 4 — CRO self-critique and targeted refinement pass
-  // Critique the assembled page across 10 CRO dimensions and apply the top
-  // high/medium-severity fixes in a single refinement call. This replaces
-  // the need to manually prompt for improvements in the chat after generation.
-  try {
-    if (onProgress) await onProgress("Running CRO self-critique...");
-    const critique = await critiqueLandingPage({
+  // Phase 4 — CRO audit (conversion rate optimisation)
+  html = await runAuditPass({
+    html,
+    auditLabel: "CRO",
+    promptIntro: "Apply the following targeted CRO improvements identified by a self-critique pass. Each is a small, specific change — do not rewrite anything not mentioned.",
+    auditFn: () => critiqueLandingPage({
       html,
       brief: genOpts.brief,
       campaignType: genOpts.campaignType,
       brandContext: genOpts.brandContext,
       targetAudience: genOpts.targetAudience,
-    });
+    }),
+    brandContext: genOpts.brandContext,
+    maxFixes: 5,
+    onProgress,
+  });
 
-    const actionable = critique
-      .filter((c) => c.severity === "high" || c.severity === "medium")
-      .slice(0, 5);
+  // Phase 5 — UI/design and sector relevance audit
+  html = await runAuditPass({
+    html,
+    auditLabel: "Design & Sector",
+    promptIntro: "Apply the following targeted UI and sector-relevance improvements. Make the design feel native to the specific sector — update CSS, layout, visual treatments, and styling as instructed. Do not change copy unless explicitly told to.",
+    auditFn: () => auditDesignAndSector({
+      html,
+      brief: genOpts.brief,
+      campaignType: genOpts.campaignType,
+      brandContext: genOpts.brandContext,
+      targetAudience: genOpts.targetAudience,
+    }),
+    brandContext: genOpts.brandContext,
+    maxFixes: 5,
+    onProgress,
+  });
 
-    if (actionable.length > 0) {
-      const severityRank = { high: 0, medium: 1, low: 2 } as const;
-      actionable.sort((a, b) => severityRank[a.severity] - severityRank[b.severity]);
-
-      console.log(
-        `[lp-generator] CRO critique: ${critique.length} issues found, applying ${actionable.length} fixes — ` +
-          actionable.map((c) => `[${c.severity}] ${c.area}`).join(", "),
-      );
-
-      if (onProgress) {
-        await onProgress(`Applying ${actionable.length} CRO improvements...`);
-      }
-
-      const instructions = actionable
-        .map((item, idx) => `${idx + 1}. [${item.area}] ${item.fix}`)
-        .join("\n");
-
-      html = await refineLandingPage({
-        currentHtml: html,
-        brandContext: genOpts.brandContext,
-        prompt: `Apply the following targeted CRO improvements identified by a self-critique pass. Each is a small, specific change — do not rewrite anything not mentioned.\n\n${instructions}`,
-      });
-    } else {
-      console.log("[lp-generator] CRO critique: no high/medium issues found, skipping refinement.");
-    }
-  } catch (err) {
-    console.warn("[lp-generator] CRO critique pass failed (keeping assembled version):", err);
-  }
+  // Phase 6 — Copy quality audit
+  html = await runAuditPass({
+    html,
+    auditLabel: "Copy",
+    promptIntro: "Apply the following targeted copy improvements. Update headlines, CTAs, benefit statements, and body copy as instructed. Do not change design or layout unless explicitly told to.",
+    auditFn: () => auditCopyQuality({
+      html,
+      brief: genOpts.brief,
+      campaignType: genOpts.campaignType,
+      brandContext: genOpts.brandContext,
+      targetAudience: genOpts.targetAudience,
+    }),
+    brandContext: genOpts.brandContext,
+    maxFixes: 5,
+    onProgress,
+  });
 
   return html;
 }
@@ -1326,4 +1556,97 @@ function stripMarkdownFences(text: string): string {
   if (cleaned.endsWith("```")) cleaned = cleaned.slice(0, -3);
 
   return cleaned.trim();
+}
+
+// ── Multi-language translation ────────────────────────────────────────────────
+
+/**
+ * Supported languages available in the LP translation feature.
+ * language: BCP-47 code used in URLs (?lang=fr) and <html lang=""> attr.
+ * name: human label shown in the UI.
+ * nativeName: displayed alongside the English name in the picker.
+ */
+export const LP_SUPPORTED_LANGUAGES = [
+  { language: "fr",    name: "French",                  nativeName: "Français" },
+  { language: "es",    name: "Spanish",                 nativeName: "Español" },
+  { language: "de",    name: "German",                  nativeName: "Deutsch" },
+  { language: "it",    name: "Italian",                 nativeName: "Italiano" },
+  { language: "pt-BR", name: "Portuguese (Brazil)",     nativeName: "Português (Brasil)" },
+  { language: "nl",    name: "Dutch",                   nativeName: "Nederlands" },
+  { language: "pl",    name: "Polish",                  nativeName: "Polski" },
+  { language: "ro",    name: "Romanian",                nativeName: "Română" },
+  { language: "sv",    name: "Swedish",                 nativeName: "Svenska" },
+  { language: "no",    name: "Norwegian",               nativeName: "Norsk" },
+  { language: "da",    name: "Danish",                  nativeName: "Dansk" },
+  { language: "tr",    name: "Turkish",                 nativeName: "Türkçe" },
+  { language: "ru",    name: "Russian",                 nativeName: "Русский" },
+  { language: "uk",    name: "Ukrainian",               nativeName: "Українська" },
+  { language: "ar",    name: "Arabic",                  nativeName: "العربية" },
+  { language: "hi",    name: "Hindi",                   nativeName: "हिन्दी" },
+  { language: "ja",    name: "Japanese",                nativeName: "日本語" },
+  { language: "zh-CN", name: "Chinese (Simplified)",   nativeName: "中文（简体）" },
+  { language: "ko",    name: "Korean",                  nativeName: "한국어" },
+] as const;
+
+export type LPSupportedLanguageCode = typeof LP_SUPPORTED_LANGUAGES[number]["language"];
+
+/**
+ * Translate a landing page HTML into the target language using Claude Haiku.
+ *
+ * Rules enforced in the prompt:
+ * - Only translate visible text content (between tags, alt/placeholder/title/aria-label attrs)
+ * - Never modify HTML tags, class names, IDs, href/src URLs, data-* attrs
+ * - Never modify CSS (including inline styles and <style> blocks)
+ * - Never modify JavaScript (<script> blocks)
+ * - Preserve all HTML structure exactly — same number of elements, same nesting
+ * - Update <html lang="en"> to the correct BCP-47 code
+ * - Marketing-quality translation (natural, persuasive) — not literal word-for-word
+ * - Returns the complete HTML document (no markdown fences)
+ */
+export async function translateLandingPage(
+  html: string,
+  targetLanguage: string,   // BCP-47 e.g. "fr", "es"
+  targetLanguageName: string, // Human label e.g. "French", "Spanish"
+): Promise<string> {
+  const anthropic = await getAnthropicClient();
+
+  const systemPrompt = `You are a professional marketing translator specialising in high-converting landing pages.
+
+Your task is to translate landing page HTML from English into ${targetLanguageName}.
+
+## STRICT RULES
+
+1. Translate ONLY visible text content:
+   - Text nodes between HTML tags
+   - These attributes: alt, placeholder, title, aria-label, content (on meta description/OG tags)
+   - The value of the <title> tag
+
+2. NEVER modify:
+   - HTML tag names, attributes (class, id, href, src, data-*, name, type, value on inputs)
+   - CSS: everything inside <style> tags and all style="" inline attributes
+   - JavaScript: everything inside <script> tags
+   - URL strings in any context
+   - Lucide icon names (data-lucide="...")
+   - Numbers, phone numbers, email addresses
+   - Brand names and product names (keep in English/original)
+
+3. Update <html lang="en"> to <html lang="${targetLanguage}">
+
+4. Use marketing-quality ${targetLanguageName}: natural, persuasive, culturally appropriate — not a literal word-for-word translation.
+
+5. Return the COMPLETE translated HTML document. No explanations, no markdown fences, no truncation.`;
+
+  const userPrompt = `Translate this landing page into ${targetLanguageName}. Apply all rules from your instructions precisely.
+
+${html}`;
+
+  const response = await anthropic.messages.create({
+    model: "claude-haiku-4-5",
+    max_tokens: 32000,
+    system: systemPrompt,
+    messages: [{ role: "user", content: userPrompt }],
+  });
+
+  const raw = response.content[0]?.type === "text" ? response.content[0].text.trim() : html;
+  return stripMarkdownFences(raw);
 }
