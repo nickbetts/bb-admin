@@ -1831,7 +1831,7 @@ export default function GrandPlanViewPage({ params }: Props) {
       )}
 
       {/* Chaos overlay (only when fun mode + generating) */}
-      <GrandPlanChaosOverlay active={funMode && generating} />
+      <GrandPlanChaosOverlay active={funMode && generating} message={funMessage} />
 
       {/* ── Share modal ──────────────────────────────────────────────────── */}
       <Modal
@@ -2289,7 +2289,7 @@ function playChaosBleep() {
   } catch { /* AudioContext blocked — silent fail */ }
 }
 
-function GrandPlanChaosOverlay({ active }: { active: boolean }) {
+function GrandPlanChaosOverlay({ active, message }: { active: boolean; message?: string }) {
   const [particles, setParticles] = useState<
     {
       id: number;
@@ -2437,6 +2437,33 @@ function GrandPlanChaosOverlay({ active }: { active: boolean }) {
         overflow: "hidden",
       }}
     >
+      {message && (
+        <div
+          style={{
+            position: "fixed",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            maxWidth: "min(680px, 90vw)",
+            background: "rgba(0,0,0,0.92)",
+            color: "#f9a8d4",
+            fontSize: 20,
+            fontFamily: '"Comic Sans MS", "Comic Sans", cursive',
+            fontWeight: 700,
+            padding: "20px 32px",
+            borderRadius: 16,
+            border: "2px solid #f0f",
+            textAlign: "center",
+            lineHeight: 1.5,
+            zIndex: 10000,
+            letterSpacing: "0.02em",
+            boxShadow: "0 0 40px rgba(255,0,255,0.6), 0 0 16px rgba(0,255,255,0.5)",
+            pointerEvents: "none",
+          }}
+        >
+          {message}
+        </div>
+      )}
       {particles.map((p) => (
         <span
           key={p.id}
