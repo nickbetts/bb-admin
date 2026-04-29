@@ -3402,13 +3402,10 @@ async function generateCompetitorIntel(anthropic: Anthropic, context: string, so
         source: fc.source ?? "manual",
       });
     }
-    // Add any SEMrush-discovered competitors NOT already in the form list (cap at 6 total).
-    for (const r of realCompetitors) {
-      if (merged.length >= 6) break;
-      if (!merged.some((m) => norm(m.domain) === norm(r.domain))) {
-        merged.push({ domain: r.domain, semrush: r, source: "auto" });
-      }
-    }
+    // When the user has explicitly provided a form list, ONLY use those
+    // competitors. Do NOT supplement with SEMrush-auto-detected ones —
+    // that causes deleted competitors to reappear. The form list is
+    // the authoritative source of truth once the user has made a selection.
   } else if (realCompetitors.length > 0) {
     for (const r of realCompetitors) {
       merged.push({ domain: r.domain, semrush: r, source: "auto" });

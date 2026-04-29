@@ -625,6 +625,37 @@ Return ONLY valid JSON, no markdown fences.`,
         };
       }));
 
+      // Also fetch SEMrush domain overviews for any competitors the user
+      // manually added on the form that are NOT already in the auto-detected
+      // list. Without this, manual competitors land with no traffic / keyword
+      // metrics and the generator falls back to AI estimates for them.
+      const normDomain = (d: string) => d.toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/$/, "");
+      const autoEnrichedDomains = new Set(competitorEnriched.map((c) => normDomain(c.domain)));
+      const formCompsRaw = safeJsonParse<{ domain: string }[]>(plan.competitorsJson ?? null, []);
+      const formOnlyCompetitors = formCompsRaw
+        .filter((fc) => fc.domain && !autoEnrichedDomains.has(normDomain(fc.domain)))
+        .slice(0, 4); // cap to keep within SEMrush quota
+
+      const formCompetitorEnriched = await Promise.all(formOnlyCompetitors.map(async (fc) => {
+        const d = normDomain(fc.domain);
+        const overview = await safe(`sem-form-comp-overview:${d}`, () => withApiCache(`gp-research:sem-comp-overview:${d}:uk`, cacheTtlHours, () => getDomainOverview(d, "uk")));
+        const kws = await safe(`sem-form-comp-kws:${d}`, () => withApiCache(`gp-research:sem-comp-kws:${d}:uk`, cacheTtlHours, () => getTopOrganicKeywords(d, "uk", 10)));
+        const links = await safe(`sem-form-comp-links:${d}`, () => withApiCache(`gp-research:sem-comp-links:${d}`, cacheTtlHours, () => getBacklinks(d, 1)));
+        return {
+          domain: fc.domain,
+          organicTraffic: overview?.organicTraffic ?? 0,
+          organicKeywords: overview?.organicKeywords ?? 0,
+          paidKeywords: overview?.paidKeywords ?? 0,
+          backlinks: Array.isArray(links) ? links.length : 0,
+          topKeywords: Array.isArray(kws) ? kws.map((k) => k.keyword).filter(Boolean).slice(0, 10) : [],
+        };
+      }));
+
+      // Form competitors go first (user's authoritative list), then
+      // auto-detected ones. Merged pool is what generateCompetitorIntel
+      // looks up enrichment from.
+      const allCompetitorEnriched = [...formCompetitorEnriched, ...competitorEnriched];
+
       // Per-URL intel for the user-supplied "optimise these pages" list.
       // Each URL is scraped (title / H1 / meta / body snippet) and run
       // through SEMrush url_organic to pull the keywords that page already
@@ -706,7 +737,7 @@ Return ONLY valid JSON, no markdown fences.`,
           topQueries: Array.isArray(gscQueries) ? gscQueries.slice(0, 20) : undefined,
           topPages: Array.isArray(gscPages) ? gscPages.slice(0, 20) : undefined,
         } : undefined,
-        competitorData: competitorEnriched.length ? competitorEnriched : undefined,
+        competitorData: allCompetitorEnriched.length ? allCompetitorEnriched : undefined,
         sitemapPages: Array.isArray(sitemapPagesRaw) ? sitemapPagesRaw.slice(0, 200) : undefined,
         manualPageIntel: manualPageIntel.length ? manualPageIntel : undefined,
       };
@@ -753,6 +784,7 @@ Return ONLY valid JSON, no markdown fences.`,
         ga4: !!research.ga4,
         gsc: !!research.searchConsole,
         competitors: research.competitorData?.length ?? 0,
+        formCompetitorsEnriched: formCompetitorEnriched.length,
         manualPages: research.manualPageIntel?.length ?? 0,
       } });
     }

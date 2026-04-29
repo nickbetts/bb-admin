@@ -365,7 +365,7 @@ function buildChapteredSections(s: any, clientName: string, brief?: string, camp
 
   if (hasResearch) {
     parts.push(ch("Research", "Competitor intelligence across all target areas."));
-    if (s.competitorIntel?.length) parts.push(wb(renderCompetitorIntel(s.competitorIntel), grounding?.competitorIntel));
+    if (s.competitorIntel?.length) parts.push(wb(renderCompetitorIntel(s.competitorIntel, grounding?.competitorIntel?.grounding), grounding?.competitorIntel));
   }
 
   if (hasCommercial) {
@@ -2124,7 +2124,7 @@ function renderGoogleAdsForecast(data: any): string {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function renderCompetitorIntel(competitors: any[]): string {
+function renderCompetitorIntel(competitors: any[], grounding?: string): string {
   const fmtNum = (n: number) => {
     if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
     if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
@@ -2170,7 +2170,12 @@ function renderCompetitorIntel(competitors: any[]): string {
       <div class="section-inner">
         <div class="section-kicker">Research</div>
         <h2>Competitor Intelligence</h2>
-      <p class="section-disclaimer" style="margin-bottom:16px;padding:12px 16px;background:rgba(59,130,246,0.06);border-left:3px solid #3b82f6;border-radius:4px;font-size:13px;color:#1e40af;"><strong>AI-generated estimates:</strong> Competitor metrics below are AI-generated approximations, not verified third-party data. Use for directional planning. For audited figures, run a SemRush or Ahrefs audit.</p>
+      ${grounding === "real"
+        ? `<p class="section-disclaimer" style="margin-bottom:16px;padding:12px 16px;background:rgba(16,185,129,0.07);border-left:3px solid #10b981;border-radius:4px;font-size:13px;color:#065f46;"><strong>Verified data:</strong> Competitor metrics are live figures sourced from SEMrush domain overviews, keyword analysis and backlink data. Organic traffic and keyword counts reflect current SEMrush snapshots.</p>`
+        : grounding === "partial"
+        ? `<p class="section-disclaimer" style="margin-bottom:16px;padding:12px 16px;background:rgba(245,158,11,0.07);border-left:3px solid #f59e0b;border-radius:4px;font-size:13px;color:#92400e;"><strong>Partially verified:</strong> Competitors with SEMrush keyword overlap show live metrics. Manually-added competitors without overlap data show AI-estimated figures based on their homepage and industry context.</p>`
+        : `<p class="section-disclaimer" style="margin-bottom:16px;padding:12px 16px;background:rgba(59,130,246,0.06);border-left:3px solid #3b82f6;border-radius:4px;font-size:13px;color:#1e40af;"><strong>AI-generated estimates:</strong> No SEMrush domain data was available for these competitors. Metrics are AI approximations for directional planning only — run a SEMrush audit for verified figures.</p>`
+      }
       <table class="channel-table">
         <thead><tr><th>Domain</th><th>Organic Traffic</th><th>Organic KWs</th><th>Paid KWs</th><th>Backlinks</th></tr></thead>
         <tbody>${tableRows}</tbody>
