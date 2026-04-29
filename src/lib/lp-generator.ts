@@ -5,6 +5,7 @@
  * Uses streaming for large HTML output (same pattern as content-strategy-generator).
  */
 
+import sharp from "sharp";
 import { getAnthropicClient } from "@/lib/anthropic-client";
 import type { BrandContext } from "@/lib/brand-extractor";
 import { screenshotHtml } from "@/lib/puppeteer";
@@ -93,19 +94,51 @@ async function fetchImageBlock(
     const contentType = response.headers.get("content-type")?.split(";")[0]?.trim() ?? "";
     if (!SUPPORTED_MIME_TYPES.has(contentType)) return null;
 
-    const buffer = await response.arrayBuffer();
-    const base64 = Buffer.from(buffer).toString("base64");
+    const rawBuffer = await response.arrayBuffer();
+
+    // Reject images over 4 MB (raw). Larger payloads risk exceeding
+    // Anthropic's per-image size limit and can trigger download errors.
+    const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
+    if (rawBuffer.byteLength > MAX_IMAGE_BYTES) {
+      console.warn(`[lp-generator] Skipping oversized image (${rawBuffer.byteLength} bytes): ${url}`);
+      return null;
+    }
+
+    // Convert to WebP for smaller payloads and consistent media type.
+    // Quality 80 gives a good size/quality trade-off for vision tasks.
+    let imageBuffer: Buffer;
+    try {
+      imageBuffer = await sharp(Buffer.from(rawBuffer))
+        .webp({ quality: 80 })
+        .toBuffer();
+    } catch {
+      // If sharp fails (e.g. corrupt image), fall back to the raw bytes
+      imageBuffer = Buffer.from(rawBuffer);
+    }
+
+    const base64 = imageBuffer.toString("base64");
     return {
       type: "image" as const,
       source: {
         type: "base64" as const,
-        media_type: contentType as AnthropicMediaType,
+        media_type: "image/webp" as AnthropicMediaType,
         data: base64,
       },
     };
   } catch {
     return null;
   }
+}
+
+/**
+ * Returns true when the error is Anthropic's "Unable to download the file"
+ * 400 response. This can occur when base64 image data is malformed,
+ * oversized, or otherwise rejected by Anthropic's API despite being
+ * technically valid on our side. Callers use this to retry without images.
+ */
+function isAnthropicDownloadError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return msg.includes("Unable to download the file") || msg.includes("url_not_accessible") || msg.includes("url_not_allowed");
 }
 
 /**
@@ -445,19 +478,31 @@ export async function generateLandingPage(opts: GenerateLPOptions): Promise<stri
 
   // Build vision blocks so Claude can actually see the scraped/uploaded images
   const imageBlocks = await buildImageBlocks(opts.brandContext.imageryUrls, opts.uploadedImageUrls, 8);
-  const userContent = imageBlocks.length
-    ? ([...imageBlocks, { type: "text" as const, text: userPrompt }] as const)
-    : userPrompt;
 
-  // Use streaming for large responses
-  const stream = anthropic.messages.stream({
-    model: MODEL,
-    max_tokens: MAX_TOKENS,
-    system: systemPrompt,
-    messages: [{ role: "user", content: userContent as Parameters<typeof anthropic.messages.stream>[0]["messages"][0]["content"] }],
-  });
+  async function callGenerate(withImages: boolean) {
+    const userContent = withImages && imageBlocks.length
+      ? ([...imageBlocks, { type: "text" as const, text: userPrompt }] as const)
+      : userPrompt;
+    const stream = anthropic.messages.stream({
+      model: MODEL,
+      max_tokens: MAX_TOKENS,
+      system: systemPrompt,
+      messages: [{ role: "user", content: userContent as Parameters<typeof anthropic.messages.stream>[0]["messages"][0]["content"] }],
+    });
+    return stream.finalMessage();
+  }
 
-  const response = await stream.finalMessage();
+  let response: Awaited<ReturnType<typeof callGenerate>>;
+  try {
+    response = await callGenerate(true);
+  } catch (err) {
+    if (isAnthropicDownloadError(err)) {
+      console.warn("[lp-generator] generateLandingPage: image download error — retrying without vision blocks");
+      response = await callGenerate(false);
+    } else {
+      throw err;
+    }
+  }
   const block = response.content[0];
   let html = block.type === "text" ? block.text.trim() : "";
 
@@ -682,17 +727,31 @@ Identify sector-relevance, design quality, and image usage issues as a JSON arra
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const allBlocks: any[] = [...screenshotBlock, ...imageBlocks];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const userContent: any = allBlocks.length
-    ? [...allBlocks, { type: "text", text: userPrompt }]
-    : userPrompt;
 
-  const response = await anthropic.messages.create({
-    model: MODEL,
-    max_tokens: 4000,
-    system: DESIGN_AUDIT_SYSTEM_PROMPT,
-    messages: [{ role: "user", content: userContent }],
-  });
+  async function callDesignAudit(withImages: boolean) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const userContent: any = withImages && allBlocks.length
+      ? [...allBlocks, { type: "text", text: userPrompt }]
+      : userPrompt;
+    return anthropic.messages.create({
+      model: MODEL,
+      max_tokens: 4000,
+      system: DESIGN_AUDIT_SYSTEM_PROMPT,
+      messages: [{ role: "user", content: userContent }],
+    });
+  }
+
+  let response: Awaited<ReturnType<typeof callDesignAudit>>;
+  try {
+    response = await callDesignAudit(true);
+  } catch (err) {
+    if (isAnthropicDownloadError(err)) {
+      console.warn("[lp-generator] auditDesignAndSector: image download error — retrying without vision blocks");
+      response = await callDesignAudit(false);
+    } else {
+      throw err;
+    }
+  }
 
   const block = response.content[0];
   let text = block.type === "text" ? block.text.trim() : "";
@@ -1296,17 +1355,31 @@ async function planLandingPage(opts: GenerateLPOptions): Promise<LPPagePlan> {
 
   const imageBlocks = await buildImageBlocks(opts.brandContext.imageryUrls, opts.uploadedImageUrls, 8);
   const planPrompt = buildLPPlanUserPrompt(opts);
-  const userContent = imageBlocks.length
-    ? [...imageBlocks, { type: "text" as const, text: planPrompt }]
-    : planPrompt;
 
-  const response = await anthropic.messages.create({
-    model: MODEL,
-    max_tokens: PLAN_MAX_TOKENS,
-    system: LP_PLAN_SYSTEM_PROMPT,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    messages: [{ role: "user", content: userContent as any }],
-  });
+  async function callPlan(withImages: boolean) {
+    const userContent = withImages && imageBlocks.length
+      ? [...imageBlocks, { type: "text" as const, text: planPrompt }]
+      : planPrompt;
+    return anthropic.messages.create({
+      model: MODEL,
+      max_tokens: PLAN_MAX_TOKENS,
+      system: LP_PLAN_SYSTEM_PROMPT,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      messages: [{ role: "user", content: userContent as any }],
+    });
+  }
+
+  let response: Awaited<ReturnType<typeof callPlan>>;
+  try {
+    response = await callPlan(true);
+  } catch (err) {
+    if (isAnthropicDownloadError(err)) {
+      console.warn("[lp-generator] planLandingPage: image download error — retrying without vision blocks");
+      response = await callPlan(false);
+    } else {
+      throw err;
+    }
+  }
 
   const raw = response.content[0]?.type === "text" ? response.content[0].text : "";
 
@@ -1352,17 +1425,31 @@ async function generateSectionHtml(params: {
     : params.brandContext.imageryUrls;
   const imageBlocks = await buildImageBlocks(sectionImagePool, params.uploadedImageUrls, 4);
   const sectionPrompt = buildSectionUserPrompt(params);
-  const userContent = imageBlocks.length
-    ? [...imageBlocks, { type: "text" as const, text: sectionPrompt }]
-    : sectionPrompt;
 
-  const response = await anthropic.messages.create({
-    model: MODEL,
-    max_tokens: SECTION_MAX_TOKENS,
-    system: SECTION_SYSTEM_PROMPT,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    messages: [{ role: "user", content: userContent as any }],
-  });
+  async function callSection(withImages: boolean) {
+    const userContent = withImages && imageBlocks.length
+      ? [...imageBlocks, { type: "text" as const, text: sectionPrompt }]
+      : sectionPrompt;
+    return anthropic.messages.create({
+      model: MODEL,
+      max_tokens: SECTION_MAX_TOKENS,
+      system: SECTION_SYSTEM_PROMPT,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      messages: [{ role: "user", content: userContent as any }],
+    });
+  }
+
+  let response: Awaited<ReturnType<typeof callSection>>;
+  try {
+    response = await callSection(true);
+  } catch (err) {
+    if (isAnthropicDownloadError(err)) {
+      console.warn(`[lp-generator] generateSectionHtml(${params.section.name}): image download error — retrying without vision blocks`);
+      response = await callSection(false);
+    } else {
+      throw err;
+    }
+  }
 
   const text = response.content[0]?.type === "text" ? response.content[0].text.trim() : "";
   return stripMarkdownFences(text);
