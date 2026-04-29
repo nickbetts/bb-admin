@@ -1480,8 +1480,8 @@ Rules:
 - Return HTML content (paragraphs, headings h3/h4, bullet lists). No wrapper div or section tags.
 - You MUST include all three callout paragraphs in this exact format (they render as visual highlights):
   <p><strong>Why this matters:</strong> one sentence on the strategic stake — make it specific to their market.</p>
-  <p><strong>Outcome:</strong> the measurable result we expect if the plan is executed. Name a number or direction.</p>
-  <p><strong>Risk:</strong> the single most likely reason this plan fails. Be honest — it builds trust.</p>
+  <p><strong>Outcome:</strong> the measurable result we expect if the plan is executed. Use this format: "[metric] [direction + amount or target] within [timeframe]" — for example "Organic sessions up 35% within 90 days" or "Cost-per-lead below £40 by month 3". If no reliable baseline exists yet, write: "Baseline to be set in month 1 once [specific tracking dependency] is confirmed — target agreed from that point." Do NOT write vague directional statements like "increase revenue" or "grow market share" without a specific number and timeframe.</p>
+  <p><strong>Risk:</strong> the single most likely reason this plan fails. Use this format: "If [specific constraint is not resolved], [specific failure mode]. Mitigation: [one concrete action with a timing anchor]." For example: "If the landing pages are not updated before paid campaigns launch, ad spend will convert poorly and CPA will exceed target. Mitigation: Complete copy and CTA review in week 1 before any budget is activated." Do NOT write generic risks such as "implementation challenges" or "market conditions" — name the real constraint specific to this client.</p>
 ${sources.planMode === "sprint90" ? "\n- THIS IS A 90-DAY SPRINT executive memo. Open by naming the sprint window (e.g. 'Over the next 12 weeks…'). The 'Outcome' callout MUST commit to a measurable result by week 12, not by year-end. Frame the situation/complication/resolution arc around what gets done in this single quarter, not an annual strategy." : ""}
 
 Write the executive summary for this plan:
@@ -1827,15 +1827,15 @@ ${context}${buildSharedContextBlocks(sources, "calendar")}`,
   // evergreen markers and truncate the surplus rather than silently drift.
   const byLabel = new Map(result.map((m) => [m.month, m] as const));
   const evergreenBlog = (): ContentCalendarMonth["blogPosts"][number] => ({
-    title: "Evergreen brand story",
+    title: "[PLACEHOLDER] Assign a topic before scheduling",
     intent: "awareness",
     targetKeyword: sources.clientName.toLowerCase(),
-    angle: "Slot for an evergreen brand or audience story — replace with a topical angle nearer the time.",
+    angle: `This slot has no AI-generated topic. Before scheduling, replace with a real article: a customer story, a 'how it works' explainer, a seasonal guide, or a comparison piece for ${sources.sector ? `the ${sources.sector} sector` : "your target audience"}. Do not publish this placeholder.`,
   });
   const evergreenSocial = (): ContentCalendarMonth["socialPosts"][number] => ({
     platform: "instagram",
     type: "static",
-    topic: "Evergreen brand moment",
+    topic: "[PLACEHOLDER] Assign a social post topic before scheduling",
   });
   const padded: ContentCalendarMonth[] = monthLabels.map((label) => {
     const m = byLabel.get(label) ?? { month: label, focusLabel: null, blogPosts: [], socialPosts: [] };
@@ -3443,7 +3443,7 @@ Return a JSON object with key "competitors" containing one entry per competitor 
 - domain: string (must match exactly)
 - topKeywords: string[] (5-8 keywords; pull from SEMrush data when present, otherwise infer from page headings/CTAs)
 - strengths: string[] (2-3 specific competitive strengths; reference the SEMrush numbers OR scraped messaging)
-- weaknesses: string[] (ALWAYS return 2-3 weaknesses for every competitor — never empty. Where SEMrush data is missing, infer plausible weaknesses from their messaging gaps, missing offers, vague positioning, thin CTAs, or category norms. Where customer complaints below are relevant, draw on them. ${sources.clientName} needs an angle for every competitor.)
+- weaknesses: string[] (2-3 weaknesses grounded ONLY in observable evidence: SEMrush keyword/traffic gaps, or messaging gaps visible on the scraped homepage such as thin CTAs, missing service areas, no pricing transparency, or weak social proof, or specific customer complaints supplied below. NEVER invent weaknesses from "category norms" or generic sector assumptions — every entry must be traceable to something concrete about THIS competitor. If real data is absent for a competitor, return a single entry: "Insufficient public data — recommend manual research (Trustpilot, Companies House, LinkedIn) before acting on this profile.")
 
 Competitor data:
 ${competitorBlock}${complaintBlock}
