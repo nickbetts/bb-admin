@@ -1219,29 +1219,37 @@ export async function generateLandingPageSectionBySection(
     return generateLandingPage(genOpts);
   }
 
-  // Phase 2 — Generate each section
-  const sectionHtmls: string[] = [];
-  for (let i = 0; i < plan.sections.length; i++) {
-    const section = plan.sections[i];
-    if (onProgress) {
-      await onProgress(`Generating ${section.name} section (${i + 1} of ${plan.sections.length})...`);
-    }
+  // Phase 2 — Generate all sections in parallel so total wall-clock time is
+  // ~max(section_times) rather than sum(section_times). With 7+ sections each
+  // taking 25-40 s sequentially the route would bust the 300 s Vercel limit.
+  // The previousSectionsHtml context hint is dropped here because it requires
+  // sequential ordering; all sections share the CSS design system, which gives
+  // sufficient visual coherence without the sequential dependency.
+  if (onProgress) await onProgress(`Generating ${plan.sections.length} sections in parallel...`);
 
-    // Pass last two generated sections for visual coherence without blowing the context budget
-    const prevHtml = sectionHtmls.slice(-2).join("\n\n");
-
-    try {
-      const html = await generateSectionHtml({
+  const sectionResults = await Promise.allSettled(
+    plan.sections.map((section) =>
+      generateSectionHtml({
         plan,
         section,
-        previousSectionsHtml: prevHtml,
+        previousSectionsHtml: "", // parallel — no sequential dependency
         brandContext: genOpts.brandContext,
         uploadedImageUrls: genOpts.uploadedImageUrls,
-      });
-      sectionHtmls.push(html);
-      console.log(`[lp-generator] Section "${section.name}" complete (${html.length} chars)`);
-    } catch (err) {
-      console.warn(`[lp-generator] Section "${section.name}" failed, skipping:`, err);
+      }).then((html) => {
+        console.log(`[lp-generator] Section "${section.name}" complete (${html.length} chars)`);
+        return html;
+      }),
+    ),
+  );
+
+  // Preserve original section order; skip any that failed
+  const sectionHtmls: string[] = [];
+  for (let i = 0; i < sectionResults.length; i++) {
+    const result = sectionResults[i];
+    if (result.status === "fulfilled") {
+      sectionHtmls.push(result.value);
+    } else {
+      console.warn(`[lp-generator] Section "${plan.sections[i].name}" failed, skipping:`, result.reason);
     }
   }
 
