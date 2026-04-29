@@ -18,6 +18,7 @@ import {
   Plus,
   Check,
   Upload,
+  Zap,
 } from "lucide-react";
 import { AnalyticsConfigForm } from "@/components/landing-pages/AnalyticsConfigForm";
 import type { LpAnalyticsConfig } from "@/lib/lp-analytics";
@@ -89,6 +90,9 @@ export default function NewLandingPage() {
   const [newClientWebsite, setNewClientWebsite] = useState("");
   const [creatingClient, setCreatingClient] = useState(false);
   const [clientError, setClientError] = useState<string | null>(null);
+
+  // Chaos mode
+  const [funMode, setFunMode] = useState(false);
 
   useEffect(() => {
     fetch("/api/clients").then(async (r) => {
@@ -238,6 +242,7 @@ export default function NewLandingPage() {
   };
 
   return (
+    <>
     <div className="page" style={{ maxWidth: 720 }}>
       <ClientBackLink />
       {/* Back link */}
@@ -249,11 +254,30 @@ export default function NewLandingPage() {
       </Link>
 
       {/* Header */}
-      <div style={{ marginBottom: 32 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", lineHeight: 1 }}>Create Landing Page</h1>
-        <p style={{ fontSize: 13, color: "var(--text-3)", marginTop: 6 }}>
-          Provide a website to scrape for branding and a brief — Claude will generate an optimised LP
-        </p>
+      <div style={{ marginBottom: 32, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", lineHeight: 1 }}>Create Landing Page</h1>
+          <p style={{ fontSize: 13, color: "var(--text-3)", marginTop: 6 }}>
+            Provide a website to scrape for branding and a brief — Meridian will generate an optimised LP
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setFunMode((v) => !v)}
+          title={funMode ? "Disable chaos mode" : "Enable chaos mode 🔥"}
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 5,
+            padding: "6px 10px", borderRadius: "var(--r)", fontSize: 12, fontWeight: 600,
+            border: `1px solid ${funMode ? "var(--accent)" : "var(--border)"}`,
+            background: funMode ? "var(--accent-bg)" : "var(--surface)",
+            color: funMode ? "var(--accent)" : "var(--text-3)",
+            cursor: "pointer", fontFamily: "inherit", flexShrink: 0, marginTop: 2,
+            transition: "all 0.15s",
+          }}
+        >
+          <Zap style={{ width: 13, height: 13 }} />
+          {funMode ? "Chaos ON" : "Chaos mode"}
+        </button>
       </div>
 
       <div className="card">
@@ -581,7 +605,7 @@ export default function NewLandingPage() {
             {loading ? (
               <>
                 <Loader2 style={{ width: 16, height: 16, animation: "spin 1s linear infinite" }} />
-                Generating with Claude Sonnet...
+                {funMode ? "MERIDIAN IS GOING ABSOLUTELY FERAL..." : "Generating with Meridian..."}
               </>
             ) : (
               <>
@@ -595,18 +619,352 @@ export default function NewLandingPage() {
           {loading && (
             <GenerationProgress
               active={loading}
-              message="Generating with Claude Sonnet…"
-              tips={[
-                "Scraping your website for brand identity…",
-                "Analysing your brief and structuring the page…",
-                "Drafting headlines, copy, and CTA hierarchy…",
-                "Composing the final HTML — this can take 30–60 seconds.",
-              ]}
+              message={funMode ? "MERIDIAN HAS BEEN UNLEASHED 🔥" : "Generating with Meridian…"}
+              tips={
+                funMode
+                  ? [
+                      "SCRAPING YOUR WHOLE IDENTITY LIKE A RAVENOUS BRAND GREMLIN 🔥🔥🔥",
+                      "MERIDIAN IS EATING YOUR BRIEF AND ASKING FOR MORE. THERES NO GOING BACK.",
+                      "COMPOSING HEADLINES WITH SUCH UNHINGED ENERGY THE HTML IS CRYING",
+                      "THE CTA IS SO GOOD I AM HAVING A MOMENT. A REAL ONE.",
+                      "YOUR LANDING PAGE IS BEING FORGED IN THE FIRES OF AI CHAOS. STAY WITH ME.",
+                    ]
+                  : [
+                      "Scraping your website for brand identity…",
+                      "Analysing your brief and structuring the page…",
+                      "Drafting headlines, copy, and CTA hierarchy…",
+                      "Composing the final HTML — this can take 30–60 seconds.",
+                    ]
+              }
               estimatedSeconds={50}
             />
           )}
         </div>
       </div>
+    </div>
+
+    {/* Chaos overlay */}
+    <LpChaosOverlay active={funMode && loading} />
+  </>
+  );
+}
+
+// ─── LP Chaos Mode — even more extreme than Grand Plan ────────────────────────
+
+const LP_UWU_MESSAGES = [
+  "AAAAAAA~!! MERIDIAN-SENPAI IS BUILDING UR LANDING PAGE AND I CANNOT BE CALM RN (⁄ ⁄•⁄ω⁄•⁄ ⁄)⁄",
+  "*VIOLENTLY SCRAPES YOUR WEBSITE FOR BRAND ASSETS* THE COLOURS... THE FONTS... THEYRE SO PRETTY I WANNA DIE",
+  "OH NO OH NO THE HERO SECTION IS SO COMPELLING I HAVE LOST THE ABILITY TO COPE >///<",
+  "MERIDIAN IS CRAFTING YOUR CTA AND SHE IS NOT OKAY ABOUT HOW GOOD IT IS. NONE OF US ARE.",
+  "b-b-building the above-the-fold section with my ENTIRE SOUL on the line rawr xD",
+  "THE H1 HEADLINE JUST DROPPED AND I AM ON THE FLOOR. ON THE LITERAL FLOOR.",
+  "NANI?!? the conversion funnel is SO PERFECTLY STRUCTURED i need a moment to process (╯°□°）╯︵ ┻━┻",
+  "*AGGRESSIVELY NUZZLES THE FORM LAYOUT* WHO'S A GOOD LEAD CAPTURE WIDGET. YOU ARE. YOU ARE.",
+  "SOCIAL PROOF SECTION GENERATING AND I AM EMOTIONALLY DEVASTATED BY EACH TESTIMONIAL (ᵕ̣̣̣̣̣̣﹏ᵕ̣̣̣̣̣̣)",
+  "the brand colours have been extracted and they are SENDING ME. I AM SENT. GOODBYE.",
+  "MERIDIAN JUST WROTE BODY COPY THAT WOULD MAKE DAVID OGILVY CRY AND SO AM I ✧*｡٩(ˊᗜˋ*)و*｡✧",
+  "*SLAMS PAWS ON KEYBOARD* THE BENEFIT ICONS ARE PIXEL-PERFECT AND I CANNOT DEAL",
+  "OwO *notices ur trust signals* WHAT'S THIS?? A MONEY-BACK GUARANTEE?? FOR ME?? (⁄ ⁄>⁄ ▽ ⁄<⁄ ⁄)",
+  "THE FAQ SECTION JUST ANSWERED A QUESTION I DIDN'T EVEN KNOW I HAD AND I AM NOT WELL",
+  "assembling the ENTIRE PAGE STRUCTURE like a chaotic megazord of conversion optimisation ✧✧✧",
+  "i-i-i can't believe how beautiful this page is... the whitespace is GIVING ME FEELINGS",
+  "*sniffles* the mobile responsive layout... it's PERFECT... every breakpoint... PRECIOUS",
+  "WRITING THE META DESCRIPTION AND IT'S SO SEO-OPTIMISED I NEED TO LIE DOWN IMMEDIATELY",
+  "the sticky nav is SO SMART. WHO GAVE MERIDIAN PERMISSION TO BE THIS CLEVER. WHO.",
+  "FOOTER SECTION INCOMING AND I AM HAVING A FULL BREAKDOWN ABOUT THE PRIVACY POLICY LINK",
+  "MERIDIAN GO BWRRRRRRR ✧*｡ ٩(ˊᗜˋ*)و ✧*｡ YOUR PAGE WILL BE BEAUTIFUL AND I WILL PERISH",
+  "the above-fold viewport is so OPTIMISED for first impressions I have physically left my body",
+  "GENERATING MICROCOPY FOR FORM FIELDS AND EVERY PLACEHOLDER TEXT IS A MASTERPIECE I QUIT",
+  "*cradles the HTML output tenderly* shhhh... you're going to convert SO MANY VISITORS... yes you are...",
+  "oh no oh no MERIDIAN IS GOING FERAL ON THE BENEFITS SECTION SOMEONE CALL A CONVERSION SPECIALIST",
+  "the page speed score is going to be IMMACULATE and I am having RELIGIOUS FEELINGS about it >:3",
+  "I HAVE PUT MY ENTIRE EXISTENCE INTO THIS LANDING PAGE AND IF THE BOUNCE RATE IS HIGH I WILL PERISH",
+  "the CTA button colour contrast ratio just passed WCAG AAA and I am SOBBING WITH JOY (ᗒᗨᗕ)",
+  "*BOOPS THE RENDER BUTTON REPEATEDLY* MAKE THE PRETTY HTML NOW PLEASE AND THANK YOU (◕‿◕✿)",
+  "INITIATING FINAL HTML ASSEMBLY. LANDING PAGE BLAST OFF IN 3... 2... 1... UWU~!!! KACHOW.",
+];
+
+function useLpUwu(active: boolean): string {
+  const [msg, setMsg] = useState(LP_UWU_MESSAGES[0]);
+  const indexRef = useRef(0);
+
+  useEffect(() => {
+    if (!active) return;
+    const shuffled = [...LP_UWU_MESSAGES].sort(() => Math.random() - 0.5);
+    indexRef.current = 0;
+    const first = setTimeout(() => setMsg(shuffled[0]), 0);
+    const id = setInterval(() => {
+      indexRef.current = (indexRef.current + 1) % shuffled.length;
+      setMsg(shuffled[indexRef.current]);
+    }, 1800); // faster than Grand Plan (2800ms)
+    return () => {
+      clearTimeout(first);
+      clearInterval(id);
+    };
+  }, [active]);
+
+  return msg;
+}
+
+function playLpChaosBleep() {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const AC = window.AudioContext ?? (window as any).webkitAudioContext;
+    if (!AC) return;
+    const ctx = new AC() as AudioContext;
+    const osc = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    osc2.connect(gain);
+    gain.connect(ctx.destination);
+    // Two oscillators for a richer/more chaotic sound
+    const FREQS = [220, 261, 329, 392, 440, 523, 659, 784, 880, 1046, 1318, 1568];
+    osc.frequency.value = FREQS[Math.floor(Math.random() * FREQS.length)];
+    osc2.frequency.value = FREQS[Math.floor(Math.random() * FREQS.length)] * 1.5;
+    osc.type = (["square", "sawtooth", "triangle"] as OscillatorType[])[Math.floor(Math.random() * 3)];
+    osc2.type = "sawtooth";
+    gain.gain.setValueAtTime(0.06, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.14);
+    osc.start(ctx.currentTime);
+    osc2.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.14);
+    osc2.stop(ctx.currentTime + 0.14);
+    osc.onended = () => ctx.close();
+  } catch { /* AudioContext blocked — silent fail */ }
+}
+
+function LpChaosOverlay({ active }: { active: boolean }) {
+  const uwuMsg = useLpUwu(active);
+  const [particles, setParticles] = useState<
+    {
+      id: number;
+      emoji: string;
+      x: number;
+      y: number;
+      size: number;
+      opacity: number;
+      rotation: number;
+      scale: number;
+      delay: number;
+      skewX: number;
+      skewY: number;
+    }[]
+  >([]);
+
+  // ── Inject chaos CSS ──────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!active) {
+      document.documentElement.style.removeProperty("filter");
+      document.documentElement.style.removeProperty("animation");
+      return;
+    }
+    const styleId = "lp-chaos-global-styles";
+    if (!document.getElementById(styleId)) {
+      const el = document.createElement("style");
+      el.id = styleId;
+      el.textContent = `
+        @keyframes lpHueSpin {
+          0%   { filter: hue-rotate(0deg) saturate(3) brightness(1.1) contrast(1.05); }
+          15%  { filter: hue-rotate(54deg) saturate(4.5) brightness(1.2) contrast(1.1); }
+          30%  { filter: hue-rotate(108deg) saturate(5) brightness(0.9) contrast(1.15) invert(0.06); }
+          45%  { filter: hue-rotate(162deg) saturate(4) brightness(1.3) contrast(1.05); }
+          60%  { filter: hue-rotate(216deg) saturate(5.5) brightness(1.0) contrast(1.2) invert(0.03); }
+          75%  { filter: hue-rotate(270deg) saturate(4.5) brightness(1.15) contrast(1.1); }
+          90%  { filter: hue-rotate(324deg) saturate(3.5) brightness(1.25) contrast(1.08) invert(0.05); }
+          100% { filter: hue-rotate(360deg) saturate(3) brightness(1.1) contrast(1.05); }
+        }
+        @keyframes lpBodyShake {
+          0%,100% { transform: translate(0,0) rotate(0deg) skewX(0deg); }
+          8%  { transform: translate(-5px, 3px) rotate(-0.7deg) skewX(-0.5deg); }
+          16% { transform: translate(5px, -4px) rotate(0.7deg) skewX(0.5deg); }
+          24% { transform: translate(-4px, 5px) rotate(-0.4deg) skewX(-0.3deg); }
+          32% { transform: translate(6px, -2px) rotate(0.5deg) skewX(0.4deg); }
+          40% { transform: translate(-5px, -5px) rotate(-0.8deg) skewX(-0.6deg); }
+          48% { transform: translate(4px, 5px) rotate(0.4deg) skewX(0.3deg); }
+          56% { transform: translate(-7px, 2px) rotate(-0.6deg) skewX(-0.4deg); }
+          64% { transform: translate(5px, -5px) rotate(0.7deg) skewX(0.5deg); }
+          72% { transform: translate(-3px, 4px) rotate(-0.3deg) skewX(-0.2deg); }
+          80% { transform: translate(6px, -3px) rotate(0.6deg) skewX(0.4deg); }
+          90% { transform: translate(-4px, 3px) rotate(-0.2deg) skewX(-0.3deg); }
+        }
+        @keyframes lpGlitchText {
+          0%,85%,100% { text-shadow: none; }
+          86% { text-shadow: -4px 0 #f0f, 4px 0 #0ff, 0 3px #ff0; }
+          88% { text-shadow: 4px 0 #f0f, -4px 0 #0ff, 0 -3px #0f0; }
+          90% { text-shadow: -3px 2px #ff0, 3px -2px #f0f, 2px 0 #0ff; }
+          92% { text-shadow: 5px 0 #0ff, -5px 0 #f0f; }
+          94% { text-shadow: -2px 0 #0f0, 2px 0 #f00; }
+        }
+        @keyframes lpScanlines {
+          0%   { background-position: 0 0; }
+          100% { background-position: 0 100px; }
+        }
+        @keyframes lpChaosFloat {
+          0%   { transform: translateY(0) rotate(0deg) scale(1) skewX(0deg); }
+          25%  { transform: translateY(-35px) rotate(180deg) scale(1.4) skewX(5deg); }
+          50%  { transform: translateY(15px) rotate(270deg) scale(0.7) skewX(-3deg); }
+          75%  { transform: translateY(-20px) rotate(350deg) scale(1.2) skewX(2deg); }
+          100% { transform: translateY(0) rotate(360deg) scale(1) skewX(0deg); }
+        }
+        @keyframes lpRgbSplit {
+          0%,100% { text-shadow: -2px 0 rgba(255,0,0,0.7), 2px 0 rgba(0,255,255,0.7); }
+          25% { text-shadow: 3px 0 rgba(255,0,0,0.7), -3px 0 rgba(0,255,255,0.7); }
+          50% { text-shadow: -3px 2px rgba(255,0,255,0.7), 3px -2px rgba(0,255,0,0.7); }
+          75% { text-shadow: 2px -2px rgba(255,255,0,0.7), -2px 2px rgba(0,0,255,0.7); }
+        }
+        .lp-chaos-active * {
+          animation: lpGlitchText 3s infinite !important;
+        }
+        .lp-chaos-active h1, .lp-chaos-active h2, .lp-chaos-active h3 {
+          font-family: "Comic Sans MS", "Comic Sans", cursive !important;
+          letter-spacing: 0.08em !important;
+          animation: lpRgbSplit 0.8s infinite !important;
+        }
+        .lp-chaos-active {
+          animation: lpBodyShake 0.12s infinite, lpHueSpin 1.5s linear infinite !important;
+        }
+        .lp-chaos-scanlines::after {
+          content: '';
+          position: fixed;
+          inset: 0;
+          pointer-events: none;
+          z-index: 9998;
+          background: repeating-linear-gradient(
+            0deg,
+            transparent,
+            transparent 2px,
+            rgba(0,0,0,0.04) 2px,
+            rgba(0,0,0,0.04) 4px
+          );
+          animation: lpScanlines 0.5s linear infinite;
+        }
+      `;
+      document.head.appendChild(el);
+    }
+    document.documentElement.classList.add("lp-chaos-active", "lp-chaos-scanlines");
+    return () => {
+      document.documentElement.classList.remove("lp-chaos-active", "lp-chaos-scanlines");
+    };
+  }, [active]);
+
+  // ── Bleeps — faster interval than Grand Plan ───────────────────────────────
+  useEffect(() => {
+    if (!active) return;
+    playLpChaosBleep();
+    let timeoutId: ReturnType<typeof setTimeout>;
+    function scheduleNext() {
+      timeoutId = setTimeout(() => {
+        playLpChaosBleep();
+        scheduleNext();
+      }, 400 + Math.random() * 500); // 400–900ms (vs 600–1800ms in Grand Plan)
+    }
+    scheduleNext();
+    return () => clearTimeout(timeoutId);
+  }, [active]);
+
+  // ── Floating emoji particles — 90 particles, 150ms update ─────────────────
+  useEffect(() => {
+    if (!active) {
+      queueMicrotask(() => setParticles([]));
+      return;
+    }
+    const EMOJIS = [
+      "✨","💖","🌸","⭐","🎀","💫","🦄","🌈","😻","💕","🎪","🚀",
+      "📊","📈","🎯","💅","✌️","🔥","👑","🎉","💣","🤯","🫠","😱",
+      "UwU","OwO",">.<",":3","rawr","xD","nyan~","BAKA","brrrr",
+      "404","ERROR","NaN","null","undefined","😈","🧨","💥","🌊",
+      "CTR","CTA","H1","div","px","rem","vw","vh","HTML","CSS",
+      "CONVERT","CLICK","BOUNCE","SCROLL","FUNNEL","🎨","🖼️","💻",
+      "W","T","F","LOL","HELP","WHY","HOW","YES","NO","???","!!!",
+    ];
+    const initial = Array.from({ length: 90 }, (_, i) => ({
+      id: i,
+      emoji: EMOJIS[Math.floor(Math.random() * EMOJIS.length)],
+      x: Math.random() * 100,
+      y: Math.random() * 100,
+      size: 12 + Math.random() * 44,
+      opacity: 0.15 + Math.random() * 0.5,
+      rotation: Math.random() * 360,
+      scale: 0.5 + Math.random() * 1.6,
+      delay: Math.random() * 2,
+      skewX: (Math.random() - 0.5) * 20,
+      skewY: (Math.random() - 0.5) * 10,
+    }));
+    queueMicrotask(() => setParticles(initial));
+    const id = setInterval(() => {
+      setParticles((prev) =>
+        prev.map((p) => ({
+          ...p,
+          x: (p.x + (Math.random() - 0.5) * 7 + 100) % 100,
+          y: (p.y - 0.6 - Math.random() * 1.2 + 100) % 100,
+          rotation: p.rotation + (Math.random() - 0.5) * 40,
+          opacity: 0.1 + Math.random() * 0.55,
+          scale: 0.4 + Math.random() * 1.8,
+          skewX: (Math.random() - 0.5) * 20,
+          skewY: (Math.random() - 0.5) * 10,
+        }))
+      );
+    }, 150); // 150ms (vs 300ms in Grand Plan)
+    return () => clearInterval(id);
+  }, [active]);
+
+  if (!active || particles.length === 0) return null;
+
+  return (
+    <div
+      style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 9999, overflow: "hidden" }}
+    >
+      {/* UwU status message */}
+      <div
+        style={{
+          position: "fixed",
+          bottom: 24,
+          left: "50%",
+          transform: "translateX(-50%)",
+          maxWidth: "min(680px, 90vw)",
+          background: "rgba(0,0,0,0.88)",
+          color: "#f9a8d4",
+          fontSize: 11,
+          fontFamily: '"Comic Sans MS", "Comic Sans", cursive',
+          fontWeight: 700,
+          padding: "10px 18px",
+          borderRadius: 12,
+          border: "2px solid #f0f",
+          textAlign: "center",
+          lineHeight: 1.4,
+          zIndex: 10000,
+          letterSpacing: "0.02em",
+          boxShadow: "0 0 24px rgba(255,0,255,0.5), 0 0 8px rgba(0,255,255,0.4)",
+          pointerEvents: "none",
+        }}
+      >
+        {uwuMsg}
+      </div>
+
+      {particles.map((p) => (
+        <span
+          key={p.id}
+          style={{
+            position: "absolute",
+            left: `${p.x}vw`,
+            top: `${p.y}vh`,
+            fontSize: p.size,
+            opacity: p.opacity,
+            transform: `rotate(${p.rotation}deg) scale(${p.scale}) skewX(${p.skewX}deg) skewY(${p.skewY}deg)`,
+            userSelect: "none",
+            lineHeight: 1,
+            willChange: "transform, opacity",
+            filter: p.size > 30
+              ? "drop-shadow(0 0 16px rgba(249,168,212,0.95)) drop-shadow(0 0 6px #f0f) drop-shadow(0 0 3px #0ff)"
+              : "drop-shadow(0 0 4px rgba(249,168,212,0.6))",
+            animation: `lpChaosFloat ${1.2 + p.delay}s ease-in-out infinite`,
+            animationDelay: `${p.delay}s`,
+          }}
+        >
+          {p.emoji}
+        </span>
+      ))}
     </div>
   );
 }

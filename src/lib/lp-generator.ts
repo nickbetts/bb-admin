@@ -8,8 +8,8 @@
 import { getAnthropicClient } from "@/lib/anthropic-client";
 import type { BrandContext } from "@/lib/brand-extractor";
 
-const MODEL = "claude-sonnet-4-6";
-// Sonnet 4.6 supports up to 64K output tokens. A fully-populated landing
+const MODEL = "claude-opus-4-5";
+// Opus 4.5 supports up to 32K output tokens. A fully-populated landing
 // page (hero + social proof + 3-4 benefits + how-it-works + testimonials
 // + offer + FAQ + final CTA + footer) routinely exceeds 16K. 32K gives
 // comfortable headroom so the page never truncates after the hero.
