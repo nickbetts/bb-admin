@@ -96,7 +96,7 @@ export async function POST(
         logActivity({
           userId: session.user.id,
           userEmail: session.user.email,
-          action: "landing_page_audited",
+          action: "landing_page_refined",
           resourceType: "LandingPage",
           resourceId: id,
           clientId: landingPage.clientId ?? undefined,
