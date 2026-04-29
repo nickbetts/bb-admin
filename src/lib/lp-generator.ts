@@ -152,23 +152,6 @@ function labelledImageUrls(
   return combined.map((u, i) => `  Image ${i + 1}: ${u}`).join("\n");
 }
 
-/** Number each URL so prompt references match visual attachment order. */
-function labelledImageUrls(
-  imageryUrls: string[],
-  uploadedUrls: string[] | undefined,
-  maxImages: number,
-): string {
-  const combined = [
-    ...(uploadedUrls ?? []),
-    ...imageryUrls,
-  ].filter(
-    (u) => /^https?:\/\//i.test(u) && !/\.svg(\?|$)/i.test(u),
-  ).slice(0, maxImages);
-
-  if (!combined.length) return "";
-  return combined.map((u, i) => `  Image ${i + 1}: ${u}`).join("\n");
-}
-
 // ── System prompts ───────────────────────────────────────────────────────────
 
 function buildGenerateSystemPrompt(brandContext: BrandContext, uploadedImageUrls?: string[]): string {
