@@ -2305,12 +2305,34 @@ ${audienceNames && audienceNames.length ? `\nTARGET AUDIENCES (assign each item 
   }
 
   console.log(
-    `[content-strategy:${section}] complete in ${Date.now() - t0}ms \u2014 ` +
+    `[content-strategy:${section}] complete in ${Date.now() - t0}ms — ` +
     `pageOpts=${result.pageOptimisations?.length ?? "-"} ` +
     `landingPages=${result.landingPages?.length ?? "-"} ` +
     `blogPosts=${result.blogPosts?.length ?? "-"} ` +
     `linkTargets=${result.linkTargets?.length ?? "-"}`,
   );
+
+  // Hard-enforce quantity limits after parsing — the AI may drift over the
+  // target even with an explicit instruction. Clipping here guarantees the
+  // output matches the capacity allocator numbers set on the form.
+  if (limits) {
+    if (limits.pageOptimisations && result.pageOptimisations && result.pageOptimisations.length > limits.pageOptimisations) {
+      console.log(`[content-strategy:${section}] clipping pageOptimisations ${result.pageOptimisations.length} → ${limits.pageOptimisations}`);
+      result.pageOptimisations = result.pageOptimisations.slice(0, limits.pageOptimisations);
+    }
+    if (limits.landingPages && result.landingPages && result.landingPages.length > limits.landingPages) {
+      console.log(`[content-strategy:${section}] clipping landingPages ${result.landingPages.length} → ${limits.landingPages}`);
+      result.landingPages = result.landingPages.slice(0, limits.landingPages);
+    }
+    if (limits.blogPosts && result.blogPosts && result.blogPosts.length > limits.blogPosts) {
+      console.log(`[content-strategy:${section}] clipping blogPosts ${result.blogPosts.length} → ${limits.blogPosts}`);
+      result.blogPosts = result.blogPosts.slice(0, limits.blogPosts);
+    }
+    if (limits.linkTargets && result.linkTargets && result.linkTargets.length > limits.linkTargets) {
+      console.log(`[content-strategy:${section}] clipping linkTargets ${result.linkTargets.length} → ${limits.linkTargets}`);
+      result.linkTargets = result.linkTargets.slice(0, limits.linkTargets);
+    }
+  }
 
   return result;
 }

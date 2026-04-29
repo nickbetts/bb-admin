@@ -321,13 +321,25 @@ export async function POST(
         return NextResponse.json({ ok: true, step });
       }
 
+      // Resolve the content quantity limits that were set on the form
+      // (capacity allocator → contentLimits in config).
+      const csLimits = config.contentLimits
+        ? {
+            pageOptimisations: config.contentLimits.pageOptimisations,
+            landingPages: config.contentLimits.landingPages,
+            blogPosts: config.contentLimits.blogPosts,
+            pillarPages: config.contentLimits.pillarPages,
+            linkTargets: config.contentLimits.linkTargets,
+          }
+        : undefined;
+
       // ── Step 1: generate pageOptimisations, create the ContentStrategy row ──
       if (step === "prepare-content-1") {
         const t1 = Date.now();
-        console.log(`[grand-plan:${id}] prepare-content-1 start — domain=${csDomain} db=${csDatabase}`);
+        console.log(`[grand-plan:${id}] prepare-content-1 start — domain=${csDomain} db=${csDatabase} limits=${JSON.stringify(csLimits)}`);
         await setStatus(id, "Generating page optimisations (1/3)...");
         const partial = await generateContentStrategySection(
-          "pageOptimisations", csDomain, clientName, csBrief, csCompetitors, csDatabase, searchConsoleSiteUrl ?? null, undefined, undefined, audienceNames, manualIntelForContent,
+          "pageOptimisations", csDomain, clientName, csBrief, csCompetitors, csDatabase, searchConsoleSiteUrl ?? null, csLimits, undefined, audienceNames, manualIntelForContent,
         );
         console.log(`[grand-plan:${id}] prepare-content-1 AI done in ${Date.now() - t1}ms — pageOpts=${partial.pageOptimisations?.length ?? 0}`);
         const now = new Date();
@@ -385,7 +397,7 @@ export async function POST(
         console.log(`[grand-plan:${id}] prepare-content-2 start — domain=${csDomain}`);
         await setStatus(id, "Generating landing pages (2/3)...");
         const partial = await generateContentStrategySection(
-          "landingPages", csDomain, clientName, csBrief, csCompetitors, csDatabase, searchConsoleSiteUrl ?? null, undefined, undefined, audienceNames,
+          "landingPages", csDomain, clientName, csBrief, csCompetitors, csDatabase, searchConsoleSiteUrl ?? null, csLimits, undefined, audienceNames,
         );
         console.log(`[grand-plan:${id}] prepare-content-2 AI done in ${Date.now() - t2}ms — landingPages=${partial.landingPages?.length ?? 0} linkTargets=${partial.linkTargets?.length ?? 0}`);
         const merged: ContentStrategyData = {
@@ -415,7 +427,7 @@ export async function POST(
         console.log(`[grand-plan:${id}] prepare-content-3 start — domain=${csDomain}`);
         await setStatus(id, "Generating blog posts & roadmap (3/3)...");
         const partial = await generateContentStrategySection(
-          "blogPosts", csDomain, clientName, csBrief, csCompetitors, csDatabase, searchConsoleSiteUrl ?? null, undefined, undefined, audienceNames,
+          "blogPosts", csDomain, clientName, csBrief, csCompetitors, csDatabase, searchConsoleSiteUrl ?? null, csLimits, undefined, audienceNames,
         );
         console.log(`[grand-plan:${id}] prepare-content-3 AI done in ${Date.now() - t3}ms — blogPosts=${partial.blogPosts?.length ?? 0}`);
         const merged: ContentStrategyData = {
