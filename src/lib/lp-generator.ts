@@ -51,17 +51,74 @@ export interface ChatLPResponse {
 
 // ── Vision helpers ───────────────────────────────────────────────────────────
 
+const IMAGE_FETCH_TIMEOUT_MS = 5000;
+const SUPPORTED_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
+
+/** Mime type → Anthropic media_type literal */
+type AnthropicMediaType = "image/jpeg" | "image/png" | "image/gif" | "image/webp";
+
 /**
- * Build Anthropic image content blocks from scraped + uploaded URLs so Claude
- * can actually see the images rather than just reading URL strings. Only
- * http/https URLs are included; SVGs and data URIs are excluded because
- * Claude's vision does not support those formats.
+ * Fetch a single image URL and return an Anthropic base64 content block.
+ * Returns null on any error (timeout, non-2xx, unsupported type, etc.) so
+ * callers can silently skip bad URLs.
+ *
+ * We fetch server-side because Anthropic's vision API cannot reach
+ * URLs that require cookies, sit behind a CDN that blocks bots, or
+ * redirect through auth walls.
  */
-function buildImageBlocks(
+async function fetchImageBlock(
+  url: string,
+): Promise<{ type: "image"; source: { type: "base64"; media_type: AnthropicMediaType; data: string } } | null> {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), IMAGE_FETCH_TIMEOUT_MS);
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        signal: controller.signal,
+        headers: {
+          // Mimic a browser to avoid bot-detection rejections
+          "User-Agent":
+            "Mozilla/5.0 (compatible; i3media-lp-generator/1.0; +https://stratos.i3media.co.uk)",
+          Accept: "image/webp,image/png,image/jpeg,image/*",
+        },
+      });
+    } finally {
+      clearTimeout(timer);
+    }
+
+    if (!response.ok) return null;
+
+    const contentType = response.headers.get("content-type")?.split(";")[0]?.trim() ?? "";
+    if (!SUPPORTED_MIME_TYPES.has(contentType)) return null;
+
+    const buffer = await response.arrayBuffer();
+    const base64 = Buffer.from(buffer).toString("base64");
+    return {
+      type: "image" as const,
+      source: {
+        type: "base64" as const,
+        media_type: contentType as AnthropicMediaType,
+        data: base64,
+      },
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Build Anthropic base64 image content blocks from scraped + uploaded URLs.
+ * Images are fetched server-side to avoid Anthropic's URL download failures
+ * (CDN blocks, cookie-gated assets, redirects, etc.).
+ * SVGs and data URIs are excluded as Claude's vision does not support them.
+ * Fetches run in parallel; failed fetches are silently dropped.
+ */
+async function buildImageBlocks(
   imageryUrls: string[],
   uploadedUrls: string[] | undefined,
   maxImages: number,
-): Array<{ type: "image"; source: { type: "url"; url: string } }> {
+): Promise<Array<{ type: "image"; source: { type: "base64"; media_type: AnthropicMediaType; data: string } }>> {
   const combined = [
     ...(uploadedUrls ?? []),
     ...imageryUrls,
@@ -72,10 +129,27 @@ function buildImageBlocks(
       !/^data:/i.test(u),
   ).slice(0, maxImages);
 
-  return combined.map((url) => ({
-    type: "image" as const,
-    source: { type: "url" as const, url },
-  }));
+  if (!combined.length) return [];
+
+  const results = await Promise.all(combined.map(fetchImageBlock));
+  return results.filter((b): b is NonNullable<typeof b> => b !== null);
+}
+
+/** Number each URL so prompt references match visual attachment order. */
+function labelledImageUrls(
+  imageryUrls: string[],
+  uploadedUrls: string[] | undefined,
+  maxImages: number,
+): string {
+  const combined = [
+    ...(uploadedUrls ?? []),
+    ...imageryUrls,
+  ].filter(
+    (u) => /^https?:\/\//i.test(u) && !/\.svg(\?|$)/i.test(u),
+  ).slice(0, maxImages);
+
+  if (!combined.length) return "";
+  return combined.map((u, i) => `  Image ${i + 1}: ${u}`).join("\n");
 }
 
 /** Number each URL so prompt references match visual attachment order. */
@@ -386,7 +460,7 @@ export async function generateLandingPage(opts: GenerateLPOptions): Promise<stri
   }
 
   // Build vision blocks so Claude can actually see the scraped/uploaded images
-  const imageBlocks = buildImageBlocks(opts.brandContext.imageryUrls, opts.uploadedImageUrls, 8);
+  const imageBlocks = await buildImageBlocks(opts.brandContext.imageryUrls, opts.uploadedImageUrls, 8);
   const userContent = imageBlocks.length
     ? ([...imageBlocks, { type: "text" as const, text: userPrompt }] as const)
     : userPrompt;
@@ -992,7 +1066,7 @@ Generate the ${section.name} section now. Make it exceptional.`;
 async function planLandingPage(opts: GenerateLPOptions): Promise<LPPagePlan> {
   const anthropic = await getAnthropicClient();
 
-  const imageBlocks = buildImageBlocks(opts.brandContext.imageryUrls, opts.uploadedImageUrls, 8);
+  const imageBlocks = await buildImageBlocks(opts.brandContext.imageryUrls, opts.uploadedImageUrls, 8);
   const planPrompt = buildLPPlanUserPrompt(opts);
   const userContent = imageBlocks.length
     ? [...imageBlocks, { type: "text" as const, text: planPrompt }]
@@ -1043,7 +1117,7 @@ async function generateSectionHtml(params: {
   const anthropic = await getAnthropicClient();
 
   // 4 images max per section — keeps token budget predictable
-  const imageBlocks = buildImageBlocks(params.brandContext.imageryUrls, params.uploadedImageUrls, 4);
+  const imageBlocks = await buildImageBlocks(params.brandContext.imageryUrls, params.uploadedImageUrls, 4);
   const sectionPrompt = buildSectionUserPrompt(params);
   const userContent = imageBlocks.length
     ? [...imageBlocks, { type: "text" as const, text: sectionPrompt }]
