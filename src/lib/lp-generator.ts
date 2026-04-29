@@ -7,6 +7,7 @@
 
 import { getAnthropicClient } from "@/lib/anthropic-client";
 import type { BrandContext } from "@/lib/brand-extractor";
+import { screenshotHtml } from "@/lib/puppeteer";
 
 const MODEL = "claude-opus-4-7";
 // Opus 4.7 supports up to 32K output tokens. A fully-populated landing
@@ -615,6 +616,10 @@ export async function auditDesignAndSector(opts: {
   brandContext: BrandContext;
   targetAudience?: string;
   uploadedImageUrls?: string[];
+  /** JPEG screenshot of the rendered page (from Puppeteer). When supplied it
+   * is prepended as the first vision block so Claude can see the page as a
+   * browser renders it, not just the raw HTML. */
+  pageScreenshot?: Buffer | null;
 }): Promise<LPCritiqueItem[]> {
   const anthropic = await getAnthropicClient();
 
@@ -634,7 +639,13 @@ export async function auditDesignAndSector(opts: {
     ? allImageUrls.map((u, i) => `  Image ${i + 1}: ${u}`).join("\n")
     : "  None available";
 
+  const screenshotNote = opts.pageScreenshot
+    ? "The FIRST attached image is a live browser screenshot of the rendered page — use it to judge the actual visual quality, sector fit, and which images are visible. Subsequent image blocks are the individual brand/content photos for reference."
+    : "The attached images are the individual brand/content photos available for use.";
+
   const userPrompt = `Audit the UI design, sector relevance, and image usage of this landing page.
+
+${screenshotNote}
 
 ## Sector context
 Campaign type: ${opts.campaignType}
@@ -652,14 +663,28 @@ ${numberedImageList}
 ## The landing page HTML to audit
 ${opts.html}
 
-The images are attached above as vision blocks — study them and check they are being used in the HTML. Identify sector-relevance, design quality, and image usage issues as a JSON array.`;
+Identify sector-relevance, design quality, and image usage issues as a JSON array.`;
 
   // Fetch images as vision blocks so Claude can see what each image depicts
-  // and accurately check whether they're used in the HTML
   const imageBlocks = await buildImageBlocks(opts.brandContext.imageryUrls, opts.uploadedImageUrls, 8);
+
+  // Prepend the rendered-page screenshot (if available) as the first block
+  const screenshotBlock = opts.pageScreenshot
+    ? [{
+        type: "image" as const,
+        source: {
+          type: "base64" as const,
+          media_type: "image/jpeg" as const,
+          data: opts.pageScreenshot.toString("base64"),
+        },
+      }]
+    : [];
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const userContent: any = imageBlocks.length
-    ? [...imageBlocks, { type: "text", text: userPrompt }]
+  const allBlocks: any[] = [...screenshotBlock, ...imageBlocks];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const userContent: any = allBlocks.length
+    ? [...allBlocks, { type: "text", text: userPrompt }]
     : userPrompt;
 
   const response = await anthropic.messages.create({
@@ -1564,8 +1589,18 @@ export async function generateLandingPageSectionBySection(
   });
 
   // Phase 5 — UI/design, sector relevance, and image usage audit
-  // Vision-enabled: passes scraped images as base64 blocks so Claude can
-  // verify which images are actually used in the HTML vs missing.
+  // Puppeteer renders the current HTML in a real browser and captures a
+  // JPEG screenshot (up to 5 000px tall). Claude receives this as its first
+  // vision block so it can see what the page actually looks like, not just
+  // the raw HTML. Falls back to image-block-only if screenshot fails.
+  if (onProgress) await onProgress("Taking page screenshot for visual audit...");
+  const pageScreenshot = await screenshotHtml(html);
+  if (pageScreenshot) {
+    console.log(`[lp-generator] Page screenshot captured (${(pageScreenshot.length / 1024).toFixed(0)} KB)`);
+  } else {
+    console.warn("[lp-generator] Page screenshot failed — design audit will run without rendered preview.");
+  }
+
   html = await runAuditPass({
     html,
     auditLabel: "Design & Sector",
@@ -1577,6 +1612,7 @@ export async function generateLandingPageSectionBySection(
       brandContext: genOpts.brandContext,
       targetAudience: genOpts.targetAudience,
       uploadedImageUrls: genOpts.uploadedImageUrls,
+      pageScreenshot,
     }),
     brandContext: genOpts.brandContext,
     maxFixes: 5,
