@@ -49,6 +49,52 @@ export interface ChatLPResponse {
   stackedChanges?: string[]; // Extracted from STACK_CHANGE: tags — added to staged list
 }
 
+// ── Vision helpers ───────────────────────────────────────────────────────────
+
+/**
+ * Build Anthropic image content blocks from scraped + uploaded URLs so Claude
+ * can actually see the images rather than just reading URL strings. Only
+ * http/https URLs are included; SVGs and data URIs are excluded because
+ * Claude's vision does not support those formats.
+ */
+function buildImageBlocks(
+  imageryUrls: string[],
+  uploadedUrls: string[] | undefined,
+  maxImages: number,
+): Array<{ type: "image"; source: { type: "url"; url: string } }> {
+  const combined = [
+    ...(uploadedUrls ?? []),
+    ...imageryUrls,
+  ].filter(
+    (u) =>
+      /^https?:\/\//i.test(u) &&
+      !/\.svg(\?|$)/i.test(u) &&
+      !/^data:/i.test(u),
+  ).slice(0, maxImages);
+
+  return combined.map((url) => ({
+    type: "image" as const,
+    source: { type: "url" as const, url },
+  }));
+}
+
+/** Number each URL so prompt references match visual attachment order. */
+function labelledImageUrls(
+  imageryUrls: string[],
+  uploadedUrls: string[] | undefined,
+  maxImages: number,
+): string {
+  const combined = [
+    ...(uploadedUrls ?? []),
+    ...imageryUrls,
+  ].filter(
+    (u) => /^https?:\/\//i.test(u) && !/\.svg(\?|$)/i.test(u),
+  ).slice(0, maxImages);
+
+  if (!combined.length) return "";
+  return combined.map((u, i) => `  Image ${i + 1}: ${u}`).join("\n");
+}
+
 // ── System prompts ───────────────────────────────────────────────────────────
 
 function buildGenerateSystemPrompt(brandContext: BrandContext, uploadedImageUrls?: string[]): string {
@@ -107,7 +153,7 @@ ${brandContext.contactInfo.email ? `Email: ${brandContext.contactInfo.email}` : 
 Social links: ${brandContext.socialLinks.slice(0, 4).join(", ") || "None provided"}
 ${pageCopyBlock}${rawHtmlBlock}
 ## Available imagery
-${uploadedImageUrls && uploadedImageUrls.length > 0 ? `### User-uploaded reference images — YOU MUST use these as <img src="..."> tags in the page\n${uploadedImageUrls.map((u) => `- ${u}`).join("\n")}\n\n` : ""}${brandContext.imageryUrls.length ? `### Scraped website imagery\n${brandContext.imageryUrls.slice(0, 6).map((u) => `- ${u}`).join("\n")}` : uploadedImageUrls && uploadedImageUrls.length > 0 ? "" : "No images available — use CSS gradients, patterns and bold typography for visual interest. Do NOT use emoji as illustrations."}
+${(() => { const labelled = labelledImageUrls(brandContext.imageryUrls, uploadedImageUrls, 8); return labelled ? `The images are attached above for visual analysis. Study each one: identify people, products, locations, brand style, and real content. Use these exact URLs in <img src> tags in the generated page — pick the most suitable image for each placement.\n\n${uploadedImageUrls?.length ? `User-uploaded reference images (prioritise these):\n${uploadedImageUrls.map((u, i) => `  Image ${i + 1}: ${u}`).join("\n")}\n\n` : ""}Scraped website images:\n${labelledImageUrls(brandContext.imageryUrls, undefined, 8)}` : "No images available — use CSS gradients, patterns and bold typography for visual interest. Do NOT use emoji as illustrations."; })()}
 
 ## Iconography — strict rule
 
@@ -339,12 +385,18 @@ export async function generateLandingPage(opts: GenerateLPOptions): Promise<stri
     userPrompt += `\n## Template HTML\n\nUse this as a structural starting point — adapt the layout and style while replacing all placeholder content with real, campaign-specific content:\n\n${opts.templateHtml.slice(0, 30000)}`;
   }
 
+  // Build vision blocks so Claude can actually see the scraped/uploaded images
+  const imageBlocks = buildImageBlocks(opts.brandContext.imageryUrls, opts.uploadedImageUrls, 8);
+  const userContent = imageBlocks.length
+    ? ([...imageBlocks, { type: "text" as const, text: userPrompt }] as const)
+    : userPrompt;
+
   // Use streaming for large responses
   const stream = anthropic.messages.stream({
     model: MODEL,
     max_tokens: MAX_TOKENS,
     system: systemPrompt,
-    messages: [{ role: "user", content: userPrompt }],
+    messages: [{ role: "user", content: userContent as Parameters<typeof anthropic.messages.stream>[0]["messages"][0]["content"] }],
   });
 
   const response = await stream.finalMessage();
@@ -861,20 +913,18 @@ ${contentParts.join("\n\n") || "No content scraped — infer from brief."}
 ## Campaign
 Type: ${opts.campaignType}
 Brief: ${opts.brief}
-${opts.targetAudience ? `Target audience: ${opts.targetAudience}` : ""}${opts.additionalInstructions ? `\nAdditional instructions: ${opts.additionalInstructions}` : ""}${
-    opts.uploadedImageUrls?.length
-      ? `\nUploaded images:\n${opts.uploadedImageUrls.map((u) => `  - ${u}`).join("\n")}`
-      : ""
-  }
+${opts.targetAudience ? `Target audience: ${opts.targetAudience}` : ""}${opts.additionalInstructions ? `\nAdditional instructions: ${opts.additionalInstructions}` : ""}
 
-Available imagery:
+Available imagery — images are visually attached for analysis. Identify what each depicts (people, products, settings, brand style) and use them as <img src="..."> where they genuinely improve the page. Reference these exact URLs:
 ${
-  opts.brandContext.imageryUrls.length
-    ? opts.brandContext.imageryUrls
-        .slice(0, 8)
-        .map((u) => `  - ${u}`)
-        .join("\n")
-    : "  None scraped — use CSS gradients and bold typography."
+  (() => {
+    const labelled = labelledImageUrls(
+      opts.brandContext.imageryUrls,
+      opts.uploadedImageUrls,
+      8,
+    );
+    return labelled || "  None scraped — use CSS gradients and bold typography.";
+  })()
 }
 
 Now output the plan using the tagged format specified in your instructions.`;
@@ -901,14 +951,13 @@ function buildSectionUserPrompt(params: {
   section: LPSectionPlan;
   previousSectionsHtml: string;
   brandContext: BrandContext;
+  uploadedImageUrls?: string[];
 }): string {
-  const { plan, section, previousSectionsHtml, brandContext } = params;
+  const { plan, section, previousSectionsHtml, brandContext, uploadedImageUrls } = params;
 
-  const imagery = brandContext.imageryUrls.length
-    ? `Available images:\n${brandContext.imageryUrls
-        .slice(0, 4)
-        .map((u) => `  - ${u}`)
-        .join("\n")}`
+  const labelled = labelledImageUrls(brandContext.imageryUrls, uploadedImageUrls, 4);
+  const imagery = labelled
+    ? `Images are visually attached for analysis. Use these exact URLs in <img src> tags where they suit this section (identify what each depicts):\n${labelled}`
     : "No images available — use CSS gradients and bold typography.";
 
   const prevHtml = previousSectionsHtml.length > 3000
@@ -943,11 +992,18 @@ Generate the ${section.name} section now. Make it exceptional.`;
 async function planLandingPage(opts: GenerateLPOptions): Promise<LPPagePlan> {
   const anthropic = await getAnthropicClient();
 
+  const imageBlocks = buildImageBlocks(opts.brandContext.imageryUrls, opts.uploadedImageUrls, 8);
+  const planPrompt = buildLPPlanUserPrompt(opts);
+  const userContent = imageBlocks.length
+    ? [...imageBlocks, { type: "text" as const, text: planPrompt }]
+    : planPrompt;
+
   const response = await anthropic.messages.create({
     model: MODEL,
     max_tokens: PLAN_MAX_TOKENS,
     system: LP_PLAN_SYSTEM_PROMPT,
-    messages: [{ role: "user", content: buildLPPlanUserPrompt(opts) }],
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    messages: [{ role: "user", content: userContent as any }],
   });
 
   const raw = response.content[0]?.type === "text" ? response.content[0].text : "";
@@ -982,14 +1038,23 @@ async function generateSectionHtml(params: {
   section: LPSectionPlan;
   previousSectionsHtml: string;
   brandContext: BrandContext;
+  uploadedImageUrls?: string[];
 }): Promise<string> {
   const anthropic = await getAnthropicClient();
+
+  // 4 images max per section — keeps token budget predictable
+  const imageBlocks = buildImageBlocks(params.brandContext.imageryUrls, params.uploadedImageUrls, 4);
+  const sectionPrompt = buildSectionUserPrompt(params);
+  const userContent = imageBlocks.length
+    ? [...imageBlocks, { type: "text" as const, text: sectionPrompt }]
+    : sectionPrompt;
 
   const response = await anthropic.messages.create({
     model: MODEL,
     max_tokens: SECTION_MAX_TOKENS,
     system: SECTION_SYSTEM_PROMPT,
-    messages: [{ role: "user", content: buildSectionUserPrompt(params) }],
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    messages: [{ role: "user", content: userContent as any }],
   });
 
   const text = response.content[0]?.type === "text" ? response.content[0].text.trim() : "";
@@ -1114,6 +1179,7 @@ export async function generateLandingPageSectionBySection(
         section,
         previousSectionsHtml: prevHtml,
         brandContext: genOpts.brandContext,
+        uploadedImageUrls: genOpts.uploadedImageUrls,
       });
       sectionHtmls.push(html);
       console.log(`[lp-generator] Section "${section.name}" complete (${html.length} chars)`);
