@@ -1260,7 +1260,56 @@ export async function generateLandingPageSectionBySection(
 
   // Phase 3 — Assemble
   if (onProgress) await onProgress("Assembling final page...");
-  return assemblePageFromSections(plan, sectionHtmls);
+  let html = assemblePageFromSections(plan, sectionHtmls);
+
+  // Phase 4 — CRO self-critique and targeted refinement pass
+  // Critique the assembled page across 10 CRO dimensions and apply the top
+  // high/medium-severity fixes in a single refinement call. This replaces
+  // the need to manually prompt for improvements in the chat after generation.
+  try {
+    if (onProgress) await onProgress("Running CRO self-critique...");
+    const critique = await critiqueLandingPage({
+      html,
+      brief: genOpts.brief,
+      campaignType: genOpts.campaignType,
+      brandContext: genOpts.brandContext,
+      targetAudience: genOpts.targetAudience,
+    });
+
+    const actionable = critique
+      .filter((c) => c.severity === "high" || c.severity === "medium")
+      .slice(0, 5);
+
+    if (actionable.length > 0) {
+      const severityRank = { high: 0, medium: 1, low: 2 } as const;
+      actionable.sort((a, b) => severityRank[a.severity] - severityRank[b.severity]);
+
+      console.log(
+        `[lp-generator] CRO critique: ${critique.length} issues found, applying ${actionable.length} fixes — ` +
+          actionable.map((c) => `[${c.severity}] ${c.area}`).join(", "),
+      );
+
+      if (onProgress) {
+        await onProgress(`Applying ${actionable.length} CRO improvements...`);
+      }
+
+      const instructions = actionable
+        .map((item, idx) => `${idx + 1}. [${item.area}] ${item.fix}`)
+        .join("\n");
+
+      html = await refineLandingPage({
+        currentHtml: html,
+        brandContext: genOpts.brandContext,
+        prompt: `Apply the following targeted CRO improvements identified by a self-critique pass. Each is a small, specific change — do not rewrite anything not mentioned.\n\n${instructions}`,
+      });
+    } else {
+      console.log("[lp-generator] CRO critique: no high/medium issues found, skipping refinement.");
+    }
+  } catch (err) {
+    console.warn("[lp-generator] CRO critique pass failed (keeping assembled version):", err);
+  }
+
+  return html;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────

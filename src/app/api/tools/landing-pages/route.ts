@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { extractBrandContext } from "@/lib/brand-extractor";
-import { generateLandingPageSectionBySection } from "@/lib/lp-generator";
+import { generateLandingPageSectionBySection, injectLucide } from "@/lib/lp-generator";
 import { sanitiseAnalyticsConfig } from "@/lib/lp-analytics";
 import { logActivity } from "@/lib/activity-logger";
 
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Generate landing page with AI (section-by-section for maximum quality)
-    const html = await generateLandingPageSectionBySection({
+    const rawHtml = await generateLandingPageSectionBySection({
       brief,
       campaignType,
       brandContext,
@@ -93,6 +93,10 @@ export async function POST(request: NextRequest) {
       templateHtml,
       uploadedImageUrls: additionalImageUrls && additionalImageUrls.length > 0 ? additionalImageUrls : undefined,
     });
+
+    // Inject Lucide icon runtime into stored HTML so the preview iframe renders
+    // icons immediately without needing to go through the publish pipeline.
+    const html = injectLucide(rawHtml);
 
     // 4. Generate a URL-safe slug from the title
     const slug = generateSlug(title);
