@@ -254,30 +254,11 @@ export default function NewLandingPage() {
       </Link>
 
       {/* Header */}
-      <div style={{ marginBottom: 32, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-        <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", lineHeight: 1 }}>Create Landing Page</h1>
-          <p style={{ fontSize: 13, color: "var(--text-3)", marginTop: 6 }}>
-            Provide a website to scrape for branding and a brief — Meridian will generate an optimised LP
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setFunMode((v) => !v)}
-          title={funMode ? "Disable chaos mode" : "Enable chaos mode 🔥"}
-          style={{
-            display: "inline-flex", alignItems: "center", gap: 5,
-            padding: "6px 10px", borderRadius: "var(--r)", fontSize: 12, fontWeight: 600,
-            border: `1px solid ${funMode ? "var(--accent)" : "var(--border)"}`,
-            background: funMode ? "var(--accent-bg)" : "var(--surface)",
-            color: funMode ? "var(--accent)" : "var(--text-3)",
-            cursor: "pointer", fontFamily: "inherit", flexShrink: 0, marginTop: 2,
-            transition: "all 0.15s",
-          }}
-        >
-          <Zap style={{ width: 13, height: 13 }} />
-          {funMode ? "Chaos ON" : "Chaos mode"}
-        </button>
+      <div style={{ marginBottom: 32 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", lineHeight: 1 }}>Create Landing Page</h1>
+        <p style={{ fontSize: 13, color: "var(--text-3)", marginTop: 6 }}>
+          Provide a website to scrape for branding and a brief — Meridian will generate an optimised LP
+        </p>
       </div>
 
       <div className="card">
@@ -645,7 +626,192 @@ export default function NewLandingPage() {
 
     {/* Chaos overlay */}
     <LpChaosOverlay active={funMode && loading} />
+    {/* Sticky chaos side button */}
+    <ChaosSideButton enabled={funMode} onToggle={() => setFunMode((v) => !v)} generating={loading} />
   </>
+  );
+}
+
+// ─── Sticky chaos side button ────────────────────────────────────────────────
+
+const CHAOS_TAUNTS = [
+  "go on. click me. i dare you.",
+  "you know you want to click me 👀",
+  "i'm right here... just saying...",
+  "one click. that's all it takes.",
+  "normal mode is so boring tho",
+  "*stares at you expectantly*",
+  "what's the worst that could happen? 😈",
+  "click me coward",
+  "i've been waiting for you...",
+  "your landing page deserves chaos",
+  "chaos = creativity, trust me bro",
+  "the button is lonely 🥺",
+  "this offer expires never but still",
+  "all the cool kids have chaos ON",
+  "i'm not NOT saying click me",
+  "*taps foot impatiently*",
+  "do it. DO IT.",
+  "scared? 😏",
+];
+
+const CHAOS_ON_TAUNTS = [
+  "CHAOS MODE ACTIVE. YOU DID THIS. 🔥",
+  "there's no going back now 😈",
+  "oh you actually clicked it lmao",
+  "IT'S ALIVE. IT'S ALIVE!!!",
+  "maximum chaos achieved ✨",
+];
+
+function ChaosSideButton({
+  enabled,
+  onToggle,
+  generating,
+}: {
+  enabled: boolean;
+  onToggle: () => void;
+  generating: boolean;
+}) {
+  const [taunt, setTaunt] = useState<string | null>(null);
+  const tauntTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Inject the pop animation once on mount
+  useEffect(() => {
+    const id = "lp-taunt-pop-style";
+    if (!document.getElementById(id)) {
+      const el = document.createElement("style");
+      el.id = id;
+      el.textContent = `
+        @keyframes lpTauntPop {
+          0%   { opacity: 0; transform: scale(0.7) translateX(12px); }
+          100% { opacity: 1; transform: scale(1) translateX(0); }
+        }
+      `;
+      document.head.appendChild(el);
+    }
+  }, []);
+
+  // Show random taunts on an irregular schedule
+  useEffect(() => {
+    function scheduleNext() {
+      // Wait 4–12 s before next taunt when off; 3–6 s when on
+      const delay = enabled
+        ? 3000 + Math.random() * 3000
+        : 4000 + Math.random() * 8000;
+      tauntTimeoutRef.current = setTimeout(() => {
+        const pool = enabled ? CHAOS_ON_TAUNTS : CHAOS_TAUNTS;
+        setTaunt(pool[Math.floor(Math.random() * pool.length)]);
+        // Hide after 3.5 s
+        hideTimeoutRef.current = setTimeout(() => {
+          setTaunt(null);
+          scheduleNext();
+        }, 3500);
+      }, delay);
+    }
+    // Small initial delay
+    const initId = setTimeout(scheduleNext, 2500);
+    return () => {
+      clearTimeout(initId);
+      if (tauntTimeoutRef.current) clearTimeout(tauntTimeoutRef.current);
+      if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled]);
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        right: 0,
+        top: "50%",
+        transform: "translateY(-50%)",
+        zIndex: 9990,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "flex-end",
+        gap: 8,
+        pointerEvents: "none",
+      }}
+    >
+      {/* Taunt speech bubble */}
+      {taunt && !generating && (
+        <div
+          style={{
+            pointerEvents: "none",
+            background: enabled ? "rgba(239,68,68,0.95)" : "rgba(30,30,40,0.95)",
+            color: enabled ? "#fff" : "#e2e8f0",
+            fontSize: 12,
+            fontWeight: 600,
+            padding: "8px 12px",
+            borderRadius: "10px 10px 2px 10px",
+            maxWidth: 200,
+            lineHeight: 1.4,
+            textAlign: "right",
+            marginRight: 52,
+            boxShadow: enabled
+              ? "0 4px 20px rgba(239,68,68,0.4)"
+              : "0 4px 16px rgba(0,0,0,0.4)",
+            border: enabled ? "1px solid rgba(255,100,100,0.5)" : "1px solid rgba(255,255,255,0.1)",
+            animation: "lpTauntPop 0.25s cubic-bezier(0.34,1.56,0.64,1)",
+            fontFamily: "inherit",
+            whiteSpace: "normal",
+          }}
+        >
+          {taunt}
+        </div>
+      )}
+
+      {/* The button itself — pokes out from the right edge */}
+      <button
+        type="button"
+        onClick={onToggle}
+        disabled={generating}
+        style={{
+          pointerEvents: "all",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 6,
+          width: 44,
+          paddingTop: 14,
+          paddingBottom: 14,
+          borderRadius: "10px 0 0 10px",
+          border: enabled ? "1px solid rgba(239,68,68,0.7)" : "1px solid var(--border)",
+          borderRight: "none",
+          background: enabled
+            ? "linear-gradient(180deg, #ef4444 0%, #dc2626 100%)"
+            : "var(--surface)",
+          color: enabled ? "#fff" : "var(--text-3)",
+          cursor: generating ? "not-allowed" : "pointer",
+          opacity: generating ? 0.4 : 1,
+          fontFamily: "inherit",
+          fontSize: 9,
+          fontWeight: 700,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          boxShadow: enabled
+            ? "-4px 0 24px rgba(239,68,68,0.35)"
+            : "-2px 0 12px rgba(0,0,0,0.15)",
+          transition: "all 0.2s",
+          writingMode: "vertical-rl",
+          lineHeight: 1,
+        }}
+        title={enabled ? "Disable chaos mode" : "Enable chaos mode 🔥"}
+      >
+        <Zap
+          style={{
+            width: 16,
+            height: 16,
+            flexShrink: 0,
+            transform: "rotate(90deg)",
+            filter: enabled ? "none" : undefined,
+          }}
+        />
+        {enabled ? "Chaos ON" : "Chaos"}
+      </button>
+    </div>
   );
 }
 
