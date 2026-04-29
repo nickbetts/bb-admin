@@ -825,6 +825,7 @@ model LandingPage {
   user              User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   versions          LandingPageVersion[]
   leads             LandingPageLead[]
+  translations      LandingPageTranslation[]
 
   @@unique([clientId, slug])
   @@unique([customSubdomain, slug])
@@ -860,6 +861,22 @@ model LandingPageLead {
   landingPage   LandingPage @relation(fields: [landingPageId], references: [id], onDelete: Cascade)
 
   @@index([landingPageId, createdAt])
+}
+
+// AI-translated versions of a landing page, served via ?lang= query param
+model LandingPageTranslation {
+  id            String      @id @default(cuid())
+  landingPageId String
+  language      String      // BCP-47 code, e.g. "fr", "es", "de", "pt-BR"
+  languageName  String      // Human label, e.g. "French", "Spanish"
+  html          String      // Full translated HTML (runtime scripts injected at serve time)
+  status        String      @default("draft") // draft | published
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  landingPage   LandingPage @relation(fields: [landingPageId], references: [id], onDelete: Cascade)
+
+  @@unique([landingPageId, language])
+  @@index([landingPageId])
 }
 
 // Reusable LP templates — built-in seeds + user-saved from successful LPs

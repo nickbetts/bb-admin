@@ -21,6 +21,7 @@ export async function GET(
 
   const { searchParams } = new URL(request.url);
   const testMode = searchParams.get("test") === "1";
+  const langParam = searchParams.get("lang");
 
   // Try client slug first, then fall back to customSubdomain on the LP itself
   const client = await prisma.client.findUnique({
@@ -78,12 +79,26 @@ export async function GET(
       .catch(() => {});
   }
 
+  // Resolve HTML: use a published translation if ?lang= is present
+  let htmlToServe = landingPage.currentHtml;
+  if (langParam) {
+    const translation = await prisma.landingPageTranslation.findUnique({
+      where: {
+        landingPageId_language: { landingPageId: landingPage.id, language: langParam },
+      },
+      select: { html: true, status: true },
+    });
+    if (translation?.status === "published") {
+      htmlToServe = translation.html;
+    }
+  }
+
   const analytics = mergeAnalyticsConfig(
     parseAnalyticsConfig(defaultAnalyticsConfig),
     parseAnalyticsConfig(landingPage.analyticsConfig),
   );
 
-  const html = assemblePublicHtml(landingPage.currentHtml, {
+  const html = assemblePublicHtml(htmlToServe, {
     shareToken: landingPage.shareToken,
     analytics,
     testMode,

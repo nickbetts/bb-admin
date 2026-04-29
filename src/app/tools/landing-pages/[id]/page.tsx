@@ -34,6 +34,7 @@ import {
   Sparkles,
   Settings,
   Bug,
+  Globe,
 } from "lucide-react";
 import {
   DndContext,
@@ -123,7 +124,7 @@ interface Version {
 }
 
 type DeviceMode = "desktop" | "tablet" | "mobile";
-type SidebarTab = "chat" | "code" | "sections" | "design";
+type SidebarTab = "chat" | "code" | "sections" | "design" | "languages";
 
 const DEVICE_WIDTHS: Record<DeviceMode, string> = {
   desktop: "100%",
@@ -149,7 +150,41 @@ const SIDEBAR_TABS: { id: SidebarTab; icon: typeof MessageSquare; label: string 
   { id: "code", icon: Code, label: "Code" },
   { id: "sections", icon: Layers, label: "Sections" },
   { id: "design", icon: Palette, label: "Design" },
+  { id: "languages", icon: Globe, label: "Languages" },
 ];
+
+// ── LP_SUPPORTED_LANGUAGES (mirrored client-side) ──
+const LP_SUPPORTED_LANGUAGES_UI = [
+  { language: "fr",    name: "French",                nativeName: "Français" },
+  { language: "es",    name: "Spanish",               nativeName: "Español" },
+  { language: "de",    name: "German",                nativeName: "Deutsch" },
+  { language: "it",    name: "Italian",               nativeName: "Italiano" },
+  { language: "pt-BR", name: "Portuguese (Brazil)",   nativeName: "Português (Brasil)" },
+  { language: "nl",    name: "Dutch",                 nativeName: "Nederlands" },
+  { language: "pl",    name: "Polish",                nativeName: "Polski" },
+  { language: "ro",    name: "Romanian",              nativeName: "Română" },
+  { language: "sv",    name: "Swedish",               nativeName: "Svenska" },
+  { language: "no",    name: "Norwegian",             nativeName: "Norsk" },
+  { language: "da",    name: "Danish",                nativeName: "Dansk" },
+  { language: "tr",    name: "Turkish",               nativeName: "Türkçe" },
+  { language: "ru",    name: "Russian",               nativeName: "Русский" },
+  { language: "uk",    name: "Ukrainian",             nativeName: "Українська" },
+  { language: "ar",    name: "Arabic",               nativeName: "العربية" },
+  { language: "hi",    name: "Hindi",                nativeName: "हिन्दी" },
+  { language: "ja",    name: "Japanese",             nativeName: "日本語" },
+  { language: "zh-CN", name: "Chinese (Simplified)", nativeName: "中文（简体）" },
+  { language: "ko",    name: "Korean",               nativeName: "한국어" },
+] as const;
+
+type LpTranslation = {
+  id: string;
+  language: string;
+  languageName: string;
+  status: string;
+  stale: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
 
 /* ── Sortable section row for the organiser ──────────────────────────────── */
 
@@ -335,6 +370,14 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
   // ── NEW: Design panel ─────────────────────────────────────────────────────
   const [cssVars, setCssVars] = useState<CSSVariable[]>([]);
 
+  // ── Languages tab ─────────────────────────────────────────────────────────
+  const [translations, setTranslations] = useState<LpTranslation[]>([]);
+  const [translatingLangs, setTranslatingLangs] = useState<string[]>([]);
+  const [showLangPicker, setShowLangPicker] = useState(false);
+  const [selectedLangs, setSelectedLangs] = useState<string[]>([]);
+  const [translationsLoaded, setTranslationsLoaded] = useState(false);
+  const [previewLang, setPreviewLang] = useState<string | null>(null);
+
   const fetchLP = useCallback(async () => {
     try {
       const res = await fetch(`/api/tools/landing-pages/${id}`);
@@ -478,6 +521,79 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
   useEffect(() => {
     if (activeTab === "design") setCssVars(parseCSSVariables(previewHtml));
   }, [previewHtml, activeTab]);
+
+  // ── Fetch translations when languages tab becomes active ─────────────────
+  const fetchTranslations = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/tools/landing-pages/${id}/translations`);
+      if (res.ok) {
+        const data = await res.json() as { translations: LpTranslation[] };
+        setTranslations(data.translations);
+      }
+    } catch {}
+    setTranslationsLoaded(true);
+  }, [id]);
+
+  useEffect(() => {
+    if (activeTab === "languages" && !translationsLoaded) fetchTranslations();
+  }, [activeTab, translationsLoaded, fetchTranslations]);
+
+  const handleTranslate = useCallback(async (langs: string[]) => {
+    if (!langs.length) return;
+    setShowLangPicker(false);
+    setSelectedLangs([]);
+    setTranslatingLangs(langs);
+    try {
+      const res = await fetch(`/api/tools/landing-pages/${id}/translations`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ languages: langs }),
+      });
+      if (res.ok) await fetchTranslations();
+    } catch {} finally {
+      setTranslatingLangs([]);
+    }
+  }, [id, fetchTranslations]);
+
+  const handlePublishTranslation = useCallback(async (lang: string, currentStatus: string) => {
+    const newStatus = currentStatus === "published" ? "draft" : "published";
+    try {
+      await fetch(`/api/tools/landing-pages/${id}/translations/${lang}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      setTranslations((prev) => prev.map((t) => t.language === lang ? { ...t, status: newStatus } : t));
+    } catch {}
+  }, [id]);
+
+  const handleDeleteTranslation = useCallback(async (lang: string) => {
+    if (!confirm("Delete this translation?")) return;
+    try {
+      await fetch(`/api/tools/landing-pages/${id}/translations/${lang}`, { method: "DELETE" });
+      setTranslations((prev) => prev.filter((t) => t.language !== lang));
+      if (previewLang === lang) {
+        setPreviewLang(null);
+        setPreviewHtml(lp?.currentHtml ?? "");
+      }
+    } catch {}
+  }, [id, previewLang, lp]);
+
+  const handlePreviewTranslation = useCallback(async (lang: string | null) => {
+    if (!lang) {
+      setPreviewLang(null);
+      setPreviewHtml(lp?.currentHtml ?? "");
+      return;
+    }
+    try {
+      const res = await fetch(`/api/tools/landing-pages/${id}/translations/${lang}`);
+      if (res.ok) {
+        const data = await res.json() as { translation: { html: string } };
+        setPreviewLang(lang);
+        setPreviewHtml(data.translation.html);
+      }
+    } catch {}
+  }, [id, lp]);
 
   // ── NEW: CodeMirror initialisation ────────────────────────────────────────
   useEffect(() => {
@@ -1591,6 +1707,186 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                   </>
                 )}
               </div>
+            </>
+          )}
+
+          {/* ── LANGUAGES TAB ─────────────────────────────────────────────── */}
+          {activeTab === "languages" && (
+            <>
+              <div style={{ flexShrink: 0, padding: "10px 16px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div>
+                  <h2 style={{ fontSize: 14, fontWeight: 650, color: "var(--text)" }}>Languages</h2>
+                  <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 2 }}>AI-translated versions of this page</p>
+                </div>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => setShowLangPicker(true)}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, padding: "5px 10px" }}
+                >
+                  <Globe style={{ width: 12, height: 12 }} />
+                  Add language
+                </button>
+              </div>
+
+              <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
+                {/* English original row */}
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: "var(--r-sm)", background: previewLang === null ? "var(--accent-bg)" : "var(--surface)", border: "1px solid var(--border)" }}>
+                  <Globe style={{ width: 14, height: 14, color: "var(--accent)", flexShrink: 0 }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>English</span>
+                    <span style={{ fontSize: 10, color: "var(--text-4)", marginLeft: 6 }}>Original</span>
+                  </div>
+                  <button
+                    onClick={() => handlePreviewTranslation(null)}
+                    style={{ fontSize: 10, padding: "2px 8px", borderRadius: "var(--r-sm)", border: "1px solid var(--border)", background: previewLang === null ? "var(--accent)" : "none", color: previewLang === null ? "#fff" : "var(--text-3)", cursor: "pointer" }}
+                  >
+                    Preview
+                  </button>
+                </div>
+
+                {/* Translation rows */}
+                {translations.map((t) => {
+                  const isTranslating = translatingLangs.includes(t.language);
+                  const stale = t.stale;
+                  return (
+                    <div key={t.language} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: "var(--r-sm)", background: previewLang === t.language ? "var(--accent-bg)" : "var(--surface)", border: "1px solid var(--border)" }}>
+                      <Globe style={{ width: 14, height: 14, color: "var(--text-4)", flexShrink: 0 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>{t.languageName}</span>
+                          <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 10, fontWeight: 600,
+                            background: isTranslating ? "var(--warning-bg)" : t.status === "published" ? "var(--success-bg)" : "var(--border-subtle)",
+                            color: isTranslating ? "var(--warning-text)" : t.status === "published" ? "var(--success-text)" : "var(--text-4)",
+                          }}>
+                            {isTranslating ? "Generating\u2026" : stale ? "Stale" : t.status === "published" ? "Published" : "Draft"}
+                          </span>
+                        </div>
+                        <span style={{ fontSize: 10, color: "var(--text-4)" }}>{t.language}</span>
+                      </div>
+                      <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                        {!isTranslating && (
+                          <>
+                            <button
+                              onClick={() => handlePreviewTranslation(previewLang === t.language ? null : t.language)}
+                              title="Preview"
+                              style={{ fontSize: 10, padding: "2px 6px", borderRadius: "var(--r-sm)", border: "1px solid var(--border)", background: previewLang === t.language ? "var(--accent)" : "none", color: previewLang === t.language ? "#fff" : "var(--text-3)", cursor: "pointer" }}
+                            >
+                              <Eye style={{ width: 11, height: 11 }} />
+                            </button>
+                            <button
+                              onClick={() => handlePublishTranslation(t.language, t.status)}
+                              title={t.status === "published" ? "Unpublish" : "Publish"}
+                              style={{ fontSize: 10, padding: "2px 6px", borderRadius: "var(--r-sm)", border: "1px solid var(--border)", background: t.status === "published" ? "var(--success-bg)" : "none", color: t.status === "published" ? "var(--success-text)" : "var(--text-3)", cursor: "pointer" }}
+                            >
+                              {t.status === "published" ? <Check style={{ width: 11, height: 11 }} /> : <ExternalLink style={{ width: 11, height: 11 }} />}
+                            </button>
+                            <button
+                              onClick={() => handleTranslate([t.language])}
+                              title="Regenerate"
+                              style={{ fontSize: 10, padding: "2px 6px", borderRadius: "var(--r-sm)", border: "1px solid var(--border)", background: "none", color: "var(--text-3)", cursor: "pointer" }}
+                            >
+                              <RotateCcw style={{ width: 11, height: 11 }} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteTranslation(t.language)}
+                              title="Delete"
+                              style={{ fontSize: 10, padding: "2px 6px", borderRadius: "var(--r-sm)", border: "none", background: "none", color: "var(--error-text)", cursor: "pointer" }}
+                            >
+                              <Trash2 style={{ width: 11, height: 11 }} />
+                            </button>
+                          </>
+                        )}
+                        {isTranslating && (
+                          <Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite", color: "var(--accent)" }} />
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* In-progress translations (not yet in DB) */}
+                {translatingLangs.filter((l) => !translations.some((t) => t.language === l)).map((lang) => {
+                  const entry = LP_SUPPORTED_LANGUAGES_UI.find((l) => l.language === lang);
+                  return (
+                    <div key={lang} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: "var(--r-sm)", background: "var(--surface)", border: "1px solid var(--border)", opacity: 0.7 }}>
+                      <Globe style={{ width: 14, height: 14, color: "var(--text-4)", flexShrink: 0 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>{entry?.name ?? lang}</span>
+                          <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 10, fontWeight: 600, background: "var(--warning-bg)", color: "var(--warning-text)" }}>Generating\u2026</span>
+                        </div>
+                      </div>
+                      <Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite", color: "var(--accent)" }} />
+                    </div>
+                  );
+                })}
+
+                {!translationsLoaded && (
+                  <div style={{ textAlign: "center", paddingTop: 32 }}>
+                    <Loader2 style={{ width: 20, height: 20, animation: "spin 1s linear infinite", color: "var(--text-4)" }} />
+                  </div>
+                )}
+                {translationsLoaded && translations.length === 0 && translatingLangs.length === 0 && (
+                  <p style={{ fontSize: 12, color: "var(--text-4)", textAlign: "center", paddingTop: 32 }}>
+                    No translations yet.<br />Click &ldquo;Add language&rdquo; to translate this page.
+                  </p>
+                )}
+              </div>
+
+              {/* Language picker modal */}
+              {showLangPicker && (
+                <div style={{ position: "fixed", inset: 0, zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.45)" }} onClick={() => setShowLangPicker(false)}>
+                  <div className="card" style={{ width: "100%", maxWidth: 420, margin: "0 16px" }} onClick={(e) => e.stopPropagation()}>
+                    <div className="card-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <span className="card-title">Select Languages</span>
+                      <button onClick={() => setShowLangPicker(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-4)", padding: 2 }}>
+                        <X style={{ width: 16, height: 16 }} />
+                      </button>
+                    </div>
+                    <div className="card-body">
+                      <p style={{ fontSize: 12, color: "var(--text-4)", marginBottom: 12 }}>Select languages to generate AI translations. Existing translations will be regenerated.</p>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, maxHeight: 280, overflowY: "auto" }}>
+                        {LP_SUPPORTED_LANGUAGES_UI.map((lang) => {
+                          const alreadyExists = translations.some((t) => t.language === lang.language);
+                          const isSelected = selectedLangs.includes(lang.language);
+                          return (
+                            <button
+                              key={lang.language}
+                              onClick={() => setSelectedLangs((prev) => isSelected ? prev.filter((l) => l !== lang.language) : [...prev, lang.language])}
+                              style={{
+                                display: "flex", alignItems: "center", gap: 6, padding: "7px 10px",
+                                borderRadius: "var(--r-sm)", border: "1px solid",
+                                borderColor: isSelected ? "var(--accent)" : "var(--border)",
+                                background: isSelected ? "var(--accent-bg)" : "var(--surface)",
+                                cursor: "pointer", textAlign: "left",
+                              }}
+                            >
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text)" }}>{lang.name}</div>
+                                <div style={{ fontSize: 10, color: "var(--text-4)" }}>{lang.nativeName}</div>
+                              </div>
+                              {alreadyExists && <span style={{ fontSize: 8, color: "var(--text-4)", fontWeight: 600 }}>EXISTS</span>}
+                              {isSelected && <Check style={{ width: 12, height: 12, color: "var(--accent)", flexShrink: 0 }} />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 14 }}>
+                        <button className="btn btn-ghost" onClick={() => { setShowLangPicker(false); setSelectedLangs([]); }}>Cancel</button>
+                        <button
+                          className="btn btn-primary"
+                          onClick={() => handleTranslate(selectedLangs)}
+                          disabled={!selectedLangs.length}
+                          style={{ display: "inline-flex", alignItems: "center", gap: 5 }}
+                        >
+                          <Sparkles style={{ width: 13, height: 13 }} />
+                          Translate {selectedLangs.length > 0 ? `(${selectedLangs.length})` : ""}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
