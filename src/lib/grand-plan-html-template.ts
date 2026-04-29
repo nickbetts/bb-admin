@@ -1009,15 +1009,17 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
           <div class="loc-card"><div class="loc-card-label">Monthly Budget</div><div class="loc-budget">${esc(monthlyBudget)}</div></div>
           ${locationsHtml}
         </div>
-        <div class="neg-section">
-          <div class="neg-section-head">
-            <h4>Negative Keywords</h4>
-            ${consolidatedNegatives.length > 0 ? `<button class="copy-btn" onclick="copyAllNegatives(this)">Copy all negatives</button>` : ""}
-          </div>
+        <details class="neg-section">
+          <summary class="neg-section-head">
+            <h4>Negative Keywords <span class="neg-count-badge">${consolidatedNegatives.length || "none"}</span></h4>
+            ${consolidatedNegatives.length > 0 ? `<button class="copy-btn" onclick="event.stopPropagation();copyAllNegatives(this)">Copy all negatives</button>` : ""}
+          </summary>
+          <div class="neg-section-body">
           <p class="section-intro" style="margin-top:.25rem">Single combined list across the campaign and every ad group. Click "Copy all negatives" to grab them in one go.</p>
           ${negChipsHtml}
           ${reasonedListHtml}
-        </div>
+          </div>
+        </details>
         <div class="ag-heading-row">
           <h3 class="ag-heading">Ad Groups</h3>
           <button class="copy-btn" onclick="copyAllCampaignKws(this)">Copy all valid keywords (every group)</button>
@@ -1029,15 +1031,15 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
           const themesHtml = seeds.map((s, i) => {
             const phrases = (s.phrases ?? []).map((p) => `<span class="seed-chip kw-text">${esc(p)}</span>`).join(" ");
             return `
-              <div class="seed-theme">
-                <div class="seed-theme-head">
+              <details class="seed-theme">
+                <summary class="seed-theme-head">
                   <span class="seed-num">${i + 1}</span>
                   <h4>${esc(s.theme)}</h4>
                   <span class="seed-count">${s.phrases.length} phrases</span>
-                  <button class="copy-btn" onclick="copySeedTheme(this)">Copy theme</button>
-                </div>
+                  <button class="copy-btn" onclick="event.stopPropagation();copySeedTheme(this)">Copy theme</button>
+                </summary>
                 <div class="seed-chip-list">${phrases}</div>
-              </div>`;
+              </details>`;
           }).join("\n");
           return `
         <div class="seed-section">
@@ -1069,21 +1071,21 @@ function renderMetaCampaigns(campaigns: any[], clientWebsite?: string, intro?: s
         .join("\n");
 
       return `
-      <div class="meta-campaign">
-        <div class="meta-campaign-header">
+      <details class="meta-campaign">
+        <summary class="meta-campaign-header">
           <span class="meta-num">${idx + 1}</span>
           <div>
             <h4>${esc(c.campaignName)}${c.isFallback ? ` <span class="char-badge char-warn" style="margin-left:.5rem;vertical-align:middle" title="AI generation didn't return usable Meta campaigns. Placeholder shown — regenerate from the dashboard.">AI fallback</span>` : ""}</h4>
             <p class="meta-obj">${esc(c.objective)} · ${esc(c.budget)} · ${esc(c.placements)}</p>
           </div>
-        </div>
+        </summary>
         <div class="meta-campaign-body">
           <h5>Audience Targeting</h5>
           <div class="audience-list">${audiences}</div>
           ${pillars ? `<h5>Content Pillars</h5><ul class="pillars-list">${pillars}</ul>` : ""}
           ${(c.complianceNotes ?? []).length ? `<div class="compliance-callout"><strong>Platform / compliance notes</strong><ul>${(c.complianceNotes ?? []).map((n: string) => `<li>${esc(n)}</li>`).join("")}</ul></div>` : ""}
         </div>
-      </div>`;
+      </details>`;
     })
     .join("\n");
 
@@ -1266,17 +1268,17 @@ function renderContentStrategy(data: any, intro?: string, audienceRationales?: R
   const card = (entry: Entry, tier: "pillar" | "mega" | "article", typeLabel: string): string => {
     const primary = entry.primaryKeyword ?? entry.keywords?.[0]?.keyword;
     const intent = entry.intent;
-    const summary = entry.summary ?? entry.brief ?? entry.notes;
     const secondary = entry.secondaryKeywords ?? [];
     const longTail = entry.longTailKeywords ?? [];
     const audChips = (entry.targetAudiences ?? []).slice(0, 3)
       .map((n) => `<span class="audience-tag">${esc(n)}</span>`).join(" ");
     return `
-      <div class="cluster-card ${tier}">
-        <div class="cluster-card-head">
+      <details class="cluster-card ${tier}">
+        <summary class="cluster-card-head">
           <span class="cluster-type-pill">${esc(typeLabel)}</span>
           ${intent ? `<span class="cc-intent ${intentClass(intent)}">${esc(intentLabel(intent))}</span>` : ""}
-        </div>
+          <span class="cc-title-summary">${esc(entry.title ?? entry.url ?? "Untitled")}</span>
+        </summary>
         <div class="cluster-card-body">
           <div class="cc-title">${esc(entry.title ?? entry.url ?? "Untitled")}</div>
           ${primary ? `
@@ -1294,10 +1296,9 @@ function renderContentStrategy(data: any, intro?: string, audienceRationales?: R
             <div class="cc-kw-label">Long-tail variants</div>
             <div class="cc-kw-chips">${longTail.slice(0, 8).map((k) => `<span class="kw-pill kw-pill-mute">${esc(k)}</span>`).join(" ")}</div>
           </div>` : ""}
-          ${audChips ? `<div class="cc-audiences">${audChips}</div>` : ""}
-          ${summary ? `<p class="cc-summary">${esc(summary)}</p>` : ""}
+          ${audChips ? `<div class="cc-audiences-block"><div class="cc-audiences-label">Planned audience</div><div class="cc-audiences">${audChips}</div></div>` : ""}
         </div>
-      </div>`;
+      </details>`;
   };
 
   const clusterCards: string[] = [];
@@ -1616,6 +1617,10 @@ function renderSeoFoundations(data: SeoFoundationsData): string {
               ${longTail.length ? `<div class="qw-kw-line"><span class="qw-kw-label qw-kw-longtail">Long-tail</span> ${longTail.map((k) => `<span class="qw-kw-chip qw-kw-chip-lt">${esc(k)}</span>`).join(" ")}</div>` : ""}
             </div>
           </div>` : ""}
+          ${(title || meta || onPage.length || cross.length || faqItems.length || schemaItems.length) ? `
+          <details class="qw-optimisation-details">
+            <summary>Optimisation details</summary>
+            <div class="qw-optimisation-body">
           ${title ? `
           <div class="qw-row">
             <div class="qw-row-label">New title tag</div>
@@ -1652,6 +1657,8 @@ function renderSeoFoundations(data: SeoFoundationsData): string {
             ${schemaItems.length ? `<button type="button" class="qw-action-btn qw-action-schema" data-qw-modal="schema" data-qw-target="${schemaId}"><span class="qw-action-ico">&lt;/&gt;</span>Suggested schema<span class="qw-action-count">${schemaItems.length}</span></button>` : ""}
           </div>
           ${faqDataScript}${schemaDataScript}` : ""}
+            </div>
+          </details>` : ""}
         </div>`;
       }).join("\n")}
     </div>` : "";
@@ -1821,6 +1828,27 @@ function renderContentCalendar(months: any[]): string {
     return `<div class="cal-row ${row.cls}"><div class="cal-row-label"><span class="cal-row-dot"></span>${esc(row.label)}<span class="cal-row-count">${total}</span></div>${cells}</div>`;
   }).filter(Boolean).join("");
 
+  // Month cards view — each month as a card listing all content items
+  const monthCardsHtml = monthBuckets.map((m) => {
+    const allSlots = m.weeks.flat();
+    const blogs = allSlots.filter((s) => s.type === "blog" || s.type === "pillar");
+    const socials = allSlots.filter((s) => s.type !== "blog" && s.type !== "pillar");
+    const blogItems = blogs.map((s) => `<li class="cal-card-item cal-card-blog"><span class="cal-card-dot cal-card-dot-blog"></span><span>${esc(s.topic)}</span>${s.meta ? `<span class="cal-card-meta">${esc(s.meta)}</span>` : ""}</li>`).join("");
+    const socialItems = socials.map((s) => `<li class="cal-card-item cal-card-social"><span class="cal-card-dot cal-card-dot-social"></span><span class="cal-card-type">${esc(s.label)}</span> <span>${esc(s.topic)}</span></li>`).join("");
+    return `
+    <div class="cal-month-card">
+      <div class="cal-month-card-head">
+        <span class="cal-month-name">${esc(m.label)}</span>
+        ${m.focus ? `<span class="cal-month-focus">${esc(m.focus)}</span>` : ""}
+        <span class="cal-month-count">${allSlots.length} piece${allSlots.length === 1 ? "" : "s"}</span>
+      </div>
+      <ul class="cal-month-list">
+        ${blogItems}
+        ${socialItems}
+      </ul>
+    </div>`;
+  }).join("\n");
+
   const monthCount = monthBuckets.length;
   const weekCount = monthCount * 4;
 
@@ -1840,6 +1868,7 @@ function renderContentCalendar(months: any[]): string {
           <div class="cal-view-toggle" role="tablist" aria-label="Calendar view">
             <button type="button" class="cal-view-btn active" data-cal-view="month" role="tab" aria-selected="true">Months</button>
             <button type="button" class="cal-view-btn" data-cal-view="week" role="tab" aria-selected="false">Weeks</button>
+            <button type="button" class="cal-view-btn" data-cal-view="cards" role="tab" aria-selected="false">Cards</button>
           </div>
           ${totals ? `<div class="cal-totals">${esc(totals)}</div>` : ""}
         </div>
@@ -1855,6 +1884,11 @@ function renderContentCalendar(months: any[]): string {
               ${weeklyHeader}
               ${weeklyRows}
             </div>
+          </div>
+        </div>
+        <div class="cal-cards-view" style="display:none">
+          <div class="cal-month-grid">
+            ${monthCardsHtml}
           </div>
         </div>
       </div>
@@ -2162,6 +2196,15 @@ function renderCompetitorIntel(competitors: any[], grounding?: string): string {
         <div class="comp-sw-col"><span class="comp-sw-title comp-strength">Strengths</span><ul>${(c.strengths ?? []).map((s: string) => `<li>${esc(s)}</li>`).join("")}</ul></div>
         <div class="comp-sw-col"><span class="comp-sw-title comp-weakness">Weaknesses</span><ul>${(c.weaknesses ?? []).map((w: string) => `<li>${esc(w)}</li>`).join("")}</ul></div>
       </div>
+      ${(c.opportunities ?? []).length ? `
+      <div class="comp-opportunities">
+        <span class="comp-sw-title comp-opportunity">Opportunities for us</span>
+        <ul>${(c.opportunities as string[]).map((o: string) => `<li>${esc(o)}</li>`).join("")}</ul>
+      </div>` : (c.strengths ?? []).length ? `
+      <div class="comp-opportunities">
+        <span class="comp-sw-title comp-opportunity">Opportunities for us</span>
+        <ul>${(c.strengths as string[]).slice(0, 2).map((s: string) => `<li>They perform well here — we should match and differentiate: <em>${esc(s)}</em></li>`).join("")}</ul>
+      </div>` : ""}
     </div>`)
     .join("\n");
 
@@ -2362,12 +2405,17 @@ a{color:var(--accent);text-decoration:none}
 .ag-neg-section h5{margin:0 0 .5rem;font-size:.85rem;font-weight:700;color:var(--text)}
 @media (max-width:600px){.neg-reason-item{grid-template-columns:1fr}}
 .neg-section{margin-bottom:2rem}
-.neg-section h4{font-size:14px;font-weight:700;color:var(--heading);margin-bottom:10px}
+.neg-section summary{cursor:pointer;list-style:none;user-select:none}
+.neg-section summary::-webkit-details-marker{display:none}
+.neg-section[open]>.neg-section-head{border-bottom:1px solid rgba(255,255,255,.1);padding-bottom:.75rem;margin-bottom:.5rem}
+.neg-section h4{font-size:14px;font-weight:700;color:var(--heading);margin-bottom:0;display:inline}
 .section.dark .neg-section h4{color:#fff}
+.neg-count-badge{display:inline-block;margin-left:.5rem;padding:1px 8px;border-radius:999px;background:rgba(220,38,38,.15);color:#dc2626;font-size:11px;font-weight:700;vertical-align:middle}
+.section.dark .neg-count-badge{background:rgba(220,38,38,.25);color:#fca5a5}
 .neg-chip{display:inline-block;background:rgba(220,38,38,.12);color:#dc2626;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:500;margin:3px 4px 3px 0}
 .section.dark .neg-chip{background:rgba(220,38,38,.2);color:#fca5a5}
-.neg-section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:.25rem}
-.neg-section-head .copy-btn{margin-top:0}
+.neg-section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:.75rem 0 .5rem}
+.neg-section-body{padding-top:.25rem}
 .neg-chip-list{display:flex;flex-wrap:wrap;gap:4px;margin-top:.75rem}
 .neg-reasoned-toggle{margin-top:1rem}
 .neg-reasoned-toggle summary{cursor:pointer;font-size:12.5px;font-weight:600;color:var(--mid);padding:6px 0;user-select:none}
@@ -2388,9 +2436,13 @@ a{color:var(--accent);text-decoration:none}
 .seed-section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:.25rem}
 .seed-section-head h3{font-size:1.1rem;font-weight:700;color:var(--heading);margin:0}
 .section.dark .seed-section-head h3{color:#fff}
-.seed-theme{margin-top:1rem;padding:14px 16px;background:var(--white);border:1px solid var(--border);border-radius:12px}
+.seed-theme{margin-top:1rem;padding:0;background:var(--white);border:1px solid var(--border);border-radius:12px;overflow:hidden}
 .section.dark .seed-theme{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.08)}
-.seed-theme-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:.6rem}
+.seed-theme-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 14px;cursor:pointer;list-style:none;user-select:none}
+.seed-theme-head::-webkit-details-marker{display:none}
+.seed-theme[open]>.seed-theme-head{border-bottom:1px solid var(--border);margin-bottom:0}
+.section.dark .seed-theme[open]>.seed-theme-head{border-bottom-color:rgba(255,255,255,.1)}
+.seed-theme>.seed-chip-list{padding:10px 14px 14px}
 .seed-theme-head h4{flex:1;margin:0;font-size:14px;font-weight:600;color:var(--heading)}
 .section.dark .seed-theme-head h4{color:#fff}
 .seed-num{width:24px;height:24px;border-radius:6px;background:var(--accent,#6366f1);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
@@ -2441,7 +2493,9 @@ a{color:var(--accent);text-decoration:none}
 .kw-meta{font-size:11px;color:var(--mid)}
 /* Meta campaigns */
 .meta-campaign{border:1px solid var(--border);border-radius:14px;margin-bottom:1.25rem;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.04)}
-.meta-campaign-header{display:flex;align-items:center;gap:12px;padding:1.25rem 1.5rem;background:linear-gradient(135deg,#1877f2,#0f4c95);color:#fff}
+.meta-campaign-header{display:flex;align-items:center;gap:12px;padding:1.25rem 1.5rem;background:linear-gradient(135deg,#1877f2,#0f4c95);color:#fff;cursor:pointer;list-style:none;user-select:none}
+.meta-campaign-header::-webkit-details-marker{display:none}
+.meta-campaign[open]>.meta-campaign-header{border-radius:14px 14px 0 0}
 .meta-num{width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
 .meta-campaign-header h4{font-size:1rem;font-weight:700;margin:0;color:#fff}
 .meta-obj{font-size:12px;opacity:.8;margin-top:2px}
@@ -2532,6 +2586,14 @@ a{color:var(--accent);text-decoration:none}
 .qw-cross-url{font-family:'SF Mono','Fira Code','Courier New',monospace;font-size:11.5px;color:var(--accent);text-decoration:none;word-break:break-all}
 .qw-cross-url:hover{text-decoration:underline}
 .qw-cross-why{flex-basis:100%;font-size:11.5px;color:var(--text-light);font-style:italic;margin-top:2px}
+/* SEO Quick Win optimisation details toggle */
+.qw-optimisation-details{margin-top:.75rem;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.qw-optimisation-details>summary{cursor:pointer;list-style:none;user-select:none;padding:.5rem .75rem;font-size:12.5px;font-weight:600;color:var(--text-light);background:#f8fafc;display:flex;align-items:center;gap:.4rem}
+.qw-optimisation-details>summary::-webkit-details-marker{display:none}
+.qw-optimisation-details>summary::before{content:"▸";font-size:10px;color:var(--mid);transition:transform .15s ease}
+.qw-optimisation-details[open]>summary::before{content:"▾"}
+.qw-optimisation-details[open]>summary{border-bottom:1px solid var(--border)}
+.qw-optimisation-body{padding:.75rem}
 .qw-actions{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.75rem;padding-top:.75rem;border-top:1px dashed var(--border)}
 .qw-action-btn{display:inline-flex;align-items:center;gap:.4rem;padding:6px 12px;border:1px solid var(--border);background:#fff;border-radius:6px;font-size:12.5px;font-weight:600;color:var(--heading);cursor:pointer;transition:all .15s ease;font-family:inherit}
 .qw-action-btn:hover{border-color:#3b82f6;color:#1e40af;background:#eff6ff}
@@ -2627,16 +2689,20 @@ a{color:var(--accent);text-decoration:none}
 .cluster-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.25rem;margin-bottom:1.5rem}
 @media (max-width:900px){.cluster-grid{grid-template-columns:1fr 1fr}}
 @media (max-width:600px){.cluster-grid{grid-template-columns:1fr}}
-.cluster-card{border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--white);box-shadow:0 2px 12px rgba(0,0,0,.03);display:flex;flex-direction:column}
-.cluster-card-head{padding:.7rem 1rem;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;display:flex;align-items:center;gap:8px}
-.cluster-card-body{padding:1rem 1.1rem 1.15rem;display:flex;flex-direction:column;flex:1}
+.cluster-card{border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--white);box-shadow:0 2px 12px rgba(0,0,0,.03)}
+.cluster-card-head{padding:.7rem 1rem;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;display:flex;align-items:center;gap:8px;cursor:pointer;list-style:none;user-select:none}
+.cluster-card-head::-webkit-details-marker{display:none}
+.cluster-card-body{padding:1rem 1.1rem 1.15rem;display:flex;flex-direction:column}
 .cluster-type-pill{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:2px 8px;border-radius:10px}
+.cc-title-summary{font-size:12px;font-weight:600;color:inherit;opacity:.9;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cluster-card.pillar .cluster-card-head{background:#0f172a;color:#fff}
 .cluster-card.pillar .cluster-type-pill{background:rgba(255,255,255,.15);color:#fff}
 .cluster-card.mega .cluster-card-head{background:#1e293b;color:#cbd5e1}
 .cluster-card.mega .cluster-type-pill{background:rgba(255,255,255,.1);color:#cbd5e1}
 .cluster-card.article .cluster-card-head{background:var(--bg);color:var(--heading);border-bottom:1px solid var(--border)}
 .cluster-card.article .cluster-type-pill{background:var(--border);color:var(--text-light)}
+.cluster-card[open]>.cluster-card-head{border-bottom:1px solid rgba(255,255,255,.08)}
+.cluster-card.article[open]>.cluster-card-head{border-bottom-color:var(--border)}
 .cc-title{font-size:14px;font-weight:700;color:var(--heading);margin-bottom:.35rem;line-height:1.35}
 .cc-kw{font-size:12px;color:var(--text-light);margin-bottom:.45rem;font-family:'SF Mono','Fira Code','Courier New',monospace}
 .cc-intent{font-size:11px;padding:1px 8px;border-radius:10px;display:inline-block;margin-bottom:.55rem;font-weight:600}
@@ -2651,6 +2717,8 @@ a{color:var(--accent);text-decoration:none}
 .cc-kw-chips{display:flex;flex-wrap:wrap;gap:4px}
 .kw-pill{font-size:11px;padding:2px 8px;border-radius:10px;background:#eef2ff;color:#3730a3;font-weight:500}
 .kw-pill-mute{background:#f1f5f9;color:#475569;font-weight:400}
+.cc-audiences-block{margin:.55rem 0 0}
+.cc-audiences-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--mid);font-weight:700;margin-bottom:.3rem;display:block}
 .cc-summary{font-size:13px;color:var(--text);line-height:1.55;margin:.55rem 0 0;padding:10px 12px;background:#f8fafc;border-left:3px solid var(--accent);border-radius:4px}
 .cc-brief{font-size:13px;color:var(--text);line-height:1.55;margin:0;padding:10px 12px;background:#f8fafc;border-left:3px solid var(--accent);border-radius:4px}
 .cc-brief p{margin:0 0 .55rem;font-size:13px;color:var(--text);line-height:1.55}
@@ -2774,6 +2842,22 @@ a{color:var(--accent);text-decoration:none}
 .cal-pill-story{background:#16a34a}
 .cal-pill-more{background:var(--mid);color:#fff}
 @media (max-width:640px){.cal-grid-month{grid-template-columns:110px repeat(var(--col-count),minmax(90px,1fr))}.cal-grid-week{grid-template-columns:110px repeat(var(--col-count-week),minmax(56px,1fr))}.cal-row-label,.cal-th-corner{padding:8px 10px}}
+/* Calendar cards view */
+.cal-cards-view{margin-top:1rem}
+.cal-month-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem}
+.cal-month-card{border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--white);box-shadow:0 2px 8px rgba(0,0,0,.04)}
+.cal-month-card-head{display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.75rem 1rem;background:var(--ink);color:#fff;flex-wrap:wrap}
+.cal-month-name{font-size:14px;font-weight:700}
+.cal-month-focus{font-size:11px;color:rgba(255,255,255,.65);flex:1;text-align:center}
+.cal-month-count{font-size:11px;font-weight:600;background:rgba(255,255,255,.15);padding:2px 8px;border-radius:999px}
+.cal-month-list{list-style:none;margin:0;padding:.5rem .75rem .75rem;display:flex;flex-direction:column;gap:.3rem}
+.cal-card-item{display:flex;align-items:flex-start;gap:.5rem;font-size:12.5px;color:var(--text);padding:.25rem 0;border-bottom:1px solid var(--border)}
+.cal-card-item:last-child{border-bottom:none}
+.cal-card-dot{width:7px;height:7px;border-radius:50%;margin-top:.35rem;flex-shrink:0}
+.cal-card-dot-blog{background:#1e40af}
+.cal-card-dot-social{background:#0891b2}
+.cal-card-type{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--mid);flex-shrink:0}
+.cal-card-meta{font-size:11px;color:var(--mid);margin-left:.25rem}
 /* Organic social */
 .social-freq{background:var(--bg);padding:1rem 1.25rem;border-radius:10px;font-size:14px;margin-bottom:1.5rem;border:1px solid var(--border)}
 .mix-chart{display:flex;flex-direction:column;gap:10px;margin-bottom:2rem}
@@ -3005,6 +3089,9 @@ a{color:var(--accent);text-decoration:none}
 .comp-sw-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:6px}
 .comp-strength{color:#065f46}
 .comp-weakness{color:#dc2626}
+.comp-opportunities{margin-top:10px;padding:10px 12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px}
+.comp-opportunities ul{margin:0;padding-left:1rem;font-size:12px;color:#1e40af;line-height:1.55}
+.comp-opportunity{color:#1d4ed8}
 .comp-source-badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;text-transform:uppercase;letter-spacing:.04em;margin-left:8px;vertical-align:middle}
 .comp-source-manual{background:#dbeafe;color:#1e40af}
 .comp-source-auto{background:#dcfce7;color:#166534}
@@ -3288,9 +3375,15 @@ a{color:var(--accent);text-decoration:none}
 .brain-channels li{margin-bottom:.4rem}
 .brain-meta{color:#64748b;font-size:12px}
 .brain-audiences h4{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#475569;margin:0 0 .75rem}
+.brain-geos-cell{background:#f8f7ff;border-color:#c7d2fe}
 .brain-audience-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.75rem}
-.brain-audience{padding:.85rem 1rem;background:#fff;border:1px solid #e2e8f0;border-radius:10px;border-left:3px solid #6366f1}
-.brain-audience-name{font-size:13px;font-weight:700;color:#0f172a;margin-bottom:.4rem}
+.brain-audience{padding:0;background:#fff;border:1px solid #e2e8f0;border-radius:10px;border-left:3px solid #6366f1}
+.brain-audience[open]>.brain-audience-summary{border-radius:8px 8px 0 0}
+.brain-audience-summary{display:flex;flex-direction:column;gap:.25rem;padding:.85rem 1rem;cursor:pointer;list-style:none;border-radius:8px}
+.brain-audience-summary::-webkit-details-marker{display:none}
+.brain-audience-name{font-size:13px;font-weight:700;color:#0f172a}
+.brain-audience-insight{font-size:12px;color:#475569;line-height:1.4}
+.brain-audience-detail{padding:.5rem 1rem .85rem;border-top:1px solid #e2e8f0}
 .brain-audience-line{font-size:12px;color:#475569;line-height:1.5;margin-bottom:.2rem}
 @media(max-width:760px){.brain-grid{grid-template-columns:1fr}.brain-cell-wide{grid-column:span 1}.brain-summary{padding:1rem 1.25rem}.brain-inner{padding:1.25rem}}
 
@@ -3411,15 +3504,18 @@ const JS = `
   });
 })();
 
-// Content calendar Gantt — month/week view toggle
+// Content calendar Gantt — month/week/cards view toggle
 document.addEventListener('click', function(e){
   var t=e.target;
   if(!t||!t.classList||!t.classList.contains('cal-view-btn'))return;
   var view=t.getAttribute('data-cal-view');
   if(!view)return;
-  var gantt=t.closest('.section').querySelector('.cal-gantt');
-  if(!gantt)return;
-  gantt.setAttribute('data-cal-view',view);
+  var section=t.closest('.section');
+  var gantt=section&&section.querySelector('.cal-gantt');
+  var cardsView=section&&section.querySelector('.cal-cards-view');
+  if(gantt)gantt.style.display=(view==='cards')?'none':'';
+  if(cardsView)cardsView.style.display=(view==='cards')?'':'none';
+  if(gantt&&view!=='cards')gantt.setAttribute('data-cal-view',view);
   t.parentElement.querySelectorAll('.cal-view-btn').forEach(function(b){
     var active=b.getAttribute('data-cal-view')===view;
     b.classList.toggle('active',active);
@@ -3807,13 +3903,17 @@ function renderStrategyBrainPanel(brain: StrategyBrain | undefined, _isPublicVie
   if (!brain || !brain.positioning?.statement) return "";
   void _isPublicView; // brain is now public-friendly and rendered in both views
   const audiences = (brain.audiences ?? []).slice(0, 6).map((a) => `
-    <div class="brain-audience">
-      <div class="brain-audience-name">${esc(a.name)}</div>
-      <div class="brain-audience-line"><strong>Insight:</strong> ${esc(a.coreInsight)}</div>
-      <div class="brain-audience-line"><strong>Lead pain:</strong> ${esc(a.primaryPain)}</div>
-      <div class="brain-audience-line"><strong>Trigger:</strong> ${esc(a.decisionTrigger)}</div>
-      ${a.channels?.length ? `<div class="brain-audience-line"><strong>Channels:</strong> ${a.channels.map(esc).join(", ")}</div>` : ""}
-    </div>`).join("");
+    <details class="brain-audience">
+      <summary class="brain-audience-summary">
+        <span class="brain-audience-name">${esc(a.name)}</span>
+        <span class="brain-audience-insight">${esc(a.coreInsight)}</span>
+      </summary>
+      <div class="brain-audience-detail">
+        <div class="brain-audience-line"><strong>Lead pain:</strong> ${esc(a.primaryPain)}</div>
+        <div class="brain-audience-line"><strong>Trigger:</strong> ${esc(a.decisionTrigger)}</div>
+        ${a.channels?.length ? `<div class="brain-audience-line"><strong>Channels:</strong> ${a.channels.map(esc).join(", ")}</div>` : ""}
+      </div>
+    </details>`).join("");
 
   const channels = (brain.channelStrategy ?? []).map((c) => `
     <li><strong>${esc(c.channel)}:</strong> ${esc(c.role)} <span class="brain-meta">(audience: ${esc(c.primaryAudience)} · success: ${esc(c.successMetric)})</span></li>`).join("");
@@ -3835,11 +3935,6 @@ function renderStrategyBrainPanel(brain: StrategyBrain | undefined, _isPublicVie
         <p class="brain-headline-statement">${esc(brain.positioning.statement)}</p>
         ${brain.positioning.proofPoints?.length ? `<ul class="brain-proof">${brain.positioning.proofPoints.map((p) => `<li>${esc(p)}</li>`).join("")}</ul>` : ""}
       </div>
-      ${geos ? `
-      <div class="brain-geos">
-        <h4>Markets we are targeting</h4>
-        <div class="brain-geo-chips">${geos}</div>
-      </div>` : ""}
       <div class="brain-grid">
         <div class="brain-cell">
           <h4>Market context</h4>
@@ -3858,6 +3953,11 @@ function renderStrategyBrainPanel(brain: StrategyBrain | undefined, _isPublicVie
           <p class="brain-primary-msg">${esc(brain.messageHierarchy?.primary ?? "")}</p>
           ${supporting ? `<p><strong>Supporting:</strong></p><ul>${supporting}</ul>` : ""}
         </div>
+        ${geos ? `
+        <div class="brain-cell brain-geos-cell">
+          <h4>Markets we are targeting</h4>
+          <div class="brain-geo-chips">${geos}</div>
+        </div>` : ""}
         <div class="brain-cell brain-cell-wide">
           <h4>Channel strategy</h4>
           <ul class="brain-channels">${channels}</ul>

@@ -333,6 +333,8 @@ interface CompetitorInsight {
   topKeywords: string[];
   strengths: string[];
   weaknesses: string[];
+  /** Areas where this competitor performs well that represent opportunities for the client to address. */
+  opportunities?: string[];
   /** SEMrush common-keyword overlap with the client domain (0 = no overlap detected). */
   commonKeywords?: number;
   /** How this competitor came into the analysis. */
@@ -3437,13 +3439,14 @@ async function generateCompetitorIntel(anthropic: Anthropic, context: string, so
       messages: [
         {
           role: "user",
-          content: `You are a competitive intelligence analyst at i3media. The competitor list below is a mix of (a) competitors named on the brief by ${sources.clientName} (source: manual), (b) competitors auto-detected from SEMrush keyword overlap (source: auto), and (c) where no SEMrush data was available, scraped homepage signals (h1, headings, CTAs). Your job is ONLY to add the strengths and weaknesses commentary plus topKeywords (where missing). Do NOT change the numeric fields.
+          content: `You are a competitive intelligence analyst at i3media. The competitor list below is a mix of (a) competitors named on the brief by ${sources.clientName} (source: manual), (b) competitors auto-detected from SEMrush keyword overlap (source: auto), and (c) where no SEMrush data was available, scraped homepage signals (h1, headings, CTAs). Your job is ONLY to add the strengths, weaknesses, and opportunities commentary plus topKeywords (where missing). Do NOT change the numeric fields.
 
 Return a JSON object with key "competitors" containing one entry per competitor below, in the same order. Each entry:
 - domain: string (must match exactly)
 - topKeywords: string[] (5-8 keywords; pull from SEMrush data when present, otherwise infer from page headings/CTAs)
 - strengths: string[] (2-3 specific competitive strengths; reference the SEMrush numbers OR scraped messaging)
 - weaknesses: string[] (2-3 weaknesses grounded ONLY in observable evidence: SEMrush keyword/traffic gaps, or messaging gaps visible on the scraped homepage such as thin CTAs, missing service areas, no pricing transparency, or weak social proof, or specific customer complaints supplied below. NEVER invent weaknesses from "category norms" or generic sector assumptions — every entry must be traceable to something concrete about THIS competitor. If real data is absent for a competitor, return a single entry: "Insufficient public data — recommend manual research (Trustpilot, Companies House, LinkedIn) before acting on this profile.")
+- opportunities: string[] (2-3 specific areas where this competitor performs well that ${sources.clientName} should also address — i.e. things competitors are doing well that represent real market demand. Each entry must be actionable: e.g. "They rank for X — we should target this intent too" or "Their Y is strong — match and differentiate on Z")
 
 Competitor data:
 ${competitorBlock}${complaintBlock}
@@ -3455,7 +3458,7 @@ Rules: British English, no AI jargon, no fluff. Each strength/weakness must refe
         },
       ],
     }));
-    const parsed = safeJsonParse<{ competitors?: { domain?: string; topKeywords?: string[]; strengths?: string[]; weaknesses?: string[] }[] }>(extractText(res), { competitors: [] });
+    const parsed = safeJsonParse<{ competitors?: { domain?: string; topKeywords?: string[]; strengths?: string[]; weaknesses?: string[]; opportunities?: string[] }[] }>(extractText(res), { competitors: [] });
     const enriched = parsed.competitors ?? [];
     const value: CompetitorInsight[] = merged.map((m) => {
       const match = enriched.find((e) => e.domain && norm(e.domain) === norm(m.domain));
@@ -3470,6 +3473,7 @@ Rules: British English, no AI jargon, no fluff. Each strength/weakness must refe
           : (m.semrush?.topKeywords?.slice(0, 8) ?? []),
         strengths: Array.isArray(match?.strengths) ? match!.strengths : [],
         weaknesses: Array.isArray(match?.weaknesses) ? match!.weaknesses : [],
+        opportunities: Array.isArray(match?.opportunities) ? match!.opportunities : [],
         commonKeywords: m.commonKeywords,
         source: m.source,
         pageContext: m.pageContext
@@ -3507,13 +3511,14 @@ Return a JSON object with key "competitors" containing an array of 4-6 competito
 - topKeywords: string[] (5-8 keywords they rank well for)
 - strengths: string[] (2-3 competitive strengths)
 - weaknesses: string[] (2-3 areas where the client could beat them)
+- opportunities: string[] (2-3 areas where this competitor performs well that the client should also address — things competitors are doing well that represent real market demand, each actionable)
 
 IMPORTANT: All numeric estimates here are AI approximations, NOT verified third-party data. Be conservative — do not claim precision you do not have. The client will see a disclaimer to that effect.
 
 Rules:
 - Identify REAL competitors in this sector and geography (UK market)
 - If you genuinely do not know likely competitors, return fewer entries rather than fabricating
-- Strengths and weaknesses should be actionable — things the client can actually exploit
+- Strengths, weaknesses, and opportunities should be actionable — things the client can actually exploit
 - British English, no AI jargon
 - Return ONLY valid JSON, no markdown fences
 
