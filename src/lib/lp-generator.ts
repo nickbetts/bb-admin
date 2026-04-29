@@ -1527,58 +1527,6 @@ ${sectionsBody}
 
 // ── Reusable audit pass helper ─────────────────────────────────────────────────
 
-/**
- * Run an audit function, extract actionable fixes, apply one refinement pass,
- * and return the updated HTML. Silently returns the input HTML on any failure
- * so later passes still run.
- */
-async function runAuditPass(opts: {
-  html: string;
-  auditLabel: string;
-  promptIntro: string;
-  auditFn: () => Promise<LPCritiqueItem[]>;
-  brandContext: BrandContext;
-  maxFixes?: number;
-  onProgress?: (msg: string) => Promise<void> | void;
-}): Promise<string> {
-  const { html, auditLabel, promptIntro, auditFn, brandContext, maxFixes = 5, onProgress } = opts;
-  try {
-    if (onProgress) await onProgress(`Running ${auditLabel} audit...`);
-    const issues = await auditFn();
-
-    const severityRank = { high: 0, medium: 1, low: 2 } as const;
-    const actionable = issues
-      .filter((c) => c.severity === "high" || c.severity === "medium")
-      .sort((a, b) => severityRank[a.severity] - severityRank[b.severity])
-      .slice(0, maxFixes);
-
-    if (actionable.length === 0) {
-      console.log(`[lp-generator] ${auditLabel} audit: no high/medium issues found, skipping refinement.`);
-      return html;
-    }
-
-    console.log(
-      `[lp-generator] ${auditLabel} audit: ${issues.length} issues found, applying ${actionable.length} fixes — ` +
-        actionable.map((c) => `[${c.severity}] ${c.area}`).join(", "),
-    );
-
-    if (onProgress) await onProgress(`Applying ${actionable.length} ${auditLabel} improvements...`);
-
-    const instructions = actionable
-      .map((item, idx) => `${idx + 1}. [${item.area}] ${item.fix}`)
-      .join("\n");
-
-    return await refineLandingPage({
-      currentHtml: html,
-      brandContext,
-      prompt: `${promptIntro}\n\n${instructions}`,
-    });
-  } catch (err) {
-    console.warn(`[lp-generator] ${auditLabel} audit pass failed (keeping previous version):`, err);
-    return html;
-  }
-}
-
 // ── Section-by-section orchestrator ──────────────────────────────────────────
 
 /**
@@ -1651,79 +1599,109 @@ export async function generateLandingPageSectionBySection(
 
   // Phase 3 — Assemble
   if (onProgress) await onProgress("Assembling final page...");
-  let html = assemblePageFromSections(plan, sectionHtmls);
+  const html = assemblePageFromSections(plan, sectionHtmls);
 
-  // Phases 4-6: three sequential audit-and-refine passes. Each uses its own
-  // 32K-token refinement budget and sees the already-improved page from the
-  // prior pass. auditFn closures reference `html` by variable so they
-  // automatically audit the latest version when called inside runAuditPass.
+  // Audit phases (CRO, Design, Copy) are intentionally NOT run here.
+  // They execute in a separate Vercel function invocation via the
+  // /api/tools/landing-pages/[id]/audit route so that generation and
+  // auditing each stay well within the 300 s function timeout.
+  return html;
+}
 
-  // Phase 4 — CRO audit (conversion rate optimisation)
-  html = await runAuditPass({
-    html,
-    auditLabel: "CRO",
-    promptIntro: "Apply the following targeted CRO improvements. Each is a small, specific change — do not rewrite anything not mentioned.",
-    auditFn: () => critiqueLandingPage({
-      html,
-      brief: genOpts.brief,
-      campaignType: genOpts.campaignType,
-      brandContext: genOpts.brandContext,
-      targetAudience: genOpts.targetAudience,
-    }),
-    brandContext: genOpts.brandContext,
-    maxFixes: 5,
-    onProgress,
-  });
+// ── Audit-and-refine pass (separate Vercel job) ───────────────────────────────
 
-  // Phase 5 — UI/design, sector relevance, and image usage audit
-  // Puppeteer renders the current HTML in a real browser and captures a
-  // JPEG screenshot (up to 5 000px tall). Claude receives this as its first
-  // vision block so it can see what the page actually looks like, not just
-  // the raw HTML. Falls back to image-block-only if screenshot fails.
-  if (onProgress) await onProgress("Taking page screenshot for visual audit...");
-  const pageScreenshot = await screenshotHtml(html);
+export interface AuditAndRefineOptions {
+  html: string;
+  brief: string;
+  campaignType: string;
+  brandContext: BrandContext;
+  targetAudience?: string;
+  uploadedImageUrls?: string[];
+  onProgress?: (msg: string) => Promise<void> | void;
+}
+
+/**
+ * Run the three quality audits (CRO, Design & Sector, Copy) and apply all
+ * high/medium findings in a single combined refinement call.
+ *
+ * Designed to execute as a separate Vercel function invocation so generation
+ * and auditing each stay well within the 300 s timeout:
+ *   - CRO audit + Copy audit + Puppeteer screenshot fire in parallel (~15 s)
+ *   - Design & Sector audit runs next (needs the screenshot) (~15 s)
+ *   - One combined refinement applies every fix (~60-90 s)
+ *   Total: ~90-120 s
+ */
+export async function auditAndRefineLandingPage(opts: AuditAndRefineOptions): Promise<string> {
+  const { html: inputHtml, brief, campaignType, brandContext, targetAudience, uploadedImageUrls, onProgress } = opts;
+
+  // Step 1 — CRO audit + Copy audit + screenshot in parallel
+  if (onProgress) await onProgress("Running quality audits...");
+  const [croIssues, copyIssues, pageScreenshot] = await Promise.all([
+    critiqueLandingPage({ html: inputHtml, brief, campaignType, brandContext, targetAudience })
+      .catch((err) => { console.warn("[lp-generator] CRO audit failed:", err); return [] as LPCritiqueItem[]; }),
+    auditCopyQuality({ html: inputHtml, brief, campaignType, brandContext, targetAudience })
+      .catch((err) => { console.warn("[lp-generator] Copy audit failed:", err); return [] as LPCritiqueItem[]; }),
+    screenshotHtml(inputHtml).catch(() => null),
+  ]);
+
   if (pageScreenshot) {
     console.log(`[lp-generator] Page screenshot captured (${(pageScreenshot.length / 1024).toFixed(0)} KB)`);
   } else {
     console.warn("[lp-generator] Page screenshot failed — design audit will run without rendered preview.");
   }
 
-  html = await runAuditPass({
-    html,
-    auditLabel: "Design & Sector",
-    promptIntro: "Apply the following targeted UI, sector-relevance, and image-usage improvements. Where an image is flagged as missing, add it to the HTML using the exact URL provided. Make the design feel native to the specific sector — update CSS, layout, visual treatments, and styling as instructed. Do not change copy unless explicitly told to.",
-    auditFn: () => auditDesignAndSector({
-      html,
-      brief: genOpts.brief,
-      campaignType: genOpts.campaignType,
-      brandContext: genOpts.brandContext,
-      targetAudience: genOpts.targetAudience,
-      uploadedImageUrls: genOpts.uploadedImageUrls,
-      pageScreenshot,
-    }),
-    brandContext: genOpts.brandContext,
-    maxFixes: 5,
-    onProgress,
-  });
+  // Step 2 — Design & Sector audit (sequential so it receives the screenshot)
+  if (onProgress) await onProgress("Running design and sector audit...");
+  const designIssues = await auditDesignAndSector({
+    html: inputHtml,
+    brief,
+    campaignType,
+    brandContext,
+    targetAudience,
+    uploadedImageUrls,
+    pageScreenshot,
+  }).catch((err) => { console.warn("[lp-generator] Design audit failed:", err); return [] as LPCritiqueItem[]; });
 
-  // Phase 6 — Copy quality audit
-  html = await runAuditPass({
-    html,
-    auditLabel: "Copy",
-    promptIntro: "Apply the following targeted copy improvements. Update headlines, CTAs, benefit statements, and body copy as instructed. Do not change design or layout unless explicitly told to.",
-    auditFn: () => auditCopyQuality({
-      html,
-      brief: genOpts.brief,
-      campaignType: genOpts.campaignType,
-      brandContext: genOpts.brandContext,
-      targetAudience: genOpts.targetAudience,
-    }),
-    brandContext: genOpts.brandContext,
-    maxFixes: 5,
-    onProgress,
-  });
+  // Step 3 — Single combined refinement: apply ALL high/medium issues
+  const severityRank = { high: 0, medium: 1, low: 2 } as const;
+  const allIssues: (LPCritiqueItem & { auditLabel: string })[] = [
+    ...croIssues.map((i) => ({ ...i, auditLabel: "CRO" })),
+    ...designIssues.map((i) => ({ ...i, auditLabel: "Design" })),
+    ...copyIssues.map((i) => ({ ...i, auditLabel: "Copy" })),
+  ];
+  const actionable = allIssues
+    .filter((i) => i.severity === "high" || i.severity === "medium")
+    .sort((a, b) => severityRank[a.severity] - severityRank[b.severity]);
 
-  return html;
+  if (actionable.length === 0) {
+    console.log("[lp-generator] Combined audit: no high/medium issues found, skipping refinement.");
+    return inputHtml;
+  }
+
+  console.log(
+    `[lp-generator] Combined audit: ${allIssues.length} issues found, applying all ${actionable.length} fixes — ` +
+      actionable.map((i) => `[${i.severity}/${i.auditLabel}] ${i.area}`).join(", "),
+  );
+  if (onProgress) await onProgress(`Applying ${actionable.length} improvements...`);
+
+  const instructions = actionable
+    .map((item, idx) => `${idx + 1}. [${item.auditLabel} – ${item.area}] ${item.fix}`)
+    .join("\n");
+
+  try {
+    return await refineLandingPage({
+      currentHtml: inputHtml,
+      brandContext,
+      prompt:
+        "Apply all of the following targeted improvements to the landing page. " +
+        "These cover CRO, design, and copy quality. " +
+        "Each is a specific change — do not rewrite anything not mentioned.\n\n" +
+        instructions,
+    });
+  } catch (err) {
+    console.warn("[lp-generator] Combined refinement pass failed (keeping assembled version):", err);
+    return inputHtml;
+  }
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────

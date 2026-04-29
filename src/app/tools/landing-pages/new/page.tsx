@@ -262,7 +262,33 @@ export default function NewLandingPage() {
         }
       }
 
+      // ── Job 2: audit-and-refine (separate Vercel function invocation) ──
+      // Generation saved the assembled page. Now call the audit route which
+      // runs CRO/Design/Copy classifiers and applies all fixes in one pass.
       if (landingPageId) {
+        const auditRes = await fetch(`/api/tools/landing-pages/${landingPageId}/audit`, { method: "POST" });
+        if (auditRes.ok && auditRes.body) {
+          const auditReader = auditRes.body.getReader();
+          const auditDecoder = new TextDecoder();
+          let auditBuf = "";
+          while (true) {
+            const { done, value } = await auditReader.read();
+            if (done) break;
+            auditBuf += auditDecoder.decode(value, { stream: true });
+            const lines = auditBuf.split("\n");
+            auditBuf = lines.pop() ?? "";
+            for (const line of lines) {
+              if (!line.trim()) continue;
+              try {
+                const event = JSON.parse(line) as { type: string; message?: string };
+                if (event.type === "progress" && event.message) {
+                  setProgressMessages((prev) => [...prev, event.message!]);
+                }
+                // "error" from audit is non-fatal — page was already saved
+              } catch { /* skip malformed */ }
+            }
+          }
+        }
         router.push(`/tools/landing-pages/${landingPageId}`);
       } else {
         setError("Generation completed but no page ID was returned.");
@@ -282,6 +308,7 @@ export default function NewLandingPage() {
         funMode={funMode}
         messages={progressMessages}
         title={title}
+        onChaosToggle={() => setFunMode((v) => !v)}
       />
     )}
 
@@ -636,8 +663,6 @@ export default function NewLandingPage() {
 
     {/* Chaos overlay */}
     <LpChaosOverlay active={funMode && loading} />
-    {/* Sticky chaos side button */}
-    <ChaosSideButton enabled={funMode} onToggle={() => setFunMode((v) => !v)} generating={loading} />
   </>
   );
 }
@@ -664,17 +689,73 @@ function getPhaseInfo(msg: string): { icon: string; label: string } {
   return { icon: "⚙️", label: msg };
 }
 
+const CHAOS_PASSIVE_TAUNTS = [
+  "go on. click me. i dare you.",
+  "you know you want to click me 👀",
+  "i'm right here... just saying...",
+  "one click. that's all it takes.",
+  "normal mode is so boring tho",
+  "*stares at you expectantly*",
+  "what's the worst that could happen? 😈",
+  "click me coward",
+  "i've been waiting for you...",
+  "your landing page deserves chaos",
+  "chaos = creativity, trust me bro",
+  "the button is lonely 🥺",
+  "this offer expires never but still",
+  "all the cool kids have chaos ON",
+  "i'm not NOT saying click me",
+  "*taps foot impatiently*",
+  "do it. DO IT.",
+  "scared? 😏",
+];
+
+const CHAOS_ON_PASSIVE_TAUNTS = [
+  "CHAOS MODE ACTIVE. YOU DID THIS. 🔥",
+  "there's no going back now 😈",
+  "oh you actually clicked it lmao",
+  "IT'S ALIVE. IT'S ALIVE!!!",
+  "maximum chaos achieved ✨",
+];
+
 function LpGeneratingScreen({
   funMode,
   messages,
   title,
+  onChaosToggle,
 }: {
   funMode: boolean;
   messages: string[];
   title: string;
+  onChaosToggle: () => void;
 }) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [elapsed, setElapsed] = useState(0);
+  const [passiveTaunt, setPassiveTaunt] = useState<string | null>(null);
+  const passiveTauntRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const passiveHideRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Passive taunts that pop above the chaos button when not generating
+  useEffect(() => {
+    function scheduleNext() {
+      const delay = funMode ? 3500 + Math.random() * 3000 : 5000 + Math.random() * 8000;
+      passiveTauntRef.current = setTimeout(() => {
+        const pool = funMode ? CHAOS_ON_PASSIVE_TAUNTS : CHAOS_PASSIVE_TAUNTS;
+        setPassiveTaunt(pool[Math.floor(Math.random() * pool.length)]);
+        passiveHideRef.current = setTimeout(() => {
+          setPassiveTaunt(null);
+          scheduleNext();
+        }, 3500);
+      }, delay);
+    }
+    const initId = setTimeout(scheduleNext, 3000);
+    return () => {
+      clearTimeout(initId);
+      if (passiveTauntRef.current) clearTimeout(passiveTauntRef.current);
+      if (passiveHideRef.current) clearTimeout(passiveHideRef.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [funMode]);
 
   useEffect(() => {
     const start = Date.now();
@@ -713,6 +794,72 @@ function LpGeneratingScreen({
         padding: "24px 16px",
       }}
     >
+      {/* ── Chaos toggle button — top centre ── */}
+      <div
+        style={{
+          position: "absolute",
+          top: 20,
+          left: "50%",
+          transform: "translateX(-50%)",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 8,
+          zIndex: 8100,
+        }}
+      >
+        {passiveTaunt && (
+          <div
+            style={{
+              background: funMode ? "rgba(239,68,68,0.95)" : "rgba(30,30,40,0.92)",
+              color: funMode ? "#fff" : "#e2e8f0",
+              fontSize: 12,
+              fontWeight: 600,
+              padding: "7px 12px",
+              borderRadius: "10px 10px 10px 2px",
+              maxWidth: 240,
+              lineHeight: 1.4,
+              textAlign: "center",
+              boxShadow: funMode ? "0 4px 20px rgba(239,68,68,0.4)" : "0 4px 16px rgba(0,0,0,0.4)",
+              border: funMode ? "1px solid rgba(255,100,100,0.5)" : "1px solid rgba(255,255,255,0.1)",
+              animation: "lpTauntPop 0.25s cubic-bezier(0.34,1.56,0.64,1)",
+              fontFamily: funMode ? '"Comic Sans MS", cursive' : "inherit",
+              pointerEvents: "none",
+            }}
+          >
+            {passiveTaunt}
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={onChaosToggle}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "6px 14px",
+            borderRadius: 20,
+            border: funMode ? "1px solid rgba(239,68,68,0.7)" : "1px solid var(--border)",
+            background: funMode
+              ? "linear-gradient(90deg, #ef4444 0%, #dc2626 100%)"
+              : "var(--surface)",
+            color: funMode ? "#fff" : "var(--text-3)",
+            cursor: "pointer",
+            fontSize: 11,
+            fontWeight: 700,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            boxShadow: funMode ? "0 4px 20px rgba(239,68,68,0.4)" : "0 2px 8px rgba(0,0,0,0.12)",
+            transition: "all 0.2s",
+            fontFamily: "inherit",
+          }}
+          title={funMode ? "Disable chaos mode" : "Enable chaos mode 🔥"}
+        >
+          <Zap style={{ width: 12, height: 12, flexShrink: 0 }} />
+          {funMode ? "Chaos ON" : "Chaos Mode"}
+        </button>
+      </div>
+
       {/* Central icon + status */}
       <div style={{ textAlign: "center", marginBottom: 32 }}>
         <div
@@ -747,24 +894,69 @@ function LpGeneratingScreen({
         style={{
           width: "100%",
           maxWidth: 540,
-          height: 6,
+          height: funMode ? 10 : 6,
           borderRadius: 99,
           background: "var(--border)",
-          overflow: "hidden",
+          overflow: "visible",
           marginBottom: 8,
+          position: "relative",
+          transition: "height 0.3s",
         }}
       >
-        <div
-          style={{
-            height: "100%",
-            borderRadius: 99,
-            background: funMode
-              ? "linear-gradient(90deg, #f0f 0%, #0ff 50%, #ff0 100%)"
-              : "var(--accent)",
-            width: `${progress}%`,
-            transition: "width 0.6s ease",
-          }}
-        />
+        {funMode ? (
+          <>
+            <style>{`
+              @keyframes lpRainbowShift {
+                0%   { background-position: 0% 50%; }
+                50%  { background-position: 100% 50%; }
+                100% { background-position: 0% 50%; }
+              }
+              @keyframes lpBarWave {
+                0%,100% { clip-path: polygon(0 15%, 100% 15%, 100% 85%, 0 85%); }
+                12% { clip-path: polygon(0 5%, 8% 40%, 16% 5%, 25% 45%, 33% 3%, 42% 42%, 50% 5%, 58% 42%, 66% 3%, 75% 45%, 83% 5%, 91% 40%, 100% 8%, 100% 92%, 91% 60%, 83% 95%, 75% 55%, 66% 97%, 58% 58%, 50% 95%, 42% 58%, 33% 97%, 25% 55%, 16% 95%, 8% 60%, 0 95%); }
+                25% { clip-path: polygon(0 25%, 10% 0%, 20% 30%, 30% 2%, 40% 28%, 50% 0%, 60% 28%, 70% 2%, 80% 30%, 90% 0%, 100% 22%, 100% 78%, 90% 100%, 80% 70%, 70% 98%, 60% 72%, 50% 100%, 40% 72%, 30% 98%, 20% 70%, 10% 100%, 0 75%); }
+                37% { clip-path: polygon(0 10%, 7% 45%, 15% 8%, 23% 50%, 31% 6%, 39% 48%, 47% 10%, 55% 48%, 63% 6%, 71% 50%, 79% 8%, 87% 45%, 95% 12%, 100% 35%, 100% 88%, 95% 65%, 87% 92%, 79% 62%, 71% 95%, 63% 65%, 55% 92%, 47% 60%, 39% 95%, 31% 65%, 23% 92%, 15% 62%, 7% 95%, 0 68%); }
+                50% { clip-path: polygon(0 20%, 9% 0%, 18% 25%, 27% 0%, 36% 22%, 45% 0%, 54% 22%, 63% 0%, 72% 25%, 81% 0%, 90% 22%, 100% 5%, 100% 80%, 90% 100%, 81% 75%, 72% 100%, 63% 78%, 54% 100%, 45% 78%, 36% 100%, 27% 78%, 18% 100%, 9% 78%, 0 100%); }
+                62% { clip-path: polygon(0 8%, 6% 42%, 14% 6%, 22% 46%, 30% 4%, 38% 44%, 46% 8%, 54% 44%, 62% 4%, 70% 46%, 78% 6%, 86% 42%, 94% 8%, 100% 30%, 100% 92%, 94% 70%, 86% 94%, 78% 64%, 70% 96%, 62% 66%, 54% 94%, 46% 62%, 38% 96%, 30% 66%, 22% 94%, 14% 64%, 6% 92%, 0 70%); }
+                75% { clip-path: polygon(0 18%, 11% 0%, 22% 22%, 33% 0%, 44% 20%, 55% 0%, 66% 20%, 77% 0%, 88% 22%, 100% 4%, 100% 82%, 88% 100%, 77% 78%, 66% 100%, 55% 80%, 44% 100%, 33% 80%, 22% 100%, 11% 80%, 0 100%); }
+                87% { clip-path: polygon(0 12%, 8% 48%, 17% 10%, 26% 52%, 35% 8%, 44% 50%, 53% 12%, 62% 50%, 71% 8%, 80% 52%, 89% 10%, 98% 48%, 100% 25%, 100% 88%, 98% 62%, 89% 90%, 80% 58%, 71% 92%, 62% 60%, 53% 88%, 44% 60%, 35% 92%, 26% 62%, 17% 90%, 8% 62%, 0 88%); }
+              }
+              @keyframes lpBarGlow {
+                0%,100% { filter: brightness(1.2) drop-shadow(0 0 8px #f0f) drop-shadow(0 0 16px #0ff); }
+                33%  { filter: brightness(1.4) drop-shadow(0 0 12px #ff0) drop-shadow(0 0 24px #f0f); }
+                66%  { filter: brightness(1.3) drop-shadow(0 0 10px #0ff) drop-shadow(0 0 20px #0f0); }
+              }
+              @keyframes lpTauntPop {
+                0%   { opacity: 0; transform: scale(0.7) translateX(12px); }
+                100% { opacity: 1; transform: scale(1) translateX(0); }
+              }
+            `}</style>
+            <div
+              style={{
+                position: "absolute",
+                top: -2,
+                left: 0,
+                height: 14,
+                borderRadius: 99,
+                width: `${progress}%`,
+                background: "linear-gradient(90deg, #ff0080, #ff8c00, #ffed00, #00ff40, #00cfff, #cc00ff, #ff0080, #ff8c00, #ffed00)",
+                backgroundSize: "300% 300%",
+                animation: "lpRainbowShift 1.2s ease infinite, lpBarWave 1s ease-in-out infinite, lpBarGlow 1.5s ease-in-out infinite",
+                transition: "width 0.6s ease",
+              }}
+            />
+          </>
+        ) : (
+          <div
+            style={{
+              height: "100%",
+              borderRadius: 99,
+              background: "var(--accent)",
+              width: `${progress}%`,
+              transition: "width 0.6s ease",
+            }}
+          />
+        )}
       </div>
       <p style={{ fontSize: 11, color: "var(--text-4)", marginBottom: 32 }}>
         {formatTime(elapsed)} elapsed · {messages.length} of ~{TOTAL_STEPS} steps complete
@@ -836,189 +1028,6 @@ function LpGeneratingScreen({
           50% { transform: translateY(-8px) scale(1.08); }
         }
       `}</style>
-    </div>
-  );
-}
-
-// ─── Sticky chaos side button ────────────────────────────────────────────────
-
-const CHAOS_TAUNTS = [
-  "go on. click me. i dare you.",
-  "you know you want to click me 👀",
-  "i'm right here... just saying...",
-  "one click. that's all it takes.",
-  "normal mode is so boring tho",
-  "*stares at you expectantly*",
-  "what's the worst that could happen? 😈",
-  "click me coward",
-  "i've been waiting for you...",
-  "your landing page deserves chaos",
-  "chaos = creativity, trust me bro",
-  "the button is lonely 🥺",
-  "this offer expires never but still",
-  "all the cool kids have chaos ON",
-  "i'm not NOT saying click me",
-  "*taps foot impatiently*",
-  "do it. DO IT.",
-  "scared? 😏",
-];
-
-const CHAOS_ON_TAUNTS = [
-  "CHAOS MODE ACTIVE. YOU DID THIS. 🔥",
-  "there's no going back now 😈",
-  "oh you actually clicked it lmao",
-  "IT'S ALIVE. IT'S ALIVE!!!",
-  "maximum chaos achieved ✨",
-];
-
-function ChaosSideButton({
-  enabled,
-  onToggle,
-  generating,
-}: {
-  enabled: boolean;
-  onToggle: () => void;
-  generating: boolean;
-}) {
-  const [taunt, setTaunt] = useState<string | null>(null);
-  const tauntTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Inject the pop animation once on mount
-  useEffect(() => {
-    const id = "lp-taunt-pop-style";
-    if (!document.getElementById(id)) {
-      const el = document.createElement("style");
-      el.id = id;
-      el.textContent = `
-        @keyframes lpTauntPop {
-          0%   { opacity: 0; transform: scale(0.7) translateX(12px); }
-          100% { opacity: 1; transform: scale(1) translateX(0); }
-        }
-      `;
-      document.head.appendChild(el);
-    }
-  }, []);
-
-  // Show random taunts on an irregular schedule
-  useEffect(() => {
-    function scheduleNext() {
-      // Wait 4–12 s before next taunt when off; 3–6 s when on
-      const delay = enabled
-        ? 3000 + Math.random() * 3000
-        : 4000 + Math.random() * 8000;
-      tauntTimeoutRef.current = setTimeout(() => {
-        const pool = enabled ? CHAOS_ON_TAUNTS : CHAOS_TAUNTS;
-        setTaunt(pool[Math.floor(Math.random() * pool.length)]);
-        // Hide after 3.5 s
-        hideTimeoutRef.current = setTimeout(() => {
-          setTaunt(null);
-          scheduleNext();
-        }, 3500);
-      }, delay);
-    }
-    // Small initial delay
-    const initId = setTimeout(scheduleNext, 2500);
-    return () => {
-      clearTimeout(initId);
-      if (tauntTimeoutRef.current) clearTimeout(tauntTimeoutRef.current);
-      if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled]);
-
-  return (
-    <div
-      style={{
-        position: "fixed",
-        right: 0,
-        top: "50%",
-        transform: "translateY(-50%)",
-        zIndex: 9990,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "flex-end",
-        gap: 8,
-        pointerEvents: "none",
-      }}
-    >
-      {/* Taunt speech bubble */}
-      {taunt && !generating && (
-        <div
-          style={{
-            pointerEvents: "none",
-            background: enabled ? "rgba(239,68,68,0.95)" : "rgba(30,30,40,0.95)",
-            color: enabled ? "#fff" : "#e2e8f0",
-            fontSize: 12,
-            fontWeight: 600,
-            padding: "8px 12px",
-            borderRadius: "10px 10px 2px 10px",
-            maxWidth: 200,
-            lineHeight: 1.4,
-            textAlign: "right",
-            marginRight: 52,
-            boxShadow: enabled
-              ? "0 4px 20px rgba(239,68,68,0.4)"
-              : "0 4px 16px rgba(0,0,0,0.4)",
-            border: enabled ? "1px solid rgba(255,100,100,0.5)" : "1px solid rgba(255,255,255,0.1)",
-            animation: "lpTauntPop 0.25s cubic-bezier(0.34,1.56,0.64,1)",
-            fontFamily: "inherit",
-            whiteSpace: "normal",
-          }}
-        >
-          {taunt}
-        </div>
-      )}
-
-      {/* The button itself — pokes out from the right edge */}
-      <button
-        type="button"
-        onClick={onToggle}
-        disabled={generating}
-        style={{
-          pointerEvents: "all",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 6,
-          width: 44,
-          paddingTop: 14,
-          paddingBottom: 14,
-          borderRadius: "10px 0 0 10px",
-          border: enabled ? "1px solid rgba(239,68,68,0.7)" : "1px solid var(--border)",
-          borderRight: "none",
-          background: enabled
-            ? "linear-gradient(180deg, #ef4444 0%, #dc2626 100%)"
-            : "var(--surface)",
-          color: enabled ? "#fff" : "var(--text-3)",
-          cursor: generating ? "not-allowed" : "pointer",
-          opacity: generating ? 0.4 : 1,
-          fontFamily: "inherit",
-          fontSize: 9,
-          fontWeight: 700,
-          letterSpacing: "0.08em",
-          textTransform: "uppercase",
-          boxShadow: enabled
-            ? "-4px 0 24px rgba(239,68,68,0.35)"
-            : "-2px 0 12px rgba(0,0,0,0.15)",
-          transition: "all 0.2s",
-          writingMode: "vertical-rl",
-          lineHeight: 1,
-        }}
-        title={enabled ? "Disable chaos mode" : "Enable chaos mode 🔥"}
-      >
-        <Zap
-          style={{
-            width: 16,
-            height: 16,
-            flexShrink: 0,
-            transform: "rotate(90deg)",
-            filter: enabled ? "none" : undefined,
-          }}
-        />
-        {enabled ? "Chaos ON" : "Chaos"}
-      </button>
     </div>
   );
 }
