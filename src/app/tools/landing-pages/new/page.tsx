@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ClientBackLink } from "@/components/ui/ClientBackLink";
-import { GenerationProgress } from "@/components/ui/GenerationProgress";
 import {
   ArrowLeft,
   Globe,
@@ -93,6 +92,8 @@ export default function NewLandingPage() {
 
   // Chaos mode
   const [funMode, setFunMode] = useState(false);
+  // Live progress messages streamed from the API
+  const [progressMessages, setProgressMessages] = useState<string[]>([]);
 
   useEffect(() => {
     fetch("/api/clients").then(async (r) => {
@@ -198,6 +199,7 @@ export default function NewLandingPage() {
     }
     setLoading(true);
     setError(null);
+    setProgressMessages([]);
 
     try {
       const res = await fetch("/api/tools/landing-pages", {
@@ -216,25 +218,56 @@ export default function NewLandingPage() {
         }),
       });
 
-      if (!res.ok) {
-        const data = await res.json();
-        setError(data.error ?? "Generation failed");
+      if (!res.ok || !res.body) {
+        const data = await res.json().catch(() => ({})) as { error?: string };
+        setError((data.error as string | undefined) ?? "Generation failed");
         setLoading(false);
         return;
       }
 
-      const data = await res.json();
+      // Consume the NDJSON stream
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      let landingPageId: string | null = null;
 
-      // Optionally persist this config as the client's default for future LPs
-      if (saveAsClientDefault && clientId && Object.keys(analyticsConfig).length > 0) {
-        fetch(`/api/clients/${clientId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ defaultAnalyticsConfig: analyticsConfig }),
-        }).catch(() => {});
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const event = JSON.parse(line) as { type: string; message?: string; landingPage?: { id: string } };
+            if (event.type === "progress" && event.message) {
+              setProgressMessages((prev) => [...prev, event.message!]);
+            } else if (event.type === "done" && event.landingPage) {
+              landingPageId = event.landingPage.id;
+              // Optionally persist client default
+              if (saveAsClientDefault && clientId && Object.keys(analyticsConfig).length > 0) {
+                fetch(`/api/clients/${clientId}`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ defaultAnalyticsConfig: analyticsConfig }),
+                }).catch(() => {});
+              }
+            } else if (event.type === "error") {
+              setError(event.message ?? "Generation failed");
+              setLoading(false);
+              return;
+            }
+          } catch { /* skip malformed line */ }
+        }
       }
 
-      router.push(`/tools/landing-pages/${data.landingPage.id}`);
+      if (landingPageId) {
+        router.push(`/tools/landing-pages/${landingPageId}`);
+      } else {
+        setError("Generation completed but no page ID was returned.");
+        setLoading(false);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
       setLoading(false);
@@ -243,7 +276,17 @@ export default function NewLandingPage() {
 
   return (
     <>
-    <div className="page" style={{ maxWidth: 720 }}>
+    {/* ── Generation screen (replaces form while AI is working) ────────────── */}
+    {loading && (
+      <LpGeneratingScreen
+        funMode={funMode}
+        messages={progressMessages}
+        title={title}
+      />
+    )}
+
+    {/* ── Form (hidden while generating) ──────────────────────────────────── */}
+    <div className="page" style={{ maxWidth: 720, display: loading ? "none" : undefined }}>
       <ClientBackLink />
       {/* Back link */}
       <Link
@@ -583,43 +626,10 @@ export default function NewLandingPage() {
             disabled={loading || !title || !url || !brief}
             style={{ width: "100%", justifyContent: "center", padding: "14px 24px" }}
           >
-            {loading ? (
-              <>
-                <Loader2 style={{ width: 16, height: 16, animation: "spin 1s linear infinite" }} />
-                {funMode ? "MERIDIAN IS GOING ABSOLUTELY FERAL..." : "Generating with Meridian..."}
-              </>
-            ) : (
-              <>
-                <Sparkles style={{ width: 16, height: 16 }} />
-                Generate Landing Page
-                <ChevronRight style={{ width: 16, height: 16 }} />
-              </>
-            )}
+            <Sparkles style={{ width: 16, height: 16 }} />
+            Generate Landing Page
+            <ChevronRight style={{ width: 16, height: 16 }} />
           </button>
-
-          {loading && (
-            <GenerationProgress
-              active={loading}
-              message={funMode ? "MERIDIAN HAS BEEN UNLEASHED 🔥" : "Generating with Meridian…"}
-              tips={
-                funMode
-                  ? [
-                      "SCRAPING YOUR WHOLE IDENTITY LIKE A RAVENOUS BRAND GREMLIN 🔥🔥🔥",
-                      "MERIDIAN IS EATING YOUR BRIEF AND ASKING FOR MORE. THERES NO GOING BACK.",
-                      "COMPOSING HEADLINES WITH SUCH UNHINGED ENERGY THE HTML IS CRYING",
-                      "THE CTA IS SO GOOD I AM HAVING A MOMENT. A REAL ONE.",
-                      "YOUR LANDING PAGE IS BEING FORGED IN THE FIRES OF AI CHAOS. STAY WITH ME.",
-                    ]
-                  : [
-                      "Scraping your website for brand identity…",
-                      "Analysing your brief and structuring the page…",
-                      "Drafting headlines, copy, and CTA hierarchy…",
-                      "Composing the final HTML — this can take 30–60 seconds.",
-                    ]
-              }
-              estimatedSeconds={50}
-            />
-          )}
         </div>
       </div>
     </div>
@@ -629,6 +639,204 @@ export default function NewLandingPage() {
     {/* Sticky chaos side button */}
     <ChaosSideButton enabled={funMode} onToggle={() => setFunMode((v) => !v)} generating={loading} />
   </>
+  );
+}
+
+// ─── Full-screen generation view ─────────────────────────────────────────────
+
+const PHASE_LABELS: Record<string, { icon: string; label: string }> = {
+  "Analysing your website": { icon: "🔍", label: "Extracting brand identity" },
+  "Planning page structure": { icon: "🗺️", label: "Planning page structure" },
+  "Generating": { icon: "⚡", label: "Generating sections" },
+  "Assembling": { icon: "🔧", label: "Assembling final page" },
+  "Running CRO": { icon: "📈", label: "CRO audit" },
+  "Applying": { icon: "✏️", label: "Applying improvements" },
+  "Taking page screenshot": { icon: "📸", label: "Capturing page screenshot" },
+  "Running Design": { icon: "🎨", label: "Design & sector audit" },
+  "Running Copy": { icon: "✍️", label: "Copy quality audit" },
+  "Saving": { icon: "💾", label: "Saving your page" },
+};
+
+function getPhaseInfo(msg: string): { icon: string; label: string } {
+  for (const [key, val] of Object.entries(PHASE_LABELS)) {
+    if (msg.startsWith(key)) return val;
+  }
+  return { icon: "⚙️", label: msg };
+}
+
+function LpGeneratingScreen({
+  funMode,
+  messages,
+  title,
+}: {
+  funMode: boolean;
+  messages: string[];
+  title: string;
+}) {
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    const start = Date.now();
+    const id = setInterval(() => setElapsed(Math.floor((Date.now() - start) / 1000)), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Auto-scroll message list
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const currentMsg = messages[messages.length - 1] ?? "Starting…";
+  const { icon } = getPhaseInfo(currentMsg);
+
+  // Progress: treat each message as a step out of expected ~14 phases
+  const TOTAL_STEPS = 14;
+  const progress = Math.min(95, (messages.length / TOTAL_STEPS) * 100);
+
+  function formatTime(s: number) {
+    if (s < 60) return `${s}s`;
+    return `${Math.floor(s / 60)}m ${s % 60}s`;
+  }
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 8000,
+        background: "var(--bg)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "24px 16px",
+      }}
+    >
+      {/* Central icon + status */}
+      <div style={{ textAlign: "center", marginBottom: 32 }}>
+        <div
+          style={{
+            fontSize: 48,
+            lineHeight: 1,
+            marginBottom: 16,
+            animation: "lpGenIconBounce 1.4s ease-in-out infinite",
+            display: "inline-block",
+          }}
+        >
+          {icon}
+        </div>
+        <h2
+          style={{
+            fontSize: 20,
+            fontWeight: 700,
+            color: "var(--text)",
+            margin: "0 0 6px",
+            fontFamily: funMode ? '"Comic Sans MS", "Comic Sans", cursive' : "inherit",
+          }}
+        >
+          {funMode ? "MERIDIAN IS GOING ABSOLUTELY FERAL 🔥" : `Generating "${title}"`}
+        </h2>
+        <p style={{ fontSize: 13, color: "var(--text-3)", margin: 0 }}>
+          {funMode ? currentMsg.toUpperCase() : currentMsg}
+        </p>
+      </div>
+
+      {/* Progress bar */}
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 540,
+          height: 6,
+          borderRadius: 99,
+          background: "var(--border)",
+          overflow: "hidden",
+          marginBottom: 8,
+        }}
+      >
+        <div
+          style={{
+            height: "100%",
+            borderRadius: 99,
+            background: funMode
+              ? "linear-gradient(90deg, #f0f 0%, #0ff 50%, #ff0 100%)"
+              : "var(--accent)",
+            width: `${progress}%`,
+            transition: "width 0.6s ease",
+          }}
+        />
+      </div>
+      <p style={{ fontSize: 11, color: "var(--text-4)", marginBottom: 32 }}>
+        {formatTime(elapsed)} elapsed · {messages.length} of ~{TOTAL_STEPS} steps complete
+      </p>
+
+      {/* Scrollable message history */}
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 540,
+          maxHeight: 220,
+          overflowY: "auto",
+          borderRadius: 10,
+          border: "1px solid var(--border)",
+          background: "var(--surface)",
+          padding: "10px 14px",
+          display: "flex",
+          flexDirection: "column",
+          gap: 6,
+        }}
+      >
+        {messages.map((msg, i) => {
+          const isLatest = i === messages.length - 1;
+          const info = getPhaseInfo(msg);
+          return (
+            <div
+              key={i}
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 8,
+                opacity: isLatest ? 1 : 0.45,
+                transition: "opacity 0.3s",
+                animation: isLatest ? "fadeIn 0.3s ease" : undefined,
+              }}
+            >
+              <span style={{ fontSize: 14, flexShrink: 0, lineHeight: "20px" }}>{info.icon}</span>
+              <span style={{ fontSize: 12, color: isLatest ? "var(--text)" : "var(--text-3)", lineHeight: 1.5 }}>
+                {funMode ? msg.toUpperCase() : msg}
+              </span>
+              {isLatest && (
+                <Loader2
+                  style={{
+                    width: 12,
+                    height: 12,
+                    color: "var(--accent)",
+                    animation: "spin 1s linear infinite",
+                    flexShrink: 0,
+                    marginTop: 4,
+                    marginLeft: "auto",
+                  }}
+                />
+              )}
+            </div>
+          );
+        })}
+        {messages.length === 0 && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, opacity: 0.5 }}>
+            <Loader2 style={{ width: 12, height: 12, color: "var(--accent)", animation: "spin 1s linear infinite" }} />
+            <span style={{ fontSize: 12, color: "var(--text-3)" }}>Starting up…</span>
+          </div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      <style>{`
+        @keyframes lpGenIconBounce {
+          0%, 100% { transform: translateY(0) scale(1); }
+          50% { transform: translateY(-8px) scale(1.08); }
+        }
+      `}</style>
+    </div>
   );
 }
 
