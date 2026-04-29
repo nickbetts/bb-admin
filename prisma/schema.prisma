@@ -811,6 +811,7 @@ model LandingPage {
   analyticsConfig   String               @default("{}")
   shareToken        String?              @unique
   publicSlug        String?              @unique // Pretty URL slug for /lp/{slug}
+  customSubdomain   String? // Custom subdomain for clickr.marketing (e.g. "inspired-gaming-lounge" → inspired-gaming-lounge.clickr.marketing/{slug})
   viewCount         Int                  @default(0)
   lastViewedAt      DateTime?
   status            String               @default("draft") // draft | published | archived
@@ -826,6 +827,7 @@ model LandingPage {
   leads             LandingPageLead[]
 
   @@unique([clientId, slug])
+  @@unique([customSubdomain, slug])
   @@index([clientId, createdAt])
   @@index([userId, createdAt])
 }

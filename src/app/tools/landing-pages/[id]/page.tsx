@@ -74,14 +74,17 @@ function toSubLabel(input: string | null | undefined): string {
 /** Best public URL for a landing page — prefers the clickr.marketing host. */
 function buildLpUrl(opts: {
   clientSlug?: string | null;
+  customSubdomain?: string | null;
   lpSlug?: string | null;
   publicSlug?: string | null;
   shareToken?: string | null;
   testMode?: boolean;
 }): string {
   const qs = opts.testMode ? "?test=1" : "";
-  if (opts.lpSlug) {
-    return `https://${toSubLabel(opts.clientSlug)}.${LP_DOMAIN}/${opts.lpSlug}${qs}`;
+  // Prefer clientSlug, then customSubdomain for the subdomain
+  const subdomain = opts.clientSlug ? toSubLabel(opts.clientSlug) : (opts.customSubdomain || null);
+  if (opts.lpSlug && subdomain) {
+    return `https://${subdomain}.${LP_DOMAIN}/${opts.lpSlug}${qs}`;
   }
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   if (opts.publicSlug) return `${origin}/lp/${opts.publicSlug}${qs}`;
@@ -97,6 +100,7 @@ interface LandingPage {
   status: string;
   shareToken: string | null;
   publicSlug: string | null;
+  customSubdomain: string | null;
   portalPublishedAt: string | null;
   viewCount: number;
   briefJson: string;
@@ -275,6 +279,13 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
   const [analyticsConfig, setAnalyticsConfig] = useState<LpAnalyticsConfig>({});
   const [savingAnalytics, setSavingAnalytics] = useState(false);
   const [analyticsSaved, setAnalyticsSaved] = useState(false);
+
+  // Page settings modal state
+  const [showPageSettings, setShowPageSettings] = useState(false);
+  const [settingsTitle, setSettingsTitle] = useState("");
+  const [settingsSubdomain, setSettingsSubdomain] = useState("");
+  const [settingsSlug, setSettingsSlug] = useState("");
+  const [savingSettings, setSavingSettings] = useState(false);
 
   // Chat state
   const [prompt, setPrompt] = useState("");
@@ -773,6 +784,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
       const data = await res.json();
       const url = buildLpUrl({
         clientSlug: lp?.client?.slug,
+        customSubdomain: lp?.customSubdomain,
         lpSlug: lp?.status === "published" ? lp.slug : null,
         publicSlug: data.publicSlug ?? lp?.publicSlug ?? null,
         shareToken: data.shareToken,
@@ -871,26 +883,42 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
         </Link>
 
         <div style={{ flex: 1, minWidth: 0 }}>
-          <h1 style={{ fontSize: 14, fontWeight: 650, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lp.title}</h1>
-          {lp.client && (
-            <p style={{ fontSize: 12, color: "var(--text-4)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {lp.client.name}
-              {lp.status === "published" && lp.client.slug && (
-                <>
-                  {" · "}
-                  <a
-                    href={buildLpUrl({ clientSlug: lp.client.slug, lpSlug: lp.slug })}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ color: "var(--accent)", textDecoration: "none" }}
-                    title="Open live URL"
-                  >
-                    {toSubLabel(lp.client.slug)}.{LP_DOMAIN}/{lp.slug}
-                  </a>
-                </>
-              )}
-            </p>
-          )}
+          <button
+            onClick={() => {
+              setSettingsTitle(lp.title);
+              setSettingsSubdomain(lp.customSubdomain ?? lp.client?.slug ?? "");
+              setSettingsSlug(lp.slug);
+              setShowPageSettings(true);
+            }}
+            style={{ background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left", display: "block", maxWidth: "100%" }}
+            title="Page settings"
+          >
+            <h1 style={{ fontSize: 14, fontWeight: 650, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lp.title}</h1>
+          </button>
+          {(() => {
+            const subdomain = lp.client?.slug ? toSubLabel(lp.client.slug) : lp.customSubdomain;
+            const liveUrl = lp.status === "published" && subdomain
+              ? buildLpUrl({ clientSlug: lp.client?.slug, customSubdomain: lp.customSubdomain, lpSlug: lp.slug })
+              : null;
+            return liveUrl ? (
+              <p style={{ fontSize: 12, color: "var(--text-4)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {lp.client?.name && <>{lp.client.name}{" · "}</>}
+                <a
+                  href={liveUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: "var(--accent)", textDecoration: "none" }}
+                  title="Open live URL"
+                >
+                  {subdomain}.{LP_DOMAIN}/{lp.slug}
+                </a>
+              </p>
+            ) : (
+              <p style={{ fontSize: 12, color: "var(--text-4)" }}>
+                {lp.client?.name ?? <span style={{ color: "var(--warning-text)" }}>No subdomain set — click title to configure</span>}
+              </p>
+            );
+          })()}
         </div>
 
         {/* Status dropdown */}
@@ -1003,6 +1031,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
             <a
               href={buildLpUrl({
                 clientSlug: lp.client?.slug,
+                customSubdomain: lp.customSubdomain,
                 lpSlug: lp.status === "published" ? lp.slug : null,
                 publicSlug: lp.publicSlug,
                 shareToken: lp.shareToken,
@@ -1010,11 +1039,12 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
               target="_blank"
               rel="noopener noreferrer"
               style={{ ...toolbarBtn, textDecoration: "none" }}
-              title={
-                lp.status === "published" && lp.client?.slug
-                  ? `Open live: ${toSubLabel(lp.client.slug)}.${LP_DOMAIN}/${lp.slug}`
-                  : "Open preview"
-              }
+              title={(() => {
+                const sub = lp.client?.slug ? toSubLabel(lp.client.slug) : lp.customSubdomain;
+                return lp.status === "published" && sub
+                  ? `Open live: ${sub}.${LP_DOMAIN}/${lp.slug}`
+                  : "Open preview";
+              })()}
             >
               <ExternalLink style={{ width: 14, height: 14 }} />
             </a>
@@ -1685,6 +1715,108 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
               >
                 {savingAnalytics ? <Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }} /> : <Save style={{ width: 14, height: 14 }} />}
                 Save tracking config
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Page settings modal */}
+      {showPageSettings && lp && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.4)", padding: 16 }}>
+          <div className="card" style={{ width: "100%", maxWidth: 480 }}>
+            <div className="card-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span className="card-title">Page settings</span>
+              <button onClick={() => setShowPageSettings(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-4)", padding: 2 }}>
+                <X style={{ width: 16, height: 16 }} />
+              </button>
+            </div>
+            <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>Title</label>
+                <input
+                  value={settingsTitle}
+                  onChange={(e) => setSettingsTitle(e.target.value)}
+                  style={inputStyle}
+                  placeholder="e.g. Summer Camp Landing Page"
+                />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>
+                  Subdomain <span style={{ fontWeight: 400, color: "var(--text-4)" }}>— the part before .{LP_DOMAIN}</span>
+                </label>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <input
+                    value={settingsSubdomain}
+                    onChange={(e) => setSettingsSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))}
+                    style={{ ...inputStyle, flex: 1 }}
+                    placeholder="e.g. inspired-gaming-lounge"
+                    disabled={!!lp.client}
+                  />
+                  <span style={{ fontSize: 12, color: "var(--text-4)", whiteSpace: "nowrap" }}>.{LP_DOMAIN}</span>
+                </div>
+                {lp.client && (
+                  <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 4 }}>
+                    Subdomain is set by the assigned client ({toSubLabel(lp.client.slug)}). Remove the client to use a custom subdomain.
+                  </p>
+                )}
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>
+                  Page slug <span style={{ fontWeight: 400, color: "var(--text-4)" }}>— the path after the subdomain</span>
+                </label>
+                <input
+                  value={settingsSlug}
+                  onChange={(e) => setSettingsSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))}
+                  style={inputStyle}
+                  placeholder="e.g. inspired-gaming-lounge"
+                />
+              </div>
+              {(settingsSubdomain || lp.client?.slug) && settingsSlug && (
+                <p style={{ fontSize: 12, color: "var(--accent)", background: "var(--accent-bg)", padding: "6px 10px", borderRadius: "var(--r-sm)", fontFamily: "monospace" }}>
+                  {toSubLabel(lp.client?.slug ?? settingsSubdomain)}.{LP_DOMAIN}/{settingsSlug}
+                </p>
+              )}
+            </div>
+            <div className="card-body" style={{ borderTop: "1px solid var(--border)", display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button className="btn btn-secondary" onClick={() => setShowPageSettings(false)} style={{ fontSize: 13 }}>
+                Cancel
+              </button>
+              <button
+                className="btn btn-primary"
+                disabled={savingSettings}
+                onClick={async () => {
+                  if (!lp) return;
+                  setSavingSettings(true);
+                  try {
+                    const body: Record<string, unknown> = {
+                      title: settingsTitle,
+                      slug: settingsSlug,
+                    };
+                    if (!lp.client) body.customSubdomain = settingsSubdomain || null;
+                    const res = await fetch(`/api/tools/landing-pages/${lp.id}`, {
+                      method: "PUT",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify(body),
+                    });
+                    if (res.ok) {
+                      const data = await res.json();
+                      setLp((prev) => prev ? {
+                        ...prev,
+                        title: data.landingPage.title,
+                        slug: data.landingPage.slug,
+                        customSubdomain: data.landingPage.customSubdomain ?? prev.customSubdomain,
+                      } : prev);
+                      setShowPageSettings(false);
+                    }
+                  } finally {
+                    setSavingSettings(false);
+                  }
+                }}
+                style={{ fontSize: 13 }}
+              >
+                {savingSettings ? <Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }} /> : <Save style={{ width: 14, height: 14 }} />}
+                Save
               </button>
             </div>
           </div>

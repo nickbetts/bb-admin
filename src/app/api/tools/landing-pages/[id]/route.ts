@@ -59,6 +59,7 @@ export async function PUT(
     analyticsConfig?: Record<string, unknown>;
     html?: string;       // Direct HTML update (text editing, code editor, etc.)
     publicSlug?: string;
+    customSubdomain?: string | null;
   };
 
   const data: Record<string, unknown> = {};
@@ -71,6 +72,12 @@ export async function PUT(
   }
   if (body.html !== undefined) data.currentHtml = body.html;
   if (body.publicSlug !== undefined) data.publicSlug = body.publicSlug;
+  if (body.customSubdomain !== undefined) {
+    // Normalise to valid subdomain label or null
+    data.customSubdomain = body.customSubdomain
+      ? body.customSubdomain.toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/-+/g, "-").replace(/^-+|-+$/g, "").slice(0, 63) || null
+      : null;
+  }
 
   const updated = await prisma.landingPage.update({
     where: { id },
@@ -80,6 +87,9 @@ export async function PUT(
 
   return NextResponse.json({ landingPage: updated });
 }
+
+// PATCH — alias for PUT (used by analytics save and page settings)
+export { PUT as PATCH };
 
 // DELETE /api/tools/landing-pages/[id]
 export async function DELETE(

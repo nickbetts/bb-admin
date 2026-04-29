@@ -22,24 +22,48 @@ export async function GET(
   const { searchParams } = new URL(request.url);
   const testMode = searchParams.get("test") === "1";
 
+  // Try client slug first, then fall back to customSubdomain on the LP itself
   const client = await prisma.client.findUnique({
     where: { slug: clientSlug },
     select: { id: true, defaultAnalyticsConfig: true },
   });
 
-  if (!client) {
-    return new NextResponse("Not found", { status: 404 });
-  }
+  type LpResult = {
+    id: string;
+    currentHtml: string;
+    shareToken: string | null;
+    analyticsConfig: string;
+    clientDefaultAnalyticsConfig?: string | null;
+  };
 
-  const landingPage = await prisma.landingPage.findFirst({
-    where: { clientId: client.id, slug: lpSlug, status: "published" },
-    select: {
-      id: true,
-      currentHtml: true,
-      shareToken: true,
-      analyticsConfig: true,
-    },
-  });
+  let landingPage: LpResult | null = null;
+  let defaultAnalyticsConfig: string | null = null;
+
+  if (client) {
+    defaultAnalyticsConfig = client.defaultAnalyticsConfig;
+    const row = await prisma.landingPage.findFirst({
+      where: { clientId: client.id, slug: lpSlug, status: "published" },
+      select: { id: true, currentHtml: true, shareToken: true, analyticsConfig: true },
+    });
+    landingPage = row;
+  } else {
+    // No client with that slug — look for an LP with customSubdomain matching
+    const row = await prisma.landingPage.findFirst({
+      where: { customSubdomain: clientSlug, slug: lpSlug, status: "published" },
+      select: {
+        id: true,
+        currentHtml: true,
+        shareToken: true,
+        analyticsConfig: true,
+        client: { select: { defaultAnalyticsConfig: true } },
+      },
+    });
+    if (row) {
+      const { client: rowClient, ...rest } = row;
+      landingPage = rest;
+      defaultAnalyticsConfig = rowClient?.defaultAnalyticsConfig ?? null;
+    }
+  }
 
   if (!landingPage) {
     return new NextResponse("Not found", { status: 404 });
@@ -55,7 +79,7 @@ export async function GET(
   }
 
   const analytics = mergeAnalyticsConfig(
-    parseAnalyticsConfig(client.defaultAnalyticsConfig),
+    parseAnalyticsConfig(defaultAnalyticsConfig),
     parseAnalyticsConfig(landingPage.analyticsConfig),
   );
 
