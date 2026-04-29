@@ -1802,13 +1802,15 @@ Your task is to translate landing page HTML from English into ${targetLanguageNa
 
 ${html}`;
 
-  const response = await anthropic.messages.create({
+  // Use streaming — Anthropic rejects non-streaming calls that could exceed 10 min
+  const stream = await anthropic.messages.stream({
     model: "claude-haiku-4-5",
     max_tokens: 32000,
     system: systemPrompt,
     messages: [{ role: "user", content: userPrompt }],
   });
 
+  const response = await stream.finalMessage();
   const raw = response.content[0]?.type === "text" ? response.content[0].text.trim() : html;
   return stripMarkdownFences(raw);
 }
