@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { extractBrandContext } from "@/lib/brand-extractor";
-import { generateLandingPage } from "@/lib/lp-generator";
+import { generateLandingPageSectionBySection } from "@/lib/lp-generator";
 import { sanitiseAnalyticsConfig } from "@/lib/lp-analytics";
 import { logActivity } from "@/lib/activity-logger";
 
@@ -84,8 +84,8 @@ export async function POST(request: NextRequest) {
       if (template) templateHtml = template.html;
     }
 
-    // 3. Generate landing page with AI
-    const html = await generateLandingPage({
+    // 3. Generate landing page with AI (section-by-section for maximum quality)
+    const html = await generateLandingPageSectionBySection({
       brief,
       campaignType,
       brandContext,

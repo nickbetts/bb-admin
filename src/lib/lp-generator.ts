@@ -124,9 +124,9 @@ When you need to control size, wrap or style with width/height (Lucide outputs a
   dollar-sign, pound-sterling, gift, package, truck, shopping-cart, credit-card,
   rocket, target, lightbulb, flame, trending-up, bar-chart, line-chart, percent,
   lock, eye, search, settings, info, help-circle, alert-circle, plus, minus,
-  facebook, instagram, twitter, linkedin, youtube, tiktok, github
+Use these for benefit ticks, feature lists, social-proof badges, step numbers (paired with the numeral), CTA buttons, and contact strips. If you need an icon not on this list, pick the closest Lucide name from https://lucide.dev/icons; never invent a name. Do not import any other icon library — Lucide is the only one available.
 
-Use these for benefit ticks, feature lists, social-proof badges, step numbers (paired with the numeral), CTA buttons, contact strips and footer social links. If you need an icon not on this list, pick the closest Lucide name from https://lucide.dev/icons; never invent a name. Do not import any other icon library — Lucide is the only one available.
+**IMPORTANT — social/brand icons:** Lucide does NOT include brand icons. The names facebook, instagram, twitter, youtube, linkedin, tiktok, and github are NOT valid Lucide icon names and will render as grey squares. For social media links always use inline SVG paths directly. Example: <a href="..." aria-label="Facebook"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg></a>.
 
 ## Post-Click Landing Page Principles
 
@@ -693,6 +693,443 @@ export async function chatAboutLandingPage(opts: ChatLPOptions): Promise<ChatLPR
     .trim();
 
   return { message, refinementPrompt, stackedChanges };
+}
+
+// ── Section-by-section generation ───────────────────────────────────────────
+//
+// Instead of one massive call trying to produce the whole page in one shot,
+// this approach splits generation into three focused phases:
+//
+//  Phase 1 — PLAN
+//    Single call. Analyses the brand context + brief, decides which sections
+//    to include, writes a complete CSS design system, writes the sticky bar
+//    HTML, and records a specific copywriting angle + content items for each
+//    section. Max 8 sections to stay well inside the 300 s route timeout.
+//
+//  Phase 2 — SECTION CALLS (sequential)
+//    One dedicated Anthropic call per section, each with its own 8 K-token
+//    output budget. Each call receives the CSS design system (so it can
+//    reference CSS variables / shared classes), its own section brief, and
+//    a trimmed preview of the last two sections already generated (for
+//    visual coherence). Sections embed their own layout CSS in a <style>
+//    tag; the assembly step hoists those tags to <head>.
+//
+//  Phase 3 — ASSEMBLY
+//    Combines the design system CSS + all extracted section <style> blocks,
+//    wraps everything in a valid HTML document, and appends the Lucide icon
+//    script and form-capture boilerplate.
+//
+// Falls back silently to the legacy single-call generateLandingPage() if
+// the plan call fails or returns unparseable output.
+
+export interface LPSectionPlan {
+  /** URL-safe identifier, e.g. "hero", "benefits", "faq". */
+  id: string;
+  /** Human label shown in progress messages. */
+  name: string;
+  /** Specific copywriting angle the section should take. */
+  angle: string;
+  /** Exact content items from the scrape to include (real stats, services, quotes). */
+  contentItems: string[];
+  /** Visual layout suggestion (optional). */
+  layoutHint?: string;
+}
+
+export interface LPPagePlan {
+  pageTitle: string;
+  metaDescription: string;
+  conversionGoal: string;
+  primaryCtaText: string;
+  /** Complete CSS text (no <style> wrapper) for shared variables + base + components. */
+  cssDesignSystem: string;
+  /** Fully rendered sticky bar HTML. */
+  stickyBarHtml: string;
+  sections: LPSectionPlan[];
+}
+
+// Token budgets for the section-by-section path
+const SECTION_MAX_TOKENS = 8000;
+const PLAN_MAX_TOKENS = 10000;
+
+// ── Plan prompt ───────────────────────────────────────────────────────────────
+
+const LP_PLAN_SYSTEM_PROMPT = `You are a world-class landing page architect and CRO specialist. You are planning — not generating — a high-converting post-click landing page.
+
+Your job this call is:
+1. Decide which sections to include and their order (8 sections maximum).
+2. For each section, define a specific copywriting angle and list the exact real content items from the scraped data to include. Be specific — name actual services, real statistics, verbatim testimonials.
+3. Write a complete CSS design system that all sections will share.
+4. Write the sticky bar HTML.
+
+## CSS design system requirements
+The cssDesignSystem must be complete, valid CSS (no <style> wrapper). Include:
+- :root custom properties (all colours with descriptive names, spacing, border-radius, font stack)
+- *, *::before, *::after reset and box-sizing
+- html, body base styles
+- Heading hierarchy (h1 through h4)
+- Shared reusable classes: .btn-primary, .btn-secondary, .section-tag, .section-inner, .card, .reveal
+- Sticky bar: .sticky-bar, .sticky-logo, .sticky-actions, .sticky-cta, .sticky-phone
+- Footer: .footer, .footer-inner, .footer-logo, .footer-address, .footer-contact, .footer-social, .footer-legal
+- Form: .form-group, .form-label, .form-input, .form-select, .form-textarea, .form-submit, .form-row, .form-privacy
+- Keyframe animations: fadeInUp, fadeIn, pulse (for hero entrance animations)
+- Scroll reveal: .reveal (opacity 0 translate-y 30px), .reveal.visible (opacity 1 translate-y 0, transition 0.6s)
+- Mobile-first responsive base
+
+## Sticky bar requirements
+- Fixed to top, z-index 1000, dark / brand background
+- Logo img on the left (use logo URL if available), primary CTA button on the right
+- Phone number if available
+- Do NOT use Lucide icons for social media brand logos (Facebook, Instagram, YouTube, etc.) — Lucide does not include brand/social icons. For any social links use inline SVG paths directly.
+
+## Section planning rules
+Typical high-converting structure (adapt to campaign type):
+1. Hero — message-match to ad, oversized headline, primary CTA, trust signals
+2. Stats / credibility strip — numbers that matter, immediately after hero
+3. Benefits — 4-6 benefit cards, icon-led, benefit-focused not feature-focused
+4. How it works / Process — if the offer has steps worth showing
+5. Testimonials / social proof
+6. Offer / pricing — if applicable
+7. FAQ — 5-7 objection-killing questions
+8. Final CTA — dark background, restate value prop, lead capture form
+
+Vary the visual treatment (background, layout) between sections for a sense of journey.
+
+## Output format
+Output ONLY in this exact tagged format. No text outside the tags.
+
+<PAGE_META>
+{"pageTitle":"...","metaDescription":"...","conversionGoal":"...","primaryCtaText":"..."}
+</PAGE_META>
+
+<CSS>
+/* Complete CSS design system — valid CSS, no <style> wrappers */
+</CSS>
+
+<STICKY_BAR>
+<!-- Sticky bar HTML -->
+</STICKY_BAR>
+
+<SECTIONS>
+[{"id":"hero","name":"Hero","angle":"...","contentItems":["..."],"layoutHint":"..."},...]
+</SECTIONS>
+
+Use British English throughout. No em dashes (use commas or colons instead).`;
+
+function buildLPPlanUserPrompt(opts: GenerateLPOptions): string {
+  const bc = opts.brandContext;
+
+  const colourBlock = bc.colors
+    .filter((c) => c.role !== "unknown")
+    .slice(0, 8)
+    .map((c) => `  ${c.role}: ${c.hex}`)
+    .join("\n");
+
+  const pc = bc.pageContent;
+  const contentParts: string[] = [];
+  if (pc) {
+    if (pc.metaTitle) contentParts.push(`Site title: ${pc.metaTitle}`);
+    if (pc.h1) contentParts.push(`H1: ${pc.h1}`);
+    if (pc.headings.length) contentParts.push(`Headings: ${pc.headings.slice(0, 12).join(" | ")}`);
+    if (pc.ctaTexts.length) contentParts.push(`CTAs: ${pc.ctaTexts.join(" | ")}`);
+    if (pc.listItems?.length)
+      contentParts.push(`Services / features:\n${pc.listItems.slice(0, 30).map((i) => `  • ${i}`).join("\n")}`);
+    if (pc.numericStats?.length)
+      contentParts.push(`Stats: ${pc.numericStats.slice(0, 12).join(" | ")}`);
+    if (pc.bodyCopy.length)
+      contentParts.push(`Body copy:\n${pc.bodyCopy.slice(0, 10).map((p) => `  "${p}"`).join("\n")}`);
+    if (pc.allBodyText)
+      contentParts.push(`Full site text:\n${pc.allBodyText.slice(0, 10000)}`);
+  }
+
+  return `Plan a high-converting post-click landing page for this campaign.
+
+## Brand
+Company: ${bc.companyName ?? "Unknown"}${bc.tagline ? `\nTagline: ${bc.tagline}` : ""}
+Logo: ${bc.logoUrl ?? "none"}
+Favicon: ${bc.faviconUrl ?? "none"}${bc.contactInfo.phone ? `\nPhone: ${bc.contactInfo.phone}` : ""}${bc.contactInfo.email ? `\nEmail: ${bc.contactInfo.email}` : ""}
+Social: ${bc.socialLinks.slice(0, 5).join(", ") || "none"}
+
+## Brand colours
+${colourBlock || "  Use professional colours suited to the industry."}
+
+## Brand fonts
+${bc.fonts.length ? bc.fonts.join(", ") : "Use a clean system font stack."}
+
+## Scraped website content
+${contentParts.join("\n\n") || "No content scraped — infer from brief."}
+
+## Campaign
+Type: ${opts.campaignType}
+Brief: ${opts.brief}
+${opts.targetAudience ? `Target audience: ${opts.targetAudience}` : ""}${opts.additionalInstructions ? `\nAdditional instructions: ${opts.additionalInstructions}` : ""}${
+    opts.uploadedImageUrls?.length
+      ? `\nUploaded images:\n${opts.uploadedImageUrls.map((u) => `  - ${u}`).join("\n")}`
+      : ""
+  }
+
+Available imagery:
+${
+  opts.brandContext.imageryUrls.length
+    ? opts.brandContext.imageryUrls
+        .slice(0, 8)
+        .map((u) => `  - ${u}`)
+        .join("\n")
+    : "  None scraped — use CSS gradients and bold typography."
+}
+
+Now output the plan using the tagged format specified in your instructions.`;
+}
+
+// ── Section prompt ────────────────────────────────────────────────────────────
+
+const SECTION_SYSTEM_PROMPT = `You are a world-class landing page section designer generating ONE section of a high-converting post-click landing page.
+
+Rules:
+1. Output ONLY the HTML for this section. Start with an optional <style> block for section-specific CSS (not in the design system), then the section element itself.
+2. Reference the CSS design system variables and shared classes freely. Do NOT redefine them.
+3. Make this section visually outstanding: bold, unexpected, premium.
+4. Use Lucide icons for UI icons: <i data-lucide="icon-name" aria-hidden="true"></i>. Valid icon names: check, check-circle, shield, award, star, sparkles, arrow-right, chevron-right, phone, mail, map-pin, calendar, clock, zap, users, heart, lock, trophy, target, flame, trending-up, bar-chart, gift, rocket, lightbulb, plus, info.
+5. Do NOT use Lucide for brand/social icons (Facebook, Instagram, YouTube, Twitter, LinkedIn, TikTok). Use inline SVG paths for those.
+6. No emoji as icons. No placeholder text. No "[Company Name]" etc.
+7. British English, no em dashes, short punchy sentences.
+8. Mobile-first responsive. Fully populate every grid, list, or card — minimum 3-4 items.
+9. Output ONLY the section fragment. No DOCTYPE, no html, no head, no body wrapper, no markdown fences, no explanation text.
+10. data-lp-form="true" is required on any form — our JS intercepts it.`;
+
+function buildSectionUserPrompt(params: {
+  plan: LPPagePlan;
+  section: LPSectionPlan;
+  previousSectionsHtml: string;
+  brandContext: BrandContext;
+}): string {
+  const { plan, section, previousSectionsHtml, brandContext } = params;
+
+  const imagery = brandContext.imageryUrls.length
+    ? `Available images:\n${brandContext.imageryUrls
+        .slice(0, 4)
+        .map((u) => `  - ${u}`)
+        .join("\n")}`
+    : "No images available — use CSS gradients and bold typography.";
+
+  const prevHtml = previousSectionsHtml.length > 3000
+    ? "...(earlier sections)...\n" + previousSectionsHtml.slice(-3000)
+    : previousSectionsHtml;
+
+  return `## CSS Design System (shared across all sections — use freely, do not redefine)
+
+${plan.cssDesignSystem}
+
+## Page context
+Title: ${plan.pageTitle}
+Goal: ${plan.conversionGoal}
+Primary CTA: "${plan.primaryCtaText}"
+Company: ${brandContext.companyName ?? "Unknown"}${brandContext.contactInfo.phone ? `\nPhone: ${brandContext.contactInfo.phone}` : ""}
+
+${prevHtml ? `## Previously generated sections (match their visual quality and style)\n${prevHtml}\n` : ""}
+## Your section: ${section.name}
+Angle: ${section.angle}
+
+Content to include (use all of these — be specific, not generic):
+${section.contentItems.map((item) => `  - ${item}`).join("\n")}
+${section.layoutHint ? `\nLayout hint: ${section.layoutHint}` : ""}
+
+${imagery}
+
+Generate the ${section.name} section now. Make it exceptional.`;
+}
+
+// ── Plan landing page ─────────────────────────────────────────────────────────
+
+async function planLandingPage(opts: GenerateLPOptions): Promise<LPPagePlan> {
+  const anthropic = await getAnthropicClient();
+
+  const response = await anthropic.messages.create({
+    model: MODEL,
+    max_tokens: PLAN_MAX_TOKENS,
+    system: LP_PLAN_SYSTEM_PROMPT,
+    messages: [{ role: "user", content: buildLPPlanUserPrompt(opts) }],
+  });
+
+  const raw = response.content[0]?.type === "text" ? response.content[0].text : "";
+
+  const metaMatch = raw.match(/<PAGE_META>([\s\S]*?)<\/PAGE_META>/);
+  const cssMatch = raw.match(/<CSS>([\s\S]*?)<\/CSS>/);
+  const stickyMatch = raw.match(/<STICKY_BAR>([\s\S]*?)<\/STICKY_BAR>/);
+  const sectionsMatch = raw.match(/<SECTIONS>([\s\S]*?)<\/SECTIONS>/);
+
+  if (!metaMatch || !cssMatch || !stickyMatch || !sectionsMatch) {
+    throw new Error(
+      `[lp-generator/plan] Response missing required tags. Got: ${raw.slice(0, 300)}`,
+    );
+  }
+
+  const meta = JSON.parse(metaMatch[1].trim()) as Pick<
+    LPPagePlan,
+    "pageTitle" | "metaDescription" | "conversionGoal" | "primaryCtaText"
+  >;
+  const sections = JSON.parse(sectionsMatch[1].trim()) as LPSectionPlan[];
+  const cssDesignSystem = cssMatch[1].trim();
+  const stickyBarHtml = stickyMatch[1].trim();
+
+  // Hard cap at 8 sections to stay within the 300 s route timeout
+  return { ...meta, cssDesignSystem, stickyBarHtml, sections: sections.slice(0, 8) };
+}
+
+// ── Generate one section ──────────────────────────────────────────────────────
+
+async function generateSectionHtml(params: {
+  plan: LPPagePlan;
+  section: LPSectionPlan;
+  previousSectionsHtml: string;
+  brandContext: BrandContext;
+}): Promise<string> {
+  const anthropic = await getAnthropicClient();
+
+  const response = await anthropic.messages.create({
+    model: MODEL,
+    max_tokens: SECTION_MAX_TOKENS,
+    system: SECTION_SYSTEM_PROMPT,
+    messages: [{ role: "user", content: buildSectionUserPrompt(params) }],
+  });
+
+  const text = response.content[0]?.type === "text" ? response.content[0].text.trim() : "";
+  return stripMarkdownFences(text);
+}
+
+// ── Assemble final page ───────────────────────────────────────────────────────
+
+function escapeAttr(str: string): string {
+  return str.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function assemblePageFromSections(plan: LPPagePlan, sectionHtmls: string[]): string {
+  // Hoist all <style> blocks from section HTML into <head>
+  const sectionStyleBlocks: string[] = [];
+  const strippedSections = sectionHtmls.map((html) =>
+    html
+      .replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, (_m, css: string) => {
+        sectionStyleBlocks.push(css.trim());
+        return "";
+      })
+      .trim(),
+  );
+
+  const fullCss = [plan.cssDesignSystem, ...sectionStyleBlocks].join("\n\n");
+  const sectionsBody = strippedSections.join("\n\n");
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>${escapeAttr(plan.pageTitle)}</title>
+<meta name="description" content="${escapeAttr(plan.metaDescription)}">
+<style>
+${fullCss}
+</style>
+</head>
+<body>
+${plan.stickyBarHtml}
+
+${sectionsBody}
+
+<script>
+  // Scroll reveal
+  (function(){
+    var els = document.querySelectorAll('.reveal');
+    if (!els.length) return;
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('visible'); io.unobserve(e.target); } });
+    }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+    els.forEach(function(el){ io.observe(el); });
+  })();
+  // Smooth scroll for anchor links
+  document.querySelectorAll('a[href^="#"]').forEach(function(a){
+    a.addEventListener('click', function(e){
+      var t = document.querySelector(this.getAttribute('href'));
+      if(t){ e.preventDefault(); window.scrollTo({ top: t.getBoundingClientRect().top + window.pageYOffset - 70, behavior: 'smooth' }); }
+    });
+  });
+  // FAQ accordion (if present)
+  document.querySelectorAll('.faq-question').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var item = this.closest('.faq-item');
+      if(!item) return;
+      var wasOpen = item.classList.contains('open');
+      document.querySelectorAll('.faq-item.open').forEach(function(i){ i.classList.remove('open'); });
+      if(!wasOpen) item.classList.add('open');
+    });
+  });
+</script>
+</body>
+</html>`;
+}
+
+// ── Section-by-section orchestrator ──────────────────────────────────────────
+
+/**
+ * Generates a landing page in three phases for dramatically higher quality:
+ *
+ * 1. Plan — one call decides section structure, writes the CSS design system
+ *    and sticky bar, and records a specific angle + content list per section.
+ * 2. Sections — one call per section (max 8), each with its own 8 K-token
+ *    budget and the visual context of previously generated sections.
+ * 3. Assembly — CSS is consolidated into <head>, sections stitched together.
+ *
+ * Falls back to generateLandingPage() silently if the plan call fails.
+ */
+export async function generateLandingPageSectionBySection(
+  opts: GenerateLPOptions & { onProgress?: (msg: string) => Promise<void> | void },
+): Promise<string> {
+  const { onProgress, ...genOpts } = opts;
+
+  // Phase 1 — Plan
+  if (onProgress) await onProgress("Planning page structure and design system...");
+  let plan: LPPagePlan;
+  try {
+    plan = await planLandingPage(genOpts);
+    console.log(
+      `[lp-generator] Plan complete: ${plan.sections.length} sections — ${plan.sections.map((s) => s.name).join(", ")}`,
+    );
+  } catch (err) {
+    console.warn("[lp-generator] Planning failed, falling back to single-call generation:", err);
+    return generateLandingPage(genOpts);
+  }
+
+  // Phase 2 — Generate each section
+  const sectionHtmls: string[] = [];
+  for (let i = 0; i < plan.sections.length; i++) {
+    const section = plan.sections[i];
+    if (onProgress) {
+      await onProgress(`Generating ${section.name} section (${i + 1} of ${plan.sections.length})...`);
+    }
+
+    // Pass last two generated sections for visual coherence without blowing the context budget
+    const prevHtml = sectionHtmls.slice(-2).join("\n\n");
+
+    try {
+      const html = await generateSectionHtml({
+        plan,
+        section,
+        previousSectionsHtml: prevHtml,
+        brandContext: genOpts.brandContext,
+      });
+      sectionHtmls.push(html);
+      console.log(`[lp-generator] Section "${section.name}" complete (${html.length} chars)`);
+    } catch (err) {
+      console.warn(`[lp-generator] Section "${section.name}" failed, skipping:`, err);
+    }
+  }
+
+  if (sectionHtmls.length === 0) {
+    console.warn("[lp-generator] All section generations failed, falling back to single-call.");
+    return generateLandingPage(genOpts);
+  }
+
+  // Phase 3 — Assemble
+  if (onProgress) await onProgress("Assembling final page...");
+  return assemblePageFromSections(plan, sectionHtmls);
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
