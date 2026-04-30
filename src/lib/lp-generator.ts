@@ -9,6 +9,7 @@ import sharp from "sharp";
 import { getAnthropicClient } from "@/lib/anthropic-client";
 import type { BrandContext, PageContent } from "@/lib/brand-extractor";
 import { screenshotHtml } from "@/lib/puppeteer";
+import { buildPlannerCroBlock, buildAuditCroBlock } from "@/lib/lp-cro-elements";
 
 const MODEL = "claude-opus-4-7";
 // Opus 4.7 supports up to 32K output tokens. A fully-populated landing
@@ -618,6 +619,8 @@ export async function critiqueLandingPage(opts: {
 }): Promise<LPCritiqueItem[]> {
   const anthropic = await getAnthropicClient();
 
+  const croChecklist = buildAuditCroBlock(opts.campaignType, opts.html);
+
   const userPrompt = `Review the following landing page HTML for a ${opts.campaignType} campaign.
 
 ## Campaign brief
@@ -627,6 +630,7 @@ ${opts.targetAudience ? `## Target audience\n${opts.targetAudience}\n` : ""}
 ## Company
 ${opts.brandContext.companyName ?? "Unknown"}${opts.brandContext.tagline ? ` — ${opts.brandContext.tagline}` : ""}
 
+${croChecklist ? `${croChecklist}\n\n` : ""}
 ## The landing page HTML to critique
 ${opts.html}
 
@@ -1327,6 +1331,8 @@ ${
 Type: ${opts.campaignType}
 Brief: ${opts.brief}
 ${opts.targetAudience ? `Target audience: ${opts.targetAudience}` : ""}${opts.additionalInstructions ? `\nAdditional instructions: ${opts.additionalInstructions}` : ""}
+
+${buildPlannerCroBlock(opts.campaignType)}
 
 Available imagery — images are visually attached for analysis. Study each one: what people, locations, products, or actions are depicted? These are real photos from the client's brand — use them to populate sections with genuine visual content.
 
