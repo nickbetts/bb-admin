@@ -107,13 +107,13 @@ export async function POST(
             language: langCode,
             languageName: langEntry.name,
             html: translatedHtml,
-            status: "draft",
+            status: "published",
           },
           update: {
             html: translatedHtml,
             languageName: langEntry.name,
-            // Reset to draft on regeneration — user must re-publish
-            status: "draft",
+            // Keep published on regeneration — live as soon as created; gated by the main LP's status
+            status: "published",
             updatedAt: new Date(),
           },
         });

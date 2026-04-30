@@ -24,6 +24,7 @@ export async function GET(
   const { searchParams } = new URL(request.url);
   // ?test=1 → swap real tag loaders for an on-page debug overlay
   const testMode = searchParams.get("test") === "1";
+  const langParam = searchParams.get("lang");
 
   const [landingPage, turnstileSiteKey] = await Promise.all([
     prisma.landingPage.findUnique({
@@ -56,12 +57,26 @@ export async function GET(
       .catch(() => {});
   }
 
+  // Resolve HTML: use a published translation if ?lang= is present
+  let htmlToServe = landingPage.currentHtml;
+  if (langParam) {
+    const translation = await prisma.landingPageTranslation.findUnique({
+      where: {
+        landingPageId_language: { landingPageId: landingPage.id, language: langParam },
+      },
+      select: { html: true, status: true },
+    });
+    if (translation?.status === "published") {
+      htmlToServe = translation.html;
+    }
+  }
+
   const analytics = mergeAnalyticsConfig(
     parseAnalyticsConfig(landingPage.client?.defaultAnalyticsConfig),
     parseAnalyticsConfig(landingPage.analyticsConfig),
   );
 
-  const html = assemblePublicHtml(landingPage.currentHtml, {
+  const html = assemblePublicHtml(htmlToServe, {
     shareToken: landingPage.shareToken,
     analytics,
     testMode,

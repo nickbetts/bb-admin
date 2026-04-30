@@ -13,6 +13,7 @@ import {
   Download,
   Check,
   Eye,
+  EyeOff,
   Users,
   ExternalLink,
   RotateCcw,
@@ -1771,11 +1772,11 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                             background: isTranslating ? "var(--warning-bg)" : t.status === "published" ? "var(--success-bg)" : "var(--border-subtle)",
                             color: isTranslating ? "var(--warning-text)" : t.status === "published" ? "var(--success-text)" : "var(--text-4)",
                           }}>
-                            {isTranslating ? "Generating\u2026" : stale ? "Stale" : t.status === "published" ? "Published" : "Draft"}
+                            {isTranslating ? "Generating\u2026" : stale ? "Stale" : t.status === "published" ? "Live" : "Hidden"}
                           </span>
                         </div>
-                        {t.status === "published" && translationUrl ? (
-                          <a href={translationUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, color: "var(--accent)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 2 }} title="Open live page">
+                        {translationUrl ? (
+                          <a href={translationUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, color: t.status === "published" ? "var(--accent)" : "var(--text-4)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 2 }} title="Open page">
                             {translationUrl.length > 48 ? `${translationUrl.slice(0, 48)}\u2026` : translationUrl}
                             <ExternalLink style={{ width: 9, height: 9, flexShrink: 0 }} />
                           </a>
@@ -1795,10 +1796,10 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                             </button>
                             <button
                               onClick={() => handlePublishTranslation(t.language, t.status)}
-                              title={t.status === "published" ? "Unpublish" : "Publish"}
+                              title={t.status === "published" ? "Hide this language" : "Make live"}
                               style={{ fontSize: 10, padding: "2px 6px", borderRadius: "var(--r-sm)", border: "1px solid var(--border)", background: t.status === "published" ? "var(--success-bg)" : "none", color: t.status === "published" ? "var(--success-text)" : "var(--text-3)", cursor: "pointer" }}
                             >
-                              {t.status === "published" ? <Check style={{ width: 11, height: 11 }} /> : <ExternalLink style={{ width: 11, height: 11 }} />}
+                              {t.status === "published" ? <Eye style={{ width: 11, height: 11 }} /> : <EyeOff style={{ width: 11, height: 11 }} />}
                             </button>
                             <button
                               onClick={() => handleTranslate([t.language])}
