@@ -105,6 +105,18 @@ const PERMISSION_GROUPS = [
       { key: "tab:strategy", label: "Strategy" },
     ],
   },
+  {
+    label: "Client Settings Cards",
+    note: "Leave all unchecked to show every settings card. Check specific cards to restrict this role to only those settings sections.",
+    items: [
+      { key: "settings:basic", label: "Basic Information" },
+      { key: "settings:ai", label: "AI Report Instructions" },
+      { key: "settings:lp", label: "Landing-page tracking defaults" },
+      { key: "settings:automation", label: "Automated Reports" },
+      { key: "settings:hours", label: "Contracted Hours" },
+      { key: "settings:clickfraud", label: "Click Fraud Protection" },
+    ],
+  },
 ];
 
 interface Role {

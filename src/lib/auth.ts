@@ -58,6 +58,13 @@ export const ALL_PERMISSIONS = [
   "admin.activity",
   "admin.logs",
   "admin.settings",
+  // Client settings card visibility
+  "settings:basic",
+  "settings:ai",
+  "settings:lp",
+  "settings:automation",
+  "settings:hours",
+  "settings:clickfraud",
 ] as const;
 
 export type Permission = typeof ALL_PERMISSIONS[number];

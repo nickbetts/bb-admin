@@ -62,6 +62,8 @@ interface Client {
 
 interface ClientSettingsFormProps {
   client: Client;
+  permissions?: string[];
+  isAdmin?: boolean;
 }
 
 interface GA4Property {
@@ -103,8 +105,23 @@ interface GSCSite {
 
 
 
-export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
+export function ClientSettingsForm({ client, permissions = [], isAdmin = false }: ClientSettingsFormProps) {
   const router = useRouter();
+
+  // Tab-based card visibility — mirrors the same logic used in ClientDashboard.
+  // If a role has NO tab:* permissions, all cards are shown (unrestricted).
+  // If it has ANY tab:* permissions, only matching cards are shown.
+  const tabPerms = permissions.filter((p) => p.startsWith("tab:")).map((p) => p.slice(4));
+  const hasTabRestrictions = !isAdmin && tabPerms.length > 0;
+  function canSeeTab(tab: string) {
+    return !hasTabRestrictions || tabPerms.includes(tab);
+  }
+  // Settings-card visibility — same opt-in pattern as tab permissions.
+  const settingsPerms = permissions.filter((p) => p.startsWith("settings:")).map((p) => p.slice(9));
+  const hasSettingsRestrictions = !isAdmin && settingsPerms.length > 0;
+  function canSeeSetting(key: string) {
+    return !hasSettingsRestrictions || settingsPerms.includes(key);
+  }
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
@@ -390,7 +407,7 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
   return (
     <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       {/* Basic Info */}
-      <div className="card">
+      {canSeeSetting("basic") && <div className="card">
         <div className="card-header">
           <h2 className="card-title">Basic Information</h2>
         </div>
@@ -438,10 +455,10 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
             </div>
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* SemRush */}
-      <div className="card">
+      {canSeeTab("seo") && <div className="card">
         <div className="card-header">
           <div className="flex items-center gap-3">
             <span className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-xs font-bold text-orange-600">S</span>
@@ -520,10 +537,10 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
             </div>
           )}
         </div>
-      </div>
+      </div>}
 
       {/* GA4 */}
-      <div className="card">
+      {canSeeTab("web") && <div className="card">
         <div className="card-header">
           <div className="flex items-center gap-3">
             <span className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-600">G</span>
@@ -607,10 +624,10 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
             )}
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* Meta Ads */}
-      <div className="card">
+      {canSeeTab("paid") && <div className="card">
         <div className="card-header">
           <div className="flex items-center gap-3">
             <span className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-xs font-bold text-indigo-600">M</span>
@@ -656,10 +673,10 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
             )}
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* Google Ads */}
-      <div className="card">
+      {canSeeTab("googleads") && <div className="card">
         <div className="card-header">
           <div className="flex items-center gap-3">
             <span className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center text-xs font-bold text-yellow-700">A</span>
@@ -719,10 +736,10 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
             )}
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* Search Console */}
-      <div className="card">
+      {canSeeTab("searchconsole") && <div className="card">
         <div className="card-header">
           <div className="flex items-center gap-3">
             <span className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-xs font-bold text-green-700">SC</span>
@@ -810,10 +827,10 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
               </p>
             )}
           </div>        </div>
-      </div>
+      </div>}
 
       {/* AI Report Instructions */}
-      <div className="card">
+      {canSeeSetting("ai") && <div className="card">
         <div className="card-header">
           <div className="flex items-center gap-3">
             <span className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center text-xs font-bold text-violet-700">AI</span>
@@ -837,13 +854,13 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
             </p>
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* Signals & Alerts — per-client config */}
-      <SignalConfigEditor value={signalConfig} onChange={setSignalConfig} />
+      {canSeeTab("signals") && <SignalConfigEditor value={signalConfig} onChange={setSignalConfig} />}
 
       {/* Landing-page tracking defaults */}
-      <div className="card">
+      {canSeeSetting("lp") && <div className="card">
         <div className="card-header">
           <div className="flex items-center gap-3">
             <span className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-xs font-bold text-emerald-700">LP</span>
@@ -861,10 +878,10 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
             noWrapper
           />
         </div>
-      </div>
+      </div>}
 
       {/* WooCommerce */}
-      <div className="card">
+      {canSeeTab("ecommerce") && <div className="card">
         <div className="card-header">
           <div className="flex items-center gap-3">
             <span className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-xs font-bold text-purple-700">WC</span>
@@ -886,10 +903,10 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
             <input type="password" name="woocommerceSecret" value={form.woocommerceSecret} onChange={handleChange} placeholder="cs_…" className="form-input" autoComplete="off" />
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* Shopify */}
-      <div className="card">
+      {canSeeTab("ecommerce") && <div className="card">
         <div className="card-header">
           <div className="flex items-center gap-3">
             <span className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-xs font-bold text-green-700">SH</span>
@@ -907,10 +924,10 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
             <p className="text-xs text-slate-500 mt-1">Create a private app in Shopify Admin → Apps → Develop apps.</p>
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* TikTok Ads */}
-      <div className="card">
+      {canSeeTab("tiktok") && <div className="card">
         <div className="card-header">
           <div className="flex items-center gap-3">
             <span className="w-8 h-8 rounded-full bg-black flex items-center justify-center text-xs font-bold text-white">TK</span>
@@ -929,10 +946,10 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
             <p className="text-xs text-slate-500 mt-1">Generate via TikTok for Business → Marketing API → Apps. If left blank, the global TIKTOK_ACCESS_TOKEN environment variable is used.</p>
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* Microsoft Advertising */}
-      <div className="card">
+      {canSeeTab("microsoftads") && <div className="card">
         <div className="card-header">
           <div className="flex items-center gap-3">
             <span className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: "#00a4ef", color: "white" }}>MS</span>
@@ -950,10 +967,10 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
             <input type="text" name="microsoftAdsAccountName" value={form.microsoftAdsAccountName} onChange={handleChange} placeholder="My Bing Ads Account" className="form-input" />
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* Core Web Vitals */}
-      <div className="card">
+      {canSeeTab("cwv") && <div className="card">
         <div className="card-header">
           <div className="flex items-center gap-3">
             <span className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-700">CWV</span>
@@ -967,10 +984,10 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
             <p className="text-xs text-slate-500 mt-1">The URL to fetch real-user Core Web Vitals from Google&apos;s CrUX API. Leave blank to use the client website URL. Requires GOOGLE_CRUX_API_KEY environment variable.</p>
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* LinkedIn Ads */}
-      <div className="card">
+      {canSeeTab("linkedin") && <div className="card">
         <div className="card-header">
           <div className="flex items-center gap-3">
             <span className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ background: "#0a66c2" }}>in</span>
@@ -996,10 +1013,10 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
             <p className="text-xs text-slate-500 mt-1">Generate via the LinkedIn Developer portal with <code>r_ads_reporting</code> and <code>r_ads</code> scopes.</p>
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* Klaviyo */}
-      <div className="card">
+      {canSeeTab("klaviyo") && <div className="card">
         <div className="card-header">
           <div className="flex items-center gap-3">
             <span className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ background: "#6c47ff" }}>KL</span>
@@ -1020,10 +1037,10 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
             <input type="text" name="klaviyoAccountName" value={form.klaviyoAccountName} onChange={handleChange} placeholder="My Klaviyo Account" className="form-input" />
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* HubSpot */}
-      <div className="card">
+      {canSeeTab("hubspot") && <div className="card">
         <div className="card-header">
           <div className="flex items-center gap-3">
             <span className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ background: "#ff7a59" }}>HS</span>
@@ -1045,10 +1062,10 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
             <p className="text-xs text-slate-500 mt-1">Create a Private App in HubSpot → Settings → Integrations → Private Apps. Use &ldquo;demo&rdquo; to see sample data.</p>
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* YouTube */}
-      <div className="card">
+      {canSeeTab("youtube") && <div className="card">
         <div className="card-header">
           <div className="flex items-center gap-3">
             <span className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ background: "#ff0000" }}>YT</span>
@@ -1069,10 +1086,10 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
             <input type="text" name="youtubeChannelName" value={form.youtubeChannelName} onChange={handleChange} placeholder="My Brand Channel" className="form-input" />
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* CallRail */}
-      <div className="card">
+      {canSeeTab("callrail") && <div className="card">
         <div className="card-header">
           <div className="flex items-center gap-3">
             <span className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ background: "#00c389" }}>CR</span>
@@ -1094,10 +1111,10 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
             <p className="text-xs text-slate-500 mt-1">Create in CallRail → Settings → Integrations → API Keys.</p>
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* Competitor Intelligence */}
-      <div className="card">
+      {canSeeTab("competitors") && <div className="card">
         <div className="card-header">
           <div className="flex items-center gap-3">
             <span className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-xs font-bold text-indigo-700">CI</span>
@@ -1119,10 +1136,10 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
           />
           <p className="text-xs text-slate-500 mt-1">These domains will be analysed via the Competitor Intelligence tool. Requires a SemRush API key in global Settings.</p>
         </div>
-      </div>
+      </div>}
 
       {/* Report Automation */}
-      <div className="card">
+      {canSeeSetting("automation") && <div className="card">
         <div className="card-header">
           <div className="flex items-center gap-3">
             <span className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center text-xs font-bold text-violet-700">⏰</span>
@@ -1165,7 +1182,7 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
             </p>
           </div>
         </div>
-      </div>
+      </div>}
 
       {error && (
         <div style={{ padding: "12px 16px", background: "var(--danger-bg)", border: "1px solid var(--danger-border)", borderRadius: "var(--r-sm)", fontSize: 14, color: "var(--danger-text)" }}>
@@ -1180,7 +1197,7 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
       )}
 
       {/* Contracted Hours */}
-      <div className="card">
+      {canSeeSetting("hours") && <div className="card">
         <div className="card-header">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
             <div className="flex items-center gap-3">
@@ -1244,10 +1261,10 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
             These values are included in the AI prompt when generating a proposal from the Keyword Planner. The AI will calculate realistic deliverables based on hours and task benchmarks set in Settings.
           </p>
         </div>
-      </div>
+      </div>}
 
       {/* Click Fraud Protection Snippet */}
-      <div className="card">
+      {canSeeSetting("clickfraud") && <div className="card">
         <div className="card-header">
           <div className="flex items-center gap-3">
             <span className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-xs font-bold text-red-700">
@@ -1360,7 +1377,7 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
             It detects known bot user-agents and headless browsers, then logs visits to the dashboard. Stats are visible in the Google Ads and Meta sections under &ldquo;Click Fraud Protection&rdquo;.
           </p>
         </div>
-      </div>
+      </div>}
 
       <div>
         <button

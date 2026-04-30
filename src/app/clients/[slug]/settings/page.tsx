@@ -43,7 +43,11 @@ export default async function ClientSettingsPage({ params }: Props) {
       <div style={{ marginTop: 24 }}>
         <ClientTaskCategorySettings clientId={client.id} />
       </div>
-      <ClientSettingsForm client={client} />
+      <ClientSettingsForm
+        client={client}
+        permissions={session.user.permissions}
+        isAdmin={session.user.role === "admin"}
+      />
       {canDelete && (
         <DeleteClientButton clientId={client.id} clientName={client.name} />
       )}
