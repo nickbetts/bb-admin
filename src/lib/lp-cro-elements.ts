@@ -159,6 +159,78 @@ export const CRO_ELEMENTS: CroElement[] = [
     detectHints: ["exit-intent", "exitintent", "mouseleave", "scroll-trigger", "last chance", "wait", "before you go"],
     priority: "medium",
   },
+  {
+    id: "click-to-call",
+    name: "Click-to-Call Phone Number",
+    description:
+      "A prominently displayed phone number with an `href=\"tel:...\"` link — ideally shown in the header, hero, and final CTA section. For service and local businesses this is one of the highest-converting elements on the page, capturing visitors who prefer to talk before committing.",
+    campaignTypes: ["service", "lead-gen", "event"],
+    detectHints: ["tel:", "href=\"tel", "href='tel", "click-to-call", "phone"],
+    priority: "high",
+  },
+  {
+    id: "price-anchoring",
+    name: "Price Anchoring / Was–Now Pricing",
+    description:
+      "The original or higher price is shown crossed out beside the current price — e.g. ~~£499~~ £299 — or a 'saving' callout is displayed. Anchoring the higher number first makes the actual price feel like a deal and increases perceived value.",
+    campaignTypes: ["ecommerce", "product-launch", "event"],
+    detectHints: ["was ", "save ", "line-through", "text-decoration: line", "strikethrough", "original-price", "~~"],
+    priority: "high",
+  },
+  {
+    id: "two-step-optin",
+    name: "Two-Step Opt-In (Click-to-Reveal Form)",
+    description:
+      "The primary CTA button does not submit a form — it reveals a short form in a modal or expands an inline form. The first click acts as a micro-commitment that significantly increases form completion rates versus showing the form upfront.",
+    campaignTypes: ["lead-gen"],
+    detectHints: ["data-toggle", "show-form", "reveal-form", "two-step", "twostep", "openModal", "open-modal"],
+    priority: "medium",
+  },
+  {
+    id: "hero-secondary-cta",
+    name: "Hero Secondary CTA / Alternative Action",
+    description:
+      "A lower-commitment secondary option sits directly beneath the primary CTA — e.g. 'or call us on 0800 123 456', 'See how it works ↓', 'Download the brochure' — captures visitors not ready for the main action without diluting the primary conversion.",
+    campaignTypes: ["all"],
+    detectHints: ["secondary-cta", "or call", "see how", "learn more", "find out more", "watch the video"],
+    priority: "medium",
+  },
+  {
+    id: "trust-policy-icons",
+    name: "Privacy / GDPR Trust Icons",
+    description:
+      "Small icons or lines near the lead form stating data handling commitments — e.g. a padlock with 'Your details are safe with us', 'We never share your data', '100% spam-free' — directly reduce form abandonment caused by privacy anxiety.",
+    campaignTypes: ["lead-gen", "ecommerce"],
+    detectHints: ["gdpr", "spam-free", "privacy", "data safe", "padlock", "secure", "never share"],
+    priority: "medium",
+  },
+  {
+    id: "media-award-proof",
+    name: "Award or Media Mention Strip",
+    description:
+      "Logos of publications, awards, or industry bodies that have featured or recognised the brand — e.g. 'As seen in:', 'Award-winning:', 'Featured in The Guardian' — placed early on the page to instantly elevate credibility.",
+    campaignTypes: ["all"],
+    detectHints: ["as seen in", "featured in", "award", "winner", "recognised", "media-strip", "press"],
+    priority: "medium",
+  },
+  {
+    id: "whatsapp-chat",
+    name: "WhatsApp / Live Chat Entry Point",
+    description:
+      "A floating WhatsApp button or live chat widget that gives visitors an instant low-friction way to ask a question before committing — particularly effective for higher-ticket services and event bookings where people have pre-sale questions.",
+    campaignTypes: ["service", "lead-gen", "event"],
+    detectHints: ["whatsapp", "wa.me", "tawk.to", "intercom", "crisp", "livechat", "chat-widget", "floating-chat"],
+    priority: "medium",
+  },
+  {
+    id: "embedded-map",
+    name: "Embedded Location Map",
+    description:
+      "A Google Maps embed or address block with a map pin — important for local services, events, and any offer where physical presence matters. Grounds the brand in the real world and removes the 'where exactly is this?' hesitation.",
+    campaignTypes: ["event", "service"],
+    detectHints: ["google.com/maps", "maps.google", "maps/embed", "iframe", "location", "find us", "how to find"],
+    priority: "medium",
+  },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

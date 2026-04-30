@@ -157,6 +157,87 @@ export const COPY_ELEMENTS: CopyElement[] = [
     detectHints: ["p.s.", "ps:", "p.s "],
     priority: "medium",
   },
+  {
+    id: "open-with-pain",
+    name: "Open With Pain / Problem Empathy",
+    description:
+      "The hero or intro copy leads with an acknowledgement of the customer's current frustration, fear, or problem — before presenting the solution. E.g. 'If your child has been stuck in the same team for years without progressing...' — readers who feel understood are far more receptive to the offer that follows.",
+    campaignTypes: ["all"],
+    detectHints: ["struggling", "frustrated", "tired of", "stuck", "if you", "do you find", "have you ever", "sound familiar"],
+    priority: "high",
+  },
+  {
+    id: "only-differentiator",
+    name: "The 'Only' Differentiator Statement",
+    description:
+      "An explicit sentence that states what makes this offer uniquely different — ideally using the word 'only' or 'the only' — e.g. 'The only football camp in the North West run entirely by active professional coaches'. Generic differentiation claims like 'expert team' or 'personalised approach' do not count.",
+    campaignTypes: ["all"],
+    detectHints: ["the only", "only we", "unique to", "exclusively", "unlike any", "unlike other"],
+    priority: "high",
+  },
+  {
+    id: "post-conversion-clarity",
+    name: "What Happens Next Copy",
+    description:
+      "Near or directly below the CTA, a 2–3 line description of exactly what happens after the visitor submits — e.g. 'We'll call you within 2 hours', 'You'll receive a confirmation email with your place details', 'Your coach will be in touch by end of day'. Removes the fear of the unknown and increases submission rates.",
+    campaignTypes: ["lead-gen", "service", "event"],
+    detectHints: ["what happens next", "next steps", "we'll contact", "you'll receive", "within 24", "within 2 hours", "confirmation"],
+    priority: "high",
+  },
+  {
+    id: "benefit-stack-bullets",
+    name: "Benefit-Stacking Bullet List",
+    description:
+      "A rapid-fire list of 5–10 specific benefits — each with a tick, checkmark, or icon — that builds momentum and covers multiple purchase motivations in quick succession. Each bullet should be one line, outcome-focused, and end on a high note. Avoid padding with obvious or generic points.",
+    campaignTypes: ["all"],
+    detectHints: ["✓", "✔", "checkmark", "check-item", "benefit-list", "feature-list", "<ul", "<li"],
+    priority: "high",
+  },
+  {
+    id: "name-the-enemy",
+    name: "Name the Enemy / Alternative Cost Copy",
+    description:
+      "Copy that briefly names what the reader is doing instead of converting — and frames its real cost. E.g. 'Most parents spend another year driving to underfunded council pitches, watching their child stagnate. This is the alternative.' Naming the enemy makes the cost of inaction concrete and accelerates the decision.",
+    campaignTypes: ["service", "product-launch", "lead-gen"],
+    detectHints: ["instead of", "alternative", "most people", "without this", "traditional", "old way", "the problem with"],
+    priority: "medium",
+  },
+  {
+    id: "form-micro-copy",
+    name: "Reassurance Micro-Copy on Forms",
+    description:
+      "Short lines of copy directly adjacent to form fields and the submit button that pre-empt anxieties — e.g. a line beneath the email field saying 'No spam, ever. Unsubscribe in one click.', or under the phone field 'We only call during business hours'. Micro-copy measurably reduces form abandonment.",
+    campaignTypes: ["lead-gen", "ecommerce"],
+    detectHints: ["no spam", "unsubscribe", "we won't", "we will never", "business hours", "privacy", "form-note", "field-note"],
+    priority: "medium",
+  },
+  {
+    id: "price-justification",
+    name: "Price Justification / Value Framing Copy",
+    description:
+      "Copy that reframes the price as an investment or daily cost — e.g. 'Less than a takeaway a week', 'The equivalent of one professional coaching session', 'Most clients recoup the cost within 30 days' — or explicitly names what the customer would pay for a comparable alternative. Reduces price sensitivity without discounting.",
+    campaignTypes: ["ecommerce", "product-launch", "service", "event"],
+    detectHints: ["per day", "a week", "per month", "equivalent to", "compared to", "less than", "investment"],
+    priority: "medium",
+  },
+  {
+    id: "authority-statement",
+    name: "Authority / Credibility Paragraph",
+    description:
+      "A short, specific paragraph that establishes the brand's credentials — years in operation, number of clients served, notable clients, qualifications, accreditations, or media mentions. Placed early (hero or immediately after) to earn the right to make claims before making them.",
+    campaignTypes: ["all"],
+    detectHints: ["years of", "years experience", "established", "founded", "qualified", "accredited", "certified", "as seen", "featured"],
+    priority: "medium",
+  },
+  {
+    id: "conversational-hook",
+    name: "Conversational Rhetorical Question",
+    description:
+      "A rhetorical question used to open a section or paragraph that the target reader will answer 'yes' to internally — e.g. 'Sound familiar?', 'Ready to stop guessing?', 'What if you could double your leads without doubling your ad spend?' — pulls the reader into a dialogue and creates a sense of being understood.",
+    campaignTypes: ["all"],
+    detectHints: ["sound familiar", "ready to", "what if ", "imagine ", "have you ever", "do you want"],
+    priority: "medium",
+  },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

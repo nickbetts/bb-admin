@@ -161,6 +161,87 @@ export const DESIGN_ELEMENTS: DesignElement[] = [
     detectHints: ["cta-section", "final-cta", "section-cta", "cta-dark", "cta-bg"],
     priority: "high",
   },
+  {
+    id: "split-section-layout",
+    name: "Split-Section Layout (Text + Image Side-by-Side)",
+    description:
+      "Content sections alternate between text-left/image-right and text-right/image-left using CSS Grid or Flexbox — breaks the single-column monotony, gives each section breathing room, and allows photography to do the persuasive work alongside the copy.",
+    campaignTypes: ["all"],
+    detectHints: ["grid-cols-2", "split-section", "content-split", "flex-row", "image-left", "image-right", "two-col"],
+    priority: "high",
+  },
+  {
+    id: "logo-strip",
+    name: "Client / Partner Logo Strip",
+    description:
+      "A horizontal strip of greyscale client, partner, or accreditation logos — typically displayed just below the hero or above the testimonials — that communicates legitimacy and scale through visual association with recognisable names.",
+    campaignTypes: ["all"],
+    detectHints: ["logo-strip", "client-logos", "partner-logos", "trusted-by", "filter: grayscale", "filter:grayscale"],
+    priority: "high",
+  },
+  {
+    id: "responsive-fluid-type",
+    name: "Responsive Fluid Typography (CSS clamp)",
+    description:
+      "Headlines and body text scale fluidly between a minimum and maximum size using `clamp()` — e.g. `font-size: clamp(1.5rem, 4vw, 3rem)` — so the page reads beautifully at every viewport width without abrupt breakpoint jumps.",
+    campaignTypes: ["all"],
+    detectHints: ["clamp(", "vw)", "vmin)"],
+    priority: "high",
+  },
+  {
+    id: "custom-form-styling",
+    name: "Custom-Styled Form Inputs",
+    description:
+      "Form inputs, selects, and checkboxes are fully styled to match the brand — custom border colours, focus rings in brand accent, branded placeholder text, and a styled submit button — rather than using default browser UI. This directly reduces perceived risk and increases form completion.",
+    campaignTypes: ["lead-gen", "ecommerce"],
+    detectHints: ["input[type", "input {", "::placeholder", "focus:border", "focus:ring", "form-control", "form-group"],
+    priority: "high",
+  },
+  {
+    id: "dark-hero-light-body",
+    name: "Dark Hero / Light Body Contrast",
+    description:
+      "The hero and final CTA sections use a dark background (near-black or deep brand colour) with light text, while body sections use a light background — creates strong visual bookending that draws the eye to the conversion sections and makes the page feel premium.",
+    campaignTypes: ["all"],
+    detectHints: ["bg-dark", "hero-dark", "background: #1", "background: #0", "background:#1", "background:#0", "color: #fff", "color:#fff", "color: white"],
+    priority: "high",
+  },
+  {
+    id: "badge-overlay",
+    name: "Ribbon / Badge Overlay on Cards",
+    description:
+      "Cards in pricing, package, or feature sections carry a small corner ribbon or pill badge — e.g. 'Most Popular', 'Best Value', 'Recommended', 'Early Bird' — that draws the eye to the preferred option and reduces decision paralysis.",
+    campaignTypes: ["ecommerce", "product-launch", "event", "service"],
+    detectHints: ["most popular", "best value", "recommended", "early bird", "ribbon", "badge", "popular"],
+    priority: "medium",
+  },
+  {
+    id: "floating-accent-shapes",
+    name: "Floating Accent Shapes / Background Blobs",
+    description:
+      "Subtle decorative elements — blurred gradient blobs, dot grids, geometric outlines, or abstract shapes — positioned behind content sections using `position: absolute` and low opacity. Adds depth and brand personality without competing with the content.",
+    campaignTypes: ["product-launch", "service", "lead-gen"],
+    detectHints: ["blob", "shape-", "dot-grid", "bg-shape", "decorative", "position: absolute", "z-index: -", "z-index:-"],
+    priority: "medium",
+  },
+  {
+    id: "font-pairing",
+    name: "Intentional Font Pairing (Display + Body)",
+    description:
+      "A distinct display or serif font for headlines paired with a clean sans-serif for body text — loaded via Google Fonts or a self-hosted variable font. The contrast between headline and body typefaces creates hierarchy and signals design intentionality.",
+    campaignTypes: ["all"],
+    detectHints: ["font-family", "@import url", "fonts.googleapis", "@font-face", "serif"],
+    priority: "medium",
+  },
+  {
+    id: "scroll-progress-indicator",
+    name: "Page Scroll Progress Indicator",
+    description:
+      "A thin bar at the top of the viewport that fills as the user scrolls down the page — gives a sense of progress on long-form pages and subtly encourages visitors to keep reading to 'finish' the page.",
+    campaignTypes: ["service", "product-launch", "lead-gen"],
+    detectHints: ["scroll-progress", "progress-bar", "scrollY", "scrollTop", "data-progress"],
+    priority: "medium",
+  },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
