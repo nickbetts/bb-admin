@@ -1759,6 +1759,8 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                 {translations.map((t) => {
                   const isTranslating = translatingLangs.includes(t.language);
                   const stale = t.stale;
+                  const baseUrl = buildLpUrl({ clientSlug: lp?.client?.slug, customSubdomain: lp?.customSubdomain, lpSlug: lp?.slug, publicSlug: lp?.publicSlug, shareToken: lp?.shareToken });
+                  const translationUrl = baseUrl ? `${baseUrl}?lang=${t.language}` : "";
                   return (
                     <div key={t.language} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: "var(--r-sm)", background: previewLang === t.language ? "var(--accent-bg)" : "var(--surface)", border: "1px solid var(--border)" }}>
                       <Globe style={{ width: 14, height: 14, color: "var(--text-4)", flexShrink: 0 }} />
@@ -1772,7 +1774,14 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                             {isTranslating ? "Generating\u2026" : stale ? "Stale" : t.status === "published" ? "Published" : "Draft"}
                           </span>
                         </div>
-                        <span style={{ fontSize: 10, color: "var(--text-4)" }}>{t.language}</span>
+                        {t.status === "published" && translationUrl ? (
+                          <a href={translationUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, color: "var(--accent)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 2 }} title="Open live page">
+                            {translationUrl.length > 48 ? `${translationUrl.slice(0, 48)}\u2026` : translationUrl}
+                            <ExternalLink style={{ width: 9, height: 9, flexShrink: 0 }} />
+                          </a>
+                        ) : (
+                          <span style={{ fontSize: 10, color: "var(--text-4)" }}>{t.language}</span>
+                        )}
                       </div>
                       <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
                         {!isTranslating && (

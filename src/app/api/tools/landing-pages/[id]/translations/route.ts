@@ -91,42 +91,42 @@ export async function POST(
   // are injected at serve time via assemblePublicHtml, same as English.
   const baseHtml = lp.currentHtml;
 
-  const results: { language: string; languageName: string; success: boolean; error?: string }[] = [];
+  // Translate all requested languages in parallel
+  const results = await Promise.all(
+    requestedLanguages.map(async (langCode): Promise<{ language: string; languageName: string; success: boolean; error?: string }> => {
+      const langEntry = LP_SUPPORTED_LANGUAGES.find((l) => l.language === langCode)!;
 
-  for (const langCode of requestedLanguages) {
-    const langEntry = LP_SUPPORTED_LANGUAGES.find((l) => l.language === langCode);
-    if (!langEntry) continue;
+      try {
+        console.log(`[translations] Translating LP ${id} into ${langEntry.name}...`);
+        const translatedHtml = await translateLandingPage(baseHtml, langCode, langEntry.name);
 
-    try {
-      console.log(`[translations] Translating LP ${id} into ${langEntry.name}...`);
-      const translatedHtml = await translateLandingPage(baseHtml, langCode, langEntry.name);
+        await prisma.landingPageTranslation.upsert({
+          where: { landingPageId_language: { landingPageId: id, language: langCode } },
+          create: {
+            landingPageId: id,
+            language: langCode,
+            languageName: langEntry.name,
+            html: translatedHtml,
+            status: "draft",
+          },
+          update: {
+            html: translatedHtml,
+            languageName: langEntry.name,
+            // Reset to draft on regeneration — user must re-publish
+            status: "draft",
+            updatedAt: new Date(),
+          },
+        });
 
-      await prisma.landingPageTranslation.upsert({
-        where: { landingPageId_language: { landingPageId: id, language: langCode } },
-        create: {
-          landingPageId: id,
-          language: langCode,
-          languageName: langEntry.name,
-          html: translatedHtml,
-          status: "draft",
-        },
-        update: {
-          html: translatedHtml,
-          languageName: langEntry.name,
-          // Reset to draft on regeneration — user must re-publish
-          status: "draft",
-          updatedAt: new Date(),
-        },
-      });
-
-      results.push({ language: langCode, languageName: langEntry.name, success: true });
-      console.log(`[translations] LP ${id} → ${langEntry.name} done`);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Unknown error";
-      console.error(`[translations] LP ${id} → ${langEntry.name} failed:`, err);
-      results.push({ language: langCode, languageName: langEntry.name, success: false, error: message });
-    }
-  }
+        console.log(`[translations] LP ${id} → ${langEntry.name} done`);
+        return { language: langCode, languageName: langEntry.name, success: true };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Unknown error";
+        console.error(`[translations] LP ${id} → ${langEntry.name} failed:`, err);
+        return { language: langCode, languageName: langEntry.name, success: false, error: message };
+      }
+    })
+  );
 
   return NextResponse.json({ results });
 }
