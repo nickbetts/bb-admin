@@ -9,7 +9,7 @@ export default async function ApiStatusPage() {
   const session = await getSession();
   if (!session) redirect("/login");
   if (!session.user.permissions.includes("users")) redirect("/dashboard");
-  if (session.user.role !== "admin" && !session.user.permissions.includes("admin.api_status")) redirect("/admin");
+  if (!session.user.permissions.includes("admin.api_status")) redirect("/admin");
 
   return (
     <div className="page">

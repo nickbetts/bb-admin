@@ -9,7 +9,7 @@ export default async function LogsPage() {
   const session = await getSession();
   if (!session) redirect("/login");
   if (!session.user.permissions.includes("users")) redirect("/dashboard");
-  if (session.user.role !== "admin" && !session.user.permissions.includes("admin.logs")) redirect("/admin");
+  if (!session.user.permissions.includes("admin.logs")) redirect("/admin");
 
   return (
     <div className="page">

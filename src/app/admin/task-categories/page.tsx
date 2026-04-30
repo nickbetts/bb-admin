@@ -6,7 +6,8 @@ import { TaskCategoryManager } from "@/components/admin/TaskCategoryManager";
 export default async function AdminTaskCategoriesPage() {
   const session = await getSession();
   if (!session) redirect("/login");
-  if (session.user.role !== "admin" && !session.user.permissions.includes("admin.task_categories")) redirect("/admin");
+  if (!session.user.permissions.includes("users")) redirect("/dashboard");
+  if (!session.user.permissions.includes("admin.task_categories")) redirect("/admin");
 
   return (
     <div className="page">

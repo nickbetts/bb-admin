@@ -108,15 +108,9 @@ interface GSCSite {
 export function ClientSettingsForm({ client, permissions = [], isAdmin = false }: ClientSettingsFormProps) {
   const router = useRouter();
 
-  // Tab-based card visibility — mirrors the same logic used in ClientDashboard.
-  // If a role has NO tab:* permissions, all cards are shown (unrestricted).
-  // If it has ANY tab:* permissions, only matching cards are shown.
-  const tabPerms = permissions.filter((p) => p.startsWith("tab:")).map((p) => p.slice(4));
-  const hasTabRestrictions = !isAdmin && tabPerms.length > 0;
-  function canSeeTab(tab: string) {
-    return !hasTabRestrictions || tabPerms.includes(tab);
-  }
-  // Settings-card visibility — same opt-in pattern as tab permissions.
+  // Settings-card visibility — opt-in restriction pattern.
+  // If a role has NO settings:* permissions, all cards are shown (unrestricted).
+  // If it has ANY settings:* permissions, only those cards are shown.
   const settingsPerms = permissions.filter((p) => p.startsWith("settings:")).map((p) => p.slice(9));
   const hasSettingsRestrictions = !isAdmin && settingsPerms.length > 0;
   function canSeeSetting(key: string) {
@@ -458,7 +452,7 @@ export function ClientSettingsForm({ client, permissions = [], isAdmin = false }
       </div>}
 
       {/* SemRush */}
-      {canSeeTab("seo") && <div className="card">
+      {canSeeSetting("seo") && <div className="card">
         <div className="card-header">
           <div className="flex items-center gap-3">
             <span className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-xs font-bold text-orange-600">S</span>
@@ -540,7 +534,7 @@ export function ClientSettingsForm({ client, permissions = [], isAdmin = false }
       </div>}
 
       {/* GA4 */}
-      {canSeeTab("web") && <div className="card">
+      {canSeeSetting("ga4") && <div className="card">
         <div className="card-header">
           <div className="flex items-center gap-3">
             <span className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-600">G</span>
@@ -627,7 +621,7 @@ export function ClientSettingsForm({ client, permissions = [], isAdmin = false }
       </div>}
 
       {/* Meta Ads */}
-      {canSeeTab("paid") && <div className="card">
+      {canSeeSetting("meta") && <div className="card">
         <div className="card-header">
           <div className="flex items-center gap-3">
             <span className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-xs font-bold text-indigo-600">M</span>
@@ -676,7 +670,7 @@ export function ClientSettingsForm({ client, permissions = [], isAdmin = false }
       </div>}
 
       {/* Google Ads */}
-      {canSeeTab("googleads") && <div className="card">
+      {canSeeSetting("googleads") && <div className="card">
         <div className="card-header">
           <div className="flex items-center gap-3">
             <span className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center text-xs font-bold text-yellow-700">A</span>
@@ -739,7 +733,7 @@ export function ClientSettingsForm({ client, permissions = [], isAdmin = false }
       </div>}
 
       {/* Search Console */}
-      {canSeeTab("searchconsole") && <div className="card">
+      {canSeeSetting("searchconsole") && <div className="card">
         <div className="card-header">
           <div className="flex items-center gap-3">
             <span className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-xs font-bold text-green-700">SC</span>
@@ -857,7 +851,7 @@ export function ClientSettingsForm({ client, permissions = [], isAdmin = false }
       </div>}
 
       {/* Signals & Alerts — per-client config */}
-      {canSeeTab("signals") && <SignalConfigEditor value={signalConfig} onChange={setSignalConfig} />}
+      {canSeeSetting("signals") && <SignalConfigEditor value={signalConfig} onChange={setSignalConfig} />}
 
       {/* Landing-page tracking defaults */}
       {canSeeSetting("lp") && <div className="card">
@@ -881,7 +875,7 @@ export function ClientSettingsForm({ client, permissions = [], isAdmin = false }
       </div>}
 
       {/* WooCommerce */}
-      {canSeeTab("ecommerce") && <div className="card">
+      {canSeeSetting("woocommerce") && <div className="card">
         <div className="card-header">
           <div className="flex items-center gap-3">
             <span className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-xs font-bold text-purple-700">WC</span>
@@ -906,7 +900,7 @@ export function ClientSettingsForm({ client, permissions = [], isAdmin = false }
       </div>}
 
       {/* Shopify */}
-      {canSeeTab("ecommerce") && <div className="card">
+      {canSeeSetting("shopify") && <div className="card">
         <div className="card-header">
           <div className="flex items-center gap-3">
             <span className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-xs font-bold text-green-700">SH</span>
@@ -927,7 +921,7 @@ export function ClientSettingsForm({ client, permissions = [], isAdmin = false }
       </div>}
 
       {/* TikTok Ads */}
-      {canSeeTab("tiktok") && <div className="card">
+      {canSeeSetting("tiktok") && <div className="card">
         <div className="card-header">
           <div className="flex items-center gap-3">
             <span className="w-8 h-8 rounded-full bg-black flex items-center justify-center text-xs font-bold text-white">TK</span>
@@ -949,7 +943,7 @@ export function ClientSettingsForm({ client, permissions = [], isAdmin = false }
       </div>}
 
       {/* Microsoft Advertising */}
-      {canSeeTab("microsoftads") && <div className="card">
+      {canSeeSetting("microsoftads") && <div className="card">
         <div className="card-header">
           <div className="flex items-center gap-3">
             <span className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: "#00a4ef", color: "white" }}>MS</span>
@@ -970,7 +964,7 @@ export function ClientSettingsForm({ client, permissions = [], isAdmin = false }
       </div>}
 
       {/* Core Web Vitals */}
-      {canSeeTab("cwv") && <div className="card">
+      {canSeeSetting("cwv") && <div className="card">
         <div className="card-header">
           <div className="flex items-center gap-3">
             <span className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-700">CWV</span>
@@ -987,7 +981,7 @@ export function ClientSettingsForm({ client, permissions = [], isAdmin = false }
       </div>}
 
       {/* LinkedIn Ads */}
-      {canSeeTab("linkedin") && <div className="card">
+      {canSeeSetting("linkedin") && <div className="card">
         <div className="card-header">
           <div className="flex items-center gap-3">
             <span className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ background: "#0a66c2" }}>in</span>
@@ -1016,7 +1010,7 @@ export function ClientSettingsForm({ client, permissions = [], isAdmin = false }
       </div>}
 
       {/* Klaviyo */}
-      {canSeeTab("klaviyo") && <div className="card">
+      {canSeeSetting("klaviyo") && <div className="card">
         <div className="card-header">
           <div className="flex items-center gap-3">
             <span className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ background: "#6c47ff" }}>KL</span>
@@ -1040,7 +1034,7 @@ export function ClientSettingsForm({ client, permissions = [], isAdmin = false }
       </div>}
 
       {/* HubSpot */}
-      {canSeeTab("hubspot") && <div className="card">
+      {canSeeSetting("hubspot") && <div className="card">
         <div className="card-header">
           <div className="flex items-center gap-3">
             <span className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ background: "#ff7a59" }}>HS</span>
@@ -1065,7 +1059,7 @@ export function ClientSettingsForm({ client, permissions = [], isAdmin = false }
       </div>}
 
       {/* YouTube */}
-      {canSeeTab("youtube") && <div className="card">
+      {canSeeSetting("youtube") && <div className="card">
         <div className="card-header">
           <div className="flex items-center gap-3">
             <span className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ background: "#ff0000" }}>YT</span>
@@ -1089,7 +1083,7 @@ export function ClientSettingsForm({ client, permissions = [], isAdmin = false }
       </div>}
 
       {/* CallRail */}
-      {canSeeTab("callrail") && <div className="card">
+      {canSeeSetting("callrail") && <div className="card">
         <div className="card-header">
           <div className="flex items-center gap-3">
             <span className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ background: "#00c389" }}>CR</span>
@@ -1114,7 +1108,7 @@ export function ClientSettingsForm({ client, permissions = [], isAdmin = false }
       </div>}
 
       {/* Competitor Intelligence */}
-      {canSeeTab("competitors") && <div className="card">
+      {canSeeSetting("competitors") && <div className="card">
         <div className="card-header">
           <div className="flex items-center gap-3">
             <span className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-xs font-bold text-indigo-700">CI</span>

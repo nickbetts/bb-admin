@@ -7,7 +7,7 @@ export default async function RolesPage() {
   const session = await getSession();
   if (!session) redirect("/login");
   if (!session.user.permissions.includes("users")) redirect("/dashboard");
-  if (session.user.role !== "admin" && !session.user.permissions.includes("admin.roles")) redirect("/admin");
+  if (!session.user.permissions.includes("admin.roles")) redirect("/admin");
 
   return (
     <div className="page">

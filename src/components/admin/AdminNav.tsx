@@ -19,9 +19,9 @@ const TABS = [
   { href: "/admin/settings", key: "settings", label: "Settings", permission: "admin.settings" },
 ] as const;
 
-export function AdminNav({ active, permissions, isAdmin }: AdminNavProps) {
+export function AdminNav({ active, permissions }: Omit<AdminNavProps, "isAdmin"> & { isAdmin?: boolean }) {
   const visibleTabs = TABS.filter(
-    (tab) => isAdmin || permissions.includes(tab.permission)
+    (tab) => permissions.includes(tab.permission)
   );
 
   return (
