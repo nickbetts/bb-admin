@@ -15,6 +15,7 @@
 
 import { Resend } from "resend";
 import { prisma } from "@/lib/prisma";
+import { getOpenAiClient } from "@/lib/openai-client";
 
 export class SmtpNotConfiguredError extends Error {
   constructor() {
@@ -72,25 +73,66 @@ export interface LeadEmailContext {
   submittedAt?: Date;
 }
 
-/**
- * Builds the HTML for a lead notification email.
- * Attempts an AI-drafted summary paragraph (GPT-4o-mini, non-fatal).
- * Always includes the raw fields table below.
- */
-/** Convert snake_case / kebab-case field keys to "Title Case" labels. */
+/** Fallback: convert snake_case / kebab-case to "Title Case" without AI. */
 function formatFieldLabel(key: string): string {
   return key
     .replace(/[_-]/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+/**
+ * Uses GPT-4o-mini to convert raw field keys (e.g. player_dob, mobile_whatsapp)
+ * into natural human-readable labels for the email table.
+ * Falls back to formatFieldLabel() if AI is unavailable.
+ */
+async function resolveFieldLabels(
+  keys: string[],
+  lpTitle: string,
+  clientName: string | undefined,
+): Promise<Record<string, string>> {
+  const fallback = Object.fromEntries(keys.map((k) => [k, formatFieldLabel(k)]));
+  if (keys.length === 0) return fallback;
+  try {
+    const openai = await getOpenAiClient();
+    const resp = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a form-field label formatter. Given a JSON object mapping raw field keys to empty strings, return the same JSON object with each value replaced by a short, natural human-readable label. Use sentence case (only capitalise proper nouns). No trailing colons. Return valid JSON only — no markdown, no explanation.",
+        },
+        {
+          role: "user",
+          content: `Landing page: "${lpTitle}"${clientName ? ` (${clientName})` : ""}\n\n${JSON.stringify(Object.fromEntries(keys.map((k) => [k, ""])), null, 2)}`,
+        },
+      ],
+      temperature: 0.1,
+      max_tokens: 300,
+      response_format: { type: "json_object" },
+    });
+    const raw = resp.choices[0]?.message?.content?.trim() ?? "";
+    const parsed = JSON.parse(raw) as Record<string, string>;
+    // Merge — only override keys that got a non-empty string back
+    return Object.fromEntries(
+      keys.map((k) => [k, typeof parsed[k] === "string" && parsed[k].trim() ? parsed[k].trim() : fallback[k]]),
+    );
+  } catch {
+    return fallback;
+  }
+}
+
 export async function buildLeadNotificationHtml(ctx: LeadEmailContext): Promise<{ html: string; text: string }> {
   const { lpTitle, clientName, fields, referrer, submittedAt } = ctx;
+
+  // ── AI-resolved field labels ─────────────────────────────────────────────
+  const keys = Object.keys(fields);
+  const labels = await resolveFieldLabels(keys, lpTitle, clientName);
 
   // ── Fields table ─────────────────────────────────────────────────────────
   const fieldRows = Object.entries(fields)
     .map(([k, v]) => `<tr>
-      <td style="padding:6px 12px;color:#6b7280;white-space:nowrap;border-bottom:1px solid #f3f4f6;font-size:13px">${escapeHtml(formatFieldLabel(k))}</td>
+      <td style="padding:6px 12px;color:#6b7280;white-space:nowrap;border-bottom:1px solid #f3f4f6;font-size:13px">${escapeHtml(labels[k] ?? formatFieldLabel(k))}</td>
       <td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;font-size:13px;font-weight:500;color:#111">${escapeHtml(v)}</td>
     </tr>`)
     .join("");
@@ -123,7 +165,7 @@ export async function buildLeadNotificationHtml(ctx: LeadEmailContext): Promise<
 </body>
 </html>`;
 
-  const textLines = Object.entries(fields).map(([k, v]) => `${formatFieldLabel(k)}: ${v}`).join("\n");
+  const textLines = Object.entries(fields).map(([k, v]) => `${labels[k] ?? formatFieldLabel(k)}: ${v}`).join("\n");
   const text = `New lead from "${lpTitle}"\n\n${textLines}`;
 
   return { html, text };
