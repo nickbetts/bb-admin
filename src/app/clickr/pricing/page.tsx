@@ -348,6 +348,20 @@ export default function PricingPage() {
             </span>
           </button>
         </div>
+
+        {/* Trust badges */}
+        <div style={{ display: "flex", gap: 20, justifyContent: "center", flexWrap: "wrap", marginTop: 24 }}>
+          {[
+            "No credit card required",
+            "Cancel anytime",
+            "14-day free trial on Starter",
+            "7-day free trial on Pro",
+          ].map((badge) => (
+            <span key={badge} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "rgba(255,255,255,0.35)" }}>
+              <CheckCircle2 size={12} color={accent} /> {badge}
+            </span>
+          ))}
+        </div>
       </section>
 
       {/* ── Pricing cards ────────────────────────────────────────────────── */}

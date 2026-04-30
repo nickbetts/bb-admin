@@ -161,6 +161,10 @@ export default function ClickrPage() {
   const [typedText, setTypedText] = useState("");
   const [typingDone, setTypingDone] = useState(false);
 
+  const cycleTexts = ["agencies", "consultants", "paid campaigns", "product launches"];
+  const [cycleIdx, setCycleIdx] = useState(0);
+  const [cycleVisible, setCycleVisible] = useState(true);
+
   const briefText = "High-converting summer camp landing page. Target: parents of 8-16 year olds. CTA: enrol now.";
 
   useEffect(() => {
@@ -175,6 +179,18 @@ export default function ClickrPage() {
       }
     }, 38);
     return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const iv = setInterval(() => {
+      setCycleVisible(false);
+      setTimeout(() => {
+        setCycleIdx((idx) => (idx + 1) % cycleTexts.length);
+        setCycleVisible(true);
+      }, 280);
+    }, 2600);
+    return () => clearInterval(iv);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -291,11 +307,22 @@ export default function ClickrPage() {
             </div>
 
             <h1 style={{ fontSize: 62, fontWeight: 900, lineHeight: 1.02, letterSpacing: "-0.045em", marginBottom: 30, color: "white" }}>
-              <span className="hw hw1">Landing pages</span>
+              <span className="hw hw1">Landing pages for</span>
               <br />
-              <span className="hw hw2">that actually</span>
+              <span className="hw hw2" style={{
+                background: `linear-gradient(90deg, ${accentLight}, ${accent})`,
+                WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+                display: "inline-block",
+                opacity: cycleVisible ? 1 : 0,
+                transform: cycleVisible ? "translateY(0)" : "translateY(-10px)",
+                transition: "opacity 0.28s ease, transform 0.28s ease",
+              }}>
+                {cycleTexts[cycleIdx]}
+              </span>
               <br />
-              <span className="hw hw3" style={{ background: `linear-gradient(90deg, ${accentLight}, ${accent}, #ef4444)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>convert.</span>
+              <span className="hw hw3">that actually</span>
+              <br />
+              <span className="hw" style={{ animationDelay: "0.58s", background: `linear-gradient(90deg, ${accentLight}, ${accent}, #ef4444)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>convert.</span>
             </h1>
 
             <p style={{ fontSize: 19, color: "rgba(255,255,255,0.58)", lineHeight: 1.78, maxWidth: 500, marginBottom: 36, fontWeight: 400 }}>
@@ -483,6 +510,53 @@ export default function ClickrPage() {
         </div>
       </section>
 
+      {/* ── AUDIENCE STRIP ─────────────────────────────────────────────────── */}
+      <section className="reveal-section" style={{ padding: "72px 40px", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+        <div style={{ maxWidth: 900, margin: "0 auto" }}>
+          <p style={{ textAlign: "center", fontSize: 12, fontWeight: 700, color: accentLight, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 12 }}>WHO IT&apos;S FOR</p>
+          <h2 style={{ textAlign: "center", fontSize: 36, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 40, color: "white" }} className="blur-reveal">
+            Purpose-built for B2B performance marketers
+          </h2>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }} className="aud-grid">
+            {[
+              {
+                href: "/solutions/agencies",
+                badge: "FOR AGENCIES",
+                title: "Scale across every client",
+                body: "Multi-client management, template library, magic-link review, CRM integrations, and white-label subdomains. One workflow. Every client campaign.",
+                cta: "For agencies →",
+              },
+              {
+                href: "/solutions/consultants",
+                badge: "FOR CONSULTANTS",
+                title: "Deliver more. Charge accordingly.",
+                body: "Punch above your weight. Build client pages that look like they came from a full agency — in under 60 seconds. Full HTML access, no watermarks on paid plans.",
+                cta: "For consultants →",
+              },
+            ].map(({ href, badge, title, body, cta }) => (
+              <a key={href} href={href} style={{
+                display: "block", textDecoration: "none",
+                padding: "32px 28px",
+                background: "rgba(255,255,255,0.025)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: 18,
+                transition: "border-color 0.2s, transform 0.2s",
+                cursor: "pointer",
+              }} className="aud-card">
+                <span style={{
+                  display: "inline-block", padding: "4px 10px", borderRadius: 20, marginBottom: 16,
+                  background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.2)",
+                  fontSize: 10, fontWeight: 700, color: accentLight, letterSpacing: "0.06em",
+                }}>{badge}</span>
+                <h3 style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.025em", margin: "0 0 12px", color: "white" }}>{title}</h3>
+                <p style={{ fontSize: 14, lineHeight: 1.65, color: "rgba(255,255,255,0.45)", margin: "0 0 20px" }}>{body}</p>
+                <span style={{ fontSize: 13, fontWeight: 700, color: accent }}>{cta}</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── HOW IT WORKS ───────────────────────────────────────────────────── */}
       <section id="how-it-works" className="reveal-section" style={{ padding: "120px 40px" }}>
         <div style={{ maxWidth: 960, margin: "0 auto" }}>
@@ -539,6 +613,60 @@ export default function ClickrPage() {
                 <div style={{ width: 42, height: 42, borderRadius: 11, background: `rgba(249,115,22,0.1)`, border: `1px solid rgba(249,115,22,0.22)`, display: "flex", alignItems: "center", justifyContent: "center", color: accentLight, marginBottom: 16 }}>{f.icon}</div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: "white", marginBottom: 8 }}>{f.title}</div>
                 <div style={{ fontSize: 13, color: "rgba(255,255,255,0.43)", lineHeight: 1.65 }}>{f.desc}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── COMPETITOR COMPARISON ──────────────────────────────────────────── */}
+      <section className="reveal-section" style={{ padding: "100px 40px", background: "rgba(255,255,255,0.01)", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+        <div style={{ maxWidth: 1000, margin: "0 auto" }}>
+          <div style={{ textAlign: "center", marginBottom: 56 }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: accentLight, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }} className="blur-reveal">Why clickr</p>
+            <h2 style={{ fontSize: 44, fontWeight: 900, letterSpacing: "-0.04em", marginBottom: 18, color: "white" }} className="blur-reveal">
+              Stacks up against every alternative.
+            </h2>
+            <p style={{ fontSize: 16, color: "rgba(255,255,255,0.4)", maxWidth: 520, margin: "0 auto", lineHeight: 1.7 }}>
+              Unbounce and Instapage charge enterprise prices for drag-and-drop editors. Coding from scratch takes days. clickr is the only platform built for AI-native, multi-client performance marketing.
+            </p>
+          </div>
+          <div style={{ borderRadius: 18, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)" }} className="stagger-in">
+            {/* Header */}
+            <div style={{
+              display: "grid", gridTemplateColumns: "2fr 1.2fr 1fr 1fr 1fr",
+              background: "rgba(255,255,255,0.04)",
+              borderBottom: "1px solid rgba(255,255,255,0.08)",
+              padding: "14px 24px",
+            }} className="comp-row">
+              <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.06em" }} />
+              <span style={{ fontSize: 11, fontWeight: 700, color: accentLight, textTransform: "uppercase", letterSpacing: "0.06em", textAlign: "center" }}>clickr</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.06em", textAlign: "center" }}>Unbounce</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.06em", textAlign: "center" }}>Instapage</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.06em", textAlign: "center" }}>Hand-code</span>
+            </div>
+            {[
+              { feature: "Time to first live page", clickr: "< 60 seconds", unbounce: "30–60 min", instapage: "30–60 min", handcode: "4–8 hours" },
+              { feature: "Brand scraping & real content", clickr: "✓", unbounce: "✗", instapage: "✗", handcode: "✗" },
+              { feature: "3-pass AI quality audit (CRO + Design + Copy)", clickr: "✓", unbounce: "Basic AI", instapage: "Basic AI", handcode: "✗" },
+              { feature: "Chat-based page refinement", clickr: "✓", unbounce: "✗", instapage: "✗", handcode: "✗" },
+              { feature: "Multi-client management", clickr: "✓", unbounce: "✓ (expensive)", instapage: "✓ (expensive)", handcode: "Manual" },
+              { feature: "Magic-link client review", clickr: "✓", unbounce: "✗", instapage: "✗", handcode: "✗" },
+              { feature: "Native CRM integrations", clickr: "✓", unbounce: "✓", instapage: "✓", handcode: "Custom dev" },
+              { feature: "Multi-language pages (20+ langs)", clickr: "✓", unbounce: "Manual", instapage: "Manual", handcode: "Manual" },
+            ].map(({ feature, clickr, unbounce, instapage, handcode }, i) => (
+              <div key={feature} style={{
+                display: "grid", gridTemplateColumns: "2fr 1.2fr 1fr 1fr 1fr",
+                padding: "15px 24px",
+                background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.01)",
+                borderBottom: i < 7 ? "1px solid rgba(255,255,255,0.04)" : "none",
+                alignItems: "center",
+              }} className="comp-row">
+                <span style={{ fontSize: 13, color: "rgba(255,255,255,0.6)" }}>{feature}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: clickr === "✓" ? "#86efac" : accentLight, textAlign: "center" }}>{clickr}</span>
+                <span style={{ fontSize: 12, color: unbounce === "✗" ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.45)", textAlign: "center" }}>{unbounce}</span>
+                <span style={{ fontSize: 12, color: instapage === "✗" ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.45)", textAlign: "center" }}>{instapage}</span>
+                <span style={{ fontSize: 12, color: handcode === "✗" ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.45)", textAlign: "center" }}>{handcode}</span>
               </div>
             ))}
           </div>
@@ -799,6 +927,10 @@ export default function ClickrPage() {
 
         .pill-hover:hover { background: rgba(249,115,22,0.08) !important; border-color: rgba(249,115,22,0.25) !important; color: rgba(255,255,255,0.8) !important; transform: translateY(-2px); }
         .pill-hover { transition: all 0.2s ease; }
+
+        .aud-card:hover { border-color: rgba(249,115,22,0.28) !important; transform: translateY(-3px); }
+        @media (max-width: 680px) { .aud-grid { grid-template-columns: 1fr !important; } }
+        @media (max-width: 700px) { .comp-row { grid-template-columns: 1.5fr 1fr 1fr !important; } .comp-row > span:nth-child(4), .comp-row > span:nth-child(5) { display: none !important; } }
 
         @media (max-width: 1000px) {
           .hero-grid { grid-template-columns: 1fr !important; }
