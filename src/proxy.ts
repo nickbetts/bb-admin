@@ -6,10 +6,11 @@ import { NextRequest, NextResponse } from "next/server";
  *      public share-link page (/share/report/<token>). Subsequent client-side
  *      fetches to /api/* automatically send the cookie, allowing channel data
  *      routes to authenticate the unauthenticated browser via the share token.
- *   2) Hosts published landing pages on clickr.marketing. Wildcard subdomains
- *      `<client-slug>.clickr.marketing/<lp-slug>` are rewritten internally to
- *      `/lp/<client-slug>/<lp-slug>` (URL stays clean). The apex
- *      `clickr.marketing` redirects to NEXT_PUBLIC_APP_URL.
+ *   2) Hosts the Clickr public marketing site on clickr.marketing. Requests to
+ *      `clickr.marketing/<path>` are rewritten internally to `/clickr/<path>`
+ *      so the URL stays clean (e.g. clickr.marketing/pricing → /clickr/pricing).
+ *      Wildcard subdomains `<client-slug>.clickr.marketing/<lp-slug>` are
+ *      rewritten to `/lp/<client-slug>/<lp-slug>` for published landing pages.
  *
  * The token validity itself is checked server-side in each API route via
  * `getShareTokenAuth` in src/lib/auth.ts. This middleware merely propagates
@@ -32,9 +33,10 @@ export default function middleware(request: NextRequest) {
     /\.[a-zA-Z0-9]{1,5}$/.test(pathname); // any obvious file extension
 
   if ((host === LP_DOMAIN || host === `www.${LP_DOMAIN}`) && !isInternal) {
-    // Apex / www → serve the clickr marketing page (internal rewrite, URL stays clean)
+    // Route clickr.marketing pages to the /clickr/* tree.
+    // /  → /clickr, /about → /clickr/about, /pricing → /clickr/pricing, etc.
     const url = request.nextUrl.clone();
-    url.pathname = "/clickr";
+    url.pathname = pathname === "/" ? "/clickr" : `/clickr${pathname}`;
     return NextResponse.rewrite(url);
   } else if (host.endsWith(`.${LP_DOMAIN}`) && !isInternal) {
     const sub = host.slice(0, -1 * (LP_DOMAIN.length + 1));
