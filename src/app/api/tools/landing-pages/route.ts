@@ -100,9 +100,21 @@ export async function POST(request: NextRequest) {
           ...(additionalUrls ?? []).map((u) => extractPageContentFromUrl(u)),
         ]);
 
+        // Merge images from additional pages into brandContext (deduplicated)
+        const seenImages = new Set(brandContext.imageryUrls);
+        for (const result of extraPageResults) {
+          if (!result) continue;
+          for (const imgUrl of result.imageryUrls) {
+            if (!seenImages.has(imgUrl)) {
+              brandContext.imageryUrls.push(imgUrl);
+              seenImages.add(imgUrl);
+            }
+          }
+        }
+
         const additionalPageContents = extraPageResults
           .filter((r): r is NonNullable<typeof r> => r !== null)
-          .map(({ sourceUrl, ...content }) => ({ sourceUrl, content }));
+          .map(({ sourceUrl, imageryUrls: _imgs, ...content }) => ({ sourceUrl, content }));
 
         let templateHtml: string | undefined;
         if (templateId) {

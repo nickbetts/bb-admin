@@ -10,6 +10,8 @@ import { getAnthropicClient } from "@/lib/anthropic-client";
 import type { BrandContext, PageContent } from "@/lib/brand-extractor";
 import { screenshotHtml } from "@/lib/puppeteer";
 import { buildPlannerCroBlock, buildAuditCroBlock } from "@/lib/lp-cro-elements";
+import { buildDesignAuditBlock } from "@/lib/lp-design-elements";
+import { buildCopyAuditBlock } from "@/lib/lp-copy-elements";
 
 const MODEL = "claude-opus-4-7";
 // Opus 4.7 supports up to 32K output tokens. A fully-populated landing
@@ -732,6 +734,8 @@ export async function auditDesignAndSector(opts: {
     ? "The FIRST attached image is a live browser screenshot of the rendered page — use it to judge the actual visual quality, sector fit, and which images are visible. Subsequent image blocks are the individual brand/content photos for reference."
     : "The attached images are the individual brand/content photos available for use.";
 
+  const designChecklist = buildDesignAuditBlock(opts.campaignType, opts.html);
+
   const userPrompt = `Audit the UI design, sector relevance, and image usage of this landing page.
 
 ${screenshotNote}
@@ -749,6 +753,7 @@ ${colourBlock || "  Not specified"}
 ## Available image URLs (these should all appear in the page HTML)
 ${numberedImageList}
 
+${designChecklist ? `${designChecklist}\n\n` : ""}
 ## The landing page HTML to audit
 ${opts.html}
 
@@ -857,6 +862,8 @@ export async function auditCopyQuality(opts: {
 }): Promise<LPCritiqueItem[]> {
   const anthropic = await getAnthropicClient();
 
+  const copyChecklist = buildCopyAuditBlock(opts.campaignType, opts.html);
+
   const userPrompt = `Audit the copy quality and conversion effectiveness of this landing page.
 
 ## Campaign context
@@ -866,6 +873,7 @@ ${opts.targetAudience ? `Target audience: ${opts.targetAudience}\n` : ""}
 ## Company
 ${opts.brandContext.companyName ?? "Unknown"}${opts.brandContext.tagline ? ` — ${opts.brandContext.tagline}` : ""}
 
+${copyChecklist ? `${copyChecklist}\n\n` : ""}
 ## The landing page HTML to audit
 ${opts.html}
 

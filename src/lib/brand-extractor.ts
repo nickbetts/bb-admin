@@ -153,7 +153,7 @@ export async function extractBrandContext(url: string): Promise<BrandContext> {
  * we want additional content context but not full brand analysis.
  * Silently returns null on any network/parse error.
  */
-export async function extractPageContentFromUrl(url: string): Promise<(PageContent & { sourceUrl: string }) | null> {
+export async function extractPageContentFromUrl(url: string): Promise<(PageContent & { sourceUrl: string; imageryUrls: string[] }) | null> {
   if (!url || (!url.startsWith("http://") && !url.startsWith("https://"))) return null;
   try {
     const controller = new AbortController();
@@ -170,7 +170,8 @@ export async function extractPageContentFromUrl(url: string): Promise<(PageConte
     clearTimeout(timer);
     if (!res.ok) return null;
     const html = await res.text();
-    return { ...extractPageContent(html), sourceUrl: url };
+    const origin = new URL(url).origin;
+    return { ...extractPageContent(html), imageryUrls: extractImageryUrls(html, origin), sourceUrl: url };
   } catch {
     return null;
   }
