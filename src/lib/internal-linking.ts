@@ -13,7 +13,7 @@
 import * as mammoth from "mammoth";
 import * as cheerio from "cheerio";
 import { fetchSitemapUrls } from "@/lib/sitemap";
-import { getOpenAiClient } from "@/lib/openai-client";
+import { getAnthropicClient } from "@/lib/anthropic-client";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -217,7 +217,7 @@ async function llmPreselectUrls(
   targetText: string,
   moneyPageUrls: string[]
 ): Promise<string[]> {
-  const openai = await getOpenAiClient();
+  const anthropic = await getAnthropicClient();
 
   const systemPrompt = `You are an expert SEO consultant. You are given a list of blog post URLs and a brief description of a target blog post the user wants to add internal links to. Your job is to select the ${MAX_BLOG_POSTS} URLs that are most topically relevant to the target post — i.e., posts that are most likely to benefit from bidirectional internal links.
 
@@ -235,17 +235,15 @@ ${candidates.join("\n")}
 Select the ${MAX_BLOG_POSTS} most topically relevant URLs.`;
 
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      temperature: 0.2,
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-6",
       max_tokens: 2000,
+      system: systemPrompt,
+      messages: [{ role: "user", content: userPrompt }],
     });
 
-    const raw = response.choices[0]?.message?.content?.trim() ?? "";
+    const textBlock = response.content.find(b => b.type === "text");
+    const raw = textBlock && textBlock.type === "text" ? textBlock.text.trim() : "";
     // Strip markdown fences if present
     const jsonMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
     const jsonStr = jsonMatch ? jsonMatch[1].trim() : raw;

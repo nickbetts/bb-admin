@@ -31,6 +31,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   "page-analyser": "Page Analyser",
   "ai-chat": "AI Chat",
   "user-activity": "User Activity",
+  "internal-linking": "Internal Linking",
   new: "New",
   edit: "Edit",
 };

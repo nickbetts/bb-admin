@@ -5,8 +5,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import prisma from "@/lib/prisma";
-import { getOpenAiClient } from "@/lib/openai-client";
+import { prisma } from "@/lib/prisma";
+import { getAnthropicClient } from "@/lib/anthropic-client";
 import { withApiCache } from "@/lib/api-cache";
 import {
   extractDraftFromDocx,
@@ -260,19 +260,17 @@ ${existingAnchors || "(none found)"}
 
 Please generate exactly ${budget.moneyPage} money-page link(s), ${budget.outbound} outbound link(s), and ${budget.inbound} inbound link(s). Prioritise the highest-value opportunities.`;
 
-    // ── OpenAI call ───────────────────────────────────────────────────────
-    const openai = await getOpenAiClient();
-    const aiResponse = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      temperature: 0.3,
+    // ── Anthropic call ────────────────────────────────────────────────────
+    const anthropic = await getAnthropicClient();
+    const aiResponse = await anthropic.messages.create({
+      model: "claude-sonnet-4-6",
       max_tokens: 3000,
+      system: systemPrompt,
+      messages: [{ role: "user", content: userPrompt }],
     });
 
-    const rawContent = aiResponse.choices[0]?.message?.content?.trim() ?? "{}";
+    const textBlock = aiResponse.content.find(b => b.type === "text");
+    const rawContent = textBlock && textBlock.type === "text" ? textBlock.text.trim() : "{}";
     const jsonMatch = rawContent.match(/```(?:json)?\s*([\s\S]*?)```/);
     const jsonStr = jsonMatch ? jsonMatch[1].trim() : rawContent;
 

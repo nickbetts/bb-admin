@@ -6,7 +6,7 @@ import {
   Search, LayoutDashboard, Users, FileText, Settings,
   Activity, CheckSquare, MessageSquare, LayoutGrid, TrendingUp,
   PieChart, Tag, Bot, FileSpreadsheet, ScanSearch, Sparkles,
-  ArrowRight, LayoutTemplate, KeyRound, Globe, Map, CreditCard, MailCheck,
+  ArrowRight, LayoutTemplate, KeyRound, Globe, Map, CreditCard, MailCheck, Link2,
 } from "lucide-react";
 
 // ── Static nav items ────────────────────────────────────────────────────────
@@ -33,6 +33,7 @@ const STATIC_ITEMS = [
   { label: "LP Generator",       href: "/tools/landing-pages",          icon: <Globe size={14} />,            group: "Agency Tools" },
   { label: "Subscriptions",      href: "/tools/subscriptions",          icon: <CreditCard size={14} />,       group: "Agency Tools" },
   { label: "Email Verifier",     href: "/tools/email-verifier",         icon: <MailCheck size={14} />,        group: "Agency Tools" },
+  { label: "Internal Linking",   href: "/tools/internal-linking",       icon: <Link2 size={14} />,            group: "Agency Tools" },
 ];
 
 interface ClientItem {
