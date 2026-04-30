@@ -72,6 +72,16 @@ function SettingsPanelInner() {
   const [anthropicKeySaved, setAnthropicKeySaved] = useState(false);
   const [anthropicKeyError, setAnthropicKeyError] = useState<string | null>(null);
 
+  // SMTP settings
+  const [smtpHost, setSmtpHost] = useState("");
+  const [smtpPort, setSmtpPort] = useState("587");
+  const [smtpUser, setSmtpUser] = useState("");
+  const [smtpPass, setSmtpPass] = useState("");
+  const [smtpFrom, setSmtpFrom] = useState("");
+  const [smtpSaving, setSmtpSaving] = useState(false);
+  const [smtpSaved, setSmtpSaved] = useState(false);
+  const [smtpError, setSmtpError] = useState<string | null>(null);
+
   const DEFAULT_BENCHMARKS = [
     { task: "Blog Post (1,000 words)", hours: 3 },
     { task: "Landing Page Copywriting", hours: 4 },
@@ -178,6 +188,11 @@ function SettingsPanelInner() {
         } catch { /* keep defaults */ }
       }
       setDefaultAssignee(settings.defaultActionAssignee ?? "");
+      setSmtpHost(settings.smtpHost ?? "");
+      setSmtpPort(settings.smtpPort ?? "587");
+      setSmtpUser(settings.smtpUser ?? "");
+      setSmtpPass(settings.smtpPass ? "•••redacted•••" : "");
+      setSmtpFrom(settings.smtpFrom ?? "");
     } catch (err) {
       setMccError(err instanceof Error ? err.message : "Failed to load");
     } finally {
@@ -298,6 +313,37 @@ function SettingsPanelInner() {
       setTimeout(() => setDefaultAssigneeSaved(false), 3000);
     } catch { /* ignore */ } finally {
       setDefaultAssigneeSaving(false);
+    }
+  }
+
+  async function handleSmtpSave() {
+    setSmtpSaving(true);
+    setSmtpSaved(false);
+    setSmtpError(null);
+    try {
+      const payload: Record<string, string> = {
+        smtpHost,
+        smtpPort,
+        smtpUser,
+        smtpFrom,
+      };
+      // Only update password if it's not the redacted placeholder
+      if (smtpPass && smtpPass !== "•••redacted•••") {
+        payload.smtpPass = smtpPass;
+      }
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error("Failed to save");
+      setSmtpSaved(true);
+      if (smtpPass && smtpPass !== "•••redacted•••") setSmtpPass("•••redacted•••");
+      setTimeout(() => setSmtpSaved(false), 3000);
+    } catch (err) {
+      setSmtpError(err instanceof Error ? err.message : "Failed to save");
+    } finally {
+      setSmtpSaving(false);
     }
   }
 
@@ -637,6 +683,82 @@ function SettingsPanelInner() {
             </button>
           </div>
           {anthropicKey && <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 8 }}>✓ Anthropic API key configured. Content Strategy Creator is ready to use.</p>}
+        </div>
+      </div>
+
+      {/* Email (SMTP) */}
+      <div className="card" style={{ marginBottom: 24 }}>
+        <div className="card-header">
+          <div>
+            <h2 className="card-title">Email (SMTP)</h2>
+            <p className="card-subtitle">Used to send lead notification emails from landing page forms. Works with any SMTP server — your own mail server, Gmail, Zoho, Mailgun, etc.</p>
+          </div>
+        </div>
+        <div className="card-body">
+          {smtpError && <p style={{ fontSize: 13, color: "var(--danger)", marginBottom: 12 }}>{smtpError}</p>}
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8 }}>
+              <div>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>SMTP Host</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="smtp.gmail.com"
+                  value={smtpHost}
+                  onChange={(e) => setSmtpHost(e.target.value)}
+                />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>Port</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  style={{ width: 80 }}
+                  placeholder="587"
+                  value={smtpPort}
+                  onChange={(e) => setSmtpPort(e.target.value)}
+                />
+              </div>
+            </div>
+            <div>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>Username</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="noreply@yourdomain.com"
+                value={smtpUser}
+                onChange={(e) => setSmtpUser(e.target.value)}
+              />
+            </div>
+            <div>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>Password</label>
+              <input
+                type="password"
+                className="form-input"
+                placeholder="App-specific password or SMTP password"
+                value={smtpPass}
+                onChange={(e) => setSmtpPass(e.target.value)}
+                onFocus={() => { if (smtpPass === "•••redacted•••") setSmtpPass(""); }}
+              />
+            </div>
+            <div>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>From address</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder='Stratos Leads <noreply@yourdomain.com>'
+                value={smtpFrom}
+                onChange={(e) => setSmtpFrom(e.target.value)}
+              />
+              <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 3 }}>Displayed as the sender on notification emails. Defaults to Username if left blank.</p>
+            </div>
+            <div>
+              <button onClick={handleSmtpSave} disabled={smtpSaving || !smtpHost || !smtpUser} className="btn btn-primary">
+                {smtpSaving ? "Saving…" : smtpSaved ? "Saved ✓" : "Save"}
+              </button>
+            </div>
+          </div>
+          {smtpHost && smtpUser && <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 12 }}>✓ SMTP configured. Lead notification emails will be sent from this server.</p>}
         </div>
       </div>
 

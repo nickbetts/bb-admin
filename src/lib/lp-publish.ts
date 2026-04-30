@@ -17,11 +17,14 @@ import {
   hasAnyTracking,
   type LpAnalyticsConfig,
 } from "@/lib/lp-analytics";
+import type { LpFormConfig } from "@/lib/lp-form-config";
 
 export interface AssembleOpts {
   shareToken: string | null;
   analytics: LpAnalyticsConfig;
   testMode: boolean;
+  /** When set, may replace the built-in form with an embed code */
+  formConfig?: LpFormConfig;
 }
 
 /**
@@ -51,8 +54,9 @@ export function assemblePublicHtml(rawHtml: string, opts: AssembleOpts): string 
   // Form capture — must run AFTER buildConversionScript so __lpFireLead exists.
   // We add a small DOM observer that calls __lpFireLead() once the success
   // message ("Thank you!") appears in the form.
-  const hasForm = html.includes('data-lp-form="true"');
-  if (hasForm && opts.shareToken) {
+  const embedCode = opts.formConfig?.embedCode?.trim();
+  const hasBuiltInForm = !embedCode && html.includes('data-lp-form="true"');
+  if (hasBuiltInForm && opts.shareToken) {
     bodyEndParts.push(formSuccessHookScript());
   }
 
@@ -85,12 +89,18 @@ export function assemblePublicHtml(rawHtml: string, opts: AssembleOpts): string 
     }
   }
 
+  // Replace built-in form with embed code when provided
+  if (embedCode) {
+    // Match <form data-lp-form="true" ...>...</form> (including multiline content)
+    html = html.replace(/<form[^>]*data-lp-form="true"[^>]*>[\s\S]*?<\/form>/i, embedCode);
+  }
+
   // Lucide icons — always injected so the prompt's <i data-lucide=...> tags render
   html = injectLucide(html);
 
   // Form-capture script (existing behaviour) — injected last so its </body>
   // insertion sits below the conversion script.
-  if (hasForm && opts.shareToken) {
+  if (hasBuiltInForm && opts.shareToken) {
     html = injectFormScript(html, opts.shareToken);
   }
 

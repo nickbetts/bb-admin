@@ -5,6 +5,7 @@ import {
   parseAnalyticsConfig,
 } from "@/lib/lp-analytics";
 import { assemblePublicHtml } from "@/lib/lp-publish";
+import { parseLpFormConfig } from "@/lib/lp-form-config";
 
 export const dynamic = "force-dynamic";
 
@@ -60,6 +61,7 @@ export async function GET(
     shareToken: landingPage.shareToken,
     analytics,
     testMode,
+    formConfig: parseLpFormConfig(landingPage.formConfig),
   });
 
   return new NextResponse(html, {

@@ -57,7 +57,9 @@ import { ANIMATION_PRESETS, injectAnimations } from "@/lib/lp-animations";
 import { PortalPublishToggle } from "@/components/portal/PortalPublishToggle";
 import { parseCSSVariables, updateCSSVariable, type CSSVariable } from "@/lib/lp-css-parser";
 import { AnalyticsConfigForm } from "@/components/landing-pages/AnalyticsConfigForm";
+import { FormConfigPanel } from "@/components/landing-pages/FormConfigPanel";
 import type { LpAnalyticsConfig } from "@/lib/lp-analytics";
+import { parseLpFormConfig, type LpFormConfig } from "@/lib/lp-form-config";
 
 // Public hosting domain for landing pages. Set via NEXT_PUBLIC_LP_DOMAIN at
 // build time; falls back to clickr.marketing.
@@ -311,7 +313,9 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
 
   // Tracking & conversions modal
   const [showTrackingSettings, setShowTrackingSettings] = useState(false);
+  const [trackingTab, setTrackingTab] = useState<"tracking" | "form">("tracking");
   const [analyticsConfig, setAnalyticsConfig] = useState<LpAnalyticsConfig>({});
+  const [formConfig, setFormConfig] = useState<LpFormConfig>({});
   const [savingAnalytics, setSavingAnalytics] = useState(false);
   const [analyticsSaved, setAnalyticsSaved] = useState(false);
 
@@ -395,6 +399,13 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
         setAnalyticsConfig(parsed && typeof parsed === "object" ? parsed : {});
       } catch {
         setAnalyticsConfig({});
+      }
+
+      // Hydrate form config
+      try {
+        setFormConfig(parseLpFormConfig(data.landingPage.formConfig));
+      } catch {
+        setFormConfig({});
       }
 
       // Build initial chat history from versions
@@ -1953,26 +1964,58 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
 
       {/* Tracking & conversions modal */}
       {showTrackingSettings && lp && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.4)", padding: 16 }}>
-          <div className="card" style={{ width: "100%", maxWidth: 640, maxHeight: "90vh", display: "flex", flexDirection: "column" }}>
-            <div className="card-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
-              <span className="card-title">Tracking &amp; conversions</span>
+        <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.55)", padding: 16 }}>
+          <div style={{ width: "100%", maxWidth: 660, maxHeight: "90vh", display: "flex", flexDirection: "column", background: "var(--surface)", borderRadius: "var(--r)", boxShadow: "0 8px 40px rgba(0,0,0,0.28)", overflow: "hidden" }}>
+            {/* Header */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 18px 0", flexShrink: 0 }}>
+              <span style={{ fontWeight: 700, fontSize: 15, color: "var(--text)" }}>Tracking &amp; conversions</span>
               <button onClick={() => setShowTrackingSettings(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-4)", padding: 2 }}>
                 <X style={{ width: 16, height: 16 }} />
               </button>
             </div>
-            <div className="card-body" style={{ overflowY: "auto", flex: 1 }}>
-              <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 0, marginBottom: 14 }}>
-                Tags are injected into the public share URL. Use the bug icon in the toolbar to open the page in test mode &mdash; calls to gtag/fbq/lintrk/ttq/uetq are intercepted and shown in an overlay so you can verify wiring without firing real events.
-              </p>
-              <AnalyticsConfigForm
-                value={analyticsConfig}
-                onChange={setAnalyticsConfig}
-                startExpanded
-                noWrapper
-              />
+            {/* Tabs */}
+            <div style={{ display: "flex", gap: 0, borderBottom: "1px solid var(--border)", padding: "0 18px", flexShrink: 0, marginTop: 12 }}>
+              {(["tracking", "form"] as const).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setTrackingTab(tab)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: "8px 14px 9px",
+                    fontSize: 13,
+                    fontWeight: trackingTab === tab ? 600 : 400,
+                    color: trackingTab === tab ? "var(--accent)" : "var(--text-3)",
+                    borderBottom: trackingTab === tab ? "2px solid var(--accent)" : "2px solid transparent",
+                    marginBottom: -1,
+                    transition: "color 0.15s",
+                  }}
+                >
+                  {tab === "tracking" ? "Tracking & conversions" : "Form & leads"}
+                </button>
+              ))}
             </div>
-            <div className="card-body" style={{ flexShrink: 0, borderTop: "1px solid var(--border)", display: "flex", gap: 8, justifyContent: "flex-end", alignItems: "center" }}>
+            {/* Body */}
+            <div style={{ overflowY: "auto", flex: 1, padding: "16px 18px" }}>
+              {trackingTab === "tracking" ? (
+                <>
+                  <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 0, marginBottom: 14 }}>
+                    Tags are injected into the public share URL. Use the bug icon in the toolbar to open the page in test mode &mdash; calls to gtag/fbq/lintrk/ttq/uetq are intercepted and shown in an overlay so you can verify wiring without firing real events.
+                  </p>
+                  <AnalyticsConfigForm
+                    value={analyticsConfig}
+                    onChange={setAnalyticsConfig}
+                    startExpanded
+                    noWrapper
+                  />
+                </>
+              ) : (
+                <FormConfigPanel value={formConfig} onChange={setFormConfig} />
+              )}
+            </div>
+            {/* Footer */}
+            <div style={{ flexShrink: 0, borderTop: "1px solid var(--border)", padding: "10px 18px", display: "flex", gap: 8, justifyContent: "flex-end", alignItems: "center" }}>
               {analyticsSaved && (
                 <span style={{ fontSize: 12, color: "var(--success-text)", display: "inline-flex", alignItems: "center", gap: 4, marginRight: "auto" }}>
                   <Check style={{ width: 13, height: 13 }} /> Saved
@@ -1996,11 +2039,11 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                     const res = await fetch(`/api/tools/landing-pages/${lp.id}`, {
                       method: "PATCH",
                       headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ analyticsConfig }),
+                      body: JSON.stringify({ analyticsConfig, formConfig }),
                     });
                     if (res.ok) {
                       const data = await res.json();
-                      setLp((prev) => prev ? { ...prev, analyticsConfig: data.landingPage.analyticsConfig } : prev);
+                      setLp((prev) => prev ? { ...prev, analyticsConfig: data.landingPage.analyticsConfig, formConfig: data.landingPage.formConfig } : prev);
                       setAnalyticsSaved(true);
                     }
                   } finally {
@@ -2010,7 +2053,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                 style={{ fontSize: 13 }}
               >
                 {savingAnalytics ? <Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }} /> : <Save style={{ width: 14, height: 14 }} />}
-                Save tracking config
+                Save
               </button>
             </div>
           </div>

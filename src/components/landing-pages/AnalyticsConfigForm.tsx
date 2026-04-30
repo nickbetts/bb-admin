@@ -191,53 +191,49 @@ export function AnalyticsConfigForm({ value, onChange, inheritedFrom, startExpan
       </div>
 
       {/* LinkedIn */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <div>
-          <label style={labelStyle}>
-            LinkedIn Partner ID {inheritedHint("linkedInPartnerId")}
-          </label>
-          <input
-            type="text"
-            value={value.linkedInPartnerId ?? ""}
-            onChange={(e) => set({ linkedInPartnerId: e.target.value || undefined })}
-            placeholder="numeric ID"
-            style={inputStyle}
-          />
-        </div>
-        <div>
-          <label style={labelStyle}>LinkedIn Conversion ID</label>
-          <input
-            type="text"
-            value={value.linkedInConversionId ?? ""}
-            onChange={(e) => set({ linkedInConversionId: e.target.value || undefined })}
-            placeholder="optional, for lintrk track()"
-            style={inputStyle}
-          />
-        </div>
+      <div>
+        <label style={labelStyle}>
+          LinkedIn Partner ID {inheritedHint("linkedInPartnerId")}
+        </label>
+        <input
+          type="text"
+          value={value.linkedInPartnerId ?? ""}
+          onChange={(e) => set({ linkedInPartnerId: e.target.value || undefined })}
+          placeholder="numeric ID"
+          style={inputStyle}
+        />
+      </div>
+      <div>
+        <label style={labelStyle}>LinkedIn Conversion ID</label>
+        <input
+          type="text"
+          value={value.linkedInConversionId ?? ""}
+          onChange={(e) => set({ linkedInConversionId: e.target.value || undefined })}
+          placeholder="optional, for lintrk track()"
+          style={inputStyle}
+        />
       </div>
 
       {/* TikTok + UET */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <div>
-          <label style={labelStyle}>TikTok Pixel ID {inheritedHint("tiktokPixelId")}</label>
-          <input
-            type="text"
-            value={value.tiktokPixelId ?? ""}
-            onChange={(e) => set({ tiktokPixelId: e.target.value || undefined })}
-            placeholder="alphanumeric ID"
-            style={inputStyle}
-          />
-        </div>
-        <div>
-          <label style={labelStyle}>Microsoft Ads UET Tag ID {inheritedHint("microsoftUetTagId")}</label>
-          <input
-            type="text"
-            value={value.microsoftUetTagId ?? ""}
-            onChange={(e) => set({ microsoftUetTagId: e.target.value || undefined })}
-            placeholder="numeric tag ID"
-            style={inputStyle}
-          />
-        </div>
+      <div>
+        <label style={labelStyle}>TikTok Pixel ID {inheritedHint("tiktokPixelId")}</label>
+        <input
+          type="text"
+          value={value.tiktokPixelId ?? ""}
+          onChange={(e) => set({ tiktokPixelId: e.target.value || undefined })}
+          placeholder="alphanumeric ID"
+          style={inputStyle}
+        />
+      </div>
+      <div>
+        <label style={labelStyle}>Microsoft Ads UET Tag ID {inheritedHint("microsoftUetTagId")}</label>
+        <input
+          type="text"
+          value={value.microsoftUetTagId ?? ""}
+          onChange={(e) => set({ microsoftUetTagId: e.target.value || undefined })}
+          placeholder="numeric tag ID"
+          style={inputStyle}
+        />
       </div>
 
       {/* Custom HTML */}

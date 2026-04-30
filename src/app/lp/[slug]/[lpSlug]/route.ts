@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { mergeAnalyticsConfig, parseAnalyticsConfig } from "@/lib/lp-analytics";
 import { assemblePublicHtml } from "@/lib/lp-publish";
+import { parseLpFormConfig } from "@/lib/lp-form-config";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,7 @@ export async function GET(
     currentHtml: string;
     shareToken: string | null;
     analyticsConfig: string;
+    formConfig: string;
     clientDefaultAnalyticsConfig?: string | null;
   };
 
@@ -44,7 +46,7 @@ export async function GET(
     defaultAnalyticsConfig = client.defaultAnalyticsConfig;
     const row = await prisma.landingPage.findFirst({
       where: { clientId: client.id, slug: lpSlug, status: "published" },
-      select: { id: true, currentHtml: true, shareToken: true, analyticsConfig: true },
+      select: { id: true, currentHtml: true, shareToken: true, analyticsConfig: true, formConfig: true },
     });
     landingPage = row;
   } else {
@@ -56,6 +58,7 @@ export async function GET(
         currentHtml: true,
         shareToken: true,
         analyticsConfig: true,
+        formConfig: true,
         client: { select: { defaultAnalyticsConfig: true } },
       },
     });
@@ -102,6 +105,7 @@ export async function GET(
     shareToken: landingPage.shareToken,
     analytics,
     testMode,
+    formConfig: parseLpFormConfig(landingPage.formConfig),
   });
 
   return new NextResponse(html, {
