@@ -265,12 +265,13 @@ Rules:
 - For social media ideas: the title should describe the campaign concept, the summary should outline what posts would cover, and keywords should reflect the hashtag/topic strategy.
 - For case studies: the title should follow "How [Company Type] achieved [Result]" format without naming real companies unless the client provides them.`;
 
-  const tools: Parameters<typeof anthropic.messages.create>[0]["tools"] = [
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const tools: any[] = [
     {
       type: "web_search_20250305" as const,
       name: "web_search",
       max_uses: 3,
-    } as Parameters<typeof anthropic.messages.create>[0]["tools"][number],
+    },
   ];
 
   const response = await anthropic.messages.create({
