@@ -67,6 +67,7 @@ export default function NewLandingPage() {
   const [clientId, setClientId] = useState("");
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
+  const [additionalUrls, setAdditionalUrls] = useState<string[]>([]);
   const [brief, setBrief] = useState("");
   const [campaignType, setCampaignType] = useState("lead-gen");
   const [targetAudience, setTargetAudience] = useState("");
@@ -215,6 +216,9 @@ export default function NewLandingPage() {
           templateId: templateId || undefined,
           analyticsConfig: Object.keys(analyticsConfig).length > 0 ? analyticsConfig : undefined,
           additionalImageUrls: uploadedImages.length > 0 ? uploadedImages.map((i) => i.url) : undefined,
+          additionalUrls: additionalUrls.filter((u) => u.trim()).length > 0
+            ? additionalUrls.filter((u) => u.trim())
+            : undefined,
         }),
       });
 
@@ -262,33 +266,39 @@ export default function NewLandingPage() {
         }
       }
 
-      // ── Job 2: audit-and-refine (separate Vercel function invocation) ──
-      // Generation saved the assembled page. Now call the audit route which
-      // runs CRO/Design/Copy classifiers and applies all fixes in one pass.
-      if (landingPageId) {
-        const auditRes = await fetch(`/api/tools/landing-pages/${landingPageId}/audit`, { method: "POST" });
-        if (auditRes.ok && auditRes.body) {
-          const auditReader = auditRes.body.getReader();
-          const auditDecoder = new TextDecoder();
-          let auditBuf = "";
-          while (true) {
-            const { done, value } = await auditReader.read();
-            if (done) break;
-            auditBuf += auditDecoder.decode(value, { stream: true });
-            const lines = auditBuf.split("\n");
-            auditBuf = lines.pop() ?? "";
-            for (const line of lines) {
-              if (!line.trim()) continue;
-              try {
-                const event = JSON.parse(line) as { type: string; message?: string };
-                if (event.type === "progress" && event.message) {
-                  setProgressMessages((prev) => [...prev, event.message!]);
-                }
-                // "error" from audit is non-fatal — page was already saved
-              } catch { /* skip malformed */ }
-            }
+      // ── Helper: consume one audit stream, prefixing progress messages ──
+      const runAuditPass = async (id: string, passLabel: string) => {
+        const auditRes = await fetch(`/api/tools/landing-pages/${id}/audit`, { method: "POST" });
+        if (!auditRes.ok || !auditRes.body) return;
+        const auditReader = auditRes.body.getReader();
+        const auditDecoder = new TextDecoder();
+        let auditBuf = "";
+        while (true) {
+          const { done, value } = await auditReader.read();
+          if (done) break;
+          auditBuf += auditDecoder.decode(value, { stream: true });
+          const lines = auditBuf.split("\n");
+          auditBuf = lines.pop() ?? "";
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            try {
+              const event = JSON.parse(line) as { type: string; message?: string };
+              if (event.type === "progress" && event.message) {
+                setProgressMessages((prev) => [...prev, `${passLabel}: ${event.message!}`]);
+              }
+              // "error" from audit is non-fatal — page was already saved
+            } catch { /* skip malformed */ }
           }
         }
+      };
+
+      // ── Job 2: audit pass 1 — separate Vercel invocation, own 300 s budget ──
+      if (landingPageId) {
+        await runAuditPass(landingPageId, "Optimising (pass 1)");
+
+        // ── Job 3: audit pass 2 — reads the pass-1 result from DB, own 300 s budget ──
+        await runAuditPass(landingPageId, "Optimising (pass 2)");
+
         router.push(`/tools/landing-pages/${landingPageId}`);
       } else {
         setError("Generation completed but no page ID was returned.");
@@ -437,6 +447,52 @@ export default function NewLandingPage() {
             <p style={{ fontSize: 12, color: "var(--text-4)", marginTop: 4 }}>
               We&apos;ll extract brand colours, fonts, logos, and imagery from this site
             </p>
+          </div>
+
+          {/* Additional reference URLs */}
+          <div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+              <label style={{ ...labelStyle, marginBottom: 0 }}>
+                Additional Pages to Scrape <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => setAdditionalUrls((prev) => [...prev, ""])}
+                style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "var(--accent)", background: "none", border: "none", cursor: "pointer", padding: 0, fontWeight: 600, fontFamily: "inherit" }}
+              >
+                <Plus style={{ width: 13, height: 13 }} /> Add URL
+              </button>
+            </div>
+            {additionalUrls.length > 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {additionalUrls.map((u, i) => (
+                  <div key={i} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <div style={{ position: "relative", flex: 1 }}>
+                      <Globe style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", width: 14, height: 14, color: "var(--text-3)", pointerEvents: "none" }} />
+                      <input
+                        type="url"
+                        value={u}
+                        onChange={(e) => setAdditionalUrls((prev) => prev.map((v, j) => j === i ? e.target.value : v))}
+                        placeholder="https://www.example.com/services"
+                        style={{ ...inputStyle, paddingLeft: 34 }}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setAdditionalUrls((prev) => prev.filter((_, j) => j !== i))}
+                      style={{ width: 30, height: 30, borderRadius: "var(--r)", border: "1px solid var(--border)", background: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-3)", flexShrink: 0 }}
+                      title="Remove URL"
+                    >
+                      <X style={{ width: 14, height: 14 }} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p style={{ fontSize: 12, color: "var(--text-4)", lineHeight: 1.5 }}>
+                Add service pages, product pages, or any other pages — the more content the AI has, the richer the landing page
+              </p>
+            )}
           </div>
 
           {/* Campaign type */}

@@ -7,7 +7,7 @@
 
 import sharp from "sharp";
 import { getAnthropicClient } from "@/lib/anthropic-client";
-import type { BrandContext } from "@/lib/brand-extractor";
+import type { BrandContext, PageContent } from "@/lib/brand-extractor";
 import { screenshotHtml } from "@/lib/puppeteer";
 
 const MODEL = "claude-opus-4-7";
@@ -27,6 +27,7 @@ export interface GenerateLPOptions {
   templateHtml?: string; // If generating from a saved template
   additionalInstructions?: string;
   uploadedImageUrls?: string[]; // User-provided images uploaded in the wizard
+  additionalPageContents?: { sourceUrl: string; content: PageContent }[]; // Content scraped from extra reference URLs
 }
 
 export interface RefineLPOptions {
@@ -1299,7 +1300,29 @@ ${bc.fonts.length ? bc.fonts.join(", ") : "Use a clean system font stack."}
 
 ## Scraped website content
 ${contentParts.join("\n\n") || "No content scraped — infer from brief."}
-
+${
+  opts.additionalPageContents && opts.additionalPageContents.length > 0
+    ? "\n## Additional page content (scraped from reference URLs)\nUse this content alongside the primary site content above — extract services, features, stats, and copy to enrich the landing page.\n\n" +
+      opts.additionalPageContents
+        .map(({ sourceUrl, content: pc2 }) => {
+          const parts: string[] = [`### ${sourceUrl}`];
+          if (pc2.metaTitle) parts.push(`Title: ${pc2.metaTitle}`);
+          if (pc2.h1) parts.push(`H1: ${pc2.h1}`);
+          if (pc2.headings.length) parts.push(`Headings: ${pc2.headings.slice(0, 12).join(" | ")}`);
+          if (pc2.ctaTexts.length) parts.push(`CTAs: ${pc2.ctaTexts.join(" | ")}`);
+          if (pc2.listItems?.length)
+            parts.push(`Services / features:\n${pc2.listItems.slice(0, 20).map((i) => `  • ${i}`).join("\n")}`);
+          if (pc2.numericStats?.length)
+            parts.push(`Stats: ${pc2.numericStats.slice(0, 10).join(" | ")}`);
+          if (pc2.bodyCopy.length)
+            parts.push(`Body copy:\n${pc2.bodyCopy.slice(0, 8).map((p) => `  "${p}"`).join("\n")}`);
+          if (pc2.allBodyText)
+            parts.push(`Full page text:\n${pc2.allBodyText.slice(0, 5000)}`);
+          return parts.join("\n");
+        })
+        .join("\n\n")
+    : ""
+}
 ## Campaign
 Type: ${opts.campaignType}
 Brief: ${opts.brief}

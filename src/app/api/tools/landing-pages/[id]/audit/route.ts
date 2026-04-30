@@ -6,7 +6,8 @@ import type { BrandContext } from "@/lib/brand-extractor";
 import { logActivity } from "@/lib/activity-logger";
 
 export const dynamic = "force-dynamic";
-// Audit: 3 parallel classifiers (~15 s) + 1 refinement (~90 s) = ~105 s
+// Audit: 3 parallel classifiers (~15 s) + 1 refinement (~90 s) = ~105 s per invocation.
+// The client calls this route twice in sequence so each pass gets its own 300 s budget.
 export const maxDuration = 300;
 
 /**

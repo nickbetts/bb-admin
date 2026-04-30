@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { extractBrandContext } from "@/lib/brand-extractor";
+import { extractBrandContext, extractPageContentFromUrl } from "@/lib/brand-extractor";
 import { generateLandingPageSectionBySection, injectLucide } from "@/lib/lp-generator";
 import { sanitiseAnalyticsConfig } from "@/lib/lp-analytics";
 import { logActivity } from "@/lib/activity-logger";
@@ -65,6 +65,7 @@ export async function POST(request: NextRequest) {
     formConfig?: Record<string, unknown>;
     analyticsConfig?: Record<string, unknown>;
     additionalImageUrls?: string[];
+    additionalUrls?: string[]; // Extra pages to scrape for richer brand/content context
   };
 
   try {
@@ -73,7 +74,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { clientId, title, url, brief, campaignType, targetAudience, templateId, formConfig, analyticsConfig, additionalImageUrls } = body;
+  const { clientId, title, url, brief, campaignType, targetAudience, templateId, formConfig, analyticsConfig, additionalImageUrls, additionalUrls } = body;
 
   if (!title || !url || !brief || !campaignType) {
     return NextResponse.json({ error: "title, url, brief, and campaignType are required" }, { status: 400 });
@@ -89,8 +90,19 @@ export async function POST(request: NextRequest) {
       }
 
       try {
-        send({ type: "progress", message: "Analysing your website and extracting brand identity…" });
-        const brandContext = await extractBrandContext(url);
+        const extraUrlCount = additionalUrls?.length ?? 0;
+        send({ type: "progress", message: extraUrlCount > 0
+          ? `Analysing ${1 + extraUrlCount} pages and extracting brand identity…`
+          : "Analysing your website and extracting brand identity…" });
+
+        const [brandContext, ...extraPageResults] = await Promise.all([
+          extractBrandContext(url),
+          ...(additionalUrls ?? []).map((u) => extractPageContentFromUrl(u)),
+        ]);
+
+        const additionalPageContents = extraPageResults
+          .filter((r): r is NonNullable<typeof r> => r !== null)
+          .map(({ sourceUrl, ...content }) => ({ sourceUrl, content }));
 
         let templateHtml: string | undefined;
         if (templateId) {
@@ -105,6 +117,7 @@ export async function POST(request: NextRequest) {
           targetAudience,
           templateHtml,
           uploadedImageUrls: additionalImageUrls && additionalImageUrls.length > 0 ? additionalImageUrls : undefined,
+          additionalPageContents: additionalPageContents.length > 0 ? additionalPageContents : undefined,
           onProgress: async (msg: string) => { send({ type: "progress", message: msg }); },
         });
 
@@ -120,7 +133,7 @@ export async function POST(request: NextRequest) {
             title,
             slug,
             currentHtml: html,
-            briefJson: JSON.stringify({ url, brief, campaignType, targetAudience }),
+            briefJson: JSON.stringify({ url, additionalUrls: additionalUrls?.length ? additionalUrls : undefined, brief, campaignType, targetAudience }),
             brandContextJson: JSON.stringify(brandContext),
             formConfig: JSON.stringify(formConfig ?? {}),
             analyticsConfig: JSON.stringify(

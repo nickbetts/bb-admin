@@ -140,10 +140,40 @@ export async function extractBrandContext(url: string): Promise<BrandContext> {
   // ── Page copy ────────────────────────────────────────────────────────────
   ctx.pageContent = extractPageContent(html);
 
-  // ── Raw HTML (for full-context LP generation) ────────────────────────────
+  // ── Raw HTML (for full-context LP generation) ———————————————————————————
   ctx.rawHtml = html;
 
   return ctx;
+}
+
+/**
+ * Lightweight helper: fetch a URL and return only its PageContent (headings,
+ * CTAs, body copy, stats, etc.) without the full brand extraction pipeline.
+ * Ideal for scraping secondary pages (service pages, product pages) where
+ * we want additional content context but not full brand analysis.
+ * Silently returns null on any network/parse error.
+ */
+export async function extractPageContentFromUrl(url: string): Promise<(PageContent & { sourceUrl: string }) | null> {
+  if (!url || (!url.startsWith("http://") && !url.startsWith("https://"))) return null;
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-GB,en;q=0.9",
+      },
+      redirect: "follow",
+    });
+    clearTimeout(timer);
+    if (!res.ok) return null;
+    const html = await res.text();
+    return { ...extractPageContent(html), sourceUrl: url };
+  } catch {
+    return null;
+  }
 }
 
 // ── Company name ─────────────────────────────────────────────────────────────
