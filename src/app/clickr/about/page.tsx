@@ -7,11 +7,11 @@ export const metadata: Metadata = {
   title: "About",
   description:
     "clickr is an AI landing page builder built by i3MEDIA, a UK performance marketing agency. Learn the story behind Meridian AI and why we built clickr.",
-  alternates: { canonical: "https://clickr.marketing/clickr/about" },
+  alternates: { canonical: "https://clickr.marketing/about" },
   openGraph: {
     title: "About | clickr",
     description: "Built by a performance marketing agency to solve a problem every campaign manager knows.",
-    url: "https://clickr.marketing/clickr/about",
+    url: "https://clickr.marketing/about",
   },
 };
 
@@ -406,7 +406,7 @@ export default function AboutPage() {
           </p>
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
             <a
-              href="/clickr/signup"
+              href="/signup"
               style={{
                 display: "inline-flex",
                 alignItems: "center",
@@ -424,7 +424,7 @@ export default function AboutPage() {
               Get started free <ArrowRight size={15} />
             </a>
             <a
-              href="/clickr/pricing"
+              href="/pricing"
               style={{
                 display: "inline-flex",
                 alignItems: "center",

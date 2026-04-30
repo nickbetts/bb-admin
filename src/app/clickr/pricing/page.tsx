@@ -19,7 +19,7 @@ const plans = [
     annualPrice: 0,
     description: "Try clickr with one real page. No card required.",
     cta: "Get started free",
-    ctaHref: "/clickr/signup",
+    ctaHref: "/signup",
     featured: false,
     features: [
       "1 landing page, forever",
@@ -52,7 +52,7 @@ const plans = [
     annualPrice: 15,
     description: "For agencies and freelancers running active campaigns.",
     cta: "Start free trial",
-    ctaHref: "/clickr/signup?plan=starter",
+    ctaHref: "/signup?plan=starter",
     featured: true,
     features: [
       "10 landing pages / month",
@@ -89,7 +89,7 @@ const plans = [
     annualPrice: 39,
     description: "Unlimited pages, full integrations, and dedicated support.",
     cta: "Get Pro",
-    ctaHref: "/clickr/signup?plan=pro",
+    ctaHref: "/signup?plan=pro",
     featured: false,
     features: [
       "Unlimited landing pages",

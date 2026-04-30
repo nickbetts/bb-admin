@@ -1,11 +1,11 @@
 import Link from "next/link";
 
 const footerLinks = [
-  { label: "Home",    href: "/clickr" },
-  { label: "Pricing", href: "/clickr/pricing" },
-  { label: "Blog",    href: "/clickr/blog" },
-  { label: "About",   href: "/clickr/about" },
-  { label: "Log in",  href: "/clickr/login" },
+  { label: "Home",    href: "/" },
+  { label: "Pricing", href: "/pricing" },
+  { label: "Blog",    href: "/blog" },
+  { label: "About",   href: "/about" },
+  { label: "Log in",  href: "/login" },
 ];
 
 export default function ClickrFooter() {
@@ -33,7 +33,7 @@ export default function ClickrFooter() {
         {/* Brand column */}
         <div>
           <Link
-            href="/clickr"
+            href="/"
             style={{
               display: "flex",
               alignItems: "center",

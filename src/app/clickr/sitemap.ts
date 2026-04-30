@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 import { blogArticles } from "./blog/data";
 
-const base = "https://clickr.marketing/clickr";
+const base = "https://clickr.marketing";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const staticRoutes: MetadataRoute.Sitemap = [

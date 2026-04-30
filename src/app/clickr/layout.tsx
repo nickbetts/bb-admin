@@ -36,7 +36,7 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "https://clickr.marketing",
     types: {
-      "application/rss+xml": "https://clickr.marketing/clickr/blog/rss.xml",
+      "application/rss+xml": "https://clickr.marketing/blog/rss.xml",
     },
   },
   robots: {
@@ -63,7 +63,7 @@ export default function ClickrLayout({ children }: { children: React.ReactNode }
               "@type": "SearchAction",
               "target": {
                 "@type": "EntryPoint",
-                "urlTemplate": "https://clickr.marketing/clickr/blog?q={search_term_string}",
+                "urlTemplate": "https://clickr.marketing/blog?q={search_term_string}",
               },
               "query-input": "required name=search_term_string",
             },

@@ -9,11 +9,11 @@ export const metadata: Metadata = {
   title: "Blog",
   description:
     "Landing page strategy, conversion rate optimisation guides, Google Ads tips, and AI marketing insights from the clickr team at i3MEDIA.",
-  alternates: { canonical: "https://clickr.marketing/clickr/blog" },
+  alternates: { canonical: "https://clickr.marketing/blog" },
   openGraph: {
     title: "Blog | clickr",
     description: "Landing page strategy, CRO guides, and AI marketing insights.",
-    url: "https://clickr.marketing/clickr/blog",
+    url: "https://clickr.marketing/blog",
   },
 };
 
@@ -83,7 +83,7 @@ export default function BlogIndexPage() {
       <section style={{ padding: "0 40px 60px" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <Link
-            href={`/clickr/blog/${featured.slug}`}
+            href={`/blog/${featured.slug}`}
             style={{
               display: "block",
               textDecoration: "none",
@@ -170,7 +170,7 @@ export default function BlogIndexPage() {
             {rest.map((article) => (
               <Link
                 key={article.slug}
-                href={`/clickr/blog/${article.slug}`}
+                href={`/blog/${article.slug}`}
                 style={{
                   display: "flex",
                   flexDirection: "column",

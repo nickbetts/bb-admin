@@ -22,12 +22,12 @@ export async function generateMetadata({
   return {
     title: article.title,
     description: article.description,
-    alternates: { canonical: `https://clickr.marketing/clickr/blog/${slug}` },
+    alternates: { canonical: `https://clickr.marketing/blog/${slug}` },
     openGraph: {
       title: article.title,
       description: article.description,
       type: "article",
-      url: `https://clickr.marketing/clickr/blog/${slug}`,
+      url: `https://clickr.marketing/blog/${slug}`,
       publishedTime: article.publishedAt,
     },
     twitter: {
@@ -204,7 +204,7 @@ export default async function BlogArticlePage({
     },
     mainEntityOfPage: {
       "@type": "WebPage",
-      "@id": `https://clickr.marketing/clickr/blog/${slug}`,
+      "@id": `https://clickr.marketing/blog/${slug}`,
     },
   };
 
@@ -230,7 +230,7 @@ export default async function BlogArticlePage({
       >
         {/* Breadcrumb */}
         <nav style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 28 }}>
-          <Link href="/clickr/blog" style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", textDecoration: "none", display: "flex", alignItems: "center", gap: 5 }}>
+          <Link href="/blog" style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", textDecoration: "none", display: "flex", alignItems: "center", gap: 5 }}>
             <ArrowLeft size={12} /> Blog
           </Link>
           <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 13 }}>/</span>
@@ -324,7 +324,7 @@ export default async function BlogArticlePage({
                     </p>
                   </div>
                   <Link
-                    href="/clickr/signup"
+                    href="/signup"
                     style={{
                       display: "inline-flex",
                       alignItems: "center",
@@ -405,7 +405,7 @@ export default async function BlogArticlePage({
               {relatedArticles.map((a) => (
                 <Link
                   key={a.slug}
-                  href={`/clickr/blog/${a.slug}`}
+                  href={`/blog/${a.slug}`}
                   style={{
                     textDecoration: "none",
                     background: "rgba(255,255,255,0.03)",

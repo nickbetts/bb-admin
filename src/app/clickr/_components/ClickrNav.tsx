@@ -16,16 +16,20 @@ interface NavLink {
 }
 
 const navLinks: NavLink[] = [
-  { label: "How it works", href: "/clickr#how-it-works", scrollId: "how-it-works" },
-  { label: "Features",     href: "/clickr#features",      scrollId: "features" },
-  { label: "Pricing",      href: "/clickr/pricing" },
-  { label: "Blog",         href: "/clickr/blog" },
-  { label: "About",        href: "/clickr/about" },
+  { label: "How it works", href: "/#how-it-works", scrollId: "how-it-works" },
+  { label: "Features",     href: "/#features",      scrollId: "features" },
+  { label: "Pricing",      href: "/pricing" },
+  { label: "Blog",         href: "/blog" },
+  { label: "About",        href: "/about" },
 ];
 
 function isLinkActive(href: string, pathname: string): boolean {
-  if (href.includes("#")) return pathname === "/clickr";
-  return pathname === href || pathname.startsWith(href + "/");
+  if (href.includes("#")) return pathname === "/" || pathname === "/clickr";
+  // Match both clean path (/about) and internal rewritten path (/clickr/about)
+  const clean = href;
+  const internal = "/clickr" + href;
+  return pathname === clean || pathname.startsWith(clean + "/") ||
+         pathname === internal || pathname.startsWith(internal + "/");
 }
 
 export default function ClickrNav() {
@@ -33,12 +37,10 @@ export default function ClickrNav() {
   const [open, setOpen] = useState(false);
 
   const handleClick = (e: React.MouseEvent<HTMLAnchorElement>, link: NavLink) => {
-    if (link.scrollId && pathname === "/clickr") {
+    const onHome = pathname === "/" || pathname === "/clickr";
+    if (link.scrollId && onHome) {
       e.preventDefault();
       document.getElementById(link.scrollId)?.scrollIntoView({ behavior: "smooth" });
-      setOpen(false);
-    } else if (link.scrollId && pathname !== "/clickr") {
-      // let normal navigation happen (goes to /clickr#id)
       setOpen(false);
     } else {
       setOpen(false);
@@ -75,7 +77,7 @@ export default function ClickrNav() {
       >
         {/* Logo + wordmark */}
         <Link
-          href="/clickr"
+          href="/"
           style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", flexShrink: 0 }}
         >
           <img src="/clickr-logo.svg" width={34} height={34} alt="clickr" style={{ borderRadius: 9, display: "block" }} />
@@ -123,7 +125,7 @@ export default function ClickrNav() {
         {/* Desktop CTA */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }} className="cnav-desktop">
           <Link
-            href="/clickr/login"
+            href="/login"
             style={{
               padding: "8px 18px",
               borderRadius: 9,
@@ -137,7 +139,7 @@ export default function ClickrNav() {
             Log in
           </Link>
           <Link
-            href="/clickr/signup"
+            href="/signup"
             style={{
               padding: "8px 20px",
               borderRadius: 9,
@@ -206,7 +208,7 @@ export default function ClickrNav() {
           </nav>
           <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
             <Link
-              href="/clickr/login"
+              href="/login"
               style={{
                 flex: 1,
                 padding: "11px",
@@ -222,7 +224,7 @@ export default function ClickrNav() {
               Log in
             </Link>
             <Link
-              href="/clickr/signup"
+              href="/signup"
               style={{
                 flex: 1,
                 padding: "11px",
