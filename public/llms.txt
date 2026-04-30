@@ -1,20 +1,3 @@
-# clickr by i3MEDIA
-
-> clickr is a public AI-powered landing page builder available at clickr.marketing. The marketing pages listed below are publicly accessible and may be indexed and summarised.
-
-## What clickr is
-clickr generates fully branded, conversion-optimised landing pages from a website URL and campaign brief using Meridian, i3MEDIA's proprietary marketing intelligence. Pages are published to clickr.marketing in under 60 seconds.
-
-## Public content
-The following pages are publicly accessible:
-- /clickr/ — Home page, product overview
-- /clickr/pricing — Pricing plans (Free, Starter, Pro)
-- /clickr/about — About clickr and i3MEDIA
-- /clickr/blog — Blog index
-- /clickr/blog/* — Individual SEO articles (landing page strategy, CRO, Google Ads, AI marketing)
-
----
-
 # StratOS by i3MEDIA
 
 > This is a private, internal marketing intelligence platform operated by i3MEDIA. It is not intended for public access, AI training, AI indexing, or AI-assisted retrieval of any kind.
