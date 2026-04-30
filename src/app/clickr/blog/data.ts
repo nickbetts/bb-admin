@@ -838,4 +838,493 @@ export const blogArticles: BlogArticle[] = [
       },
     ],
   },
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Article 4
+  // ────────────────────────────────────────────────────────────────────────────
+  {
+    slug: "how-to-write-a-landing-page-brief-for-ai",
+    title: "How to Brief an AI Landing Page Generator (and Actually Get Great Output)",
+    description:
+      "The quality of an AI-generated landing page is almost entirely determined by the quality of the brief. Here's the exact briefing framework that produces conversion-ready pages from clickr.",
+    excerpt:
+      "Garbage in, garbage out. Here's the exact briefing format that gets clickr to generate pages worth running real ad spend on.",
+    category: "Guides",
+    publishedAt: "2026-04-22",
+    readingTimeMinutes: 7,
+    sections: [
+      {
+        type: "h2",
+        content: "Why your AI landing pages might be disappointing",
+      },
+      {
+        type: "p",
+        content:
+          "If you've tried an AI landing page tool and been underwhelmed, the brief is almost always the cause. A brief that says 'create a landing page for a plumber in Manchester' will produce something that's technically a landing page — but it won't convert, because it lacks the specificity that makes post-click pages work.",
+      },
+      {
+        type: "p",
+        content:
+          "clickr's Meridian AI engine is designed to work from real brand context: the source URL you provide gives it access to the client's actual copy, colours, and services. But the brief you write on top of that determines whether the page is optimised for the right audience, the right campaign goal, and the right channel.",
+      },
+      {
+        type: "h2",
+        content: "The five-part brief framework",
+      },
+      {
+        type: "p",
+        content:
+          "Every high-performing clickr brief covers five things: campaign source, audience, goal, offer, and objections.",
+      },
+      {
+        type: "ol",
+        items: [
+          "Campaign source — where the traffic is coming from (Google Ads, Meta, TikTok, LinkedIn, email). This tells Meridian what prior context the visitor has and how to frame the headline.",
+          "Audience — who specifically is clicking. Not 'business owners' — be specific. 'Founders of UK-based e-commerce businesses with 10–50 employees running Google Shopping campaigns' produces a very different page.",
+          "Goal — what counts as a conversion. Form submission, phone call, product purchase, app download, event registration. One page, one goal.",
+          "Offer — what the visitor gets in exchange for converting. Be concrete: 'free 30-minute consultation', 'download the pricing guide', '20% off first order with code FIRST20'.",
+          "Objections — the top two or three reasons someone might hesitate to convert. Meridian will address these explicitly in the copy.",
+        ],
+      },
+      {
+        type: "h2",
+        content: "What to put in the URL field",
+      },
+      {
+        type: "p",
+        content:
+          "The source URL is used to scrape brand context — colours, typography, service descriptions, testimonials, team names, and any social proof available on the site. For best results, use the client's homepage or a relevant service page rather than a blog post or contact page.",
+      },
+      {
+        type: "p",
+        content:
+          "If the client has multiple relevant pages, use the one closest to the campaign topic. A Google Ads campaign selling commercial cleaning services should scrape the commercial cleaning service page — not the homepage.",
+      },
+      {
+        type: "h2",
+        content: "Example brief: good vs. great",
+      },
+      {
+        type: "blockquote",
+        content:
+          "Good: 'Landing page for a law firm that does family law.' Great: 'Google Ads traffic targeting people in the Greater Manchester area who have searched for divorce solicitor or family solicitor. Audience: adults 30–55, likely going through a separation. Goal: phone call or contact form submission. Offer: free 15-minute initial consultation. Objections: worried about cost, concerned about how long it takes, unsure if they need a solicitor at all.'",
+      },
+      {
+        type: "p",
+        content:
+          "The 'great' version gives Meridian enough to write a headline that matches the audience's emotional state, a benefit list that addresses the specific objections, and a CTA that frames the consultation as low-risk. The resulting page will outperform the generic version every time.",
+      },
+      {
+        type: "h2",
+        content: "Campaign type selection",
+      },
+      {
+        type: "p",
+        content:
+          "clickr's campaign type selector is not just a label — it changes the structural template Meridian generates. Lead Gen pages lead with the form above the fold. E-commerce pages lead with the product and price. Event pages lead with the date and headline speaker. Always select the type that matches the conversion goal, not the business type.",
+      },
+      {
+        type: "h2",
+        content: "Refining with the chat editor",
+      },
+      {
+        type: "p",
+        content:
+          "After generation, the chat editor is the fastest way to refine specifics. You don't need to re-brief from scratch if the headline misses — just tell it: 'The headline should emphasise speed of response, not price' and it updates the copy while preserving the rest of the page. Think of the initial generation as a very good first draft, and the chat editor as your revision tool.",
+      },
+    ],
+  },
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Article 5
+  // ────────────────────────────────────────────────────────────────────────────
+  {
+    slug: "google-ads-quality-score-landing-page",
+    title: "Why Your Google Ads Quality Score Is Low (and Why Your Landing Page Is to Blame)",
+    description:
+      "Quality Score directly determines what you pay per click on Google Ads. Most agencies fix ad copy and keywords and ignore the one factor that matters most: landing page relevance.",
+    excerpt:
+      "You're paying more per click than you should be. The cause is almost certainly your landing page — and here's how to fix it.",
+    category: "Strategy",
+    publishedAt: "2026-04-26",
+    readingTimeMinutes: 8,
+    sections: [
+      {
+        type: "h2",
+        content: "What Quality Score actually measures",
+      },
+      {
+        type: "p",
+        content:
+          "Google's Quality Score (1–10) is a composite of three components: expected click-through rate, ad relevance, and landing page experience. Most PPC managers obsess over the first two and treat landing page experience as a given. That's the mistake.",
+      },
+      {
+        type: "p",
+        content:
+          "Landing page experience accounts for roughly a third of your Quality Score and is the component most likely to be rated 'Below Average' on accounts that use a single homepage or generic page for all ad groups. A low Quality Score means a higher cost-per-click and worse ad rank. Fix it and you don't just improve conversions — you reduce spend.",
+      },
+      {
+        type: "h2",
+        content: "What Google evaluates on your landing page",
+      },
+      {
+        type: "ul",
+        items: [
+          "Relevance — does the page content closely match the keywords in the ad group and the promise made in the ad copy?",
+          "Transparency — does the page clearly describe the business, its product, and what the visitor is expected to do?",
+          "Navigability — can the visitor find what they're looking for without hunting through a complex navigation?",
+          "Loading speed — pages that load slowly (above 3 seconds) are rated negatively, especially on mobile.",
+          "Mobile usability — is the page designed for thumb-first mobile browsing?",
+        ],
+      },
+      {
+        type: "h2",
+        content: "The single-page-for-all-ads problem",
+      },
+      {
+        type: "p",
+        content:
+          "The most common cause of poor landing page experience scores is using the client's homepage or a single service page for every ad group in the account. If you have ad groups targeting 'commercial cleaning services London', 'office cleaning company', and 'contract cleaning services', and all three send traffic to the same homepage, none of them will achieve a high landing page experience score — because the page isn't specifically about any of those things.",
+      },
+      {
+        type: "p",
+        content:
+          "Google wants to see that the search query, the ad, and the landing page are all talking about the same thing. This is called message match, and it's the single highest-leverage improvement you can make to a PPC account.",
+      },
+      {
+        type: "h2",
+        content: "How to identify which pages are dragging down your score",
+      },
+      {
+        type: "ol",
+        items: [
+          "In Google Ads, go to Keywords → view 'Quality Score', 'Landing Page Experience', and 'Ad Relevance' columns.",
+          "Sort by Landing Page Experience = 'Below Average'. These are the keywords where your LP is costing you money.",
+          "Note the ad groups these keywords belong to. Look at the current landing page URL they're sending traffic to.",
+          "Check whether that page is the client's homepage or a generic page rather than a specific, campaign-matched page.",
+        ],
+      },
+      {
+        type: "h2",
+        content: "The fix: one dedicated page per ad group (or at minimum per campaign)",
+      },
+      {
+        type: "p",
+        content:
+          "The gold standard is a dedicated landing page for every ad group. In practice, a dedicated page per campaign — matching the top-level campaign theme — is sufficient for most accounts. The page headline should match the primary keyword and the ad copy headline. The content should be specific to that service, audience, and location.",
+      },
+      {
+        type: "p",
+        content:
+          "With clickr, you can generate a dedicated landing page for each campaign in minutes. Paste the client URL, set the campaign goal and audience in the brief, and the page is live on a unique URL you can set as the final URL for those ad groups. No developer required.",
+      },
+      {
+        type: "h2",
+        content: "What to expect after you fix it",
+      },
+      {
+        type: "p",
+        content:
+          "Quality Score changes aren't instant — Google re-evaluates over time as it sees more data. But most accounts see measurable improvement within two to four weeks of deploying campaign-matched landing pages. The compounding effect is what makes it worthwhile: higher Quality Score → lower CPC → more clicks for the same budget → more conversions → lower cost per acquisition.",
+      },
+    ],
+  },
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Article 6
+  // ────────────────────────────────────────────────────────────────────────────
+  {
+    slug: "agency-pricing-landing-page-services",
+    title: "What to Charge for Landing Page Services: The Agency Pricing Guide for 2026",
+    description:
+      "Most agencies either undercharge for landing pages (treating them as a setup task) or lose clients by overcharging (quoting as a full web project). Here's how to price them properly.",
+    excerpt:
+      "Landing pages are one of the highest-ROI services an agency can offer. Most agencies price them wrong. Here's the framework that fixes that.",
+    category: "Agency",
+    publishedAt: "2026-04-30",
+    readingTimeMinutes: 9,
+    sections: [
+      {
+        type: "h2",
+        content: "Why landing pages are underpriced in most agencies",
+      },
+      {
+        type: "p",
+        content:
+          "The majority of performance marketing agencies include landing pages as part of their campaign setup fee, or charge a nominal one-off cost that doesn't reflect the impact a well-built page has on campaign performance. This happens for two reasons: historically, building a landing page was time-intensive (so it felt risky to charge a lot), and most agencies haven't made the case to clients that the landing page is the single highest-leverage element in the entire paid campaign.",
+      },
+      {
+        type: "p",
+        content:
+          "If an agency is managing £10,000/month in Google Ads spend for a client, and the landing page improves conversion rate from 2% to 4%, the effective value of that improvement is a doubling of lead volume from the same budget. That's not a £200 deliverable. That's a core campaign asset that should be priced accordingly.",
+      },
+      {
+        type: "h2",
+        content: "Three pricing models that work",
+      },
+      {
+        type: "h2",
+        content: "Model 1: Per-page fixed fee",
+      },
+      {
+        type: "p",
+        content:
+          "Charge a fixed fee per landing page: typically £250–£500 for a standard campaign page, £500–£1,200 for a premium page with A/B variants and full conversion tracking setup. This is the simplest model and works well for project-based clients or one-off campaign launches.",
+      },
+      {
+        type: "h2",
+        content: "Model 2: Monthly LP retainer",
+      },
+      {
+        type: "p",
+        content:
+          "Offer a set number of landing pages per month as part of a retainer: 2–3 pages/month included in the campaign management fee, or a standalone LP retainer at £600–£1,500/month for higher volumes. This is the most scalable model for agencies with multiple active campaigns per client.",
+      },
+      {
+        type: "h2",
+        content: "Model 3: Performance-linked pricing",
+      },
+      {
+        type: "p",
+        content:
+          "Charge a base fee plus a bonus tied to conversion rate improvement. This is harder to agree upfront but creates a compelling incentive alignment with the client. If you can show a baseline conversion rate and commit to a target improvement, the client is effectively paying for results rather than hours.",
+      },
+      {
+        type: "h2",
+        content: "How to present landing pages in proposals",
+      },
+      {
+        type: "p",
+        content:
+          "The framing matters enormously. Don't present landing pages as a technical deliverable ('we'll build a landing page'). Present them as a campaign performance investment ('dedicated post-click experience that ensures every pound of ad spend reaches the right page').",
+      },
+      {
+        type: "ul",
+        items: [
+          "Show the client their current page and benchmark its conversion rate against industry averages",
+          "Illustrate the revenue impact of a 1–2% conversion rate improvement at their current spend level",
+          "Position the landing page fee as a fraction of the expected improvement in campaign ROI",
+          "Include landing page performance reporting in your monthly reports — make it a visible metric",
+        ],
+      },
+      {
+        type: "h2",
+        content: "What clickr changes about the economics",
+      },
+      {
+        type: "p",
+        content:
+          "The traditional cost constraint on landing pages was time. Each page took 4–8 hours to design and build, which capped how many you could do per month and forced a high per-page rate to make it economical. With clickr, a properly briefed page takes 20–30 minutes end-to-end. That doesn't mean you should charge less — it means your margin on each page is dramatically higher, and you can offer a higher volume at a competitive price.",
+      },
+    ],
+  },
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Article 7
+  // ────────────────────────────────────────────────────────────────────────────
+  {
+    slug: "meta-ads-landing-page-best-practices-2026",
+    title: "Meta Ads Landing Pages: 7 Differences from Google Ads Pages That Actually Matter",
+    description:
+      "Traffic from Meta ads arrives in a completely different mindset from Google search traffic. Your landing page needs to account for that — here's exactly how.",
+    excerpt:
+      "Meta traffic and Google traffic need different pages. Most agencies send both to the same URL and wonder why Meta converts badly.",
+    category: "Strategy",
+    publishedAt: "2026-05-04",
+    readingTimeMinutes: 7,
+    sections: [
+      {
+        type: "h2",
+        content: "The mindset gap between search and social traffic",
+      },
+      {
+        type: "p",
+        content:
+          "Google search traffic is intent-driven. The user searched for something specific, clicked an ad that matched, and arrived on your page already thinking about the problem you solve. They're warm. They want to confirm you're the right answer and convert.",
+      },
+      {
+        type: "p",
+        content:
+          "Meta traffic is interruption-driven. The user was scrolling their feed, something caught their eye, and they clicked. They didn't ask to see your ad. They might be vaguely interested — but they haven't declared intent in the way a search query does. That difference changes almost everything about how the landing page should be structured.",
+      },
+      {
+        type: "h2",
+        content: "7 differences to build into your Meta landing pages",
+      },
+      {
+        type: "ol",
+        items: [
+          "Lead with the visual, not the headline. Google visitors tolerate text-heavy pages. Meta visitors expect the same quality of creative experience they saw in the ad — use visual hierarchy first.",
+          "Match the ad creative exactly. If the ad showed a product image, lead with that product. If it showed a before/after, lead with that. Broken creative continuity is the leading cause of Meta traffic bounce.",
+          "Use shorter, punchier copy. Meta visitors have shorter patience. Your above-the-fold content needs to communicate the offer in two sentences maximum.",
+          "Make the CTA low-commitment. 'Get a free quote' works better than 'Buy now' for Meta traffic that hasn't declared intent. Lower the perceived risk at the top of the page.",
+          "Social proof needs to be image-based. Text testimonials work for Google. Meta audiences respond better to photo testimonials, video clips, or trust badges that communicate authority visually.",
+          "Load speed is even more critical. Meta users are on mobile, on mobile networks, and have no patience. Every second of load time costs you bounce rate disproportionately compared to search traffic.",
+          "Include a scroll-triggered CTA. Meta visitors are more likely to scroll and read before converting. A sticky header CTA or scroll-triggered pop-in significantly improves conversion rate for awareness-driven traffic.",
+        ],
+      },
+      {
+        type: "h2",
+        content: "The campaign-type impact on Meta landing pages",
+      },
+      {
+        type: "p",
+        content:
+          "Meta campaign objective also changes what the page should do. Awareness campaigns driving to a landing page need to work harder to establish credibility — the visitor has very low intent and needs convincing. Retargeting campaigns can be more direct — the visitor already knows you, so get to the offer quickly.",
+      },
+      {
+        type: "h2",
+        content: "Generating Meta-optimised pages with clickr",
+      },
+      {
+        type: "p",
+        content:
+          "When briefing a page in clickr for Meta traffic, specify the campaign source in the brief ('Meta Ads — retargeting traffic who have visited the product page') and select the appropriate campaign type. Meridian will adjust the copy structure, social proof placement, and CTA framing accordingly. The brand scrape ensures the visual experience matches what the visitor just saw in their feed.",
+      },
+    ],
+  },
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Article 8
+  // ────────────────────────────────────────────────────────────────────────────
+  {
+    slug: "multilingual-landing-pages-scale-new-markets",
+    title: "Multilingual Landing Pages: How to Scale Paid Campaigns Into New Markets Without a Translation Agency",
+    description:
+      "Most agencies avoid international campaigns because the landing page problem is too hard. clickr's multilingual generation changes the economics entirely.",
+    excerpt:
+      "International campaigns stall because of one thing: landing pages in the right language, in time, at a cost that makes sense. Here's how to solve it.",
+    category: "Strategy",
+    publishedAt: "2026-05-08",
+    readingTimeMinutes: 6,
+    sections: [
+      {
+        type: "h2",
+        content: "Why most agencies avoid multilingual campaigns",
+      },
+      {
+        type: "p",
+        content:
+          "The audience targeting for international campaigns isn't particularly hard — Meta and Google both make it easy to segment by country and language. The bottleneck is always the landing page. You need a page in the right language that still feels like the client's brand, and the cost and time of getting a translator involved, then rebuilding the page in a new language, often kills the proposal before it starts.",
+      },
+      {
+        type: "p",
+        content:
+          "The result is that most UK agencies only serve UK campaigns, even when their clients have obvious opportunities in French, German, Spanish, or Arabic-speaking markets. The potential is there — the operational capability isn't.",
+      },
+      {
+        type: "h2",
+        content: "The clickr approach to multilingual generation",
+      },
+      {
+        type: "p",
+        content:
+          "clickr generates landing pages in 22 languages from a single brief. The brand context is scraped from the source URL, the brief is written in English (or any language), and the output page is generated directly in the target language. The brand colours, layout, and structure remain consistent — only the language changes.",
+      },
+      {
+        type: "p",
+        content:
+          "This isn't machine translation of an English page. Meridian generates the copy natively in the target language, which avoids the unnatural phrasing that comes from translating sentences directly and maintains the conversion-copy principles (active voice, benefit-led headlines, low-friction CTAs) in the grammar of the target language.",
+      },
+      {
+        type: "h2",
+        content: "Localisation beyond language",
+      },
+      {
+        type: "p",
+        content:
+          "Language is the starting point, not the finish line. A French landing page for a UK-based SaaS product should reference EU pricing, GDPR compliance, and French-speaking support — not just French words on an English page structure. When briefing multilingual pages, include localisation notes: currency, relevant local regulations, any local office presence, and language-specific CTAs.",
+      },
+      {
+        type: "h2",
+        content: "How to structure international campaigns operationally",
+      },
+      {
+        type: "ol",
+        items: [
+          "Create one parent campaign per country/language pair in your ad platform.",
+          "Generate a dedicated clickr landing page for each language — takes the same time as an English page.",
+          "Use the language-specific URL as the final URL for that country's campaign.",
+          "Track conversions per language page separately so you can identify which markets are performing.",
+          "A/B test headline variants per language once you have sufficient volume (500+ sessions per variant).",
+        ],
+      },
+      {
+        type: "h2",
+        content: "The agency opportunity",
+      },
+      {
+        type: "p",
+        content:
+          "Multilingual campaign management is genuinely scarce in the market. Most agencies can't offer it efficiently. If you can generate campaign-ready landing pages in 22 languages with the same workflow as your English pages, you have a credible differentiator for clients with any international footprint — and a service line that justifies a higher retainer.",
+      },
+    ],
+  },
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Article 9
+  // ────────────────────────────────────────────────────────────────────────────
+  {
+    slug: "client-review-magic-link-landing-pages",
+    title: "How to Get Client Sign-Off on Landing Pages Without Endless Email Chains",
+    description:
+      "Client review and approval is the hidden time-sink in every landing page project. clickr's magic-link review system fixes it in one step.",
+    excerpt:
+      "The page takes 30 minutes to build. Client approval takes three days and six email threads. Here's how to fix the feedback process.",
+    category: "Agency",
+    publishedAt: "2026-05-12",
+    readingTimeMinutes: 5,
+    sections: [
+      {
+        type: "h2",
+        content: "The client review problem",
+      },
+      {
+        type: "p",
+        content:
+          "The fastest part of the landing page process is now the generation. What remains slow is the client review loop: the page gets built, a screenshot or PDF goes into an email, the client forwards it to a colleague, feedback arrives in fragments over two or three days, someone implements the changes, a new screenshot gets sent, and so on.",
+      },
+      {
+        type: "p",
+        content:
+          "This is a worse experience for the client than it is for the agency. They can't see the page as it actually looks in a browser. They can't share a link with their boss. They're giving feedback on a static image of something that will behave dynamically.",
+      },
+      {
+        type: "h2",
+        content: "Magic-link preview: how it works",
+      },
+      {
+        type: "p",
+        content:
+          "clickr generates a shareable magic-link preview URL for any page in the editor. The URL renders the full live page — exactly as it will appear when published — without requiring the client to log in to clickr or create an account. They see the real page, in a browser, on their own device.",
+      },
+      {
+        type: "p",
+        content:
+          "The link is read-only: clients can review but not edit. When you're ready to apply feedback, you make the changes in the editor and the same link automatically updates — no new URL to send, no new email to write.",
+      },
+      {
+        type: "h2",
+        content: "Running the review process efficiently",
+      },
+      {
+        type: "ol",
+        items: [
+          "Generate the page. Share the magic-link URL to the client with a single sentence: 'Here's the live preview — let me know your feedback by [date]'.",
+          "Ask for feedback in a structured format: headline, body copy, CTA, visual design — four areas, one round of consolidated feedback.",
+          "Apply all feedback in one session using the chat editor. Don't iterate on each individual point — implement everything at once and share the updated link.",
+          "Set a two-round review cap in your project terms. First draft plus one round of revisions covers 95% of landing page projects without scope creep.",
+        ],
+      },
+      {
+        type: "h2",
+        content: "What to include when sending the preview link",
+      },
+      {
+        type: "p",
+        content:
+          "The framing of how you send the preview link sets expectations for the kind of feedback you want. Include a short note about what the page is optimised for: 'This is optimised for Google Ads traffic from [campaign keyword group]. The headline prioritises conversion rate — it's shorter and more direct than typical website copy, which is intentional.' Clients who understand why the page looks the way it does give better feedback.",
+      },
+    ],
+  },
 ];

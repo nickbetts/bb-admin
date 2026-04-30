@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, ChevronDown, Zap, Layers, BarChart2, Globe, Puzzle, Building2, UserCheck, BookOpen, Info, Home } from "lucide-react";
+import { Menu, X, ChevronDown, Zap, Layers, BarChart2, Globe, Puzzle, Building2, UserCheck, BookOpen, Info, Home, FileText, Tag, LayoutTemplate } from "lucide-react";
 
 const accent = "#f97316";
 const accentDark = "#ea580c";
@@ -32,6 +32,13 @@ const solutionItems = [
 const companyItems = [
   { icon: Info,      label: "About clickr",   desc: "Our story and the Meridian AI behind it", href: "/about" },
   { icon: BookOpen,  label: "Blog",           desc: "Landing page strategy & performance tips", href: "/blog" },
+];
+
+const resourceItems = [
+  { icon: BookOpen,       label: "Resources hub",    desc: "Guides, checklists, and free downloads",  href: "/resources" },
+  { icon: FileText,       label: "Guides & Playbooks", desc: "In-depth playbooks for performance marketers", href: "/resources" },
+  { icon: LayoutTemplate, label: "LP Templates",      desc: "9 campaign-type templates, ready to generate", href: "/templates" },
+  { icon: Tag,            label: "Changelog",         desc: "New features, fixes and improvements",     href: "/changelog" },
 ];
 
 interface MegaItem {
@@ -212,6 +219,11 @@ export default function ClickrNav() {
             transition: "color 0.15s, border-color 0.15s",
           }}>Pricing</Link>
           <DropdownTrigger
+            label="Resources"
+            items={resourceItems}
+            active={isActive("/resources", pathname) || isActive("/templates", pathname) || isActive("/changelog", pathname)}
+          />
+          <DropdownTrigger
             label="Company"
             items={companyItems}
             active={isActive("/about", pathname) || isActive("/blog", pathname)}
@@ -334,6 +346,36 @@ export default function ClickrNav() {
             <Home size={14} style={{ marginRight: 8, opacity: 0.5 }} />
             Pricing
           </Link>
+
+          {/* Resources group */}
+          <button
+            onClick={() => setMobileGroup(mobileGroup === "resources" ? null : "resources")}
+            style={{
+              width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "11px 12px", borderRadius: 9, fontSize: 14, fontWeight: 600,
+              color: "rgba(255,255,255,0.7)", background: "none", border: "none", cursor: "pointer",
+            }}
+          >
+            Resources
+            <ChevronDown size={14} style={{ transition: "transform 0.2s", transform: mobileGroup === "resources" ? "rotate(180deg)" : "rotate(0)", opacity: 0.5 }} />
+          </button>
+          {mobileGroup === "resources" && (
+            <div style={{ paddingLeft: 8, paddingBottom: 4 }}>
+              {resourceItems.map((item) => (
+                <Link
+                  key={item.href + item.label}
+                  href={item.href}
+                  onClick={() => setMobileOpen(false)}
+                  style={{
+                    display: "block", padding: "9px 12px", borderRadius: 8,
+                    fontSize: 14, color: "rgba(255,255,255,0.55)", textDecoration: "none",
+                  }}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+          )}
 
           {/* Company group */}
           <button

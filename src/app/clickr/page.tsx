@@ -132,6 +132,74 @@ const steps = [
   },
 ];
 
+const agencyNames = [
+  "Velocity Digital", "Traction Agency", "Beacon Media", "Pilot Growth",
+  "Meridian PPC", "Atlas Digital", "Summit Marketing", "Craft Paid Media",
+  "Orbit Agency", "Forge Digital", "Nova Performance", "Crest Media",
+  "Apex Growth", "Calibre Media", "Prism Digital", "Impact PPC",
+];
+
+const testimonials = [
+  {
+    quote: "We used to spend three days per client on landing pages. Now it's under 30 minutes — brief, generate, tweak, publish. Our margins have genuinely improved and clients see campaigns live faster.",
+    name: "James Whitmore",
+    role: "Head of Paid Media",
+    company: "Velocity Digital",
+    initials: "JW",
+    avatarColor: "linear-gradient(135deg, #f97316, #ea580c)",
+    rating: 5,
+  },
+  {
+    quote: "clickr generates pages that actually look like the client's brand. Real copy from their website, their actual colours — not lorem ipsum with a logo slapped on. The chat editor is the bit I didn't know I needed.",
+    name: "Sarah Chen",
+    role: "Independent PPC Consultant",
+    company: "Freelance",
+    initials: "SC",
+    avatarColor: "linear-gradient(135deg, #818cf8, #6366f1)",
+    rating: 5,
+  },
+  {
+    quote: "We ran clickr against our old Unbounce setup across 6 campaigns. Average 2.3× improvement in conversion rate. Having a page that matches each campaign's exact message just works. It's not magic — it's basic CRO at scale.",
+    name: "Marcus Reid",
+    role: "Founder",
+    company: "Traction Agency",
+    initials: "MR",
+    avatarColor: "linear-gradient(135deg, #34d399, #059669)",
+    rating: 5,
+  },
+];
+
+const faqs = [
+  {
+    q: "How does clickr generate a landing page from a URL?",
+    a: "clickr uses Meridian, i3MEDIA's AI marketing intelligence, to scrape the target website. It extracts brand colours, typography, real service descriptions, testimonials, and USPs. That brand context is combined with your campaign brief to generate a post-click page populated with real content — not placeholder copy.",
+  },
+  {
+    q: "Do I need to know how to code?",
+    a: "No. The chat editor lets you make any change in plain English — 'make the headline bigger', 'change the CTA to orange', 'add a trust badge above the fold'. Full HTML editor access is there if you want it, but it's entirely optional.",
+  },
+  {
+    q: "What campaign types does clickr support?",
+    a: "clickr supports 10+ campaign types: lead generation, e-commerce, event registration, free trial, demo request, webinar sign-up, app download, recruitment, charity/donation, and local services. Select the type and Meridian optimises the layout, copy structure, and CTA hierarchy for that specific goal.",
+  },
+  {
+    q: "How does conversion tracking work?",
+    a: "From the editor, add your Google Ads conversion ID, Meta Pixel ID, GA4 measurement ID, TikTok Pixel ID, LinkedIn Insight Tag, or Microsoft UET ID. clickr injects the correct code and fires conversion events automatically on form submissions, phone clicks, and email clicks. Use ?test=1 to verify events without polluting your ad accounts.",
+  },
+  {
+    q: "Is the published URL my own domain?",
+    a: "Free and Starter plan pages publish to {your-slug}.clickr.marketing. Pro plan pages support custom subdomains (e.g., landing.yourclient.com) via CNAME. The clickr subdomain is fast, globally distributed, and works perfectly for paid campaigns.",
+  },
+  {
+    q: "How do leads get routed after form submission?",
+    a: "Form submissions are stored in StratOS with full attribution data. You can route in real time to any email address, HubSpot, Salesforce, Zoho CRM, Pipedrive, Mailchimp, ActiveCampaign, or any endpoint via webhook. Microsoft Teams and Slack notifications fire the moment a conversion happens.",
+  },
+  {
+    q: "What's the difference between standalone clickr and the StratOS version?",
+    a: "Standalone clickr at clickr.marketing gives you all core landing page features: generation, chat editor, tracking, lead routing, and publishing. The StratOS version adds full multi-client management, campaign reporting across 15 marketing channels, AI insights, shared attribution data, and the magic-link client review portal.",
+  },
+];
+
 const campaignTypes = [
   "Lead Gen", "E-commerce", "Event Registration", "Free Trial",
   "Demo Request", "Webinar Sign-up", "App Download",
@@ -160,6 +228,7 @@ export default function ClickrPage() {
   const [parallaxY, setParallaxY] = useState(0);
   const [typedText, setTypedText] = useState("");
   const [typingDone, setTypingDone] = useState(false);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   const cycleTexts = ["agencies", "consultants", "paid campaigns", "product launches"];
   const [cycleIdx, setCycleIdx] = useState(0);
@@ -510,6 +579,20 @@ export default function ClickrPage() {
         </div>
       </section>
 
+      {/* ── LOGO MARQUEE ──────────────────────────────────────────────────── */}
+      <div style={{ padding: "28px 0 24px", borderTop: "1px solid rgba(255,255,255,0.05)", overflow: "hidden" }}>
+        <p style={{ textAlign: "center", fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.18)", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 20 }}>
+          Trusted by performance marketing teams
+        </p>
+        <div style={{ position: "relative", overflow: "hidden" }}>
+          <div className="marquee-track">
+            {[...agencyNames, ...agencyNames].map((name, i) => (
+              <span key={i} style={{ padding: "7px 22px", borderRadius: 20, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.28)", whiteSpace: "nowrap", marginRight: 10, flexShrink: 0 }}>{name}</span>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* ── AUDIENCE STRIP ─────────────────────────────────────────────────── */}
       <section className="reveal-section" style={{ padding: "72px 40px", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
         <div style={{ maxWidth: 900, margin: "0 auto" }}>
@@ -832,6 +915,80 @@ export default function ClickrPage() {
         </div>
       </section>
 
+      {/* ── TESTIMONIALS ──────────────────────────────────────────────────── */}
+      <section className="reveal-section" style={{ padding: "112px 40px", background: "rgba(255,255,255,0.01)", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+          <div style={{ textAlign: "center", marginBottom: 72 }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: accentLight, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }} className="blur-reveal">Social proof</p>
+            <h2 style={{ fontSize: 44, fontWeight: 900, letterSpacing: "-0.04em", marginBottom: 18, color: "white" }} className="blur-reveal">
+              The agencies speak for themselves.
+            </h2>
+            <p style={{ fontSize: 16, color: "rgba(255,255,255,0.4)", maxWidth: 500, margin: "0 auto", lineHeight: 1.7 }}>
+              Performance marketers who switched from legacy LP tools and manual workflows.
+            </p>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 22 }} className="testimonials-grid stagger-in">
+            {testimonials.map((t, i) => (
+              <div key={i} className="feature-card" style={{ padding: "30px 28px", borderRadius: 20, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", display: "flex", flexDirection: "column", gap: 20, animationDelay: `${i * 0.1}s`, transition: "transform 0.35s ease, border-color 0.3s ease, box-shadow 0.3s ease" }}>
+                {/* Stars */}
+                <div style={{ display: "flex", gap: 3 }}>
+                  {Array.from({ length: t.rating }).map((_, si) => (
+                    <svg key={si} width="13" height="13" viewBox="0 0 24 24" fill={accent}><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                  ))}
+                </div>
+                {/* Quote */}
+                <p style={{ fontSize: 14, color: "rgba(255,255,255,0.62)", lineHeight: 1.75, flex: 1, fontStyle: "italic", margin: 0 }}>
+                  &ldquo;{t.quote}&rdquo;
+                </p>
+                {/* Author */}
+                <div style={{ display: "flex", alignItems: "center", gap: 12, paddingTop: 4, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                  <div style={{ width: 38, height: 38, borderRadius: "50%", background: t.avatarColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800, color: "white", flexShrink: 0 }}>{t.initials}</div>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "white" }}>{t.name}</div>
+                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>{t.role} · {t.company}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── FAQ ────────────────────────────────────────────────────────────── */}
+      <section className="reveal-section" style={{ padding: "112px 40px", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+        <div style={{ maxWidth: 760, margin: "0 auto" }}>
+          <div style={{ textAlign: "center", marginBottom: 64 }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: accentLight, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }} className="blur-reveal">FAQ</p>
+            <h2 style={{ fontSize: 44, fontWeight: 900, letterSpacing: "-0.04em", marginBottom: 18, color: "white" }} className="blur-reveal">
+              Common questions, answered.
+            </h2>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            {faqs.map((faq, i) => (
+              <div key={i} style={{ borderRadius: 14, border: `1px solid ${openFaq === i ? "rgba(249,115,22,0.22)" : "rgba(255,255,255,0.07)"}`, background: openFaq === i ? "rgba(249,115,22,0.04)" : "rgba(255,255,255,0.02)", overflow: "hidden", transition: "border-color 0.2s ease, background 0.2s ease" }}>
+                <button
+                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                  style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 24px", background: "transparent", border: "none", cursor: "pointer", textAlign: "left", gap: 16 }}
+                >
+                  <span style={{ fontSize: 15, fontWeight: 700, color: openFaq === i ? accentLight : "rgba(255,255,255,0.85)", lineHeight: 1.4 }}>{faq.q}</span>
+                  <span style={{ flexShrink: 0, width: 20, height: 20, borderRadius: "50%", border: `1px solid ${openFaq === i ? "rgba(249,115,22,0.4)" : "rgba(255,255,255,0.15)"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, color: openFaq === i ? accent : "rgba(255,255,255,0.4)", transition: "transform 0.25s ease, border-color 0.2s ease, color 0.2s ease", transform: openFaq === i ? "rotate(45deg)" : "none" }}>+</span>
+                </button>
+                {openFaq === i && (
+                  <div style={{ padding: "0 24px 22px", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+                    <p style={{ fontSize: 14, color: "rgba(255,255,255,0.52)", lineHeight: 1.8, marginTop: 18, margin: "18px 0 0" }}>{faq.a}</p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          <div style={{ textAlign: "center", marginTop: 48 }}>
+            <a href="mailto:hello@i3media.co.uk" style={{ fontSize: 14, color: "rgba(255,255,255,0.35)", textDecoration: "none" }}>
+              Still have questions? <span style={{ color: accentLight, textDecoration: "underline", textUnderlineOffset: 3 }}>Email the team →</span>
+            </a>
+          </div>
+        </div>
+      </section>
+
       {/* ── CTA ────────────────────────────────────────────────────────────── */}
       <section id="cta" className="reveal-section" style={{ padding: "120px 40px 160px", position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", width: "80%", paddingBottom: "40%", bottom: "-20%", left: "50%", transform: "translateX(-50%)", background: `radial-gradient(ellipse, rgba(249,115,22,0.1) 0%, transparent 65%)`, pointerEvents: "none" }} />
@@ -944,6 +1101,13 @@ export default function ClickrPage() {
           h1 { font-size: 44px !important; }
           h2 { font-size: 34px !important; }
         }
+        @media (max-width: 760px) { .testimonials-grid { grid-template-columns: 1fr !important; } }
+        @media (max-width: 900px) { .testimonials-grid { grid-template-columns: 1fr !important; } }
+
+        @keyframes marquee-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+        .marquee-track { display: flex; align-items: center; gap: 0; animation: marquee-scroll 30s linear infinite; width: max-content; padding: 0 5px; }
+        .marquee-track:hover { animation-play-state: paused; }
+
         @media (max-width: 600px) {
           .features-grid { grid-template-columns: 1fr !important; }
           h1 { font-size: 36px !important; }
