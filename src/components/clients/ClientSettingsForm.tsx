@@ -192,7 +192,8 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
   // Contracted hours per service
   const [contractedHours, setContractedHours] = useState<Array<{ service: string; hoursPerMonth: number }>>(() => {
     try {
-      return client.contractedHours ? JSON.parse(client.contractedHours) as Array<{ service: string; hoursPerMonth: number }> : [];
+      const parsed = client.contractedHours ? JSON.parse(client.contractedHours) : [];
+      return Array.isArray(parsed) ? parsed as Array<{ service: string; hoursPerMonth: number }> : [];
     } catch { return []; }
   });
 
@@ -221,7 +222,8 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
       .then((r) => r.json())
       .then((data) => {
         if (data.error) setGa4FetchError(data.error);
-        else setGa4Properties(data);
+        else if (Array.isArray(data)) setGa4Properties(data);
+        else setGa4FetchError("Unexpected response from GA4");
       })
       .catch(() => setGa4FetchError("Failed to load GA4 properties"))
       .finally(() => setGa4Loading(false));
@@ -235,14 +237,14 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
       .then((r) => r.json())
       .then((data) => {
         if (data.error) setMetaFetchError(data.error);
-        else {
+        else if (Array.isArray(data)) {
           setMetaAccounts(data);
           // Backfill account name if client has an ID but no name saved
           if (form.metaAccountId && !form.metaAccountName) {
             const match = (data as MetaAccount[]).find((a) => a.id === form.metaAccountId);
             if (match) setForm((prev) => ({ ...prev, metaAccountName: match.name }));
           }
-        }
+        } else setMetaFetchError("Unexpected response from Meta");
       })
       .catch(() => setMetaFetchError("Failed to load Meta accounts"))
       .finally(() => setMetaLoading(false));
@@ -251,6 +253,7 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
       .then((r) => r.json())
       .then((data) => {
         if (data.error) setSemrushFetchError(data.error);
+        else if (!Array.isArray(data)) setSemrushFetchError("Unexpected response from SemRush");
         else {
           setSemrushProjects(data);
           // Auto-populate projectId if domain already set but projectId not yet saved
@@ -278,7 +281,8 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
       .then((r) => r.json())
       .then((data) => {
         if (data.error) setGoogleAdsFetchError(data.error);
-        else setGoogleAdsAccounts(data);
+        else if (Array.isArray(data)) setGoogleAdsAccounts(data);
+        else setGoogleAdsFetchError("Unexpected response from Google Ads");
       })
       .catch(() => setGoogleAdsFetchError("Failed to load Google Ads accounts"))
       .finally(() => setGoogleAdsLoading(false));
@@ -287,7 +291,8 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
       .then((r) => r.json())
       .then((data) => {
         if (data.error) setGscFetchError(data.error);
-        else setGscSites(data);
+        else if (Array.isArray(data)) setGscSites(data);
+        else setGscFetchError("Unexpected response from Search Console");
       })
       .catch(() => setGscFetchError("Failed to load Search Console sites"))
       .finally(() => setGscLoading(false));
