@@ -7,6 +7,8 @@ import { getTurnstileSiteKey } from "@/lib/turnstile";
 
 export const dynamic = "force-dynamic";
 
+const CLICKR_WATERMARK = `<div style="position:fixed;bottom:16px;right:16px;z-index:999999;background:rgba(0,0,0,0.75);backdrop-filter:blur(8px);border-radius:8px;padding:6px 12px;display:flex;align-items:center;gap:7px;text-decoration:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:12px;font-weight:600;color:#fff;letter-spacing:0.01em;pointer-events:all;" title="Built with clickr — AI-powered landing pages"><span style="color:#f97316">⚡</span>Built free with <a href="https://clickr.marketing" target="_blank" rel="noopener noreferrer" style="color:#f97316;text-decoration:none;">clickr</a></div></body>`;
+
 // GET /lp/[slug] — serve the landing page by its pretty public slug (no auth)
 export async function GET(
   request: NextRequest,
@@ -33,7 +35,9 @@ export async function GET(
         status: true,
         formConfig: true,
         analyticsConfig: true,
+        clickrUserId: true,
         client: { select: { defaultAnalyticsConfig: true } },
+        clickrUser: { select: { planTier: true } },
       },
     }),
     getTurnstileSiteKey(),
@@ -72,13 +76,18 @@ export async function GET(
     parseAnalyticsConfig(landingPage.analyticsConfig),
   );
 
-  const html = assemblePublicHtml(htmlToServe, {
+  let html = assemblePublicHtml(htmlToServe, {
     shareToken: landingPage.shareToken,
     analytics,
     testMode,
     formConfig: parseLpFormConfig(landingPage.formConfig),
     turnstileSiteKey,
   });
+
+  // Inject clickr watermark for free-tier public users
+  if (landingPage.clickrUserId && landingPage.clickrUser?.planTier === "free") {
+    html = html.replace("</body>", CLICKR_WATERMARK);
+  }
 
   return new NextResponse(html, {
     status: 200,

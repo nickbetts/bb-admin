@@ -41,6 +41,7 @@ import {
   MailCheck,
   ImageIcon,
   PencilLine,
+  Zap,
 } from "lucide-react";
 import { CommandPalette } from "@/components/ui/CommandPalette";
 import { KeyboardShortcutsHelp } from "@/components/ui/KeyboardShortcutsHelp";
@@ -588,7 +589,7 @@ export function Sidebar({ user, permissions, isAdmin = false, previewRoleId = nu
           <>
             {!collapsed && <p className="sidebar-nav-label" style={{ marginTop: 12 }}>Admin</p>}
             {(() => {
-              const isActive = pathname === "/admin" || pathname.startsWith("/admin/");
+              const isActive = pathname === "/admin" || (pathname.startsWith("/admin/") && !pathname.startsWith("/admin/clickr"));
               return (
                 <Link
                   href="/admin"
@@ -601,6 +602,23 @@ export function Sidebar({ user, permissions, isAdmin = false, previewRoleId = nu
                     <ShieldCheck className="h-4 w-4" />
                   </span>
                   {!collapsed && <span>Admin</span>}
+                </Link>
+              );
+            })()}
+            {(() => {
+              const isActive = pathname === "/admin/clickr" || pathname.startsWith("/admin/clickr/");
+              return (
+                <Link
+                  href="/admin/clickr"
+                  aria-current={isActive ? "page" : undefined}
+                  title={collapsed ? "Clickr" : undefined}
+                  className={cn("nav-item", isActive && "active", collapsed && "justify-center")}
+                  style={collapsed ? { justifyContent: "center" } : undefined}
+                >
+                  <span className="nav-item-icon" style={{ display: "flex", width: 20, height: 20, alignItems: "center", justifyContent: "center" }}>
+                    <Zap className="h-4 w-4" />
+                  </span>
+                  {!collapsed && <span>Clickr</span>}
                 </Link>
               );
             })()}

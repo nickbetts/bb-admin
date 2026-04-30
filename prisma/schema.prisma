@@ -803,7 +803,8 @@ model Ms365Connection {
 model LandingPage {
   id                String               @id @default(cuid())
   clientId          String?
-  userId            String // Creator
+  userId            String? // Internal Stratos user (null for Clickr public users)
+  clickrUserId      String? // Clickr public user (null for internal Stratos users)
   title             String
   slug              String // URL slug — unique within client scope
   currentHtml       String // Active HTML (latest accepted version)
@@ -825,15 +826,18 @@ model LandingPage {
   createdAt         DateTime             @default(now())
   updatedAt         DateTime             @updatedAt
   client            Client?              @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  user              User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User?                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clickrUser        ClickrUser?          @relation(fields: [clickrUserId], references: [id], onDelete: Cascade)
   versions          LandingPageVersion[]
   leads             LandingPageLead[]
   translations      LandingPageTranslation[]
 
   @@unique([clientId, slug])
   @@unique([customSubdomain, slug])
+  @@unique([clickrUserId, slug])
   @@index([clientId, createdAt])
   @@index([userId, createdAt])
+  @@index([clickrUserId, createdAt])
 }
 
 // Version history: every AI refinement creates a new version
@@ -1269,4 +1273,38 @@ model InternalLinkingPlan {
 
   @@index([userId, createdAt])
   @@index([clientId, createdAt])
+}
+
+// ─── Clickr Public SaaS ──────────────────────────────────────────────────────
+
+model ClickrUser {
+  id                   String         @id @default(cuid())
+  email                String         @unique
+  passwordHash         String
+  name                 String?
+  planTier             String         @default("free")   // "free" | "starter" | "pro"
+  planStatus           String         @default("active") // "active" | "past_due" | "cancelled" | "disabled"
+  lpsThisMonth         Int            @default(0)
+  billingPeriodStart   DateTime       @default(now())
+  stripeCustomerId     String?        @unique
+  stripeSubscriptionId String?        @unique
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+  sessions             ClickrSession[]
+  landingPages         LandingPage[]
+
+  @@index([email])
+  @@index([planTier])
+}
+
+model ClickrSession {
+  id          String     @id @default(cuid())
+  clickrUserId String
+  token       String     @unique
+  expiresAt   DateTime
+  createdAt   DateTime   @default(now())
+  clickrUser  ClickrUser @relation(fields: [clickrUserId], references: [id], onDelete: Cascade)
+
+  @@index([clickrUserId])
+  @@index([token])
 }

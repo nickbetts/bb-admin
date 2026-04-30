@@ -1,11 +1,16 @@
-// TODO: Implement — see src/app/(clickr)/CLICKR_PLAN.md § Phase 4
-// POST /api/clickr/auth/logout
-// 1. getClickrSession() → if no session, return 200 anyway (idempotent)
-// 2. prisma.clickrSession.delete({ where: { token } })
-// 3. clearClickrSessionCookie(token, response) → 200 { ok: true }
-
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { clearClickrSessionCookie } from "@/lib/clickr-auth";
 
 export async function POST() {
-  return NextResponse.json({ ok: true });
+  const cookieStore = await cookies();
+  const token = cookieStore.get("clickr_session")?.value;
+
+  const response = NextResponse.json({ ok: true });
+
+  if (token) {
+    await clearClickrSessionCookie(token, response);
+  }
+
+  return response;
 }

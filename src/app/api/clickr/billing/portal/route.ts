@@ -1,15 +1,33 @@
-// TODO: Implement — see src/app/(clickr)/CLICKR_PLAN.md § Phase 5
-// GET /api/clickr/billing/portal
-// 1. getClickrSession() → 401
-// 2. getStripeClient()
-// 3. stripe.billingPortal.sessions.create({
-//      customer: user.stripeCustomerId,
-//      return_url: `${process.env.NEXT_PUBLIC_APP_URL}/clickr/dashboard`,
-//    })
-// 4. Return { url: portalSession.url }
-
 import { NextResponse } from "next/server";
+import { getClickrSession } from "@/lib/clickr-auth";
+import { getStripeClient } from "@/lib/stripe";
+import { prisma } from "@/lib/prisma";
 
 export async function GET() {
-  return NextResponse.json({ error: "Not yet implemented" }, { status: 501 });
+  const session = await getClickrSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const user = await prisma.clickrUser.findUnique({
+    where: { id: session.user.id },
+    select: { stripeCustomerId: true },
+  });
+
+  if (!user?.stripeCustomerId) {
+    return NextResponse.json({ error: "No billing account found" }, { status: 404 });
+  }
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://clickr.marketing";
+
+  try {
+    const stripe = await getStripeClient();
+    const portalSession = await stripe.billingPortal.sessions.create({
+      customer: user.stripeCustomerId,
+      return_url: `${appUrl}/clickr/dashboard`,
+    });
+    return NextResponse.json({ url: portalSession.url });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("Clickr billing portal error:", error);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }

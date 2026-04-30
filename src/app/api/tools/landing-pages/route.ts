@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
+import { getClickrSession } from "@/lib/clickr-auth";
+import { PLAN_LIMITS } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { extractBrandContext, extractPageContentFromUrl } from "@/lib/brand-extractor";
 import { generateLandingPageSectionBySection, injectLucide } from "@/lib/lp-generator";
@@ -12,13 +14,21 @@ export const maxDuration = 300; // AI generation: up to ~60 s + brand extraction
 // GET /api/tools/landing-pages — list all LPs for current user
 export async function GET(request: NextRequest) {
   const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const clickrSession = session ? null : await getClickrSession();
+
+  if (!session && !clickrSession) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const { searchParams } = new URL(request.url);
   const clientId = searchParams.get("clientId");
 
   const where: Record<string, unknown> = {};
-  if (clientId) where.clientId = clientId;
+  if (session) {
+    if (clientId) where.clientId = clientId;
+  } else if (clickrSession) {
+    where.clickrUserId = clickrSession.user.id;
+  }
 
   try {
     const landingPages = await prisma.landingPage.findMany({
@@ -52,7 +62,23 @@ export async function GET(request: NextRequest) {
 // POST /api/tools/landing-pages — create a new landing page (streaming NDJSON)
 export async function POST(request: NextRequest) {
   const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const clickrSession = session ? null : await getClickrSession();
+
+  if (!session && !clickrSession) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Clickr plan gating — check monthly limit before doing expensive AI work
+  if (clickrSession) {
+    const user = clickrSession.user;
+    const limit = PLAN_LIMITS[user.planTier] ?? 1;
+    if (user.lpsThisMonth >= limit) {
+      return NextResponse.json({
+        error: `You have reached your monthly limit of ${limit} landing page${limit === 1 ? "" : "s"} on the ${user.planTier} plan. Upgrade to create more.`,
+        upgradeRequired: true,
+      }, { status: 402 });
+    }
+  }
 
   let body: {
     clientId?: string;
@@ -141,7 +167,8 @@ export async function POST(request: NextRequest) {
         const landingPage = await prisma.landingPage.create({
           data: {
             clientId: clientId || null,
-            userId: session.user.id,
+            userId: session ? session.user.id : null,
+            clickrUserId: clickrSession ? clickrSession.user.id : null,
             title,
             slug,
             currentHtml: html,
@@ -166,16 +193,26 @@ export async function POST(request: NextRequest) {
           },
         });
 
-        logActivity({
-          userId: session.user.id,
-          userEmail: session.user.email,
-          action: "landing_page_created",
-          resourceType: "LandingPage",
-          resourceId: landingPage.id,
-          clientId: landingPage.clientId ?? undefined,
-          clientName: landingPage.client?.name ?? undefined,
-          description: `Created landing page "${title}"${landingPage.client ? ` for ${landingPage.client.name}` : ""}`,
-        });
+        // Increment Clickr user's monthly LP count
+        if (clickrSession) {
+          await prisma.clickrUser.update({
+            where: { id: clickrSession.user.id },
+            data: { lpsThisMonth: { increment: 1 } },
+          });
+        }
+
+        if (session) {
+          logActivity({
+            userId: session.user.id,
+            userEmail: session.user.email,
+            action: "landing_page_created",
+            resourceType: "LandingPage",
+            resourceId: landingPage.id,
+            clientId: landingPage.clientId ?? undefined,
+            clientName: landingPage.client?.name ?? undefined,
+            description: `Created landing page "${title}"${landingPage.client ? ` for ${landingPage.client.name}` : ""}`,
+          });
+        }
 
         send({ type: "done", landingPage: { id: landingPage.id, slug: landingPage.slug } });
       } catch (error) {

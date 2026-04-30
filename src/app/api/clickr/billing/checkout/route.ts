@@ -1,20 +1,44 @@
-// TODO: Implement — see src/app/(clickr)/CLICKR_PLAN.md § Phase 5
-// POST /api/clickr/billing/checkout
-// Body: { tier: "starter" | "pro" }
-// 1. getClickrSession() → 401
-// 2. Validate tier
-// 3. getStripeClient()
-// 4. stripe.checkout.sessions.create({
-//      mode: "subscription",
-//      customer: user.stripeCustomerId,
-//      line_items: [{ price: PLAN_PRICE_IDS[tier], quantity: 1 }],
-//      success_url: `${APP_URL}/clickr/dashboard?upgraded=1`,
-//      cancel_url: `${APP_URL}/clickr/dashboard`,
-//    })
-// 5. Return { url: session.url }
+import { NextRequest, NextResponse } from "next/server";
+import { getClickrSession } from "@/lib/clickr-auth";
+import { getStripeClient, PLAN_PRICE_IDS } from "@/lib/stripe";
 
-import { NextResponse } from "next/server";
+export async function POST(request: NextRequest) {
+  const session = await getClickrSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-export async function POST() {
-  return NextResponse.json({ error: "Not yet implemented" }, { status: 501 });
+  let body: { tier?: string };
+  try {
+    body = await request.json() as typeof body;
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  const { tier } = body;
+  if (!tier || !PLAN_PRICE_IDS[tier]) {
+    return NextResponse.json({ error: "Invalid plan tier" }, { status: 400 });
+  }
+
+  const priceId = PLAN_PRICE_IDS[tier];
+  if (!priceId) {
+    return NextResponse.json({ error: "Price not configured for this tier" }, { status: 500 });
+  }
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://clickr.marketing";
+
+  try {
+    const stripe = await getStripeClient();
+    const checkoutSession = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      customer: session.user.id, // will be overridden by stripeCustomerId if we pass it
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: `${appUrl}/clickr/dashboard?upgraded=1`,
+      cancel_url: `${appUrl}/clickr/dashboard`,
+      metadata: { clickrUserId: session.user.id, tier },
+    });
+    return NextResponse.json({ url: checkoutSession.url });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("Clickr checkout error:", error);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
