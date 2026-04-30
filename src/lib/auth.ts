@@ -31,6 +31,7 @@ export const ALL_PERMISSIONS = [
   "grand_plan",
   "email_verifier",
   "ad_image_generator",
+  "internal_linking",
   // Portal publishing — gates the "Publish to client portal" action on
   // reports, grand plans, content strategies and landing pages.
   "publish_to_portal",

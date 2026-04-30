@@ -623,6 +623,10 @@ export async function critiqueLandingPage(opts: {
 
   const croChecklist = buildAuditCroBlock(opts.campaignType, opts.html);
 
+  // Strip CSS and scripts — the CRO auditor only needs visible text and HTML
+  // structure. Saves ~30-50 KB of input tokens per call with no quality loss.
+  const croAuditHtml = stripStylesAndScripts(opts.html);
+
   const userPrompt = `Review the following landing page HTML for a ${opts.campaignType} campaign.
 
 ## Campaign brief
@@ -634,7 +638,7 @@ ${opts.brandContext.companyName ?? "Unknown"}${opts.brandContext.tagline ? ` —
 
 ${croChecklist ? `${croChecklist}\n\n` : ""}
 ## The landing page HTML to critique
-${opts.html}
+${croAuditHtml}
 
 Identify the highest-impact improvements as a JSON array.`;
 
@@ -736,6 +740,10 @@ export async function auditDesignAndSector(opts: {
 
   const designChecklist = buildDesignAuditBlock(opts.campaignType, opts.html);
 
+  // Strip scripts only — Design auditor needs CSS (colours, animations, layout
+  // declarations) but not JavaScript. Saves ~8-12 KB per call.
+  const designAuditHtml = stripScripts(opts.html);
+
   const userPrompt = `Audit the UI design, sector relevance, and image usage of this landing page.
 
 ${screenshotNote}
@@ -755,7 +763,7 @@ ${numberedImageList}
 
 ${designChecklist ? `${designChecklist}\n\n` : ""}
 ## The landing page HTML to audit
-${opts.html}
+${designAuditHtml}
 
 Identify sector-relevance, design quality, and image usage issues as a JSON array.`;
 
@@ -864,6 +872,10 @@ export async function auditCopyQuality(opts: {
 
   const copyChecklist = buildCopyAuditBlock(opts.campaignType, opts.html);
 
+  // Strip CSS and scripts — copy auditor only needs visible text, headings,
+  // and CTAs. Saves ~30-50 KB of input tokens per call.
+  const copyAuditHtml = stripStylesAndScripts(opts.html);
+
   const userPrompt = `Audit the copy quality and conversion effectiveness of this landing page.
 
 ## Campaign context
@@ -875,7 +887,7 @@ ${opts.brandContext.companyName ?? "Unknown"}${opts.brandContext.tagline ? ` —
 
 ${copyChecklist ? `${copyChecklist}\n\n` : ""}
 ## The landing page HTML to audit
-${opts.html}
+${copyAuditHtml}
 
 Identify copy quality and conversion issues as a JSON array.`;
 
@@ -1298,6 +1310,12 @@ function buildLPPlanUserPrompt(opts: GenerateLPOptions): string {
 
   return `Plan a high-converting post-click landing page for this campaign.
 
+## Campaign (PRIMARY GOAL — everything on this page must serve this)
+Type: ${opts.campaignType}
+Brief: ${opts.brief}
+${opts.targetAudience ? `Target audience: ${opts.targetAudience}\n` : ""}${opts.additionalInstructions ? `Additional instructions: ${opts.additionalInstructions}\n` : ""}
+Every section angle, every headline, every content item you select from the scraped data below must directly serve this brief and speak to this audience. Do NOT use scraped content that is irrelevant to the campaign type and target audience above.
+
 ## Brand
 Company: ${bc.companyName ?? "Unknown"}${bc.tagline ? `\nTagline: ${bc.tagline}` : ""}
 Logo: ${bc.logoUrl ?? "none"}
@@ -1329,22 +1347,19 @@ ${
           if (pc2.bodyCopy.length)
             parts.push(`Body copy:\n${pc2.bodyCopy.slice(0, 8).map((p) => `  "${p}"`).join("\n")}`);
           if (pc2.allBodyText)
-            parts.push(`Full page text:\n${pc2.allBodyText.slice(0, 5000)}`);
+            // Additional pages are supplementary — 2 KB is enough for the
+            // planner to extract services/stats without burying the brief.
+            parts.push(`Full page text:\n${pc2.allBodyText.slice(0, 2000)}`);
           return parts.join("\n");
         })
         .join("\n\n")
     : ""
 }
-## Campaign
-Type: ${opts.campaignType}
-Brief: ${opts.brief}
-${opts.targetAudience ? `Target audience: ${opts.targetAudience}` : ""}${opts.additionalInstructions ? `\nAdditional instructions: ${opts.additionalInstructions}` : ""}
-
 ${buildPlannerCroBlock(opts.campaignType)}
 
 Available imagery — images are visually attached for analysis. Study each one: what people, locations, products, or actions are depicted? These are real photos from the client's brand — use them to populate sections with genuine visual content.
 
-Assign each image to the section(s) where it creates the most visual impact. Include the exact URLs in each section's "imageUrls" array in the SECTIONS output.
+Assign each image to the section(s) where it creates the most visual impact. Include the exact URLs in each section's "imageUrls" array in the SECTIONS output. Spread the images across different sections — do NOT assign the same image URL to multiple sections unless it truly fits nowhere else.
 
 Numbered image list (reference these exact URLs in imageUrls arrays):
 ${
@@ -1352,7 +1367,7 @@ ${
     const combined = [
       ...(opts.uploadedImageUrls ?? []),
       ...opts.brandContext.imageryUrls,
-    ].filter((u) => /^https?:\/\//i.test(u) && !/\.svg(\?|$)/i.test(u)).slice(0, 8);
+    ].filter((u) => /^https?:\/\//i.test(u) && !/\.svg(\?|$)/i.test(u)).slice(0, 12);
     if (!combined.length) return "  None available — sections should use CSS gradients and bold typography.";
     return combined.map((u, i) => `  Image ${i + 1}: ${u}`).join("\n");
   })()
@@ -1383,8 +1398,11 @@ function buildSectionUserPrompt(params: {
   previousSectionsHtml: string;
   brandContext: BrandContext;
   uploadedImageUrls?: string[];
+  brief: string;
+  campaignType: string;
+  targetAudience?: string;
 }): string {
-  const { plan, section, previousSectionsHtml, brandContext, uploadedImageUrls } = params;
+  const { plan, section, previousSectionsHtml, brandContext, uploadedImageUrls, brief, campaignType, targetAudience } = params;
 
   // Use section-assigned images if the plan provided them; fall back to the
   // general brand pool. This ensures each section gets the right images rather
@@ -1405,10 +1423,13 @@ function buildSectionUserPrompt(params: {
 
 ${plan.cssDesignSystem}
 
-## Page context
-Title: ${plan.pageTitle}
-Goal: ${plan.conversionGoal}
+## CAMPAIGN — write every word of this section for this specific brief and audience
+Type: ${campaignType}
+Brief: ${brief}
+${targetAudience ? `Target audience: ${targetAudience}\n` : ""}Goal: ${plan.conversionGoal}
 Primary CTA: "${plan.primaryCtaText}"
+
+## Brand
 Company: ${brandContext.companyName ?? "Unknown"}${brandContext.contactInfo.phone ? `\nPhone: ${brandContext.contactInfo.phone}` : ""}
 
 ${prevHtml ? `## Previously generated sections (match their visual quality and style)\n${prevHtml}\n` : ""}
@@ -1421,7 +1442,7 @@ ${section.layoutHint ? `\nLayout hint: ${section.layoutHint}` : ""}
 
 ${imagery}
 
-Generate the ${section.name} section now. Make it exceptional.`;
+Generate the ${section.name} section now. Write copy that speaks directly to the target audience and campaign brief above. Make it exceptional.`;
 }
 
 // ── Plan landing page ─────────────────────────────────────────────────────────
@@ -1429,7 +1450,7 @@ Generate the ${section.name} section now. Make it exceptional.`;
 async function planLandingPage(opts: GenerateLPOptions): Promise<LPPagePlan> {
   const anthropic = await getAnthropicClient();
 
-  const imageBlocks = await buildImageBlocks(opts.brandContext.imageryUrls, opts.uploadedImageUrls, 8);
+  const imageBlocks = await buildImageBlocks(opts.brandContext.imageryUrls, opts.uploadedImageUrls, 12);
   const planPrompt = buildLPPlanUserPrompt(opts);
 
   async function callPlan(withImages: boolean) {
@@ -1490,6 +1511,9 @@ async function generateSectionHtml(params: {
   previousSectionsHtml: string;
   brandContext: BrandContext;
   uploadedImageUrls?: string[];
+  brief: string;
+  campaignType: string;
+  targetAudience?: string;
 }): Promise<string> {
   const anthropic = await getAnthropicClient();
 
@@ -1650,6 +1674,9 @@ export async function generateLandingPageSectionBySection(
         previousSectionsHtml: "", // parallel — no sequential dependency
         brandContext: genOpts.brandContext,
         uploadedImageUrls: genOpts.uploadedImageUrls,
+        brief: genOpts.brief,
+        campaignType: genOpts.campaignType,
+        targetAudience: genOpts.targetAudience,
       }).then((html) => {
         console.log(`[lp-generator] Section "${section.name}" complete (${html.length} chars)`);
         return html;
@@ -1758,29 +1785,70 @@ export async function auditAndRefineLandingPage(opts: AuditAndRefineOptions): Pr
     `[lp-generator] Combined audit: ${allIssues.length} issues found, applying all ${actionable.length} fixes — ` +
       actionable.map((i) => `[${i.severity}/${i.auditLabel}] ${i.area}`).join(", "),
   );
-  if (onProgress) await onProgress(`Applying ${actionable.length} improvements...`);
 
-  const instructions = actionable
-    .map((item, idx) => `${idx + 1}. [${item.auditLabel} – ${item.area}] ${item.fix}`)
-    .join("\n");
+  // Strip rawHtml for audit refinement calls — it adds ~20 KB of input tokens per
+  // call but provides no value at this stage because the copy is already embedded
+  // in the generated page HTML. Removing it keeps each batch call under ~60 s.
+  const brandContextForRefinement: BrandContext = { ...brandContext, rawHtml: undefined };
 
-  try {
-    return await refineLandingPage({
-      currentHtml: inputHtml,
-      brandContext,
-      prompt:
-        "Apply all of the following targeted improvements to the landing page. " +
-        "These cover CRO, design, and copy quality. " +
-        "Each is a specific change — do not rewrite anything not mentioned.\n\n" +
-        instructions,
-    });
-  } catch (err) {
-    console.warn("[lp-generator] Combined refinement pass failed (keeping assembled version):", err);
-    return inputHtml;
+  // Apply fixes in batches of AUDIT_BATCH_SIZE to avoid breaching the 300 s
+  // Vercel timeout. With 28 fixes and a batch size of 8, this is 4 sequential
+  // calls of ~30 s each (~120 s total) rather than one call that runs for ~240 s.
+  const AUDIT_BATCH_SIZE = 8;
+  const totalBatches = Math.ceil(actionable.length / AUDIT_BATCH_SIZE);
+  let currentHtml = inputHtml;
+
+  for (let batch = 0; batch < totalBatches; batch++) {
+    const batchFixes = actionable.slice(batch * AUDIT_BATCH_SIZE, (batch + 1) * AUDIT_BATCH_SIZE);
+    if (batchFixes.length === 0) break;
+
+    const batchLabel = totalBatches > 1 ? ` (batch ${batch + 1}/${totalBatches})` : "";
+    if (onProgress) await onProgress(`Applying ${batchFixes.length} improvements${batchLabel}...`);
+
+    const instructions = batchFixes
+      .map((item, idx) => `${idx + 1}. [${item.auditLabel} – ${item.area}] ${item.fix}`)
+      .join("\n");
+
+    try {
+      currentHtml = await refineLandingPage({
+        currentHtml,
+        brandContext: brandContextForRefinement,
+        prompt:
+          "Apply all of the following targeted improvements to the landing page. " +
+          "These cover CRO, design, and copy quality. " +
+          "Each is a specific change — do not rewrite anything not mentioned.\n\n" +
+          instructions,
+      });
+      console.log(`[lp-generator] Audit refinement batch ${batch + 1}/${totalBatches} complete.`);
+    } catch (err) {
+      console.warn(`[lp-generator] Audit refinement batch ${batch + 1}/${totalBatches} failed (keeping version from previous batch):`, err);
+      break;
+    }
   }
+
+  return currentHtml;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * Strip <style> and <script> blocks from HTML for text-only audits (CRO, Copy).
+ * Saves 30–50 KB of input tokens per call — those auditors only need visible
+ * text and HTML structure, not raw CSS declarations or JavaScript.
+ */
+function stripStylesAndScripts(html: string): string {
+  return html
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "");
+}
+
+/**
+ * Strip only <script> blocks from HTML — preserves CSS so the Design auditor
+ * can inspect colour, animation, and layout declarations in <style> blocks.
+ */
+function stripScripts(html: string): string {
+  return html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "");
+}
 
 function stripMarkdownFences(text: string): string {
   // Remove ```html ... ``` or ``` ... ``` wrapping
