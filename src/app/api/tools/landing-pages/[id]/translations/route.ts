@@ -3,6 +3,24 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { translateLandingPage, LP_SUPPORTED_LANGUAGES } from "@/lib/lp-generator";
 
+/** Map ISO 3166-1 alpha-2 country codes to international dial codes. */
+const COUNTRY_DIAL_CODE: Record<string, string> = {
+  GB: "+44", IE: "+353",
+  US: "+1",  CA: "+1",
+  AU: "+61", NZ: "+64",
+  DE: "+49", AT: "+43", CH: "+41",
+  FR: "+33", BE: "+32",
+  ES: "+34", PT: "+351",
+  IT: "+39",
+  NL: "+31",
+  PL: "+48", RO: "+40",
+  SE: "+46", NO: "+47", DK: "+45", FI: "+358",
+  ZA: "+27",
+  AE: "+971", SA: "+966",
+  IN: "+91",
+  SG: "+65", MY: "+60",
+};
+
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
@@ -63,7 +81,7 @@ export async function POST(
 
   const lp = await prisma.landingPage.findUnique({
     where: { id },
-    select: { userId: true, currentHtml: true, shareToken: true },
+    select: { userId: true, currentHtml: true, shareToken: true, client: { select: { country: true } } },
   });
   if (!lp) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (lp.userId !== session.user.id && session.user.role !== "admin") {
@@ -90,6 +108,7 @@ export async function POST(
   // Translate the raw currentHtml — runtime scripts (Lucide, form, analytics)
   // are injected at serve time via assemblePublicHtml, same as English.
   const baseHtml = lp.currentHtml;
+  const dialCode = lp.client?.country ? (COUNTRY_DIAL_CODE[lp.client.country] ?? null) : null;
 
   // Translate all requested languages in parallel
   const results = await Promise.all(
@@ -97,8 +116,8 @@ export async function POST(
       const langEntry = LP_SUPPORTED_LANGUAGES.find((l) => l.language === langCode)!;
 
       try {
-        console.log(`[translations] Translating LP ${id} into ${langEntry.name}...`);
-        const translatedHtml = await translateLandingPage(baseHtml, langCode, langEntry.name);
+        console.log(`[translations] Translating LP ${id} into ${langEntry.name}${dialCode ? ` (dial code ${dialCode})` : ""}...`);
+        const translatedHtml = await translateLandingPage(baseHtml, langCode, langEntry.name, dialCode);
 
         await prisma.landingPageTranslation.upsert({
           where: { landingPageId_language: { landingPageId: id, language: langCode } },

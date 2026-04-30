@@ -54,6 +54,7 @@ interface Client {
   callrailAccountId: string | null;
   callrailApiKey: string | null;
   competitorDomains: string | null;
+  country: string | null; // ISO 3166-1 alpha-2 e.g. "GB", "US", "AU"
   contactEmails?: string | null; // JSON: string[]
   clickFraudToken?: string | null; // Click fraud protection snippet token
   signalConfig?: string | null; // JSON — see SignalConfig in src/lib/signals/types.ts
@@ -198,6 +199,7 @@ export function ClientSettingsForm({ client, permissions = [], isAdmin = false }
       if (!client.competitorDomains) return "";
       try { return (JSON.parse(client.competitorDomains) as string[]).join("\n"); } catch { return client.competitorDomains; }
     })(),
+    country: client.country ?? "",
   });
 
   // Contracted hours per service
@@ -415,6 +417,40 @@ export function ClientSettingsForm({ client, permissions = [], isAdmin = false }
               onChange={handleChange}
               className="form-input"
             />
+          </div>
+          <div>
+            <label className="form-label">Country</label>
+            <select name="country" value={form.country} onChange={handleChange} className="form-input">
+              <option value="">— Select country —</option>
+              <option value="GB">🇬🇧 United Kingdom (+44)</option>
+              <option value="US">🇺🇸 United States (+1)</option>
+              <option value="CA">🇨🇦 Canada (+1)</option>
+              <option value="AU">🇦🇺 Australia (+61)</option>
+              <option value="NZ">🇳🇿 New Zealand (+64)</option>
+              <option value="IE">🇮🇪 Ireland (+353)</option>
+              <option value="DE">🇩🇪 Germany (+49)</option>
+              <option value="FR">🇫🇷 France (+33)</option>
+              <option value="ES">🇪🇸 Spain (+34)</option>
+              <option value="IT">🇮🇹 Italy (+39)</option>
+              <option value="NL">🇳🇱 Netherlands (+31)</option>
+              <option value="BE">🇧🇪 Belgium (+32)</option>
+              <option value="PT">🇵🇹 Portugal (+351)</option>
+              <option value="PL">🇵🇱 Poland (+48)</option>
+              <option value="RO">🇷🇴 Romania (+40)</option>
+              <option value="SE">🇸🇪 Sweden (+46)</option>
+              <option value="NO">🇳🇴 Norway (+47)</option>
+              <option value="DK">🇩🇰 Denmark (+45)</option>
+              <option value="FI">🇫🇮 Finland (+358)</option>
+              <option value="CH">🇨🇭 Switzerland (+41)</option>
+              <option value="AT">🇦🇹 Austria (+43)</option>
+              <option value="ZA">🇿🇦 South Africa (+27)</option>
+              <option value="AE">🇦🇪 UAE (+971)</option>
+              <option value="SA">🇸🇦 Saudi Arabia (+966)</option>
+              <option value="IN">🇮🇳 India (+91)</option>
+              <option value="SG">🇸🇬 Singapore (+65)</option>
+              <option value="MY">🇲🇾 Malaysia (+60)</option>
+            </select>
+            <p className="text-xs" style={{ color: "var(--text-4)", marginTop: 4 }}>Used to prefix local phone numbers with the correct international dialling code in translated landing pages.</p>
           </div>
           {/* Logo upload */}
           <div>

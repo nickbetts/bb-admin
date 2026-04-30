@@ -84,6 +84,7 @@ export async function PATCH(
         linkedinAccessToken: data.linkedinAccessToken || null,
         klaviyoApiKey: data.klaviyoApiKey || null,
         klaviyoAccountName: data.klaviyoAccountName || null,
+        country: data.country !== undefined ? (data.country || null) : undefined,
         contactEmails: data.contactEmails !== undefined ? data.contactEmails : undefined,
         signalConfig: data.signalConfig !== undefined ? data.signalConfig : undefined,
         defaultAnalyticsConfig: data.defaultAnalyticsConfig !== undefined

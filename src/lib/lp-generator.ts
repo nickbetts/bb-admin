@@ -1808,8 +1808,13 @@ export async function translateLandingPage(
   html: string,
   targetLanguage: string,   // BCP-47 e.g. "fr", "es"
   targetLanguageName: string, // Human label e.g. "French", "Spanish"
+  dialCode?: string | null,   // International dial code e.g. "+44", "+1" — for phone number formatting
 ): Promise<string> {
   const anthropic = await getAnthropicClient();
+
+  const phoneRule = dialCode
+    ? `\n3a. Phone numbers: any number that does not already start with a "+" international prefix should be converted to international format using the dial code ${dialCode}. Remove the leading 0 from the local number (e.g. 07700 900123 → ${dialCode} 7700 900123, 01234 567890 → ${dialCode} 1234 567890). Numbers that already start with "+" must NOT be modified.`
+    : `\n3a. Phone numbers: do NOT modify phone numbers — leave them exactly as they appear.`;
 
   const systemPrompt = `You are a professional marketing translator specialising in high-converting landing pages.
 
@@ -1828,8 +1833,9 @@ Your task is to translate landing page HTML from English into ${targetLanguageNa
    - JavaScript: everything inside <script> tags
    - URL strings in any context
    - Lucide icon names (data-lucide="...")
-   - Numbers, phone numbers, email addresses
+   - Email addresses
    - Brand names and product names (keep in English/original)
+${phoneRule}
 
 3. Update <html lang="en"> to <html lang="${targetLanguage}">
 
