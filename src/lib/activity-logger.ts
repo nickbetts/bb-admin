@@ -20,6 +20,7 @@ export type ActivityAction =
   | "ai_overview_narrative"
   | "client_created"
   | "client_updated"
+  | "client_deleted"
   | "proposal_created"
   | "landing_page_created"
   | "landing_page_refined"
