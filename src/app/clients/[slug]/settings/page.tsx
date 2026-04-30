@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { getSession } from "@/lib/auth";
+import { getEffectiveSession } from "@/lib/auth";
 import { ClientSettingsForm } from "@/components/clients/ClientSettingsForm";
 import { ClientTaskCategorySettings } from "@/components/clients/ClientTaskCategorySettings";
 import { DeleteClientButton } from "@/components/clients/DeleteClientButton";
@@ -12,8 +12,9 @@ interface Props {
 }
 
 export default async function ClientSettingsPage({ params }: Props) {
-  const session = await getSession();
-  if (!session) redirect("/login");
+  const effective = await getEffectiveSession();
+  if (!effective) redirect("/login");
+  const { session, effectivePermissions, isAdmin } = effective;
 
   const { slug } = await params;
 
@@ -45,8 +46,8 @@ export default async function ClientSettingsPage({ params }: Props) {
       </div>
       <ClientSettingsForm
         client={client}
-        permissions={session.user.permissions}
-        isAdmin={session.user.role === "admin"}
+        permissions={effectivePermissions}
+        isAdmin={isAdmin}
       />
       {canDelete && (
         <DeleteClientButton clientId={client.id} clientName={client.name} />

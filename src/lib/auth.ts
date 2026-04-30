@@ -254,6 +254,53 @@ export function hasPermission(session: Session, permission: Permission): boolean
   return session.user.permissions.includes(permission);
 }
 
+export interface EffectiveSession {
+  session: Session;
+  /** Permissions that are active — either the user's real permissions or a
+   *  preview role's permissions when an admin is previewing a role. */
+  effectivePermissions: string[];
+  isAdmin: boolean;
+  previewRoleId: string | null;
+  previewRoleName: string | null;
+}
+
+/**
+ * Like getSession(), but also applies any active role-preview cookie so that
+ * `effectivePermissions` reflects the previewed role instead of the real one.
+ * Pages that gate content by permission should use this instead of getSession().
+ */
+export async function getEffectiveSession(): Promise<EffectiveSession | null> {
+  const session = await getSession();
+  if (!session) return null;
+
+  const isAdmin = session.user.permissions.includes("users");
+  let effectivePermissions = session.user.permissions;
+  let previewRoleId: string | null = null;
+  let previewRoleName: string | null = null;
+
+  if (isAdmin) {
+    const cookieStore = await cookies();
+    const previewId = cookieStore.get("preview_role_id")?.value;
+    if (previewId) {
+      const previewRole = await prisma.role.findUnique({
+        where: { id: previewId },
+        select: { id: true, name: true, permissions: true },
+      });
+      if (previewRole) {
+        previewRoleId = previewRole.id;
+        previewRoleName = previewRole.name;
+        try {
+          effectivePermissions = JSON.parse(previewRole.permissions) as string[];
+        } catch {
+          effectivePermissions = [];
+        }
+      }
+    }
+  }
+
+  return { session, effectivePermissions, isAdmin, previewRoleId, previewRoleName };
+}
+
 /* --------------------------------------------------------------------------
  * Share-token auth (public report share links)
  *

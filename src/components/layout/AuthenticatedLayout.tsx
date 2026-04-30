@@ -1,8 +1,6 @@
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
-import { getSession } from "@/lib/auth";
+import { getEffectiveSession } from "@/lib/auth";
 import { Sidebar } from "@/components/layout/Sidebar";
-import { prisma } from "@/lib/prisma";
 
 interface AuthenticatedLayoutProps {
   children: React.ReactNode;
@@ -15,35 +13,10 @@ export async function AuthenticatedLayout({
   requiredPermission,
   requireAnyOf,
 }: AuthenticatedLayoutProps) {
-  const session = await getSession();
-  if (!session) redirect("/login");
+  const effective = await getEffectiveSession();
+  if (!effective) redirect("/login");
+  const { session, effectivePermissions, isAdmin, previewRoleId, previewRoleName } = effective;
   if (session.user.mustChangePassword) redirect("/change-password");
-
-  // Role preview — only available to admins (users permission)
-  let previewRoleId: string | null = null;
-  let previewRoleName: string | null = null;
-  let effectivePermissions = session.user.permissions;
-  const isAdmin = session.user.permissions.includes("users");
-
-  if (isAdmin) {
-    const cookieStore = await cookies();
-    const previewId = cookieStore.get("preview_role_id")?.value;
-    if (previewId) {
-      const previewRole = await prisma.role.findUnique({
-        where: { id: previewId },
-        select: { id: true, name: true, permissions: true },
-      });
-      if (previewRole) {
-        previewRoleId = previewRole.id;
-        previewRoleName = previewRole.name;
-        try {
-          effectivePermissions = JSON.parse(previewRole.permissions) as string[];
-        } catch {
-          effectivePermissions = [];
-        }
-      }
-    }
-  }
 
   if (requiredPermission && !effectivePermissions.includes(requiredPermission)) {
     redirect("/dashboard");
