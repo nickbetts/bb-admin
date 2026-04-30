@@ -1,6 +1,17 @@
-# Block all crawlers
+# Allow crawlers to index Clickr public marketing pages
+User-agent: Googlebot
+Allow: /clickr/
+Allow: /clickr$
+
+User-agent: Bingbot
+Allow: /clickr/
+Allow: /clickr$
+
+# Block all other crawlers from the private StratOS platform
 User-agent: *
 Disallow: /
+Allow: /clickr/
+Allow: /clickr$
 
 # Block OpenAI
 User-agent: GPTBot

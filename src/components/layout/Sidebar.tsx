@@ -40,6 +40,7 @@ import {
   CreditCard,
   MailCheck,
   ImageIcon,
+  PencilLine,
 } from "lucide-react";
 import { CommandPalette } from "@/components/ui/CommandPalette";
 import { KeyboardShortcutsHelp } from "@/components/ui/KeyboardShortcutsHelp";
@@ -72,6 +73,7 @@ const toolsNavItems: NavItem[] = [
   // PR5: Grand Plan is now the primary pitch/strategy tool — moved to top
   { href: "/tools/grand-plan", label: "Grand Plan", icon: <Map className="h-4 w-4" />, permission: "grand_plan" },
   { href: "/tools/grand-plan/pipeline", label: "Pipeline CRM", icon: <LayoutGrid className="h-4 w-4" />, permission: "proposals" },
+  { href: "/tools/content-generator", label: "Content Generator", icon: <PencilLine className="h-4 w-4" />, permission: "content_generator" },
   { href: "/tools/page-analyser", label: "Page Analyser", icon: <ScanSearch className="h-4 w-4" />, permission: "page_analyser" },
   { href: "/tools/keyword-planner", label: "Proposal Generator", icon: <Sparkles className="h-4 w-4" />, permission: "proposal_generator" },
   // PR5: /tools/proposals and /tools/content-strategy retired from sidebar

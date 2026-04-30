@@ -29,6 +29,7 @@ export const ALL_PERMISSIONS = [
   "subscriptions",
   "meridian_architecture",
   "grand_plan",
+  "content_generator",
   "email_verifier",
   "ad_image_generator",
   "internal_linking",

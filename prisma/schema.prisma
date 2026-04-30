@@ -148,6 +148,7 @@ model Client {
   proposals               Proposal[]
   keywordResearch         KeywordPlannerResearch[]
   grandPlans              GrandPlan[]
+  contentGenerators       ContentGenerator[]
   retainers               ClientRetainer[]
   invoices                ClientInvoice[]
   timeEntries             AgencyTimeEntry[]
@@ -1011,6 +1012,35 @@ model GrandPlanVersion {
 
   @@unique([grandPlanId, versionNumber])
   @@index([grandPlanId, createdAt])
+}
+
+// ─── Content Generator ────────────────────────────────────────────────────
+// AI-powered long-form content generation tool: blogs, whitepapers, case
+// studies, and social media copy. Multi-step flow: brief → keyword research
+// + idea generation → user selects ideas + approves keywords → full copy.
+model ContentGenerator {
+  id                   String   @id @default(cuid())
+  clientId             String
+  userId               String
+  title                String
+  brief                String // Free-text brief from the user
+  contentTypes         String   @default("[]") // JSON: ("blog"|"whitepaper"|"case_study"|"social")[]
+  websiteUrl           String?
+  competitorsJson      String   @default("[]") // JSON: same structure as GrandPlan.competitorsJson
+  keywordResearchJson  String?  // JSON: SemRush domain/keyword data
+  ideasJson            String?  // JSON: ContentIdea[] — 5 per content type
+  selectedIdeasJson    String?  // JSON: user-approved ideas with approved keyword flags
+  generatedContentJson String?  // JSON: GeneratedContent[] — final copy per idea
+  generatedHtml        String?  // Full standalone HTML deliverable
+  status               String   @default("draft") // draft|researching|ideas_ready|generating|complete|failed
+  statusMessage        String?
+  generationError      String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  client               Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId, createdAt])
+  @@index([userId, createdAt])
 }
 
 // ─── Bet A: Agency Financials ──────────────────────────────────────────────

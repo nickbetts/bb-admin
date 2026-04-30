@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import LandingNav from "@/components/landing/LandingNav";
+import ClickrNav from "./_components/ClickrNav";
+import ClickrFooter from "./_components/ClickrFooter";
 import {
   Zap,
   ArrowRight,
@@ -265,7 +266,7 @@ export default function ClickrPage() {
         </div>
       </nav>
 
-      <LandingNav currentPage="clickr" accentColor={accent} ctaLabel="Build a page →" onCtaClick={() => document.getElementById("cta")?.scrollIntoView({ behavior: "smooth" })} />
+      <ClickrNav />
 
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
       <section style={{ minHeight: "100vh", paddingTop: 64, position: "relative", overflow: "hidden", display: "flex", alignItems: "center" }}>
@@ -739,14 +740,7 @@ export default function ClickrPage() {
         </div>
       </section>
 
-      {/* ── FOOTER ─────────────────────────────────────────────────────────── */}
-      <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: "24px 40px", display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 12, color: "rgba(255,255,255,0.25)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <img src="/primary-logo.svg" style={{ height: 18, opacity: 0.4 }} alt="i3MEDIA" />
-          <span>&copy; {new Date().getFullYear()} i3 Media. clickr is part of StratOS.</span>
-        </div>
-        <a href="/login" style={{ color: "rgba(255,255,255,0.3)", textDecoration: "none", fontSize: 12 }}>&larr; Back to StratOS</a>
-      </div>
+      <ClickrFooter />
 
       <style>{`
         .side-nav { display: flex; }

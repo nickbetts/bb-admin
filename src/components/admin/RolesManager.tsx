@@ -37,6 +37,7 @@ const PERMISSION_GROUPS = [
       { key: "access_requester", label: "Access Requester" },
       { key: "landing_page_generator", label: "LP Generator" },
       { key: "grand_plan", label: "Grand Plan" },
+      { key: "content_generator", label: "Content Generator" },
       { key: "qa_checklist", label: "Client QA" },
       { key: "subscriptions", label: "Subscriptions" },
       { key: "email_verifier", label: "Email Verifier" },
