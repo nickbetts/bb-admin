@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { parseLpFormConfig, isWebhookUrlSafe } from "@/lib/lp-form-config";
 import { sendEmail, buildLeadNotificationHtml, SmtpNotConfiguredError } from "@/lib/email";
+import { verifyTurnstileToken } from "@/lib/turnstile";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +32,20 @@ export async function POST(
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
+
+  // ── Turnstile bot-protection check ────────────────────────────────────────
+  const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? undefined;
+  const turnstileToken = typeof body["cf-turnstile-response"] === "string"
+    ? (body["cf-turnstile-response"] as string)
+    : undefined;
+  const turnstileOk = await verifyTurnstileToken(turnstileToken, clientIp);
+  if (!turnstileOk) {
+    return NextResponse.json({ error: "Security check failed. Please refresh and try again." }, { status: 400 });
+  }
+
+  // Strip the Turnstile token from the body before storing — it's a one-time
+  // security artefact, not a lead field.
+  delete body["cf-turnstile-response"];
 
   // ── Field extraction — fully field-name-agnostic ──────────────────────────
   // Every LP is AI-generated with different field names, so we scan values

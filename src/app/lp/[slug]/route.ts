@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { mergeAnalyticsConfig, parseAnalyticsConfig } from "@/lib/lp-analytics";
 import { assemblePublicHtml } from "@/lib/lp-publish";
 import { parseLpFormConfig } from "@/lib/lp-form-config";
+import { getTurnstileSiteKey } from "@/lib/turnstile";
 
 export const dynamic = "force-dynamic";
 
@@ -21,19 +22,22 @@ export async function GET(
   const testMode = searchParams.get("test") === "1";
   const langParam = searchParams.get("lang");
 
-  const landingPage = await prisma.landingPage.findUnique({
-    where: { publicSlug: slug },
-    select: {
-      id: true,
-      title: true,
-      currentHtml: true,
-      shareToken: true,
-      status: true,
-      formConfig: true,
-      analyticsConfig: true,
-      client: { select: { defaultAnalyticsConfig: true } },
-    },
-  });
+  const [landingPage, turnstileSiteKey] = await Promise.all([
+    prisma.landingPage.findUnique({
+      where: { publicSlug: slug },
+      select: {
+        id: true,
+        title: true,
+        currentHtml: true,
+        shareToken: true,
+        status: true,
+        formConfig: true,
+        analyticsConfig: true,
+        client: { select: { defaultAnalyticsConfig: true } },
+      },
+    }),
+    getTurnstileSiteKey(),
+  ]);
 
   if (!landingPage) {
     return new NextResponse("Not found", { status: 404 });
@@ -73,6 +77,7 @@ export async function GET(
     analytics,
     testMode,
     formConfig: parseLpFormConfig(landingPage.formConfig),
+    turnstileSiteKey,
   });
 
   return new NextResponse(html, {

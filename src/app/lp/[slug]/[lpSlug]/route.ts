@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { mergeAnalyticsConfig, parseAnalyticsConfig } from "@/lib/lp-analytics";
 import { assemblePublicHtml } from "@/lib/lp-publish";
 import { parseLpFormConfig } from "@/lib/lp-form-config";
+import { getTurnstileSiteKey } from "@/lib/turnstile";
 
 export const dynamic = "force-dynamic";
 
@@ -25,10 +26,13 @@ export async function GET(
   const langParam = searchParams.get("lang");
 
   // Try client slug first, then fall back to customSubdomain on the LP itself
-  const client = await prisma.client.findUnique({
-    where: { slug: clientSlug },
-    select: { id: true, defaultAnalyticsConfig: true },
-  });
+  const [client, turnstileSiteKey] = await Promise.all([
+    prisma.client.findUnique({
+      where: { slug: clientSlug },
+      select: { id: true, defaultAnalyticsConfig: true },
+    }),
+    getTurnstileSiteKey(),
+  ]);
 
   type LpResult = {
     id: string;
@@ -106,6 +110,7 @@ export async function GET(
     analytics,
     testMode,
     formConfig: parseLpFormConfig(landingPage.formConfig),
+    turnstileSiteKey,
   });
 
   return new NextResponse(html, {

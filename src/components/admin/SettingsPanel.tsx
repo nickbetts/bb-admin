@@ -79,6 +79,13 @@ function SettingsPanelInner() {
   const [resendSaved, setResendSaved] = useState(false);
   const [resendError, setResendError] = useState<string | null>(null);
 
+  // Cloudflare Turnstile bot-protection settings
+  const [turnstileSiteKey, setTurnstileSiteKey] = useState("");
+  const [turnstileSecretKey, setTurnstileSecretKey] = useState("");
+  const [turnstileSaving, setTurnstileSaving] = useState(false);
+  const [turnstileSaved, setTurnstileSaved] = useState(false);
+  const [turnstileError, setTurnstileError] = useState<string | null>(null);
+
   const DEFAULT_BENCHMARKS = [
     { task: "Blog Post (1,000 words)", hours: 3 },
     { task: "Landing Page Copywriting", hours: 4 },
@@ -187,6 +194,8 @@ function SettingsPanelInner() {
       setDefaultAssignee(settings.defaultActionAssignee ?? "");
       setResendApiKey(settings.resendApiKey ? "•••redacted•••" : "");
       setResendFrom(settings.resendFrom ?? "");
+      setTurnstileSiteKey(settings.turnstileSiteKey ?? "");
+      setTurnstileSecretKey(settings.turnstileSecretKey ? "•••redacted•••" : "");
     } catch (err) {
       setMccError(err instanceof Error ? err.message : "Failed to load");
     } finally {
@@ -333,6 +342,31 @@ function SettingsPanelInner() {
       setResendError(err instanceof Error ? err.message : "Failed to save");
     } finally {
       setResendSaving(false);
+    }
+  }
+
+  async function handleTurnstileSave() {
+    setTurnstileSaving(true);
+    setTurnstileSaved(false);
+    setTurnstileError(null);
+    try {
+      const payload: Record<string, string> = { turnstileSiteKey };
+      if (turnstileSecretKey && turnstileSecretKey !== "•••redacted•••") {
+        payload.turnstileSecretKey = turnstileSecretKey;
+      }
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error("Failed to save");
+      setTurnstileSaved(true);
+      if (turnstileSecretKey && turnstileSecretKey !== "•••redacted•••") setTurnstileSecretKey("•••redacted•••");
+      setTimeout(() => setTurnstileSaved(false), 3000);
+    } catch (err) {
+      setTurnstileError(err instanceof Error ? err.message : "Failed to save");
+    } finally {
+      setTurnstileSaving(false);
     }
   }
 
@@ -716,6 +750,49 @@ function SettingsPanelInner() {
             </div>
           </div>
           {resendApiKey === "•••redacted•••" && <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 12 }}>✓ Resend configured. Lead notification emails are ready to send.</p>}
+        </div>
+      </div>
+
+      {/* Bot Protection (Cloudflare Turnstile) */}
+      <div className="card" style={{ marginBottom: 24 }}>
+        <div className="card-header">
+          <div>
+            <h2 className="card-title">Bot Protection (Turnstile)</h2>
+            <p className="card-subtitle">Blocks bot and spam submissions on landing page forms. Powered by <a href="https://www.cloudflare.com/products/turnstile/" target="_blank" rel="noreferrer">Cloudflare Turnstile</a> — free, invisible to real users, no CAPTCHA puzzles.</p>
+          </div>
+        </div>
+        <div className="card-body">
+          {turnstileError && <p style={{ fontSize: 13, color: "var(--danger)", marginBottom: 12 }}>{turnstileError}</p>}
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>Site Key <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(public)</span></label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="0x4AAAAAAA..."
+                value={turnstileSiteKey}
+                onChange={(e) => setTurnstileSiteKey(e.target.value)}
+              />
+            </div>
+            <div>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>Secret Key <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(server-side only)</span></label>
+              <input
+                type="password"
+                className="form-input"
+                placeholder="0x4AAAAAAA..."
+                value={turnstileSecretKey}
+                onChange={(e) => setTurnstileSecretKey(e.target.value)}
+                onFocus={() => { if (turnstileSecretKey === "•••redacted•••") setTurnstileSecretKey(""); }}
+              />
+            </div>
+            <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: -4 }}>Get your keys from <a href="https://dash.cloudflare.com/?to=/:account/turnstile" target="_blank" rel="noreferrer" style={{ color: "var(--accent)" }}>Cloudflare Dashboard → Turnstile</a>. Leave both fields empty to disable bot protection.</p>
+            <div>
+              <button onClick={handleTurnstileSave} disabled={turnstileSaving} className="btn btn-primary">
+                {turnstileSaving ? "Saving…" : turnstileSaved ? "Saved ✓" : "Save"}
+              </button>
+            </div>
+          </div>
+          {turnstileSecretKey === "•••redacted•••" && <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 12 }}>✓ Turnstile active. Bot submissions will be blocked on all landing page forms.</p>}
         </div>
       </div>
 

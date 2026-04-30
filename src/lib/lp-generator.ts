@@ -376,19 +376,56 @@ Never introduce emoji glyphs as icons. Lucide icons are available — replace an
 
 // ── Form capture script ──────────────────────────────────────────────────────
 
-export function getFormCaptureScript(shareToken: string): string {
+export function getFormCaptureScript(shareToken: string, turnstileSiteKey?: string): string {
+  const siteKeyJs = turnstileSiteKey ? JSON.stringify(turnstileSiteKey) : "null";
+
   return `
 <script>
 (function() {
+  var TURNSTILE_SITE_KEY = ${siteKeyJs};
+
+  // Inject Turnstile widget before the submit button of each LP form
+  if (TURNSTILE_SITE_KEY) {
+    document.querySelectorAll('[data-lp-form="true"]').forEach(function(form) {
+      var btn = form.querySelector('button[type="submit"], input[type="submit"]');
+      var wrap = document.createElement('div');
+      wrap.className = 'cf-turnstile';
+      wrap.setAttribute('data-sitekey', TURNSTILE_SITE_KEY);
+      wrap.style.margin = '12px 0';
+      if (btn) { form.insertBefore(wrap, btn); } else { form.appendChild(wrap); }
+    });
+  }
+
   var forms = document.querySelectorAll('[data-lp-form="true"]');
   forms.forEach(function(form) {
     form.addEventListener('submit', function(e) {
       e.preventDefault();
       var btn = form.querySelector('button[type="submit"], input[type="submit"]');
+
+      // Block submission if Turnstile widget hasn't been completed
+      if (TURNSTILE_SITE_KEY) {
+        var tokenInput = form.querySelector('[name="cf-turnstile-response"]');
+        if (!tokenInput || !tokenInput.value) {
+          var existing = form.querySelector('.ts-error');
+          if (!existing) {
+            var msg = document.createElement('p');
+            msg.className = 'ts-error';
+            msg.style.cssText = 'color:#dc2626;font-size:13px;margin:4px 0 8px';
+            msg.textContent = 'Please complete the security check above.';
+            var widget = form.querySelector('.cf-turnstile');
+            if (widget && widget.parentNode) { widget.parentNode.insertBefore(msg, widget.nextSibling); }
+          }
+          return;
+        }
+      }
+
       if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
       var fd = new FormData(form);
       var data = {};
-      fd.forEach(function(v, k) { data[k] = v; });
+      fd.forEach(function(v, k) {
+        // Strip Turnstile token — one-time security token, not a lead field
+        if (k !== 'cf-turnstile-response') data[k] = v;
+      });
       fetch('/api/share/landing-page/${shareToken}/lead', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -398,9 +435,11 @@ export function getFormCaptureScript(shareToken: string): string {
           form.innerHTML = '<div style="text-align:center;padding:32px 16px"><h3 style="color:inherit;margin-bottom:8px">Thank you!</h3><p style="opacity:.8">We\\'ll be in touch shortly.</p></div>';
         } else {
           if (btn) { btn.disabled = false; btn.textContent = 'Try Again'; }
+          if (TURNSTILE_SITE_KEY && window.turnstile) { window.turnstile.reset(); }
         }
       }).catch(function() {
         if (btn) { btn.disabled = false; btn.textContent = 'Try Again'; }
+        if (TURNSTILE_SITE_KEY && window.turnstile) { window.turnstile.reset(); }
       });
     });
   });
@@ -410,8 +449,8 @@ export function getFormCaptureScript(shareToken: string): string {
 
 // ── Inject form script into HTML ─────────────────────────────────────────────
 
-export function injectFormScript(html: string, shareToken: string): string {
-  const script = getFormCaptureScript(shareToken);
+export function injectFormScript(html: string, shareToken: string, turnstileSiteKey?: string): string {
+  const script = getFormCaptureScript(shareToken, turnstileSiteKey);
   // Insert before </body> if present, otherwise append
   if (html.includes("</body>")) {
     return html.replace("</body>", `${script}\n</body>`);

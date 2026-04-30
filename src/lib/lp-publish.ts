@@ -25,6 +25,8 @@ export interface AssembleOpts {
   testMode: boolean;
   /** When set, may replace the built-in form with an embed code */
   formConfig?: LpFormConfig;
+  /** Cloudflare Turnstile site key — when set, injects the widget into LP forms */
+  turnstileSiteKey?: string | null;
 }
 
 /**
@@ -56,8 +58,15 @@ export function assemblePublicHtml(rawHtml: string, opts: AssembleOpts): string 
   // message ("Thank you!") appears in the form.
   const embedCode = opts.formConfig?.embedCode?.trim();
   const hasBuiltInForm = !embedCode && html.includes('data-lp-form="true"');
+  const turnstileSiteKey = opts.turnstileSiteKey || null;
   if (hasBuiltInForm && opts.shareToken) {
     bodyEndParts.push(formSuccessHookScript());
+    // Inject Turnstile loader when a site key is configured
+    if (turnstileSiteKey) {
+      headParts.push(
+        `<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>`,
+      );
+    }
   }
 
   // Apply head injections
@@ -101,7 +110,7 @@ export function assemblePublicHtml(rawHtml: string, opts: AssembleOpts): string 
   // Form-capture script (existing behaviour) — injected last so its </body>
   // insertion sits below the conversion script.
   if (hasBuiltInForm && opts.shareToken) {
-    html = injectFormScript(html, opts.shareToken);
+    html = injectFormScript(html, opts.shareToken, turnstileSiteKey ?? undefined);
   }
 
   return html;
