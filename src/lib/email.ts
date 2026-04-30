@@ -1,58 +1,43 @@
 /**
- * Thin Nodemailer wrapper for sending emails via a user-configured SMTP server.
+ * Resend-based email helper.
  *
- * SMTP credentials are stored in AppSetting rows (same pattern as openaiApiKey):
- *   smtpHost   — e.g. "smtp.gmail.com", "smtp.zoho.com", "mail.yourdomain.com"
- *   smtpPort   — e.g. "587" (STARTTLS) or "465" (SSL)
- *   smtpUser   — SMTP username / email address
- *   smtpPass   — SMTP password or app-specific password
- *   smtpFrom   — "From" address, e.g. "Stratos <noreply@yourdomain.com>"
+ * The Resend API key is stored in AppSetting under key `resendApiKey`.
+ * The "from" address defaults to `Stratos <onboarding@resend.dev>` (Resend's
+ * shared domain — works immediately without domain verification) but should be
+ * updated to a verified domain address once DNS is set up.
  *
  * Usage:
  *   await sendEmail({ to: "client@example.com", subject: "New lead!", html: "<p>...</p>" })
  *
- * Throws `SmtpNotConfiguredError` when credentials are missing so callers
+ * Throws `SmtpNotConfiguredError` when the API key is missing so callers
  * can decide whether to surface the error or swallow it silently.
  */
 
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 import { prisma } from "@/lib/prisma";
 
 export class SmtpNotConfiguredError extends Error {
   constructor() {
-    super("SMTP not configured. Add smtpHost, smtpPort, smtpUser, smtpPass and smtpFrom in Settings.");
+    super("Resend not configured. Add your Resend API key in Settings → Email.");
     this.name = "SmtpNotConfiguredError";
   }
 }
 
-interface SmtpConfig {
-  host: string;
-  port: number;
-  user: string;
-  pass: string;
-  from: string;
-}
-
-async function getSmtpConfig(): Promise<SmtpConfig> {
-  const keys = ["smtpHost", "smtpPort", "smtpUser", "smtpPass", "smtpFrom"] as const;
-
+async function getResendClient(): Promise<{ client: Resend; from: string }> {
   const rows = await prisma.appSetting.findMany({
-    where: { key: { in: keys as unknown as string[] } },
+    where: { key: { in: ["resendApiKey", "resendFrom"] } },
     select: { key: true, value: true },
   });
 
   const map: Record<string, string> = {};
   for (const row of rows) map[row.key] = row.value;
 
-  const host = map.smtpHost ?? "";
-  const portStr = map.smtpPort ?? "587";
-  const user = map.smtpUser ?? "";
-  const pass = map.smtpPass ?? "";
-  const from = map.smtpFrom ?? user;
+  const apiKey = map.resendApiKey ?? "";
+  if (!apiKey) throw new SmtpNotConfiguredError();
 
-  if (!host || !user || !pass) throw new SmtpNotConfiguredError();
+  const from = map.resendFrom || "Stratos <onboarding@resend.dev>";
 
-  return { host, port: parseInt(portStr, 10) || 587, user, pass, from };
+  return { client: new Resend(apiKey), from };
 }
 
 export interface SendEmailOptions {
@@ -63,20 +48,15 @@ export interface SendEmailOptions {
 }
 
 export async function sendEmail(opts: SendEmailOptions): Promise<void> {
-  const config = await getSmtpConfig(); // throws SmtpNotConfiguredError if not set
+  const { client, from } = await getResendClient();
 
-  const transporter = nodemailer.createTransport({
-    host: config.host,
-    port: config.port,
-    secure: config.port === 465,
-    auth: { user: config.user, pass: config.pass },
-  });
-
-  await transporter.sendMail({
-    from: config.from,
-    to: Array.isArray(opts.to) ? opts.to.join(", ") : opts.to,
+  const { error } = await client.emails.send({
+    from,
+    to: Array.isArray(opts.to) ? opts.to : [opts.to],
     subject: opts.subject,
     html: opts.html,
     text: opts.text,
   });
+
+  if (error) throw new Error(`Resend error: ${error.message}`);
 }
