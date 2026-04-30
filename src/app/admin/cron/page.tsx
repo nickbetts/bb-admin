@@ -9,6 +9,7 @@ export default async function CronPage() {
   const session = await getSession();
   if (!session) redirect("/login");
   if (!session.user.permissions.includes("users")) redirect("/dashboard");
+  if (session.user.role !== "admin" && !session.user.permissions.includes("admin.cron")) redirect("/admin");
 
   return (
     <div className="page">
@@ -18,7 +19,7 @@ export default async function CronPage() {
           Monitor the nightly data pipeline, view per-client snapshot coverage, and trigger manual runs.
         </p>
       </div>
-      <AdminNav active="cron" />
+      <AdminNav active="cron" permissions={session.user.permissions} isAdmin={session.user.role === "admin"} />
       <CronDashboard />
     </div>
   );

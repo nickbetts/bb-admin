@@ -50,6 +50,14 @@ export const ALL_PERMISSIONS = [
   "tasks.upload",
   // Granular client permissions
   "clients.delete",
+  // Granular admin tab permissions
+  "admin.roles",
+  "admin.task_categories",
+  "admin.cron",
+  "admin.api_status",
+  "admin.activity",
+  "admin.logs",
+  "admin.settings",
 ] as const;
 
 export type Permission = typeof ALL_PERMISSIONS[number];

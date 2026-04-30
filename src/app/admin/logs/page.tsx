@@ -9,6 +9,7 @@ export default async function LogsPage() {
   const session = await getSession();
   if (!session) redirect("/login");
   if (!session.user.permissions.includes("users")) redirect("/dashboard");
+  if (session.user.role !== "admin" && !session.user.permissions.includes("admin.logs")) redirect("/admin");
 
   return (
     <div className="page">
@@ -18,7 +19,7 @@ export default async function LogsPage() {
           Live console errors and warnings captured from API routes — no need to check the Vercel dashboard.
         </p>
       </div>
-      <AdminNav active="logs" />
+      <AdminNav active="logs" permissions={session.user.permissions} isAdmin={session.user.role === "admin"} />
       <LogsDashboard />
     </div>
   );

@@ -9,6 +9,7 @@ export default async function ActivityLogPage() {
   const session = await getSession();
   if (!session) redirect("/login");
   if (!session.user.permissions.includes("users")) redirect("/dashboard");
+  if (session.user.role !== "admin" && !session.user.permissions.includes("admin.activity")) redirect("/admin");
 
   return (
     <div className="page">
@@ -18,7 +19,7 @@ export default async function ActivityLogPage() {
           Track who did what and when — report creation, AI generation, client management and more.
         </p>
       </div>
-      <AdminNav active="activity" />
+      <AdminNav active="activity" permissions={session.user.permissions} isAdmin={session.user.role === "admin"} />
       <ActivityLogDashboard />
     </div>
   );

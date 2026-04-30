@@ -51,7 +51,16 @@ const PERMISSION_GROUPS = [
   },
   {
     label: "Admin",
-    items: [{ key: "users", label: "User Management" }],
+    items: [
+      { key: "users", label: "User Management" },
+      { key: "admin.roles", label: "Roles & Permissions tab" },
+      { key: "admin.task_categories", label: "Task Categories tab" },
+      { key: "admin.cron", label: "Cron & Snapshots tab" },
+      { key: "admin.api_status", label: "API Status tab" },
+      { key: "admin.activity", label: "Activity Log tab" },
+      { key: "admin.logs", label: "Logs tab" },
+      { key: "admin.settings", label: "Settings tab" },
+    ],
   },
   {
     label: "Task Management",

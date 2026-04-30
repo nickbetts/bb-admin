@@ -9,6 +9,7 @@ export default async function AdminSettingsPage() {
   const session = await getSession();
   if (!session) redirect("/login");
   if (!session.user.permissions.includes("users")) redirect("/dashboard");
+  if (session.user.role !== "admin" && !session.user.permissions.includes("admin.settings")) redirect("/admin");
 
   return (
     <div className="page">
@@ -18,7 +19,7 @@ export default async function AdminSettingsPage() {
           Manage global integrations, API keys, and system configuration
         </p>
       </div>
-      <AdminNav active="settings" />
+      <AdminNav active="settings" permissions={session.user.permissions} isAdmin={session.user.role === "admin"} />
       <SettingsPanel />
     </div>
   );
