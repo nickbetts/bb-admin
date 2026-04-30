@@ -1123,26 +1123,26 @@ const LP_UWU_MESSAGES = [
   "INITIATING FINAL HTML ASSEMBLY. LANDING PAGE BLAST OFF IN 3... 2... 1... UWU~!!! KACHOW.",
 ];
 
-function useLpUwu(active: boolean): string {
-  const [msg, setMsg] = useState(LP_UWU_MESSAGES[0]);
+function useLpUwu(active: boolean): { msg: string; pos: { top: string; left: string } } {
+  const [state, setState] = useState({ msg: LP_UWU_MESSAGES[0], pos: randomMsgPos() });
   const indexRef = useRef(0);
 
   useEffect(() => {
     if (!active) return;
     const shuffled = [...LP_UWU_MESSAGES].sort(() => Math.random() - 0.5);
     indexRef.current = 0;
-    const first = setTimeout(() => setMsg(shuffled[0]), 0);
+    const first = setTimeout(() => setState({ msg: shuffled[0], pos: randomMsgPos() }), 0);
     const id = setInterval(() => {
       indexRef.current = (indexRef.current + 1) % shuffled.length;
-      setMsg(shuffled[indexRef.current]);
-    }, 1800); // faster than Grand Plan (2800ms)
+      setState({ msg: shuffled[indexRef.current], pos: randomMsgPos() });
+    }, 4200); // ~2.4s longer than before — messages linger
     return () => {
       clearTimeout(first);
       clearInterval(id);
     };
   }, [active]);
 
-  return msg;
+  return state;
 }
 
 function playLpChaosBleep() {
@@ -1173,8 +1173,32 @@ function playLpChaosBleep() {
   } catch { /* AudioContext blocked — silent fail */ }
 }
 
+function randomMsgPos() {
+  // Keep the box fully on-screen (box is centred on this point, max ~680px wide ~120px tall)
+  // Divide viewport into a 3×3 grid of zones and pick one at random to spread it around
+  const zones = [
+    { top: "12%",  left: "25%"  },
+    { top: "12%",  left: "50%"  },
+    { top: "12%",  left: "75%"  },
+    { top: "42%",  left: "20%"  },
+    { top: "42%",  left: "50%"  },
+    { top: "42%",  left: "78%"  },
+    { top: "72%",  left: "25%"  },
+    { top: "72%",  left: "50%"  },
+    { top: "72%",  left: "75%"  },
+  ];
+  // Add a small random jitter within each zone so it never lands in exactly the same spot
+  const zone = zones[Math.floor(Math.random() * zones.length)];
+  const jitterTop  = (Math.random() - 0.5) * 8;
+  const jitterLeft = (Math.random() - 0.5) * 8;
+  return {
+    top:  `calc(${zone.top}  + ${jitterTop.toFixed(1)}%)`,
+    left: `calc(${zone.left} + ${jitterLeft.toFixed(1)}%)`,
+  };
+}
+
 function LpChaosOverlay({ active }: { active: boolean }) {
-  const uwuMsg = useLpUwu(active);
+  const { msg: uwuMsg, pos: msgPos } = useLpUwu(active);
   const [particles, setParticles] = useState<
     {
       id: number;
@@ -1354,13 +1378,14 @@ function LpChaosOverlay({ active }: { active: boolean }) {
     <div
       style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 9999, overflow: "hidden" }}
     >
-      {/* UwU status message */}
+      {/* UwU status message — jumps to a new random position each message */}
       <div
         style={{
           position: "fixed",
-          top: "50%",
-          left: "50%",
+          top: msgPos.top,
+          left: msgPos.left,
           transform: "translate(-50%, -50%)",
+          transition: "top 0.15s cubic-bezier(0.34,1.56,0.64,1), left 0.15s cubic-bezier(0.34,1.56,0.64,1)",
           maxWidth: "min(680px, 90vw)",
           background: "rgba(0,0,0,0.92)",
           color: "#f9a8d4",
