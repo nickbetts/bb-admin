@@ -118,10 +118,14 @@ export async function POST(
     },
   });
 
-  // ── Post-capture side-effects (non-fatal) ──────────────────────────────────
+  // ── Post-capture side-effects ─────────────────────────────────────────────
   const formConfig = parseLpFormConfig(landingPage.formConfig);
 
-  // Notification email (AI-drafted summary + raw fields table)
+  // Notification email — awaited so the conversion event only fires once
+  // delivery is confirmed. SmtpNotConfiguredError (Resend not set up) is
+  // treated as success so the form still completes; any other send failure
+  // returns a 500 which keeps the button as "Try Again" and suppresses the
+  // conversion event.
   if (formConfig.notifyEmails && formConfig.notifyEmails.length > 0) {
     const lpTitle = landingPage.title ?? "Landing Page";
     const stringFields = Object.fromEntries(
@@ -137,28 +141,33 @@ export async function POST(
       } catch { /* ignore */ }
     }
 
-    buildLeadNotificationHtml({
-      lpTitle,
-      clientName,
-      briefJson: landingPage.briefJson,
-      fields: stringFields,
-      referrer,
-      submittedAt: new Date(),
-    }).then(({ html, text }) => {
-      return sendEmail({
-        to: formConfig.notifyEmails!,
+    try {
+      const { html, text } = await buildLeadNotificationHtml({
+        lpTitle,
+        clientName,
+        briefJson: landingPage.briefJson,
+        fields: stringFields,
+        referrer,
+        submittedAt: new Date(),
+      });
+      await sendEmail({
+        to: formConfig.notifyEmails,
         subject: `New lead: ${name || email} — ${lpTitle}`,
         html,
         text,
       });
-    }).catch((err) => {
-      if (!(err instanceof SmtpNotConfiguredError)) {
+    } catch (err) {
+      if (err instanceof SmtpNotConfiguredError) {
+        // Resend not configured — lead is captured, treat as success
+      } else {
         console.error("[lead-notify] Email send failed:", err);
+        const message = err instanceof Error ? err.message : "Email delivery failed";
+        return NextResponse.json({ error: message }, { status: 500 });
       }
-    });
+    }
   }
 
-  // Outbound webhook
+  // Outbound webhook — fire-and-forget (non-blocking)
   if (formConfig.webhookUrl && isWebhookUrlSafe(formConfig.webhookUrl)) {
     const payload = {
       landingPageId: landingPage.id,
@@ -176,8 +185,6 @@ export async function POST(
     });
   }
 
-  // Return success immediately — side-effects run in background
   void lead; // suppress unused var warning
-
   return NextResponse.json({ success: true });
 }
