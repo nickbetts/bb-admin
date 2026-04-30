@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { parseLpFormConfig, isWebhookUrlSafe } from "@/lib/lp-form-config";
-import { sendEmail, SmtpNotConfiguredError } from "@/lib/email";
+import { sendEmail, buildLeadNotificationHtml, SmtpNotConfiguredError } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +18,7 @@ export async function POST(
 
   const landingPage = await prisma.landingPage.findUnique({
     where: { shareToken: token },
-    select: { id: true, title: true, formConfig: true },
+    select: { id: true, title: true, formConfig: true, briefJson: true, clientId: true },
   });
 
   if (!landingPage) {
@@ -32,24 +32,77 @@ export async function POST(
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const name = typeof body.name === "string" ? body.name.trim().slice(0, 200) : "";
-  const email = typeof body.email === "string" ? body.email.trim().slice(0, 200) : "";
+  // ── Field extraction — fully field-name-agnostic ──────────────────────────
+  // Every LP is AI-generated with different field names, so we scan values
+  // rather than assuming fixed keys.
 
-  if (!name || !email) {
-    return NextResponse.json({ error: "name and email are required" }, { status: 400 });
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  // Find the email: prefer keys containing "email", else scan all string values
+  let email = "";
+  for (const [k, v] of Object.entries(body)) {
+    if (typeof v === "string" && k.toLowerCase().includes("email")) {
+      const candidate = v.trim();
+      if (EMAIL_RE.test(candidate)) { email = candidate; break; }
+    }
+  }
+  if (!email) {
+    // Fallback: first string value that looks like an email
+    for (const v of Object.values(body)) {
+      if (typeof v === "string" && EMAIL_RE.test(v.trim())) {
+        email = v.trim(); break;
+      }
+    }
+  }
+  email = email.slice(0, 200);
+
+  if (!email) {
+    console.error("[lead] No email found in submission. Keys:", Object.keys(body));
+    return NextResponse.json({ error: "A valid email address is required" }, { status: 400 });
   }
 
-  // Basic email format validation
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return NextResponse.json({ error: "Invalid email format" }, { status: 400 });
+  // Build name: combine fields whose key contains "name" (first, last, full, parent, player…)
+  // Prefer a single "name"/"fullName" key; otherwise concatenate first + last variants
+  let name = "";
+  const nameEntries = Object.entries(body)
+    .filter(([k, v]) => typeof v === "string" && k.toLowerCase().includes("name") && !k.toLowerCase().includes("email"))
+    .map(([k, v]) => ({ k: k.toLowerCase(), v: (v as string).trim() }));
+
+  const fullNameEntry = nameEntries.find(e => e.k === "name" || e.k === "fullname" || e.k === "full_name" || e.k === "full-name");
+  if (fullNameEntry) {
+    name = fullNameEntry.v;
+  } else {
+    // Gather "first" then "last" names in order
+    const first = nameEntries.find(e => e.k.includes("first"));
+    const last = nameEntries.find(e => e.k.includes("last"));
+    name = [first?.v, last?.v].filter(Boolean).join(" ");
+    if (!name) {
+      // Any name-like field will do
+      name = nameEntries[0]?.v ?? "";
+    }
+  }
+  name = name.slice(0, 200);
+
+  // Find phone: any key containing "phone", "mobile", or "whatsapp"
+  let phoneVal: string | null = null;
+  for (const [k, v] of Object.entries(body)) {
+    const kl = k.toLowerCase();
+    if (typeof v === "string" && (kl.includes("phone") || kl.includes("mobile") || kl.includes("whatsapp"))) {
+      phoneVal = v.trim().slice(0, 50); break;
+    }
   }
 
-  const phone = typeof body.phone === "string" ? body.phone.trim().slice(0, 50) : null;
-  const message = typeof body.message === "string" ? body.message.trim().slice(0, 2000) : null;
+  // Find message: key containing "message", "enquiry", "notes", "comment"
+  let message: string | null = null;
+  for (const [k, v] of Object.entries(body)) {
+    const kl = k.toLowerCase();
+    if (typeof v === "string" && (kl.includes("message") || kl.includes("enquiry") || kl.includes("notes") || kl.includes("comment"))) {
+      message = v.trim().slice(0, 2000); break;
+    }
+  }
 
-  // Store any extra fields as formData JSON
-  const { name: _n, email: _e, phone: _p, message: _m, ...extraFields } = body;
-  const formData = Object.keys(extraFields).length > 0 ? JSON.stringify(extraFields) : null;
+  // Store ALL submitted fields as formData — nothing is discarded
+  const formData = JSON.stringify(body);
 
   const referrer = request.headers.get("referer") ?? null;
 
@@ -58,7 +111,7 @@ export async function POST(
       landingPageId: landingPage.id,
       name,
       email,
-      phone,
+      phone: phoneVal,
       message,
       formData,
       referrer,
@@ -68,26 +121,36 @@ export async function POST(
   // ── Post-capture side-effects (non-fatal) ──────────────────────────────────
   const formConfig = parseLpFormConfig(landingPage.formConfig);
 
-  // Notification email
+  // Notification email (AI-drafted summary + raw fields table)
   if (formConfig.notifyEmails && formConfig.notifyEmails.length > 0) {
     const lpTitle = landingPage.title ?? "Landing Page";
-    const html = `
-      <h2>New lead from "${lpTitle}"</h2>
-      <table cellpadding="6" style="border-collapse:collapse;font-family:sans-serif;font-size:14px">
-        <tr><td><strong>Name</strong></td><td>${name}</td></tr>
-        <tr><td><strong>Email</strong></td><td>${email}</td></tr>
-        ${phone ? `<tr><td><strong>Phone</strong></td><td>${phone}</td></tr>` : ""}
-        ${message ? `<tr><td><strong>Message</strong></td><td>${message}</td></tr>` : ""}
-        <tr><td><strong>Submitted</strong></td><td>${new Date().toUTCString()}</td></tr>
-        ${referrer ? `<tr><td><strong>Referrer</strong></td><td>${referrer}</td></tr>` : ""}
-      </table>
-    `.trim();
+    const stringFields = Object.fromEntries(
+      Object.entries(body).filter(([, v]) => typeof v === "string" && (v as string).trim()) as [string, string][]
+    );
 
-    sendEmail({
-      to: formConfig.notifyEmails,
-      subject: `New lead: ${name} — ${lpTitle}`,
-      html,
-      text: `New lead from "${lpTitle}"\nName: ${name}\nEmail: ${email}${phone ? `\nPhone: ${phone}` : ""}${message ? `\nMessage: ${message}` : ""}`,
+    // Fetch client name for context (non-fatal)
+    let clientName: string | undefined;
+    if (landingPage.clientId) {
+      try {
+        const c = await prisma.client.findUnique({ where: { id: landingPage.clientId }, select: { name: true } });
+        clientName = c?.name ?? undefined;
+      } catch { /* ignore */ }
+    }
+
+    buildLeadNotificationHtml({
+      lpTitle,
+      clientName,
+      briefJson: landingPage.briefJson,
+      fields: stringFields,
+      referrer,
+      submittedAt: new Date(),
+    }).then(({ html, text }) => {
+      return sendEmail({
+        to: formConfig.notifyEmails!,
+        subject: `New lead: ${name || email} — ${lpTitle}`,
+        html,
+        text,
+      });
     }).catch((err) => {
       if (!(err instanceof SmtpNotConfiguredError)) {
         console.error("[lead-notify] Email send failed:", err);
@@ -100,11 +163,7 @@ export async function POST(
     const payload = {
       landingPageId: landingPage.id,
       capturedAt: new Date().toISOString(),
-      name,
-      email,
-      ...(phone ? { phone } : {}),
-      ...(message ? { message } : {}),
-      ...(formData ? { formData: JSON.parse(formData) } : {}),
+      ...body,
     };
 
     fetch(formConfig.webhookUrl, {

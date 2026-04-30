@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { getSession, hasPermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/activity-logger";
 
@@ -126,12 +126,30 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (session.user.role !== "admin") {
+    if (session.user.role !== "admin" && !hasPermission(session, "clients.delete")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const { id } = await params;
+
+    const client = await prisma.client.findUnique({ where: { id }, select: { name: true } });
+    if (!client) {
+      return NextResponse.json({ error: "Client not found" }, { status: 404 });
+    }
+
     await prisma.client.delete({ where: { id } });
+
+    logActivity({
+      userId: session.user.id,
+      userEmail: session.user.email,
+      userName: session.user.name ?? undefined,
+      action: "client_deleted",
+      resourceType: "client",
+      resourceId: id,
+      clientId: id,
+      clientName: client.name,
+      description: `Deleted client "${client.name}"`,
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

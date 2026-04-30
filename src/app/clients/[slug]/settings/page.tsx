@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { ClientSettingsForm } from "@/components/clients/ClientSettingsForm";
 import { ClientTaskCategorySettings } from "@/components/clients/ClientTaskCategorySettings";
+import { DeleteClientButton } from "@/components/clients/DeleteClientButton";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
@@ -18,6 +19,10 @@ export default async function ClientSettingsPage({ params }: Props) {
 
   const client = await prisma.client.findUnique({ where: { slug } });
   if (!client) notFound();
+
+  const canDelete =
+    session.user.role === "admin" ||
+    session.user.permissions.includes("clients.delete");
 
   return (
     <div className="page">
@@ -39,6 +44,9 @@ export default async function ClientSettingsPage({ params }: Props) {
         <ClientTaskCategorySettings clientId={client.id} />
       </div>
       <ClientSettingsForm client={client} />
+      {canDelete && (
+        <DeleteClientButton clientId={client.id} clientName={client.name} />
+      )}
     </div>
   );
 }

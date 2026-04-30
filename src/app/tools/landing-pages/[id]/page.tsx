@@ -2011,7 +2011,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                   />
                 </>
               ) : (
-                <FormConfigPanel value={formConfig} onChange={setFormConfig} />
+                <FormConfigPanel value={formConfig} onChange={setFormConfig} lpId={id} />
               )}
             </div>
             {/* Footer */}

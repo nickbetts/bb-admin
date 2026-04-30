@@ -48,6 +48,8 @@ export const ALL_PERMISSIONS = [
   "tasks.comment",
   "tasks.time_track",
   "tasks.upload",
+  // Granular client permissions
+  "clients.delete",
 ] as const;
 
 export type Permission = typeof ALL_PERMISSIONS[number];

@@ -6,12 +6,14 @@
  * Controlled component — parent owns `value` and gets `onChange`.
  */
 
-import { AlertTriangle, Webhook, Mail, Code2 } from "lucide-react";
+import { useState } from "react";
+import { AlertTriangle, Webhook, Mail, Code2, Eye, X } from "lucide-react";
 import type { LpFormConfig } from "@/lib/lp-form-config";
 
 interface Props {
   value: LpFormConfig;
   onChange: (next: LpFormConfig) => void;
+  lpId: string;
 }
 
 const inputStyle: React.CSSProperties = {
@@ -69,18 +71,101 @@ function joinEmails(emails: string[] | undefined): string {
   return (emails ?? []).join(", ");
 }
 
-export function FormConfigPanel({ value, onChange }: Props) {
+export function FormConfigPanel({ value, onChange, lpId }: Props) {
   const emailsRaw = joinEmails(value.notifyEmails);
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+
+  async function handlePreview() {
+    setPreviewLoading(true);
+    setPreviewError(null);
+    try {
+      const res = await fetch(`/api/tools/landing-pages/${lpId}/email-preview`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) throw new Error("Preview failed");
+      const data = await res.json() as { html: string };
+      setPreviewHtml(data.html);
+    } catch {
+      setPreviewError("Could not generate preview. Make sure your OpenAI key is configured.");
+    } finally {
+      setPreviewLoading(false);
+    }
+  }
 
   return (
+    <>
+    {/* ── Email preview modal ──────────────────────────────────────────────── */}
+    {previewHtml !== null && (
+      <div
+        onClick={() => setPreviewHtml(null)}
+        style={{
+          position: "fixed", inset: 0, zIndex: 9999,
+          background: "rgba(0,0,0,0.6)",
+          display: "flex", alignItems: "flex-start", justifyContent: "center",
+          padding: "40px 16px", overflowY: "auto",
+        }}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            background: "var(--surface)", borderRadius: 10,
+            width: "100%", maxWidth: 640,
+            border: "1px solid var(--border)", overflow: "hidden",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderBottom: "1px solid var(--border)" }}>
+            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>Email preview — sample data</span>
+            <button onClick={() => setPreviewHtml(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-3)", padding: 4, display: "flex" }}>
+              <X size={16} />
+            </button>
+          </div>
+          <div style={{ padding: 0 }}>
+            <iframe
+              srcDoc={previewHtml}
+              style={{ width: "100%", height: 500, border: "none", display: "block", background: "#f9fafb" }}
+              title="Email preview"
+              sandbox="allow-same-origin"
+            />
+          </div>
+          <div style={{ padding: "10px 16px", borderTop: "1px solid var(--border)" }}>
+            <p style={{ fontSize: 11, color: "var(--text-4)", margin: 0 }}>
+              Preview uses sample data extracted from the landing page form. Actual emails will contain real submission data.
+            </p>
+          </div>
+        </div>
+      </div>
+    )}
+
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
 
       {/* ── Notification emails ────────────────────────────────────────────── */}
       <div>
-        <div style={sectionTitleStyle}>
-          <Mail style={{ width: 14, height: 14, color: "var(--accent)" }} />
-          Notification emails
+        <div style={{ ...sectionTitleStyle, justifyContent: "space-between" }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <Mail style={{ width: 14, height: 14, color: "var(--accent)" }} />
+            Notification emails
+          </span>
+          <button
+            onClick={handlePreview}
+            disabled={previewLoading}
+            style={{
+              display: "flex", alignItems: "center", gap: 5,
+              background: "none", border: "1px solid var(--border)",
+              borderRadius: "var(--r)", padding: "3px 8px",
+              fontSize: 11, fontWeight: 600, color: "var(--text-2)",
+              cursor: "pointer", opacity: previewLoading ? 0.6 : 1,
+            }}
+          >
+            <Eye size={11} />
+            {previewLoading ? "Generating…" : "Preview email"}
+          </button>
         </div>
+        {previewError && <p style={{ ...hintStyle, color: "var(--danger)", marginBottom: 6 }}>{previewError}</p>}
         <div>
           <label style={labelStyle}>Send lead alerts to</label>
           <input
@@ -91,7 +176,7 @@ export function FormConfigPanel({ value, onChange }: Props) {
             style={inputStyle}
           />
           <p style={hintStyle}>
-            Comma-separated. An email is sent for every new form submission. Requires SMTP to be configured in Settings &rarr; Email.
+            Comma-separated. An email is sent for every new form submission. Requires Resend to be configured in Settings &rarr; Email.
           </p>
         </div>
       </div>
@@ -162,5 +247,6 @@ export function FormConfigPanel({ value, onChange }: Props) {
       </div>
 
     </div>
+  </>
   );
 }
