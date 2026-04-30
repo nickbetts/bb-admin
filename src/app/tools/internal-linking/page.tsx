@@ -532,7 +532,7 @@ export default function InternalLinkingPage() {
     <div className="min-h-screen bg-slate-50">
       <div className="max-w-5xl mx-auto px-4 py-8">
         {/* Back link */}
-        {clientId && <ClientBackLink clientId={clientId} className="mb-4" />}
+        {clientId && <ClientBackLink />}
 
         {/* Header */}
         <div className="flex items-start gap-3 mb-6">
@@ -548,7 +548,7 @@ export default function InternalLinkingPage() {
         </div>
 
         {/* Client filter banner */}
-        {clientId && <ClientFilterBanner clientId={clientId} className="mb-5" />}
+        {clientId && <ClientFilterBanner />}
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-6">
           {/* ── Left column: form ── */}

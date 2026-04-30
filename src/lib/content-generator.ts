@@ -269,9 +269,8 @@ Rules:
     {
       type: "web_search_20250305" as const,
       name: "web_search",
-      // @ts-expect-error — max_uses is a valid field for the web_search tool
       max_uses: 3,
-    },
+    } as Parameters<typeof anthropic.messages.create>[0]["tools"][number],
   ];
 
   const response = await anthropic.messages.create({

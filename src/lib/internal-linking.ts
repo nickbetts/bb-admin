@@ -14,6 +14,8 @@ import * as mammoth from "mammoth";
 import * as cheerio from "cheerio";
 import { fetchSitemapUrls } from "@/lib/sitemap";
 import { getAnthropicClient } from "@/lib/anthropic-client";
+import { getTopOrganicKeywords } from "@/lib/semrush";
+import { withApiCache } from "@/lib/api-cache";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -40,6 +42,12 @@ export interface LinkBudget {
   moneyPage: number;
   outbound: number;
   inbound: number;
+}
+
+export interface CompetitorProfile {
+  domain: string;
+  topKeywords: { keyword: string; searchVolume: number; position: number }[];
+  discoveredBy: "user" | "client" | "ai";
 }
 
 // ─── DOCX extraction ─────────────────────────────────────────────────────────
@@ -259,6 +267,116 @@ Select the ${MAX_BLOG_POSTS} most topically relevant URLs.`;
 
   // Fallback: just take the first MAX_BLOG_POSTS
   return candidates.slice(0, MAX_BLOG_POSTS);
+}
+
+// ─── Competitor discovery & analysis ─────────────────────────────────────────
+
+/**
+ * Build a list of up to 5 true business competitors, then enrich each with
+ * SEMrush organic keyword data.
+ *
+ * Priority order for competitor sources:
+ *   1. userProvidedDomains   — passed explicitly in the API request body
+ *   2. clientSavedDomains    — stored in the Client.competitorDomains DB field
+ *   3. AI web-search         — only used to fill gaps when total < 5
+ *
+ * SEMrush's own keyword-overlap competitor detection is intentionally NOT used.
+ */
+export async function discoverAndAnalyseCompetitors(
+  targetDomain: string,
+  targetText: string,
+  userProvidedDomains: string[],
+  clientSavedDomains: string[],
+): Promise<CompetitorProfile[]> {
+
+  // ── 1. Merge & deduplicate ────────────────────────────────────────────────
+  const seen = new Set<string>();
+  const merged: { domain: string; source: "user" | "client" }[] = [];
+
+  const normalize = (d: string) =>
+    d.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/$/, "");
+
+  const userSet = new Set(userProvidedDomains.map(normalize));
+
+  for (const raw of [...userProvidedDomains, ...clientSavedDomains]) {
+    const d = normalize(raw);
+    if (!d || d === targetDomain || seen.has(d)) continue;
+    seen.add(d);
+    merged.push({ domain: d, source: userSet.has(d) ? "user" : "client" });
+  }
+
+  // ── 2. Fill gaps with AI web search (only if < 5 known competitors) ───────
+  if (merged.length < 5) {
+    const needed = 5 - merged.length;
+    try {
+      const anthropic = await getAnthropicClient();
+      const prompt = `Find the top direct business competitors for the website "${targetDomain}".
+
+Context about what they do (first 400 chars):
+${targetText.slice(0, 400)}
+
+Search for "${targetDomain} competitors" and similar queries to identify real, direct business competitors — not industry news sites or aggregators.
+
+Return ONLY a JSON array of ${needed + 2} competitor domain names (no www prefix, no protocol, no trailing slash), e.g. ["competitor1.com", "competitor2.com"].`;
+
+      const response = await anthropic.messages.create({
+        model: "claude-sonnet-4-6",
+        max_tokens: 400,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 3 } as any],
+        messages: [{ role: "user", content: prompt }],
+      });
+
+      const textBlock = response.content.find(b => b.type === "text");
+      const raw = textBlock && textBlock.type === "text" ? textBlock.text.trim() : "";
+      const jsonMatch = raw.match(/\[[\s\S]*?\]/);
+      if (jsonMatch) {
+        const domains: unknown = JSON.parse(jsonMatch[0]);
+        if (Array.isArray(domains)) {
+          for (const d of domains as unknown[]) {
+            if (typeof d !== "string") continue;
+            const normalized = normalize(d);
+            if (!normalized || normalized === targetDomain || seen.has(normalized)) continue;
+            seen.add(normalized);
+            merged.push({ domain: normalized, source: "user" }); // treat AI finds as "user" for simplicity
+            if (merged.length >= 5) break;
+          }
+        }
+      }
+    } catch (err) {
+      console.error("[internal-linking] AI competitor discovery failed:", err);
+    }
+  }
+
+  // ── 3. Cap at 5 ───────────────────────────────────────────────────────────
+  const competitors = merged.slice(0, 5);
+
+  // ── 4. SEMrush enrichment ─────────────────────────────────────────────────
+  const profiles: CompetitorProfile[] = await Promise.all(
+    competitors.map(async ({ domain, source }) => {
+      try {
+        const keywords = await withApiCache(
+          `semrush-top-kws:${domain}`,
+          24,
+          () => getTopOrganicKeywords(domain, "uk", 20),
+        );
+        return {
+          domain,
+          topKeywords: keywords.map(k => ({
+            keyword: k.keyword,
+            searchVolume: k.searchVolume,
+            position: k.position,
+          })),
+          discoveredBy: source,
+        } satisfies CompetitorProfile;
+      } catch (err) {
+        console.error(`[internal-linking] SEMrush enrichment failed for ${domain}:`, err);
+        return { domain, topKeywords: [], discoveredBy: source } satisfies CompetitorProfile;
+      }
+    }),
+  );
+
+  return profiles;
 }
 
 // ─── Link budget helpers ─────────────────────────────────────────────────────

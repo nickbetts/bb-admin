@@ -148,7 +148,7 @@ export default function ContentGeneratorPage() {
           icon={<PencilLine style={{ width: 32, height: 32 }} />}
           title="No content packs yet"
           description="Generate research-backed blogs, whitepapers, case studies and social media copy for your clients."
-          action={{ label: "Create Your First Pack", href: newHref }}
+          actions={[{ label: "Create Your First Pack", href: newHref }]}
         />
       ) : (
         <>

@@ -12,9 +12,11 @@ import {
   extractDraftFromDocx,
   fetchAndParsePage,
   discoverBlogPosts,
+  discoverAndAnalyseCompetitors,
   recommendLinkCount,
   computeLinkSplit,
   type ParsedPage,
+  type CompetitorProfile,
 } from "@/lib/internal-linking";
 import crypto from "crypto";
 
@@ -52,6 +54,7 @@ export async function POST(request: NextRequest) {
     let targetUrl: string | null = null;
     let targetSource: "url" | "upload" = "url";
     let moneyPageUrls: string[] = [];
+    let competitorDomains: string[] = [];
     let clientId: string | null = null;
     let title: string | null = null;
     let docxFile: File | null = null;
@@ -61,6 +64,7 @@ export async function POST(request: NextRequest) {
       const body = await request.json() as {
         targetUrl?: unknown;
         moneyPageUrls?: unknown;
+        competitorDomains?: unknown;
         clientId?: unknown;
         title?: unknown;
       };
@@ -68,6 +72,9 @@ export async function POST(request: NextRequest) {
       targetSource = "url";
       moneyPageUrls = Array.isArray(body.moneyPageUrls)
         ? (body.moneyPageUrls as unknown[]).filter((u): u is string => typeof u === "string" && u.trim().length > 0).map(u => u.trim())
+        : [];
+      competitorDomains = Array.isArray(body.competitorDomains)
+        ? (body.competitorDomains as unknown[]).filter((u): u is string => typeof u === "string" && u.trim().length > 0).map(u => u.trim())
         : [];
       clientId = typeof body.clientId === "string" && body.clientId ? body.clientId : null;
       title = typeof body.title === "string" && body.title ? body.title.trim() : null;
@@ -166,6 +173,40 @@ export async function POST(request: NextRequest) {
     // ── Discover blog posts from sitemap ──────────────────────────────────
     const blogPosts = await discoverBlogPosts(domain, targetText, moneyPageUrls);
 
+    // ── Competitor discovery & SEMrush enrichment ─────────────────────────
+    // Load client-saved competitor domains if a client is linked
+    let clientSavedDomains: string[] = [];
+    if (clientId) {
+      const client = await prisma.client.findUnique({
+        where: { id: clientId },
+        select: { competitorDomains: true },
+      });
+      if (client?.competitorDomains) {
+        try {
+          const parsed: unknown = JSON.parse(client.competitorDomains);
+          if (Array.isArray(parsed)) {
+            clientSavedDomains = (parsed as unknown[]).filter((d): d is string => typeof d === "string" && d.trim().length > 0);
+          }
+        } catch {
+          // malformed JSON — ignore
+        }
+      }
+    }
+
+    let competitorProfiles: CompetitorProfile[] = [];
+    if (competitorDomains.length > 0 || clientSavedDomains.length > 0) {
+      try {
+        competitorProfiles = await discoverAndAnalyseCompetitors(
+          domain,
+          targetText,
+          competitorDomains,
+          clientSavedDomains,
+        );
+      } catch (err) {
+        console.error("[internal-linking] Competitor analysis failed:", err);
+      }
+    }
+
     // ── Compute link budget ───────────────────────────────────────────────
     const budget = computeLinkSplit(
       recommendLinkCount(targetWordCount),
@@ -256,7 +297,13 @@ ${moneyPagesContext}
 ${blogCorpus}
 
 ## Existing outbound anchors from the target page (DO NOT re-suggest these)
-${existingAnchors || "(none found)"}
+${existingAnchors || "(none found)"}${competitorProfiles.length > 0 ? `
+
+## Verified business competitors & their top organic keywords
+Use this data to identify keyword opportunities and anchor text patterns the competitors rank for but the target doesn't yet link to.
+${competitorProfiles.map(c => `### ${c.domain} (source: ${c.discoveredBy})
+Top keywords (position | volume | keyword):
+${c.topKeywords.slice(0, 10).map(k => `  pos ${k.position} | vol ${k.searchVolume.toLocaleString("en-GB")} | ${k.keyword}`).join("\n") || "  (no keyword data available)"}`).join("\n\n")}` : ""}
 
 Please generate exactly ${budget.moneyPage} money-page link(s), ${budget.outbound} outbound link(s), and ${budget.inbound} inbound link(s). Prioritise the highest-value opportunities.`;
 
@@ -311,13 +358,14 @@ Please generate exactly ${budget.moneyPage} money-page link(s), ${budget.outboun
       parsedTargetWordCount: targetWordCount,
       moneyPageMeta: moneyPageMeta.map(mp => ({ url: mp.url, title: mp.title, h1: mp.h1 })),
       budgetUsed: budget,
+      competitorProfiles: competitorProfiles.map(c => ({ domain: c.domain, discoveredBy: c.discoveredBy, keywordCount: c.topKeywords.length })),
     };
 
     const updated = await prisma.internalLinkingPlan.update({
       where: { id: planId },
       data: {
         targetWordCount,
-        inputJson,
+        inputJson: inputJson as object,
         resultJson: result as object,
         generationStatus: "complete",
         generationMs,
