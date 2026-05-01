@@ -93,10 +93,11 @@ export default function NewContentGeneratorPage() {
   useEffect(() => {
     fetch("/api/clients")
       .then((r) => r.json())
-      .then((data: { clients?: ClientOption[] }) => {
-        setClients(data.clients ?? []);
+      .then((data: ClientOption[] | { clients?: ClientOption[] }) => {
+        const list = Array.isArray(data) ? data : (data.clients ?? []);
+        setClients(list);
         if (presetClientId) {
-          const c = (data.clients ?? []).find((cl) => cl.id === presetClientId);
+          const c = list.find((cl) => cl.id === presetClientId);
           if (c?.website) setWebsiteUrl(c.website);
         }
       })
