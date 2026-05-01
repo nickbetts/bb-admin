@@ -284,6 +284,7 @@ In your Vercel project dashboard: **Storage → Create → Blob**. Vercel auto-a
 | `APP_PASSWORD` | Strong password |
 | `SESSION_SECRET` | `openssl rand -base64 32` |
 | `BLOB_READ_WRITE_TOKEN` | *(auto-set by Vercel Blob)* |
+| `JINA_API_KEY` | Optional — Jina.ai Reader key for JS-challenge page fallback. Anonymous calls work up to ~200 req/day. |
 | `SEMRUSH_API_KEY` | Your key |
 | `GA4_CLIENT_EMAIL` | Service account email |
 | `GA4_PRIVATE_KEY` | Service account private key |

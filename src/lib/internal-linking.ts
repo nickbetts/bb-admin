@@ -114,7 +114,7 @@ export async function fetchAndParsePage(url: string): Promise<ParsedPage> {
     .slice(0, 800);
 
   const bodyText = $("body").text().replace(/\s+/g, " ").trim();
-  const wordCount = bodyText.split(/\s+/).filter(Boolean).length;
+  let wordCount = bodyText.split(/\s+/).filter(Boolean).length;
 
   // Collect outbound anchors from main content
   const pageUrlObj = new URL(url);
@@ -132,6 +132,66 @@ export async function fetchAndParsePage(url: string): Promise<ParsedPage> {
       // Skip malformed hrefs
     }
   });
+
+  // ── Jina Reader fallback ────────────────────────────────────────────────
+  // When a page returns < 50 words it's almost certainly a Cloudflare or
+  // similar JS-challenge page. Route through Jina.ai Reader which executes
+  // the JavaScript in a headless browser and returns clean markdown.
+  // JINA_API_KEY is optional — anonymous calls work up to ~200 req/day.
+  if (wordCount < 50) {
+    console.warn(`[internal-linking] fetchAndParsePage: only ${wordCount} words from ${url}, trying Jina Reader fallback`);
+    try {
+      const jinaController = new AbortController();
+      const jinaTimer = setTimeout(() => jinaController.abort(), 15_000);
+      const jinaHeaders: Record<string, string> = {
+        Accept: "text/markdown,text/plain,*/*",
+        "X-Remove-Selector": "nav, header, footer, aside",
+        "X-Return-Format": "markdown",
+      };
+      const jinaKey = process.env.JINA_API_KEY;
+      if (jinaKey) jinaHeaders["Authorization"] = `Bearer ${jinaKey}`;
+
+      let jinaMarkdown = "";
+      let jinaTitle = "";
+      let jinaH1 = "";
+      try {
+        const jinaRes = await fetch(`https://r.jina.ai/${url}`, {
+          signal: jinaController.signal,
+          headers: jinaHeaders,
+        });
+        jinaMarkdown = await jinaRes.text();
+        jinaTitle = jinaRes.headers.get("X-Title") ?? "";
+      } finally {
+        clearTimeout(jinaTimer);
+      }
+
+      if (jinaMarkdown.length > 0) {
+        // Extract H1 from first markdown heading (# Heading)
+        const h1Match = jinaMarkdown.match(/^#\s+(.+)$/m);
+        jinaH1 = h1Match ? h1Match[1].trim() : "";
+
+        const jinaWordCount = jinaMarkdown.split(/\s+/).filter(Boolean).length;
+        const jinaMainText = jinaMarkdown.replace(/\s+/g, " ").trim().slice(0, 800);
+
+        return {
+          url,
+          title: jinaTitle || title || url,
+          h1: jinaH1 || h1,
+          metaDescription,
+          wordCount: jinaWordCount,
+          mainText: jinaMainText,
+          // Anchor extraction from raw markdown is unreliable; leave empty.
+          // The Cloudflare-blocked direct fetch also yielded no anchors, so
+          // this is not a regression.
+          outboundAnchors: [],
+        };
+      }
+    } catch (jinaErr) {
+      console.warn("[internal-linking] Jina Reader fallback failed:", jinaErr instanceof Error ? jinaErr.message : jinaErr);
+      // Fall through and return the partial direct-fetch result below
+    }
+  }
+  // ────────────────────────────────────────────────────────────────────────
 
   return { url, title, h1, metaDescription, wordCount, mainText, outboundAnchors };
 }
