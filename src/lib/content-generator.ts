@@ -196,13 +196,29 @@ function countWords(text: string): number {
  * Falls back to trailing single-line JSON for backwards compatibility.
  */
 function extractMetaJson<T>(text: string): { html: string; meta: T | null } {
-  const match = /<meta-json>([\s\S]*?)<\/meta-json>/i.exec(text);
-  if (match) {
-    const before = text.slice(0, match.index).trim();
-    const after = text.slice(match.index + match[0].length).trim();
-    return { html: (before + (after ? "\n" + after : "")).trim(), meta: parseJsonSafely<T>(match[1].trim()) };
+  // 1. Complete <meta-json>...</meta-json> block (preferred format)
+  const tagMatch = /<meta-json>([\s\S]*?)<\/meta-json>/i.exec(text);
+  if (tagMatch) {
+    const before = text.slice(0, tagMatch.index).trim();
+    const after = text.slice(tagMatch.index + tagMatch[0].length).trim();
+    return { html: (before + (after ? "\n" + after : "")).trim(), meta: parseJsonSafely<T>(tagMatch[1].trim()) };
   }
-  // Legacy fallback
+  // 2. Unclosed <meta-json> — response truncated before closing tag
+  const openTagMatch = /<meta-json>([\s\S]*)$/i.exec(text);
+  if (openTagMatch) {
+    return { html: text.slice(0, openTagMatch.index).trim(), meta: parseJsonSafely<T>(openTagMatch[1].trim()) };
+  }
+  // 3. Complete triple-backtick code block containing JSON at end
+  const codeBlockMatch = /\n?```(?:json)?\s*\n?(\{[\s\S]*?\})\s*\n?```\s*$/i.exec(text);
+  if (codeBlockMatch) {
+    return { html: text.slice(0, codeBlockMatch.index).trim(), meta: parseJsonSafely<T>(codeBlockMatch[1]) };
+  }
+  // 4. Unclosed triple-backtick block — response truncated mid-JSON
+  const openCodeMatch = /\n```(?:json)?\s*\n?(\{[\s\S]*)$/i.exec(text);
+  if (openCodeMatch) {
+    return { html: text.slice(0, openCodeMatch.index).trim(), meta: parseJsonSafely<T>(openCodeMatch[1].trim()) };
+  }
+  // 5. Legacy: trailing single-line JSON
   const legacy = /\n(\{[^\n]+\})\s*$/.exec(text);
   if (legacy) {
     return {
@@ -266,6 +282,52 @@ Return ONLY a valid JSON object in this exact format — no commentary:
     // Research failure should not block generation
     return { statsContext: "", sources: [] };
   }
+}
+
+/**
+ * Second-pass editorial review by Claude Opus.
+ * Strips leaked JSON/metadata/code-fence artefacts, fixes truncated endings,
+ * and returns clean publication-ready HTML.
+ */
+async function runCleanupPass(params: {
+  html: string;
+  type: Exclude<ContentType, "social">;
+  anthropic: Awaited<ReturnType<typeof getAnthropicClient>>;
+}): Promise<string> {
+  const { html, type, anthropic } = params;
+
+  // Pre-strip the most obvious artifacts synchronously before the API call
+  const preStripped = html
+    .replace(/```(?:json|html)?[\s\S]*?```/gi, "")      // any code fence blocks
+    .replace(/<meta-json>[\s\S]*?(?:<\/meta-json>|$)/gi, "") // meta-json tags (open or closed)
+    .replace(/\n```(?:json|html)?\s*$/, "")              // trailing unclosed code fence
+    .trim();
+
+  const typeLabel = type === "blog" ? "blog article" : type === "whitepaper" ? "whitepaper" : "case study";
+
+  const response = await anthropic.messages.create({
+    model: "claude-opus-4-7",
+    max_tokens: 5000,
+    system: `You are a senior editor performing a final quality pass on a ${typeLabel}. You output only clean, publication-ready HTML.`,
+    messages: [{
+      role: "user",
+      content: `Review this ${typeLabel} HTML and return a clean, final version. Return ONLY the HTML — no commentary, no code fences, no JSON.
+
+Rules:
+- Remove any JSON objects, schema markup, code fences, or technical metadata that has leaked into the body text
+- If the piece ends abruptly due to truncation, write a brief natural closing sentence or short paragraph — keep it concise and on-topic
+- Ensure all HTML tags are properly opened and closed
+- Keep all inline citations like [1], [2] exactly as written
+- Do NOT add new statistics, facts, or claims
+- Do NOT restructure or substantially rewrite sections
+
+${preStripped}`,
+    }],
+  });
+
+  const result = response.content[0]?.type === "text" ? response.content[0].text.trim() : preStripped;
+  // Strip any code fences the model might wrap its response in
+  return result.replace(/^```(?:html)?\n?/, "").replace(/\n?```$/, "").trim();
 }
 
 // ─── generateIdeas ────────────────────────────────────────────────────────────
@@ -469,7 +531,8 @@ After the article HTML, output the metadata in exactly this format:
   });
 
   const text = response.content[0]?.type === "text" ? response.content[0].text : "";
-  const { html: articleHtml, meta: metaObj } = extractMetaJson<{ titleTag: string; metaDescription: string; schema?: Record<string, unknown> }>(text);
+  const { html: rawHtml, meta: metaObj } = extractMetaJson<{ titleTag: string; metaDescription: string; schema?: Record<string, unknown> }>(text);
+  const articleHtml = await runCleanupPass({ html: rawHtml, type: "blog", anthropic });
 
   return {
     content: articleHtml,
@@ -560,9 +623,10 @@ After the HTML, output the metadata in exactly this format:
   const text2 = part2Res.content[0]?.type === "text" ? part2Res.content[0].text.trim() : "";
 
   const { html: body2, meta: metaObj } = extractMetaJson<{ titleTag: string; metaDescription: string; schema?: Record<string, unknown> }>(text2);
+  const whitepaperHtml = await runCleanupPass({ html: `${text1}\n${body2}`, type: "whitepaper", anthropic });
 
   return {
-    content: `${text1}\n${body2}`,
+    content: whitepaperHtml,
     titleTag: metaObj?.titleTag ?? idea.title.slice(0, 60),
     metaDescription: metaObj?.metaDescription ?? idea.summary.slice(0, 160),
     schemaJson: metaObj?.schema ? JSON.stringify(metaObj.schema) : undefined,
@@ -636,9 +700,10 @@ After the HTML, output the metadata in exactly this format:
   const text2 = part2Res.content[0]?.type === "text" ? part2Res.content[0].text.trim() : "";
 
   const { html: body2, meta: metaObj } = extractMetaJson<{ titleTag: string; metaDescription: string; schema?: Record<string, unknown> }>(text2);
+  const caseStudyHtml = await runCleanupPass({ html: `${text1}\n${body2}`, type: "case_study", anthropic });
 
   return {
-    content: `${text1}\n${body2}`,
+    content: caseStudyHtml,
     titleTag: metaObj?.titleTag ?? idea.title.slice(0, 60),
     metaDescription: metaObj?.metaDescription ?? idea.summary.slice(0, 160),
     schemaJson: metaObj?.schema ? JSON.stringify(metaObj.schema) : undefined,
