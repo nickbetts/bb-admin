@@ -235,9 +235,12 @@ function SuggestionRow({ suggestion, type }: { suggestion: LinkSuggestion; type:
           );
         }
         return (
-          <p style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 4 }}>
-            <span style={{ fontWeight: 600 }}>Placement:</span> {suggestion.context}
-          </p>
+          <div style={{ marginBottom: 4 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-3)" }}>Placement</span>
+            <blockquote style={{ margin: "4px 0 4px 0", paddingLeft: 10, borderLeft: "2px solid var(--accent)", fontSize: 12, color: "var(--text-2)", fontStyle: "normal" }}>
+              {suggestion.context}
+            </blockquote>
+          </div>
         );
       })()}
       <p style={{ fontSize: 12, color: "var(--text-3)" }}>
