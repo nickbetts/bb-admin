@@ -42,26 +42,11 @@ function useCountUp(end: number, duration = 1800, shouldStart = false) {
   return count;
 }
 
-const features = [
-  {
-    icon: <Zap size={20} />,
-    title: "Scrape-to-page in 60 seconds",
-    desc: "Paste your client's URL and clickr scrapes brand colours, copy, services, and imagery. Every generated page is full of real content, not placeholder copy.",
-  },
-  {
-    icon: <MessageSquare size={20} />,
-    title: "Chat-based refinement",
-    desc: "Ask clickr to change the hero copy, swap the CTA colour, add social proof, or restructure any section. It rewrites the full page in seconds.",
-  },
-  {
-    icon: <BarChart3 size={20} />,
-    title: "Conversion tracking built in",
-    desc: "Add Google Ads, Meta Pixel, GA4, TikTok, LinkedIn, and Microsoft UET directly from the editor. Conversion events fire automatically on form submissions and phone clicks.",
-  },
+const secondaryFeatures = [
   {
     icon: <Globe size={20} />,
     title: "Publish to clickr.marketing",
-    desc: "Every published page lives at {client}.clickr.marketing/{slug}. Clean URLs, fast global CDN, and zero hosting overhead.",
+    desc: "Every page goes live at {client}.clickr.marketing/{slug}. Fast global CDN, clean URLs, zero hosting overhead. Custom CNAME on Pro.",
   },
   {
     icon: <Layers size={20} />,
@@ -76,32 +61,27 @@ const features = [
   {
     icon: <FileCode2 size={20} />,
     title: "Full HTML control",
-    desc: "Drop into the code editor to make surgical changes. Every page is clean, semantic HTML with no build tools, no frameworks, and no dependencies.",
-  },
-  {
-    icon: <Users size={20} />,
-    title: "Lead capture and attribution",
-    desc: "Every form submission is stored in StratOS with full attribution data. See which page, campaign, and creative generated each lead, then route it wherever it needs to go.",
+    desc: "Drop into the code editor for surgical changes. Clean, semantic HTML — no build tools, no frameworks, no dependencies.",
   },
   {
     icon: <Database size={20} />,
     title: "CRM integrations",
-    desc: "Route leads directly into HubSpot, Salesforce, Zoho, Pipedrive, or any CRM your clients use. Data flows in the moment a form is submitted, no manual exports required.",
+    desc: "Route leads directly into HubSpot, Salesforce, Zoho, Pipedrive, or any CRM your clients use. Data flows the moment a form is submitted.",
   },
   {
     icon: <Bell size={20} />,
-    title: "Notifications via Teams, Slack and email",
-    desc: "clickr fires a real-time alert the moment a conversion happens. Your team gets notified via Microsoft Teams, Slack, or any email address you configure.",
+    title: "Real-time notifications",
+    desc: "clickr fires an alert the moment a conversion happens. Reach your team via Microsoft Teams, Slack, or any email address you configure.",
   },
   {
     icon: <Link2 size={20} />,
     title: "Custom webhooks",
-    desc: "Send lead and event data to any endpoint that accepts an HTTP POST. Connect to Zapier, Make, your own backend, or any custom workflow in your stack.",
+    desc: "Send lead and event data to any endpoint that accepts an HTTP POST. Connect to Zapier, Make, your own backend, or any custom workflow.",
   },
   {
     icon: <Share2 size={20} />,
-    title: "Client portal",
-    desc: "Publish landing pages directly to the client portal. Clients can review, download, and track performance without needing a StratOS login.",
+    title: "Client review portal",
+    desc: "Publish pages to the client portal via magic link. Clients review and approve without a StratOS login.",
   },
 ];
 
@@ -679,26 +659,366 @@ export default function ClickrPage() {
       </section>
 
       {/* ── FEATURES ───────────────────────────────────────────────────────── */}
-      <section id="features" className="reveal-section" style={{ padding: "120px 40px", background: "rgba(255,255,255,0.01)" }}>
+      <section id="features" style={{ padding: "120px 40px", background: "rgba(255,255,255,0.01)" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-          <div style={{ textAlign: "center", marginBottom: 72 }}>
+
+          {/* Heading */}
+          <div style={{ textAlign: "center", marginBottom: 112 }} className="reveal-section">
             <p style={{ fontSize: 12, fontWeight: 700, color: accentLight, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }} className="blur-reveal">Everything you need</p>
             <h2 style={{ fontSize: 48, fontWeight: 900, letterSpacing: "-0.04em", marginBottom: 18, color: "white" }} className="blur-reveal">
               Built for performance marketers.
             </h2>
             <p style={{ fontSize: 16, color: "rgba(255,255,255,0.4)", maxWidth: 560, margin: "0 auto", lineHeight: 1.7 }}>
-              clickr handles every stage: generation, editing, publishing, tracking, lead routing, and notifications. No context switching. No subscriptions for integrations you should already have.
+              clickr handles every stage: generation, editing, publishing, tracking, lead routing, and notifications. No context switching. No extra subscriptions.
             </p>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }} className="features-grid">
-            {features.map((f, i) => (
-              <div key={i} className="feature-card stagger-in" style={{ padding: "28px 24px", borderRadius: 16, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", animationDelay: `${i * 0.07}s`, transition: "transform 0.35s ease, border-color 0.3s ease, box-shadow 0.3s ease" }}>
-                <div style={{ width: 42, height: 42, borderRadius: 11, background: `rgba(249,115,22,0.1)`, border: `1px solid rgba(249,115,22,0.22)`, display: "flex", alignItems: "center", justifyContent: "center", color: accentLight, marginBottom: 16 }}>{f.icon}</div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "white", marginBottom: 8 }}>{f.title}</div>
-                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.43)", lineHeight: 1.65 }}>{f.desc}</div>
+
+          {/* ── Feature 1: AI Generation ─────────────────────────────── */}
+          <div className="reveal-section feat-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center", marginBottom: 120 }}>
+            <div>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "5px 14px", borderRadius: 20, background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.2)", marginBottom: 24 }}>
+                <Zap size={12} color={accentLight} />
+                <span style={{ fontSize: 11, fontWeight: 700, color: accentLight, letterSpacing: "0.06em", textTransform: "uppercase" }}>AI generation</span>
               </div>
-            ))}
+              <h3 style={{ fontSize: 38, fontWeight: 900, letterSpacing: "-0.04em", lineHeight: 1.1, color: "white", marginBottom: 20 }}>
+                From URL to live page<br />
+                <span style={{ background: `linear-gradient(90deg, ${accentLight}, ${accent})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>in under 60 seconds.</span>
+              </h3>
+              <p style={{ fontSize: 15, color: "rgba(255,255,255,0.5)", lineHeight: 1.8, marginBottom: 28 }}>
+                Paste the client&apos;s website URL. Meridian scrapes brand colours, typography, real service descriptions, testimonials, and team content. Every page is populated with genuine brand content — not placeholder copy.
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
+                {[
+                  "Full brand context: colours, copy, services, testimonials",
+                  "10+ campaign types — layout optimised for each goal",
+                  "3-pass AI quality audit: CRO, design, and copywriting",
+                  "First publishable draft in under 60 seconds",
+                ].map((item, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                    <CheckCircle2 size={14} color={accentLight} style={{ flexShrink: 0, marginTop: 2 }} />
+                    <span style={{ fontSize: 14, color: "rgba(255,255,255,0.55)", lineHeight: 1.5 }}>{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Scrape mockup */}
+            <div style={{ position: "relative" }}>
+              <div style={{ position: "absolute", inset: -48, borderRadius: "50%", background: `radial-gradient(circle, rgba(249,115,22,0.09) 0%, transparent 70%)`, pointerEvents: "none" }} />
+              <div style={{ background: "rgba(13,13,20,0.96)", border: `1px solid rgba(249,115,22,0.18)`, borderRadius: 16, overflow: "hidden", boxShadow: "0 28px 72px rgba(0,0,0,0.55)" }}>
+                <div style={{ padding: "10px 16px", background: "rgba(255,255,255,0.03)", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 6 }}>
+                  <div style={{ display: "flex", gap: 5 }}>
+                    {["rgba(239,68,68,0.5)", "rgba(251,191,36,0.5)", "rgba(34,197,94,0.5)"].map((c, i) => <div key={i} style={{ width: 9, height: 9, borderRadius: "50%", background: c }} />)}
+                  </div>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.3)", marginLeft: 6 }}>clickr — Brand Extraction</span>
+                </div>
+                <div style={{ padding: "20px 20px 22px" }}>
+                  <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+                    <div style={{ flex: 1, padding: "9px 14px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", fontSize: 12, color: "rgba(255,255,255,0.55)", display: "flex", alignItems: "center", gap: 7 }}>
+                      <Globe size={11} color="rgba(255,255,255,0.3)" />
+                      <span>fcvfootball.co.uk</span>
+                    </div>
+                    <div style={{ padding: "9px 14px", borderRadius: 8, background: `linear-gradient(135deg, ${accent}, ${accentDark})`, fontSize: 11, fontWeight: 700, color: "white", display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
+                      <Zap size={11} />Scrape
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+                    <div style={{ padding: "11px 13px", borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 9 }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.45)" }}>Brand colours</span>
+                        <span style={{ fontSize: 9, color: "#86efac", fontWeight: 600 }}>✓ Extracted</span>
+                      </div>
+                      <div style={{ display: "flex", gap: 5 }}>
+                        {["#1a3a6b", "#f97316", "#ffffff", "#1f2937", "#94a3b8"].map((c, i) => (
+                          <div key={i} style={{ width: 26, height: 26, borderRadius: 6, background: c, border: "1px solid rgba(255,255,255,0.12)" }} />
+                        ))}
+                      </div>
+                    </div>
+                    <div style={{ padding: "11px 13px", borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.45)" }}>Services detected</span>
+                        <span style={{ fontSize: 9, color: "#86efac", fontWeight: 600 }}>✓ 5 found</span>
+                      </div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                        {["Summer Camps", "Holiday Courses", "1-to-1 Coaching", "Team Training", "Trials"].map((s, i) => (
+                          <span key={i} style={{ padding: "3px 8px", borderRadius: 5, background: "rgba(249,115,22,0.07)", border: "1px solid rgba(249,115,22,0.14)", fontSize: 9, color: "rgba(255,255,255,0.45)" }}>{s}</span>
+                        ))}
+                      </div>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                      {[{ label: "Testimonials", val: "3 extracted" }, { label: "Typography", val: "Poppins / Inter" }].map((item, i) => (
+                        <div key={i} style={{ padding: "9px 11px", borderRadius: 9, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                          <div style={{ fontSize: 9, color: "#86efac", fontWeight: 600, marginBottom: 3 }}>✓ {item.label}</div>
+                          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.33)" }}>{item.val}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ padding: "9px 13px", borderRadius: 9, background: "rgba(249,115,22,0.06)", border: "1px solid rgba(249,115,22,0.14)" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
+                        <span style={{ fontSize: 9, fontWeight: 700, color: accentLight }}>Generating page…</span>
+                        <span style={{ fontSize: 9, color: "rgba(255,255,255,0.35)" }}>83%</span>
+                      </div>
+                      <div style={{ height: 3, borderRadius: 2, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
+                        <div style={{ height: "100%", borderRadius: 2, background: `linear-gradient(90deg, ${accent}, ${accentDark})` }} className="progress-bar-fill" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
+
+          {/* ── Feature 2: Chat editor ──────────────────────────────────── */}
+          <div className="reveal-section feat-row feat-row-rev" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center", marginBottom: 120 }}>
+            {/* Chat mockup */}
+            <div style={{ position: "relative" }}>
+              <div style={{ position: "absolute", inset: -48, borderRadius: "50%", background: "radial-gradient(circle, rgba(99,102,241,0.07) 0%, transparent 70%)", pointerEvents: "none" }} />
+              <div style={{ background: "rgba(13,13,20,0.96)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 16, overflow: "hidden", boxShadow: "0 28px 72px rgba(0,0,0,0.55)" }}>
+                <div style={{ padding: "10px 16px", background: "rgba(255,255,255,0.03)", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 6 }}>
+                  <div style={{ display: "flex", gap: 5 }}>
+                    {["rgba(239,68,68,0.5)", "rgba(251,191,36,0.5)", "rgba(34,197,94,0.5)"].map((c, i) => <div key={i} style={{ width: 9, height: 9, borderRadius: "50%", background: c }} />)}
+                  </div>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.3)", marginLeft: 6 }}>clickr — Chat Editor</span>
+                  <div style={{ marginLeft: "auto", padding: "2px 8px", borderRadius: 5, background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.2)", fontSize: 9, fontWeight: 700, color: accentLight }}>Publish</div>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "175px 1fr" }}>
+                  <div style={{ borderRight: "1px solid rgba(255,255,255,0.05)", padding: "13px 11px", display: "flex", flexDirection: "column", gap: 7, minHeight: 280 }}>
+                    <span style={{ fontSize: 8, fontWeight: 700, color: "rgba(255,255,255,0.18)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Chat</span>
+                    <div style={{ alignSelf: "flex-end", background: "rgba(249,115,22,0.09)", border: "1px solid rgba(249,115,22,0.17)", borderRadius: "8px 8px 2px 8px", padding: "6px 8px" }}>
+                      <p style={{ fontSize: 9, color: "rgba(255,255,255,0.65)", lineHeight: 1.5, margin: 0 }}>Rewrite headline to emphasise scarcity</p>
+                    </div>
+                    <div style={{ alignSelf: "flex-start", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "8px 8px 8px 2px", padding: "6px 8px" }}>
+                      <p style={{ fontSize: 9, color: "rgba(255,255,255,0.45)", lineHeight: 1.5, margin: 0 }}>Done. 1 change applied in 3 seconds.</p>
+                    </div>
+                    <div style={{ alignSelf: "flex-end", background: "rgba(249,115,22,0.09)", border: "1px solid rgba(249,115,22,0.17)", borderRadius: "8px 8px 2px 8px", padding: "6px 8px", marginTop: 4 }}>
+                      <p style={{ fontSize: 9, color: "rgba(255,255,255,0.65)", lineHeight: 1.5, margin: 0 }}>Make CTA button orange, bigger</p>
+                    </div>
+                    <div style={{ alignSelf: "flex-start", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "8px 8px 8px 2px", padding: "6px 8px" }}>
+                      <p style={{ fontSize: 9, color: "rgba(255,255,255,0.45)", lineHeight: 1.5, margin: 0 }}>CTA updated to #f97316 at 18px.</p>
+                    </div>
+                    <div style={{ marginTop: "auto", display: "flex", gap: 5, alignItems: "center", padding: "5px 7px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 7 }}>
+                      <span style={{ fontSize: 9, color: "rgba(255,255,255,0.15)", flex: 1 }}>Ask clickr…</span>
+                      <div style={{ width: 15, height: 15, borderRadius: 4, background: "rgba(249,115,22,0.18)", display: "flex", alignItems: "center", justifyContent: "center" }}><ArrowRight size={8} color={accentLight} /></div>
+                    </div>
+                  </div>
+                  {/* Before/after diff */}
+                  <div style={{ overflow: "hidden" }}>
+                    <div style={{ background: "#fef2f2", borderBottom: "2px solid #fca5a5", padding: "14px 16px" }}>
+                      <div style={{ fontSize: 7, fontWeight: 700, color: "#ef4444", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 5 }}>− Before</div>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: "#374151", letterSpacing: "-0.02em", textDecoration: "line-through", opacity: 0.45 }}>Summer Football Camps 2026</div>
+                      <div style={{ fontSize: 8, color: "#9ca3af", marginTop: 3, textDecoration: "line-through", opacity: 0.45 }}>Book your place today</div>
+                    </div>
+                    <div style={{ background: "#f0fdf4", borderBottom: "2px solid #86efac", padding: "14px 16px" }}>
+                      <div style={{ fontSize: 7, fontWeight: 700, color: "#16a34a", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 5 }}>+ After</div>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: "#111827", letterSpacing: "-0.02em", lineHeight: 1.2 }}>Only 4 Spaces Left<br /><span style={{ color: "#f97316" }}>for Summer 2026</span></div>
+                      <div style={{ fontSize: 8, color: "#374151", marginTop: 4 }}>Don&apos;t miss out — enrol now</div>
+                      <div style={{ display: "inline-block", marginTop: 7, padding: "4px 12px", borderRadius: 5, background: "#f97316", fontSize: 8, fontWeight: 800, color: "white" }}>Enrol Now — Last Spaces</div>
+                    </div>
+                    <div style={{ padding: "9px 16px", background: "#f8fafc", display: "flex", alignItems: "center", gap: 5 }}>
+                      <CheckCircle2 size={9} color="#16a34a" />
+                      <span style={{ fontSize: 8, color: "#374151", fontWeight: 600 }}>1 change · 3s · v4 saved</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {/* Text */}
+            <div>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "5px 14px", borderRadius: 20, background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.2)", marginBottom: 24 }}>
+                <MessageSquare size={12} color="#a5b4fc" />
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#a5b4fc", letterSpacing: "0.06em", textTransform: "uppercase" }}>Chat editor</span>
+              </div>
+              <h3 style={{ fontSize: 38, fontWeight: 900, letterSpacing: "-0.04em", lineHeight: 1.1, color: "white", marginBottom: 20 }}>
+                Describe the change.<br />
+                <span style={{ background: "linear-gradient(90deg, #a5b4fc, #818cf8)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>clickr rewrites it.</span>
+              </h3>
+              <p style={{ fontSize: 15, color: "rgba(255,255,255,0.5)", lineHeight: 1.8, marginBottom: 28 }}>
+                No drag-and-drop. No element panels. No wrestling with a builder. Type what you want in plain English and clickr edits the actual page HTML — headline, layout, copy, colour, structure.
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
+                {[
+                  "Edit any section: hero, benefits, testimonials, CTA, footer",
+                  "Changes apply in 2–5 seconds, full page rewritten if needed",
+                  "Every version saved — restore any previous state in one click",
+                  "Full HTML code editor available for precise surgical edits",
+                ].map((item, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                    <CheckCircle2 size={14} color="#a5b4fc" style={{ flexShrink: 0, marginTop: 2 }} />
+                    <span style={{ fontSize: 14, color: "rgba(255,255,255,0.55)", lineHeight: 1.5 }}>{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* ── Feature 3: Conversion tracking ─────────────────────────── */}
+          <div className="reveal-section feat-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center", marginBottom: 120 }}>
+            {/* Text */}
+            <div>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "5px 14px", borderRadius: 20, background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.2)", marginBottom: 24 }}>
+                <BarChart3 size={12} color={accentLight} />
+                <span style={{ fontSize: 11, fontWeight: 700, color: accentLight, letterSpacing: "0.06em", textTransform: "uppercase" }}>Conversion tracking</span>
+              </div>
+              <h3 style={{ fontSize: 38, fontWeight: 900, letterSpacing: "-0.04em", lineHeight: 1.1, color: "white", marginBottom: 20 }}>
+                Pixels fire.<br />
+                <span style={{ background: `linear-gradient(90deg, ${accentLight}, ${accent})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Conversions count.</span>
+              </h3>
+              <p style={{ fontSize: 15, color: "rgba(255,255,255,0.5)", lineHeight: 1.8, marginBottom: 28 }}>
+                Add your tracking IDs from inside the editor. clickr injects the correct pixel code and fires conversion events automatically — form submissions, phone clicks, email clicks. No GTM fumbling, no dev handoffs.
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
+                {[
+                  "Google Ads, Meta Pixel, GA4, TikTok, LinkedIn, Microsoft UET",
+                  "GTM container support — manage all pixels from one tag",
+                  "Conversion events fire on form submit, phone click, email click",
+                  "Test mode: verify events without polluting real ad accounts",
+                ].map((item, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                    <CheckCircle2 size={14} color={accentLight} style={{ flexShrink: 0, marginTop: 2 }} />
+                    <span style={{ fontSize: 14, color: "rgba(255,255,255,0.55)", lineHeight: 1.5 }}>{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Tracking config mockup */}
+            <div style={{ position: "relative" }}>
+              <div style={{ position: "absolute", inset: -48, borderRadius: "50%", background: `radial-gradient(circle, rgba(249,115,22,0.09) 0%, transparent 70%)`, pointerEvents: "none" }} />
+              <div style={{ background: "rgba(13,13,20,0.96)", border: `1px solid rgba(249,115,22,0.18)`, borderRadius: 16, overflow: "hidden", boxShadow: "0 28px 72px rgba(0,0,0,0.55)" }}>
+                <div style={{ padding: "10px 16px", background: "rgba(255,255,255,0.03)", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 6 }}>
+                  <div style={{ display: "flex", gap: 5 }}>
+                    {["rgba(239,68,68,0.5)", "rgba(251,191,36,0.5)", "rgba(34,197,94,0.5)"].map((c, i) => <div key={i} style={{ width: 9, height: 9, borderRadius: "50%", background: c }} />)}
+                  </div>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.3)", marginLeft: 6 }}>Tracking Configuration</span>
+                </div>
+                <div style={{ padding: "18px 18px 20px" }}>
+                  <div style={{ fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.22)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 10 }}>Active pixels</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 7, marginBottom: 16 }}>
+                    {[
+                      { label: "Google Ads", id: "AW-12345678", color: "#93c5fd" },
+                      { label: "Meta Pixel", id: "23456789012", color: "#818cf8" },
+                      { label: "GA4", id: "G-ABCD1234", color: "#fdba74" },
+                      { label: "TikTok Pixel", id: "TT-98765432", color: "rgba(255,255,255,0.55)" },
+                      { label: "LinkedIn Tag", id: "1234567", color: "#7dd3fc" },
+                    ].map((pixel, i) => (
+                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 9, padding: "7px 11px", borderRadius: 8, background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.055)" }}>
+                        <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#22c55e", boxShadow: "0 0 5px rgba(34,197,94,0.6)", flexShrink: 0 }} />
+                        <span style={{ fontSize: 10, fontWeight: 700, color: pixel.color, flex: 1 }}>{pixel.label}</span>
+                        <span style={{ fontSize: 8, fontFamily: "monospace", color: "rgba(255,255,255,0.22)", background: "rgba(255,255,255,0.04)", padding: "2px 5px", borderRadius: 3 }}>{pixel.id}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ height: 1, background: "rgba(255,255,255,0.055)", marginBottom: 12 }} />
+                  <div style={{ fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.22)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 8 }}>Event log — test mode</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                    {[
+                      { ev: "form_submit", n: "5 pixels", ms: "120ms" },
+                      { ev: "phone_click", n: "4 pixels", ms: "90ms" },
+                      { ev: "page_view", n: "5 pixels", ms: "28ms" },
+                    ].map((ev, i) => (
+                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 7, padding: "5px 9px", borderRadius: 7, background: "rgba(34,197,94,0.04)", border: "1px solid rgba(34,197,94,0.09)" }}>
+                        <CheckCircle2 size={9} color="#86efac" style={{ flexShrink: 0 }} />
+                        <span style={{ fontSize: 9, fontFamily: "monospace", color: "rgba(255,255,255,0.5)", flex: 1 }}>{ev.ev}</span>
+                        <span style={{ fontSize: 9, color: "#86efac", fontWeight: 600 }}>{ev.n}</span>
+                        <span style={{ fontSize: 8, color: "rgba(255,255,255,0.18)" }}>{ev.ms}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Feature 4: Lead routing ─────────────────────────────────── */}
+          <div className="reveal-section feat-row feat-row-rev" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center", marginBottom: 100 }}>
+            {/* Lead routing mockup */}
+            <div style={{ position: "relative" }}>
+              <div style={{ position: "absolute", inset: -48, borderRadius: "50%", background: "radial-gradient(circle, rgba(99,102,241,0.07) 0%, transparent 70%)", pointerEvents: "none" }} />
+              <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
+                <div style={{ background: "rgba(13,13,20,0.96)", border: `1px solid rgba(249,115,22,0.2)`, borderRadius: 14, padding: "15px 17px", boxShadow: "0 16px 48px rgba(0,0,0,0.5)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 11 }}>
+                    <div style={{ width: 30, height: 30, borderRadius: "50%", background: `linear-gradient(135deg, ${accent}, ${accentDark})`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <Users size={13} color="white" />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: "white" }}>New lead</div>
+                      <div style={{ fontSize: 9, color: "rgba(255,255,255,0.3)" }}>FCV Summer Camp · Just now</div>
+                    </div>
+                    <div style={{ marginLeft: "auto", width: 7, height: 7, borderRadius: "50%", background: "#22c55e", boxShadow: "0 0 7px rgba(34,197,94,0.7)" }} className="accent-pulse" />
+                  </div>
+                  <div style={{ padding: "9px 11px", borderRadius: 9, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", marginBottom: 10 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.8)", marginBottom: 2 }}>James Thompson</div>
+                    <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", marginBottom: 3 }}>james@email.com · 07712 345 678</div>
+                    <div style={{ fontSize: 10, color: "rgba(255,255,255,0.42)", fontStyle: "italic" }}>&ldquo;Looking for sessions for my 10-year-old&rdquo;</div>
+                  </div>
+                  <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+                    <span style={{ padding: "2px 7px", borderRadius: 5, background: "rgba(249,115,22,0.08)", border: "1px solid rgba(249,115,22,0.15)", fontSize: 9, color: accentLight }}>Google Ads</span>
+                    <span style={{ padding: "2px 7px", borderRadius: 5, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", fontSize: 9, color: "rgba(255,255,255,0.35)" }}>/summer-camp-2026</span>
+                    <span style={{ padding: "2px 7px", borderRadius: 5, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", fontSize: 9, color: "rgba(255,255,255,0.35)" }}>Mobile</span>
+                  </div>
+                </div>
+                <div style={{ background: "rgba(13,13,20,0.96)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: "15px 17px", boxShadow: "0 8px 28px rgba(0,0,0,0.4)" }}>
+                  <div style={{ fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.22)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 10 }}>Routed to</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                    {[
+                      { dest: "HubSpot", detail: "Contact created", abbr: "H", color: "#ff7a59" },
+                      { dest: "Microsoft Teams", detail: "Notification sent", abbr: "T", color: "#6264a7" },
+                      { dest: "hello@fcvfootball.co.uk", detail: "Email delivered", abbr: "✉", color: "#93c5fd" },
+                      { dest: "Webhook", detail: "POST 200 OK", abbr: "⌁", color: "#86efac" },
+                    ].map((r, i) => (
+                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 9, padding: "6px 10px", borderRadius: 8, background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                        <div style={{ width: 20, height: 20, borderRadius: 5, background: `${r.color}22`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, color: r.color, flexShrink: 0 }}>{r.abbr}</div>
+                        <span style={{ fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.55)", flex: 1 }}>{r.dest}</span>
+                        <span style={{ fontSize: 9, color: "#86efac" }}>✓ {r.detail}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+            {/* Text */}
+            <div>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "5px 14px", borderRadius: 20, background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.2)", marginBottom: 24 }}>
+                <Users size={12} color="#a5b4fc" />
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#a5b4fc", letterSpacing: "0.06em", textTransform: "uppercase" }}>Lead capture &amp; routing</span>
+              </div>
+              <h3 style={{ fontSize: 38, fontWeight: 900, letterSpacing: "-0.04em", lineHeight: 1.1, color: "white", marginBottom: 20 }}>
+                Every lead, routed<br />
+                <span style={{ background: "linear-gradient(90deg, #a5b4fc, #818cf8)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>exactly where it needs to go.</span>
+              </h3>
+              <p style={{ fontSize: 15, color: "rgba(255,255,255,0.5)", lineHeight: 1.8, marginBottom: 28 }}>
+                Every form submission is stored in StratOS with full attribution data. Route to your CRM, fire a Teams or Slack notification, send a client email, and POST to any webhook — all in the same instant.
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
+                {[
+                  "Full attribution: page, campaign, creative, device, source",
+                  "CRM sync: HubSpot, Salesforce, Zoho, Pipedrive, and more",
+                  "Real-time alerts via Teams, Slack, email, or SMS",
+                  "Webhooks: connect Zapier, Make, or your own backend",
+                ].map((item, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                    <CheckCircle2 size={14} color="#a5b4fc" style={{ flexShrink: 0, marginTop: 2 }} />
+                    <span style={{ fontSize: 14, color: "rgba(255,255,255,0.55)", lineHeight: 1.5 }}>{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* ── Secondary features compact grid ──────────────────────── */}
+          <div className="reveal-section" style={{ paddingTop: 24, borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+            <p style={{ textAlign: "center", fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.18)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 28 }}>And more</p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }} className="features-grid">
+              {secondaryFeatures.map((f, i) => (
+                <div key={i} className="feature-card stagger-in" style={{ padding: "22px 20px", borderRadius: 13, background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)", animationDelay: `${i * 0.06}s`, transition: "transform 0.3s ease, border-color 0.2s ease" }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 9, background: "rgba(249,115,22,0.08)", border: "1px solid rgba(249,115,22,0.16)", display: "flex", alignItems: "center", justifyContent: "center", color: accentLight, marginBottom: 13 }}>{f.icon}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.82)", marginBottom: 6 }}>{f.title}</div>
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", lineHeight: 1.6 }}>{f.desc}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
         </div>
       </section>
 
@@ -1108,6 +1428,13 @@ export default function ClickrPage() {
         .marquee-track { display: flex; align-items: center; gap: 0; animation: marquee-scroll 30s linear infinite; width: max-content; padding: 0 5px; }
         .marquee-track:hover { animation-play-state: paused; }
 
+        @keyframes progress-fill { from { width: 0% } to { width: 83% } }
+        .progress-bar-fill { animation: progress-fill 2.5s ease-out 0.5s both; }
+        @media (max-width: 920px) {
+          .feat-row { grid-template-columns: 1fr !important; gap: 40px !important; }
+          .feat-row-rev > :first-child { order: 2; }
+          .feat-row-rev > :last-child { order: 1; }
+        }
         @media (max-width: 600px) {
           .features-grid { grid-template-columns: 1fr !important; }
           h1 { font-size: 36px !important; }
