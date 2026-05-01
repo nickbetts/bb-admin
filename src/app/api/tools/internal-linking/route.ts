@@ -176,7 +176,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Discover blog posts from sitemap ──────────────────────────────────
-    const blogPosts = await discoverBlogPosts(domain, targetText, moneyPageUrls);
+    const { posts: blogPosts, fallback: blogFallback } = await discoverBlogPosts(domain, targetText, moneyPageUrls);
 
     // ── Quick-win blog post identification (P4-10 SEMrush ranking) ────────
     const quickWinUrls = await getQuickWinUrls(domain, blogPosts.map(b => b.url));
@@ -320,7 +320,7 @@ Total: ${budget.total}
 ## Money pages (link targets for highest priority)
 ${moneyPagesContext}
 
-## Blog post corpus (${blogPosts.length} posts crawled from ${domain})
+## ${blogFallback ? "Content page corpus" : "Blog post corpus"} (${blogPosts.length} pages crawled from ${domain})${blogFallback ? "\nNOTE: No blog-pattern URLs were found in this site's sitemap. The corpus below contains all crawlable content pages (service pages, landing pages, etc.) with utility pages excluded. Treat all pages as potential linking sources and targets — do not assume they are editorial posts." : ""}
 ${blogCorpus}
 
 ## Existing outbound anchors from the target page (DO NOT re-suggest these)

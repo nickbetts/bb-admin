@@ -135,23 +135,37 @@ export async function fetchAndParsePage(url: string): Promise<ParsedPage> {
 
 // ─── Blog discovery ──────────────────────────────────────────────────────────
 
+export interface DiscoverBlogPostsResult {
+  posts: ParsedPage[];
+  /**
+   * true when no blog-pattern URLs were found and the crawler fell back to
+   * all content pages (excluding utility pages like about/contact/privacy).
+   * The AI prompt should note this so Claude adjusts its suggestions accordingly.
+   */
+  fallback: boolean;
+}
+
 /**
- * Return up to MAX_BLOG_POSTS parsed blog posts from the domain's sitemap.
+ * Return up to MAX_BLOG_POSTS parsed content pages from the domain's sitemap.
  *
  * Step 1 — Fetch all sitemap URLs (max 500, capped by fetchSitemapUrls).
  * Step 2 — Filter by heuristic blog-path patterns.
- * Step 3 — If > LLM_PRESELECT_THRESHOLD remain, call GPT-4o-mini to pick the
- *           40 most topically relevant URLs (Consideration 1).
- * Step 4 — Fetch + parse each chosen URL in batches of 5.
+ * Step 3 — If zero blog-pattern pages are found, fall back to ALL content
+ *           pages, excluding known utility paths (about, contact, privacy,
+ *           terms, checkout, cart, login, etc.).  fallback=true is returned
+ *           so the caller can tell Claude the corpus isn't strictly blog posts.
+ * Step 4 — If > LLM_PRESELECT_THRESHOLD candidates remain, call Claude to
+ *           pick the 40 most topically relevant URLs.
+ * Step 5 — Fetch + parse each chosen URL in batches of 5.
  */
 export async function discoverBlogPosts(
   domain: string,
   targetText: string,
   moneyPageUrls: string[]
-): Promise<ParsedPage[]> {
+): Promise<DiscoverBlogPostsResult> {
   const allUrls = await fetchSitemapUrls(domain);
 
-  // Heuristic: keep URLs that look like blog posts
+  // ── Primary: recognisable blog/editorial path patterns ───────────────────
   const blogPatterns = [
     /\/blog\//i,
     /\/post\//i,
@@ -180,14 +194,44 @@ export async function discoverBlogPosts(
     /\/thought-leadership\//i,
   ];
 
-  // Also exclude money page URLs themselves and generic-looking short paths
+  // Utility/non-content paths to skip in the fallback crawl
+  const utilityPatterns = [
+    /^\/(about(-us)?)(\/|$)/i,
+    /^\/(contact(-us)?)(\/|$)/i,
+    /^\/(privacy(-policy)?)(\/|$)/i,
+    /^\/(terms(-and-conditions|-of-service|-of-use)?)(\/|$)/i,
+    /^\/(cookie(-policy)?)(\/|$)/i,
+    /^\/(legal)(\/|$)/i,
+    /^\/(sitemap)(\/|$)/i,
+    /^\/(checkout)(\/|$)/i,
+    /^\/(cart|basket|bag)(\/|$)/i,
+    /^\/(account|my-account)(\/|$)/i,
+    /^\/(login|logout|sign-in|sign-out)(\/|$)/i,
+    /^\/(register|signup|sign-up)(\/|$)/i,
+    /^\/(search)(\/|$)/i,
+    /^\/(404|error)(\/|$)/i,
+    /^\/(thank-you|thanks)(\/|$)/i,
+    /^\/(wp-admin|wp-login)(\/|$)/i,
+    /^\/(feed)(\/|$)/i,
+    /^\/(cdn-cgi)(\/|$)/i,
+  ];
+
   const moneyPageSet = new Set(moneyPageUrls.map(u => u.replace(/\/$/, "")));
 
+  const isUtility = (url: string): boolean => {
+    try {
+      const path = new URL(url).pathname;
+      return utilityPatterns.some(p => p.test(path));
+    } catch {
+      return false;
+    }
+  };
+
+  // Primary: blog-pattern filter (must have ≥ 2 path segments)
   let candidates = allUrls.filter(u => {
     if (moneyPageSet.has(u.replace(/\/$/, ""))) return false;
     try {
       const path = new URL(u).pathname;
-      // Skip very short paths — likely nav/home pages
       if (path.split("/").filter(Boolean).length < 2) return false;
     } catch {
       return false;
@@ -195,26 +239,33 @@ export async function discoverBlogPosts(
     return blogPatterns.some(p => p.test(u));
   });
 
-  // If no pattern matches, fall back to any path with 2+ segments
+  let fallback = false;
+
+  // Fallback: all content pages, excluding utility paths and the homepage
   if (candidates.length === 0) {
+    fallback = true;
     candidates = allUrls.filter(u => {
       if (moneyPageSet.has(u.replace(/\/$/, ""))) return false;
+      if (isUtility(u)) return false;
       try {
         const path = new URL(u).pathname;
-        return path.split("/").filter(Boolean).length >= 2;
+        // Exclude bare homepage
+        if (path === "/" || path === "") return false;
       } catch {
         return false;
       }
+      return true;
     });
+    console.warn(
+      `[internal-linking] No blog-pattern URLs found for ${domain}. Falling back to all content pages (${candidates.length} candidates).`
+    );
   }
 
   let chosen: string[];
 
   if (candidates.length <= LLM_PRESELECT_THRESHOLD) {
-    // Small sitemap — use them all (up to MAX_BLOG_POSTS)
     chosen = candidates.slice(0, MAX_BLOG_POSTS);
   } else {
-    // Large sitemap — LLM pre-pass to select the most topically relevant URLs
     chosen = await llmPreselectUrls(candidates, targetText, moneyPageUrls);
   }
 
@@ -238,7 +289,7 @@ export async function discoverBlogPosts(
     );
   }
 
-  return editorial;
+  return { posts: editorial, fallback };
 }
 
 /**

@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
 
     // Use combined text from money pages as topic context for sitemap preselection
     const sharedTopicText = moneyPageMeta.map(mp => `${mp.title} ${mp.h1} ${mp.metaDescription}`).join(" ");
-    const blogPosts = await discoverBlogPosts(domain, sharedTopicText, moneyPageUrls);
+    const { posts: blogPosts, fallback: blogFallback } = await discoverBlogPosts(domain, sharedTopicText, moneyPageUrls);
     const quickWinUrls = await getQuickWinUrls(domain, blogPosts.map(b => b.url));
     const anchorDiversityMap = buildAnchorDiversityMap(blogPosts);
     const overUsedAnchors = Array.from(anchorDiversityMap.entries())
@@ -235,7 +235,7 @@ Total: ${budget.total} | Money-page: ${budget.moneyPage} | Outbound: ${budget.ou
 ## Money pages
 ${moneyPagesContext}
 
-## Blog post corpus (${blogPosts.length} posts)
+## ${blogFallback ? "Content page corpus" : "Blog post corpus"} (${blogPosts.length} pages)${blogFallback ? "\nNOTE: No blog-pattern URLs found. Corpus contains all crawlable content pages (service, landing, etc.) — treat as linking sources and targets, not editorial posts." : ""}
 ${blogCorpus}
 
 ## Existing outbound anchors (DO NOT re-suggest)
