@@ -22,6 +22,7 @@ import {
   Search,
   Layers,
   Zap,
+  Unlink,
 } from "lucide-react";
 import { ClientBackLink } from "@/components/ui/ClientBackLink";
 import { ClientFilterBanner } from "@/components/ui/ClientFilterBanner";
@@ -400,6 +401,21 @@ function PreviousPlans({ plans, onSelect, onDelete }: {
 
 interface OrphanResult { orphans: string[]; crawled: number; total: number; referenced: number; message?: string; }
 
+type BrokenCheckStatus = number | "timeout" | "error";
+interface BrokenLink {
+  brokenUrl: string;
+  status: BrokenCheckStatus;
+  isExternal: boolean;
+  pages: { url: string; anchorText: string }[];
+}
+interface BrokenLinkResult {
+  broken: BrokenLink[];
+  checked: number;
+  crawled: number;
+  total: number;
+  message?: string;
+}
+
 function OrphanDetectionPanel({ defaultDomain }: { defaultDomain?: string }) {
   const [domain, setDomain] = useState(defaultDomain ?? "");
   const [loading, setLoading] = useState(false);
@@ -497,13 +513,178 @@ function OrphanDetectionPanel({ defaultDomain }: { defaultDomain?: string }) {
   );
 }
 
+// ─── Broken link checker panel ──────────────────────────────────────────────────
+
+function StatusBadge({ status }: { status: BrokenCheckStatus }) {
+  const is4xx = typeof status === "number" && status >= 400 && status < 500;
+  const is5xx = typeof status === "number" && status >= 500;
+  const style: React.CSSProperties = is4xx
+    ? { background: "var(--danger-bg)",  color: "var(--danger-text)",  border: "1px solid var(--danger-border)" }
+    : is5xx
+    ? { background: "var(--warning-bg)", color: "var(--warning-text)", border: "1px solid var(--warning-border)" }
+    : { background: "var(--bg-2)",        color: "var(--text-3)",       border: "1px solid var(--border)" };
+  const label = typeof status === "number" ? String(status) : status;
+  return (
+    <span style={{ display: "inline-block", fontSize: 11, fontWeight: 700, fontVariantNumeric: "tabular-nums", padding: "2px 8px", borderRadius: 99, ...style }}>
+      {label}
+    </span>
+  );
+}
+
+function BrokenLinkPanel({ defaultDomain }: { defaultDomain?: string }) {
+  const [domain, setDomain] = useState(defaultDomain ?? "");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<BrokenLinkResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
+
+  const run = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!domain.trim()) return;
+    setLoading(true); setError(null); setResult(null); setExpandedRows(new Set());
+    try {
+      const res = await fetch(`/api/tools/internal-linking/broken-links?domain=${encodeURIComponent(domain.trim())}`);
+      const data = await res.json() as BrokenLinkResult & { error?: string };
+      if (!res.ok) setError(data.error ?? "Scan failed.");
+      else setResult(data);
+    } catch (err) { setError(err instanceof Error ? err.message : "Unexpected error"); }
+    finally { setLoading(false); }
+  };
+
+  const toggleRow = (i: number) =>
+    setExpandedRows(prev => {
+      const s = new Set(prev);
+      if (s.has(i)) { s.delete(i); } else { s.add(i); }
+      return s;
+    });
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <form onSubmit={run} style={{ display: "flex", gap: 12 }}>
+        <div style={{ flex: 1, position: "relative" }}>
+          <Globe style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", width: 16, height: 16, color: "var(--text-3)" }} />
+          <input
+            type="text" value={domain} onChange={e => setDomain(e.target.value)} placeholder="example.com"
+            style={{ ...inputStyle, paddingLeft: 40 }} onFocus={onFocusInput} onBlur={onBlurInput}
+          />
+        </div>
+        <button type="submit" disabled={loading || !domain.trim()} className="btn btn-primary" style={{ flexShrink: 0, gap: 8 }}>
+          {loading ? <Loader2 size={15} className="animate-spin" /> : <Search size={15} />}
+          {loading ? "Scanning…" : "Scan for Broken Links"}
+        </button>
+      </form>
+
+      {error && (
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 16px", background: "var(--danger-bg)", border: "1px solid var(--danger-border)", borderRadius: "var(--r)", fontSize: 13, color: "var(--danger-text)" }}>
+          <AlertTriangle size={14} style={{ flexShrink: 0, marginTop: 1, color: "var(--danger)" }} />{error}
+        </div>
+      )}
+
+      {loading && (
+        <div style={{ textAlign: "center", padding: "32px 0" }}>
+          <Loader2 size={28} style={{ color: "var(--accent)", margin: "0 auto 12px", display: "block" }} className="animate-spin" />
+          <p style={{ fontSize: 13, color: "var(--text-3)" }}>Crawling pages and checking links — this may take a minute.</p>
+        </div>
+      )}
+
+      {result && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+            {[
+              { label: "Broken links",  value: result.broken.length, color: result.broken.length > 0 ? "var(--danger)" : "var(--success)" },
+              { label: "Links checked", value: result.checked,         color: "var(--text)" },
+              { label: "Pages crawled", value: result.crawled,          color: "var(--text)" },
+              { label: "In sitemap",    value: result.total,             color: "var(--text)" },
+            ].map(m => (
+              <div key={m.label} className="metric-card" style={{ textAlign: "center", padding: "20px 16px" }}>
+                <div style={{ fontSize: 28, fontWeight: 800, color: m.color, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{m.value}</div>
+                <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 6 }}>{m.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {result.message && (
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12, color: "var(--text-3)", background: "var(--bg-2)", border: "1px solid var(--border)", borderRadius: "var(--r)", padding: "10px 14px" }}>
+              <Info size={12} style={{ flexShrink: 0, marginTop: 1 }} />{result.message}
+            </div>
+          )}
+
+          {result.broken.length === 0 ? (
+            <div style={{ fontSize: 13, color: "var(--success-text)", background: "var(--success-bg)", border: "1px solid var(--success-border)", borderRadius: "var(--r)", padding: "14px 18px" }}>
+              No broken links found — all {result.checked.toLocaleString("en-GB")} checked URLs responded successfully.
+            </div>
+          ) : (
+            <div className="card" style={{ overflow: "hidden" }}>
+              <div className="card-header" style={{ padding: "12px 20px" }}>
+                <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-3)" }}>
+                  Broken Links ({result.broken.length})
+                </p>
+                <button
+                  onClick={() => void navigator.clipboard.writeText(result.broken.map(b => `${typeof b.status === "number" ? b.status : b.status.toUpperCase()}  ${b.brokenUrl}  (found on: ${b.pages.map(p => p.url).join(", ")})`).join("\n"))}
+                  className="btn btn-ghost btn-sm" style={{ gap: 6, fontSize: 12 }}
+                >
+                  <Copy size={12} />Copy all
+                </button>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                {result.broken.map((b, i) => (
+                  <div key={i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <div
+                      style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 20px", cursor: b.pages.length > 1 ? "pointer" : "default" }}
+                      onClick={() => b.pages.length > 1 && toggleRow(i)}
+                    >
+                      <StatusBadge status={b.status} />
+                      <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", padding: "2px 6px", borderRadius: 99, background: b.isExternal ? "var(--bg-2)" : "var(--accent-bg)", color: b.isExternal ? "var(--text-3)" : "var(--accent-text)", border: `1px solid ${b.isExternal ? "var(--border)" : "rgb(99 102 241 / 0.2)"}`, flexShrink: 0 }}>
+                        {b.isExternal ? "External" : "Internal"}
+                      </span>
+                      <a href={b.brokenUrl} target="_blank" rel="noopener noreferrer"
+                        style={{ flex: 1, fontSize: 12, color: "var(--danger-text)", textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                        onClick={e => e.stopPropagation()}
+                      >
+                        {b.brokenUrl}
+                      </a>
+                      <CopyButton value={b.brokenUrl} />
+                      <ExternalLink size={10} style={{ color: "var(--text-4)", flexShrink: 0 }} />
+                      {b.pages.length > 1 && (
+                        <span style={{ fontSize: 11, color: "var(--text-3)", flexShrink: 0 }}>
+                          {expandedRows.has(i) ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                        </span>
+                      )}
+                    </div>
+                    {/* Source pages */}
+                    {(b.pages.length === 1 || expandedRows.has(i)) && (
+                      <div style={{ padding: "0 20px 10px 20px", display: "flex", flexDirection: "column", gap: 4 }}>
+                        {(b.pages.length === 1 ? b.pages : b.pages).map((p, j) => (
+                          <div key={j} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}>
+                            <span style={{ color: "var(--text-4)", flexShrink: 0 }}>↳ found on</span>
+                            <a href={p.url} target="_blank" rel="noopener noreferrer"
+                              style={{ color: "var(--info)", textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 400 }}
+                            >{p.url}</a>
+                            {p.anchorText && (
+                              <span style={{ color: "var(--text-3)", flexShrink: 0 }}>· &ldquo;{p.anchorText}&rdquo;</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main page ───────────────────────────────────────────────────────────────────
 
 export default function InternalLinkingPage() {
   const searchParams = useSearchParams();
   const clientId = searchParams.get("clientId");
 
-  const [activeTab, setActiveTab] = useState<"single" | "batch" | "orphans">("single");
+  const [activeTab, setActiveTab] = useState<"single" | "batch" | "orphans" | "broken">("single");
   const [mode, setMode] = useState<"url" | "upload">("url");
   const [targetUrl, setTargetUrl] = useState("");
   const [docxFile, setDocxFile] = useState<File | null>(null);
@@ -658,9 +839,10 @@ export default function InternalLinkingPage() {
       {/* Tab switcher */}
       <div style={{ display: "flex", gap: 4, marginBottom: 28, padding: 4, background: "var(--border-subtle)", borderRadius: "var(--r)", width: "fit-content" }}>
         {([
-          { id: "single",  label: "Single URL",   Icon: Link2 },
-          { id: "batch",   label: "Batch",         Icon: Layers },
-          { id: "orphans", label: "Orphan Finder", Icon: Zap },
+          { id: "single",  label: "Single URL",    Icon: Link2 },
+          { id: "batch",   label: "Batch",          Icon: Layers },
+          { id: "orphans", label: "Orphan Finder",  Icon: Zap },
+          { id: "broken",  label: "Broken Links",   Icon: Unlink },
         ] as const).map(({ id, label, Icon }) => (
           <button key={id} onClick={() => setActiveTab(id)} style={{
             display: "flex", alignItems: "center", gap: 8,
@@ -675,6 +857,24 @@ export default function InternalLinkingPage() {
           </button>
         ))}
       </div>
+
+      {/* ── Broken links tab ── */}
+      {activeTab === "broken" && (
+        <div className="card" style={{ overflow: "hidden" }}>
+          <div className="card-header">
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <Unlink style={{ width: 18, height: 18, color: "var(--text-3)" }} />
+              <div>
+                <p className="card-title">Broken Link Checker</p>
+                <p className="card-subtitle">Crawl your site and surface 4xx / 5xx links before they hurt your rankings.</p>
+              </div>
+            </div>
+          </div>
+          <div className="card-body">
+            <BrokenLinkPanel defaultDomain={defaultOrphanDomain} />
+          </div>
+        </div>
+      )}
 
       {/* ── Orphan tab ── */}
       {activeTab === "orphans" && (
