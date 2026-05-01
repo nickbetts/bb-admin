@@ -13,6 +13,7 @@ import {
   AlertCircle,
   Globe,
   Search,
+  RefreshCw,
 } from "lucide-react";
 import type { ContentIdea, ContentType, CompetitorContext } from "@/lib/content-generator";
 
@@ -476,9 +477,21 @@ export default function NewContentGeneratorPage() {
             <>
               {/* Competitor panel */}
               <div style={{ marginBottom: 32, padding: "20px 24px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12 }}>
-                <h3 style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 700, color: "var(--text)" }}>Competitors</h3>
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 4 }}>
+                  <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "var(--text)" }}>Competitors</h3>
+                  <button
+                    className="btn btn-sm"
+                    onClick={() => recordId && runResearch(recordId, competitorEntries.filter((e) => e.status !== "invalid").map((e) => e.domain))}
+                    disabled={researching}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11 }}
+                    title="Re-run keyword research and idea generation with the current competitor list"
+                  >
+                    <RefreshCw style={{ width: 11, height: 11 }} />
+                    Re-run Research
+                  </button>
+                </div>
                 <p style={{ margin: "0 0 16px", fontSize: 12, color: "var(--text-3)" }}>
-                  Auto-detected from SEMrush. Add more to improve keyword and angle quality.
+                  Auto-detected from SEMrush. Add more to improve keyword and angle quality, then re-run research.
                 </p>
 
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>

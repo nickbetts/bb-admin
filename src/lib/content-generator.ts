@@ -265,16 +265,17 @@ Rules:
 - For social media ideas: the title should describe the campaign concept, the summary should outline what posts would cover, and keywords should reflect the hashtag/topic strategy.
 - For case studies: the title should follow "How [Company Type] achieved [Result]" format without naming real companies unless the client provides them.`;
 
-  const tools: NonNullable<Parameters<typeof anthropic.messages.create>[0]["tools"]> = [
+  const tools = [
     {
       type: "web_search_20250305" as const,
       name: "web_search",
-      max_uses: 3,
-    } as NonNullable<Parameters<typeof anthropic.messages.create>[0]["tools"]>[number],
-  ];
+      max_uses: 5,
+    },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ] as any;
 
   const response = await anthropic.messages.create({
-    model: "claude-opus-4-5",
+    model: "claude-opus-4-7",
     max_tokens: 8000,
     system: systemPrompt,
     tools,
@@ -339,7 +340,7 @@ After the article HTML, output a JSON object on its own line (no markdown):
 {"titleTag":"...(max 60 chars)","metaDescription":"...(max 160 chars)"}`;
 
   const response = await anthropic.messages.create({
-    model: "claude-opus-4-5",
+    model: "claude-opus-4-7",
     max_tokens: 4000,
     system: systemPrompt,
     messages: [{ role: "user", content: userPrompt }],
@@ -405,13 +406,13 @@ End with a JSON object on its own line:
 
   const [part1Res, part2Res] = await Promise.all([
     anthropic.messages.create({
-      model: "claude-opus-4-5",
+      model: "claude-opus-4-7",
       max_tokens: 3000,
       system: systemPrompt,
       messages: [{ role: "user", content: part1Prompt }],
     }),
     anthropic.messages.create({
-      model: "claude-opus-4-5",
+      model: "claude-opus-4-7",
       max_tokens: 3000,
       system: systemPrompt,
       messages: [{ role: "user", content: part2Prompt }],
@@ -448,7 +449,8 @@ ${PROHIBITED_PHRASES}
 
 ${clientInstructions ? `Additional client instructions:\n${clientInstructions}` : ""}`;
 
-  const userPrompt = `Write a complete, publication-ready case study:
+  // Generate in two parallel parts to reliably hit the 800–1,200 word target
+  const part1Prompt = `Write the first half of a case study in clean HTML (<h1>, <h2>, <p>, <ul>):
 
 Title: ${idea.title}
 Summary: ${idea.summary}
@@ -458,34 +460,46 @@ Target audience: ${idea.targetAudience}
 Primary keyword: ${approvedKeywords.primary}
 Secondary keywords: ${approvedKeywords.secondary.join(", ")}
 
-Structure (clean HTML — <h1>, <h2>, <p>, <ul>, <blockquote> for pull quotes):
-
+Write these sections only:
 1. <h1> — The title (include the primary keyword naturally)
-2. Results Snapshot (a short <ul> of 3–5 headline metrics at the top — e.g. "47% reduction in cost per lead")
-3. <h2>The Challenge</h2> — 200–250 words. Describe the client's situation and the specific problem they needed to solve. Use "the client" not a company name unless provided.
-4. <h2>The Approach</h2> — 250–350 words. What was done, in what order, and why those specific choices were made. Be specific about tactics and reasoning.
-5. <h2>The Results</h2> — 200–300 words. Quantified outcomes. If specific numbers aren't available, describe the qualitative shift clearly. Include a pull-quote (<blockquote>) from a client stakeholder (write a realistic, non-sycophantic quote).
-6. <h2>Key Takeaways</h2> — 3–5 bullet points. Practical lessons a similar organisation could apply.
+2. Results Snapshot — a short <ul> of 3–5 headline metrics (e.g. "47% reduction in cost per lead")
+3. <h2>The Challenge</h2> — 200–250 words. Describe the client's situation and the specific problem. Use "the client" not a company name unless provided.
+4. <h2>The Approach</h2> — 250–350 words. What was done, in what order, and why. Be specific about tactics and reasoning.
 
-Length: 800–1,200 words total.
+Stop after The Approach. Do not write the results or conclusion yet.`;
 
-After the HTML, output a JSON object on its own line:
+  const part2Prompt = `Continue the case study for "${idea.title}". Write in clean HTML (<h2>, <p>, <ul>, <blockquote>):
+
+5. <h2>The Results</h2> — 200–300 words of quantified outcomes. If specific numbers aren't available, describe the qualitative shift clearly. Include a pull-quote (<blockquote>) from a client stakeholder — write a realistic, non-sycophantic quote.
+6. <h2>Key Takeaways</h2> — 3–5 bullet points with practical lessons a similar organisation could apply.
+
+After the HTML, output a JSON object on its own line (no markdown):
 {"titleTag":"...(max 60 chars)","metaDescription":"...(max 160 chars)"}`;
 
-  const response = await anthropic.messages.create({
-    model: "claude-opus-4-5",
-    max_tokens: 3500,
-    system: systemPrompt,
-    messages: [{ role: "user", content: userPrompt }],
-  });
+  const [part1Res, part2Res] = await Promise.all([
+    anthropic.messages.create({
+      model: "claude-opus-4-7",
+      max_tokens: 2000,
+      system: systemPrompt,
+      messages: [{ role: "user", content: part1Prompt }],
+    }),
+    anthropic.messages.create({
+      model: "claude-opus-4-7",
+      max_tokens: 2000,
+      system: systemPrompt,
+      messages: [{ role: "user", content: part2Prompt }],
+    }),
+  ]);
 
-  const text = response.content[0]?.type === "text" ? response.content[0].text : "";
-  const jsonLineMatch = text.match(/\n(\{[^\n]+\})\s*$/);
-  const articleHtml = jsonLineMatch ? text.slice(0, text.lastIndexOf(jsonLineMatch[0])).trim() : text.trim();
+  const text1 = part1Res.content[0]?.type === "text" ? part1Res.content[0].text.trim() : "";
+  const text2 = part2Res.content[0]?.type === "text" ? part2Res.content[0].text.trim() : "";
+
+  const jsonLineMatch = text2.match(/\n(\{[^\n]+\})\s*$/);
+  const body2 = jsonLineMatch ? text2.slice(0, text2.lastIndexOf(jsonLineMatch[0])).trim() : text2;
   const metaJson = jsonLineMatch ? parseJsonSafely<{ titleTag: string; metaDescription: string }>(jsonLineMatch[1]) : null;
 
   return {
-    content: articleHtml,
+    content: `${text1}\n${body2}`,
     titleTag: metaJson?.titleTag ?? idea.title.slice(0, 60),
     metaDescription: metaJson?.metaDescription ?? idea.summary.slice(0, 160),
   };
@@ -532,7 +546,7 @@ Return ONLY a valid JSON object (no markdown, no commentary):
 }`;
 
   const response = await anthropic.messages.create({
-    model: "claude-opus-4-5",
+    model: "claude-opus-4-7",
     max_tokens: 2000,
     system: systemPrompt,
     messages: [{ role: "user", content: userPrompt }],

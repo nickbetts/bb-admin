@@ -14,13 +14,13 @@ import * as mammoth from "mammoth";
 import * as cheerio from "cheerio";
 import { fetchSitemapUrls } from "@/lib/sitemap";
 import { getAnthropicClient } from "@/lib/anthropic-client";
-import { getTopOrganicKeywords } from "@/lib/semrush";
+import { getTopOrganicKeywords, getUrlOrganicKeywords, type SemrushKeywordData } from "@/lib/semrush";
 import { withApiCache } from "@/lib/api-cache";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
 const MAX_BLOG_POSTS = 40;
-const LLM_PRESELECT_THRESHOLD = 40; // Trigger pre-pass when sitemap > this many URLs
+const LLM_PRESELECT_THRESHOLD = 20; // Trigger pre-pass when sitemap > this many URLs
 const BROWSER_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
   "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
@@ -49,6 +49,8 @@ export interface CompetitorProfile {
   topKeywords: { keyword: string; searchVolume: number; position: number }[];
   discoveredBy: "user" | "client" | "ai";
 }
+
+export type { SemrushKeywordData };
 
 // ─── DOCX extraction ─────────────────────────────────────────────────────────
 
@@ -159,9 +161,23 @@ export async function discoverBlogPosts(
     /\/news\//i,
     /\/insights\//i,
     /\/resources\//i,
+    /\/resource\//i,
     /\/guides\//i,
+    /\/guide\//i,
     /\/tips\//i,
     /\/learn\//i,
+    /\/knowledge\//i,
+    /\/hub\//i,
+    /\/content\//i,
+    /\/education\//i,
+    /\/case-stud/i,
+    /\/whitepaper/i,
+    /\/report\//i,
+    /\/faq\//i,
+    /\/help\//i,
+    /\/library\//i,
+    /\/stories\//i,
+    /\/thought-leadership\//i,
   ];
 
   // Also exclude money page URLs themselves and generic-looking short paths
@@ -408,4 +424,92 @@ export function computeLinkSplit(
   const outbound = Math.round(remainder * 0.57);
   const inbound = remainder - outbound;
   return { total, moneyPage, outbound, inbound };
+}
+
+// ─── Quick-win URL detection ──────────────────────────────────────────────────
+
+/**
+ * Cross-reference the blog corpus with domain-level SEMrush data to identify
+ * blog posts that rank P4-10 — these are "quick wins" for inbound links
+ * because they already have Google trust and just need a nudge.
+ *
+ * Uses a single cached domain_organic call (24h TTL) — not per-URL.
+ */
+export async function getQuickWinUrls(
+  domain: string,
+  blogUrls: string[]
+): Promise<Set<string>> {
+  if (blogUrls.length === 0) return new Set();
+
+  try {
+    const keywords = await withApiCache(
+      `semrush-domain-organic:${domain}:200`,
+      24,
+      () => getTopOrganicKeywords(domain, "uk", 200),
+    );
+
+    // Collect all URLs that have at least one keyword ranked P4-10
+    const quickWinSet = new Set<string>();
+    for (const kw of keywords) {
+      if (kw.position >= 4 && kw.position <= 10 && kw.url) {
+        try {
+          quickWinSet.add(new URL(kw.url).href.replace(/\/$/, ""));
+        } catch { /* malformed URL — skip */ }
+      }
+    }
+
+    // Filter to only those present in the blog corpus
+    const result = new Set<string>();
+    for (const url of blogUrls) {
+      try {
+        const normalized = new URL(url).href.replace(/\/$/, "");
+        if (quickWinSet.has(normalized)) result.add(url);
+      } catch { /* skip */ }
+    }
+    return result;
+  } catch (err) {
+    console.error("[internal-linking] Quick-win URL detection failed:", err);
+    return new Set();
+  }
+}
+
+// ─── Anchor text diversity ────────────────────────────────────────────────────
+
+/**
+ * Scan all parsed blog posts and count how many times each anchor text phrase
+ * already appears across the corpus. Return a map of phrase → count.
+ * Callers can use this to flag phrases used 3+ times as over-used.
+ */
+export function buildAnchorDiversityMap(pages: ParsedPage[]): Map<string, number> {
+  const map = new Map<string, number>();
+  for (const page of pages) {
+    for (const anchor of page.outboundAnchors) {
+      const text = anchor.text.toLowerCase().trim();
+      if (text && text.length >= 3) {
+        map.set(text, (map.get(text) ?? 0) + 1);
+      }
+    }
+  }
+  return map;
+}
+
+// ─── Target page keyword enrichment ──────────────────────────────────────────
+
+/**
+ * Fetch the organic keywords the target URL already ranks for.
+ * Returns empty array silently if SEMrush is unavailable.
+ */
+export async function getTargetPageKeywords(
+  url: string,
+): Promise<SemrushKeywordData[]> {
+  try {
+    return await withApiCache(
+      `semrush-url-organic:${url}`,
+      24,
+      () => getUrlOrganicKeywords(url, "uk", 25),
+    );
+  } catch (err) {
+    console.error("[internal-linking] Target keyword fetch failed:", err);
+    return [];
+  }
 }

@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronDown,
   ChevronUp,
+  RefreshCw,
 } from "lucide-react";
 import type { GeneratedContent, SocialVariations } from "@/lib/content-generator";
 
@@ -27,6 +28,7 @@ interface ContentGeneratorRecord {
   generationError?: string;
   generatedContentJson?: string;
   generatedHtml?: string;
+  generatedHtmlUrl?: string;
   clientId: string;
   client: { id: string; name: string; website?: string } | null;
   createdAt: string;
@@ -108,16 +110,28 @@ export default function ContentGeneratorViewPage({ params }: { params: Promise<{
     return () => clearInterval(interval);
   }, [id, record?.status]);
 
-  // Download HTML
-  function downloadHtml() {
-    if (!record?.generatedHtml) return;
-    const blob = new Blob([record.generatedHtml], { type: "text/html" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${record.title.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.html`;
-    a.click();
-    URL.revokeObjectURL(url);
+  // Download HTML — prefer Blob URL, fall back to inline HTML (legacy)
+  async function downloadHtml() {
+    const filename = `${record!.title.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.html`;
+    if (record!.generatedHtmlUrl) {
+      const res = await fetch(record!.generatedHtmlUrl);
+      const html = await res.text();
+      const blob = new Blob([html], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } else if (record!.generatedHtml) {
+      const blob = new Blob([record!.generatedHtml], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
   }
 
   if (loading) {
@@ -164,7 +178,7 @@ export default function ContentGeneratorViewPage({ params }: { params: Promise<{
           </div>
         </div>
 
-        {isComplete && record.generatedHtml && (
+        {isComplete && (record.generatedHtmlUrl || record.generatedHtml) && (
           <button
             className="btn btn-sm btn-primary"
             onClick={downloadHtml}
@@ -204,7 +218,16 @@ export default function ContentGeneratorViewPage({ params }: { params: Promise<{
       {isComplete && generatedContent.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {generatedContent.map((piece) => (
-            <ContentPiece key={piece.ideaId} piece={piece} />
+            <ContentPiece
+              key={piece.ideaId}
+              piece={piece}
+              packId={id}
+              onUpdate={(updated) =>
+                setGeneratedContent((prev) =>
+                  prev.map((p) => (p.ideaId === updated.ideaId ? updated : p)),
+                )
+              }
+            />
           ))}
         </div>
       )}
@@ -214,10 +237,20 @@ export default function ContentGeneratorViewPage({ params }: { params: Promise<{
 
 // ─── ContentPiece sub-component ───────────────────────────────────────────────
 
-function ContentPiece({ piece }: { piece: GeneratedContent }) {
+function ContentPiece({
+  piece,
+  packId,
+  onUpdate,
+}: {
+  piece: GeneratedContent;
+  packId: string;
+  onUpdate: (updated: GeneratedContent) => void;
+}) {
   const [open, setOpen] = useState(true);
   const [activePlatform, setActivePlatform] = useState<string>("linkedin");
   const [copied, setCopied] = useState<string | null>(null);
+  const [regenerating, setRegenerating] = useState(false);
+  const [regenerateError, setRegenerateError] = useState<string | null>(null);
 
   const colour = TYPE_COLOURS[piece.type] ?? "#2563eb";
   const label = TYPE_LABELS[piece.type] ?? piece.type;
@@ -226,6 +259,28 @@ function ContentPiece({ piece }: { piece: GeneratedContent }) {
     await navigator.clipboard.writeText(text);
     setCopied(key);
     setTimeout(() => setCopied(null), 2000);
+  }
+
+  async function handleRegenerate() {
+    setRegenerating(true);
+    setRegenerateError(null);
+    try {
+      const res = await fetch(`/api/tools/content-generator/${packId}/regenerate-piece`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ideaId: piece.ideaId }),
+      });
+      if (!res.ok) {
+        const err = (await res.json()) as { error: string };
+        throw new Error(err.error);
+      }
+      const data = (await res.json()) as { piece: GeneratedContent };
+      onUpdate(data.piece);
+    } catch (err) {
+      setRegenerateError(err instanceof Error ? err.message : "Regeneration failed");
+    } finally {
+      setRegenerating(false);
+    }
   }
 
   return (
@@ -245,11 +300,28 @@ function ContentPiece({ piece }: { piece: GeneratedContent }) {
           <span style={{ fontSize: 15, fontWeight: 600, color: "var(--text)" }}>{piece.title}</span>
           <span style={{ fontSize: 12, color: "var(--text-3)" }}>{piece.wordCount} words</span>
         </div>
-        {open ? <ChevronUp style={{ width: 16, height: 16, color: "var(--text-3)" }} /> : <ChevronDown style={{ width: 16, height: 16, color: "var(--text-3)" }} />}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <button
+            onClick={(e) => { e.stopPropagation(); handleRegenerate(); }}
+            disabled={regenerating}
+            style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--bg-2)", cursor: regenerating ? "not-allowed" : "pointer", fontSize: 11, color: "var(--text-3)", opacity: regenerating ? 0.6 : 1 }}
+            title="Regenerate this piece"
+          >
+            <RefreshCw style={{ width: 11, height: 11, animation: regenerating ? "spin 1s linear infinite" : "none" }} />
+            {regenerating ? "Regenerating…" : "Regenerate"}
+          </button>
+          {open ? <ChevronUp style={{ width: 16, height: 16, color: "var(--text-3)" }} /> : <ChevronDown style={{ width: 16, height: 16, color: "var(--text-3)" }} />}
+        </div>
       </button>
 
       {open && (
         <div style={{ borderTop: "1px solid var(--border)", padding: "20px 24px" }}>
+          {regenerateError && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, padding: "10px 14px", background: "var(--danger-bg)", borderRadius: 8, fontSize: 13, color: "var(--danger)" }}>
+              <AlertCircle style={{ width: 14, height: 14, flexShrink: 0 }} />
+              {regenerateError}
+            </div>
+          )}
           {/* SEO metadata */}
           {(piece.titleTag || piece.metaDescription) && (
             <div style={{ marginBottom: 20, padding: "12px 16px", background: "var(--bg-2)", borderRadius: 8, display: "flex", flexDirection: "column", gap: 4 }}>

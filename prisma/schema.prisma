@@ -1035,7 +1035,8 @@ model ContentGenerator {
   ideasJson            String?  // JSON: ContentIdea[] — 5 per content type
   selectedIdeasJson    String?  // JSON: user-approved ideas with approved keyword flags
   generatedContentJson String?  // JSON: GeneratedContent[] — final copy per idea
-  generatedHtml        String?  // Full standalone HTML deliverable
+  generatedHtml        String?  // Full standalone HTML deliverable (legacy — superseded by generatedHtmlUrl)
+  generatedHtmlUrl     String?  // Vercel Blob URL for the HTML deliverable
   status               String   @default("draft") // draft|researching|ideas_ready|generating|complete|failed
   statusMessage        String?
   generationError      String?

@@ -13,10 +13,14 @@ import {
   fetchAndParsePage,
   discoverBlogPosts,
   discoverAndAnalyseCompetitors,
+  getQuickWinUrls,
+  buildAnchorDiversityMap,
+  getTargetPageKeywords,
   recommendLinkCount,
   computeLinkSplit,
   type ParsedPage,
   type CompetitorProfile,
+  type SemrushKeywordData,
 } from "@/lib/internal-linking";
 import crypto from "crypto";
 
@@ -32,6 +36,7 @@ interface LinkSuggestion {
   context: string; // Short sentence explaining where to place it
   rationale: string;
   priority: "high" | "medium" | "low";
+  confidence: number; // 0–100 — model's confidence in the relevance of this suggestion
 }
 
 interface PlanResult {
@@ -173,6 +178,22 @@ export async function POST(request: NextRequest) {
     // ── Discover blog posts from sitemap ──────────────────────────────────
     const blogPosts = await discoverBlogPosts(domain, targetText, moneyPageUrls);
 
+    // ── Quick-win blog post identification (P4-10 SEMrush ranking) ────────
+    const quickWinUrls = await getQuickWinUrls(domain, blogPosts.map(b => b.url));
+
+    // ── Anchor text diversity map ─────────────────────────────────────────
+    const anchorDiversityMap = buildAnchorDiversityMap(blogPosts);
+    const overUsedAnchors = Array.from(anchorDiversityMap.entries())
+      .filter(([, count]) => count >= 3)
+      .map(([text]) => text)
+      .slice(0, 30); // cap to avoid bloating the prompt
+
+    // ── Target page SEMrush keywords (keyword gap awareness) ─────────────
+    let targetPageKeywords: SemrushKeywordData[] = [];
+    if (targetSource === "url" && targetUrl) {
+      targetPageKeywords = await getTargetPageKeywords(targetUrl);
+    }
+
     // ── Competitor discovery & SEMrush enrichment ─────────────────────────
     // Load client-saved competitor domains if a client is linked
     let clientSavedDomains: string[] = [];
@@ -230,6 +251,7 @@ export async function POST(request: NextRequest) {
         h1: bp.h1,
         wordCount: bp.wordCount,
         excerpt: bp.mainText.slice(0, 300),
+        quickWin: quickWinUrls.has(bp.url), // ranks P4-10 — prioritise as inbound source
       })),
       null,
       0 // compact
@@ -249,6 +271,9 @@ Best-practice rules you MUST follow:
 5. Never suggest a link that already exists (the existing outbound anchors list is provided).
 6. Vary anchor text naturally — do not repeat the exact same anchor string twice.
 7. For inbound suggestions (links FROM blog posts TO the target), identify the specific blog post URL and propose a natural insertion point.
+8. Blog posts marked quickWin:true rank P4-10 in Google — they already have authority. Strongly prefer these as inbound link sources.
+9. Anchor texts listed as over-used already appear 3+ times across the site. Do NOT suggest these again to avoid over-optimisation.
+10. Use the target page's existing keyword rankings to inform anchor text — suggest anchors that reinforce those keyword positions.
 
 Return ONLY valid JSON conforming to this exact schema:
 {
@@ -260,7 +285,8 @@ Return ONLY valid JSON conforming to this exact schema:
       "anchorText": "string",
       "context": "string — one sentence about where in the content to place this link",
       "rationale": "string — one sentence explaining the SEO benefit",
-      "priority": "high" | "medium" | "low"
+      "priority": "high" | "medium" | "low",
+      "confidence": number between 0 and 100
     }
   ],
   "outboundLinks": [ /* same shape — from target to relevant blog posts */ ],
@@ -271,7 +297,8 @@ Return ONLY valid JSON conforming to this exact schema:
       "anchorText": "string",
       "context": "string — where in the blog post to insert this link",
       "rationale": "string",
-      "priority": "high" | "medium" | "low"
+      "priority": "high" | "medium" | "low",
+      "confidence": number between 0 and 100
     }
   ],
   "warnings": ["string"] /* optional notes about gaps or issues found */
@@ -297,7 +324,14 @@ ${moneyPagesContext}
 ${blogCorpus}
 
 ## Existing outbound anchors from the target page (DO NOT re-suggest these)
-${existingAnchors || "(none found)"}${competitorProfiles.length > 0 ? `
+${existingAnchors || "(none found)"}${targetPageKeywords.length > 0 ? `
+
+## Target page's existing keyword rankings (use these to guide anchor text)
+The target URL already ranks for these keywords — prioritise anchor text that reinforces P4-10 positions:
+${targetPageKeywords.map(k => `  pos ${k.position} | vol ${k.searchVolume.toLocaleString("en-GB")} | ${k.keyword}`).join("\n")}` : ""}${overUsedAnchors.length > 0 ? `
+
+## Over-used anchor texts (used 3+ times across the site — DO NOT reuse)
+${overUsedAnchors.map(a => `  "${a}"`).join("\n")}` : ""}${competitorProfiles.length > 0 ? `
 
 ## Verified business competitors & their top organic keywords
 Use this data to identify keyword opportunities and anchor text patterns the competitors rank for but the target doesn't yet link to.
@@ -359,6 +393,9 @@ Please generate exactly ${budget.moneyPage} money-page link(s), ${budget.outboun
       moneyPageMeta: moneyPageMeta.map(mp => ({ url: mp.url, title: mp.title, h1: mp.h1 })),
       budgetUsed: budget,
       competitorProfiles: competitorProfiles.map(c => ({ domain: c.domain, discoveredBy: c.discoveredBy, keywordCount: c.topKeywords.length })),
+      quickWinCount: quickWinUrls.size,
+      overUsedAnchorCount: overUsedAnchors.length,
+      targetKeywordCount: targetPageKeywords.length,
     };
 
     const updated = await prisma.internalLinkingPlan.update({

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { put } from "@vercel/blob";
 import { generateContent, buildHtmlDeliverable } from "@/lib/content-generator";
 import type { ContentIdea, GeneratedContent } from "@/lib/content-generator";
 
@@ -63,18 +64,25 @@ export async function POST(
       });
     }
 
-    // Build HTML deliverable
+    // Build HTML deliverable and upload to Vercel Blob
     const generatedHtml = buildHtmlDeliverable({
       items: results,
       clientName: record.client.name,
       brief: record.brief,
     });
 
+    const htmlBlob = await put(
+      `content-generator/${id}/deliverable.html`,
+      Buffer.from(generatedHtml, "utf-8"),
+      { access: "public", contentType: "text/html", addRandomSuffix: false },
+    );
+
     await prisma.contentGenerator.update({
       where: { id },
       data: {
         generatedContentJson: JSON.stringify(results),
-        generatedHtml,
+        generatedHtmlUrl: htmlBlob.url,
+        generatedHtml: null,
         status: "complete",
         statusMessage: null,
         generationError: null,

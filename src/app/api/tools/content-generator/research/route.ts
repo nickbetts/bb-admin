@@ -50,10 +50,10 @@ export async function POST(request: NextRequest) {
     // ── SemRush research ────────────────────────────────────────────────────
     const [domainOverview, topKeywords] = await Promise.all([
       rawDomain
-        ? withApiCache(`cg:domain-overview:${rawDomain}:${db}`, 24, () => getDomainOverview(rawDomain, db)).catch(() => null)
+        ? withApiCache(`cg:domain-overview:${rawDomain}:${db}`, 48, () => getDomainOverview(rawDomain, db)).catch(() => null)
         : Promise.resolve(null),
       rawDomain
-        ? withApiCache(`cg:top-keywords:${rawDomain}:${db}`, 24, () => getTopOrganicKeywords(rawDomain, db, 30)).catch(() => [])
+        ? withApiCache(`cg:top-keywords:${rawDomain}:${db}`, 48, () => getTopOrganicKeywords(rawDomain, db, 30)).catch(() => [])
         : Promise.resolve([]),
     ]);
 

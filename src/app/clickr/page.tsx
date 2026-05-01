@@ -210,6 +210,12 @@ export default function ClickrPage() {
   const [typingDone, setTypingDone] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
+  // Feature mockup animation phases
+  const [scrapeStep, setScrapeStep] = useState(0);
+  const [chatStep, setChatStep] = useState(0);
+  const [pixelStep, setPixelStep] = useState(0);
+  const [routeStep, setRouteStep] = useState(0);
+
   const cycleTexts = ["agencies", "consultants", "paid campaigns", "product launches"];
   const [cycleIdx, setCycleIdx] = useState(0);
   const [cycleVisible, setCycleVisible] = useState(true);
@@ -256,6 +262,30 @@ export default function ClickrPage() {
     const onMouse = (e: MouseEvent) => setMouse({ x: e.clientX, y: e.clientY });
     window.addEventListener("mousemove", onMouse, { passive: true });
     return () => window.removeEventListener("mousemove", onMouse);
+  }, []);
+
+  // Scrape mockup: 8 steps × 1.4s = 11.2s loop
+  useEffect(() => {
+    const iv = setInterval(() => setScrapeStep((s) => (s >= 7 ? 0 : s + 1)), 1400);
+    return () => clearInterval(iv);
+  }, []);
+
+  // Chat mockup: 8 steps × 1.8s = 14.4s loop
+  useEffect(() => {
+    const iv = setInterval(() => setChatStep((s) => (s >= 7 ? 0 : s + 1)), 1800);
+    return () => clearInterval(iv);
+  }, []);
+
+  // Pixel tracking: 9 steps × 700ms = 6.3s loop
+  useEffect(() => {
+    const iv = setInterval(() => setPixelStep((s) => (s >= 8 ? 0 : s + 1)), 700);
+    return () => clearInterval(iv);
+  }, []);
+
+  // Lead routing: 6 steps × 1.2s = 7.2s loop
+  useEffect(() => {
+    const iv = setInterval(() => setRouteStep((s) => (s >= 5 ? 0 : s + 1)), 1200);
+    return () => clearInterval(iv);
   }, []);
 
   const navIds = ["how-it-works", "features", "tracking", "cta"];
@@ -702,50 +732,79 @@ export default function ClickrPage() {
               </div>
             </div>
 
-            {/* Scrape mockup */}
+            {/* Scrape mockup — animated */}
             <div style={{ position: "relative" }}>
               <div style={{ position: "absolute", inset: -48, borderRadius: "50%", background: `radial-gradient(circle, rgba(249,115,22,0.09) 0%, transparent 70%)`, pointerEvents: "none" }} />
               <div style={{ background: "rgba(13,13,20,0.96)", border: `1px solid rgba(249,115,22,0.18)`, borderRadius: 16, overflow: "hidden", boxShadow: "0 28px 72px rgba(0,0,0,0.55)" }}>
+                {/* Window chrome */}
                 <div style={{ padding: "10px 16px", background: "rgba(255,255,255,0.03)", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 6 }}>
                   <div style={{ display: "flex", gap: 5 }}>
                     {["rgba(239,68,68,0.5)", "rgba(251,191,36,0.5)", "rgba(34,197,94,0.5)"].map((c, i) => <div key={i} style={{ width: 9, height: 9, borderRadius: "50%", background: c }} />)}
                   </div>
                   <span style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.3)", marginLeft: 6 }}>clickr — Brand Extraction</span>
+                  <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 5 }}>
+                    {scrapeStep >= 2 && scrapeStep <= 4 && (
+                      <>
+                        <div style={{ width: 6, height: 6, borderRadius: "50%", background: accent, animation: "accent-pulse-anim 1s ease-in-out infinite" }} />
+                        <span style={{ fontSize: 9, color: accentLight, fontWeight: 600 }}>Scanning…</span>
+                      </>
+                    )}
+                    {scrapeStep >= 7 && (
+                      <span style={{ fontSize: 9, color: "#86efac", fontWeight: 600 }}>✓ Ready</span>
+                    )}
+                  </div>
                 </div>
                 <div style={{ padding: "20px 20px 22px" }}>
+                  {/* URL input */}
                   <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-                    <div style={{ flex: 1, padding: "9px 14px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", fontSize: 12, color: "rgba(255,255,255,0.55)", display: "flex", alignItems: "center", gap: 7 }}>
+                    <div style={{ flex: 1, padding: "9px 14px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: `1px solid ${scrapeStep >= 2 ? "rgba(249,115,22,0.3)" : "rgba(255,255,255,0.1)"}`, fontSize: 12, color: "rgba(255,255,255,0.55)", display: "flex", alignItems: "center", gap: 7, transition: "border-color 0.3s ease" }}>
                       <Globe size={11} color="rgba(255,255,255,0.3)" />
-                      <span>fcvfootball.co.uk</span>
+                      <span>{scrapeStep === 0 ? "" : scrapeStep === 1 ? "fcvfoot" : "fcvfootball.co.uk"}</span>
+                      {scrapeStep <= 1 && <span className="cursor-blink" style={{ display: "inline-block", width: 1.5, height: 11, background: accentLight, borderRadius: 1, marginLeft: 1 }} />}
                     </div>
-                    <div style={{ padding: "9px 14px", borderRadius: 8, background: `linear-gradient(135deg, ${accent}, ${accentDark})`, fontSize: 11, fontWeight: 700, color: "white", display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
-                      <Zap size={11} />Scrape
+                    <div style={{ padding: "9px 14px", borderRadius: 8, background: scrapeStep >= 2 && scrapeStep <= 4 ? "rgba(249,115,22,0.2)" : `linear-gradient(135deg, ${accent}, ${accentDark})`, border: scrapeStep >= 2 && scrapeStep <= 4 ? "1px solid rgba(249,115,22,0.4)" : "none", fontSize: 11, fontWeight: 700, color: "white", display: "flex", alignItems: "center", gap: 5, flexShrink: 0, transition: "all 0.3s ease", boxShadow: scrapeStep >= 2 && scrapeStep <= 4 ? "0 0 20px rgba(249,115,22,0.35)" : "none" }}>
+                      {scrapeStep >= 2 && scrapeStep <= 4 ? (
+                        <>
+                          <div style={{ width: 9, height: 9, borderRadius: "50%", border: "1.5px solid rgba(255,255,255,0.3)", borderTopColor: "white", animation: "spin 0.7s linear infinite" }} />
+                          <span>Scanning</span>
+                        </>
+                      ) : scrapeStep >= 7 ? (
+                        <><span>✓</span><span>Done</span></>
+                      ) : (
+                        <><Zap size={11} /><span>Scrape</span></>
+                      )}
                     </div>
                   </div>
+
                   <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-                    <div style={{ padding: "11px 13px", borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                    {/* Brand colours */}
+                    <div style={{ padding: "11px 13px", borderRadius: 10, background: "rgba(255,255,255,0.03)", border: `1px solid ${scrapeStep >= 4 ? "rgba(34,197,94,0.2)" : "rgba(255,255,255,0.06)"}`, transition: "border-color 0.5s ease" }}>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 9 }}>
                         <span style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.45)" }}>Brand colours</span>
-                        <span style={{ fontSize: 9, color: "#86efac", fontWeight: 600 }}>✓ Extracted</span>
+                        <span style={{ fontSize: 9, color: scrapeStep >= 4 ? "#86efac" : "rgba(255,255,255,0.18)", fontWeight: 600, transition: "color 0.4s ease" }}>{scrapeStep >= 4 ? "✓ Extracted" : "—"}</span>
                       </div>
                       <div style={{ display: "flex", gap: 5 }}>
                         {["#1a3a6b", "#f97316", "#ffffff", "#1f2937", "#94a3b8"].map((c, i) => (
-                          <div key={i} style={{ width: 26, height: 26, borderRadius: 6, background: c, border: "1px solid rgba(255,255,255,0.12)" }} />
+                          <div key={i} style={{ width: 26, height: 26, borderRadius: 6, background: c, border: "1px solid rgba(255,255,255,0.12)", transform: scrapeStep >= 4 ? "scale(1) rotate(0deg)" : "scale(0) rotate(-15deg)", opacity: scrapeStep >= 4 ? 1 : 0, transition: `transform 0.4s cubic-bezier(0.34,1.56,0.64,1) ${0.05 + i * 0.07}s, opacity 0.3s ease ${0.05 + i * 0.07}s` }} />
                         ))}
                       </div>
                     </div>
-                    <div style={{ padding: "11px 13px", borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+
+                    {/* Services */}
+                    <div style={{ padding: "11px 13px", borderRadius: 10, background: "rgba(255,255,255,0.03)", border: `1px solid ${scrapeStep >= 5 ? "rgba(34,197,94,0.2)" : "rgba(255,255,255,0.06)"}`, transition: "border-color 0.5s ease" }}>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                         <span style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.45)" }}>Services detected</span>
-                        <span style={{ fontSize: 9, color: "#86efac", fontWeight: 600 }}>✓ 5 found</span>
+                        <span style={{ fontSize: 9, color: scrapeStep >= 5 ? "#86efac" : "rgba(255,255,255,0.18)", fontWeight: 600, transition: "color 0.4s ease" }}>{scrapeStep >= 5 ? "✓ 5 found" : "—"}</span>
                       </div>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
                         {["Summer Camps", "Holiday Courses", "1-to-1 Coaching", "Team Training", "Trials"].map((s, i) => (
-                          <span key={i} style={{ padding: "3px 8px", borderRadius: 5, background: "rgba(249,115,22,0.07)", border: "1px solid rgba(249,115,22,0.14)", fontSize: 9, color: "rgba(255,255,255,0.45)" }}>{s}</span>
+                          <span key={i} style={{ padding: "3px 8px", borderRadius: 5, background: "rgba(249,115,22,0.07)", border: "1px solid rgba(249,115,22,0.14)", fontSize: 9, color: "rgba(255,255,255,0.45)", opacity: scrapeStep >= 5 ? 1 : 0, transform: scrapeStep >= 5 ? "translateY(0)" : "translateY(8px)", transition: `opacity 0.35s ease ${i * 0.1}s, transform 0.35s ease ${i * 0.1}s` }}>{s}</span>
                         ))}
                       </div>
                     </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+
+                    {/* Mini stats */}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, opacity: scrapeStep >= 6 ? 1 : 0, transform: scrapeStep >= 6 ? "none" : "translateY(10px)", transition: "opacity 0.4s ease, transform 0.4s ease" }}>
                       {[{ label: "Testimonials", val: "3 extracted" }, { label: "Typography", val: "Poppins / Inter" }].map((item, i) => (
                         <div key={i} style={{ padding: "9px 11px", borderRadius: 9, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
                           <div style={{ fontSize: 9, color: "#86efac", fontWeight: 600, marginBottom: 3 }}>✓ {item.label}</div>
@@ -753,13 +812,19 @@ export default function ClickrPage() {
                         </div>
                       ))}
                     </div>
+
+                    {/* Progress */}
                     <div style={{ padding: "9px 13px", borderRadius: 9, background: "rgba(249,115,22,0.06)", border: "1px solid rgba(249,115,22,0.14)" }}>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
-                        <span style={{ fontSize: 9, fontWeight: 700, color: accentLight }}>Generating page…</span>
-                        <span style={{ fontSize: 9, color: "rgba(255,255,255,0.35)" }}>83%</span>
+                        <span style={{ fontSize: 9, fontWeight: 700, color: accentLight }}>
+                          {scrapeStep <= 1 ? "Awaiting URL…" : scrapeStep <= 3 ? "Extracting brand data…" : scrapeStep <= 5 ? "Analysing content…" : scrapeStep === 6 ? "Generating page…" : "✓ Page generated!"}
+                        </span>
+                        <span style={{ fontSize: 9, color: "rgba(255,255,255,0.35)" }}>
+                          {scrapeStep <= 1 ? "0%" : scrapeStep <= 3 ? "24%" : scrapeStep <= 5 ? "58%" : scrapeStep === 6 ? "83%" : "100%"}
+                        </span>
                       </div>
                       <div style={{ height: 3, borderRadius: 2, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
-                        <div style={{ height: "100%", borderRadius: 2, background: `linear-gradient(90deg, ${accent}, ${accentDark})` }} className="progress-bar-fill" />
+                        <div style={{ height: "100%", borderRadius: 2, background: `linear-gradient(90deg, ${accent}, ${accentDark})`, width: scrapeStep <= 1 ? "0%" : scrapeStep <= 3 ? "24%" : scrapeStep <= 5 ? "58%" : scrapeStep === 6 ? "83%" : "100%", transition: "width 0.9s cubic-bezier(0.4,0,0.2,1)", boxShadow: "0 0 8px rgba(249,115,22,0.5)" }} />
                       </div>
                     </div>
                   </div>
@@ -770,7 +835,7 @@ export default function ClickrPage() {
 
           {/* ── Feature 2: Chat editor ──────────────────────────────────── */}
           <div className="reveal-section feat-row feat-row-rev" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center", marginBottom: 120 }}>
-            {/* Chat mockup */}
+            {/* Chat mockup — animated */}
             <div style={{ position: "relative" }}>
               <div style={{ position: "absolute", inset: -48, borderRadius: "50%", background: "radial-gradient(circle, rgba(99,102,241,0.07) 0%, transparent 70%)", pointerEvents: "none" }} />
               <div style={{ background: "rgba(13,13,20,0.96)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 16, overflow: "hidden", boxShadow: "0 28px 72px rgba(0,0,0,0.55)" }}>
@@ -782,41 +847,101 @@ export default function ClickrPage() {
                   <div style={{ marginLeft: "auto", padding: "2px 8px", borderRadius: 5, background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.2)", fontSize: 9, fontWeight: 700, color: accentLight }}>Publish</div>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "175px 1fr" }}>
+                  {/* Chat sidebar */}
                   <div style={{ borderRight: "1px solid rgba(255,255,255,0.05)", padding: "13px 11px", display: "flex", flexDirection: "column", gap: 7, minHeight: 280 }}>
                     <span style={{ fontSize: 8, fontWeight: 700, color: "rgba(255,255,255,0.18)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Chat</span>
-                    <div style={{ alignSelf: "flex-end", background: "rgba(249,115,22,0.09)", border: "1px solid rgba(249,115,22,0.17)", borderRadius: "8px 8px 2px 8px", padding: "6px 8px" }}>
-                      <p style={{ fontSize: 9, color: "rgba(255,255,255,0.65)", lineHeight: 1.5, margin: 0 }}>Rewrite headline to emphasise scarcity</p>
-                    </div>
-                    <div style={{ alignSelf: "flex-start", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "8px 8px 8px 2px", padding: "6px 8px" }}>
-                      <p style={{ fontSize: 9, color: "rgba(255,255,255,0.45)", lineHeight: 1.5, margin: 0 }}>Done. 1 change applied in 3 seconds.</p>
-                    </div>
-                    <div style={{ alignSelf: "flex-end", background: "rgba(249,115,22,0.09)", border: "1px solid rgba(249,115,22,0.17)", borderRadius: "8px 8px 2px 8px", padding: "6px 8px", marginTop: 4 }}>
-                      <p style={{ fontSize: 9, color: "rgba(255,255,255,0.65)", lineHeight: 1.5, margin: 0 }}>Make CTA button orange, bigger</p>
-                    </div>
-                    <div style={{ alignSelf: "flex-start", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "8px 8px 8px 2px", padding: "6px 8px" }}>
-                      <p style={{ fontSize: 9, color: "rgba(255,255,255,0.45)", lineHeight: 1.5, margin: 0 }}>CTA updated to #f97316 at 18px.</p>
-                    </div>
+
+                    {/* User msg 1 */}
+                    {chatStep >= 1 && (
+                      <div style={{ alignSelf: "flex-end", background: "rgba(249,115,22,0.09)", border: "1px solid rgba(249,115,22,0.17)", borderRadius: "8px 8px 2px 8px", padding: "6px 8px", animation: "chat-bubble-in 0.35s cubic-bezier(0.34,1.56,0.64,1) both" }}>
+                        <p style={{ fontSize: 9, color: "rgba(255,255,255,0.65)", lineHeight: 1.5, margin: 0 }}>Rewrite headline to emphasise scarcity</p>
+                      </div>
+                    )}
+
+                    {/* Typing indicator 1 */}
+                    {chatStep === 2 && (
+                      <div style={{ alignSelf: "flex-start", display: "flex", gap: 3, padding: "8px 10px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "8px 8px 8px 2px", animation: "chat-bubble-in 0.3s ease both" }}>
+                        <div className="typing-dot dot1" style={{ width: 5, height: 5, borderRadius: "50%", background: "rgba(255,255,255,0.35)" }} />
+                        <div className="typing-dot dot2" style={{ width: 5, height: 5, borderRadius: "50%", background: "rgba(255,255,255,0.35)" }} />
+                        <div className="typing-dot dot3" style={{ width: 5, height: 5, borderRadius: "50%", background: "rgba(255,255,255,0.35)" }} />
+                      </div>
+                    )}
+
+                    {/* AI reply 1 */}
+                    {chatStep >= 3 && (
+                      <div style={{ alignSelf: "flex-start", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "8px 8px 8px 2px", padding: "6px 8px", animation: "chat-bubble-in 0.35s cubic-bezier(0.34,1.56,0.64,1) both" }}>
+                        <p style={{ fontSize: 9, color: "rgba(255,255,255,0.45)", lineHeight: 1.5, margin: 0 }}>Done. 1 change applied in 3 seconds.</p>
+                      </div>
+                    )}
+
+                    {/* User msg 2 */}
+                    {chatStep >= 4 && (
+                      <div style={{ alignSelf: "flex-end", background: "rgba(249,115,22,0.09)", border: "1px solid rgba(249,115,22,0.17)", borderRadius: "8px 8px 2px 8px", padding: "6px 8px", animation: "chat-bubble-in 0.35s cubic-bezier(0.34,1.56,0.64,1) both" }}>
+                        <p style={{ fontSize: 9, color: "rgba(255,255,255,0.65)", lineHeight: 1.5, margin: 0 }}>Make CTA button orange, bigger</p>
+                      </div>
+                    )}
+
+                    {/* Typing indicator 2 */}
+                    {chatStep === 5 && (
+                      <div style={{ alignSelf: "flex-start", display: "flex", gap: 3, padding: "8px 10px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "8px 8px 8px 2px", animation: "chat-bubble-in 0.3s ease both" }}>
+                        <div className="typing-dot dot1" style={{ width: 5, height: 5, borderRadius: "50%", background: "rgba(255,255,255,0.35)" }} />
+                        <div className="typing-dot dot2" style={{ width: 5, height: 5, borderRadius: "50%", background: "rgba(255,255,255,0.35)" }} />
+                        <div className="typing-dot dot3" style={{ width: 5, height: 5, borderRadius: "50%", background: "rgba(255,255,255,0.35)" }} />
+                      </div>
+                    )}
+
+                    {/* AI reply 2 */}
+                    {chatStep >= 6 && (
+                      <div style={{ alignSelf: "flex-start", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "8px 8px 8px 2px", padding: "6px 8px", animation: "chat-bubble-in 0.35s cubic-bezier(0.34,1.56,0.64,1) both" }}>
+                        <p style={{ fontSize: 9, color: "rgba(255,255,255,0.45)", lineHeight: 1.5, margin: 0 }}>CTA updated to #f97316 at 18px.</p>
+                      </div>
+                    )}
+
+                    {/* Input bar with blinking cursor */}
                     <div style={{ marginTop: "auto", display: "flex", gap: 5, alignItems: "center", padding: "5px 7px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 7 }}>
                       <span style={{ fontSize: 9, color: "rgba(255,255,255,0.15)", flex: 1 }}>Ask clickr…</span>
+                      <span className="cursor-blink" style={{ display: "inline-block", width: 1.5, height: 9, background: "rgba(249,115,22,0.6)", borderRadius: 1 }} />
                       <div style={{ width: 15, height: 15, borderRadius: 4, background: "rgba(249,115,22,0.18)", display: "flex", alignItems: "center", justifyContent: "center" }}><ArrowRight size={8} color={accentLight} /></div>
                     </div>
                   </div>
-                  {/* Before/after diff */}
+
+                  {/* Before/after diff panel */}
                   <div style={{ overflow: "hidden" }}>
                     <div style={{ background: "#fef2f2", borderBottom: "2px solid #fca5a5", padding: "14px 16px" }}>
                       <div style={{ fontSize: 7, fontWeight: 700, color: "#ef4444", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 5 }}>− Before</div>
                       <div style={{ fontSize: 12, fontWeight: 800, color: "#374151", letterSpacing: "-0.02em", textDecoration: "line-through", opacity: 0.45 }}>Summer Football Camps 2026</div>
                       <div style={{ fontSize: 8, color: "#9ca3af", marginTop: 3, textDecoration: "line-through", opacity: 0.45 }}>Book your place today</div>
                     </div>
-                    <div style={{ background: "#f0fdf4", borderBottom: "2px solid #86efac", padding: "14px 16px" }}>
-                      <div style={{ fontSize: 7, fontWeight: 700, color: "#16a34a", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 5 }}>+ After</div>
-                      <div style={{ fontSize: 12, fontWeight: 800, color: "#111827", letterSpacing: "-0.02em", lineHeight: 1.2 }}>Only 4 Spaces Left<br /><span style={{ color: "#f97316" }}>for Summer 2026</span></div>
-                      <div style={{ fontSize: 8, color: "#374151", marginTop: 4 }}>Don&apos;t miss out — enrol now</div>
-                      <div style={{ display: "inline-block", marginTop: 7, padding: "4px 12px", borderRadius: 5, background: "#f97316", fontSize: 8, fontWeight: 800, color: "white" }}>Enrol Now — Last Spaces</div>
+                    <div style={{ background: chatStep >= 6 ? "#f0fdf4" : "#f8fafc", borderBottom: `2px solid ${chatStep >= 6 ? "#86efac" : "rgba(0,0,0,0.07)"}`, padding: "14px 16px", transition: "background 0.6s ease, border-color 0.6s ease" }}>
+                      <div style={{ fontSize: 7, fontWeight: 700, color: chatStep >= 6 ? "#16a34a" : "rgba(0,0,0,0.18)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 5, transition: "color 0.4s ease" }}>+ After</div>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: chatStep >= 6 ? "#111827" : "#9ca3af", letterSpacing: "-0.02em", lineHeight: 1.2, transition: "color 0.5s ease" }}>
+                        {chatStep >= 6 ? (
+                          <>Only 4 Spaces Left<br /><span style={{ color: "#f97316" }}>for Summer 2026</span></>
+                        ) : (
+                          <>Summer Football Camps 2026</>
+                        )}
+                      </div>
+                      <div style={{ fontSize: 8, color: chatStep >= 6 ? "#374151" : "#9ca3af", marginTop: 4, transition: "color 0.4s ease" }}>
+                        {chatStep >= 6 ? "Don\u2019t miss out \u2014 enrol now" : "Book your place today"}
+                      </div>
+                      {chatStep >= 6 && (
+                        <div style={{ display: "inline-block", marginTop: 7, padding: "4px 12px", borderRadius: 5, background: "#f97316", fontSize: 8, fontWeight: 800, color: "white", animation: "chat-bubble-in 0.4s ease both", boxShadow: "0 0 12px rgba(249,115,22,0.4)" }}>Enrol Now \u2014 Last Spaces</div>
+                      )}
                     </div>
                     <div style={{ padding: "9px 16px", background: "#f8fafc", display: "flex", alignItems: "center", gap: 5 }}>
-                      <CheckCircle2 size={9} color="#16a34a" />
-                      <span style={{ fontSize: 8, color: "#374151", fontWeight: 600 }}>1 change · 3s · v4 saved</span>
+                      {chatStep >= 7 ? (
+                        <>
+                          <CheckCircle2 size={9} color="#16a34a" />
+                          <span style={{ fontSize: 8, color: "#374151", fontWeight: 600 }}>2 changes · 5s · v5 saved</span>
+                        </>
+                      ) : chatStep >= 3 ? (
+                        <>
+                          <CheckCircle2 size={9} color="#16a34a" />
+                          <span style={{ fontSize: 8, color: "#374151", fontWeight: 600 }}>1 change · 3s · v4 saved</span>
+                        </>
+                      ) : (
+                        <span style={{ fontSize: 8, color: "#9ca3af" }}>No changes yet</span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -881,7 +1006,7 @@ export default function ClickrPage() {
               </div>
             </div>
 
-            {/* Tracking config mockup */}
+            {/* Tracking config mockup — animated */}
             <div style={{ position: "relative" }}>
               <div style={{ position: "absolute", inset: -48, borderRadius: "50%", background: `radial-gradient(circle, rgba(249,115,22,0.09) 0%, transparent 70%)`, pointerEvents: "none" }} />
               <div style={{ background: "rgba(13,13,20,0.96)", border: `1px solid rgba(249,115,22,0.18)`, borderRadius: 16, overflow: "hidden", boxShadow: "0 28px 72px rgba(0,0,0,0.55)" }}>
@@ -890,39 +1015,58 @@ export default function ClickrPage() {
                     {["rgba(239,68,68,0.5)", "rgba(251,191,36,0.5)", "rgba(34,197,94,0.5)"].map((c, i) => <div key={i} style={{ width: 9, height: 9, borderRadius: "50%", background: c }} />)}
                   </div>
                   <span style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.3)", marginLeft: 6 }}>Tracking Configuration</span>
+                  <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 5 }}>
+                    {pixelStep >= 5 && (
+                      <>
+                        <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e", boxShadow: "0 0 8px rgba(34,197,94,0.8)", animation: "accent-pulse-anim 1.2s ease-in-out infinite" }} />
+                        <span style={{ fontSize: 9, color: "#86efac", fontWeight: 600 }}>Live</span>
+                      </>
+                    )}
+                  </div>
                 </div>
                 <div style={{ padding: "18px 18px 20px" }}>
                   <div style={{ fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.22)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 10 }}>Active pixels</div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 7, marginBottom: 16 }}>
                     {[
-                      { label: "Google Ads", id: "AW-12345678", color: "#93c5fd" },
-                      { label: "Meta Pixel", id: "23456789012", color: "#818cf8" },
-                      { label: "GA4", id: "G-ABCD1234", color: "#fdba74" },
-                      { label: "TikTok Pixel", id: "TT-98765432", color: "rgba(255,255,255,0.55)" },
-                      { label: "LinkedIn Tag", id: "1234567", color: "#7dd3fc" },
-                    ].map((pixel, i) => (
-                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 9, padding: "7px 11px", borderRadius: 8, background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.055)" }}>
-                        <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#22c55e", boxShadow: "0 0 5px rgba(34,197,94,0.6)", flexShrink: 0 }} />
-                        <span style={{ fontSize: 10, fontWeight: 700, color: pixel.color, flex: 1 }}>{pixel.label}</span>
-                        <span style={{ fontSize: 8, fontFamily: "monospace", color: "rgba(255,255,255,0.22)", background: "rgba(255,255,255,0.04)", padding: "2px 5px", borderRadius: 3 }}>{pixel.id}</span>
-                      </div>
-                    ))}
+                      { label: "Google Ads", id: "AW-12345678", color: "#93c5fd", activateAt: 1 },
+                      { label: "Meta Pixel", id: "23456789012", color: "#818cf8", activateAt: 2 },
+                      { label: "GA4", id: "G-ABCD1234", color: "#fdba74", activateAt: 3 },
+                      { label: "TikTok Pixel", id: "TT-98765432", color: "rgba(255,255,255,0.55)", activateAt: 4 },
+                      { label: "LinkedIn Tag", id: "1234567", color: "#7dd3fc", activateAt: 5 },
+                    ].map((pixel, i) => {
+                      const isActive = pixelStep >= pixel.activateAt;
+                      const isJustActivated = pixelStep === pixel.activateAt;
+                      return (
+                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 9, padding: "7px 11px", borderRadius: 8, background: isActive ? "rgba(34,197,94,0.04)" : "rgba(255,255,255,0.025)", border: `1px solid ${isActive ? "rgba(34,197,94,0.18)" : "rgba(255,255,255,0.055)"}`, transition: "background 0.5s ease, border-color 0.5s ease", animation: isJustActivated ? "pixel-glow 0.9s ease-out" : "none" }}>
+                          <div style={{ position: "relative", width: 5, height: 5, flexShrink: 0 }}>
+                            <div style={{ width: 5, height: 5, borderRadius: "50%", background: isActive ? "#22c55e" : "rgba(255,255,255,0.15)", boxShadow: isActive ? "0 0 6px rgba(34,197,94,0.7)" : "none", transition: "background 0.5s ease, box-shadow 0.5s ease" }} />
+                            {isJustActivated && <div style={{ position: "absolute", inset: -3, borderRadius: "50%", border: "1px solid rgba(34,197,94,0.6)", animation: "dot-ripple 0.8s ease-out" }} />}
+                          </div>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: isActive ? pixel.color : "rgba(255,255,255,0.22)", flex: 1, transition: "color 0.5s ease" }}>{pixel.label}</span>
+                          <span style={{ fontSize: 8, fontFamily: "monospace", color: isActive ? "rgba(255,255,255,0.35)" : "rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.04)", padding: "2px 5px", borderRadius: 3, transition: "color 0.5s ease" }}>{pixel.id}</span>
+                        </div>
+                      );
+                    })}
                   </div>
                   <div style={{ height: 1, background: "rgba(255,255,255,0.055)", marginBottom: 12 }} />
                   <div style={{ fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.22)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 8 }}>Event log — test mode</div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                     {[
-                      { ev: "form_submit", n: "5 pixels", ms: "120ms" },
-                      { ev: "phone_click", n: "4 pixels", ms: "90ms" },
-                      { ev: "page_view", n: "5 pixels", ms: "28ms" },
-                    ].map((ev, i) => (
-                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 7, padding: "5px 9px", borderRadius: 7, background: "rgba(34,197,94,0.04)", border: "1px solid rgba(34,197,94,0.09)" }}>
-                        <CheckCircle2 size={9} color="#86efac" style={{ flexShrink: 0 }} />
-                        <span style={{ fontSize: 9, fontFamily: "monospace", color: "rgba(255,255,255,0.5)", flex: 1 }}>{ev.ev}</span>
-                        <span style={{ fontSize: 9, color: "#86efac", fontWeight: 600 }}>{ev.n}</span>
-                        <span style={{ fontSize: 8, color: "rgba(255,255,255,0.18)" }}>{ev.ms}</span>
-                      </div>
-                    ))}
+                      { ev: "form_submit", n: "5 pixels", ms: "120ms", fireAt: 6 },
+                      { ev: "phone_click", n: "4 pixels", ms: "90ms", fireAt: 7 },
+                      { ev: "page_view", n: "5 pixels", ms: "28ms", fireAt: 8 },
+                    ].map((ev, i) => {
+                      const isFired = pixelStep >= ev.fireAt;
+                      const isJustFired = pixelStep === ev.fireAt;
+                      return (
+                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 7, padding: "5px 9px", borderRadius: 7, background: isJustFired ? "rgba(34,197,94,0.12)" : "rgba(34,197,94,0.04)", border: `1px solid ${isJustFired ? "rgba(34,197,94,0.3)" : "rgba(34,197,94,0.09)"}`, opacity: isFired ? 1 : 0.25, transition: "opacity 0.4s ease, background 0.5s ease, border-color 0.5s ease", animation: isJustFired ? "event-flash 1.2s ease-out" : "none" }}>
+                          <CheckCircle2 size={9} color={isFired ? "#86efac" : "rgba(255,255,255,0.2)"} style={{ flexShrink: 0 }} />
+                          <span style={{ fontSize: 9, fontFamily: "monospace", color: isFired ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.2)", flex: 1 }}>{ev.ev}</span>
+                          <span style={{ fontSize: 9, color: isFired ? "#86efac" : "rgba(255,255,255,0.15)", fontWeight: 600 }}>{ev.n}</span>
+                          <span style={{ fontSize: 8, color: isFired ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.1)" }}>{ev.ms}</span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -931,11 +1075,12 @@ export default function ClickrPage() {
 
           {/* ── Feature 4: Lead routing ─────────────────────────────────── */}
           <div className="reveal-section feat-row feat-row-rev" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center", marginBottom: 100 }}>
-            {/* Lead routing mockup */}
+            {/* Lead routing mockup — animated */}
             <div style={{ position: "relative" }}>
               <div style={{ position: "absolute", inset: -48, borderRadius: "50%", background: "radial-gradient(circle, rgba(99,102,241,0.07) 0%, transparent 70%)", pointerEvents: "none" }} />
               <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
-                <div style={{ background: "rgba(13,13,20,0.96)", border: `1px solid rgba(249,115,22,0.2)`, borderRadius: 14, padding: "15px 17px", boxShadow: "0 16px 48px rgba(0,0,0,0.5)" }}>
+                {/* Lead notification card — key forces remount + re-animation on each new lead */}
+                <div key={routeStep === 0 ? `lead-${Date.now()}` : "lead"} style={{ background: "rgba(13,13,20,0.96)", border: `1px solid rgba(249,115,22,0.2)`, borderRadius: 14, padding: "15px 17px", boxShadow: "0 16px 48px rgba(0,0,0,0.5)", animation: "lead-arrive 0.55s cubic-bezier(0.34,1.56,0.64,1) both" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 11 }}>
                     <div style={{ width: 30, height: 30, borderRadius: "50%", background: `linear-gradient(135deg, ${accent}, ${accentDark})`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                       <Users size={13} color="white" />
@@ -944,7 +1089,10 @@ export default function ClickrPage() {
                       <div style={{ fontSize: 12, fontWeight: 800, color: "white" }}>New lead</div>
                       <div style={{ fontSize: 9, color: "rgba(255,255,255,0.3)" }}>FCV Summer Camp · Just now</div>
                     </div>
-                    <div style={{ marginLeft: "auto", width: 7, height: 7, borderRadius: "50%", background: "#22c55e", boxShadow: "0 0 7px rgba(34,197,94,0.7)" }} className="accent-pulse" />
+                    <div style={{ marginLeft: "auto", position: "relative" }}>
+                      <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#22c55e", boxShadow: "0 0 7px rgba(34,197,94,0.7)" }} className="accent-pulse" />
+                      <div style={{ position: "absolute", inset: -3, borderRadius: "50%", border: "1px solid rgba(34,197,94,0.4)", animation: "dot-ripple 1.5s ease-out infinite" }} />
+                    </div>
                   </div>
                   <div style={{ padding: "9px 11px", borderRadius: 9, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", marginBottom: 10 }}>
                     <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.8)", marginBottom: 2 }}>James Thompson</div>
@@ -957,6 +1105,7 @@ export default function ClickrPage() {
                     <span style={{ padding: "2px 7px", borderRadius: 5, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", fontSize: 9, color: "rgba(255,255,255,0.35)" }}>Mobile</span>
                   </div>
                 </div>
+                {/* Routing destinations */}
                 <div style={{ background: "rgba(13,13,20,0.96)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: "15px 17px", boxShadow: "0 8px 28px rgba(0,0,0,0.4)" }}>
                   <div style={{ fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.22)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 10 }}>Routed to</div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
@@ -965,13 +1114,18 @@ export default function ClickrPage() {
                       { dest: "Microsoft Teams", detail: "Notification sent", abbr: "T", color: "#6264a7" },
                       { dest: "hello@fcvfootball.co.uk", detail: "Email delivered", abbr: "✉", color: "#93c5fd" },
                       { dest: "Webhook", detail: "POST 200 OK", abbr: "⌁", color: "#86efac" },
-                    ].map((r, i) => (
-                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 9, padding: "6px 10px", borderRadius: 8, background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.05)" }}>
-                        <div style={{ width: 20, height: 20, borderRadius: 5, background: `${r.color}22`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, color: r.color, flexShrink: 0 }}>{r.abbr}</div>
-                        <span style={{ fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.55)", flex: 1 }}>{r.dest}</span>
-                        <span style={{ fontSize: 9, color: "#86efac" }}>✓ {r.detail}</span>
-                      </div>
-                    ))}
+                    ].map((r, i) => {
+                      const isVisible = routeStep >= i + 1;
+                      return (
+                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 9, padding: "6px 10px", borderRadius: 8, background: isVisible ? "rgba(34,197,94,0.04)" : "rgba(255,255,255,0.025)", border: `1px solid ${isVisible ? "rgba(34,197,94,0.14)" : "rgba(255,255,255,0.05)"}`, opacity: isVisible ? 1 : 0.2, transform: isVisible ? "translateX(0)" : "translateX(-10px)", transition: "opacity 0.4s ease, transform 0.4s cubic-bezier(0.34,1.56,0.64,1), background 0.4s ease, border-color 0.4s ease" }}>
+                          <div style={{ width: 20, height: 20, borderRadius: 5, background: `${r.color}22`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, color: r.color, flexShrink: 0 }}>{r.abbr}</div>
+                          <span style={{ fontSize: 10, fontWeight: 600, color: isVisible ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.25)", flex: 1, transition: "color 0.4s ease" }}>{r.dest}</span>
+                          {isVisible && (
+                            <span style={{ fontSize: 9, color: "#86efac", animation: "route-reveal 0.4s ease both" }}>✓ {r.detail}</span>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -1430,6 +1584,14 @@ export default function ClickrPage() {
 
         @keyframes progress-fill { from { width: 0% } to { width: 83% } }
         .progress-bar-fill { animation: progress-fill 2.5s ease-out 0.5s both; }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes chat-bubble-in { from { opacity: 0; transform: translateY(8px) scale(0.94); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        @keyframes pixel-glow { 0%, 100% { box-shadow: 0 0 0px rgba(34,197,94,0); } 40% { box-shadow: 0 0 16px rgba(34,197,94,0.3); } }
+        @keyframes event-flash { 0% { background: rgba(34,197,94,0.18); border-color: rgba(34,197,94,0.5); } 100% { background: rgba(34,197,94,0.04); border-color: rgba(34,197,94,0.09); } }
+        @keyframes lead-arrive { from { opacity: 0; transform: translateY(-18px) scale(0.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        @keyframes route-reveal { from { opacity: 0; transform: translateX(8px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes dot-ripple { 0% { transform: scale(1); opacity: 0.7; } 100% { transform: scale(3); opacity: 0; } }
         @media (max-width: 920px) {
           .feat-row { grid-template-columns: 1fr !important; gap: 40px !important; }
           .feat-row-rev > :first-child { order: 2; }
