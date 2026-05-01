@@ -229,7 +229,16 @@ export async function discoverBlogPosts(
     }
   }
 
-  return parsed;
+  // Filter out category/archive listing pages — they have many outbound links
+  // but little original editorial text, so they add noise to the AI prompt.
+  const editorial = parsed.filter(p => !(p.outboundAnchors.length > 12 && p.wordCount < 500));
+  if (editorial.length < parsed.length) {
+    console.warn(
+      `[internal-linking] Dropped ${parsed.length - editorial.length} archive/listing page(s) from corpus (high link count, low word count).`
+    );
+  }
+
+  return editorial;
 }
 
 /**
