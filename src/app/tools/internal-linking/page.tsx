@@ -207,11 +207,28 @@ function SuggestionRow({ suggestion, type }: { suggestion: LinkSuggestion; type:
         // Context may start with a quoted exact sentence: "..." — rest
         const quoteMatch = suggestion.context?.match(/^"([^"]+)"\s*[—–-]?\s*([\s\S]*)/);
         if (quoteMatch) {
+          // Bold the anchor text within the quoted sentence so it's clear
+          // exactly where the <a> tag should start and end.
+          const sentence = quoteMatch[1];
+          const anchor = suggestion.anchorText ?? "";
+          const anchorIdx = anchor ? sentence.toLowerCase().indexOf(anchor.toLowerCase()) : -1;
+          let sentenceNodes: React.ReactNode;
+          if (anchorIdx >= 0) {
+            sentenceNodes = (
+              <>
+                {sentence.slice(0, anchorIdx)}
+                <strong style={{ fontWeight: 700, fontStyle: "italic" }}>{sentence.slice(anchorIdx, anchorIdx + anchor.length)}</strong>
+                {sentence.slice(anchorIdx + anchor.length)}
+              </>
+            );
+          } else {
+            sentenceNodes = sentence;
+          }
           return (
             <div style={{ marginBottom: 4 }}>
               <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-3)" }}>Placement</span>
               <blockquote style={{ margin: "4px 0 4px 0", paddingLeft: 10, borderLeft: "2px solid var(--accent)", fontSize: 12, color: "var(--text)", fontStyle: "italic" }}>
-                {quoteMatch[1]}
+                {sentenceNodes}
               </blockquote>
               {quoteMatch[2] && <p style={{ fontSize: 12, color: "var(--text-2)", margin: 0 }}>{quoteMatch[2]}</p>}
             </div>
