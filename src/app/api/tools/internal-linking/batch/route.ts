@@ -28,10 +28,12 @@ import {
   getQuickWinUrls,
   buildAnchorDiversityMap,
   getTargetPageKeywords,
+  getGscPageKeywords,
   recommendLinkCount,
   computeLinkSplit,
   type CompetitorProfile,
   type SemrushKeywordData,
+  type GscKeywordData,
 } from "@/lib/internal-linking";
 
 export const dynamic = "force-dynamic";
@@ -114,12 +116,13 @@ export async function POST(request: NextRequest) {
       .map(([text]) => text)
       .slice(0, 30);
 
-    // ── Load client competitor domains ────────────────────────────────────
+    // ── Load client competitor domains + GSC site URL ─────────────────────
     let clientSavedDomains: string[] = [];
+    let gscSiteUrl: string | null = null;
     if (clientId) {
       const client = await prisma.client.findUnique({
         where: { id: clientId },
-        select: { competitorDomains: true },
+        select: { competitorDomains: true, searchConsoleSiteUrl: true },
       });
       if (client?.competitorDomains) {
         try {
@@ -129,6 +132,7 @@ export async function POST(request: NextRequest) {
           }
         } catch { /* ignore */ }
       }
+      gscSiteUrl = client?.searchConsoleSiteUrl ?? null;
     }
 
     let competitorProfiles: CompetitorProfile[] = [];
@@ -196,6 +200,11 @@ export async function POST(request: NextRequest) {
         // Target page keyword gap analysis
         const targetPageKeywords: SemrushKeywordData[] = await getTargetPageKeywords(targetUrl);
 
+        // GSC keyword data for this specific page
+        const gscKeywords: GscKeywordData[] = gscSiteUrl
+          ? await getGscPageKeywords(gscSiteUrl, targetUrl)
+          : [];
+
         const budget = computeLinkSplit(recommendLinkCount(targetWordCount), moneyPageMeta.length);
         const existingAnchors = parsedTarget.outboundAnchors.map(a => `${a.href} — "${a.text}"`).join("\n");
 
@@ -239,9 +248,13 @@ ${moneyPagesContext}
 ${blogCorpus}
 
 ## Existing outbound anchors (DO NOT re-suggest)
-${existingAnchors || "(none found)"}${targetPageKeywords.length > 0 ? `
+${existingAnchors || "(none found)"}${gscKeywords.length > 0 ? `
 
-## Target page keyword rankings
+## Target page's Google Search Console data (last 90 days)
+Real search performance — high impressions with low clicks signal keyword opportunities:
+${gscKeywords.map(k => `  pos ${k.position.toFixed(1)} | imp ${k.impressions} | clicks ${k.clicks} | ${k.keyword}`).join("\n")}` : ""}${targetPageKeywords.length > 0 ? `
+
+## Target page SEMrush keyword rankings
 ${targetPageKeywords.map(k => `  pos ${k.position} | vol ${k.searchVolume.toLocaleString("en-GB")} | ${k.keyword}`).join("\n")}` : ""}${overUsedAnchors.length > 0 ? `
 
 ## Over-used anchor texts (DO NOT reuse)
@@ -290,6 +303,7 @@ Generate exactly ${budget.moneyPage} money-page link(s), ${budget.outbound} outb
               quickWinCount: quickWinUrls.size,
               overUsedAnchorCount: overUsedAnchors.length,
               targetKeywordCount: targetPageKeywords.length,
+              gscKeywordCount: gscKeywords.length,
               batchMode: true,
             } as object,
             resultJson: result as object,

@@ -16,11 +16,13 @@ import {
   getQuickWinUrls,
   buildAnchorDiversityMap,
   getTargetPageKeywords,
+  getGscPageKeywords,
   recommendLinkCount,
   computeLinkSplit,
   type ParsedPage,
   type CompetitorProfile,
   type SemrushKeywordData,
+  type GscKeywordData,
 } from "@/lib/internal-linking";
 import crypto from "crypto";
 
@@ -194,13 +196,16 @@ export async function POST(request: NextRequest) {
       targetPageKeywords = await getTargetPageKeywords(targetUrl);
     }
 
+    // ── GSC keyword data for the target page ──────────────────────────────
+    let gscKeywords: GscKeywordData[] = [];
+
     // ── Competitor discovery & SEMrush enrichment ─────────────────────────
     // Load client-saved competitor domains if a client is linked
     let clientSavedDomains: string[] = [];
     if (clientId) {
       const client = await prisma.client.findUnique({
         where: { id: clientId },
-        select: { competitorDomains: true },
+        select: { competitorDomains: true, searchConsoleSiteUrl: true },
       });
       if (client?.competitorDomains) {
         try {
@@ -210,6 +215,13 @@ export async function POST(request: NextRequest) {
           }
         } catch {
           // malformed JSON — ignore
+        }
+      }
+      // GSC keyword data for the target page
+      if (client?.searchConsoleSiteUrl && targetSource === "url" && targetUrl) {
+        const gscKws = await getGscPageKeywords(client.searchConsoleSiteUrl, targetUrl);
+        if (gscKws.length > 0) {
+          gscKeywords = gscKws;
         }
       }
     }
@@ -324,10 +336,13 @@ ${moneyPagesContext}
 ${blogCorpus}
 
 ## Existing outbound anchors from the target page (DO NOT re-suggest these)
-${existingAnchors || "(none found)"}${targetPageKeywords.length > 0 ? `
+${existingAnchors || "(none found)"}${gscKeywords.length > 0 ? `
 
-## Target page's existing keyword rankings (use these to guide anchor text)
-The target URL already ranks for these keywords — prioritise anchor text that reinforces P4-10 positions:
+## Target page's Google Search Console data (last 90 days)
+Real search performance — high impressions with low clicks signal keyword opportunities. Prioritise anchor text that reinforces these queries:
+${gscKeywords.map(k => `  pos ${k.position.toFixed(1)} | imp ${k.impressions} | clicks ${k.clicks} | ${k.keyword}`).join("\n")}` : ""}${targetPageKeywords.length > 0 ? `
+
+## Target page's SEMrush keyword rankings
 ${targetPageKeywords.map(k => `  pos ${k.position} | vol ${k.searchVolume.toLocaleString("en-GB")} | ${k.keyword}`).join("\n")}` : ""}${overUsedAnchors.length > 0 ? `
 
 ## Over-used anchor texts (used 3+ times across the site — DO NOT reuse)
@@ -396,6 +411,7 @@ Please generate exactly ${budget.moneyPage} money-page link(s), ${budget.outboun
       quickWinCount: quickWinUrls.size,
       overUsedAnchorCount: overUsedAnchors.length,
       targetKeywordCount: targetPageKeywords.length,
+      gscKeywordCount: gscKeywords.length,
     };
 
     const updated = await prisma.internalLinkingPlan.update({

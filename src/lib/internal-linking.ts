@@ -15,6 +15,7 @@ import * as cheerio from "cheerio";
 import { fetchSitemapUrls } from "@/lib/sitemap";
 import { getAnthropicClient } from "@/lib/anthropic-client";
 import { getTopOrganicKeywords, getUrlOrganicKeywords, type SemrushKeywordData } from "@/lib/semrush";
+import { getGSCQueryPageCombos } from "@/lib/search-console";
 import { withApiCache } from "@/lib/api-cache";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
@@ -584,6 +585,53 @@ export async function getTargetPageKeywords(
     );
   } catch (err) {
     console.error("[internal-linking] Target keyword fetch failed:", err);
+    return [];
+  }
+}
+
+// ─── GSC keyword data ──────────────────────────────────────────────────────
+
+export interface GscKeywordData {
+  keyword: string;
+  position: number;
+  clicks: number;
+  impressions: number;
+}
+
+/**
+ * Return the top queries driving traffic to a specific page URL from
+ * Google Search Console, using the client's connected GSC property.
+ * Results are cached 4 hours to avoid hammering the GSC API.
+ */
+export async function getGscPageKeywords(
+  gscSiteUrl: string,
+  pageUrl: string,
+): Promise<GscKeywordData[]> {
+  try {
+    // GSC has a ~3-day data lag; pull last 90 days
+    const end = new Date();
+    end.setDate(end.getDate() - 3);
+    const start = new Date(end);
+    start.setDate(start.getDate() - 90);
+    const startDate = start.toISOString().split("T")[0];
+    const endDate = end.toISOString().split("T")[0];
+
+    const normalise = (u: string) => u.replace(/\/$/, "").toLowerCase();
+    const targetNorm = normalise(pageUrl);
+
+    const combos = await withApiCache(
+      `gsc-page-keywords:${gscSiteUrl}:${pageUrl}`,
+      4,
+      () => getGSCQueryPageCombos(gscSiteUrl, startDate, endDate, 200),
+    );
+
+    return combos
+      .filter(c => normalise(c.page) === targetNorm)
+      .map(c => ({ keyword: c.query, position: c.position, clicks: c.clicks, impressions: c.impressions }))
+      .sort((a, b) => b.impressions - a.impressions)
+      .slice(0, 25);
+  } catch (err) {
+    console.error("[internal-linking] GSC page keyword fetch failed:", err);
     return [];
   }
 }

@@ -308,7 +308,7 @@ function PlanResults({ plan }: { plan: FullPlan }) {
             <AlertTriangle size={14} style={{ color: "var(--warning)" }} />
             <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--warning-text)" }}>Notes</span>
           </div>
-          <ul style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <ul style={{ paddingLeft: "1.25rem", listStyleType: "disc", display: "flex", flexDirection: "column", gap: 4 }}>
             {result.warnings.map((w, i) => <li key={i} style={{ fontSize: 12, color: "var(--warning-text)" }}>{w}</li>)}
           </ul>
         </div>
