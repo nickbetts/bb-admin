@@ -62,6 +62,7 @@ export interface GeneratedContent {
   wordCount: number;
   titleTag?: string;
   metaDescription?: string;
+  schemaJson?: string;
   socialVariations?: SocialVariations;
   generatedAt: string;
 }
@@ -122,6 +123,10 @@ PROHIBITED PHRASES AND PATTERNS — never use these:
 - "Best-in-class"
 - Starting sentences with "Additionally," or "Furthermore,"
 - Ending with a "call to action" paragraph that sounds like an advert
+
+PUNCTUATION — never use these in output copy:
+- Em dashes (\u2014): replace with a comma, colon, semicolon, parentheses, or restructure the sentence
+- Ellipsis (...) for dramatic effect or padding: use a full stop and a new sentence instead
 `.trim();
 
 const HUMAN_TONE_INSTRUCTION = `
@@ -303,7 +308,7 @@ async function generateBlog(params: {
   approvedKeywords: { primary: string; secondary: string[]; longTail: string[] };
   clientInstructions: string;
   anthropic: Awaited<ReturnType<typeof getAnthropicClient>>;
-}): Promise<{ content: string; titleTag: string; metaDescription: string }> {
+}): Promise<{ content: string; titleTag: string; metaDescription: string; schemaJson?: string }> {
   const { idea, approvedKeywords, clientInstructions, anthropic } = params;
 
   const systemPrompt = `You are an experienced content writer and SEO specialist. You write long-form blog articles that rank in Google and are genuinely useful to readers.
@@ -336,8 +341,8 @@ Requirements:
 - Include at least one bulleted or numbered list
 - Final section: a specific, practical next step — not a generic "get in touch" paragraph
 
-After the article HTML, output a JSON object on its own line (no markdown):
-{"titleTag":"...(max 60 chars)","metaDescription":"...(max 160 chars)"}`;
+After the article HTML, output a single minified JSON object on its own line (no markdown, no line breaks inside the JSON):
+{"titleTag":"...(max 60 chars)","metaDescription":"...(max 160 chars)","schema":{"@context":"https://schema.org","@type":"Article","headline":"exact H1 title","description":"exact meta description","keywords":"primary keyword, secondary keywords comma-separated"}}`;
 
   const response = await anthropic.messages.create({
     model: "claude-opus-4-7",
@@ -351,12 +356,13 @@ After the article HTML, output a JSON object on its own line (no markdown):
   // Split article from trailing JSON
   const jsonLineMatch = text.match(/\n(\{[^\n]+\})\s*$/);
   const articleHtml = jsonLineMatch ? text.slice(0, text.lastIndexOf(jsonLineMatch[0])).trim() : text.trim();
-  const metaJson = jsonLineMatch ? parseJsonSafely<{ titleTag: string; metaDescription: string }>(jsonLineMatch[1]) : null;
+  const metaJson = jsonLineMatch ? parseJsonSafely<{ titleTag: string; metaDescription: string; schema?: Record<string, unknown> }>(jsonLineMatch[1]) : null;
 
   return {
     content: articleHtml,
     titleTag: metaJson?.titleTag ?? idea.title.slice(0, 60),
     metaDescription: metaJson?.metaDescription ?? idea.summary.slice(0, 160),
+    schemaJson: metaJson?.schema ? JSON.stringify(metaJson.schema) : undefined,
   };
 }
 
@@ -365,7 +371,7 @@ async function generateWhitepaper(params: {
   approvedKeywords: { primary: string; secondary: string[]; longTail: string[] };
   clientInstructions: string;
   anthropic: Awaited<ReturnType<typeof getAnthropicClient>>;
-}): Promise<{ content: string; titleTag: string; metaDescription: string }> {
+}): Promise<{ content: string; titleTag: string; metaDescription: string; schemaJson?: string }> {
   const { idea, approvedKeywords, clientInstructions, anthropic } = params;
 
   const systemPrompt = `You are a senior analyst and business writer specialising in authoritative whitepapers and research reports. Your writing is precise, evidence-based, and read by senior decision-makers.
@@ -401,8 +407,8 @@ Stop after Section 2. Do not write a conclusion yet.`;
 7. Recommendations (250–350 words — 4–6 specific, actionable recommendations as a numbered list)
 8. About This Report / Methodology (100–150 words)
 
-End with a JSON object on its own line:
-{"titleTag":"...(max 60 chars)","metaDescription":"...(max 160 chars)"}`;
+End with a single minified JSON object on its own line (no line breaks inside the JSON):
+{"titleTag":"...(max 60 chars)","metaDescription":"...(max 160 chars)","schema":{"@context":"https://schema.org","@type":"TechArticle","headline":"exact H1 title","description":"exact meta description","keywords":"primary keyword, secondary keywords comma-separated"}}`;
 
   const [part1Res, part2Res] = await Promise.all([
     anthropic.messages.create({
@@ -424,12 +430,13 @@ End with a JSON object on its own line:
 
   const jsonLineMatch = text2.match(/\n(\{[^\n]+\})\s*$/);
   const body2 = jsonLineMatch ? text2.slice(0, text2.lastIndexOf(jsonLineMatch[0])).trim() : text2;
-  const metaJson = jsonLineMatch ? parseJsonSafely<{ titleTag: string; metaDescription: string }>(jsonLineMatch[1]) : null;
+  const metaJson = jsonLineMatch ? parseJsonSafely<{ titleTag: string; metaDescription: string; schema?: Record<string, unknown> }>(jsonLineMatch[1]) : null;
 
   return {
     content: `${text1}\n${body2}`,
     titleTag: metaJson?.titleTag ?? idea.title.slice(0, 60),
     metaDescription: metaJson?.metaDescription ?? idea.summary.slice(0, 160),
+    schemaJson: metaJson?.schema ? JSON.stringify(metaJson.schema) : undefined,
   };
 }
 
@@ -438,7 +445,7 @@ async function generateCaseStudy(params: {
   approvedKeywords: { primary: string; secondary: string[]; longTail: string[] };
   clientInstructions: string;
   anthropic: Awaited<ReturnType<typeof getAnthropicClient>>;
-}): Promise<{ content: string; titleTag: string; metaDescription: string }> {
+}): Promise<{ content: string; titleTag: string; metaDescription: string; schemaJson?: string }> {
   const { idea, approvedKeywords, clientInstructions, anthropic } = params;
 
   const systemPrompt = `You are a B2B content writer specialising in compelling case studies that convert sceptical prospects into buyers.
@@ -473,8 +480,8 @@ Stop after The Approach. Do not write the results or conclusion yet.`;
 5. <h2>The Results</h2> — 200–300 words of quantified outcomes. If specific numbers aren't available, describe the qualitative shift clearly. Include a pull-quote (<blockquote>) from a client stakeholder — write a realistic, non-sycophantic quote.
 6. <h2>Key Takeaways</h2> — 3–5 bullet points with practical lessons a similar organisation could apply.
 
-After the HTML, output a JSON object on its own line (no markdown):
-{"titleTag":"...(max 60 chars)","metaDescription":"...(max 160 chars)"}`;
+After the HTML, output a single minified JSON object on its own line (no markdown, no line breaks inside the JSON):
+{"titleTag":"...(max 60 chars)","metaDescription":"...(max 160 chars)","schema":{"@context":"https://schema.org","@type":"Article","headline":"exact H1 title","description":"exact meta description","keywords":"primary keyword, secondary keywords comma-separated"}}`;
 
   const [part1Res, part2Res] = await Promise.all([
     anthropic.messages.create({
@@ -496,12 +503,13 @@ After the HTML, output a JSON object on its own line (no markdown):
 
   const jsonLineMatch = text2.match(/\n(\{[^\n]+\})\s*$/);
   const body2 = jsonLineMatch ? text2.slice(0, text2.lastIndexOf(jsonLineMatch[0])).trim() : text2;
-  const metaJson = jsonLineMatch ? parseJsonSafely<{ titleTag: string; metaDescription: string }>(jsonLineMatch[1]) : null;
+  const metaJson = jsonLineMatch ? parseJsonSafely<{ titleTag: string; metaDescription: string; schema?: Record<string, unknown> }>(jsonLineMatch[1]) : null;
 
   return {
     content: `${text1}\n${body2}`,
     titleTag: metaJson?.titleTag ?? idea.title.slice(0, 60),
     metaDescription: metaJson?.metaDescription ?? idea.summary.slice(0, 160),
+    schemaJson: metaJson?.schema ? JSON.stringify(metaJson.schema) : undefined,
   };
 }
 
@@ -577,6 +585,7 @@ export async function generateContent(
   let content = "";
   let titleTag: string | undefined;
   let metaDescription: string | undefined;
+  let schemaJson: string | undefined;
   let socialVariations: SocialVariations | undefined;
 
   if (idea.type === "blog") {
@@ -584,16 +593,19 @@ export async function generateContent(
     content = result.content;
     titleTag = result.titleTag;
     metaDescription = result.metaDescription;
+    schemaJson = result.schemaJson;
   } else if (idea.type === "whitepaper") {
     const result = await generateWhitepaper({ idea, approvedKeywords, clientInstructions, anthropic });
     content = result.content;
     titleTag = result.titleTag;
     metaDescription = result.metaDescription;
+    schemaJson = result.schemaJson;
   } else if (idea.type === "case_study") {
     const result = await generateCaseStudy({ idea, approvedKeywords, clientInstructions, anthropic });
     content = result.content;
     titleTag = result.titleTag;
     metaDescription = result.metaDescription;
+    schemaJson = result.schemaJson;
   } else if (idea.type === "social") {
     socialVariations = await generateSocial({ idea, approvedKeywords, clientInstructions, anthropic });
     content = Object.values(socialVariations).join("\n\n---\n\n");
@@ -607,6 +619,7 @@ export async function generateContent(
     wordCount: countWords(content),
     titleTag,
     metaDescription,
+    schemaJson,
     socialVariations,
     generatedAt: new Date().toISOString(),
   };
@@ -634,6 +647,11 @@ export function buildHtmlDeliverable(params: {
   brief: string;
 }): string {
   const { items, clientName, brief } = params;
+
+  const schemaScripts = items
+    .filter((item) => item.schemaJson && item.type !== "social")
+    .map((item) => `  <script type="application/ld+json">${item.schemaJson}</script>`)
+    .join("\n");
 
   const tocItems = items
     .map(
@@ -677,13 +695,17 @@ export function buildHtmlDeliverable(params: {
         </section>`;
       }
 
+      const prettySchema = item.schemaJson
+        ? (() => { try { return JSON.stringify(JSON.parse(item.schemaJson), null, 2); } catch { return item.schemaJson; } })()
+        : "";
       const seoBlock =
-        item.titleTag || item.metaDescription
+        item.titleTag || item.metaDescription || item.schemaJson
           ? `
           <div style="margin-bottom:32px;padding:20px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;">
             <h4 style="margin:0 0 12px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#166534;">SEO Metadata</h4>
             ${item.titleTag ? `<p style="margin:0 0 8px;font-size:14px;"><strong style="color:#166534;">Title tag:</strong> ${item.titleTag}</p>` : ""}
-            ${item.metaDescription ? `<p style="margin:0;font-size:14px;"><strong style="color:#166534;">Meta description:</strong> ${item.metaDescription}</p>` : ""}
+            ${item.metaDescription ? `<p style="margin:0 0 8px;font-size:14px;"><strong style="color:#166534;">Meta description:</strong> ${item.metaDescription}</p>` : ""}
+            ${prettySchema ? `<details style="margin-top:8px;"><summary style="font-size:13px;font-weight:600;color:#166534;cursor:pointer;">JSON-LD Schema markup</summary><pre style="margin:8px 0 0;padding:12px;background:#dcfce7;border-radius:6px;font-size:11px;overflow:auto;white-space:pre-wrap;word-break:break-all;">${prettySchema}</pre></details>` : ""}
           </div>`
           : "";
 
@@ -719,6 +741,7 @@ export function buildHtmlDeliverable(params: {
     blockquote { margin: 1.5em 0; padding: 1em 1.5em; border-left: 4px solid #cbd5e1; background: #f8fafc; font-style: italic; color: #475569; }
     @media print { .no-print { display: none !important; } }
   </style>
+  ${schemaScripts}
 </head>
 <body>
   <div style="max-width:800px;margin:0 auto;padding:60px 40px;">

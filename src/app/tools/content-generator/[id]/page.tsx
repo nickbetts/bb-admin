@@ -13,6 +13,7 @@ import {
   ChevronDown,
   ChevronUp,
   RefreshCw,
+  Code,
 } from "lucide-react";
 import type { GeneratedContent, SocialVariations } from "@/lib/content-generator";
 
@@ -323,8 +324,9 @@ function ContentPiece({
             </div>
           )}
           {/* SEO metadata */}
-          {(piece.titleTag || piece.metaDescription) && (
-            <div style={{ marginBottom: 20, padding: "12px 16px", background: "var(--bg-2)", borderRadius: 8, display: "flex", flexDirection: "column", gap: 4 }}>
+          {(piece.titleTag || piece.metaDescription || piece.schemaJson) && (
+            <div style={{ marginBottom: 20, padding: "12px 16px", background: "var(--bg-2)", borderRadius: 8, display: "flex", flexDirection: "column", gap: 6, border: "1px solid var(--border)" }}>
+              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: "var(--text-3)" }}>SEO Metadata</p>
               {piece.titleTag && (
                 <p style={{ margin: 0, fontSize: 12 }}>
                   <strong style={{ color: "var(--text)" }}>Title tag:</strong>{" "}
@@ -342,6 +344,21 @@ function ContentPiece({
                     {copied === "meta-" + piece.ideaId ? <Check style={{ width: 12, height: 12, color: "var(--success)" }} /> : <Copy style={{ width: 12, height: 12 }} />}
                   </button>
                 </p>
+              )}
+              {piece.schemaJson && (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                  <span style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 5, color: "var(--text-3)" }}>
+                    <Code style={{ width: 12, height: 12 }} />
+                    <strong style={{ color: "var(--text)" }}>Schema markup:</strong>{" "}JSON-LD
+                  </span>
+                  <button
+                    onClick={() => copyText(piece.schemaJson!, "schema-" + piece.ideaId)}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 9px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--surface)", cursor: "pointer", fontSize: 11, color: "var(--text-3)" }}
+                  >
+                    {copied === "schema-" + piece.ideaId ? <Check style={{ width: 11, height: 11, color: "var(--success)" }} /> : <Copy style={{ width: 11, height: 11 }} />}
+                    {copied === "schema-" + piece.ideaId ? "Copied!" : "Copy JSON-LD"}
+                  </button>
+                </div>
               )}
             </div>
           )}

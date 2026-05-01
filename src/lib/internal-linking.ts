@@ -227,8 +227,51 @@ export async function discoverBlogPosts(
     }
   };
 
+  // All non-utility content pages (used for fallback)
+  const getContentPageCandidates = (exclude?: Set<string>): string[] =>
+    allUrls.filter(u => {
+      if (exclude?.has(u)) return false;
+      if (moneyPageSet.has(u.replace(/\/$/, ""))) return false;
+      if (isUtility(u)) return false;
+      try {
+        const path = new URL(u).pathname;
+        if (path === "/" || path === "") return false;
+      } catch {
+        return false;
+      }
+      return true;
+    });
+
+  // Helper: choose, fetch, parse, and archive-filter a list of candidates.
+  const crawlAndFilter = async (urls: string[]): Promise<ParsedPage[]> => {
+    let chosen: string[];
+    if (urls.length <= LLM_PRESELECT_THRESHOLD) {
+      chosen = urls.slice(0, MAX_BLOG_POSTS);
+    } else {
+      chosen = await llmPreselectUrls(urls, targetText, moneyPageUrls);
+    }
+
+    const BATCH = 5;
+    const parsed: ParsedPage[] = [];
+    for (let i = 0; i < chosen.length; i += BATCH) {
+      const batch = chosen.slice(i, i + BATCH);
+      const results = await Promise.allSettled(batch.map(u => fetchAndParsePage(u)));
+      for (const r of results) {
+        if (r.status === "fulfilled") parsed.push(r.value);
+      }
+    }
+
+    const editorial = parsed.filter(p => !(p.outboundAnchors.length > 12 && p.wordCount < 500));
+    if (editorial.length < parsed.length) {
+      console.warn(
+        `[internal-linking] Dropped ${parsed.length - editorial.length} archive/listing page(s) from corpus.`
+      );
+    }
+    return editorial;
+  };
+
   // Primary: blog-pattern filter (must have ≥ 2 path segments)
-  let candidates = allUrls.filter(u => {
+  const blogCandidates = allUrls.filter(u => {
     if (moneyPageSet.has(u.replace(/\/$/, ""))) return false;
     try {
       const path = new URL(u).pathname;
@@ -239,57 +282,28 @@ export async function discoverBlogPosts(
     return blogPatterns.some(p => p.test(u));
   });
 
-  let fallback = false;
-
-  // Fallback: all content pages, excluding utility paths and the homepage
-  if (candidates.length === 0) {
-    fallback = true;
-    candidates = allUrls.filter(u => {
-      if (moneyPageSet.has(u.replace(/\/$/, ""))) return false;
-      if (isUtility(u)) return false;
-      try {
-        const path = new URL(u).pathname;
-        // Exclude bare homepage
-        if (path === "/" || path === "") return false;
-      } catch {
-        return false;
-      }
-      return true;
-    });
-    console.warn(
-      `[internal-linking] No blog-pattern URLs found for ${domain}. Falling back to all content pages (${candidates.length} candidates).`
-    );
-  }
-
-  let chosen: string[];
-
-  if (candidates.length <= LLM_PRESELECT_THRESHOLD) {
-    chosen = candidates.slice(0, MAX_BLOG_POSTS);
-  } else {
-    chosen = await llmPreselectUrls(candidates, targetText, moneyPageUrls);
-  }
-
-  // Fetch + parse in batches of 5
-  const BATCH = 5;
-  const parsed: ParsedPage[] = [];
-  for (let i = 0; i < chosen.length; i += BATCH) {
-    const batch = chosen.slice(i, i + BATCH);
-    const results = await Promise.allSettled(batch.map(u => fetchAndParsePage(u)));
-    for (const r of results) {
-      if (r.status === "fulfilled") parsed.push(r.value);
+  // Try blog-pattern candidates first
+  if (blogCandidates.length > 0) {
+    const editorial = await crawlAndFilter(blogCandidates);
+    if (editorial.length > 0) {
+      return { posts: editorial, fallback: false };
     }
-  }
-
-  // Filter out category/archive listing pages — they have many outbound links
-  // but little original editorial text, so they add noise to the AI prompt.
-  const editorial = parsed.filter(p => !(p.outboundAnchors.length > 12 && p.wordCount < 500));
-  if (editorial.length < parsed.length) {
+    // Blog patterns only matched archive/category pages — expand to full site
     console.warn(
-      `[internal-linking] Dropped ${parsed.length - editorial.length} archive/listing page(s) from corpus (high link count, low word count).`
+      `[internal-linking] Blog-pattern pages for ${domain} were all archive/listing pages. Expanding to all content pages.`
     );
   }
 
-  return { posts: editorial, fallback };
+  // Fallback: all content pages, excluding utility paths and the homepage.
+  // Exclude already-attempted blog candidates to avoid re-crawling known archives.
+  const alreadyTried = new Set(blogCandidates);
+  const contentCandidates = getContentPageCandidates(alreadyTried);
+  console.warn(
+    `[internal-linking] No blog-pattern URLs found for ${domain}. Falling back to all content pages (${contentCandidates.length} candidates).`
+  );
+
+  const editorial = await crawlAndFilter(contentCandidates);
+  return { posts: editorial, fallback: true };
 }
 
 /**
