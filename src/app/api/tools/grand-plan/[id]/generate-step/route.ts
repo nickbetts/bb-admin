@@ -517,16 +517,17 @@ export async function POST(
     // week reuses the same snapshot.
     if (step === "prepare-research") {
       const cli = plan.client;
-      // Nothing to ground against — skip silently.
-      if (!cli || (!cli.ga4PropertyId && !cli.searchConsoleSiteUrl && !cli.semrushDomain && !website)) {
+      const hasManualPageUrls = (config.manualPageUrls ?? []).length > 0;
+      // Skip only if there is nothing to ground against AND no manual page URLs to process.
+      if (!hasManualPageUrls && (!cli || (!cli.ga4PropertyId && !cli.searchConsoleSiteUrl && !cli.semrushDomain && !website))) {
         return NextResponse.json({ ok: true, step, skipped: true });
       }
 
       await setStatus(id, "Harvesting real account data (GA4, Search Console, SEMrush)...");
 
-      const propertyId = cli.ga4PropertyId ?? null;
-      const gscSite = cli.searchConsoleSiteUrl ?? null;
-      const semDomain = cli.semrushDomain
+      const propertyId = cli?.ga4PropertyId ?? null;
+      const gscSite = cli?.searchConsoleSiteUrl ?? null;
+      const semDomain = cli?.semrushDomain
         ?? (website ? website.replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/^www\./, "") : null);
 
       // Default to the last 30 days for all data pulls.
