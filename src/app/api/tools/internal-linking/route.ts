@@ -295,7 +295,7 @@ Return ONLY valid JSON conforming to this exact schema:
       "sourceUrl": "string — URL of the page being edited (always the target URL for money-page links)",
       "targetUrl": "string — URL of the money page to link to",
       "anchorText": "string",
-      "context": "string — one sentence about where in the content to place this link",
+      "context": "string — Begin with the EXACT sentence or phrase from the source page text that should carry the link (enclosed in double-quotes), then in one sentence describe where in the content it appears",
       "rationale": "string — one sentence explaining the SEO benefit",
       "priority": "high" | "medium" | "low",
       "confidence": number between 0 and 100
@@ -307,7 +307,7 @@ Return ONLY valid JSON conforming to this exact schema:
       "sourceUrl": "string — URL of the BLOG POST that should link to the target",
       "targetUrl": "string — the target URL",
       "anchorText": "string",
-      "context": "string — where in the blog post to insert this link",
+      "context": "string — Begin with the EXACT sentence or phrase from the source page text that should carry the link (enclosed in double-quotes), then describe where in that post to insert it",
       "rationale": "string",
       "priority": "high" | "medium" | "low",
       "confidence": number between 0 and 100
@@ -352,7 +352,11 @@ ${overUsedAnchors.map(a => `  "${a}"`).join("\n")}` : ""}${competitorProfiles.le
 Use this data to identify keyword opportunities and anchor text patterns the competitors rank for but the target doesn't yet link to.
 ${competitorProfiles.map(c => `### ${c.domain} (source: ${c.discoveredBy})
 Top keywords (position | volume | keyword):
-${c.topKeywords.slice(0, 10).map(k => `  pos ${k.position} | vol ${k.searchVolume.toLocaleString("en-GB")} | ${k.keyword}`).join("\n") || "  (no keyword data available)"}`).join("\n\n")}` : ""}
+${c.topKeywords.length > 0
+  ? c.topKeywords.slice(0, 10).map(k => `  pos ${k.position} | vol ${k.searchVolume.toLocaleString("en-GB")} | ${k.keyword}`).join("\n")
+  : c.aiTopics?.length
+    ? `  AI-inferred topics (no SEMrush data): ${c.aiTopics.join(", ")}`
+    : "  (no keyword data available)"}`).join("\n\n")}` : ""}
 
 Please generate exactly ${budget.moneyPage} money-page link(s), ${budget.outbound} outbound link(s), and ${budget.inbound} inbound link(s). Prioritise the highest-value opportunities.`;
 

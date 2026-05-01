@@ -49,6 +49,8 @@ export interface CompetitorProfile {
   domain: string;
   topKeywords: { keyword: string; searchVolume: number; position: number }[];
   discoveredBy: "user" | "client" | "ai";
+  /** Keyword topics inferred by AI web search when SEMrush has no data */
+  aiTopics?: string[];
 }
 
 export type { SemrushKeywordData };
@@ -466,6 +468,40 @@ Return ONLY a JSON array of ${needed + 2} competitor domain names (no www prefix
       }
     }),
   );
+
+  // ── 5. AI fallback for competitors with no SEMrush keyword data ───────────
+  // SEMrush only tracks domains with sufficient indexed keywords. Small or
+  // niche sites may legitimately return 0 results. Use AI web search to
+  // infer the topics/keywords they target so Claude still has useful signal.
+  for (const profile of profiles) {
+    if (profile.topKeywords.length > 0) continue;
+    try {
+      const anthropic = await getAnthropicClient();
+      const response = await anthropic.messages.create({
+        model: "claude-sonnet-4-6",
+        max_tokens: 300,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 2 } as any],
+        messages: [{
+          role: "user",
+          content: `Search the web for "${profile.domain} SEO keywords" and "${profile.domain} organic search". What are the 8 most important organic search keywords or topics that ${profile.domain} appears to target or rank for? Return ONLY a JSON array of keyword strings, e.g. ["keyword one", "keyword two"]. No explanation.`,
+        }],
+      });
+      const textBlock = response.content.find(b => b.type === "text");
+      const raw = textBlock && textBlock.type === "text" ? textBlock.text.trim() : "";
+      const match = raw.match(/\[[\s\S]*?\]/);
+      if (match) {
+        const topics: unknown = JSON.parse(match[0]);
+        if (Array.isArray(topics)) {
+          profile.aiTopics = (topics as unknown[])
+            .filter((t): t is string => typeof t === "string" && t.trim().length > 0)
+            .slice(0, 8);
+        }
+      }
+    } catch (err) {
+      console.error(`[internal-linking] AI topic fallback failed for ${profile.domain}:`, err);
+    }
+  }
 
   return profiles;
 }

@@ -225,9 +225,9 @@ Best-practice rules:
 Return ONLY valid JSON:
 {
   "summary": "string",
-  "moneyPageLinks": [{"sourceUrl":"","targetUrl":"","anchorText":"","context":"","rationale":"","priority":"high"|"medium"|"low","confidence":0}],
+  "moneyPageLinks": [{"sourceUrl":"","targetUrl":"","anchorText":"","context":"EXACT sentence from source in double-quotes then location note","rationale":"","priority":"high"|"medium"|"low","confidence":0}],
   "outboundLinks": [/* same shape */],
-  "inboundLinks": [{"sourceUrl":"","targetUrl":"","anchorText":"","context":"","rationale":"","priority":"high"|"medium"|"low","confidence":0}],
+  "inboundLinks": [{"sourceUrl":"","targetUrl":"","anchorText":"","context":"EXACT sentence from source in double-quotes then location note","rationale":"","priority":"high"|"medium"|"low","confidence":0}],
   "warnings": []
 }`;
 
@@ -261,7 +261,14 @@ ${targetPageKeywords.map(k => `  pos ${k.position} | vol ${k.searchVolume.toLoca
 ${overUsedAnchors.map(a => `  "${a}"`).join("\n")}` : ""}${competitorProfiles.length > 0 ? `
 
 ## Competitors & top keywords
-${competitorProfiles.map(c => `### ${c.domain}\n${c.topKeywords.slice(0, 10).map(k => `  pos ${k.position} | vol ${k.searchVolume.toLocaleString("en-GB")} | ${k.keyword}`).join("\n") || "  (no data)"}`).join("\n\n")}` : ""}
+${competitorProfiles.map(c => {
+          const kwData = c.topKeywords.length > 0
+            ? c.topKeywords.slice(0, 10).map(k => `  pos ${k.position} | vol ${k.searchVolume.toLocaleString("en-GB")} | ${k.keyword}`).join("\n")
+            : c.aiTopics?.length
+              ? `  AI-inferred topics: ${c.aiTopics.join(", ")}`
+              : "  (no data)";
+          return `### ${c.domain}\n${kwData}`;
+        }).join("\n\n")}` : ""}
 
 Generate exactly ${budget.moneyPage} money-page link(s), ${budget.outbound} outbound link(s), and ${budget.inbound} inbound link(s).`;
 

@@ -203,9 +203,26 @@ function SuggestionRow({ suggestion, type }: { suggestion: LinkSuggestion; type:
           </>
         )}
       </div>
-      <p style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 4 }}>
-        <span style={{ fontWeight: 600 }}>Placement:</span> {suggestion.context}
-      </p>
+      {(() => {
+        // Context may start with a quoted exact sentence: "..." — rest
+        const quoteMatch = suggestion.context?.match(/^"([^"]+)"\s*[—–-]?\s*([\s\S]*)/);
+        if (quoteMatch) {
+          return (
+            <div style={{ marginBottom: 4 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-3)" }}>Placement</span>
+              <blockquote style={{ margin: "4px 0 4px 0", paddingLeft: 10, borderLeft: "2px solid var(--accent)", fontSize: 12, color: "var(--text)", fontStyle: "italic" }}>
+                {quoteMatch[1]}
+              </blockquote>
+              {quoteMatch[2] && <p style={{ fontSize: 12, color: "var(--text-2)", margin: 0 }}>{quoteMatch[2]}</p>}
+            </div>
+          );
+        }
+        return (
+          <p style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 4 }}>
+            <span style={{ fontWeight: 600 }}>Placement:</span> {suggestion.context}
+          </p>
+        );
+      })()}
       <p style={{ fontSize: 12, color: "var(--text-3)" }}>
         <span style={{ fontWeight: 600, color: "var(--text-2)" }}>Why:</span> {suggestion.rationale}
       </p>
