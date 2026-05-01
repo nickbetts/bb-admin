@@ -173,6 +173,7 @@ READER VALUE — NON-NEGOTIABLE:
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function parseJsonSafely<T>(text: string): T | null {
+  // Attempt 1: strip surrounding code fences (when Claude wraps correctly)
   try {
     const cleaned = text
       .replace(/^```(?:json)?\s*/i, "")
@@ -180,8 +181,30 @@ function parseJsonSafely<T>(text: string): T | null {
       .trim();
     return JSON.parse(jsonrepair(cleaned)) as T;
   } catch {
-    return null;
+    // fall through
   }
+  // Attempt 2: extract a JSON array from anywhere in the text
+  // (handles prose or code fences before/after the array)
+  try {
+    const arrStart = text.indexOf("[");
+    const arrEnd = text.lastIndexOf("]");
+    if (arrStart !== -1 && arrEnd > arrStart) {
+      return JSON.parse(jsonrepair(text.slice(arrStart, arrEnd + 1))) as T;
+    }
+  } catch {
+    // fall through
+  }
+  // Attempt 3: extract a JSON object from anywhere in the text
+  try {
+    const objStart = text.indexOf("{");
+    const objEnd = text.lastIndexOf("}");
+    if (objStart !== -1 && objEnd > objStart) {
+      return JSON.parse(jsonrepair(text.slice(objStart, objEnd + 1))) as T;
+    }
+  } catch {
+    // fall through
+  }
+  return null;
 }
 
 function countWords(text: string): number {
