@@ -104,7 +104,7 @@ export default function ClickrNewPagePage() {
     <div style={{ minHeight: "100vh", background: "#09090f", color: "#fff" }}>
       <nav style={{ borderBottom: "1px solid rgba(255,255,255,0.08)", padding: "0 24px", display: "flex", alignItems: "center", height: 60, gap: 16 }}>
         <Link href="/clickr/dashboard" style={{ fontSize: 18, fontWeight: 800, letterSpacing: "-0.5px", color: "#fff", textDecoration: "none" }}>
-          click<span style={{ color: "#f97316" }}>r</span>
+          click<span style={{ color: "#14b8a6" }}>r</span>
         </Link>
         <span style={{ color: "rgba(255,255,255,0.2)" }}>›</span>
         <span style={{ fontSize: 14, color: "rgba(255,255,255,0.5)" }}>New page</span>
@@ -121,7 +121,7 @@ export default function ClickrNewPagePage() {
             {error}
             {upgradeRequired && (
               <div style={{ marginTop: 10 }}>
-                <Link href="/clickr/pricing" style={{ background: "#f97316", borderRadius: 6, padding: "6px 14px", color: "#fff", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
+                <Link href="/clickr/pricing" style={{ background: "#14b8a6", borderRadius: 6, padding: "6px 14px", color: "#fff", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
                   Upgrade plan
                 </Link>
               </div>
@@ -130,7 +130,7 @@ export default function ClickrNewPagePage() {
         )}
 
         {generating && !error && (
-          <div style={{ background: "rgba(249,115,22,0.08)", border: "1px solid rgba(249,115,22,0.2)", borderRadius: 8, padding: "12px 16px", color: "#fdba74", fontSize: 14, marginBottom: 24 }}>
+          <div style={{ background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.2)", borderRadius: 8, padding: "12px 16px", color: "#5eead4", fontSize: 14, marginBottom: 24 }}>
             {status ?? "Working…"}
           </div>
         )}
@@ -201,7 +201,7 @@ export default function ClickrNewPagePage() {
           <button
             type="submit"
             disabled={generating}
-            style={{ background: generating ? "rgba(249,115,22,0.5)" : "#f97316", border: "none", borderRadius: 8, padding: "13px 20px", color: "#fff", fontSize: 15, fontWeight: 600, cursor: generating ? "not-allowed" : "pointer" }}
+            style={{ background: generating ? "rgba(20,184,166,0.5)" : "#14b8a6", border: "none", borderRadius: 8, padding: "13px 20px", color: "#fff", fontSize: 15, fontWeight: 600, cursor: generating ? "not-allowed" : "pointer" }}
           >
             {generating ? status ?? "Generating…" : "Generate landing page"}
           </button>

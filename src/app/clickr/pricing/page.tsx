@@ -5,10 +5,10 @@ import { CheckCircle2, XCircle, ArrowRight, Zap } from "lucide-react";
 import ClickrNav from "../_components/ClickrNav";
 import ClickrFooter from "../_components/ClickrFooter";
 
-const accent = "#f97316";
-const accentDark = "#ea580c";
-const accentLight = "#fdba74";
-const accentGlow = "rgba(249,115,22,0.45)";
+const accent = "#14b8a6";
+const accentDark = "#7c3aed";
+const accentLight = "#5eead4";
+const accentGlow = "rgba(20,184,166,0.45)";
 
 // ── Pricing data ──────────────────────────────────────────────────────────────
 
@@ -258,7 +258,7 @@ export default function PricingPage() {
             top: "-10%",
             left: "20%",
             pointerEvents: "none",
-            background: "radial-gradient(ellipse, rgba(249,115,22,0.08) 0%, transparent 65%)",
+            background: "radial-gradient(ellipse, rgba(20,184,166,0.08) 0%, transparent 65%)",
           }}
         />
         <p
@@ -323,7 +323,7 @@ export default function PricingPage() {
               borderRadius: 30,
               fontSize: 13,
               fontWeight: 600,
-              background: annual ? `rgba(249,115,22,0.18)` : "transparent",
+              background: annual ? `rgba(20,184,166,0.18)` : "transparent",
               color: annual ? accentLight : "rgba(255,255,255,0.4)",
               border: "none",
               cursor: "pointer",
@@ -374,12 +374,12 @@ export default function PricingPage() {
             <div
               key={plan.name}
               style={{
-                background: plan.featured ? "rgba(249,115,22,0.07)" : "rgba(255,255,255,0.03)",
-                border: plan.featured ? `1px solid rgba(249,115,22,0.35)` : "1px solid rgba(255,255,255,0.08)",
+                background: plan.featured ? "rgba(20,184,166,0.07)" : "rgba(255,255,255,0.03)",
+                border: plan.featured ? `1px solid rgba(20,184,166,0.35)` : "1px solid rgba(255,255,255,0.08)",
                 borderRadius: 20,
                 padding: "32px 28px",
                 position: "relative",
-                boxShadow: plan.featured ? `0 0 60px rgba(249,115,22,0.1)` : "none",
+                boxShadow: plan.featured ? `0 0 60px rgba(20,184,166,0.1)` : "none",
                 display: "flex",
                 flexDirection: "column",
               }}

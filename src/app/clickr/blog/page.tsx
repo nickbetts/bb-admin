@@ -17,8 +17,8 @@ export const metadata: Metadata = {
   },
 };
 
-const accent = "#f97316";
-const accentLight = "#fdba74";
+const accent = "#14b8a6";
+const accentLight = "#5eead4";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
@@ -99,7 +99,7 @@ export default function BlogIndexPage() {
               style={{
                 position: "absolute",
                 inset: 0,
-                background: "radial-gradient(ellipse at 80% 20%, rgba(249,115,22,0.05) 0%, transparent 60%)",
+                background: "radial-gradient(ellipse at 80% 20%, rgba(20,184,166,0.05) 0%, transparent 60%)",
                 pointerEvents: "none",
               }}
             />
@@ -110,8 +110,8 @@ export default function BlogIndexPage() {
                 gap: 6,
                 padding: "4px 12px",
                 borderRadius: 20,
-                background: `rgba(249,115,22,0.12)`,
-                border: `1px solid rgba(249,115,22,0.25)`,
+                background: `rgba(20,184,166,0.12)`,
+                border: `1px solid rgba(20,184,166,0.25)`,
                 marginBottom: 20,
               }}
             >
@@ -189,8 +189,8 @@ export default function BlogIndexPage() {
                     gap: 5,
                     padding: "3px 10px",
                     borderRadius: 16,
-                    background: "rgba(249,115,22,0.08)",
-                    border: "1px solid rgba(249,115,22,0.15)",
+                    background: "rgba(20,184,166,0.08)",
+                    border: "1px solid rgba(20,184,166,0.15)",
                     marginBottom: 16,
                     alignSelf: "flex-start",
                   }}

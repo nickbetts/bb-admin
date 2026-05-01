@@ -76,7 +76,7 @@ export default function ClickrFooter() {
               placeholder="your@agency.com"
               style={{ padding: "9px 14px", borderRadius: 9, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "white", fontSize: 13, outline: "none", width: 220 }}
             />
-            <button type="submit" style={{ padding: "9px 18px", borderRadius: 9, background: "linear-gradient(135deg, #f97316, #ea580c)", border: "none", color: "white", fontSize: 13, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
+            <button type="submit" style={{ padding: "9px 18px", borderRadius: 9, background: "linear-gradient(135deg, #14b8a6, #7c3aed)", border: "none", color: "white", fontSize: 13, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
               Subscribe
             </button>
           </form>
@@ -98,7 +98,7 @@ export default function ClickrFooter() {
               <img src="/clickr-logo.svg" width={28} height={28} alt="clickr" style={{ borderRadius: 7, display: "block" }} />
               <span style={{
                 fontSize: 19, fontWeight: 900, letterSpacing: "-0.04em",
-                background: "linear-gradient(90deg, #fdba74, #f97316)",
+                background: "linear-gradient(90deg, #5eead4, #14b8a6)",
                 WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
               }}>clickr</span>
             </Link>
@@ -109,10 +109,10 @@ export default function ClickrFooter() {
               <span style={{
                 display: "inline-flex", alignItems: "center", gap: 5,
                 padding: "4px 10px", borderRadius: 20,
-                background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.2)",
-                fontSize: 11, fontWeight: 600, color: "rgba(249,115,22,0.8)",
+                background: "rgba(20,184,166,0.1)", border: "1px solid rgba(20,184,166,0.2)",
+                fontSize: 11, fontWeight: 600, color: "rgba(20,184,166,0.8)",
               }}>
-                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#f97316", display: "inline-block" }} />
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#14b8a6", display: "inline-block" }} />
                 Part of StratOS
               </span>
             </div>

@@ -6,9 +6,9 @@ import ClickrFooter from "../_components/ClickrFooter";
 import { BookOpen, Download, FileText, Zap, ChevronRight, ArrowRight, CheckCircle2, BarChart2, Target, Globe } from "lucide-react";
 
 const bg = "#09090f";
-const accent = "#f97316";
-const accentLight = "#fdba74";
-const accentDark = "#ea580c";
+const accent = "#14b8a6";
+const accentLight = "#5eead4";
+const accentDark = "#7c3aed";
 
 const guides = [
   {
@@ -110,7 +110,7 @@ function LeadCaptureForm({ guideTitle, guideSlug }: { guideTitle: string; guideS
 
   if (submitted) {
     return (
-      <div style={{ padding: "22px 24px", borderRadius: 14, background: "rgba(249,115,22,0.07)", border: "1px solid rgba(249,115,22,0.2)", textAlign: "center" }}>
+      <div style={{ padding: "22px 24px", borderRadius: 14, background: "rgba(20,184,166,0.07)", border: "1px solid rgba(20,184,166,0.2)", textAlign: "center" }}>
         <CheckCircle2 size={24} color={accentLight} style={{ margin: "0 auto 10px" }} />
         <div style={{ fontSize: 15, fontWeight: 700, color: "white", marginBottom: 6 }}>You&apos;re all set!</div>
         <div style={{ fontSize: 13, color: "rgba(255,255,255,0.45)" }}>Check your inbox — the guide is on its way.</div>
@@ -153,9 +153,9 @@ export default function ResourcesPage() {
 
       {/* ── HERO ───────────────────────────────────────────────────────────── */}
       <section style={{ padding: "120px 40px 80px", textAlign: "center", position: "relative", overflow: "hidden" }}>
-        <div style={{ position: "absolute", width: "70%", paddingBottom: "35%", top: "-10%", left: "15%", background: "radial-gradient(ellipse, rgba(249,115,22,0.07) 0%, transparent 65%)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", width: "70%", paddingBottom: "35%", top: "-10%", left: "15%", background: "radial-gradient(ellipse, rgba(20,184,166,0.07) 0%, transparent 65%)", pointerEvents: "none" }} />
         <div style={{ maxWidth: 720, margin: "0 auto", position: "relative" }}>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 16px", borderRadius: 20, background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.22)", marginBottom: 28 }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 16px", borderRadius: 20, background: "rgba(20,184,166,0.1)", border: "1px solid rgba(20,184,166,0.22)", marginBottom: 28 }}>
             <BookOpen size={12} color={accentLight} />
             <span style={{ fontSize: 11, fontWeight: 700, color: accentLight, letterSpacing: "0.1em", textTransform: "uppercase" }}>Resources</span>
           </div>
@@ -180,11 +180,11 @@ export default function ResourcesPage() {
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 24 }} className="guides-grid">
             {guides.map((guide) => (
-              <div key={guide.slug} style={{ borderRadius: 20, border: `1px solid ${activeGuide === guide.slug ? "rgba(249,115,22,0.3)" : "rgba(255,255,255,0.07)"}`, background: activeGuide === guide.slug ? "rgba(249,115,22,0.04)" : "rgba(255,255,255,0.02)", overflow: "hidden", transition: "border-color 0.25s ease, background 0.25s ease" }}>
+              <div key={guide.slug} style={{ borderRadius: 20, border: `1px solid ${activeGuide === guide.slug ? "rgba(20,184,166,0.3)" : "rgba(255,255,255,0.07)"}`, background: activeGuide === guide.slug ? "rgba(20,184,166,0.04)" : "rgba(255,255,255,0.02)", overflow: "hidden", transition: "border-color 0.25s ease, background 0.25s ease" }}>
                 {/* Guide header */}
                 <div style={{ padding: "28px 28px 24px" }}>
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 16, marginBottom: 16 }}>
-                    <div style={{ width: 44, height: 44, borderRadius: 12, background: `rgba(249,115,22,0.1)`, border: `1px solid rgba(249,115,22,0.2)`, display: "flex", alignItems: "center", justifyContent: "center", color: accentLight, flexShrink: 0 }}>
+                    <div style={{ width: 44, height: 44, borderRadius: 12, background: `rgba(20,184,166,0.1)`, border: `1px solid rgba(20,184,166,0.2)`, display: "flex", alignItems: "center", justifyContent: "center", color: accentLight, flexShrink: 0 }}>
                       {guide.icon}
                     </div>
                     <div>
@@ -204,14 +204,14 @@ export default function ResourcesPage() {
                       <span key={ti} style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.35)", padding: "3px 9px", borderRadius: 5, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>{topic}</span>
                     ))}
                   </div>
-                  <button onClick={() => setActiveGuide(activeGuide === guide.slug ? null : guide.slug)} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 20px", borderRadius: 10, background: activeGuide === guide.slug ? "rgba(249,115,22,0.15)" : `linear-gradient(135deg, ${accent}, ${accentDark})`, border: activeGuide === guide.slug ? "1px solid rgba(249,115,22,0.3)" : "none", color: "white", fontSize: 13, fontWeight: 700, cursor: "pointer", transition: "all 0.2s" }}>
+                  <button onClick={() => setActiveGuide(activeGuide === guide.slug ? null : guide.slug)} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 20px", borderRadius: 10, background: activeGuide === guide.slug ? "rgba(20,184,166,0.15)" : `linear-gradient(135deg, ${accent}, ${accentDark})`, border: activeGuide === guide.slug ? "1px solid rgba(20,184,166,0.3)" : "none", color: "white", fontSize: 13, fontWeight: 700, cursor: "pointer", transition: "all 0.2s" }}>
                     {activeGuide === guide.slug ? "Hide form" : (<><Download size={14} /> Download free</>)}
                   </button>
                 </div>
 
                 {/* Lead capture form */}
                 {activeGuide === guide.slug && (
-                  <div style={{ padding: "0 28px 28px", borderTop: "1px solid rgba(249,115,22,0.12)" }}>
+                  <div style={{ padding: "0 28px 28px", borderTop: "1px solid rgba(20,184,166,0.12)" }}>
                     <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", marginBottom: 14, marginTop: 22 }}>Enter your details and we&apos;ll send the guide directly to your inbox.</p>
                     <LeadCaptureForm guideTitle={guide.title} guideSlug={guide.slug} />
                   </div>
@@ -232,7 +232,7 @@ export default function ResourcesPage() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 18 }} className="templates-3col">
             {featuredResources.map((r, i) => (
               <div key={i} style={{ padding: "26px 24px", borderRadius: 18, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", display: "flex", flexDirection: "column", gap: 14 }}>
-                <div style={{ width: 40, height: 40, borderRadius: 11, background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.2)", display: "flex", alignItems: "center", justifyContent: "center", color: accentLight }}>{r.icon}</div>
+                <div style={{ width: 40, height: 40, borderRadius: 11, background: "rgba(20,184,166,0.1)", border: "1px solid rgba(20,184,166,0.2)", display: "flex", alignItems: "center", justifyContent: "center", color: accentLight }}>{r.icon}</div>
                 <div>
                   <span style={{ fontSize: 10, fontWeight: 800, color: r.badgeColor, letterSpacing: "0.1em", padding: "2px 7px", borderRadius: 4, background: `${r.badgeColor}18`, border: `1px solid ${r.badgeColor}28`, marginBottom: 8, display: "inline-block" }}>{r.badge}</span>
                   <h3 style={{ fontSize: 15, fontWeight: 800, color: "white", letterSpacing: "-0.02em", marginBottom: 8 }}>{r.title}</h3>
@@ -257,7 +257,7 @@ export default function ResourcesPage() {
             Start generating fully branded, conversion-optimised landing pages from any URL in under 60 seconds.
           </p>
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-            <a href="/login" style={{ display: "inline-flex", alignItems: "center", gap: 9, padding: "14px 28px", borderRadius: 12, background: `linear-gradient(135deg, ${accent}, ${accentDark})`, color: "white", fontSize: 15, fontWeight: 700, textDecoration: "none", boxShadow: `0 0 28px rgba(249,115,22,0.35)` }}>
+            <a href="/login" style={{ display: "inline-flex", alignItems: "center", gap: 9, padding: "14px 28px", borderRadius: 12, background: `linear-gradient(135deg, ${accent}, ${accentDark})`, color: "white", fontSize: 15, fontWeight: 700, textDecoration: "none", boxShadow: `0 0 28px rgba(20,184,166,0.35)` }}>
               <Zap size={15} /> Try clickr free
             </a>
             <a href="/blog" style={{ display: "inline-flex", alignItems: "center", gap: 9, padding: "14px 28px", borderRadius: 12, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.75)", fontSize: 15, fontWeight: 600, textDecoration: "none" }}>

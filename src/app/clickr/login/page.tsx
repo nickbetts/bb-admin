@@ -40,7 +40,7 @@ export default function ClickrLoginPage() {
         <div style={{ textAlign: "center", marginBottom: 40 }}>
           <Link href="/" style={{ display: "inline-flex", alignItems: "center", gap: 8, textDecoration: "none", marginBottom: 32 }}>
             <span style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.5px", color: "#fff" }}>
-              click<span style={{ color: "#f97316" }}>r</span>
+              click<span style={{ color: "#14b8a6" }}>r</span>
             </span>
           </Link>
           <h1 style={{ fontSize: 26, fontWeight: 700, color: "#fff", margin: "0 0 8px" }}>Welcome back</h1>
@@ -81,7 +81,7 @@ export default function ClickrLoginPage() {
           <button
             type="submit"
             disabled={loading}
-            style={{ width: "100%", background: loading ? "rgba(249,115,22,0.5)" : "#f97316", border: "none", borderRadius: 8, padding: "12px 20px", color: "#fff", fontSize: 15, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer" }}
+            style={{ width: "100%", background: loading ? "rgba(20,184,166,0.5)" : "#14b8a6", border: "none", borderRadius: 8, padding: "12px 20px", color: "#fff", fontSize: 15, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer" }}
           >
             {loading ? "Signing in…" : "Sign in"}
           </button>
@@ -89,7 +89,7 @@ export default function ClickrLoginPage() {
 
         <p style={{ textAlign: "center", fontSize: 13, color: "rgba(255,255,255,0.4)", marginTop: 20 }}>
           Don&apos;t have an account?{" "}
-          <Link href="/signup" style={{ color: "#f97316", textDecoration: "none" }}>Sign up free</Link>
+          <Link href="/signup" style={{ color: "#14b8a6", textDecoration: "none" }}>Sign up free</Link>
         </p>
       </div>
     </div>

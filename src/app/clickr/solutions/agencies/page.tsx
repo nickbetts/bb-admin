@@ -20,9 +20,9 @@ export const metadata: Metadata = {
   },
 };
 
-const accent = "#f97316";
-const accentDark = "#ea580c";
-const accentLight = "#fdba74";
+const accent = "#14b8a6";
+const accentDark = "#7c3aed";
+const accentLight = "#5eead4";
 
 const painPoints = [
   {
@@ -124,14 +124,14 @@ export default function AgenciesPage() {
         <section style={{ position: "relative", overflow: "hidden", padding: "96px 24px 80px", textAlign: "center" }}>
           <div style={{
             position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
-            background: "radial-gradient(ellipse 80% 50% at 50% -10%, rgba(249,115,22,0.12) 0%, transparent 60%)",
+            background: "radial-gradient(ellipse 80% 50% at 50% -10%, rgba(20,184,166,0.12) 0%, transparent 60%)",
             pointerEvents: "none",
           }} />
           <div style={{ maxWidth: 760, margin: "0 auto", position: "relative" }}>
             <span style={{
               display: "inline-flex", alignItems: "center", gap: 6,
               padding: "6px 14px", borderRadius: 20, marginBottom: 24,
-              background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.25)",
+              background: "rgba(20,184,166,0.1)", border: "1px solid rgba(20,184,166,0.25)",
               fontSize: 12, fontWeight: 600, color: accentLight, letterSpacing: "0.04em",
             }}>
               FOR PERFORMANCE AGENCIES
@@ -157,7 +157,7 @@ export default function AgenciesPage() {
                 padding: "14px 28px", borderRadius: 12,
                 background: `linear-gradient(135deg, ${accent}, ${accentDark})`,
                 color: "white", fontSize: 15, fontWeight: 700, textDecoration: "none",
-                boxShadow: "0 0 32px rgba(249,115,22,0.35)",
+                boxShadow: "0 0 32px rgba(20,184,166,0.35)",
               }}>
                 Start free — no card required <ArrowRight size={16} />
               </Link>
@@ -197,7 +197,7 @@ export default function AgenciesPage() {
                 }}>
                   <div style={{
                     width: 40, height: 40, borderRadius: 10, marginBottom: 18,
-                    background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.15)",
+                    background: "rgba(20,184,166,0.1)", border: "1px solid rgba(20,184,166,0.15)",
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}>
                     <Icon size={18} style={{ color: accent }} />
@@ -224,7 +224,7 @@ export default function AgenciesPage() {
                 <div key={step} style={{
                   display: "grid", gridTemplateColumns: "56px 1fr",
                   gap: 20, paddingBottom: 32,
-                  borderLeft: i < workflow.length - 1 ? `2px solid rgba(249,115,22,0.15)` : "2px solid transparent",
+                  borderLeft: i < workflow.length - 1 ? `2px solid rgba(20,184,166,0.15)` : "2px solid transparent",
                   marginLeft: 27,
                   paddingLeft: 32,
                   position: "relative",
@@ -270,7 +270,7 @@ export default function AgenciesPage() {
                 }} className="csol-card">
                   <div style={{
                     width: 36, height: 36, borderRadius: 9, marginBottom: 14,
-                    background: "rgba(249,115,22,0.1)",
+                    background: "rgba(20,184,166,0.1)",
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}>
                     <Icon size={16} style={{ color: accent }} />
@@ -287,7 +287,7 @@ export default function AgenciesPage() {
         <section style={{ padding: "80px 24px", textAlign: "center", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
           <div style={{
             maxWidth: 640, margin: "0 auto",
-            background: "rgba(249,115,22,0.06)", border: "1px solid rgba(249,115,22,0.15)",
+            background: "rgba(20,184,166,0.06)", border: "1px solid rgba(20,184,166,0.15)",
             borderRadius: 24, padding: "56px 40px",
           }}>
             <h2 style={{ fontSize: "clamp(26px, 4vw, 38px)", fontWeight: 800, letterSpacing: "-0.03em", margin: "0 0 16px" }}>
@@ -301,7 +301,7 @@ export default function AgenciesPage() {
               padding: "14px 32px", borderRadius: 12,
               background: `linear-gradient(135deg, ${accent}, ${accentDark})`,
               color: "white", fontSize: 15, fontWeight: 700, textDecoration: "none",
-              boxShadow: "0 0 32px rgba(249,115,22,0.35)",
+              boxShadow: "0 0 32px rgba(20,184,166,0.35)",
             }}>
               Get started free <ArrowRight size={16} />
             </Link>
@@ -316,7 +316,7 @@ export default function AgenciesPage() {
             .csol-3col { grid-template-columns: 1fr !important; }
           }
           .csol-card:hover {
-            border-color: rgba(249,115,22,0.25) !important;
+            border-color: rgba(20,184,166,0.25) !important;
             transform: translateY(-2px);
           }
         `}</style>

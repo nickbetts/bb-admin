@@ -15,10 +15,10 @@ export const metadata: Metadata = {
   },
 };
 
-const accent = "#f97316";
-const accentDark = "#ea580c";
-const accentLight = "#fdba74";
-const accentGlow = "rgba(249,115,22,0.45)";
+const accent = "#14b8a6";
+const accentDark = "#7c3aed";
+const accentLight = "#5eead4";
+const accentGlow = "rgba(20,184,166,0.45)";
 
 const pillars = [
   {
@@ -62,7 +62,7 @@ export default function AboutPage() {
             top: "-5%",
             left: "-10%",
             pointerEvents: "none",
-            background: "radial-gradient(ellipse, rgba(249,115,22,0.07) 0%, transparent 65%)",
+            background: "radial-gradient(ellipse, rgba(20,184,166,0.07) 0%, transparent 65%)",
           }}
         />
         <div style={{ maxWidth: 800, margin: "0 auto", position: "relative" }}>
@@ -222,7 +222,7 @@ export default function AboutPage() {
                     width: 48,
                     height: 48,
                     borderRadius: 12,
-                    background: "rgba(249,115,22,0.1)",
+                    background: "rgba(20,184,166,0.1)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -247,9 +247,9 @@ export default function AboutPage() {
       <section
         style={{
           padding: "80px 40px",
-          background: `linear-gradient(180deg, rgba(249,115,22,0.05) 0%, rgba(239,68,68,0.03) 100%)`,
-          borderTop: "1px solid rgba(249,115,22,0.12)",
-          borderBottom: "1px solid rgba(249,115,22,0.12)",
+          background: `linear-gradient(180deg, rgba(20,184,166,0.05) 0%, rgba(239,68,68,0.03) 100%)`,
+          borderTop: "1px solid rgba(20,184,166,0.12)",
+          borderBottom: "1px solid rgba(20,184,166,0.12)",
         }}
       >
         <div
@@ -267,8 +267,8 @@ export default function AboutPage() {
               marginBottom: 28,
               padding: "8px 20px",
               borderRadius: 24,
-              background: "rgba(249,115,22,0.1)",
-              border: "1px solid rgba(249,115,22,0.25)",
+              background: "rgba(20,184,166,0.1)",
+              border: "1px solid rgba(20,184,166,0.25)",
             }}
           >
             <Brain size={14} color={accentLight} />

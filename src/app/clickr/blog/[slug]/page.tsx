@@ -38,8 +38,8 @@ export async function generateMetadata({
   };
 }
 
-const accent = "#f97316";
-const accentLight = "#fdba74";
+const accent = "#14b8a6";
+const accentLight = "#5eead4";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-GB", {
@@ -123,8 +123,8 @@ function RenderSection({ section }: { section: BlogSection }) {
                   width: 22,
                   height: 22,
                   borderRadius: "50%",
-                  background: "rgba(249,115,22,0.15)",
-                  border: "1px solid rgba(249,115,22,0.3)",
+                  background: "rgba(20,184,166,0.15)",
+                  border: "1px solid rgba(20,184,166,0.3)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -245,8 +245,8 @@ export default async function BlogArticlePage({
             gap: 6,
             padding: "4px 12px",
             borderRadius: 20,
-            background: "rgba(249,115,22,0.1)",
-            border: "1px solid rgba(249,115,22,0.22)",
+            background: "rgba(20,184,166,0.1)",
+            border: "1px solid rgba(20,184,166,0.22)",
             marginBottom: 20,
           }}
         >
@@ -303,8 +303,8 @@ export default async function BlogArticlePage({
               {i === halfIdx && (
                 <div
                   style={{
-                    background: "rgba(249,115,22,0.07)",
-                    border: "1px solid rgba(249,115,22,0.2)",
+                    background: "rgba(20,184,166,0.07)",
+                    border: "1px solid rgba(20,184,166,0.2)",
                     borderRadius: 14,
                     padding: "24px 28px",
                     margin: "32px 0",
@@ -331,7 +331,7 @@ export default async function BlogArticlePage({
                       gap: 7,
                       padding: "10px 20px",
                       borderRadius: 9,
-                      background: `linear-gradient(135deg, ${accent}, #ea580c)`,
+                      background: `linear-gradient(135deg, ${accent}, #7c3aed)`,
                       color: "white",
                       fontSize: 13,
                       fontWeight: 700,

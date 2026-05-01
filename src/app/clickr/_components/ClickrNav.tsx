@@ -5,9 +5,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X, ChevronDown, Zap, Layers, BarChart2, Globe, Puzzle, Building2, UserCheck, BookOpen, Info, Home, FileText, Tag, LayoutTemplate } from "lucide-react";
 
-const accent = "#f97316";
-const accentDark = "#ea580c";
-const accentLight = "#fdba74";
+const accent = "#14b8a6";
+const accentDark = "#7c3aed";
+const accentLight = "#5eead4";
 
 function isActive(href: string, pathname: string): boolean {
   if (href === "/") return pathname === "/" || pathname === "/clickr";
@@ -60,7 +60,7 @@ function MegaPanel({ items, onClose }: { items: MegaItem[]; onClose: () => void 
       border: "1px solid rgba(255,255,255,0.1)",
       borderRadius: 14,
       padding: "10px 8px",
-      boxShadow: "0 24px 64px rgba(0,0,0,0.6), 0 0 0 1px rgba(249,115,22,0.08)",
+      boxShadow: "0 24px 64px rgba(0,0,0,0.6), 0 0 0 1px rgba(20,184,166,0.08)",
       backdropFilter: "blur(24px)",
       WebkitBackdropFilter: "blur(24px)",
       zIndex: 100,
@@ -86,7 +86,7 @@ function MegaPanel({ items, onClose }: { items: MegaItem[]; onClose: () => void 
           >
             <span style={{
               width: 32, height: 32, borderRadius: 8, flexShrink: 0,
-              background: "rgba(249,115,22,0.1)",
+              background: "rgba(20,184,166,0.1)",
               display: "flex", alignItems: "center", justifyContent: "center",
             }}>
               <Icon size={15} style={{ color: accent }} />
@@ -242,7 +242,7 @@ export default function ClickrNav() {
             padding: "8px 20px", borderRadius: 9, fontSize: 14, fontWeight: 700,
             color: "white", textDecoration: "none",
             background: `linear-gradient(135deg, ${accent}, ${accentDark})`,
-            boxShadow: "0 0 22px rgba(249,115,22,0.28)",
+            boxShadow: "0 0 22px rgba(20,184,166,0.28)",
             whiteSpace: "nowrap",
           }}>Get started free</Link>
         </div>

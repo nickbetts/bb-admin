@@ -126,7 +126,7 @@ const testimonials = [
     role: "Head of Paid Media",
     company: "Velocity Digital",
     initials: "JW",
-    avatarColor: "linear-gradient(135deg, #f97316, #ea580c)",
+    avatarColor: "linear-gradient(135deg, #14b8a6, #7c3aed)",
     rating: 5,
   },
   {
@@ -189,17 +189,17 @@ const campaignTypes = [
 const trackingLogos = [
   { label: "Google Ads", bg: "rgba(66,133,244,0.12)", border: "rgba(66,133,244,0.25)", color: "#93c5fd" },
   { label: "Meta Pixel", bg: "rgba(24,119,242,0.12)", border: "rgba(24,119,242,0.25)", color: "#818cf8" },
-  { label: "GA4", bg: "rgba(234,88,12,0.12)", border: "rgba(234,88,12,0.25)", color: "#fdba74" },
+  { label: "GA4", bg: "rgba(234,88,12,0.12)", border: "rgba(234,88,12,0.25)", color: "#5eead4" },
   { label: "TikTok", bg: "rgba(255,255,255,0.06)", border: "rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.6)" },
   { label: "LinkedIn", bg: "rgba(10,102,194,0.12)", border: "rgba(10,102,194,0.25)", color: "#7dd3fc" },
   { label: "Microsoft UET", bg: "rgba(0,120,215,0.12)", border: "rgba(0,120,215,0.25)", color: "#93c5fd" },
 ];
 
 export default function ClickrPage() {
-  const accent = "#f97316";
-  const accentLight = "#fdba74";
-  const accentGlow = "rgba(249,115,22,0.55)";
-  const accentDark = "#ea580c";
+  const accent = "#14b8a6";
+  const accentLight = "#5eead4";
+  const accentGlow = "rgba(20,184,166,0.55)";
+  const accentDark = "#7c3aed";
 
   const [scrollPct, setScrollPct] = useState(0);
   const [activeSection, setActiveSection] = useState("hero");
@@ -329,7 +329,7 @@ export default function ClickrPage() {
     dur: `${3.5 + (i % 6)}s`,
     delay: `${-(i * 0.6)}s`,
     opacity: 0.04 + (i % 5) * 0.04,
-    color: i % 3 === 0 ? `rgba(249,115,22,0.9)` : i % 3 === 1 ? `rgba(239,68,68,0.9)` : `rgba(251,191,36,0.9)`,
+    color: i % 3 === 0 ? `rgba(20,184,166,0.9)` : i % 3 === 1 ? `rgba(124,58,237,0.9)` : `rgba(94,234,212,0.9)`,
   }));
 
   const s1 = useCountUp(60, 1500, statsVisible);
@@ -346,7 +346,7 @@ export default function ClickrPage() {
   return (
     <div style={{ background: "#09090f", color: "white", fontFamily: "inherit" }}>
       {/* Cursor glow */}
-      <div style={{ position: "fixed", pointerEvents: "none", zIndex: 1, width: 640, height: 640, borderRadius: "50%", left: mouse.x - 320, top: mouse.y - 320, background: `radial-gradient(circle, rgba(249,115,22,0.055) 0%, transparent 65%)`, transition: "left 0.2s ease-out, top 0.2s ease-out" }} />
+      <div style={{ position: "fixed", pointerEvents: "none", zIndex: 1, width: 640, height: 640, borderRadius: "50%", left: mouse.x - 320, top: mouse.y - 320, background: `radial-gradient(circle, rgba(20,184,166,0.055) 0%, transparent 65%)`, transition: "left 0.2s ease-out, top 0.2s ease-out" }} />
 
       {/* Side nav */}
       <nav style={{ position: "fixed", right: 24, top: "50%", transform: "translateY(-50%)", zIndex: 40, display: "flex", flexDirection: "column", gap: 1, background: "rgba(9,9,15,0.88)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: "10px 6px", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }} className="side-nav">
@@ -356,7 +356,7 @@ export default function ClickrPage() {
         <div style={{ width: "100%", height: 44, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, marginTop: 8, paddingTop: 8, borderTop: "1px solid rgba(255,255,255,0.07)" }}>
           <span style={{ fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.2)", letterSpacing: "0.06em", textTransform: "uppercase" }}>scroll</span>
           <div style={{ width: 2, height: 32, background: "rgba(255,255,255,0.08)", borderRadius: 2, position: "relative", overflow: "hidden" }}>
-            <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: `${scrollPct}%`, background: `linear-gradient(180deg, ${accent}, #ef4444)`, transition: "height 0.1s linear", borderRadius: 2 }} />
+            <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: `${scrollPct}%`, background: `linear-gradient(180deg, ${accent}, #7c3aed)`, transition: "height 0.1s linear", borderRadius: 2 }} />
           </div>
         </div>
       </nav>
@@ -366,8 +366,8 @@ export default function ClickrPage() {
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
       <section style={{ minHeight: "100vh", paddingTop: 64, position: "relative", overflow: "hidden", display: "flex", alignItems: "center" }}>
         {/* Background orbs */}
-        <div style={{ position: "absolute", width: "70%", paddingBottom: "70%", top: "-20%", left: "-20%", pointerEvents: "none", borderRadius: "50%", background: `radial-gradient(circle, rgba(249,115,22,0.18) 0%, transparent 65%)`, transform: `translateY(${parallaxY * -0.2}px)` }} className="orb-1" />
-        <div style={{ position: "absolute", width: "55%", paddingBottom: "55%", bottom: "-10%", right: "-15%", pointerEvents: "none", borderRadius: "50%", background: `radial-gradient(circle, rgba(239,68,68,0.15) 0%, transparent 65%)`, transform: `translateY(${parallaxY * -0.12}px)` }} className="orb-2" />
+        <div style={{ position: "absolute", width: "70%", paddingBottom: "70%", top: "-20%", left: "-20%", pointerEvents: "none", borderRadius: "50%", background: `radial-gradient(circle, rgba(20,184,166,0.18) 0%, transparent 65%)`, transform: `translateY(${parallaxY * -0.2}px)` }} className="orb-1" />
+        <div style={{ position: "absolute", width: "55%", paddingBottom: "55%", bottom: "-10%", right: "-15%", pointerEvents: "none", borderRadius: "50%", background: `radial-gradient(circle, rgba(124,58,237,0.15) 0%, transparent 65%)`, transform: `translateY(${parallaxY * -0.12}px)` }} className="orb-2" />
         <div style={{ position: "absolute", inset: 0, pointerEvents: "none", opacity: 0.018, backgroundImage: "linear-gradient(rgba(255,255,255,0.9) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.9) 1px, transparent 1px)", backgroundSize: "44px 44px" }} />
         {particles.map((p) => (
           <div key={p.id} className="hero-particle" style={{ position: "absolute", top: p.top, left: p.left, pointerEvents: "none", width: p.size, height: p.size, borderRadius: "50%", background: p.color, opacity: p.opacity, animationDuration: p.dur, animationDelay: p.delay }} />
@@ -378,10 +378,10 @@ export default function ClickrPage() {
           {/* Copy */}
           <div>
             {/* Brand badge */}
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 10, marginBottom: 32, padding: "8px 18px", borderRadius: 24, background: `rgba(249,115,22,0.1)`, border: `1px solid rgba(249,115,22,0.28)` }}>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 10, marginBottom: 32, padding: "8px 18px", borderRadius: 24, background: `rgba(20,184,166,0.1)`, border: `1px solid rgba(20,184,166,0.28)` }}>
               <MousePointerClick size={14} color={accentLight} />
               <span style={{ fontSize: 13, fontWeight: 800, color: accentLight, letterSpacing: "0.06em" }}>clickr</span>
-              <span style={{ width: 1, height: 14, background: `rgba(249,115,22,0.3)` }} />
+              <span style={{ width: 1, height: 14, background: `rgba(20,184,166,0.3)` }} />
               <span style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.35)", letterSpacing: "0.04em" }}>by i3MEDIA</span>
             </div>
 
@@ -401,7 +401,7 @@ export default function ClickrPage() {
               <br />
               <span className="hw hw3">that actually</span>
               <br />
-              <span className="hw" style={{ animationDelay: "0.58s", background: `linear-gradient(90deg, ${accentLight}, ${accent}, #ef4444)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>convert.</span>
+              <span className="hw" style={{ animationDelay: "0.58s", background: `linear-gradient(90deg, ${accentLight}, ${accent}, #7c3aed)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>convert.</span>
             </h1>
 
             <p style={{ fontSize: 19, color: "rgba(255,255,255,0.58)", lineHeight: 1.78, maxWidth: 500, marginBottom: 36, fontWeight: 400 }}>
@@ -434,10 +434,10 @@ export default function ClickrPage() {
 
           {/* Hero mockup — fake LP editor */}
           <div style={{ position: "relative" }}>
-            <div style={{ position: "absolute", inset: -50, borderRadius: "50%", background: `radial-gradient(circle, rgba(249,115,22,0.12) 0%, transparent 70%)`, pointerEvents: "none" }} />
+            <div style={{ position: "absolute", inset: -50, borderRadius: "50%", background: `radial-gradient(circle, rgba(20,184,166,0.12) 0%, transparent 70%)`, pointerEvents: "none" }} />
 
             {/* Editor shell */}
-            <div className="mockup-3d" style={{ background: "rgba(15,15,22,0.9)", border: `1px solid rgba(249,115,22,0.18)`, borderRadius: 18, overflow: "hidden", boxShadow: `0 32px 80px rgba(0,0,0,0.6)` }}>
+            <div className="mockup-3d" style={{ background: "rgba(15,15,22,0.9)", border: `1px solid rgba(20,184,166,0.18)`, borderRadius: 18, overflow: "hidden", boxShadow: `0 32px 80px rgba(0,0,0,0.6)` }}>
               {/* Toolbar */}
               <div style={{ padding: "12px 18px", background: "rgba(255,255,255,0.03)", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -449,7 +449,7 @@ export default function ClickrPage() {
                   <div style={{ marginLeft: 8, fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.5)" }}>clickr editor</div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <div style={{ padding: "3px 10px", borderRadius: 5, background: `rgba(249,115,22,0.12)`, border: `1px solid rgba(249,115,22,0.25)`, fontSize: 10, fontWeight: 700, color: accentLight }}>Publish</div>
+                  <div style={{ padding: "3px 10px", borderRadius: 5, background: `rgba(20,184,166,0.12)`, border: `1px solid rgba(20,184,166,0.25)`, fontSize: 10, fontWeight: 700, color: accentLight }}>Publish</div>
                   <SlidersHorizontal size={12} color="rgba(255,255,255,0.25)" />
                 </div>
               </div>
@@ -460,7 +460,7 @@ export default function ClickrPage() {
                   <div style={{ fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.2)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>Chat</div>
 
                   {/* User message */}
-                  <div style={{ alignSelf: "flex-end", background: `rgba(249,115,22,0.12)`, border: `1px solid rgba(249,115,22,0.2)`, borderRadius: "10px 10px 2px 10px", padding: "7px 10px", maxWidth: "85%" }}>
+                  <div style={{ alignSelf: "flex-end", background: `rgba(20,184,166,0.12)`, border: `1px solid rgba(20,184,166,0.2)`, borderRadius: "10px 10px 2px 10px", padding: "7px 10px", maxWidth: "85%" }}>
                     <p style={{ fontSize: 10, color: "rgba(255,255,255,0.65)", lineHeight: 1.5, margin: 0 }}>Make the hero headline bigger and more urgent</p>
                   </div>
 
@@ -470,19 +470,19 @@ export default function ClickrPage() {
                   </div>
 
                   {/* User message 2 */}
-                  <div style={{ alignSelf: "flex-end", background: `rgba(249,115,22,0.12)`, border: `1px solid rgba(249,115,22,0.2)`, borderRadius: "10px 10px 2px 10px", padding: "7px 10px", maxWidth: "85%" }}>
+                  <div style={{ alignSelf: "flex-end", background: `rgba(20,184,166,0.12)`, border: `1px solid rgba(20,184,166,0.2)`, borderRadius: "10px 10px 2px 10px", padding: "7px 10px", maxWidth: "85%" }}>
                     <p style={{ fontSize: 10, color: "rgba(255,255,255,0.65)", lineHeight: 1.5, margin: 0 }}>Change CTA button to orange</p>
                   </div>
 
                   {/* clickr response 2 */}
                   <div style={{ alignSelf: "flex-start", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "10px 10px 10px 2px", padding: "7px 10px", maxWidth: "90%" }}>
-                    <p style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", lineHeight: 1.5, margin: 0 }}>CTA updated to #f97316 with hover state.</p>
+                    <p style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", lineHeight: 1.5, margin: 0 }}>CTA updated to #14b8a6 with hover state.</p>
                   </div>
 
                   {/* Input bar */}
                   <div style={{ marginTop: "auto", display: "flex", gap: 6, alignItems: "center", padding: "6px 8px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8 }}>
                     <span style={{ fontSize: 10, color: "rgba(255,255,255,0.2)", flex: 1 }}>Ask clickr…</span>
-                    <div style={{ width: 18, height: 18, borderRadius: 5, background: `rgba(249,115,22,0.2)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <div style={{ width: 18, height: 18, borderRadius: 5, background: `rgba(20,184,166,0.2)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <ArrowRight size={10} color={accentLight} />
                     </div>
                   </div>
@@ -494,16 +494,16 @@ export default function ClickrPage() {
                   <div style={{ background: "white", minHeight: 340, position: "relative", overflow: "hidden" }}>
                     {/* Hero section */}
                     <div style={{ background: `linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)`, padding: "28px 22px 20px", position: "relative", overflow: "hidden" }}>
-                      <div style={{ position: "absolute", top: "-20%", right: "-10%", width: "60%", paddingBottom: "60%", borderRadius: "50%", background: "rgba(249,115,22,0.15)", pointerEvents: "none" }} />
+                      <div style={{ position: "absolute", top: "-20%", right: "-10%", width: "60%", paddingBottom: "60%", borderRadius: "50%", background: "rgba(20,184,166,0.15)", pointerEvents: "none" }} />
                       <div style={{ fontSize: 8, fontWeight: 800, color: "rgba(255,255,255,0.35)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>FCV Football Academy</div>
                       <div style={{ fontSize: 16, fontWeight: 900, color: "white", lineHeight: 1.15, marginBottom: 8, letterSpacing: "-0.03em" }}>
                         Last Spaces for<br />
-                        <span style={{ color: "#fdba74" }}>Summer 2026</span>
+                        <span style={{ color: "#5eead4" }}>Summer 2026</span>
                       </div>
                       <div style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", marginBottom: 12, lineHeight: 1.5 }}>
                         Elite coaching, 5-a-side tournaments,<br />and UEFA Pro licence coaches.
                       </div>
-                      <div style={{ display: "inline-block", padding: "6px 14px", borderRadius: 6, background: "#f97316", fontSize: 9, fontWeight: 800, color: "white", letterSpacing: "0.04em", boxShadow: "0 4px 12px rgba(249,115,22,0.5)" }}>
+                      <div style={{ display: "inline-block", padding: "6px 14px", borderRadius: 6, background: "#14b8a6", fontSize: 9, fontWeight: 800, color: "white", letterSpacing: "0.04em", boxShadow: "0 4px 12px rgba(20,184,166,0.5)" }}>
                         Enrol Now. Limited Spaces
                       </div>
                     </div>
@@ -517,7 +517,7 @@ export default function ClickrPage() {
                     <div style={{ padding: "12px 22px", display: "flex", flexDirection: "column", gap: 8 }}>
                       {["Full-day coaching sessions", "Age groups 8–16", "Free kit included"].map((b, i) => (
                         <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <div style={{ width: 14, height: 14, borderRadius: "50%", background: "#f97316", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          <div style={{ width: 14, height: 14, borderRadius: "50%", background: "#14b8a6", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                             <div style={{ width: 5, height: 5, background: "white", borderRadius: "50%" }} />
                           </div>
                           <div style={{ fontSize: 9, color: "#374151", fontWeight: 500 }}>{b}</div>
@@ -556,7 +556,7 @@ export default function ClickrPage() {
             </div>
 
             {/* Floating brief card */}
-            <div style={{ position: "absolute", bottom: -28, left: -24, background: "rgba(15,15,22,0.95)", border: `1px solid rgba(249,115,22,0.2)`, borderRadius: 14, padding: "12px 16px", maxWidth: 240, backdropFilter: "blur(16px)", zIndex: 10 }} className="float-card">
+            <div style={{ position: "absolute", bottom: -28, left: -24, background: "rgba(15,15,22,0.95)", border: `1px solid rgba(20,184,166,0.2)`, borderRadius: 14, padding: "12px 16px", maxWidth: 240, backdropFilter: "blur(16px)", zIndex: 10 }} className="float-card">
               <div style={{ fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.25)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>Brief</div>
               <p style={{ fontSize: 10, color: "rgba(255,255,255,0.55)", lineHeight: 1.55, margin: 0, minHeight: 30 }}>
                 {typedText}
@@ -568,12 +568,12 @@ export default function ClickrPage() {
       </section>
 
       {/* ── STATS ──────────────────────────────────────────────────────────── */}
-      <section id="stats-row" className="reveal-section" style={{ padding: "80px 40px", background: `linear-gradient(180deg, rgba(249,115,22,0.05) 0%, rgba(239,68,68,0.03) 100%)`, borderTop: "1px solid rgba(255,255,255,0.05)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+      <section id="stats-row" className="reveal-section" style={{ padding: "80px 40px", background: `linear-gradient(180deg, rgba(20,184,166,0.05) 0%, rgba(124,58,237,0.04) 100%)`, borderTop: "1px solid rgba(255,255,255,0.05)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
         <div style={{ maxWidth: 960, margin: "0 auto" }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24 }} className="stats-grid">
             {[
               { val: s1, suffix: "s", prefix: "~", label: "Average time from brief to first published draft", note: "Including Meridian generation + scrape", color: accent },
-              { val: s2, suffix: "+", label: "Campaign types supported: lead gen, e-commerce, events, trials, donations, and more", note: "Any paid campaign goal", color: "#ef4444" },
+              { val: s2, suffix: "+", label: "Campaign types supported: lead gen, e-commerce, events, trials, donations, and more", note: "Any paid campaign goal", color: "#7c3aed" },
               { val: s3, suffix: "%", label: "Of generated pages built with real brand content, not placeholder copy or lorem ipsum", note: "Full brand context from scrape", color: "#f59e0b", isText: false },
             ].map((s, i) => (
               <div key={i} className="stat-card stagger-in" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 18, padding: "36px 28px", textAlign: "center", position: "relative", overflow: "hidden", animationDelay: `${i * 0.1}s` }}>
@@ -638,7 +638,7 @@ export default function ClickrPage() {
               }} className="aud-card">
                 <span style={{
                   display: "inline-block", padding: "4px 10px", borderRadius: 20, marginBottom: 16,
-                  background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.2)",
+                  background: "rgba(20,184,166,0.1)", border: "1px solid rgba(20,184,166,0.2)",
                   fontSize: 10, fontWeight: 700, color: accentLight, letterSpacing: "0.06em",
                 }}>{badge}</span>
                 <h3 style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.025em", margin: "0 0 12px", color: "white" }}>{title}</h3>
@@ -657,7 +657,7 @@ export default function ClickrPage() {
             <p style={{ fontSize: 12, fontWeight: 700, color: accentLight, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }} className="blur-reveal">The workflow</p>
             <h2 style={{ fontSize: 48, fontWeight: 900, letterSpacing: "-0.04em", marginBottom: 18, color: "white" }} className="blur-reveal">
               From brief to live page<br />
-              <span style={{ background: `linear-gradient(90deg, ${accentLight}, ${accent}, #ef4444)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>in four steps.</span>
+              <span style={{ background: `linear-gradient(90deg, ${accentLight}, ${accent}, #7c3aed)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>in four steps.</span>
             </h2>
             <p style={{ fontSize: 16, color: "rgba(255,255,255,0.4)", maxWidth: 520, margin: "0 auto", lineHeight: 1.7 }}>
               No design briefs. No dev sprints. No agency back-and-forth. Just a URL and a brief, and clickr handles the rest.
@@ -667,16 +667,16 @@ export default function ClickrPage() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 20 }} className="steps-grid">
             {steps.map((step, i) => (
               <div key={i} className="feature-card stagger-in" style={{ padding: "32px 28px", borderRadius: 18, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", animationDelay: `${i * 0.1}s`, transition: "transform 0.35s ease, border-color 0.3s ease, box-shadow 0.3s ease", position: "relative", overflow: "hidden" }}>
-                <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, rgba(249,115,22,${0.6 - i * 0.1}), transparent)` }} />
+                <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, rgba(20,184,166,${0.6 - i * 0.1}), transparent)` }} />
                 <div style={{ display: "flex", alignItems: "flex-start", gap: 20 }}>
                   <div style={{ flexShrink: 0 }}>
-                    <div style={{ width: 48, height: 48, borderRadius: 14, background: `rgba(249,115,22,0.1)`, border: `1px solid rgba(249,115,22,0.22)`, display: "flex", alignItems: "center", justifyContent: "center", color: accentLight }}>
+                    <div style={{ width: 48, height: 48, borderRadius: 14, background: `rgba(20,184,166,0.1)`, border: `1px solid rgba(20,184,166,0.22)`, display: "flex", alignItems: "center", justifyContent: "center", color: accentLight }}>
                       {step.icon}
                     </div>
                   </div>
                   <div>
                     <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 8 }}>
-                      <span style={{ fontSize: 10, fontWeight: 800, color: `rgba(249,115,22,0.5)`, letterSpacing: "0.1em" }}>{step.n}</span>
+                      <span style={{ fontSize: 10, fontWeight: 800, color: `rgba(20,184,166,0.5)`, letterSpacing: "0.1em" }}>{step.n}</span>
                       <span style={{ fontSize: 17, fontWeight: 800, color: "white" }}>{step.title}</span>
                     </div>
                     <p style={{ fontSize: 14, color: "rgba(255,255,255,0.45)", lineHeight: 1.7, margin: 0 }}>{step.desc}</p>
@@ -706,7 +706,7 @@ export default function ClickrPage() {
           {/* ── Feature 1: AI Generation ─────────────────────────────── */}
           <div className="reveal-section feat-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center", marginBottom: 120 }}>
             <div>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "5px 14px", borderRadius: 20, background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.2)", marginBottom: 24 }}>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "5px 14px", borderRadius: 20, background: "rgba(20,184,166,0.1)", border: "1px solid rgba(20,184,166,0.2)", marginBottom: 24 }}>
                 <Zap size={12} color={accentLight} />
                 <span style={{ fontSize: 11, fontWeight: 700, color: accentLight, letterSpacing: "0.06em", textTransform: "uppercase" }}>AI generation</span>
               </div>
@@ -734,8 +734,8 @@ export default function ClickrPage() {
 
             {/* Scrape mockup — animated */}
             <div style={{ position: "relative" }}>
-              <div style={{ position: "absolute", inset: -48, borderRadius: "50%", background: `radial-gradient(circle, rgba(249,115,22,0.09) 0%, transparent 70%)`, pointerEvents: "none" }} />
-              <div style={{ background: "rgba(13,13,20,0.96)", border: `1px solid rgba(249,115,22,0.18)`, borderRadius: 16, overflow: "hidden", boxShadow: "0 28px 72px rgba(0,0,0,0.55)" }}>
+              <div style={{ position: "absolute", inset: -48, borderRadius: "50%", background: `radial-gradient(circle, rgba(20,184,166,0.09) 0%, transparent 70%)`, pointerEvents: "none" }} />
+              <div style={{ background: "rgba(13,13,20,0.96)", border: `1px solid rgba(20,184,166,0.18)`, borderRadius: 16, overflow: "hidden", boxShadow: "0 28px 72px rgba(0,0,0,0.55)" }}>
                 {/* Window chrome */}
                 <div style={{ padding: "10px 16px", background: "rgba(255,255,255,0.03)", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 6 }}>
                   <div style={{ display: "flex", gap: 5 }}>
@@ -757,12 +757,12 @@ export default function ClickrPage() {
                 <div style={{ padding: "20px 20px 22px" }}>
                   {/* URL input */}
                   <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-                    <div style={{ flex: 1, padding: "9px 14px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: `1px solid ${scrapeStep >= 2 ? "rgba(249,115,22,0.3)" : "rgba(255,255,255,0.1)"}`, fontSize: 12, color: "rgba(255,255,255,0.55)", display: "flex", alignItems: "center", gap: 7, transition: "border-color 0.3s ease" }}>
+                    <div style={{ flex: 1, padding: "9px 14px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: `1px solid ${scrapeStep >= 2 ? "rgba(20,184,166,0.3)" : "rgba(255,255,255,0.1)"}`, fontSize: 12, color: "rgba(255,255,255,0.55)", display: "flex", alignItems: "center", gap: 7, transition: "border-color 0.3s ease" }}>
                       <Globe size={11} color="rgba(255,255,255,0.3)" />
                       <span>{scrapeStep === 0 ? "" : scrapeStep === 1 ? "fcvfoot" : "fcvfootball.co.uk"}</span>
                       {scrapeStep <= 1 && <span className="cursor-blink" style={{ display: "inline-block", width: 1.5, height: 11, background: accentLight, borderRadius: 1, marginLeft: 1 }} />}
                     </div>
-                    <div style={{ padding: "9px 14px", borderRadius: 8, background: scrapeStep >= 2 && scrapeStep <= 4 ? "rgba(249,115,22,0.2)" : `linear-gradient(135deg, ${accent}, ${accentDark})`, border: scrapeStep >= 2 && scrapeStep <= 4 ? "1px solid rgba(249,115,22,0.4)" : "none", fontSize: 11, fontWeight: 700, color: "white", display: "flex", alignItems: "center", gap: 5, flexShrink: 0, transition: "all 0.3s ease", boxShadow: scrapeStep >= 2 && scrapeStep <= 4 ? "0 0 20px rgba(249,115,22,0.35)" : "none" }}>
+                    <div style={{ padding: "9px 14px", borderRadius: 8, background: scrapeStep >= 2 && scrapeStep <= 4 ? "rgba(20,184,166,0.2)" : `linear-gradient(135deg, ${accent}, ${accentDark})`, border: scrapeStep >= 2 && scrapeStep <= 4 ? "1px solid rgba(20,184,166,0.4)" : "none", fontSize: 11, fontWeight: 700, color: "white", display: "flex", alignItems: "center", gap: 5, flexShrink: 0, transition: "all 0.3s ease", boxShadow: scrapeStep >= 2 && scrapeStep <= 4 ? "0 0 20px rgba(20,184,166,0.35)" : "none" }}>
                       {scrapeStep >= 2 && scrapeStep <= 4 ? (
                         <>
                           <div style={{ width: 9, height: 9, borderRadius: "50%", border: "1.5px solid rgba(255,255,255,0.3)", borderTopColor: "white", animation: "spin 0.7s linear infinite" }} />
@@ -784,7 +784,7 @@ export default function ClickrPage() {
                         <span style={{ fontSize: 9, color: scrapeStep >= 4 ? "#86efac" : "rgba(255,255,255,0.18)", fontWeight: 600, transition: "color 0.4s ease" }}>{scrapeStep >= 4 ? "✓ Extracted" : "—"}</span>
                       </div>
                       <div style={{ display: "flex", gap: 5 }}>
-                        {["#1a3a6b", "#f97316", "#ffffff", "#1f2937", "#94a3b8"].map((c, i) => (
+                        {["#1a3a6b", "#14b8a6", "#ffffff", "#1f2937", "#94a3b8"].map((c, i) => (
                           <div key={i} style={{ width: 26, height: 26, borderRadius: 6, background: c, border: "1px solid rgba(255,255,255,0.12)", transform: scrapeStep >= 4 ? "scale(1) rotate(0deg)" : "scale(0) rotate(-15deg)", opacity: scrapeStep >= 4 ? 1 : 0, transition: `transform 0.4s cubic-bezier(0.34,1.56,0.64,1) ${0.05 + i * 0.07}s, opacity 0.3s ease ${0.05 + i * 0.07}s` }} />
                         ))}
                       </div>
@@ -798,7 +798,7 @@ export default function ClickrPage() {
                       </div>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
                         {["Summer Camps", "Holiday Courses", "1-to-1 Coaching", "Team Training", "Trials"].map((s, i) => (
-                          <span key={i} style={{ padding: "3px 8px", borderRadius: 5, background: "rgba(249,115,22,0.07)", border: "1px solid rgba(249,115,22,0.14)", fontSize: 9, color: "rgba(255,255,255,0.45)", opacity: scrapeStep >= 5 ? 1 : 0, transform: scrapeStep >= 5 ? "translateY(0)" : "translateY(8px)", transition: `opacity 0.35s ease ${i * 0.1}s, transform 0.35s ease ${i * 0.1}s` }}>{s}</span>
+                          <span key={i} style={{ padding: "3px 8px", borderRadius: 5, background: "rgba(20,184,166,0.07)", border: "1px solid rgba(20,184,166,0.14)", fontSize: 9, color: "rgba(255,255,255,0.45)", opacity: scrapeStep >= 5 ? 1 : 0, transform: scrapeStep >= 5 ? "translateY(0)" : "translateY(8px)", transition: `opacity 0.35s ease ${i * 0.1}s, transform 0.35s ease ${i * 0.1}s` }}>{s}</span>
                         ))}
                       </div>
                     </div>
@@ -814,7 +814,7 @@ export default function ClickrPage() {
                     </div>
 
                     {/* Progress */}
-                    <div style={{ padding: "9px 13px", borderRadius: 9, background: "rgba(249,115,22,0.06)", border: "1px solid rgba(249,115,22,0.14)" }}>
+                    <div style={{ padding: "9px 13px", borderRadius: 9, background: "rgba(20,184,166,0.06)", border: "1px solid rgba(20,184,166,0.14)" }}>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
                         <span style={{ fontSize: 9, fontWeight: 700, color: accentLight }}>
                           {scrapeStep <= 1 ? "Awaiting URL…" : scrapeStep <= 3 ? "Extracting brand data…" : scrapeStep <= 5 ? "Analysing content…" : scrapeStep === 6 ? "Generating page…" : "✓ Page generated!"}
@@ -824,7 +824,7 @@ export default function ClickrPage() {
                         </span>
                       </div>
                       <div style={{ height: 3, borderRadius: 2, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
-                        <div style={{ height: "100%", borderRadius: 2, background: `linear-gradient(90deg, ${accent}, ${accentDark})`, width: scrapeStep <= 1 ? "0%" : scrapeStep <= 3 ? "24%" : scrapeStep <= 5 ? "58%" : scrapeStep === 6 ? "83%" : "100%", transition: "width 0.9s cubic-bezier(0.4,0,0.2,1)", boxShadow: "0 0 8px rgba(249,115,22,0.5)" }} />
+                        <div style={{ height: "100%", borderRadius: 2, background: `linear-gradient(90deg, ${accent}, ${accentDark})`, width: scrapeStep <= 1 ? "0%" : scrapeStep <= 3 ? "24%" : scrapeStep <= 5 ? "58%" : scrapeStep === 6 ? "83%" : "100%", transition: "width 0.9s cubic-bezier(0.4,0,0.2,1)", boxShadow: "0 0 8px rgba(20,184,166,0.5)" }} />
                       </div>
                     </div>
                   </div>
@@ -837,14 +837,14 @@ export default function ClickrPage() {
           <div className="reveal-section feat-row feat-row-rev" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center", marginBottom: 120 }}>
             {/* Chat mockup — animated */}
             <div style={{ position: "relative" }}>
-              <div style={{ position: "absolute", inset: -48, borderRadius: "50%", background: "radial-gradient(circle, rgba(99,102,241,0.07) 0%, transparent 70%)", pointerEvents: "none" }} />
+              <div style={{ position: "absolute", inset: -48, borderRadius: "50%", background: "radial-gradient(circle, rgba(124,58,237,0.07) 0%, transparent 70%)", pointerEvents: "none" }} />
               <div style={{ background: "rgba(13,13,20,0.96)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 16, overflow: "hidden", boxShadow: "0 28px 72px rgba(0,0,0,0.55)" }}>
                 <div style={{ padding: "10px 16px", background: "rgba(255,255,255,0.03)", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 6 }}>
                   <div style={{ display: "flex", gap: 5 }}>
                     {["rgba(239,68,68,0.5)", "rgba(251,191,36,0.5)", "rgba(34,197,94,0.5)"].map((c, i) => <div key={i} style={{ width: 9, height: 9, borderRadius: "50%", background: c }} />)}
                   </div>
                   <span style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.3)", marginLeft: 6 }}>clickr — Chat Editor</span>
-                  <div style={{ marginLeft: "auto", padding: "2px 8px", borderRadius: 5, background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.2)", fontSize: 9, fontWeight: 700, color: accentLight }}>Publish</div>
+                  <div style={{ marginLeft: "auto", padding: "2px 8px", borderRadius: 5, background: "rgba(20,184,166,0.1)", border: "1px solid rgba(20,184,166,0.2)", fontSize: 9, fontWeight: 700, color: accentLight }}>Publish</div>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "175px 1fr" }}>
                   {/* Chat sidebar */}
@@ -853,7 +853,7 @@ export default function ClickrPage() {
 
                     {/* User msg 1 */}
                     {chatStep >= 1 && (
-                      <div style={{ alignSelf: "flex-end", background: "rgba(249,115,22,0.09)", border: "1px solid rgba(249,115,22,0.17)", borderRadius: "8px 8px 2px 8px", padding: "6px 8px", animation: "chat-bubble-in 0.35s cubic-bezier(0.34,1.56,0.64,1) both" }}>
+                      <div style={{ alignSelf: "flex-end", background: "rgba(20,184,166,0.09)", border: "1px solid rgba(20,184,166,0.17)", borderRadius: "8px 8px 2px 8px", padding: "6px 8px", animation: "chat-bubble-in 0.35s cubic-bezier(0.34,1.56,0.64,1) both" }}>
                         <p style={{ fontSize: 9, color: "rgba(255,255,255,0.65)", lineHeight: 1.5, margin: 0 }}>Rewrite headline to emphasise scarcity</p>
                       </div>
                     )}
@@ -876,7 +876,7 @@ export default function ClickrPage() {
 
                     {/* User msg 2 */}
                     {chatStep >= 4 && (
-                      <div style={{ alignSelf: "flex-end", background: "rgba(249,115,22,0.09)", border: "1px solid rgba(249,115,22,0.17)", borderRadius: "8px 8px 2px 8px", padding: "6px 8px", animation: "chat-bubble-in 0.35s cubic-bezier(0.34,1.56,0.64,1) both" }}>
+                      <div style={{ alignSelf: "flex-end", background: "rgba(20,184,166,0.09)", border: "1px solid rgba(20,184,166,0.17)", borderRadius: "8px 8px 2px 8px", padding: "6px 8px", animation: "chat-bubble-in 0.35s cubic-bezier(0.34,1.56,0.64,1) both" }}>
                         <p style={{ fontSize: 9, color: "rgba(255,255,255,0.65)", lineHeight: 1.5, margin: 0 }}>Make CTA button orange, bigger</p>
                       </div>
                     )}
@@ -893,15 +893,15 @@ export default function ClickrPage() {
                     {/* AI reply 2 */}
                     {chatStep >= 6 && (
                       <div style={{ alignSelf: "flex-start", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "8px 8px 8px 2px", padding: "6px 8px", animation: "chat-bubble-in 0.35s cubic-bezier(0.34,1.56,0.64,1) both" }}>
-                        <p style={{ fontSize: 9, color: "rgba(255,255,255,0.45)", lineHeight: 1.5, margin: 0 }}>CTA updated to #f97316 at 18px.</p>
+                        <p style={{ fontSize: 9, color: "rgba(255,255,255,0.45)", lineHeight: 1.5, margin: 0 }}>CTA updated to #14b8a6 at 18px.</p>
                       </div>
                     )}
 
                     {/* Input bar with blinking cursor */}
                     <div style={{ marginTop: "auto", display: "flex", gap: 5, alignItems: "center", padding: "5px 7px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 7 }}>
                       <span style={{ fontSize: 9, color: "rgba(255,255,255,0.15)", flex: 1 }}>Ask clickr…</span>
-                      <span className="cursor-blink" style={{ display: "inline-block", width: 1.5, height: 9, background: "rgba(249,115,22,0.6)", borderRadius: 1 }} />
-                      <div style={{ width: 15, height: 15, borderRadius: 4, background: "rgba(249,115,22,0.18)", display: "flex", alignItems: "center", justifyContent: "center" }}><ArrowRight size={8} color={accentLight} /></div>
+                      <span className="cursor-blink" style={{ display: "inline-block", width: 1.5, height: 9, background: "rgba(20,184,166,0.6)", borderRadius: 1 }} />
+                      <div style={{ width: 15, height: 15, borderRadius: 4, background: "rgba(20,184,166,0.18)", display: "flex", alignItems: "center", justifyContent: "center" }}><ArrowRight size={8} color={accentLight} /></div>
                     </div>
                   </div>
 
@@ -916,7 +916,7 @@ export default function ClickrPage() {
                       <div style={{ fontSize: 7, fontWeight: 700, color: chatStep >= 6 ? "#16a34a" : "rgba(0,0,0,0.18)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 5, transition: "color 0.4s ease" }}>+ After</div>
                       <div style={{ fontSize: 12, fontWeight: 800, color: chatStep >= 6 ? "#111827" : "#9ca3af", letterSpacing: "-0.02em", lineHeight: 1.2, transition: "color 0.5s ease" }}>
                         {chatStep >= 6 ? (
-                          <>Only 4 Spaces Left<br /><span style={{ color: "#f97316" }}>for Summer 2026</span></>
+                          <>Only 4 Spaces Left<br /><span style={{ color: "#14b8a6" }}>for Summer 2026</span></>
                         ) : (
                           <>Summer Football Camps 2026</>
                         )}
@@ -925,7 +925,7 @@ export default function ClickrPage() {
                         {chatStep >= 6 ? "Don\u2019t miss out \u2014 enrol now" : "Book your place today"}
                       </div>
                       {chatStep >= 6 && (
-                        <div style={{ display: "inline-block", marginTop: 7, padding: "4px 12px", borderRadius: 5, background: "#f97316", fontSize: 8, fontWeight: 800, color: "white", animation: "chat-bubble-in 0.4s ease both", boxShadow: "0 0 12px rgba(249,115,22,0.4)" }}>Enrol Now \u2014 Last Spaces</div>
+                        <div style={{ display: "inline-block", marginTop: 7, padding: "4px 12px", borderRadius: 5, background: "#14b8a6", fontSize: 8, fontWeight: 800, color: "white", animation: "chat-bubble-in 0.4s ease both", boxShadow: "0 0 12px rgba(20,184,166,0.4)" }}>Enrol Now \u2014 Last Spaces</div>
                       )}
                     </div>
                     <div style={{ padding: "9px 16px", background: "#f8fafc", display: "flex", alignItems: "center", gap: 5 }}>
@@ -949,13 +949,13 @@ export default function ClickrPage() {
             </div>
             {/* Text */}
             <div>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "5px 14px", borderRadius: 20, background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.2)", marginBottom: 24 }}>
-                <MessageSquare size={12} color="#a5b4fc" />
-                <span style={{ fontSize: 11, fontWeight: 700, color: "#a5b4fc", letterSpacing: "0.06em", textTransform: "uppercase" }}>Chat editor</span>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "5px 14px", borderRadius: 20, background: "rgba(124,58,237,0.1)", border: "1px solid rgba(124,58,237,0.2)", marginBottom: 24 }}>
+                <MessageSquare size={12} color="#c4b5fd" />
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#c4b5fd", letterSpacing: "0.06em", textTransform: "uppercase" }}>Chat editor</span>
               </div>
               <h3 style={{ fontSize: 38, fontWeight: 900, letterSpacing: "-0.04em", lineHeight: 1.1, color: "white", marginBottom: 20 }}>
                 Describe the change.<br />
-                <span style={{ background: "linear-gradient(90deg, #a5b4fc, #818cf8)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>clickr rewrites it.</span>
+                <span style={{ background: "linear-gradient(90deg, #c4b5fd, #818cf8)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>clickr rewrites it.</span>
               </h3>
               <p style={{ fontSize: 15, color: "rgba(255,255,255,0.5)", lineHeight: 1.8, marginBottom: 28 }}>
                 No drag-and-drop. No element panels. No wrestling with a builder. Type what you want in plain English and clickr edits the actual page HTML — headline, layout, copy, colour, structure.
@@ -968,7 +968,7 @@ export default function ClickrPage() {
                   "Full HTML code editor available for precise surgical edits",
                 ].map((item, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-                    <CheckCircle2 size={14} color="#a5b4fc" style={{ flexShrink: 0, marginTop: 2 }} />
+                    <CheckCircle2 size={14} color="#c4b5fd" style={{ flexShrink: 0, marginTop: 2 }} />
                     <span style={{ fontSize: 14, color: "rgba(255,255,255,0.55)", lineHeight: 1.5 }}>{item}</span>
                   </div>
                 ))}
@@ -980,7 +980,7 @@ export default function ClickrPage() {
           <div className="reveal-section feat-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center", marginBottom: 120 }}>
             {/* Text */}
             <div>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "5px 14px", borderRadius: 20, background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.2)", marginBottom: 24 }}>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "5px 14px", borderRadius: 20, background: "rgba(20,184,166,0.1)", border: "1px solid rgba(20,184,166,0.2)", marginBottom: 24 }}>
                 <BarChart3 size={12} color={accentLight} />
                 <span style={{ fontSize: 11, fontWeight: 700, color: accentLight, letterSpacing: "0.06em", textTransform: "uppercase" }}>Conversion tracking</span>
               </div>
@@ -1008,8 +1008,8 @@ export default function ClickrPage() {
 
             {/* Tracking config mockup — animated */}
             <div style={{ position: "relative" }}>
-              <div style={{ position: "absolute", inset: -48, borderRadius: "50%", background: `radial-gradient(circle, rgba(249,115,22,0.09) 0%, transparent 70%)`, pointerEvents: "none" }} />
-              <div style={{ background: "rgba(13,13,20,0.96)", border: `1px solid rgba(249,115,22,0.18)`, borderRadius: 16, overflow: "hidden", boxShadow: "0 28px 72px rgba(0,0,0,0.55)" }}>
+              <div style={{ position: "absolute", inset: -48, borderRadius: "50%", background: `radial-gradient(circle, rgba(20,184,166,0.09) 0%, transparent 70%)`, pointerEvents: "none" }} />
+              <div style={{ background: "rgba(13,13,20,0.96)", border: `1px solid rgba(20,184,166,0.18)`, borderRadius: 16, overflow: "hidden", boxShadow: "0 28px 72px rgba(0,0,0,0.55)" }}>
                 <div style={{ padding: "10px 16px", background: "rgba(255,255,255,0.03)", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 6 }}>
                   <div style={{ display: "flex", gap: 5 }}>
                     {["rgba(239,68,68,0.5)", "rgba(251,191,36,0.5)", "rgba(34,197,94,0.5)"].map((c, i) => <div key={i} style={{ width: 9, height: 9, borderRadius: "50%", background: c }} />)}
@@ -1030,7 +1030,7 @@ export default function ClickrPage() {
                     {[
                       { label: "Google Ads", id: "AW-12345678", color: "#93c5fd", activateAt: 1 },
                       { label: "Meta Pixel", id: "23456789012", color: "#818cf8", activateAt: 2 },
-                      { label: "GA4", id: "G-ABCD1234", color: "#fdba74", activateAt: 3 },
+                      { label: "GA4", id: "G-ABCD1234", color: "#5eead4", activateAt: 3 },
                       { label: "TikTok Pixel", id: "TT-98765432", color: "rgba(255,255,255,0.55)", activateAt: 4 },
                       { label: "LinkedIn Tag", id: "1234567", color: "#7dd3fc", activateAt: 5 },
                     ].map((pixel, i) => {
@@ -1077,10 +1077,10 @@ export default function ClickrPage() {
           <div className="reveal-section feat-row feat-row-rev" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center", marginBottom: 100 }}>
             {/* Lead routing mockup — animated */}
             <div style={{ position: "relative" }}>
-              <div style={{ position: "absolute", inset: -48, borderRadius: "50%", background: "radial-gradient(circle, rgba(99,102,241,0.07) 0%, transparent 70%)", pointerEvents: "none" }} />
+              <div style={{ position: "absolute", inset: -48, borderRadius: "50%", background: "radial-gradient(circle, rgba(124,58,237,0.07) 0%, transparent 70%)", pointerEvents: "none" }} />
               <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
                 {/* Lead notification card — key forces remount + re-animation on each new lead */}
-                <div key={routeStep === 0 ? `lead-${Date.now()}` : "lead"} style={{ background: "rgba(13,13,20,0.96)", border: `1px solid rgba(249,115,22,0.2)`, borderRadius: 14, padding: "15px 17px", boxShadow: "0 16px 48px rgba(0,0,0,0.5)", animation: "lead-arrive 0.55s cubic-bezier(0.34,1.56,0.64,1) both" }}>
+                <div key={routeStep === 0 ? `lead-${Date.now()}` : "lead"} style={{ background: "rgba(13,13,20,0.96)", border: `1px solid rgba(20,184,166,0.2)`, borderRadius: 14, padding: "15px 17px", boxShadow: "0 16px 48px rgba(0,0,0,0.5)", animation: "lead-arrive 0.55s cubic-bezier(0.34,1.56,0.64,1) both" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 11 }}>
                     <div style={{ width: 30, height: 30, borderRadius: "50%", background: `linear-gradient(135deg, ${accent}, ${accentDark})`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                       <Users size={13} color="white" />
@@ -1100,7 +1100,7 @@ export default function ClickrPage() {
                     <div style={{ fontSize: 10, color: "rgba(255,255,255,0.42)", fontStyle: "italic" }}>&ldquo;Looking for sessions for my 10-year-old&rdquo;</div>
                   </div>
                   <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-                    <span style={{ padding: "2px 7px", borderRadius: 5, background: "rgba(249,115,22,0.08)", border: "1px solid rgba(249,115,22,0.15)", fontSize: 9, color: accentLight }}>Google Ads</span>
+                    <span style={{ padding: "2px 7px", borderRadius: 5, background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.15)", fontSize: 9, color: accentLight }}>Google Ads</span>
                     <span style={{ padding: "2px 7px", borderRadius: 5, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", fontSize: 9, color: "rgba(255,255,255,0.35)" }}>/summer-camp-2026</span>
                     <span style={{ padding: "2px 7px", borderRadius: 5, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", fontSize: 9, color: "rgba(255,255,255,0.35)" }}>Mobile</span>
                   </div>
@@ -1132,13 +1132,13 @@ export default function ClickrPage() {
             </div>
             {/* Text */}
             <div>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "5px 14px", borderRadius: 20, background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.2)", marginBottom: 24 }}>
-                <Users size={12} color="#a5b4fc" />
-                <span style={{ fontSize: 11, fontWeight: 700, color: "#a5b4fc", letterSpacing: "0.06em", textTransform: "uppercase" }}>Lead capture &amp; routing</span>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "5px 14px", borderRadius: 20, background: "rgba(124,58,237,0.1)", border: "1px solid rgba(124,58,237,0.2)", marginBottom: 24 }}>
+                <Users size={12} color="#c4b5fd" />
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#c4b5fd", letterSpacing: "0.06em", textTransform: "uppercase" }}>Lead capture &amp; routing</span>
               </div>
               <h3 style={{ fontSize: 38, fontWeight: 900, letterSpacing: "-0.04em", lineHeight: 1.1, color: "white", marginBottom: 20 }}>
                 Every lead, routed<br />
-                <span style={{ background: "linear-gradient(90deg, #a5b4fc, #818cf8)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>exactly where it needs to go.</span>
+                <span style={{ background: "linear-gradient(90deg, #c4b5fd, #818cf8)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>exactly where it needs to go.</span>
               </h3>
               <p style={{ fontSize: 15, color: "rgba(255,255,255,0.5)", lineHeight: 1.8, marginBottom: 28 }}>
                 Every form submission is stored in StratOS with full attribution data. Route to your CRM, fire a Teams or Slack notification, send a client email, and POST to any webhook — all in the same instant.
@@ -1151,7 +1151,7 @@ export default function ClickrPage() {
                   "Webhooks: connect Zapier, Make, or your own backend",
                 ].map((item, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-                    <CheckCircle2 size={14} color="#a5b4fc" style={{ flexShrink: 0, marginTop: 2 }} />
+                    <CheckCircle2 size={14} color="#c4b5fd" style={{ flexShrink: 0, marginTop: 2 }} />
                     <span style={{ fontSize: 14, color: "rgba(255,255,255,0.55)", lineHeight: 1.5 }}>{item}</span>
                   </div>
                 ))}
@@ -1165,7 +1165,7 @@ export default function ClickrPage() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }} className="features-grid">
               {secondaryFeatures.map((f, i) => (
                 <div key={i} className="feature-card stagger-in" style={{ padding: "22px 20px", borderRadius: 13, background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)", animationDelay: `${i * 0.06}s`, transition: "transform 0.3s ease, border-color 0.2s ease" }}>
-                  <div style={{ width: 36, height: 36, borderRadius: 9, background: "rgba(249,115,22,0.08)", border: "1px solid rgba(249,115,22,0.16)", display: "flex", alignItems: "center", justifyContent: "center", color: accentLight, marginBottom: 13 }}>{f.icon}</div>
+                  <div style={{ width: 36, height: 36, borderRadius: 9, background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.16)", display: "flex", alignItems: "center", justifyContent: "center", color: accentLight, marginBottom: 13 }}>{f.icon}</div>
                   <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.82)", marginBottom: 6 }}>{f.title}</div>
                   <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", lineHeight: 1.6 }}>{f.desc}</div>
                 </div>
@@ -1248,7 +1248,7 @@ export default function ClickrPage() {
             {/* CRM integrations */}
             <div style={{ padding: "28px 26px", borderRadius: 18, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-                <div style={{ width: 40, height: 40, borderRadius: 11, background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.22)", display: "flex", alignItems: "center", justifyContent: "center", color: accentLight }}>
+                <div style={{ width: 40, height: 40, borderRadius: 11, background: "rgba(20,184,166,0.1)", border: "1px solid rgba(20,184,166,0.22)", display: "flex", alignItems: "center", justifyContent: "center", color: accentLight }}>
                   <Database size={18} />
                 </div>
                 <div style={{ fontSize: 16, fontWeight: 700, color: "white" }}>CRM integrations</div>
@@ -1266,7 +1266,7 @@ export default function ClickrPage() {
             {/* Instant notifications */}
             <div style={{ padding: "28px 26px", borderRadius: 18, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-                <div style={{ width: 40, height: 40, borderRadius: 11, background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.22)", display: "flex", alignItems: "center", justifyContent: "center", color: accentLight }}>
+                <div style={{ width: 40, height: 40, borderRadius: 11, background: "rgba(20,184,166,0.1)", border: "1px solid rgba(20,184,166,0.22)", display: "flex", alignItems: "center", justifyContent: "center", color: accentLight }}>
                   <Bell size={18} />
                 </div>
                 <div style={{ fontSize: 16, fontWeight: 700, color: "white" }}>Instant notifications</div>
@@ -1284,7 +1284,7 @@ export default function ClickrPage() {
             {/* Form to email */}
             <div style={{ padding: "28px 26px", borderRadius: 18, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-                <div style={{ width: 40, height: 40, borderRadius: 11, background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.22)", display: "flex", alignItems: "center", justifyContent: "center", color: accentLight }}>
+                <div style={{ width: 40, height: 40, borderRadius: 11, background: "rgba(20,184,166,0.1)", border: "1px solid rgba(20,184,166,0.22)", display: "flex", alignItems: "center", justifyContent: "center", color: accentLight }}>
                   <Mail size={18} />
                 </div>
                 <div style={{ fontSize: 16, fontWeight: 700, color: "white" }}>Form-to-email routing</div>
@@ -1295,9 +1295,9 @@ export default function ClickrPage() {
             </div>
 
             {/* Custom webhooks */}
-            <div style={{ padding: "28px 26px", borderRadius: 18, background: "rgba(255,255,255,0.03)", border: `1px solid rgba(249,115,22,0.15)` }}>
+            <div style={{ padding: "28px 26px", borderRadius: 18, background: "rgba(255,255,255,0.03)", border: `1px solid rgba(20,184,166,0.15)` }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-                <div style={{ width: 40, height: 40, borderRadius: 11, background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.22)", display: "flex", alignItems: "center", justifyContent: "center", color: accentLight }}>
+                <div style={{ width: 40, height: 40, borderRadius: 11, background: "rgba(20,184,166,0.1)", border: "1px solid rgba(20,184,166,0.22)", display: "flex", alignItems: "center", justifyContent: "center", color: accentLight }}>
                   <Link2 size={18} />
                 </div>
                 <div style={{ fontSize: 16, fontWeight: 700, color: "white" }}>Custom webhooks</div>
@@ -1305,7 +1305,7 @@ export default function ClickrPage() {
               <p style={{ fontSize: 13, color: "rgba(255,255,255,0.43)", lineHeight: 1.65, marginBottom: 14 }}>
                 Send lead and conversion data to any endpoint that accepts an HTTP POST. Connect clickr to Zapier, Make, your own backend, or any custom workflow already running in your stack.
               </p>
-              <div style={{ padding: "8px 12px", borderRadius: 8, background: "rgba(249,115,22,0.06)", border: "1px solid rgba(249,115,22,0.12)", fontSize: 11, fontFamily: "monospace", color: "rgba(255,255,255,0.45)" }}>
+              <div style={{ padding: "8px 12px", borderRadius: 8, background: "rgba(20,184,166,0.06)", border: "1px solid rgba(20,184,166,0.12)", fontSize: 11, fontFamily: "monospace", color: "rgba(255,255,255,0.45)" }}>
                 POST https://your-endpoint.com/webhook
               </div>
             </div>
@@ -1335,7 +1335,7 @@ export default function ClickrPage() {
       </section>
 
       {/* ── TRACKING ───────────────────────────────────────────────────────── */}
-      <section id="tracking" className="reveal-section" style={{ padding: "100px 40px", background: `linear-gradient(180deg, rgba(249,115,22,0.04) 0%, rgba(239,68,68,0.03) 100%)`, borderTop: "1px solid rgba(255,255,255,0.05)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+      <section id="tracking" className="reveal-section" style={{ padding: "100px 40px", background: `linear-gradient(180deg, rgba(20,184,166,0.04) 0%, rgba(124,58,237,0.04) 100%)`, borderTop: "1px solid rgba(255,255,255,0.05)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
         <div style={{ maxWidth: 1000, margin: "0 auto" }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 72, alignItems: "center" }} className="tracking-grid">
             <div>
@@ -1373,9 +1373,9 @@ export default function ClickrPage() {
                 </div>
               </div>
 
-              <div style={{ padding: "20px 22px", borderRadius: 16, background: "rgba(255,255,255,0.03)", border: `1px solid rgba(249,115,22,0.15)` }}>
+              <div style={{ padding: "20px 22px", borderRadius: 16, background: "rgba(255,255,255,0.03)", border: `1px solid rgba(20,184,166,0.15)` }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-                  <div style={{ width: 28, height: 28, borderRadius: 8, background: `rgba(249,115,22,0.12)`, border: `1px solid rgba(249,115,22,0.25)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <div style={{ width: 28, height: 28, borderRadius: 8, background: `rgba(20,184,166,0.12)`, border: `1px solid rgba(20,184,166,0.25)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <Zap size={13} color={accentLight} />
                   </div>
                   <div style={{ fontSize: 13, fontWeight: 700, color: "white" }}>Test mode</div>
@@ -1439,13 +1439,13 @@ export default function ClickrPage() {
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
             {faqs.map((faq, i) => (
-              <div key={i} style={{ borderRadius: 14, border: `1px solid ${openFaq === i ? "rgba(249,115,22,0.22)" : "rgba(255,255,255,0.07)"}`, background: openFaq === i ? "rgba(249,115,22,0.04)" : "rgba(255,255,255,0.02)", overflow: "hidden", transition: "border-color 0.2s ease, background 0.2s ease" }}>
+              <div key={i} style={{ borderRadius: 14, border: `1px solid ${openFaq === i ? "rgba(20,184,166,0.22)" : "rgba(255,255,255,0.07)"}`, background: openFaq === i ? "rgba(20,184,166,0.04)" : "rgba(255,255,255,0.02)", overflow: "hidden", transition: "border-color 0.2s ease, background 0.2s ease" }}>
                 <button
                   onClick={() => setOpenFaq(openFaq === i ? null : i)}
                   style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 24px", background: "transparent", border: "none", cursor: "pointer", textAlign: "left", gap: 16 }}
                 >
                   <span style={{ fontSize: 15, fontWeight: 700, color: openFaq === i ? accentLight : "rgba(255,255,255,0.85)", lineHeight: 1.4 }}>{faq.q}</span>
-                  <span style={{ flexShrink: 0, width: 20, height: 20, borderRadius: "50%", border: `1px solid ${openFaq === i ? "rgba(249,115,22,0.4)" : "rgba(255,255,255,0.15)"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, color: openFaq === i ? accent : "rgba(255,255,255,0.4)", transition: "transform 0.25s ease, border-color 0.2s ease, color 0.2s ease", transform: openFaq === i ? "rotate(45deg)" : "none" }}>+</span>
+                  <span style={{ flexShrink: 0, width: 20, height: 20, borderRadius: "50%", border: `1px solid ${openFaq === i ? "rgba(20,184,166,0.4)" : "rgba(255,255,255,0.15)"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, color: openFaq === i ? accent : "rgba(255,255,255,0.4)", transition: "transform 0.25s ease, border-color 0.2s ease, color 0.2s ease", transform: openFaq === i ? "rotate(45deg)" : "none" }}>+</span>
                 </button>
                 {openFaq === i && (
                   <div style={{ padding: "0 24px 22px", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
@@ -1465,28 +1465,28 @@ export default function ClickrPage() {
 
       {/* ── CTA ────────────────────────────────────────────────────────────── */}
       <section id="cta" className="reveal-section" style={{ padding: "120px 40px 160px", position: "relative", overflow: "hidden" }}>
-        <div style={{ position: "absolute", width: "80%", paddingBottom: "40%", bottom: "-20%", left: "50%", transform: "translateX(-50%)", background: `radial-gradient(ellipse, rgba(249,115,22,0.1) 0%, transparent 65%)`, pointerEvents: "none" }} />
-        <div style={{ position: "absolute", width: "50%", paddingBottom: "25%", top: "10%", left: "25%", background: `radial-gradient(ellipse, rgba(239,68,68,0.06) 0%, transparent 65%)`, pointerEvents: "none" }} />
+        <div style={{ position: "absolute", width: "80%", paddingBottom: "40%", bottom: "-20%", left: "50%", transform: "translateX(-50%)", background: `radial-gradient(ellipse, rgba(20,184,166,0.1) 0%, transparent 65%)`, pointerEvents: "none" }} />
+        <div style={{ position: "absolute", width: "50%", paddingBottom: "25%", top: "10%", left: "25%", background: `radial-gradient(ellipse, rgba(124,58,237,0.08) 0%, transparent 65%)`, pointerEvents: "none" }} />
 
         <div style={{ maxWidth: 720, margin: "0 auto", textAlign: "center", position: "relative" }}>
           {/* Brand mark */}
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 10, marginBottom: 32, padding: "10px 22px", borderRadius: 28, background: `rgba(249,115,22,0.1)`, border: `1px solid rgba(249,115,22,0.25)` }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 10, marginBottom: 32, padding: "10px 22px", borderRadius: 28, background: `rgba(20,184,166,0.1)`, border: `1px solid rgba(20,184,166,0.25)` }}>
             <div style={{ width: 8, height: 8, borderRadius: "50%", background: accent, boxShadow: `0 0 10px ${accentGlow}` }} className="accent-pulse" />
             <span style={{ fontSize: 14, fontWeight: 800, color: accentLight, letterSpacing: "0.04em" }}>clickr</span>
             <span style={{ fontSize: 11, fontWeight: 500, color: "rgba(255,255,255,0.3)" }}>by i3MEDIA</span>
-            <span style={{ width: 1, height: 14, background: `rgba(249,115,22,0.25)` }} />
+            <span style={{ width: 1, height: 14, background: `rgba(20,184,166,0.25)` }} />
             <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.35)", letterSpacing: "0.04em", textTransform: "uppercase" }}>Part of StratOS</span>
           </div>
 
           <h2 style={{ fontSize: 56, fontWeight: 900, letterSpacing: "-0.045em", marginBottom: 22, color: "white", lineHeight: 1.05 }} className="blur-reveal">
             Build your first page.<br />
-            <span style={{ background: `linear-gradient(90deg, ${accentLight}, ${accent}, #ef4444)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Go live today.</span>
+            <span style={{ background: `linear-gradient(90deg, ${accentLight}, ${accent}, #7c3aed)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Go live today.</span>
           </h2>
           <p style={{ fontSize: 18, color: "rgba(255,255,255,0.48)", lineHeight: 1.8, marginBottom: 44 }}>
             Paste a URL. Write a brief. clickr does the rest: a fully branded, conversion-optimised landing page, live on clickr.marketing in under a minute. Connected to your CRM, your team notifications, and your tracking from day one.
           </p>
           <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
-            <a href="/login" style={{ display: "inline-flex", alignItems: "center", gap: 9, padding: "16px 32px", borderRadius: 13, background: `linear-gradient(135deg, ${accent}, ${accentDark})`, color: "white", fontSize: 16, fontWeight: 700, textDecoration: "none", boxShadow: `0 0 36px rgba(249,115,22,0.42)` }} className="cta-accent-pulse">
+            <a href="/login" style={{ display: "inline-flex", alignItems: "center", gap: 9, padding: "16px 32px", borderRadius: 13, background: `linear-gradient(135deg, ${accent}, ${accentDark})`, color: "white", fontSize: 16, fontWeight: 700, textDecoration: "none", boxShadow: `0 0 36px rgba(20,184,166,0.42)` }} className="cta-accent-pulse">
               <Lock size={16} /> Open clickr in StratOS
             </a>
             <a href="mailto:hello@i3media.co.uk" style={{ display: "inline-flex", alignItems: "center", gap: 9, padding: "16px 32px", borderRadius: 13, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.75)", fontSize: 16, fontWeight: 600, textDecoration: "none" }}>
@@ -1517,7 +1517,7 @@ export default function ClickrPage() {
         @keyframes particle-float { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-20px) scale(1.35); } }
         .hero-particle { animation: particle-float linear infinite; }
 
-        @keyframes accent-pulse-anim { 0%, 100% { opacity: 1; box-shadow: 0 0 10px rgba(249,115,22,0.9); } 50% { opacity: 0.35; box-shadow: 0 0 24px rgba(249,115,22,0.2); } }
+        @keyframes accent-pulse-anim { 0%, 100% { opacity: 1; box-shadow: 0 0 10px rgba(20,184,166,0.9); } 50% { opacity: 0.35; box-shadow: 0 0 24px rgba(20,184,166,0.2); } }
         .accent-pulse { animation: accent-pulse-anim 2.5s ease-in-out infinite; }
 
         .reveal-section { opacity: 0; transform: translateY(44px); transition: opacity 0.9s cubic-bezier(0.16,1,0.3,1), transform 0.9s cubic-bezier(0.16,1,0.3,1); }
@@ -1531,18 +1531,18 @@ export default function ClickrPage() {
         .stagger-in { opacity: 0; transform: translateY(30px); }
         .section-visible .stagger-in { animation: fadeInUp 0.7s cubic-bezier(0.16,1,0.3,1) forwards; }
 
-        @keyframes pulse-accent { 0%, 100% { box-shadow: 0 0 22px rgba(249,115,22,0.4); } 50% { box-shadow: 0 0 44px rgba(249,115,22,0.75), 0 0 88px rgba(249,115,22,0.12); } }
+        @keyframes pulse-accent { 0%, 100% { box-shadow: 0 0 22px rgba(20,184,166,0.4); } 50% { box-shadow: 0 0 44px rgba(20,184,166,0.75), 0 0 88px rgba(20,184,166,0.12); } }
         .cta-accent-pulse { animation: pulse-accent 2.5s ease-in-out infinite; }
         .cta-accent-pulse:hover { transform: translateY(-2px) scale(1.02); }
 
-        .feature-card:hover { transform: translateY(-7px) scale(1.015) !important; border-color: rgba(249,115,22,0.22) !important; box-shadow: 0 18px 52px rgba(249,115,22,0.1); }
-        .stat-card:hover { transform: translateY(-7px) scale(1.025) !important; border-color: rgba(249,115,22,0.22) !important; box-shadow: 0 18px 52px rgba(249,115,22,0.1); }
+        .feature-card:hover { transform: translateY(-7px) scale(1.015) !important; border-color: rgba(20,184,166,0.22) !important; box-shadow: 0 18px 52px rgba(20,184,166,0.1); }
+        .stat-card:hover { transform: translateY(-7px) scale(1.025) !important; border-color: rgba(20,184,166,0.22) !important; box-shadow: 0 18px 52px rgba(20,184,166,0.1); }
 
         @keyframes card-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
-        @keyframes card-glow { 0%, 100% { box-shadow: 0 8px 40px rgba(249,115,22,0.06), 0 0 0 1px rgba(249,115,22,0.08); } 50% { box-shadow: 0 16px 60px rgba(249,115,22,0.18), 0 0 0 1px rgba(249,115,22,0.18); } }
+        @keyframes card-glow { 0%, 100% { box-shadow: 0 8px 40px rgba(20,184,166,0.06), 0 0 0 1px rgba(20,184,166,0.08); } 50% { box-shadow: 0 16px 60px rgba(20,184,166,0.18), 0 0 0 1px rgba(20,184,166,0.18); } }
         @keyframes scan-line { 0% { transform: translateY(-2px); opacity: 0; } 5% { opacity: 1; } 90% { opacity: 0.6; } 100% { transform: translateY(700px); opacity: 0; } }
         .mockup-3d { animation: card-float 7s ease-in-out infinite, card-glow 4s ease-in-out infinite; }
-        .mockup-3d::after { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 1px; background: linear-gradient(90deg, transparent 0%, rgba(249,115,22,0.5) 40%, rgba(249,115,22,0.8) 50%, rgba(249,115,22,0.5) 60%, transparent 100%); animation: scan-line 9s ease-in-out infinite; pointer-events: none; }
+        .mockup-3d::after { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 1px; background: linear-gradient(90deg, transparent 0%, rgba(20,184,166,0.5) 40%, rgba(20,184,166,0.8) 50%, rgba(20,184,166,0.5) 60%, transparent 100%); animation: scan-line 9s ease-in-out infinite; pointer-events: none; }
 
         @keyframes float-card { 0%, 100% { transform: translateY(0) rotate(-1deg); } 50% { transform: translateY(-8px) rotate(-1deg); } }
         .float-card { animation: float-card 5s ease-in-out infinite; }
@@ -1556,10 +1556,10 @@ export default function ClickrPage() {
         .dot2 { animation-delay: 0.2s; }
         .dot3 { animation-delay: 0.4s; }
 
-        .pill-hover:hover { background: rgba(249,115,22,0.08) !important; border-color: rgba(249,115,22,0.25) !important; color: rgba(255,255,255,0.8) !important; transform: translateY(-2px); }
+        .pill-hover:hover { background: rgba(20,184,166,0.08) !important; border-color: rgba(20,184,166,0.25) !important; color: rgba(255,255,255,0.8) !important; transform: translateY(-2px); }
         .pill-hover { transition: all 0.2s ease; }
 
-        .aud-card:hover { border-color: rgba(249,115,22,0.28) !important; transform: translateY(-3px); }
+        .aud-card:hover { border-color: rgba(20,184,166,0.28) !important; transform: translateY(-3px); }
         @media (max-width: 680px) { .aud-grid { grid-template-columns: 1fr !important; } }
         @media (max-width: 700px) { .comp-row { grid-template-columns: 1.5fr 1fr 1fr !important; } .comp-row > span:nth-child(4), .comp-row > span:nth-child(5) { display: none !important; } }
 

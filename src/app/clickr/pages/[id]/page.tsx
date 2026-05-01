@@ -69,7 +69,7 @@ export default function ClickrPageDetailPage({ params }: { params: Promise<{ id:
     <div style={{ minHeight: "100vh", background: "#09090f", color: "#fff" }}>
       <nav style={{ borderBottom: "1px solid rgba(255,255,255,0.08)", padding: "0 24px", display: "flex", alignItems: "center", height: 60, gap: 16 }}>
         <Link href="/clickr/dashboard" style={{ fontSize: 18, fontWeight: 800, letterSpacing: "-0.5px", color: "#fff", textDecoration: "none" }}>
-          click<span style={{ color: "#f97316" }}>r</span>
+          click<span style={{ color: "#14b8a6" }}>r</span>
         </Link>
         <span style={{ color: "rgba(255,255,255,0.2)" }}>›</span>
         <span style={{ fontSize: 14, color: "rgba(255,255,255,0.5)" }}>{page.title}</span>
@@ -92,7 +92,7 @@ export default function ClickrPageDetailPage({ params }: { params: Promise<{ id:
                 {copied ? "✓ Copied" : "Copy live URL"}
               </button>
             )}
-            <Link href="/clickr/pages/new" style={{ background: "#f97316", borderRadius: 8, padding: "8px 16px", color: "#fff", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
+            <Link href="/clickr/pages/new" style={{ background: "#14b8a6", borderRadius: 8, padding: "8px 16px", color: "#fff", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
               + New page
             </Link>
           </div>
@@ -114,7 +114,7 @@ export default function ClickrPageDetailPage({ params }: { params: Promise<{ id:
             <div style={{ background: "rgba(255,255,255,0.04)", padding: "10px 16px", fontSize: 12, color: "rgba(255,255,255,0.4)", display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ color: "rgba(255,255,255,0.2)" }}>●</span>
               <span>clickr.marketing/lp/{page.publicSlug}</span>
-              <a href={`/lp/${page.publicSlug}`} target="_blank" rel="noopener noreferrer" style={{ marginLeft: "auto", color: "#f97316", textDecoration: "none", fontSize: 12 }}>Open ↗</a>
+              <a href={`/lp/${page.publicSlug}`} target="_blank" rel="noopener noreferrer" style={{ marginLeft: "auto", color: "#14b8a6", textDecoration: "none", fontSize: 12 }}>Open ↗</a>
             </div>
             <iframe
               src={`/lp/${page.publicSlug}?test=1`}

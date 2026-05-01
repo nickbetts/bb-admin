@@ -83,7 +83,7 @@ function DashboardInner() {
       {/* Top nav */}
       <nav style={{ borderBottom: "1px solid rgba(255,255,255,0.08)", padding: "0 24px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 60 }}>
         <Link href="/" style={{ fontSize: 18, fontWeight: 800, letterSpacing: "-0.5px", color: "#fff", textDecoration: "none" }}>
-          click<span style={{ color: "#f97316" }}>r</span>
+          click<span style={{ color: "#14b8a6" }}>r</span>
         </Link>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <span style={{ fontSize: 13, color: "rgba(255,255,255,0.45)" }}>{user.email}</span>
@@ -112,7 +112,7 @@ function DashboardInner() {
             <div style={{ fontSize: 22, fontWeight: 700 }}>{user.lpsThisMonth} <span style={{ fontSize: 14, color: "rgba(255,255,255,0.4)", fontWeight: 400 }}>/ {limitLabel}</span></div>
             {limit !== Infinity && (
               <div style={{ marginTop: 10, background: "rgba(255,255,255,0.08)", borderRadius: 4, height: 4, overflow: "hidden" }}>
-                <div style={{ width: `${usagePercent}%`, height: "100%", background: usagePercent >= 100 ? "#ef4444" : "#f97316", borderRadius: 4, transition: "width 0.3s" }} />
+                <div style={{ width: `${usagePercent}%`, height: "100%", background: usagePercent >= 100 ? "#ef4444" : "#14b8a6", borderRadius: 4, transition: "width 0.3s" }} />
               </div>
             )}
           </div>
@@ -120,7 +120,7 @@ function DashboardInner() {
             <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>Total pages</div>
             <div style={{ fontSize: 22, fontWeight: 700 }}>{pages.length}</div>
             {user.planTier !== "pro" && (
-              <Link href="/clickr/pricing" style={{ display: "inline-block", marginTop: 6, fontSize: 12, color: "#f97316", textDecoration: "none" }}>Upgrade →</Link>
+              <Link href="/clickr/pricing" style={{ display: "inline-block", marginTop: 6, fontSize: 12, color: "#14b8a6", textDecoration: "none" }}>Upgrade →</Link>
             )}
           </div>
         </div>
@@ -130,7 +130,7 @@ function DashboardInner() {
           <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Your landing pages</h2>
           <Link
             href="/clickr/pages/new"
-            style={{ background: "#f97316", borderRadius: 8, padding: "9px 18px", color: "#fff", fontSize: 14, fontWeight: 600, textDecoration: "none" }}
+            style={{ background: "#14b8a6", borderRadius: 8, padding: "9px 18px", color: "#fff", fontSize: 14, fontWeight: 600, textDecoration: "none" }}
           >
             + New page
           </Link>
@@ -141,7 +141,7 @@ function DashboardInner() {
             <div style={{ fontSize: 32, marginBottom: 12 }}>🚀</div>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>No landing pages yet</div>
             <div style={{ fontSize: 14, color: "rgba(255,255,255,0.4)", marginBottom: 24 }}>Create your first AI-powered landing page in minutes.</div>
-            <Link href="/clickr/pages/new" style={{ background: "#f97316", borderRadius: 8, padding: "10px 22px", color: "#fff", fontSize: 14, fontWeight: 600, textDecoration: "none" }}>
+            <Link href="/clickr/pages/new" style={{ background: "#14b8a6", borderRadius: 8, padding: "10px 22px", color: "#fff", fontSize: 14, fontWeight: 600, textDecoration: "none" }}>
               Create your first page
             </Link>
           </div>
@@ -156,7 +156,7 @@ function DashboardInner() {
                     {page.publicSlug ? ` · /lp/${page.publicSlug}` : ""}
                   </div>
                 </div>
-                <Link href={`/clickr/pages/${page.id}`} style={{ fontSize: 13, color: "#f97316", textDecoration: "none", fontWeight: 500 }}>
+                <Link href={`/clickr/pages/${page.id}`} style={{ fontSize: 13, color: "#14b8a6", textDecoration: "none", fontWeight: 500 }}>
                   Edit →
                 </Link>
               </div>

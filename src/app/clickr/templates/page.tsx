@@ -6,9 +6,9 @@ import ClickrFooter from "../_components/ClickrFooter";
 import { Zap, ChevronRight, Filter } from "lucide-react";
 
 const bg = "#09090f";
-const accent = "#f97316";
-const accentLight = "#fdba74";
-const accentDark = "#ea580c";
+const accent = "#14b8a6";
+const accentLight = "#5eead4";
+const accentDark = "#7c3aed";
 
 type TemplateCategory = "All" | "Lead Gen" | "E-commerce" | "Events" | "SaaS" | "Local";
 
@@ -24,7 +24,7 @@ const templates = [
       { w: "60%", h: 14, color: "rgba(255,255,255,0.9)", mt: 0 },
       { w: "85%", h: 8, color: "rgba(255,255,255,0.4)", mt: 8 },
       { w: "40%", h: 8, color: "rgba(255,255,255,0.25)", mt: 4 },
-      { w: "100%", h: 80, color: "rgba(249,115,22,0.07)", mt: 14, isForm: true },
+      { w: "100%", h: 80, color: "rgba(20,184,166,0.07)", mt: 14, isForm: true },
       { w: "50%", h: 34, color: accent, mt: 10, isCta: true },
     ],
     accentColor: accent,
@@ -39,7 +39,7 @@ const templates = [
     mockupLines: [
       { w: "100%", h: 60, color: "rgba(255,255,255,0.04)", mt: 0, isImg: true },
       { w: "70%", h: 12, color: "rgba(255,255,255,0.85)", mt: 10 },
-      { w: "45%", h: 8, color: "rgba(249,115,22,0.7)", mt: 5 },
+      { w: "45%", h: 8, color: "rgba(20,184,166,0.7)", mt: 5 },
       { w: "90%", h: 6, color: "rgba(255,255,255,0.25)", mt: 6 },
       { w: "60%", h: 30, color: "#ef4444", mt: 10, isCta: true },
     ],
@@ -53,7 +53,7 @@ const templates = [
     tags: ["Events", "Two-step form", "Urgency"],
     convGoal: "Event registration",
     mockupLines: [
-      { w: "100%", h: 20, color: "rgba(249,115,22,0.12)", mt: 0 },
+      { w: "100%", h: 20, color: "rgba(20,184,166,0.12)", mt: 0 },
       { w: "65%", h: 12, color: "rgba(255,255,255,0.85)", mt: 10 },
       { w: "40%", h: 8, color: "rgba(255,255,255,0.4)", mt: 5 },
       { w: "100%", h: 36, color: "rgba(255,255,255,0.03)", mt: 10, isSpeakers: true },
@@ -88,7 +88,7 @@ const templates = [
       { w: "70%", h: 14, color: "rgba(255,255,255,0.9)", mt: 0 },
       { w: "90%", h: 6, color: "rgba(255,255,255,0.3)", mt: 6 },
       { w: "100%", h: 16, color: "rgba(255,255,255,0.02)", mt: 10, isLogos: true },
-      { w: "100%", h: 56, color: "rgba(249,115,22,0.06)", mt: 10, isForm: true },
+      { w: "100%", h: 56, color: "rgba(20,184,166,0.06)", mt: 10, isForm: true },
       { w: "55%", h: 28, color: accent, mt: 8, isCta: true },
     ],
     accentColor: "#34d399",
@@ -117,9 +117,9 @@ const templates = [
     tags: ["Webinar", "Countdown", "Email capture"],
     convGoal: "Webinar registration",
     mockupLines: [
-      { w: "100%", h: 18, color: "rgba(249,115,22,0.08)", mt: 0 },
+      { w: "100%", h: 18, color: "rgba(20,184,166,0.08)", mt: 0 },
       { w: "65%", h: 12, color: "rgba(255,255,255,0.88)", mt: 10 },
-      { w: "50%", h: 8, color: "rgba(249,115,22,0.6)", mt: 5 },
+      { w: "50%", h: 8, color: "rgba(20,184,166,0.6)", mt: 5 },
       { w: "100%", h: 28, color: "rgba(255,255,255,0.02)", mt: 8, isCountdown: true },
       { w: "60%", h: 30, color: accent, mt: 10, isCta: true },
     ],
@@ -136,7 +136,7 @@ const templates = [
       { w: "100%", h: 52, color: "rgba(255,255,255,0.03)", mt: 0, isImg: true },
       { w: "75%", h: 12, color: "rgba(255,255,255,0.88)", mt: 10 },
       { w: "85%", h: 8, color: "rgba(255,255,255,0.35)", mt: 5 },
-      { w: "100%", h: 10, color: "rgba(249,115,22,0.25)", mt: 8, isProgress: true },
+      { w: "100%", h: 10, color: "rgba(20,184,166,0.25)", mt: 8, isProgress: true },
       { w: "50%", h: 30, color: accent, mt: 10, isCta: true },
     ],
     accentColor: "#f43f5e",
@@ -150,7 +150,7 @@ const templates = [
     convGoal: "Job application / CV upload",
     mockupLines: [
       { w: "60%", h: 14, color: "rgba(255,255,255,0.9)", mt: 0 },
-      { w: "45%", h: 8, color: "rgba(249,115,22,0.65)", mt: 5 },
+      { w: "45%", h: 8, color: "rgba(20,184,166,0.65)", mt: 5 },
       { w: "100%", h: 22, color: "rgba(255,255,255,0.02)", mt: 10, isBenefits: true },
       { w: "100%", h: 44, color: "rgba(255,255,255,0.02)", mt: 8, isForm: true },
       { w: "55%", h: 28, color: "#818cf8", mt: 8, isCta: true },
@@ -192,9 +192,9 @@ export default function TemplatesPage() {
 
       {/* ── HERO ───────────────────────────────────────────────────────────── */}
       <section style={{ padding: "120px 40px 64px", textAlign: "center", position: "relative", overflow: "hidden" }}>
-        <div style={{ position: "absolute", width: "60%", paddingBottom: "30%", top: "-5%", left: "20%", background: "radial-gradient(ellipse, rgba(249,115,22,0.07) 0%, transparent 65%)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", width: "60%", paddingBottom: "30%", top: "-5%", left: "20%", background: "radial-gradient(ellipse, rgba(20,184,166,0.07) 0%, transparent 65%)", pointerEvents: "none" }} />
         <div style={{ maxWidth: 680, margin: "0 auto", position: "relative" }}>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 16px", borderRadius: 20, background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.22)", marginBottom: 28 }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 16px", borderRadius: 20, background: "rgba(20,184,166,0.1)", border: "1px solid rgba(20,184,166,0.22)", marginBottom: 28 }}>
             <Filter size={12} color={accentLight} />
             <span style={{ fontSize: 11, fontWeight: 700, color: accentLight, letterSpacing: "0.1em", textTransform: "uppercase" }}>{templates.length} Templates</span>
           </div>
@@ -270,7 +270,7 @@ export default function TemplatesPage() {
             Tell clickr your campaign goal in the brief and Meridian AI will generate the right page structure for you — no template required.
           </p>
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-            <a href="/login" style={{ display: "inline-flex", alignItems: "center", gap: 9, padding: "14px 28px", borderRadius: 12, background: `linear-gradient(135deg, ${accent}, ${accentDark})`, color: "white", fontSize: 15, fontWeight: 700, textDecoration: "none", boxShadow: `0 0 28px rgba(249,115,22,0.35)` }}>
+            <a href="/login" style={{ display: "inline-flex", alignItems: "center", gap: 9, padding: "14px 28px", borderRadius: 12, background: `linear-gradient(135deg, ${accent}, ${accentDark})`, color: "white", fontSize: 15, fontWeight: 700, textDecoration: "none", boxShadow: `0 0 28px rgba(20,184,166,0.35)` }}>
               <Zap size={15} /> Start building free
             </a>
             <a href="/resources" style={{ display: "inline-flex", alignItems: "center", gap: 9, padding: "14px 28px", borderRadius: 12, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.75)", fontSize: 15, fontWeight: 600, textDecoration: "none" }}>
@@ -283,7 +283,7 @@ export default function TemplatesPage() {
       <ClickrFooter />
 
       <style>{`
-        .tmpl-card:hover { border-color: rgba(249,115,22,0.22) !important; transform: translateY(-4px); box-shadow: 0 18px 52px rgba(249,115,22,0.08); }
+        .tmpl-card:hover { border-color: rgba(20,184,166,0.22) !important; transform: translateY(-4px); box-shadow: 0 18px 52px rgba(20,184,166,0.08); }
         @media (max-width: 1000px) { .templates-grid { grid-template-columns: repeat(2, 1fr) !important; } }
         @media (max-width: 640px) { .templates-grid { grid-template-columns: 1fr !important; } section { padding-left: 20px !important; padding-right: 20px !important; } h1 { font-size: 36px !important; } }
       `}</style>
