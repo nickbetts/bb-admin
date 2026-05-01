@@ -63,6 +63,7 @@ export interface GeneratedContent {
   titleTag?: string;
   metaDescription?: string;
   schemaJson?: string;
+  sourceCitations?: SourceCitation[];
   socialVariations?: SocialVariations;
   generatedAt: string;
 }
@@ -83,6 +84,13 @@ export interface CompetitorContext {
     headings?: string[];
     ctaTexts?: string[];
   };
+}
+
+export interface SourceCitation {
+  title: string;
+  url: string;
+  domain?: string;
+  publishedDate?: string;
 }
 
 // ─── Prohibited phrases ───────────────────────────────────────────────────────
@@ -142,6 +150,26 @@ WRITING STYLE REQUIREMENTS:
 - Specific numbers and real-world examples are always better than generalisations
 `.trim();
 
+const NO_FABRICATION_INSTRUCTION = `
+STATISTICS AND DATA — CRITICAL:
+- Never invent, estimate, or fabricate statistics, percentages, figures, study results, or research findings
+- Only state a statistic if you have been given a verified source for it in this session
+- Every statistic in the body text must be followed immediately by its inline citation [N]
+- If you have no verified figure to support a point, make the argument qualitatively with clear reasoning — do not fill the gap with a made-up number
+- Do not write vague attributions like "studies show" or "research suggests" without a specific, named source
+- Organisation names, report titles, and publication names cited as sources must be real and verifiable
+`.trim();
+
+const VALUE_FIRST_INSTRUCTION = `
+READER VALUE — NON-NEGOTIABLE:
+- Every piece must leave the reader materially better informed than before they read it
+- Include at least one specific insight, framework, calculation, or worked example the reader can apply immediately
+- Do not bury the useful content behind build-up — get to the point
+- Write as if the reader is a smart professional with limited time and no patience for filler
+- SEO keywords support good writing; they never override clarity or usefulness
+- Practical, specific advice is always more valuable than general observations
+`.trim();
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function parseJsonSafely<T>(text: string): T | null {
@@ -161,6 +189,83 @@ function countWords(text: string): number {
     .replace(/<[^>]+>/g, " ")
     .split(/\s+/)
     .filter(Boolean).length;
+}
+
+/**
+ * Extract <meta-json>...</meta-json> block from generated text.
+ * Falls back to trailing single-line JSON for backwards compatibility.
+ */
+function extractMetaJson<T>(text: string): { html: string; meta: T | null } {
+  const match = /<meta-json>([\s\S]*?)<\/meta-json>/i.exec(text);
+  if (match) {
+    const before = text.slice(0, match.index).trim();
+    const after = text.slice(match.index + match[0].length).trim();
+    return { html: (before + (after ? "\n" + after : "")).trim(), meta: parseJsonSafely<T>(match[1].trim()) };
+  }
+  // Legacy fallback
+  const legacy = /\n(\{[^\n]+\})\s*$/.exec(text);
+  if (legacy) {
+    return {
+      html: text.slice(0, text.lastIndexOf(legacy[0])).trim(),
+      meta: parseJsonSafely<T>(legacy[1]),
+    };
+  }
+  return { html: text.trim(), meta: null };
+}
+
+/**
+ * Use web_search to find real, citable statistics on a topic before writing.
+ * Returns a formatted stats context string and a sources list.
+ */
+async function researchStats(params: {
+  topic: string;
+  angle: string;
+  audience: string;
+  anthropic: Awaited<ReturnType<typeof getAnthropicClient>>;
+}): Promise<{ statsContext: string; sources: SourceCitation[] }> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const tools = [{ type: "web_search_20250305" as const, name: "web_search", max_uses: 4 }] as any;
+
+  try {
+    const response = await params.anthropic.messages.create({
+      model: "claude-opus-4-7",
+      max_tokens: 1500,
+      tools,
+      messages: [{
+        role: "user",
+        content: `Search for 4-6 real, current statistics or data points to support an article about: "${params.topic}"
+Angle: ${params.angle}
+Target audience: ${params.audience}
+
+Requirements:
+- Only include statistics you have found and verified via web search
+- Each stat must have a real, accessible source URL
+- Prefer authoritative sources: government bodies, academic institutions, established research firms, major industry associations
+- Statistics should be recent (ideally within the last 3 years)
+- Do NOT invent, estimate, or extrapolate figures
+
+Return ONLY a valid JSON object in this exact format — no commentary:
+{"statsContext":"Bullet-point summary of verified statistics, each with inline citation [N]. Format: \\u2022 [stat] [N]","sources":[{"n":1,"title":"Source page title","url":"https://...","domain":"organisation.com","publishedDate":"2024"}]}`,
+      }],
+    });
+
+    const textBlock = response.content.find((b) => b.type === "text");
+    const text = textBlock?.type === "text" ? textBlock.text : "";
+    const parsed = parseJsonSafely<{
+      statsContext: string;
+      sources: Array<{ n: number; title: string; url: string; domain?: string; publishedDate?: string }>;
+    }>(text);
+
+    if (!parsed) return { statsContext: "", sources: [] };
+
+    return {
+      statsContext: parsed.statsContext ?? "",
+      sources: (parsed.sources ?? []).map(({ title, url, domain, publishedDate }) => ({ title, url, domain, publishedDate })),
+    };
+  } catch {
+    // Research failure should not block generation
+    return { statsContext: "", sources: [] };
+  }
 }
 
 // ─── generateIdeas ────────────────────────────────────────────────────────────
@@ -308,12 +413,19 @@ async function generateBlog(params: {
   approvedKeywords: { primary: string; secondary: string[]; longTail: string[] };
   clientInstructions: string;
   anthropic: Awaited<ReturnType<typeof getAnthropicClient>>;
-}): Promise<{ content: string; titleTag: string; metaDescription: string; schemaJson?: string }> {
+}): Promise<{ content: string; titleTag: string; metaDescription: string; schemaJson?: string; sourceCitations?: SourceCitation[] }> {
   const { idea, approvedKeywords, clientInstructions, anthropic } = params;
 
-  const systemPrompt = `You are an experienced content writer and SEO specialist. You write long-form blog articles that rank in Google and are genuinely useful to readers.
+  // Step 1: Research real, citable statistics on the topic before writing
+  const research = await researchStats({ topic: idea.title, angle: idea.angle, audience: idea.targetAudience, anthropic });
+
+  const systemPrompt = `You are an experienced content writer and SEO specialist. You write long-form blog articles that rank in Google and genuinely help readers.
 
 ${HUMAN_TONE_INSTRUCTION}
+
+${VALUE_FIRST_INSTRUCTION}
+
+${NO_FABRICATION_INSTRUCTION}
 
 ${PROHIBITED_PHRASES}
 
@@ -331,38 +443,40 @@ Primary keyword (must appear in H1, first paragraph, and at least two H2s): ${ap
 Secondary keywords (weave in naturally): ${approvedKeywords.secondary.join(", ")}
 Long-tail keywords (include where relevant): ${approvedKeywords.longTail.join(", ")}
 
+${research.statsContext ? `VERIFIED STATISTICS (use these — cite inline as [1], [2] etc.):\n${research.statsContext}\n` : ""}
 Requirements:
 - Length: 1,000–1,500 words
 - Structure: H1 title → introduction (no "In today's..." opening) → 4–6 H2 sections → conclusion (no "In conclusion,")
 - Output the article in clean HTML: use <h1>, <h2>, <p>, <ul>/<ol>/<li> only
 - Include the primary keyword in the H1 naturally (not forced)
-- The introduction must open with a specific insight, statistic, scenario or question that a real reader would find immediately useful — not a vague scene-setter
+- The introduction must open with a specific verified insight or statistic [N] that a real reader would find immediately useful
+- Use the verified statistics above and cite them inline with [N] notation
+- Never state a statistic without a citation — if no verified figure exists for a point, argue qualitatively
 - Each H2 section should have 2–4 paragraphs
 - Include at least one bulleted or numbered list
 - Final section: a specific, practical next step — not a generic "get in touch" paragraph
 
-After the article HTML, output a single minified JSON object on its own line (no markdown, no line breaks inside the JSON):
-{"titleTag":"...(max 60 chars)","metaDescription":"...(max 160 chars)","schema":{"@context":"https://schema.org","@type":"Article","headline":"exact H1 title","description":"exact meta description","keywords":"primary keyword, secondary keywords comma-separated"}}`;
+After the article HTML, output the metadata in exactly this format:
+<meta-json>
+{"titleTag":"...(max 60 chars)","metaDescription":"...(max 160 chars)","schema":{"@context":"https://schema.org","@type":"Article","headline":"exact H1 title","description":"exact meta description","keywords":"primary keyword, secondary keywords comma-separated"}}
+</meta-json>`;
 
   const response = await anthropic.messages.create({
     model: "claude-opus-4-7",
-    max_tokens: 4000,
+    max_tokens: 4500,
     system: systemPrompt,
     messages: [{ role: "user", content: userPrompt }],
   });
 
   const text = response.content[0]?.type === "text" ? response.content[0].text : "";
-
-  // Split article from trailing JSON
-  const jsonLineMatch = text.match(/\n(\{[^\n]+\})\s*$/);
-  const articleHtml = jsonLineMatch ? text.slice(0, text.lastIndexOf(jsonLineMatch[0])).trim() : text.trim();
-  const metaJson = jsonLineMatch ? parseJsonSafely<{ titleTag: string; metaDescription: string; schema?: Record<string, unknown> }>(jsonLineMatch[1]) : null;
+  const { html: articleHtml, meta: metaObj } = extractMetaJson<{ titleTag: string; metaDescription: string; schema?: Record<string, unknown> }>(text);
 
   return {
     content: articleHtml,
-    titleTag: metaJson?.titleTag ?? idea.title.slice(0, 60),
-    metaDescription: metaJson?.metaDescription ?? idea.summary.slice(0, 160),
-    schemaJson: metaJson?.schema ? JSON.stringify(metaJson.schema) : undefined,
+    titleTag: metaObj?.titleTag ?? idea.title.slice(0, 60),
+    metaDescription: metaObj?.metaDescription ?? idea.summary.slice(0, 160),
+    schemaJson: metaObj?.schema ? JSON.stringify(metaObj.schema) : undefined,
+    sourceCitations: research.sources.length > 0 ? research.sources : undefined,
   };
 }
 
@@ -371,18 +485,29 @@ async function generateWhitepaper(params: {
   approvedKeywords: { primary: string; secondary: string[]; longTail: string[] };
   clientInstructions: string;
   anthropic: Awaited<ReturnType<typeof getAnthropicClient>>;
-}): Promise<{ content: string; titleTag: string; metaDescription: string; schemaJson?: string }> {
+}): Promise<{ content: string; titleTag: string; metaDescription: string; schemaJson?: string; sourceCitations?: SourceCitation[] }> {
   const { idea, approvedKeywords, clientInstructions, anthropic } = params;
+
+  // Step 1: Research real, citable statistics before writing
+  const research = await researchStats({ topic: idea.title, angle: idea.angle, audience: idea.targetAudience, anthropic });
 
   const systemPrompt = `You are a senior analyst and business writer specialising in authoritative whitepapers and research reports. Your writing is precise, evidence-based, and read by senior decision-makers.
 
 ${HUMAN_TONE_INSTRUCTION}
 
+${VALUE_FIRST_INSTRUCTION}
+
+${NO_FABRICATION_INSTRUCTION}
+
 ${PROHIBITED_PHRASES}
 
 ${clientInstructions ? `Additional client instructions:\n${clientInstructions}` : ""}`;
 
-  // Generate in two parts to handle length
+  const statsBlock = research.statsContext
+    ? `VERIFIED STATISTICS (use these — cite inline as [1], [2] etc.):\n${research.statsContext}\n`
+    : "";
+
+  // Generate in two parallel parts to reliably hit the target length
   const part1Prompt = `Write the first half of a comprehensive whitepaper:
 
 Title: ${idea.title}
@@ -393,22 +518,28 @@ Target audience: ${idea.targetAudience}
 Primary keyword: ${approvedKeywords.primary}
 Secondary keywords: ${approvedKeywords.secondary.join(", ")}
 
+${statsBlock}
 Write the following sections in clean HTML (<h1>, <h2>, <h3>, <p>, <ul>/<ol>/<li>):
-1. Executive Summary (150–200 words — the most important section; decision-makers read only this)
-2. Introduction / The Challenge (250–350 words — define the problem with specifics)
-3. Section 1: [First major theme from the brief] (300–400 words)
-4. Section 2: [Second major theme] (300–400 words)
+1. Executive Summary (150–200 words — decision-makers read only this; make every word count)
+2. Introduction / The Challenge (250–350 words — define the problem with specific, cited evidence)
+3. Section 1: [First major theme from the brief] (300–400 words — use cited statistics where available)
+4. Section 2: [Second major theme] (300–400 words — use cited statistics where available)
 
-Stop after Section 2. Do not write a conclusion yet.`;
+Stop after Section 2. Do not write a conclusion yet.
+Do not cite a statistic unless it appears in the verified statistics block above.`;
 
-  const part2Prompt = `Continue the whitepaper for "${idea.title}". Write the following sections in clean HTML:
+  const part2Prompt = `Continue the whitepaper for "${idea.title}". Write in clean HTML (<h2>, <h3>, <p>, <ul>/<ol>/<li>):
+
+${statsBlock}
 5. Section 3: [Third major theme] (300–400 words)
-6. Key Findings / What the Data Shows (200–300 words — use a numbered list of 5–7 findings)
-7. Recommendations (250–350 words — 4–6 specific, actionable recommendations as a numbered list)
+6. Key Findings / What the Data Shows (200–300 words — 5–7 numbered findings; only include findings that can be backed by the verified statistics above or qualitative analysis)
+7. Recommendations (250–350 words — 4–6 specific, actionable recommendations as a numbered list; each must be concrete enough to act on)
 8. About This Report / Methodology (100–150 words)
 
-End with a single minified JSON object on its own line (no line breaks inside the JSON):
-{"titleTag":"...(max 60 chars)","metaDescription":"...(max 160 chars)","schema":{"@context":"https://schema.org","@type":"TechArticle","headline":"exact H1 title","description":"exact meta description","keywords":"primary keyword, secondary keywords comma-separated"}}`;
+After the HTML, output the metadata in exactly this format:
+<meta-json>
+{"titleTag":"...(max 60 chars)","metaDescription":"...(max 160 chars)","schema":{"@context":"https://schema.org","@type":"TechArticle","headline":"exact H1 title","description":"exact meta description","keywords":"primary keyword, secondary keywords comma-separated"}}
+</meta-json>`;
 
   const [part1Res, part2Res] = await Promise.all([
     anthropic.messages.create({
@@ -428,15 +559,14 @@ End with a single minified JSON object on its own line (no line breaks inside th
   const text1 = part1Res.content[0]?.type === "text" ? part1Res.content[0].text.trim() : "";
   const text2 = part2Res.content[0]?.type === "text" ? part2Res.content[0].text.trim() : "";
 
-  const jsonLineMatch = text2.match(/\n(\{[^\n]+\})\s*$/);
-  const body2 = jsonLineMatch ? text2.slice(0, text2.lastIndexOf(jsonLineMatch[0])).trim() : text2;
-  const metaJson = jsonLineMatch ? parseJsonSafely<{ titleTag: string; metaDescription: string; schema?: Record<string, unknown> }>(jsonLineMatch[1]) : null;
+  const { html: body2, meta: metaObj } = extractMetaJson<{ titleTag: string; metaDescription: string; schema?: Record<string, unknown> }>(text2);
 
   return {
     content: `${text1}\n${body2}`,
-    titleTag: metaJson?.titleTag ?? idea.title.slice(0, 60),
-    metaDescription: metaJson?.metaDescription ?? idea.summary.slice(0, 160),
-    schemaJson: metaJson?.schema ? JSON.stringify(metaJson.schema) : undefined,
+    titleTag: metaObj?.titleTag ?? idea.title.slice(0, 60),
+    metaDescription: metaObj?.metaDescription ?? idea.summary.slice(0, 160),
+    schemaJson: metaObj?.schema ? JSON.stringify(metaObj.schema) : undefined,
+    sourceCitations: research.sources.length > 0 ? research.sources : undefined,
   };
 }
 
@@ -451,6 +581,8 @@ async function generateCaseStudy(params: {
   const systemPrompt = `You are a B2B content writer specialising in compelling case studies that convert sceptical prospects into buyers.
 
 ${HUMAN_TONE_INSTRUCTION}
+
+${VALUE_FIRST_INSTRUCTION}
 
 ${PROHIBITED_PHRASES}
 
@@ -480,8 +612,10 @@ Stop after The Approach. Do not write the results or conclusion yet.`;
 5. <h2>The Results</h2> — 200–300 words of quantified outcomes. If specific numbers aren't available, describe the qualitative shift clearly. Include a pull-quote (<blockquote>) from a client stakeholder — write a realistic, non-sycophantic quote.
 6. <h2>Key Takeaways</h2> — 3–5 bullet points with practical lessons a similar organisation could apply.
 
-After the HTML, output a single minified JSON object on its own line (no markdown, no line breaks inside the JSON):
-{"titleTag":"...(max 60 chars)","metaDescription":"...(max 160 chars)","schema":{"@context":"https://schema.org","@type":"Article","headline":"exact H1 title","description":"exact meta description","keywords":"primary keyword, secondary keywords comma-separated"}}`;
+After the HTML, output the metadata in exactly this format:
+<meta-json>
+{"titleTag":"...(max 60 chars)","metaDescription":"...(max 160 chars)","schema":{"@context":"https://schema.org","@type":"Article","headline":"exact H1 title","description":"exact meta description","keywords":"primary keyword, secondary keywords comma-separated"}}
+</meta-json>`;
 
   const [part1Res, part2Res] = await Promise.all([
     anthropic.messages.create({
@@ -501,15 +635,13 @@ After the HTML, output a single minified JSON object on its own line (no markdow
   const text1 = part1Res.content[0]?.type === "text" ? part1Res.content[0].text.trim() : "";
   const text2 = part2Res.content[0]?.type === "text" ? part2Res.content[0].text.trim() : "";
 
-  const jsonLineMatch = text2.match(/\n(\{[^\n]+\})\s*$/);
-  const body2 = jsonLineMatch ? text2.slice(0, text2.lastIndexOf(jsonLineMatch[0])).trim() : text2;
-  const metaJson = jsonLineMatch ? parseJsonSafely<{ titleTag: string; metaDescription: string; schema?: Record<string, unknown> }>(jsonLineMatch[1]) : null;
+  const { html: body2, meta: metaObj } = extractMetaJson<{ titleTag: string; metaDescription: string; schema?: Record<string, unknown> }>(text2);
 
   return {
     content: `${text1}\n${body2}`,
-    titleTag: metaJson?.titleTag ?? idea.title.slice(0, 60),
-    metaDescription: metaJson?.metaDescription ?? idea.summary.slice(0, 160),
-    schemaJson: metaJson?.schema ? JSON.stringify(metaJson.schema) : undefined,
+    titleTag: metaObj?.titleTag ?? idea.title.slice(0, 60),
+    metaDescription: metaObj?.metaDescription ?? idea.summary.slice(0, 160),
+    schemaJson: metaObj?.schema ? JSON.stringify(metaObj.schema) : undefined,
   };
 }
 
@@ -586,6 +718,7 @@ export async function generateContent(
   let titleTag: string | undefined;
   let metaDescription: string | undefined;
   let schemaJson: string | undefined;
+  let sourceCitations: SourceCitation[] | undefined;
   let socialVariations: SocialVariations | undefined;
 
   if (idea.type === "blog") {
@@ -594,12 +727,14 @@ export async function generateContent(
     titleTag = result.titleTag;
     metaDescription = result.metaDescription;
     schemaJson = result.schemaJson;
+    sourceCitations = result.sourceCitations;
   } else if (idea.type === "whitepaper") {
     const result = await generateWhitepaper({ idea, approvedKeywords, clientInstructions, anthropic });
     content = result.content;
     titleTag = result.titleTag;
     metaDescription = result.metaDescription;
     schemaJson = result.schemaJson;
+    sourceCitations = result.sourceCitations;
   } else if (idea.type === "case_study") {
     const result = await generateCaseStudy({ idea, approvedKeywords, clientInstructions, anthropic });
     content = result.content;
@@ -620,6 +755,7 @@ export async function generateContent(
     titleTag,
     metaDescription,
     schemaJson,
+    sourceCitations,
     socialVariations,
     generatedAt: new Date().toISOString(),
   };
@@ -719,6 +855,13 @@ export function buildHtmlDeliverable(params: {
         <div style="font-size:16px;line-height:1.8;color:#1e293b;max-width:720px;">
           ${item.content}
         </div>
+        ${item.sourceCitations && item.sourceCitations.length > 0 ? `
+        <div style="margin-top:32px;padding:20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;">
+          <h4 style="margin:0 0 12px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#475569;">Sources</h4>
+          <ol style="margin:0;padding-left:1.25em;font-size:13px;line-height:2;color:#334155;">
+            ${item.sourceCitations.map((s) => `<li><a href="${s.url}" style="color:#2563eb;text-decoration:none;">${s.title}</a>${s.domain ? ` <span style="color:#94a3b8;">— ${s.domain}</span>` : ""}${s.publishedDate ? ` <span style="color:#94a3b8;">(${s.publishedDate})</span>` : ""}</li>`).join("\n            ")}
+          </ol>
+        </div>` : ""}
       </section>`;
     })
     .join("\n");

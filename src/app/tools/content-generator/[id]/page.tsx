@@ -412,6 +412,23 @@ function ContentPiece({
                 style={{ fontSize: 15, lineHeight: 1.8, color: "var(--text)", maxWidth: "100%" }}
                 dangerouslySetInnerHTML={{ __html: piece.content }}
               />
+              {/* Sources */}
+              {piece.sourceCitations && piece.sourceCitations.length > 0 && (
+                <div style={{ marginTop: 20, padding: "14px 16px", background: "var(--bg-2)", borderRadius: 8, border: "1px solid var(--border)" }}>
+                  <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: "var(--text-3)" }}>Sources</p>
+                  <ol style={{ margin: 0, paddingLeft: "1.25em", fontSize: 12, lineHeight: 2, color: "var(--text)" }}>
+                    {piece.sourceCitations.map((s, i) => (
+                      <li key={i}>
+                        <a href={s.url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)", textDecoration: "none" }}>
+                          {s.title}
+                        </a>
+                        {s.domain && <span style={{ color: "var(--text-3)" }}> — {s.domain}</span>}
+                        {s.publishedDate && <span style={{ color: "var(--text-3)" }}> ({s.publishedDate})</span>}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              )}
             </div>
           )}
         </div>
