@@ -333,17 +333,15 @@ export default function NewContentGeneratorPage() {
         <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
           {/* Client */}
           <div>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 8 }}>
-              Client
-            </label>
+            <label className="form-label">Client</label>
             {loadingClients ? (
               <div style={{ fontSize: 13, color: "var(--text-3)" }}>Loading clients…</div>
             ) : (
               <select
-                className="input"
+                className="form-input"
                 value={clientId}
                 onChange={(e) => handleClientChange(e.target.value)}
-                style={{ width: "100%", maxWidth: 400 }}
+                style={{ maxWidth: 400 }}
               >
                 <option value="">Select a client…</option>
                 {clients.map((c) => (
@@ -355,26 +353,26 @@ export default function NewContentGeneratorPage() {
 
           {/* Website URL */}
           <div>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 8 }}>
+            <label className="form-label">
               Website / Domain
               <span style={{ fontWeight: 400, color: "var(--text-3)", marginLeft: 6 }}>(used for SEMrush keyword research)</span>
             </label>
             <div style={{ position: "relative", maxWidth: 400 }}>
               <Globe style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", width: 14, height: 14, color: "var(--text-3)" }} />
               <input
-                className="input"
+                className="form-input"
                 type="url"
                 value={websiteUrl}
                 onChange={(e) => setWebsiteUrl(e.target.value)}
                 placeholder="https://example.com"
-                style={{ width: "100%", paddingLeft: 32 }}
+                style={{ paddingLeft: 32, maxWidth: 400 }}
               />
             </div>
           </div>
 
           {/* Content types */}
           <div>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 12 }}>
+            <label className="form-label">
               Content Types
               <span style={{ fontWeight: 400, color: "var(--text-3)", marginLeft: 6 }}>— select all that apply</span>
             </label>
@@ -408,16 +406,14 @@ export default function NewContentGeneratorPage() {
 
           {/* Brief */}
           <div>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 8 }}>
-              Brief
-            </label>
+            <label className="form-label">Brief</label>
             <textarea
-              className="input"
-              rows={5}
+              className="form-input"
+              rows={6}
               value={brief}
               onChange={(e) => setBrief(e.target.value)}
               placeholder="Describe what you need — e.g. 'We want to target SME owners looking for accountancy software. Focus on tax efficiency, Making Tax Digital compliance, and the pain of switching. Tone: professional but approachable.'"
-              style={{ width: "100%", resize: "vertical", fontFamily: "inherit", lineHeight: 1.6 }}
+              style={{ resize: "vertical", fontFamily: "inherit", lineHeight: 1.6 }}
             />
             <p style={{ marginTop: 6, fontSize: 12, color: "var(--text-3)" }}>
               Be specific: include target audience, key themes, tone, and any topics to avoid.
@@ -518,12 +514,12 @@ export default function NewContentGeneratorPage() {
                   <div style={{ position: "relative", flex: 1 }}>
                     <Search style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", width: 13, height: 13, color: "var(--text-3)" }} />
                     <input
-                      className="input input-sm"
+                      className="form-input"
                       value={competitorInput}
                       onChange={(e) => setCompetitorInput(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && addCompetitor()}
                       placeholder="competitor.com"
-                      style={{ paddingLeft: 30, width: "100%" }}
+                      style={{ paddingLeft: 30, fontSize: 13 }}
                     />
                   </div>
                   <button className="btn btn-sm" onClick={addCompetitor} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
