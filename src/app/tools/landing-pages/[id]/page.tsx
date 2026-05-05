@@ -287,6 +287,63 @@ function SortableSectionRow({
   );
 }
 
+function AddSectionRow({ loading, onAdd }: { loading: boolean; onAdd: (desc: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [desc, setDesc] = useState("");
+
+  const handleSubmit = () => {
+    const d = desc.trim();
+    if (!d || loading) return;
+    onAdd(d);
+    setDesc("");
+    setOpen(false);
+  };
+
+  return (
+    <div style={{ marginTop: 10, borderRadius: "var(--r-sm)", border: open ? "1px solid var(--accent)" : "1px dashed var(--border)", background: "var(--surface)" }}>
+      {!open ? (
+        <button
+          onClick={() => setOpen(true)}
+          disabled={loading}
+          style={{ width: "100%", padding: "8px 10px", background: "none", border: "none", cursor: loading ? "default" : "pointer", color: loading ? "var(--text-4)" : "var(--accent)", fontSize: 12, fontWeight: 600, fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6, opacity: loading ? 0.6 : 1 }}
+        >
+          {loading
+            ? <><Loader2 style={{ width: 12, height: 12, animation: "spin 1s linear infinite" }} /> Generating section…</>
+            : <><Sparkles style={{ width: 12, height: 12 }} /> Add new section with AI</>}
+        </button>
+      ) : (
+        <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: "var(--accent)" }}>Describe the new section</span>
+          <input
+            autoFocus
+            type="text"
+            value={desc}
+            onChange={(e) => setDesc(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); if (e.key === "Escape") setOpen(false); }}
+            placeholder="e.g. testimonials with 3 cards, or a pricing table…"
+            style={{ fontSize: 12, padding: "5px 8px", border: "1px solid var(--border)", borderRadius: "var(--r-sm)", background: "var(--bg)", color: "var(--text)", outline: "none", fontFamily: "inherit" }}
+          />
+          <div style={{ display: "flex", gap: 6 }}>
+            <button
+              onClick={handleSubmit}
+              disabled={!desc.trim()}
+              style={{ flex: 1, fontSize: 11, padding: "5px 0", background: "var(--accent)", color: "#fff", border: "none", borderRadius: "var(--r-sm)", cursor: desc.trim() ? "pointer" : "default", opacity: desc.trim() ? 1 : 0.5, fontFamily: "inherit", fontWeight: 600 }}
+            >
+              Generate
+            </button>
+            <button
+              onClick={() => setOpen(false)}
+              style={{ fontSize: 11, padding: "5px 10px", background: "none", border: "1px solid var(--border)", borderRadius: "var(--r-sm)", cursor: "pointer", color: "var(--text-3)", fontFamily: "inherit" }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Markdown helpers (for chat bubble rendering) ─────────────────────────────
 
 function renderInline(text: string): ReactNode[] {
@@ -822,6 +879,57 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
         updateHtml(updated);
       } catch (err) {
         toast(err instanceof Error ? err.message : "Section refine failed", "error");
+      } finally {
+        setRefiningSectionId(null);
+      }
+    },
+    [id, previewHtml, refiningSectionId, updateHtml, toast],
+  );
+
+  const handleAddSection = useCallback(
+    async (description: string) => {
+      if (refiningSectionId) return;
+      setRefiningSectionId("__new__");
+
+      const titleMatch = previewHtml.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+      const h1Match = previewHtml.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+      const cssVarMatch = previewHtml.match(/:root\s*\{([^}]+)\}/);
+      const pageContext = [
+        titleMatch ? `Page title: ${titleMatch[1].replace(/<[^>]+>/g, "").trim()}` : "",
+        h1Match ? `Main heading: ${h1Match[1].replace(/<[^>]+>/g, "").trim()}` : "",
+        cssVarMatch ? `CSS variables: ${cssVarMatch[1].trim().slice(0, 400)}` : "",
+      ].filter(Boolean).join("\n");
+
+      // Seed section — tells Claude to build from scratch while matching page style
+      const sectionHtml = `<section><div class="container"><p>placeholder</p></div></section>`;
+
+      try {
+        const res = await fetch(`/api/tools/landing-pages/${id}/refine-section`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sectionHtml,
+            prompt: `Create a brand-new section: ${description}. Build it from scratch — do not keep the placeholder text. Match the visual style, colours, and tone described in the page context.`,
+            pageContext,
+          }),
+        });
+
+        if (!res.ok) {
+          const raw = await res.text();
+          let msg = `Failed to add section (${res.status})`;
+          try { msg = (JSON.parse(raw) as { error?: string }).error ?? msg; } catch { /* ignore */ }
+          toast(msg, "error");
+          return;
+        }
+
+        const data = await res.json() as { html: string };
+        // Append new section before </body>
+        const updated = previewHtml.includes("</body>")
+          ? previewHtml.replace("</body>", `\n${data.html}\n</body>`)
+          : previewHtml + `\n${data.html}`;
+        updateHtml(updated);
+      } catch (err) {
+        toast(err instanceof Error ? err.message : "Failed to add section", "error");
       } finally {
         setRefiningSectionId(null);
       }
@@ -1828,6 +1936,10 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                     </SortableContext>
                   </DndContext>
                 )}
+                <AddSectionRow
+                  loading={refiningSectionId === "__new__"}
+                  onAdd={handleAddSection}
+                />
               </div>
             </>
           )}

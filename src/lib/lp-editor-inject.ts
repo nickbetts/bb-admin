@@ -145,6 +145,8 @@ export function getEditorInjectionScript(): string {
   // Click to edit
   document.addEventListener('click', function(e) {
     var el = e.target;
+    // Let the delete button's own handler fire — don't intercept it here
+    if (el && el.getAttribute && el.getAttribute('data-lp-delete-btn')) return;
     if (!isEditable(el)) return;
     e.preventDefault();
     e.stopPropagation();
