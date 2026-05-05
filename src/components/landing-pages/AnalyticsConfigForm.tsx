@@ -87,8 +87,6 @@ export function AnalyticsConfigForm({ value, onChange, inheritedFrom, startExpan
     return hasValue ? <span style={inheritedBadge}>From client</span> : null;
   };
 
-  const conflictGtmGa4 = Boolean(value.gtmContainerId && value.ga4MeasurementId);
-
   const body = (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {/* GTM */}
@@ -103,7 +101,7 @@ export function AnalyticsConfigForm({ value, onChange, inheritedFrom, startExpan
           placeholder="GTM-XXXXXXX"
           style={inputStyle}
         />
-        <p style={hintStyle}>If supplied, GA4 and Google Ads tags should be managed inside GTM. The native GA4 loader will be skipped.</p>
+        <p style={hintStyle}>GTM runs alongside any direct GA4 or Google Ads tags — both load independently. Useful when GTM manages client pixels and you want a separate GA4 property for internal conversion testing.</p>
       </div>
 
       {/* GA4 */}
@@ -117,14 +115,7 @@ export function AnalyticsConfigForm({ value, onChange, inheritedFrom, startExpan
           onChange={(e) => set({ ga4MeasurementId: e.target.value || undefined })}
           placeholder="G-XXXXXXXXXX"
           style={inputStyle}
-          disabled={Boolean(value.gtmContainerId)}
         />
-        {conflictGtmGa4 && (
-          <p style={{ ...hintStyle, color: "var(--warning-text)", display: "flex", alignItems: "center", gap: 4 }}>
-            <AlertTriangle style={{ width: 12, height: 12 }} />
-            GTM is set — this GA4 ID will be ignored at serve time. Manage GA4 inside GTM.
-          </p>
-        )}
       </div>
 
       {/* Google Ads */}

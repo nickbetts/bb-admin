@@ -190,8 +190,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <!-- End Google Tag Manager -->`);
   }
 
-  // GA4 (skipped when GTM is configured — GTM is expected to manage GA4)
-  const needsGtag = !cfg.gtmContainerId && (cfg.ga4MeasurementId || cfg.googleAds?.conversionId);
+  // GA4 / Google Ads gtag.js — loaded independently of GTM so both can run
+  // simultaneously (e.g. GTM for client tags, direct GA4 for internal testing).
+  const needsGtag = Boolean(cfg.ga4MeasurementId || cfg.googleAds?.conversionId);
   if (needsGtag) {
     const loaderId = cfg.ga4MeasurementId ?? cfg.googleAds?.conversionId;
     const configs: string[] = [];
