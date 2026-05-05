@@ -232,10 +232,29 @@ export default function GrandPlanViewPage({ params }: Props) {
           iframeRef.current.style.height = Math.max(data.height, 600) + "px";
         }
       }
+      if (data.type === "gp:save-keywords") {
+        handleSaveKeywords(data.agIndex as number, data.agName as string, data.keywords as string[]);
+      }
     }
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
   }, []);
+
+  async function handleSaveKeywords(agIndex: number, agName: string, keywords: string[]) {
+    try {
+      const res = await fetch(`/api/tools/grand-plan/${id}/keywords`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agIndex, agName, keywords }),
+      });
+      if (!res.ok) throw new Error("Save failed");
+      const data = await res.json();
+      updateBlobUrl(data.html);
+      toast(`Keywords saved`, "success");
+    } catch {
+      toast("Failed to save keywords", "error");
+    }
+  }
 
   async function loadPlan() {
     setLoading(true);

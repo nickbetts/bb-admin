@@ -905,7 +905,6 @@ function renderQuickWins(items: { title: string; description: string; priority: 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: string, isPublicView = false): string {
   void clientWebsite;
-  void isPublicView;
   const monthlyBudget = (data.overview ?? {})["Monthly Budget"] ?? (data.overview ?? {})["Budget"] ?? "Custom";
   const suggestedLocations = Array.isArray(data.suggestedLocations) ? data.suggestedLocations : [];
   const locationsHtml = suggestedLocations.length
@@ -967,10 +966,11 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
 
   const adGroupsHtml = adGroupsRaw
     .map((g, i) => {
+      const removeBtn = isPublicView ? "" : `<button class="kw-remove-btn" type="button" onclick="removeKw(this)" title="Remove keyword">&#xD7;</button>`;
       const kwChips = (g.keywords ?? [])
         .map((k) => {
           const volTitle = k.volume != null ? ` title="Volume: ${k.volume.toLocaleString()}"` : "";
-          return `<span class="kw-chip"${volTitle}><span class="kw-text">${esc(k.keyword)}</span></span>`;
+          return `<span class="kw-chip" data-keyword="${esc(k.keyword)}"${volTitle}><span class="kw-text">${esc(k.keyword)}</span>${removeBtn}</span>`;
         })
         .join(" ");
 
@@ -978,8 +978,16 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
         ? `<p class="kw-hidden-note" style="font-size:12px;color:var(--mid);margin:.5rem 0 0">${g.hiddenLowVolumeCount} low/zero-volume keyword${g.hiddenLowVolumeCount === 1 ? "" : "s"} hidden from this view.</p>`
         : "";
 
+      const addRowHtml = isPublicView ? "" : `
+          <div class="kw-add-row">
+            <input class="kw-add-input" type="text" placeholder="Add keyword…" onkeydown="if(event.key==='Enter'){addKwFromInput(this);event.preventDefault()}" />
+            <button class="copy-btn kw-add-btn" type="button" onclick="addKwFromInput(this.previousElementSibling)">Add</button>
+          </div>`;
+
+      const saveBtn = isPublicView ? "" : `<button class="copy-btn kw-save-btn" type="button" onclick="saveAgKeywords(this)">Save keywords</button>`;
+
       return `
-      <div class="ag-section open">
+      <div class="ag-section open" data-ag-index="${i}" data-ag-name="${esc(g.name)}">
         <div class="ag-header" onclick="this.parentElement.classList.toggle('open')">
           <span class="ag-num">${i + 1}</span>
           <span class="ag-name">${esc(g.name) || `Ad Group ${i + 1}`}</span>
@@ -989,8 +997,11 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
         </div>
         <div class="ag-body">
           <div class="kw-chip-list">${kwChips}</div>
-          ${hiddenNote}
-          <div class="ag-actions"><button class="copy-btn" onclick="copyAgKeywords(this)">Copy all keywords in this group</button></div>
+          ${hiddenNote}${addRowHtml}
+          <div class="ag-actions">
+            <button class="copy-btn" onclick="copyAgKeywords(this)">Copy all keywords in this group</button>
+            ${saveBtn}
+          </div>
         </div>
       </div>`;
     })
@@ -2429,7 +2440,20 @@ a{color:var(--accent);text-decoration:none}
 .section.dark .kw-chip{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.08)}
 .kw-chip .kw-text{font-family:'SF Mono','Fira Code','Courier New',monospace;font-size:12.5px;color:var(--text)}
 .section.dark .kw-chip .kw-text{color:#e2e8f0}
-.ag-actions{display:flex;justify-content:flex-end;margin-top:.5rem}
+.ag-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:.5rem}
+/* Keyword editing */
+.kw-remove-btn{display:none;align-items:center;justify-content:center;width:15px;height:15px;padding:0;border:none;background:transparent;cursor:pointer;color:var(--mid);font-size:14px;line-height:1;border-radius:50%;flex-shrink:0}
+.kw-remove-btn:hover{background:rgba(239,68,68,.15);color:#ef4444}
+.kw-chip:hover .kw-remove-btn{display:inline-flex}
+.section.dark .kw-remove-btn:hover{background:rgba(239,68,68,.25);color:#fca5a5}
+.kw-chip.kw-new{border-color:#818cf8}
+.section.dark .kw-chip.kw-new{border-color:#6366f1}
+.kw-add-row{display:flex;gap:6px;align-items:center;margin:6px 0 4px}
+.kw-add-input{flex:1;border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:12.5px;font-family:inherit;background:var(--white);color:var(--text);outline:none;min-width:0}
+.kw-add-input:focus{border-color:#6366f1;box-shadow:0 0 0 2px rgba(99,102,241,.12)}
+.section.dark .kw-add-input{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.15);color:#e2e8f0}
+.section.dark .kw-add-input:focus{border-color:#818cf8}
+.kw-save-btn.saving{opacity:.6;cursor:not-allowed}
 /* Seed phrase suggestions panel (PPC research) */
 .seed-section{margin-top:2.25rem;padding-top:1.5rem;border-top:1px dashed var(--border)}
 .section.dark .seed-section{border-top-color:rgba(255,255,255,.12)}
@@ -3568,6 +3592,48 @@ function copyAgKeywords(btn){
     btn.textContent='Copied!';
     setTimeout(function(){btn.textContent=orig;},1800);
   });
+}
+
+// ── Keyword editing ─────────────────────────────────────────────────────────
+
+function removeKw(btn){
+  var chip=btn.closest('.kw-chip');
+  var ag=chip.closest('.ag-section');
+  chip.remove();
+  var count=ag.querySelectorAll('.kw-chip-list .kw-chip').length;
+  var countEl=ag.querySelector('.ag-count');
+  if(countEl)countEl.textContent=count+' keyword'+(count===1?'':'s');
+}
+
+function addKwFromInput(input){
+  var val=input.value.trim();
+  if(!val)return;
+  var list=input.closest('.ag-body').querySelector('.kw-chip-list');
+  var existing=Array.from(list.querySelectorAll('.kw-text')).map(function(s){return s.textContent.trim().toLowerCase();});
+  if(existing.includes(val.toLowerCase())){input.value='';return;}
+  var safe=val.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  var chip=document.createElement('span');
+  chip.className='kw-chip kw-new';
+  chip.setAttribute('data-keyword',val);
+  chip.innerHTML='<span class="kw-text">'+safe+'</span><button class="kw-remove-btn" type="button" onclick="removeKw(this)" title="Remove keyword">&#xD7;</button>';
+  list.appendChild(chip);
+  var ag=input.closest('.ag-section');
+  var count=list.querySelectorAll('.kw-chip').length;
+  var countEl=ag.querySelector('.ag-count');
+  if(countEl)countEl.textContent=count+' keyword'+(count===1?'':'s');
+  input.value='';
+  input.focus();
+}
+
+function saveAgKeywords(btn){
+  var ag=btn.closest('.ag-section');
+  var agIndex=parseInt(ag.getAttribute('data-ag-index'),10);
+  var agName=ag.getAttribute('data-ag-name');
+  var keywords=Array.from(ag.querySelectorAll('.kw-chip-list .kw-chip .kw-text')).map(function(s){return s.textContent.trim();}).filter(Boolean);
+  btn.textContent='Saving…';
+  btn.classList.add('saving');
+  btn.disabled=true;
+  window.parent.postMessage({type:'gp:save-keywords',agIndex:agIndex,agName:agName,keywords:keywords},'*');
 }
 
 // Copy every consolidated negative keyword in a section
