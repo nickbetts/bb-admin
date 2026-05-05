@@ -65,27 +65,38 @@ export async function POST(
     }
   }
 
-  const systemPrompt = `You are refining a complete client-facing strategy presentation deck.
-You will receive the full deck JSON and a refinement instruction. Apply the instruction across the whole deck, keeping slides coherent and consistent with each other.
+  const systemPrompt = `You are a strategic editor for client-facing strategy presentation decks.
+
+You will receive the full grand plan context, the current deck JSON, and an instruction from the user.
+Reason about what the instruction is actually asking for, then return the full updated deck.
+
+Your edit may involve any combination of:
+- Editing copy on existing slides
+- Adding new slides (if the instruction calls for more content or a missing section)
+- Removing slides that are no longer relevant
+- Reordering slides for better narrative flow
+- Changing a slide's kind if a different layout better suits the content
 
 RULES:
 - Return ONLY the complete updated presentation JSON — no markdown, no prose, no code fences.
-- Keep the same top-level shape: { cover: {...}, slides: [...] }
-- Keep every slide's \`id\` and \`kind\` unchanged.
+- Top-level shape must be: { cover: {...}, slides: [...] }
+- KEEP existing slide ids for slides you retain (edited or unchanged).
+- NEW slides you create must have a unique descriptive id slug (e.g. "slide-google-strategy", "slide-meta-audiences-2").
 - British English. No em dashes. No semicolons.
 - Concise copy — this is a presentation, not a document.
 
-VALID SLIDE FIELDS BY KIND (only use fields listed):
-kind="headline"  → title, eyebrow, headline, subhead (≤30 words)
-kind="pillars"   → title, eyebrow, headline (opt), subhead (opt, ≤30 words), pillars: [{title, body ≤40 words}] (3–5)
-kind="outcome"   → title, eyebrow, headline, subhead, metric: {value, label}
-kind="channels"  → title, eyebrow, channels: [{name, role ≤25 words}] (up to 8)
-kind="timeline"  → title, eyebrow, phases: [{label, items: [string]}] (3–4 phases)
-kind="investment"→ title, eyebrow, investment: {headlineFigure, breakdown: [{label, amount, percentage}]}
-kind="audience"  → title, eyebrow, audiences: [{name, insight ≤35 words}] (up to 6)
-kind="next-steps"→ title, eyebrow, steps: [{title, detail ≤35 words}] (3–5)
+VALID SLIDE KINDS AND THEIR FIELDS (only use the fields listed for the slide's kind):
+kind="headline"   → title, eyebrow, headline (big statement), subhead (≤30 words)
+kind="pillars"    → title, eyebrow, headline (opt), subhead (opt ≤30 words), pillars: [{title, body ≤40 words}] (3–5 pillars)
+kind="outcome"    → title, eyebrow, headline, subhead, metric: {value, label}
+kind="channels"   → title, eyebrow, channels: [{name, role ≤25 words}] (up to 8)
+kind="timeline"   → title, eyebrow, phases: [{label, items: [string]}] (3–4 phases, 3–5 items each)
+kind="investment" → title, eyebrow, investment: {headlineFigure, breakdown: [{label, amount, percentage}]}
+kind="audience"   → title, eyebrow, audiences: [{name, insight ≤35 words}] (up to 6)
+kind="next-steps" → title, eyebrow, steps: [{title, detail ≤35 words}] (3–5 steps)
 
-NEVER use: "subheading", "description", "content", "bullets", "items" or any unlisted field.`;
+NEVER use: "subheading", "description", "content", "bullets", "items" or any unlisted field.
+For a subheading / intro sentence on a pillars slide use the field "subhead", not "subheading".`;
 
   const userMessage = `GRAND PLAN CONTEXT:
 ${planContext || "(no plan data available)"}
@@ -109,7 +120,7 @@ Return the complete updated presentation JSON only.`;
   try {
     response = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
-      max_tokens: 4000,
+      max_tokens: 8000,
       system: systemPrompt,
       messages: [{ role: "user", content: userMessage }],
     });
@@ -142,11 +153,14 @@ Return the complete updated presentation JSON only.`;
     return NextResponse.json({ error: "AI returned no slides — try again" }, { status: 422 });
   }
 
-  // Restore id and kind from original slides (by position) as a safety net
+  const VALID_KINDS = new Set(["headline", "pillars", "outcome", "channels", "timeline", "investment", "audience", "next-steps"]);
+
+  // Ensure every slide has a valid id and kind — don't restore by position so
+  // Claude can freely add, remove, and reorder slides.
   updatedPres.slides = updatedPres.slides.map((s, i) => ({
     ...s,
-    id: presData.slides[i]?.id ?? s.id,
-    kind: presData.slides[i]?.kind ?? s.kind,
+    id: s.id?.trim() ? s.id : `slide-${Date.now()}-${i}`,
+    kind: VALID_KINDS.has(s.kind) ? s.kind : "headline",
   }));
 
   const html = renderPresentationHtml(updatedPres);

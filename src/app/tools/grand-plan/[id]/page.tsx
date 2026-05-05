@@ -1976,13 +1976,13 @@ export default function GrandPlanViewPage({ params }: Props) {
                           <hr style={{ border: "none", borderTop: "1px solid var(--border)", margin: "4px 0" }} />
                           <p style={{ fontSize: 12, fontWeight: 600, margin: 0, color: "var(--text-2)" }}>Refine whole deck</p>
                           <p style={{ fontSize: 12, color: "var(--text-3)", margin: 0 }}>
-                            Give Claude one instruction and it will apply it across every slide, keeping them coherent.
+                            Claude will reason about your instruction and edit copy, add new slides, remove slides, or restructure the deck as needed.
                           </p>
                           <textarea
                             value={presRefineAllPrompt}
                             onChange={(e) => setPresRefineAllPrompt(e.target.value)}
                             rows={4}
-                            placeholder="e.g. Make all copy more concise and outcome-focused…"
+                            placeholder="e.g. Add a dedicated slide for Google Ads strategy and make all copy more outcome-focused…"
                             style={{ fontSize: 13, padding: "8px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--surface,var(--bg))", color: "var(--text)", resize: "vertical", fontFamily: "inherit" }}
                             onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { refineAllSlides(presRefineAllPrompt); } }}
                           />
