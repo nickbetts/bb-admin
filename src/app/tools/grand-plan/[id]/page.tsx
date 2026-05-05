@@ -235,6 +235,14 @@ export default function GrandPlanViewPage({ params }: Props) {
       if (data.type === "gp:save-keywords") {
         handleSaveKeywords(data.agIndex as number, data.agName as string, data.keywords as string[]);
       }
+      const googleAdsEditTypes = [
+        "gp:save-campaign-name", "gp:save-budget", "gp:save-locations",
+        "gp:save-negatives", "gp:ag-rename", "gp:ag-audience",
+        "gp:ag-negatives", "gp:ag-add", "gp:ag-delete", "gp:save-seeds",
+      ];
+      if (googleAdsEditTypes.includes(data.type)) {
+        handleGoogleAdsEdit(data as Record<string, unknown>);
+      }
     }
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
@@ -253,6 +261,23 @@ export default function GrandPlanViewPage({ params }: Props) {
       toast(`Keywords saved`, "success");
     } catch {
       toast("Failed to save keywords", "error");
+    }
+  }
+
+  async function handleGoogleAdsEdit(data: Record<string, unknown>) {
+    try {
+      const action = (data.type as string).replace("gp:", "").replace("save-", "");
+      const res = await fetch(`/api/tools/grand-plan/${id}/google-ads-edit`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, ...data }),
+      });
+      if (!res.ok) throw new Error("Save failed");
+      const result = await res.json();
+      updateBlobUrl(result.html);
+      toast("Saved", "success");
+    } catch {
+      toast("Failed to save", "error");
     }
   }
 

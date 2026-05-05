@@ -907,8 +907,21 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
   void clientWebsite;
   const monthlyBudget = (data.overview ?? {})["Monthly Budget"] ?? (data.overview ?? {})["Budget"] ?? "Custom";
   const suggestedLocations = Array.isArray(data.suggestedLocations) ? data.suggestedLocations : [];
-  const locationsHtml = suggestedLocations.length
-    ? `<div class="loc-card"><div class="loc-card-label">Suggested Locations</div><div class="loc-chips">${suggestedLocations.map((l: string) => `<span class="loc-chip">${esc(l)}</span>`).join("")}</div></div>`
+  const locationsHtml = suggestedLocations.length || !isPublicView
+    ? `<div class="loc-card">
+        <div class="loc-card-label">Suggested Locations</div>
+        <div class="loc-chips" id="loc-chips-list">
+          ${suggestedLocations.map((l: string) => isPublicView
+            ? `<span class="loc-chip">${esc(l)}</span>`
+            : `<span class="loc-chip loc-chip-edit" data-location="${esc(l)}">${esc(l)}<button class="loc-remove-btn" type="button" onclick="removeLocation(this)" title="Remove">&#xD7;</button></span>`
+          ).join("")}
+        </div>
+        ${!isPublicView ? `<div class="kw-add-row" style="margin-top:8px">
+          <input class="kw-add-input" type="text" placeholder="Add location…" onkeydown="if(event.key==='Enter'){addLocation(this);event.preventDefault()}" />
+          <button class="copy-btn kw-add-btn" type="button" onclick="addLocation(this.previousElementSibling)">Add</button>
+          <button class="copy-btn kw-save-btn" type="button" onclick="saveLocations(this)" style="margin-top:0">Save</button>
+        </div>` : ""}
+      </div>`
     : "";
 
   const aiNegReasoned = ((data.aiNegativesWithReason ?? []) as { keyword: string; reason: string }[])
@@ -986,18 +999,40 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
 
       const saveBtn = isPublicView ? "" : `<button class="copy-btn kw-save-btn" type="button" onclick="saveAgKeywords(this)">Save keywords</button>`;
 
+      const agNameHtml = isPublicView
+        ? `<span class="ag-name">${esc(g.name) || `Ad Group ${i + 1}`}</span>`
+        : `<span class="ag-name" contenteditable="true" spellcheck="false" onclick="event.stopPropagation()" onblur="saveAgName(this)" onkeydown="if(event.key==='Enter'){this.blur();event.preventDefault()}">${esc(g.name) || `Ad Group ${i + 1}`}</span>`;
+      const agAudienceHtml = isPublicView
+        ? (g.audience ? `<span class="ag-audience">${esc(g.audience)}</span>` : "")
+        : `<span class="ag-audience${g.audience ? "" : " ag-audience-empty"}" contenteditable="true" spellcheck="false" onclick="event.stopPropagation()" onblur="saveAgAudience(this)" onkeydown="if(event.key==='Enter'){this.blur();event.preventDefault()}" data-placeholder="Add audience…">${g.audience ? esc(g.audience) : ""}</span>`;
+      const agDeleteBtn = isPublicView ? "" : `<button class="ag-delete-btn" type="button" onclick="event.stopPropagation();deleteAdGroup(this)" title="Delete ad group">&#xD7;</button>`;
+      const agNegPanel = isPublicView ? "" : `
+        <div class="ag-neg-section">
+          <h5>Ad Group Negatives</h5>
+          <div class="ag-neg-chips">
+            ${(g.adGroupNegatives ?? []).map((n: string) => `<span class="neg-chip neg-chip-edit" data-neg="${esc(n)}">${esc(n)}<button class="neg-remove-btn" type="button" onclick="removeAgNegative(this)" title="Remove">&#xD7;</button></span>`).join("")}
+          </div>
+          <div class="kw-add-row">
+            <input class="kw-add-input" type="text" placeholder="Add ad group negative…" onkeydown="if(event.key==='Enter'){addAgNegative(this);event.preventDefault()}" />
+            <button class="copy-btn kw-add-btn" type="button" onclick="addAgNegative(this.previousElementSibling)">Add</button>
+            <button class="copy-btn kw-save-btn" type="button" onclick="saveAgNegatives(this)">Save negatives</button>
+          </div>
+        </div>`;
+
       return `
       <div class="ag-section open" data-ag-index="${i}" data-ag-name="${esc(g.name)}">
         <div class="ag-header" onclick="this.parentElement.classList.toggle('open')">
           <span class="ag-num">${i + 1}</span>
-          <span class="ag-name">${esc(g.name) || `Ad Group ${i + 1}`}</span>
-          ${g.audience ? `<span class="ag-audience">${esc(g.audience)}</span>` : ""}
+          ${agNameHtml}
+          ${agAudienceHtml}
           <span class="ag-count">${g.keywords.length} keywords</span>
+          ${agDeleteBtn}
           <span class="ag-chevron">+</span>
         </div>
         <div class="ag-body">
           <div class="kw-chip-list">${kwChips}</div>
           ${hiddenNote}${addRowHtml}
+          ${agNegPanel}
           <div class="ag-actions">
             <button class="copy-btn" onclick="copyAgKeywords(this)">Copy all keywords in this group</button>
             ${saveBtn}
@@ -1014,10 +1049,10 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
         <h2>Google Ads Campaigns</h2>
         ${intro ? `<p class="section-intro section-intro-ai">${esc(intro)}</p>` : ""}
         <div class="campaign-hero">
-          <h3>${esc(data.campaignName)}</h3>
+          <h3 ${!isPublicView ? `contenteditable="true" spellcheck="false" onblur="saveCampaignName(this)" onkeydown="if(event.key==='Enter'){this.blur();event.preventDefault()}" class="editable-inline"` : ""}>${esc(data.campaignName)}</h3>
         </div>
         <div class="budget-loc-grid">
-          <div class="loc-card"><div class="loc-card-label">Monthly Budget</div><div class="loc-budget">${esc(monthlyBudget)}</div></div>
+          <div class="loc-card"><div class="loc-card-label">Monthly Budget</div><div class="loc-budget" ${!isPublicView ? `contenteditable="true" spellcheck="false" onblur="saveBudget(this)" onkeydown="if(event.key==='Enter'){this.blur();event.preventDefault()}"` : ""}>${esc(monthlyBudget)}</div></div>
           ${locationsHtml}
         </div>
         <details class="neg-section">
@@ -1029,6 +1064,18 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
           <p class="section-intro" style="margin-top:.25rem">Single combined list across the campaign and every ad group. Click "Copy all negatives" to grab them in one go.</p>
           ${negChipsHtml}
           ${reasonedListHtml}
+          ${!isPublicView ? `
+          <div class="neg-edit-section">
+            <h5 style="margin:1.25rem 0 .5rem;font-size:.85rem;font-weight:700;color:var(--heading)">Edit campaign negatives</h5>
+            <div class="neg-edit-chips" id="campaign-neg-chips">
+              ${((data.negativeKeywords ?? []) as string[]).map((n) => `<span class="neg-chip neg-chip-edit" data-neg="${esc(n)}">${esc(n)}<button class="neg-remove-btn" type="button" onclick="removeNegative(this)" title="Remove">&#xD7;</button></span>`).join("")}
+            </div>
+            <div class="kw-add-row" style="margin-top:8px">
+              <input class="kw-add-input" type="text" placeholder="Add negative keyword…" onkeydown="if(event.key==='Enter'){addNegative(this);event.preventDefault()}" />
+              <button class="copy-btn kw-add-btn" type="button" onclick="addNegative(this.previousElementSibling)">Add</button>
+              <button class="copy-btn kw-save-btn" type="button" onclick="saveNegatives(this)" style="margin-top:0">Save</button>
+            </div>
+          </div>` : ""}
           </div>
         </details>
         <div class="ag-heading-row">
@@ -1036,30 +1083,49 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
           <button class="copy-btn" onclick="copyAllCampaignKws(this)">Copy all valid keywords (every group)</button>
         </div>
         ${adGroupsHtml}
+        ${!isPublicView ? `
+        <div class="ag-add-row">
+          <input class="kw-add-input" type="text" placeholder="New ad group name\u2026" id="new-ag-input" onkeydown="if(event.key==='Enter'){addAdGroup();event.preventDefault()}" />
+          <button class="copy-btn kw-add-btn" type="button" onclick="addAdGroup()">Add ad group</button>
+        </div>` : ""}
         ${(() => {
           const seeds = (data.seedSuggestions ?? []) as { theme: string; phrases: string[] }[];
-          if (!seeds.length) return "";
+          if (!seeds.length && isPublicView) return "";
           const themesHtml = seeds.map((s, i) => {
-            const phrases = (s.phrases ?? []).map((p) => `<span class="seed-chip kw-text">${esc(p)}</span>`).join(" ");
+            const phrasesHtml = (s.phrases ?? []).map((p) => isPublicView
+              ? `<span class="seed-chip kw-text">${esc(p)}</span>`
+              : `<span class="seed-chip kw-text seed-chip-edit">${esc(p)}<button class="seed-remove-btn" type="button" onclick="removeSeedPhrase(this)" title="Remove phrase">&#xD7;</button></span>`
+            ).join(" ");
             return `
               <details class="seed-theme">
                 <summary class="seed-theme-head">
                   <span class="seed-num">${i + 1}</span>
-                  <h4>${esc(s.theme)}</h4>
+                  <h4 ${!isPublicView ? `contenteditable="true" spellcheck="false" onclick="event.stopPropagation()" onkeydown="if(event.key==='Enter'){this.blur();event.preventDefault()}"` : ""}>${esc(s.theme)}</h4>
                   <span class="seed-count">${s.phrases.length} phrases</span>
                   <button class="copy-btn" onclick="event.stopPropagation();copySeedTheme(this)">Copy theme</button>
+                  ${!isPublicView ? `<button class="seed-delete-btn" type="button" onclick="event.stopPropagation();deleteSeedTheme(this)" title="Delete theme">&#xD7;</button>` : ""}
                 </summary>
-                <div class="seed-chip-list">${phrases}</div>
+                <div class="seed-chip-list">
+                  ${phrasesHtml}
+                  ${!isPublicView ? `<div class="kw-add-row seed-phrase-add-row" style="width:100%;margin-top:8px">
+                    <input class="kw-add-input" type="text" placeholder="Add phrase\u2026" onkeydown="if(event.key==='Enter'){addSeedPhrase(this);event.preventDefault()}" />
+                    <button class="copy-btn kw-add-btn" type="button" onclick="addSeedPhrase(this.previousElementSibling)">Add</button>
+                  </div>` : ""}
+                </div>
               </details>`;
           }).join("\n");
           return `
         <div class="seed-section">
           <div class="seed-section-head">
             <h3>Seed Phrase Suggestions for PPC Research</h3>
-            <button class="copy-btn" onclick="copyAllSeeds(this)">Copy every seed phrase</button>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+              <button class="copy-btn" onclick="copyAllSeeds(this)">Copy every seed phrase</button>
+              ${!isPublicView ? `<button class="copy-btn" id="save-seeds-btn" onclick="saveAllSeeds(this)">Save seeds</button>` : ""}
+            </div>
           </div>
           <p class="section-intro" style="margin-top:.25rem">Variants of the core terms above \u2014 alternative names, misspellings, synonyms, abbreviations, regional phrasings. Plug them into Google Keyword Planner and Search Term reports to expand the keyword pool. These are research seeds, not bid recommendations.</p>
           ${themesHtml}
+          ${!isPublicView ? `<button class="copy-btn" id="add-seed-theme-btn" onclick="addSeedTheme()" style="margin-top:1rem">+ Add theme</button>` : ""}
         </div>`;
         })()}
       </div>
@@ -2454,6 +2520,33 @@ a{color:var(--accent);text-decoration:none}
 .section.dark .kw-add-input{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.15);color:#e2e8f0}
 .section.dark .kw-add-input:focus{border-color:#818cf8}
 .kw-save-btn.saving{opacity:.6;cursor:not-allowed}
+.ag-add-row{display:flex;gap:6px;align-items:center;margin-top:.75rem}
+.ag-delete-btn{width:22px;height:22px;padding:0;border:none;background:transparent;cursor:pointer;color:var(--mid);font-size:16px;line-height:1;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.ag-delete-btn:hover{background:rgba(239,68,68,.15);color:#ef4444}
+.section.dark .ag-delete-btn:hover{background:rgba(239,68,68,.25);color:#fca5a5}
+.ag-audience-empty{min-width:80px;font-style:italic;opacity:.5}
+.ag-audience-empty:focus{opacity:1;font-style:normal}
+[contenteditable]:focus{outline:2px solid rgba(99,102,241,.45);outline-offset:2px;border-radius:4px}
+.editable-inline:hover{outline:1px dashed rgba(99,102,241,.35);outline-offset:3px;border-radius:4px;cursor:text}
+.loc-chip-edit{display:inline-flex;align-items:center;gap:4px;padding:4px 6px 4px 10px}
+.loc-remove-btn{width:16px;height:16px;padding:0;border:none;background:transparent;cursor:pointer;color:var(--mid);font-size:13px;line-height:1;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.loc-remove-btn:hover{background:rgba(239,68,68,.15);color:#ef4444}
+.neg-chip-edit{display:inline-flex;align-items:center;gap:4px;padding:3px 6px 3px 10px}
+.neg-remove-btn{width:16px;height:16px;padding:0;border:none;background:transparent;cursor:pointer;color:rgba(220,38,38,.5);font-size:13px;line-height:1;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.neg-remove-btn:hover{background:rgba(220,38,38,.2);color:#dc2626}
+.neg-edit-section{margin-top:1.25rem;padding-top:1rem;border-top:1px dashed var(--border)}
+.section.dark .neg-edit-section{border-top-color:rgba(255,255,255,.1)}
+.neg-edit-chips{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px}
+.ag-neg-section{margin-top:1.25rem;padding-top:1rem;border-top:1px dashed var(--border)}
+.section.dark .ag-neg-section{border-top-color:rgba(255,255,255,.1)}
+.ag-neg-section h5{margin:0 0 .5rem;font-size:.85rem;font-weight:700;color:var(--text)}
+.ag-neg-chips{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;min-height:4px}
+.seed-chip-edit{display:inline-flex;align-items:center;gap:4px;padding:3px 6px 3px 10px}
+.seed-remove-btn{width:16px;height:16px;padding:0;border:none;background:transparent;cursor:pointer;color:var(--mid);font-size:13px;line-height:1;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.seed-remove-btn:hover{background:rgba(239,68,68,.15);color:#ef4444}
+.seed-delete-btn{width:22px;height:22px;padding:0;border:none;background:transparent;cursor:pointer;color:var(--mid);font-size:16px;line-height:1;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.seed-delete-btn:hover{background:rgba(239,68,68,.15);color:#ef4444}
+.section.dark .seed-delete-btn:hover{background:rgba(239,68,68,.25);color:#fca5a5}
 /* Seed phrase suggestions panel (PPC research) */
 .seed-section{margin-top:2.25rem;padding-top:1.5rem;border-top:1px dashed var(--border)}
 .section.dark .seed-section{border-top-color:rgba(255,255,255,.12)}
@@ -3634,6 +3727,202 @@ function saveAgKeywords(btn){
   btn.classList.add('saving');
   btn.disabled=true;
   window.parent.postMessage({type:'gp:save-keywords',agIndex:agIndex,agName:agName,keywords:keywords},'*');
+}
+
+// ── Google Ads full editing ──────────────────────────────────────────────────
+
+function saveCampaignName(el){
+  var name=(el.textContent||'').trim();
+  if(!name)return;
+  window.parent.postMessage({type:'gp:save-campaign-name',campaignName:name},'*');
+}
+
+function saveBudget(el){
+  var budget=(el.textContent||'').trim();
+  window.parent.postMessage({type:'gp:save-budget',budget:budget},'*');
+}
+
+function removeLocation(btn){
+  btn.closest('.loc-chip-edit').remove();
+}
+
+function addLocation(input){
+  var val=input.value.trim();
+  if(!val)return;
+  var list=document.getElementById('loc-chips-list');
+  var existing=Array.from(list.querySelectorAll('.loc-chip-edit')).map(function(c){
+    return (c.childNodes[0]&&c.childNodes[0].textContent||'').trim().toLowerCase();
+  });
+  if(existing.includes(val.toLowerCase())){input.value='';return;}
+  var safe=val.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  var chip=document.createElement('span');
+  chip.className='loc-chip loc-chip-edit';
+  chip.setAttribute('data-location',val);
+  chip.innerHTML=safe+'<button class="loc-remove-btn" type="button" onclick="removeLocation(this)" title="Remove">&#xD7;</button>';
+  list.appendChild(chip);
+  input.value='';
+}
+
+function saveLocations(btn){
+  var list=document.getElementById('loc-chips-list');
+  var locs=Array.from(list.querySelectorAll('.loc-chip-edit')).map(function(c){
+    var clone=c.cloneNode(true);
+    var b=clone.querySelector('.loc-remove-btn');
+    if(b)b.remove();
+    return (clone.textContent||'').trim();
+  }).filter(Boolean);
+  btn.textContent='Saving…';btn.disabled=true;
+  window.parent.postMessage({type:'gp:save-locations',locations:locs},'*');
+}
+
+function removeNegative(btn){
+  btn.closest('.neg-chip-edit').remove();
+}
+
+function addNegative(input){
+  var val=input.value.trim();
+  if(!val)return;
+  var list=document.getElementById('campaign-neg-chips');
+  var existing=Array.from(list.querySelectorAll('.neg-chip-edit')).map(function(c){return (c.getAttribute('data-neg')||'').toLowerCase();});
+  if(existing.includes(val.toLowerCase())){input.value='';return;}
+  var safe=val.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  var chip=document.createElement('span');
+  chip.className='neg-chip neg-chip-edit';
+  chip.setAttribute('data-neg',val);
+  chip.innerHTML=safe+'<button class="neg-remove-btn" type="button" onclick="removeNegative(this)" title="Remove">&#xD7;</button>';
+  list.appendChild(chip);
+  input.value='';
+}
+
+function saveNegatives(btn){
+  var list=document.getElementById('campaign-neg-chips');
+  var negs=Array.from(list.querySelectorAll('.neg-chip-edit')).map(function(c){return c.getAttribute('data-neg')||'';}).filter(Boolean);
+  btn.textContent='Saving…';btn.disabled=true;
+  window.parent.postMessage({type:'gp:save-negatives',negatives:negs},'*');
+}
+
+function saveAgName(el){
+  var ag=el.closest('.ag-section');
+  var agIndex=parseInt(ag.getAttribute('data-ag-index'),10);
+  var name=(el.textContent||'').trim();
+  if(!name)return;
+  ag.setAttribute('data-ag-name',name);
+  window.parent.postMessage({type:'gp:ag-rename',agIndex:agIndex,name:name},'*');
+}
+
+function saveAgAudience(el){
+  var ag=el.closest('.ag-section');
+  var agIndex=parseInt(ag.getAttribute('data-ag-index'),10);
+  var audience=(el.textContent||'').trim();
+  window.parent.postMessage({type:'gp:ag-audience',agIndex:agIndex,audience:audience},'*');
+}
+
+function removeAgNegative(btn){
+  btn.closest('.neg-chip-edit').remove();
+}
+
+function addAgNegative(input){
+  var val=input.value.trim();
+  if(!val)return;
+  var list=input.closest('.ag-neg-section').querySelector('.ag-neg-chips');
+  var existing=Array.from(list.querySelectorAll('.neg-chip-edit')).map(function(c){return (c.getAttribute('data-neg')||'').toLowerCase();});
+  if(existing.includes(val.toLowerCase())){input.value='';return;}
+  var safe=val.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  var chip=document.createElement('span');
+  chip.className='neg-chip neg-chip-edit';
+  chip.setAttribute('data-neg',val);
+  chip.innerHTML=safe+'<button class="neg-remove-btn" type="button" onclick="removeAgNegative(this)" title="Remove">&#xD7;</button>';
+  list.appendChild(chip);
+  input.value='';
+}
+
+function saveAgNegatives(btn){
+  var ag=btn.closest('.ag-section');
+  var agIndex=parseInt(ag.getAttribute('data-ag-index'),10);
+  var list=ag.querySelector('.ag-neg-chips');
+  var negs=Array.from(list.querySelectorAll('.neg-chip-edit')).map(function(c){return c.getAttribute('data-neg')||'';}).filter(Boolean);
+  btn.textContent='Saving…';btn.disabled=true;
+  window.parent.postMessage({type:'gp:ag-negatives',agIndex:agIndex,negatives:negs},'*');
+}
+
+function deleteAdGroup(btn){
+  var ag=btn.closest('.ag-section');
+  var name=ag.getAttribute('data-ag-name')||'this ad group';
+  if(!confirm('Delete "'+name+'"?'))return;
+  var agIndex=parseInt(ag.getAttribute('data-ag-index'),10);
+  window.parent.postMessage({type:'gp:ag-delete',agIndex:agIndex},'*');
+}
+
+function addAdGroup(){
+  var input=document.getElementById('new-ag-input');
+  var name=(input.value||'').trim();
+  if(!name)return;
+  input.value='';
+  window.parent.postMessage({type:'gp:ag-add',name:name},'*');
+}
+
+function removeSeedPhrase(btn){
+  var chip=btn.closest('.seed-chip-edit');
+  var theme=chip.closest('.seed-theme');
+  chip.remove();
+  var list=theme&&theme.querySelector('.seed-chip-list');
+  var countEl=theme&&theme.querySelector('.seed-count');
+  if(countEl&&list){var n=list.querySelectorAll('.seed-chip-edit').length;countEl.textContent=n+' phrase'+(n===1?'':'s');}
+}
+
+function addSeedPhrase(input){
+  var val=input.value.trim();
+  if(!val)return;
+  var addRow=input.closest('.seed-phrase-add-row');
+  var list=addRow.parentElement;
+  var safe=val.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  var chip=document.createElement('span');
+  chip.className='seed-chip kw-text seed-chip-edit';
+  chip.innerHTML=safe+'<button class="seed-remove-btn" type="button" onclick="removeSeedPhrase(this)" title="Remove phrase">&#xD7;</button>';
+  list.insertBefore(chip,addRow);
+  var theme=list.closest('.seed-theme');
+  var countEl=theme&&theme.querySelector('.seed-count');
+  if(countEl){var n=list.querySelectorAll('.seed-chip-edit').length;countEl.textContent=n+' phrase'+(n===1?'':'s');}
+  input.value='';
+}
+
+function deleteSeedTheme(btn){
+  var theme=btn.closest('.seed-theme');
+  var h4=theme&&theme.querySelector('h4');
+  var name=h4?h4.textContent.trim():'this theme';
+  if(!confirm('Delete seed theme "'+name+'"?'))return;
+  theme.remove();
+}
+
+function addSeedTheme(){
+  var name=prompt('New seed theme name:');
+  if(!name||!name.trim())return;
+  var safe=name.trim().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  var idx=document.querySelectorAll('#google-ads .seed-theme').length+1;
+  var details=document.createElement('details');
+  details.className='seed-theme';
+  details.open=true;
+  details.innerHTML='<summary class="seed-theme-head"><span class="seed-num">'+idx+'</span><h4 contenteditable="true" spellcheck="false" onclick="event.stopPropagation()" onkeydown="if(event.key===\'Enter\'){this.blur();event.preventDefault()}">'+safe+'</h4><span class="seed-count">0 phrases</span><button class="copy-btn" onclick="event.stopPropagation();copySeedTheme(this)">Copy theme</button><button class="seed-delete-btn" type="button" onclick="event.stopPropagation();deleteSeedTheme(this)" title="Delete theme">&#xD7;</button></summary><div class="seed-chip-list"><div class="kw-add-row seed-phrase-add-row" style="width:100%;margin-top:8px"><input class="kw-add-input" type="text" placeholder="Add phrase…" onkeydown="if(event.key===\'Enter\'){addSeedPhrase(this);event.preventDefault()}" /><button class="copy-btn kw-add-btn" type="button" onclick="addSeedPhrase(this.previousElementSibling)">Add</button></div></div>';
+  var addThemeBtn=document.getElementById('add-seed-theme-btn');
+  if(addThemeBtn){addThemeBtn.parentElement.insertBefore(details,addThemeBtn);}
+  else{var sec=document.querySelector('#google-ads .seed-section');if(sec)sec.appendChild(details);}
+}
+
+function saveAllSeeds(btn){
+  var themes=Array.from(document.querySelectorAll('#google-ads .seed-theme'));
+  var seeds=themes.map(function(t){
+    var h4=t.querySelector('h4');
+    var theme=h4?(h4.textContent||'').trim():'';
+    var phrases=Array.from(t.querySelectorAll('.seed-chip-list .seed-chip-edit')).map(function(c){
+      var clone=c.cloneNode(true);
+      var rb=clone.querySelector('.seed-remove-btn');
+      if(rb)rb.remove();
+      return (clone.textContent||'').trim();
+    }).filter(Boolean);
+    return {theme:theme,phrases:phrases};
+  }).filter(function(s){return s.theme;});
+  if(btn){btn.textContent='Saving…';btn.disabled=true;}
+  window.parent.postMessage({type:'gp:save-seeds',seeds:seeds},'*');
 }
 
 // Copy every consolidated negative keyword in a section
