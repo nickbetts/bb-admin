@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { withApiCache } from "@/lib/api-cache";
-import { getSemrushTrackedKeywords, getKeywordPositionForDomain } from "@/lib/semrush";
+import { getSemrushTrackedKeywords, getKeywordPositionForDomain, getKeywordSearchVolume } from "@/lib/semrush";
 import type { TrackerClient } from "../config/route";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 const TRACKING_TTL = 24;
+const VOLUME_TTL = 24 * 7; // volumes change slowly, cache for a week
 // Max concurrent SEMrush + DB operations at any one time
 const CONCURRENCY = 10;
 
@@ -63,17 +64,16 @@ export async function GET(request: NextRequest) {
   const database = list.database || "uk";
 
   if (keywords.length === 0 || clients.length === 0) {
-    return NextResponse.json({ keywords, clients: [], cells: {} });
+    return NextResponse.json({ keywords, clients: [], cells: {}, volumes: {} });
   }
 
-  // Build all (client, keyword) tasks and run with bounded concurrency
   const cells: Record<string, Record<string, CellData>> = {};
   for (const keyword of keywords) cells[keyword] = {};
 
-  // Compare against 30 days ago for position deltas
   const compareDate = daysAgoYYYYMMDD(30);
 
-  // Pre-fetch campaign data for all clients that have campaigns (one call per client)
+  // Pre-fetch campaign data — two calls per client (current + 30-days-ago) in parallel
+  // so we get reliable deltas without relying on the Be field.
   const campaignMaps = new Map<string, Map<string, { position: number | null; previousPosition: number | null; searchVolume: number; url: string }>>();
 
   await pLimit(
@@ -82,16 +82,29 @@ export async function GET(request: NextRequest) {
       .map((client) => async () => {
         const campaignId = client.campaignIds[0];
         try {
-          const tracked = await withApiCache(
-            `kwtracker:tracked:${campaignId}:${compareDate}`,
-            TRACKING_TTL,
-            () => getSemrushTrackedKeywords(campaignId, compareDate)
-          );
+          const [currentKws, previousKws] = await Promise.all([
+            withApiCache(
+              `kwtracker:tracked:${campaignId}:current`,
+              TRACKING_TTL,
+              () => getSemrushTrackedKeywords(campaignId)
+            ),
+            withApiCache(
+              `kwtracker:tracked:${campaignId}:prev:${compareDate}`,
+              VOLUME_TTL,
+              () => getSemrushTrackedKeywords(campaignId, compareDate)
+            ),
+          ]);
+
+          // Build previous-position lookup keyed by normalised keyword
+          const prevPositions = new Map<string, number | null>();
+          for (const kw of previousKws) {
+            prevPositions.set(kw.keyword.toLowerCase().trim(), kw.position === 0 ? null : kw.position);
+          }
+
           const map = new Map<string, { position: number | null; previousPosition: number | null; searchVolume: number; url: string }>();
-          for (const kw of tracked) {
-            // position=0 from SEMrush means "not in top 100" — treat as null
+          for (const kw of currentKws) {
             const pos = kw.position === 0 ? null : kw.position;
-            const prevPos = kw.previousPosition === 0 ? null : kw.previousPosition;
+            const prevPos = prevPositions.get(kw.keyword.toLowerCase().trim()) ?? null;
             map.set(kw.keyword.toLowerCase().trim(), {
               position: pos,
               previousPosition: prevPos,
@@ -105,7 +118,7 @@ export async function GET(request: NextRequest) {
     CONCURRENCY
   );
 
-  // Now build per-keyword tasks for all clients, using campaign data where available
+  // Build per-keyword tasks for clients, using campaign data where available
   const tasks: (() => Promise<void>)[] = [];
 
   for (const client of clients) {
@@ -116,8 +129,7 @@ export async function GET(request: NextRequest) {
       const kwLower = kw.toLowerCase().trim();
       const fromCampaign = campaignMap?.get(kwLower);
 
-      if (fromCampaign) {
-        // Already have the data — no async work needed, set it immediately
+      if (fromCampaign !== undefined) {
         const delta =
           fromCampaign.previousPosition !== null && fromCampaign.position !== null
             ? fromCampaign.previousPosition - fromCampaign.position
@@ -148,10 +160,40 @@ export async function GET(request: NextRequest) {
 
   await pLimit(tasks, CONCURRENCY);
 
+  // Build per-keyword search volumes.
+  // Use the best available volume from cell data (campaign/organic already has it),
+  // then fall back to phrase_this for keywords where no cell returned a volume.
+  const volumes: Record<string, number> = {};
+
+  for (const kw of keywords) {
+    const vols = Object.values(cells[kw])
+      .map((c) => c.searchVolume)
+      .filter((v) => v > 0);
+    if (vols.length > 0) {
+      volumes[kw] = Math.round(vols.reduce((a, b) => a + b, 0) / vols.length);
+    }
+  }
+
+  // phrase_this for any keyword still missing volume
+  const volumeTasks = keywords
+    .filter((kw) => !volumes[kw])
+    .map((kw) => async () => {
+      const kwLower = kw.toLowerCase().trim();
+      const vol = await withApiCache(
+        `kwtracker:volume:${database}:${kwLower}`,
+        VOLUME_TTL,
+        () => getKeywordSearchVolume(kw, database)
+      );
+      if (vol > 0) volumes[kw] = vol;
+    });
+
+  await pLimit(volumeTasks, CONCURRENCY);
+
   return NextResponse.json({
     keywords,
     clients: clients.map((c) => ({ domain: c.domain, name: c.name })),
     cells,
     database,
+    volumes,
   });
 }

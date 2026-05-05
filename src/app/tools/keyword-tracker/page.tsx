@@ -33,6 +33,7 @@ interface MatrixData {
   clients: { domain: string; name: string }[];
   cells: Record<string, Record<string, CellData>>;
   database: string;
+  volumes: Record<string, number>;
 }
 
 const DATABASES = [
@@ -68,11 +69,9 @@ function fmtVolume(n: number): string {
   return String(n);
 }
 
-function avgVolume(cells: Record<string, CellData> | undefined): string {
-  if (!cells) return "–";
-  const vols = Object.values(cells).map((c) => c.searchVolume).filter((v) => v > 0);
-  if (vols.length === 0) return "–";
-  return fmtVolume(Math.round(vols.reduce((a, b) => a + b, 0) / vols.length));
+function avgVolume(vol: number | undefined): string {
+  if (!vol || vol === 0) return "–";
+  return fmtVolume(vol);
 }
 
 function DeltaBadge({ delta }: { delta: number | null }) {
@@ -495,7 +494,7 @@ export default function KeywordTrackerPage() {
                         </td>
                         {/* Avg search volume across all clients */}
                         <td style={{ padding: "10px 12px", textAlign: "center", fontSize: 12, fontWeight: 600, color: "var(--text-2)", borderBottom: "1px solid var(--border)", borderRight: "1px solid var(--border)", position: "sticky", left: 200, background: i % 2 === 0 ? "var(--surface)" : "var(--bg)", zIndex: 1, whiteSpace: "nowrap" }}>
-                          {avgVolume(matrix.cells[kw])}
+                          {avgVolume(matrix.volumes?.[kw])}
                         </td>
                         {matrix.clients.map((c) => (
                           <MatrixCell key={c.domain} data={matrix.cells[kw]?.[c.domain]} />

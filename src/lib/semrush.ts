@@ -385,7 +385,7 @@ const SEMRUSH_TRACKING_BASE = "https://api.semrush.com/reports/v1/projects";
 
 export async function getSemrushTrackedKeywords(
   campaignId: string,
-  compareDate?: string, // YYYYMMDD — when provided, Be field is populated with positions at that date
+  date?: string, // YYYYMMDD — if provided, returns snapshot for that date; omit for latest
 ): Promise<SemrushTrackedKeyword[]> {
   const apiKey = getApiKey();
   const qsParts = [
@@ -394,10 +394,7 @@ export async function getSemrushTrackedKeywords(
     `type=tracking_position_organic`,
     `display_limit=200`,
   ];
-  if (compareDate) {
-    const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-    qsParts.push(`date=${today}`, `compare_date=${compareDate}`);
-  }
+  if (date) qsParts.push(`date=${date}`);
   const qs = qsParts.join("&");
 
   try {
@@ -1502,5 +1499,29 @@ export async function getKeywordPositionForDomain(
     };
   } catch {
     return { keyword, position: null, previousPosition: null, searchVolume: 0, url: "" };
+  }
+}
+
+/** Returns the monthly search volume for a keyword regardless of who ranks for it. */
+export async function getKeywordSearchVolume(
+  keyword: string,
+  database: string = "uk"
+): Promise<number> {
+  const apiKey = getApiKey();
+  const params = new URLSearchParams({
+    type: "phrase_this",
+    key: apiKey,
+    export_columns: "Ph,Nq",
+    phrase: keyword.toLowerCase().trim(),
+    database,
+  });
+  try {
+    const response = await axios.get<string>(`${SEMRUSH_BASE_URL}/?${params.toString()}`);
+    const lines = (response.data as string).trim().split("\n");
+    if (lines.length < 2 || lines[0].startsWith("ERROR")) return 0;
+    const [, nq] = lines[1].split(";");
+    return parseInt(nq) || 0;
+  } catch {
+    return 0;
   }
 }
