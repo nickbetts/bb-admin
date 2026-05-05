@@ -285,6 +285,13 @@ export function deleteSection(html: string, section: LPSection): string {
 }
 
 /**
+ * Replace a section's HTML with new content.
+ */
+export function replaceSection(html: string, section: LPSection, newOuterHtml: string): string {
+  return html.replace(section.outerHtml, newOuterHtml);
+}
+
+/**
  * Set an animation attribute on a section.
  */
 export function setSectionAnimation(html: string, section: LPSection, animation: string | null): string {

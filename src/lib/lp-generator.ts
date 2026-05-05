@@ -1004,6 +1004,78 @@ export async function generateLandingPageWithCritique(
 
 // ── Refine landing page ──────────────────────────────────────────────────────
 
+export class HtmlValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "HtmlValidationError";
+  }
+}
+
+function extractAndValidateHtml(raw: string): string {
+  let text = stripMarkdownFences(raw);
+
+  // Handle Claude prefixing the HTML with explanatory text
+  const start = text.indexOf("<!DOCTYPE");
+  const end   = text.lastIndexOf("</html>");
+  if (start !== -1 && end !== -1 && end > start) {
+    text = text.slice(start, end + "</html>".length).trim();
+  }
+
+  const lower = text.toLowerCase();
+  if (!lower.includes("<html") || !lower.includes("</html>") || text.length < 500) {
+    throw new HtmlValidationError(
+      `The model returned an incomplete response instead of HTML (${text.length} chars). Please try again — if the problem persists, simplify the prompt.`
+    );
+  }
+  return text;
+}
+
+export interface RefineSectionOptions {
+  sectionHtml: string;
+  prompt: string;
+  pageContext: string;
+  brandContext?: { colors: { role: string; hex: string }[] };
+}
+
+export async function refineSectionHtml(opts: RefineSectionOptions): Promise<string> {
+  const anthropic = await getAnthropicClient();
+
+  const colourSummary = opts.brandContext?.colors
+    .filter((c) => c.role !== "unknown")
+    .slice(0, 4)
+    .map((c) => `${c.role}: ${c.hex}`)
+    .join(", ") ?? "";
+
+  const system = `You are an expert landing page designer editing a single section of an existing page.
+Return ONLY the updated section HTML — no full page wrapper, no <html>/<head>/<body> tags, no markdown fences, no explanation.
+Preserve the section's overall structure and visual style unless the user explicitly asks to change them.
+Match the colours, fonts, and tone described in the page context.`;
+
+  const userContent = `SECTION TO EDIT:
+${opts.sectionHtml}
+
+PAGE CONTEXT (style and tone reference — do not include in output):
+${opts.pageContext}${colourSummary ? `\nBrand colours: ${colourSummary}` : ""}
+
+USER REQUEST: ${opts.prompt}`;
+
+  const response = await anthropic.messages.create({
+    model: MODEL,
+    max_tokens: 8192,
+    system,
+    messages: [{ role: "user", content: userContent }],
+  });
+
+  const block = response.content?.[0];
+  const raw = block?.type === "text" ? block.text.trim() : "";
+  const html = stripMarkdownFences(raw);
+
+  if (!html || html.length < 10) {
+    throw new HtmlValidationError("The model returned an empty response for this section. Please try again.");
+  }
+  return html;
+}
+
 export async function refineLandingPage(opts: RefineLPOptions): Promise<string> {
   const anthropic = await getAnthropicClient();
 
@@ -1064,12 +1136,9 @@ export async function refineLandingPage(opts: RefineLPOptions): Promise<string> 
   });
 
   const response = await stream.finalMessage();
-  const block = response.content[0];
-  let html = block.type === "text" ? block.text.trim() : "";
-
-  html = stripMarkdownFences(html);
-
-  return html;
+  const block = response.content?.[0];
+  const raw = block?.type === "text" ? block.text.trim() : "";
+  return extractAndValidateHtml(raw);
 }
 
 // ── Chat about landing page ─────────────────────────────────────────────────

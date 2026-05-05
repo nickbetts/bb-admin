@@ -55,7 +55,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { injectEditorScript, removeEditorScript, applyTextEdit } from "@/lib/lp-editor-inject";
-import { parseSections, reorderSections, duplicateSection, deleteSection, setSectionAnimation, type LPSection } from "@/lib/lp-section-parser";
+import { parseSections, reorderSections, duplicateSection, deleteSection, replaceSection, setSectionAnimation, type LPSection } from "@/lib/lp-section-parser";
 import { ANIMATION_PRESETS, injectAnimations } from "@/lib/lp-animations";
 import { PortalPublishToggle } from "@/components/portal/PortalPublishToggle";
 import { parseCSSVariables, updateCSSVariable, type CSSVariable } from "@/lib/lp-css-parser";
@@ -63,6 +63,7 @@ import { AnalyticsConfigForm } from "@/components/landing-pages/AnalyticsConfigF
 import { FormConfigPanel } from "@/components/landing-pages/FormConfigPanel";
 import type { LpAnalyticsConfig } from "@/lib/lp-analytics";
 import { parseLpFormConfig, type LpFormConfig } from "@/lib/lp-form-config";
+import { useToast } from "@/components/ui/Toast";
 
 // Public hosting domain for landing pages. Set via NEXT_PUBLIC_LP_DOMAIN at
 // build time; falls back to clickr.marketing.
@@ -198,48 +199,90 @@ function SortableSectionRow({
   onDuplicate,
   onDelete,
   onAnimationChange,
+  onRefine,
 }: {
   section: LPSection;
   onDuplicate: () => void;
   onDelete: () => void;
   onAnimationChange: (anim: string | null) => void;
+  onRefine: (prompt: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: section.id });
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState("");
+
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
-    display: "flex", alignItems: "center", gap: 8,
-    padding: "8px 10px", borderRadius: "var(--r-sm)",
+    borderRadius: "var(--r-sm)",
     background: isDragging ? "var(--accent-bg)" : "var(--surface)",
-    border: "1px solid var(--border)",
+    border: aiOpen ? "1px solid var(--accent)" : "1px solid var(--border)",
   };
+
+  const handleSubmit = () => {
+    const p = aiPrompt.trim();
+    if (!p) return;
+    onRefine(p);
+    setAiPrompt("");
+    setAiOpen(false);
+  };
+
   return (
     <div ref={setNodeRef} style={style}>
-      <button {...attributes} {...listeners} style={{ cursor: "grab", color: "var(--text-4)", background: "none", border: "none", padding: 0, display: "flex" }}>
-        <GripVertical style={{ width: 14, height: 14 }} />
-      </button>
-      <span style={{ flex: 1, fontSize: 12, fontWeight: 500, color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-        <span style={{ fontSize: 10, color: "var(--text-4)", marginRight: 4 }}>{section.tagName}</span>
-        {section.label}
-      </span>
-      <select
-        value={section.animation ?? ""}
-        onChange={(e) => onAnimationChange(e.target.value || null)}
-        style={{ fontSize: 10, padding: "2px 4px", border: "1px solid var(--border)", borderRadius: "var(--r-sm)", background: "var(--surface)", color: "var(--text-3)", cursor: "pointer" }}
-        title="Animation"
-      >
-        <option value="">No animation</option>
-        {ANIMATION_PRESETS.map((p) => (
-          <option key={p.id} value={p.id}>{p.label}</option>
-        ))}
-      </select>
-      <button onClick={onDuplicate} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-4)", padding: 2, display: "flex" }} title="Duplicate section">
-        <Copy style={{ width: 12, height: 12 }} />
-      </button>
-      <button onClick={onDelete} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--error-text)", padding: 2, display: "flex" }} title="Delete section">
-        <Trash2 style={{ width: 12, height: 12 }} />
-      </button>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px" }}>
+        <button {...attributes} {...listeners} style={{ cursor: "grab", color: "var(--text-4)", background: "none", border: "none", padding: 0, display: "flex" }}>
+          <GripVertical style={{ width: 14, height: 14 }} />
+        </button>
+        <span style={{ flex: 1, fontSize: 12, fontWeight: 500, color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <span style={{ fontSize: 10, color: "var(--text-4)", marginRight: 4 }}>{section.tagName}</span>
+          {section.label}
+        </span>
+        <select
+          value={section.animation ?? ""}
+          onChange={(e) => onAnimationChange(e.target.value || null)}
+          style={{ fontSize: 10, padding: "2px 4px", border: "1px solid var(--border)", borderRadius: "var(--r-sm)", background: "var(--surface)", color: "var(--text-3)", cursor: "pointer" }}
+          title="Animation"
+        >
+          <option value="">No animation</option>
+          {ANIMATION_PRESETS.map((p) => (
+            <option key={p.id} value={p.id}>{p.label}</option>
+          ))}
+        </select>
+        <button
+          onClick={() => setAiOpen((v) => !v)}
+          style={{ background: "none", border: "none", cursor: "pointer", color: aiOpen ? "var(--accent)" : "var(--text-4)", padding: 2, display: "flex" }}
+          title="Refine this section with AI"
+        >
+          <Sparkles style={{ width: 12, height: 12 }} />
+        </button>
+        <button onClick={onDuplicate} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-4)", padding: 2, display: "flex" }} title="Duplicate section">
+          <Copy style={{ width: 12, height: 12 }} />
+        </button>
+        <button onClick={onDelete} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--error-text)", padding: 2, display: "flex" }} title="Delete section">
+          <Trash2 style={{ width: 12, height: 12 }} />
+        </button>
+      </div>
+      {aiOpen && (
+        <div style={{ padding: "0 10px 10px", display: "flex", gap: 6 }}>
+          <input
+            autoFocus
+            type="text"
+            value={aiPrompt}
+            onChange={(e) => setAiPrompt(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); if (e.key === "Escape") setAiOpen(false); }}
+            placeholder={`Edit "${section.label}"…`}
+            style={{ flex: 1, fontSize: 12, padding: "5px 8px", border: "1px solid var(--border)", borderRadius: "var(--r-sm)", background: "var(--bg)", color: "var(--text)", outline: "none", fontFamily: "inherit" }}
+          />
+          <button
+            onClick={handleSubmit}
+            disabled={!aiPrompt.trim()}
+            style={{ fontSize: 11, padding: "5px 10px", background: "var(--accent)", color: "#fff", border: "none", borderRadius: "var(--r-sm)", cursor: aiPrompt.trim() ? "pointer" : "default", opacity: aiPrompt.trim() ? 1 : 0.5, fontFamily: "inherit", fontWeight: 600 }}
+          >
+            Apply
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -304,6 +347,7 @@ function renderMarkdown(text: string): ReactNode {
 export default function LandingPageEditor({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const { toast } = useToast();
 
   const [lp, setLp] = useState<LandingPage | null>(null);
   const [previewHtml, setPreviewHtml] = useState("");
@@ -377,6 +421,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
   // ── NEW: Section organiser ────────────────────────────────────────────────
   const [sections, setSections] = useState<LPSection[]>([]);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const [refiningSectionId, setRefiningSectionId] = useState<string | null>(null);
 
   // ── NEW: Design panel ─────────────────────────────────────────────────────
   const [cssVars, setCssVars] = useState<CSSVariable[]>([]);
@@ -736,6 +781,48 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
     [previewHtml, updateHtml],
   );
 
+  const handleSectionRefine = useCallback(
+    async (section: LPSection, prompt: string) => {
+      if (refiningSectionId) return;
+      setRefiningSectionId(section.id);
+
+      // Build a brief page context so Claude can match style without seeing the whole page
+      const titleMatch = previewHtml.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+      const h1Match = previewHtml.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+      const cssVarMatch = previewHtml.match(/:root\s*\{([^}]+)\}/);
+      const pageContext = [
+        titleMatch ? `Page title: ${titleMatch[1].replace(/<[^>]+>/g, "").trim()}` : "",
+        h1Match ? `Main heading: ${h1Match[1].replace(/<[^>]+>/g, "").trim()}` : "",
+        cssVarMatch ? `CSS variables: ${cssVarMatch[1].trim().slice(0, 400)}` : "",
+      ].filter(Boolean).join("\n");
+
+      try {
+        const res = await fetch(`/api/tools/landing-pages/${id}/refine-section`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sectionHtml: section.outerHtml, prompt, pageContext }),
+        });
+
+        if (!res.ok) {
+          const raw = await res.text();
+          let msg = `Section refine failed (${res.status})`;
+          try { msg = (JSON.parse(raw) as { error?: string }).error ?? msg; } catch { /* ignore */ }
+          toast(msg, "error");
+          return;
+        }
+
+        const data = await res.json() as { html: string };
+        const updated = replaceSection(previewHtml, section, data.html);
+        updateHtml(updated);
+      } catch (err) {
+        toast(err instanceof Error ? err.message : "Section refine failed", "error");
+      } finally {
+        setRefiningSectionId(null);
+      }
+    },
+    [id, previewHtml, refiningSectionId, updateHtml, toast],
+  );
+
   // ── NEW: Design panel variable change ─────────────────────────────────────
   const handleCssVarChange = useCallback(
     (name: string, value: string) => {
@@ -786,7 +873,11 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
             ? "The model took too long to respond. Try a smaller change or split the prompt into a few separate refinements."
             : `Refinement failed (HTTP ${res.status}). Please try again.`;
         }
-        setChatHistory((prev) => [...prev, { role: "assistant", content: `Error: ${errorMessage}`, type: "refine" as const }]);
+        if (res.status === 422) {
+          toast(errorMessage, "error");
+        } else {
+          setChatHistory((prev) => [...prev, { role: "assistant", content: `Error: ${errorMessage}`, type: "refine" as const }]);
+        }
         setRefining(false);
         return;
       }
@@ -1699,7 +1790,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
             <>
               <div style={{ flexShrink: 0, padding: "10px 16px", borderBottom: "1px solid var(--border)" }}>
                 <h2 style={{ fontSize: 14, fontWeight: 650, color: "var(--text)" }}>Section Organiser</h2>
-                <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 2 }}>Drag to reorder · Set animations per section</p>
+                <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 2 }}>Drag to reorder · ✦ AI refine · Set animations per section</p>
               </div>
               <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px" }}>
                 {sections.length === 0 ? (
@@ -1712,13 +1803,20 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                     <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
                       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                         {sections.map((section) => (
-                          <SortableSectionRow
-                            key={section.id}
-                            section={section}
-                            onDuplicate={() => handleDuplicateSection(section)}
-                            onDelete={() => handleDeleteSection(section)}
-                            onAnimationChange={(anim) => handleSectionAnimationChange(section, anim)}
-                          />
+                          <div key={section.id} style={{ position: "relative" }}>
+                            {refiningSectionId === section.id && (
+                              <div style={{ position: "absolute", inset: 0, background: "rgba(var(--accent-rgb, 20,184,166),.08)", borderRadius: "var(--r-sm)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10, pointerEvents: "none" }}>
+                                <Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite", color: "var(--accent)" }} />
+                              </div>
+                            )}
+                            <SortableSectionRow
+                              section={section}
+                              onDuplicate={() => handleDuplicateSection(section)}
+                              onDelete={() => handleDeleteSection(section)}
+                              onAnimationChange={(anim) => handleSectionAnimationChange(section, anim)}
+                              onRefine={(prompt) => handleSectionRefine(section, prompt)}
+                            />
+                          </div>
                         ))}
                       </div>
                     </SortableContext>

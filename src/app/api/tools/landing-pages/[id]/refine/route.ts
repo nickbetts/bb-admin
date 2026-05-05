@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { refineLandingPage } from "@/lib/lp-generator";
+import { refineLandingPage, HtmlValidationError } from "@/lib/lp-generator";
 import type { BrandContext } from "@/lib/brand-extractor";
 import { logActivity } from "@/lib/activity-logger";
 
@@ -97,6 +97,10 @@ export async function POST(
       html,
     });
   } catch (error) {
+    if (error instanceof HtmlValidationError) {
+      console.warn("LP refine validation:", error.message);
+      return NextResponse.json({ error: error.message }, { status: 422 });
+    }
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("LP refine error:", error);
     return NextResponse.json({ error: message }, { status: 500 });
