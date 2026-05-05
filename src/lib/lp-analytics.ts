@@ -336,17 +336,19 @@ export function buildConversionScript(cfg: LpAnalyticsConfig): string {
   return `<script>
 (function(){
   ${ev.formSubmit ? `window.__lpFireLead = function(){ ${fireLead} };` : ""}
+  ${ev.phoneClick ? `window.__lpFirePhone = function(){ ${fireContact("phone")} };` : ""}
+  ${ev.emailClick ? `window.__lpFireEmail = function(){ ${fireContact("email")} };` : ""}
   ${ev.phoneClick ? `
   document.addEventListener('click', function(e){
     var a = e.target && e.target.closest && e.target.closest('a[href^="tel:"]');
     if (!a) return;
-    ${fireContact("phone")}
+    if (window.__lpFirePhone) window.__lpFirePhone();
   }, true);` : ""}
   ${ev.emailClick ? `
   document.addEventListener('click', function(e){
     var a = e.target && e.target.closest && e.target.closest('a[href^="mailto:"]');
     if (!a) return;
-    ${fireContact("email")}
+    if (window.__lpFireEmail) window.__lpFireEmail();
   }, true);` : ""}
 })();
 </script>`;
@@ -512,12 +514,8 @@ export function buildTestModeOverlay(): string {
     fire.addEventListener('click', function(e){
       var btn = e.target && e.target.getAttribute && e.target.getAttribute('data-fire');
       if (btn === 'lead' && window.__lpFireLead) window.__lpFireLead();
-      else if (btn === 'phone') {
-        var phoneA = document.createElement('a'); phoneA.href = 'tel:+test'; phoneA.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-      }
-      else if (btn === 'email') {
-        var emailA = document.createElement('a'); emailA.href = 'mailto:test@example.com'; emailA.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-      }
+      else if (btn === 'phone' && window.__lpFirePhone) window.__lpFirePhone();
+      else if (btn === 'email' && window.__lpFireEmail) window.__lpFireEmail();
     });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', build);
