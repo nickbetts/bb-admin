@@ -18,6 +18,7 @@ import {
 import { SearchInput } from "@/components/ui/SearchInput";
 import { ClientBackLink } from "@/components/ui/ClientBackLink";
 import { ClientFilterBanner } from "@/components/ui/ClientFilterBanner";
+import { ClientFolderGroup } from "@/components/ui/ClientFolderGroup";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 
@@ -113,6 +114,97 @@ export default function LandingPagesPage() {
     return p.title.toLowerCase().includes(q) || (p.client?.name ?? "").toLowerCase().includes(q);
   });
 
+  function renderCard(p: LandingPageItem) {
+    return (
+      <div key={p.id} className="card" style={{ padding: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px 20px" }}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--accent-bg)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <Globe style={{ width: 16, height: 16, color: "var(--accent)" }} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.title}</p>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 4, flexWrap: "wrap" }}>
+              {p.client && clientId && (
+                <>
+                  <span style={{ fontSize: 12, color: "var(--text-3)" }}>{p.client.name}</span>
+                  <span style={{ color: "var(--text-4)" }}>·</span>
+                </>
+              )}
+              <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 99, ...statusBadge(p.status).style }}>
+                {statusBadge(p.status).label}
+              </span>
+              <span style={{ color: "var(--text-4)" }}>·</span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, color: "var(--text-4)" }}>
+                <Clock style={{ width: 10, height: 10 }} />
+                {new Date(p.updatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+              </span>
+              <span style={{ color: "var(--text-4)" }}>·</span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, color: "var(--text-4)" }}>
+                {p.user.name ?? p.user.email.split("@")[0]}
+              </span>
+              <span style={{ color: "var(--text-4)" }}>·</span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, color: "var(--text-4)" }}>
+                v{p._count.versions}
+              </span>
+              {p.viewCount > 0 && (
+                <>
+                  <span style={{ color: "var(--text-4)" }}>·</span>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, color: "var(--text-3)" }}>
+                    <BarChart3 style={{ width: 10, height: 10 }} />
+                    {p.viewCount} view{p.viewCount !== 1 ? "s" : ""}
+                    {p.lastViewedAt && ` · ${timeAgo(p.lastViewedAt)}`}
+                  </span>
+                </>
+              )}
+              {p._count.leads > 0 && (
+                <>
+                  <span style={{ color: "var(--text-4)" }}>·</span>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, color: "var(--accent)", fontWeight: 600 }}>
+                    <Users style={{ width: 10, height: 10 }} />
+                    {p._count.leads} lead{p._count.leads !== 1 ? "s" : ""}
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+            {p.shareToken ? (
+              <button
+                className="btn btn-ghost btn-sm"
+                style={{ gap: 4, color: "var(--success)", fontSize: 11 }}
+                onClick={() => handleCopyLink(p.shareToken!, p.id)}
+                title="Copy share link"
+              >
+                {copiedId === p.id ? <Check style={{ width: 11, height: 11 }} /> : <Copy style={{ width: 11, height: 11 }} />}
+                {copiedId === p.id ? "Copied!" : "Shared"}
+              </button>
+            ) : (
+              <button
+                className="btn btn-ghost btn-sm"
+                style={{ gap: 4, fontSize: 11 }}
+                onClick={() => handleShare(p.id)}
+                title="Generate share link"
+              >
+                <Share2 style={{ width: 11, height: 11 }} /> Share
+              </button>
+            )}
+            <Link href={`/tools/landing-pages/${p.id}`} className="btn btn-ghost btn-sm" style={{ gap: 5 }}>
+              <Eye style={{ width: 13, height: 13 }} /> Open
+            </Link>
+            <button
+              className="btn btn-ghost btn-sm"
+              style={{ padding: "5px 8px", color: "var(--danger)" }}
+              disabled={deleting === p.id}
+              onClick={() => handleDelete(p.id)}
+            >
+              <Trash2 style={{ width: 13, height: 13 }} />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="page" style={{ maxWidth: 1000 }}>
       <ClientBackLink />
@@ -149,96 +241,13 @@ export default function LandingPagesPage() {
           actions={[{ label: "Create Landing Page", href: "/tools/landing-pages/new" }]}
         />
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {filtered.map((p) => (
-            <div key={p.id} className="card" style={{ padding: 0 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px 20px" }}>
-                <div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--accent-bg)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <Globe style={{ width: 16, height: 16, color: "var(--accent)" }} />
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.title}</p>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 4, flexWrap: "wrap" }}>
-                    {p.client && (
-                      <>
-                        <span style={{ fontSize: 12, color: "var(--text-3)" }}>{p.client.name}</span>
-                        <span style={{ color: "var(--text-4)" }}>·</span>
-                      </>
-                    )}
-                    <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 99, ...statusBadge(p.status).style }}>
-                      {statusBadge(p.status).label}
-                    </span>
-                    <span style={{ color: "var(--text-4)" }}>·</span>
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, color: "var(--text-4)" }}>
-                      <Clock style={{ width: 10, height: 10 }} />
-                      {new Date(p.updatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
-                    </span>
-                    <span style={{ color: "var(--text-4)" }}>·</span>
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, color: "var(--text-4)" }}>
-                      {p.user.name ?? p.user.email.split("@")[0]}
-                    </span>
-                    <span style={{ color: "var(--text-4)" }}>·</span>
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, color: "var(--text-4)" }}>
-                      v{p._count.versions}
-                    </span>
-                    {p.viewCount > 0 && (
-                      <>
-                        <span style={{ color: "var(--text-4)" }}>·</span>
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, color: "var(--text-3)" }}>
-                          <BarChart3 style={{ width: 10, height: 10 }} />
-                          {p.viewCount} view{p.viewCount !== 1 ? "s" : ""}
-                          {p.lastViewedAt && ` · ${timeAgo(p.lastViewedAt)}`}
-                        </span>
-                      </>
-                    )}
-                    {p._count.leads > 0 && (
-                      <>
-                        <span style={{ color: "var(--text-4)" }}>·</span>
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, color: "var(--accent)", fontWeight: 600 }}>
-                          <Users style={{ width: 10, height: 10 }} />
-                          {p._count.leads} lead{p._count.leads !== 1 ? "s" : ""}
-                        </span>
-                      </>
-                    )}
-                  </div>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                  {p.shareToken ? (
-                    <button
-                      className="btn btn-ghost btn-sm"
-                      style={{ gap: 4, color: "var(--success)", fontSize: 11 }}
-                      onClick={() => handleCopyLink(p.shareToken!, p.id)}
-                      title="Copy share link"
-                    >
-                      {copiedId === p.id ? <Check style={{ width: 11, height: 11 }} /> : <Copy style={{ width: 11, height: 11 }} />}
-                      {copiedId === p.id ? "Copied!" : "Shared"}
-                    </button>
-                  ) : (
-                    <button
-                      className="btn btn-ghost btn-sm"
-                      style={{ gap: 4, fontSize: 11 }}
-                      onClick={() => handleShare(p.id)}
-                      title="Generate share link"
-                    >
-                      <Share2 style={{ width: 11, height: 11 }} /> Share
-                    </button>
-                  )}
-                  <Link href={`/tools/landing-pages/${p.id}`} className="btn btn-ghost btn-sm" style={{ gap: 5 }}>
-                    <Eye style={{ width: 13, height: 13 }} /> Open
-                  </Link>
-                  <button
-                    className="btn btn-ghost btn-sm"
-                    style={{ padding: "5px 8px", color: "var(--danger)" }}
-                    disabled={deleting === p.id}
-                    onClick={() => handleDelete(p.id)}
-                  >
-                    <Trash2 style={{ width: 13, height: 13 }} />
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+        clientId ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {filtered.map(renderCard)}
+          </div>
+        ) : (
+          <ClientFolderGroup items={filtered} getClient={(p) => p.client} renderItem={renderCard} />
+        )
       )}
     </div>
   );

@@ -148,6 +148,8 @@ export default function GrandPlanViewPage({ params }: Props) {
   const [presEditTab, setPresEditTab] = useState<"refine" | "fields" | "manage">("refine");
   const [slideRefinePrompt, setSlideRefinePrompt] = useState("");
   const [slideRefining, setSlideRefining] = useState(false);
+  const [presRefineAllPrompt, setPresRefineAllPrompt] = useState("");
+  const [presRefineAllBusy, setPresRefineAllBusy] = useState(false);
   const [presSaving, setPresSaving] = useState(false);
 
   // Share state
@@ -323,6 +325,32 @@ export default function GrandPlanViewPage({ params }: Props) {
       toast("Failed to save", "error");
     } finally {
       setPresSaving(false);
+    }
+  }
+
+  async function refineAllSlides(prompt: string) {
+    if (!prompt.trim()) return;
+    setPresRefineAllBusy(true);
+    try {
+      const res = await fetch(`/api/tools/grand-plan/${id}/presentation/refine-all`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(err.error ?? "Refine failed");
+      }
+      const result = await res.json();
+      const updated = JSON.parse(result.presentationDataJson) as import("@/lib/grand-plan-presentation-generator").PresentationData;
+      setPresentationData(updated);
+      setPresentationCacheBust((n) => n + 1);
+      setPresRefineAllPrompt("");
+      toast("Deck refined", "success");
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "Refine failed", "error");
+    } finally {
+      setPresRefineAllBusy(false);
     }
   }
 
@@ -1942,6 +1970,30 @@ export default function GrandPlanViewPage({ params }: Props) {
                             {slideRefining ? <><Loader2 style={{ width: 13, height: 13 }} className="spin" aria-hidden /> Refining…</> : <><Sparkles style={{ width: 13, height: 13 }} aria-hidden /> Refine slide</>}
                           </button>
                           {iscover && <p style={{ fontSize: 11, color: "var(--text-4)", margin: 0 }}>AI refine is not available for the cover — use Edit fields to update the title and subtitle.</p>}
+
+                          {/* Refine whole deck */}
+                          <hr style={{ border: "none", borderTop: "1px solid var(--border)", margin: "4px 0" }} />
+                          <p style={{ fontSize: 12, fontWeight: 600, margin: 0, color: "var(--text-2)" }}>Refine whole deck</p>
+                          <p style={{ fontSize: 12, color: "var(--text-3)", margin: 0 }}>
+                            Give Claude one instruction and it will apply it across every slide, keeping them coherent.
+                          </p>
+                          <textarea
+                            value={presRefineAllPrompt}
+                            onChange={(e) => setPresRefineAllPrompt(e.target.value)}
+                            rows={4}
+                            placeholder="e.g. Make all copy more concise and outcome-focused…"
+                            style={{ fontSize: 13, padding: "8px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--surface,var(--bg))", color: "var(--text)", resize: "vertical", fontFamily: "inherit" }}
+                            onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { refineAllSlides(presRefineAllPrompt); } }}
+                          />
+                          <button
+                            type="button"
+                            className="btn btn-primary btn-sm"
+                            disabled={presRefineAllBusy || !presRefineAllPrompt.trim()}
+                            onClick={() => refineAllSlides(presRefineAllPrompt)}
+                            style={{ alignSelf: "flex-start", gap: 6 }}
+                          >
+                            {presRefineAllBusy ? <><Loader2 style={{ width: 13, height: 13 }} className="spin" aria-hidden /> Refining deck…</> : <><Sparkles style={{ width: 13, height: 13 }} aria-hidden /> Refine all slides</>}
+                          </button>
                         </>
                       )}
 

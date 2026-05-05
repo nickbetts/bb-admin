@@ -7,6 +7,7 @@ import { PencilLine, Plus, Trash2, Eye, Loader2 } from "lucide-react";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { ClientBackLink } from "@/components/ui/ClientBackLink";
 import { ClientFilterBanner } from "@/components/ui/ClientFilterBanner";
+import { ClientFolderGroup } from "@/components/ui/ClientFolderGroup";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 
@@ -109,6 +110,80 @@ export default function ContentGeneratorPage() {
     ? `/tools/content-generator/new?clientId=${clientId}`
     : "/tools/content-generator/new";
 
+  function renderCard(item: ContentGeneratorSummary) {
+    const types = JSON.parse(item.contentTypes) as string[];
+    return (
+      <div
+        key={item.id}
+        style={{
+          background: "var(--surface)",
+          border: "1px solid var(--border)",
+          borderRadius: 12,
+          padding: "16px 20px",
+          display: "flex",
+          alignItems: "center",
+          gap: 16,
+        }}
+      >
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6, flexWrap: "wrap" }}>
+            <span style={{ fontWeight: 600, fontSize: 15, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {item.title}
+            </span>
+            {statusBadge(item.status)}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            {item.client && clientId && (
+              <span style={{ fontSize: 12, color: "var(--text-3)" }}>{item.client.name}</span>
+            )}
+            {item.client && clientId && <span style={{ color: "var(--border)", fontSize: 12 }}>·</span>}
+            {types.map((t) => (
+              <span
+                key={t}
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  padding: "1px 7px",
+                  borderRadius: 10,
+                  background: `${TYPE_COLOURS[t] ?? "var(--accent)"}18`,
+                  color: TYPE_COLOURS[t] ?? "var(--accent)",
+                }}
+              >
+                {TYPE_LABELS[t] ?? t}
+              </span>
+            ))}
+            <span style={{ color: "var(--border)", fontSize: 12 }}>·</span>
+            <span style={{ fontSize: 12, color: "var(--text-3)" }}>{timeAgo(item.updatedAt)}</span>
+          </div>
+          <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 600 }}>
+            {item.brief}
+          </p>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+          <Link
+            href={`/tools/content-generator/${item.id}`}
+            className="btn btn-sm"
+            style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+          >
+            <Eye style={{ width: 13, height: 13 }} />
+            View
+          </Link>
+          <button
+            className="btn btn-sm btn-danger"
+            onClick={() => handleDelete(item.id)}
+            disabled={deleting === item.id}
+            style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+          >
+            {deleting === item.id
+              ? <Loader2 style={{ width: 13, height: 13, animation: "spin 1s linear infinite" }} />
+              : <Trash2 style={{ width: 13, height: 13 }} />
+            }
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="page" style={{ maxWidth: 1000 }}>
       <ClientBackLink />
@@ -162,85 +237,12 @@ export default function ContentGeneratorPage() {
 
           {filtered.length === 0 ? (
             <p style={{ color: "var(--text-3)", fontSize: 14 }}>No results for &quot;{search}&quot;</p>
-          ) : (
+          ) : clientId ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {filtered.map((item) => {
-                const types = JSON.parse(item.contentTypes) as string[];
-                return (
-                  <div
-                    key={item.id}
-                    style={{
-                      background: "var(--surface)",
-                      border: "1px solid var(--border)",
-                      borderRadius: 12,
-                      padding: "16px 20px",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 16,
-                    }}
-                  >
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6, flexWrap: "wrap" }}>
-                        <span style={{ fontWeight: 600, fontSize: 15, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {item.title}
-                        </span>
-                        {statusBadge(item.status)}
-                      </div>
-
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                        {item.client && (
-                          <span style={{ fontSize: 12, color: "var(--text-3)" }}>{item.client.name}</span>
-                        )}
-                        <span style={{ color: "var(--border)", fontSize: 12 }}>·</span>
-                        {types.map((t) => (
-                          <span
-                            key={t}
-                            style={{
-                              fontSize: 11,
-                              fontWeight: 600,
-                              padding: "1px 7px",
-                              borderRadius: 10,
-                              background: `${TYPE_COLOURS[t] ?? "var(--accent)"}18`,
-                              color: TYPE_COLOURS[t] ?? "var(--accent)",
-                            }}
-                          >
-                            {TYPE_LABELS[t] ?? t}
-                          </span>
-                        ))}
-                        <span style={{ color: "var(--border)", fontSize: 12 }}>·</span>
-                        <span style={{ fontSize: 12, color: "var(--text-3)" }}>{timeAgo(item.updatedAt)}</span>
-                      </div>
-
-                      <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 600 }}>
-                        {item.brief}
-                      </p>
-                    </div>
-
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                      <Link
-                        href={`/tools/content-generator/${item.id}`}
-                        className="btn btn-sm"
-                        style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
-                      >
-                        <Eye style={{ width: 13, height: 13 }} />
-                        View
-                      </Link>
-                      <button
-                        className="btn btn-sm btn-danger"
-                        onClick={() => handleDelete(item.id)}
-                        disabled={deleting === item.id}
-                        style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
-                      >
-                        {deleting === item.id
-                          ? <Loader2 style={{ width: 13, height: 13, animation: "spin 1s linear infinite" }} />
-                          : <Trash2 style={{ width: 13, height: 13 }} />
-                        }
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+              {filtered.map(renderCard)}
             </div>
+          ) : (
+            <ClientFolderGroup items={filtered} getClient={(item) => item.client} renderItem={renderCard} />
           )}
         </>
       )}
