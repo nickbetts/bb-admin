@@ -1529,7 +1529,7 @@ export async function getKeywordPhraseOrganic(
   const paramObj: Record<string, string> = {
     type: "phrase_organic",
     key: apiKey,
-    export_columns: "Dn,Rk,Ur,Nq",
+    export_columns: "Dn,Rk,Ur", // Nq not supported in phrase_organic — use phrase_this for volume
     phrase: keyword.toLowerCase().trim(),
     database,
     display_limit: "100",
@@ -1539,19 +1539,21 @@ export async function getKeywordPhraseOrganic(
   try {
     const response = await axios.get<string>(`${SEMRUSH_BASE_URL}/?${params.toString()}`);
     const lines = (response.data as string).trim().split("\n");
-    if (lines.length < 2 || lines[0].startsWith("ERROR")) return { volume: 0, entries: [] };
+    if (lines.length < 2 || lines[0].startsWith("ERROR")) {
+      console.error("SEMrush phrase_organic error:", lines[0]);
+      return { volume: 0, entries: [] };
+    }
     const entries: PhraseOrganicEntry[] = [];
-    let volume = 0;
     for (let i = 1; i < lines.length; i++) {
-      const [dn, rk, ur, nq] = lines[i].split(";");
-      if (i === 1) volume = parseInt(nq) || 0;
+      const [dn, rk, ur] = lines[i].split(";");
       const pos = parseInt(rk);
       if (pos > 0 && dn) {
         entries.push({ domain: dn.toLowerCase().replace(/^www\./, ""), position: pos, url: (ur || "").trim() });
       }
     }
-    return { volume, entries };
-  } catch {
+    return { volume: 0, entries }; // volume fetched separately via phrase_this
+  } catch (err) {
+    console.error("SEMrush phrase_organic fetch error:", err);
     return { volume: 0, entries: [] };
   }
 }
