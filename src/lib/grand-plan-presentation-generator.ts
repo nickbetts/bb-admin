@@ -126,12 +126,12 @@ function summariseSourcePlan(plan: GrandPlanData): string {
     : "";
 
   const audienceLines = audiences
-    .slice(0, 4)
+    .slice(0, 6)
     .map((a) => `- ${a.name}: ${a.description}`)
     .join("\n");
 
   const quickWinLines = quickWins
-    .slice(0, 6)
+    .slice(0, 10)
     .map((q) => `- ${q.title ?? ""}${q.impact ? ` (impact: ${q.impact})` : ""}`)
     .filter((l) => l.trim().length > 2)
     .join("\n");
@@ -141,7 +141,7 @@ function summariseSourcePlan(plan: GrandPlanData): string {
     : "";
 
   const exec = plan.sections.executiveSummary
-    ? plan.sections.executiveSummary.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 1800)
+    ? plan.sections.executiveSummary.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 2800)
     : "";
 
   return `
@@ -198,7 +198,7 @@ RULES:
 - Confident voice. Speak as if presenting to the client. Use second person ("your business", "you").
 - Specifics over generics. If a real metric, number, audience name, channel, or service is in the source plan, USE IT verbatim where it fits.
 - Do NOT invent numbers, percentages, services, or channels that are not present in the source. If a slide kind needs data and you do not have it, leave that field out.
-- Keep slide copy tight: pillar bodies <= 22 words, headline subheads <= 18 words, step details <= 20 words.
+- Copy length targets: pillar bodies <= 40 words (1–2 sentences), headline/outcome subheads <= 30 words, step details <= 35 words, channel roles <= 25 words, audience insights <= 35 words.
 
 OUTPUT — a single JSON object matching this exact shape:
 {
@@ -225,10 +225,10 @@ OUTPUT — a single JSON object matching this exact shape:
 REQUIREMENTS:
 - Exactly 8 to 12 slides total.
 - The 9 slide IDs above are the recommended spine. You may add 1–3 extra slides if there is genuinely distinct content (e.g. a "creative" pillars slide). You may drop a slide if the source has no data for it (e.g. drop "investment" if no allocation exists). Never invent data to fill a slide.
-- Pillars slides: 3–4 pillars only. Each pillar body is one sentence.
-- Audience slide: max 4 audiences. Use audience NAMES from the source verbatim.
-- Channels slide: max 6 channels. Pull from the source channel strategy.
-- Timeline phases: 3 phases ideally (e.g. "Weeks 1–4", "Weeks 5–8", "Weeks 9–12" for a sprint, or quarterly for annual). Each phase has 2–4 short bullet items.
+- Pillars slides: 3–5 pillars. Each pillar body is 1–2 sentences.
+- Audience slide: up to 6 audiences. Use audience NAMES from the source verbatim.
+- Channels slide: up to 8 channels. Pull from the source channel strategy.
+- Timeline phases: 3 phases ideally (e.g. "Weeks 1–4", "Weeks 5–8", "Weeks 9–12" for a sprint, or quarterly for annual). Each phase has 3–5 bullet items.
 - Investment: only include if a real allocation exists in the source. Round percentages to whole numbers totalling 100. Show channel allocation, not service line items.
 - Next steps: 3–5 numbered actions the client needs to agree to in this meeting (e.g. "Approve the plan", "Sign off the budget", "Hand over channel access").
 
@@ -242,11 +242,11 @@ function clampSlides(data: PresentationData): PresentationData {
   const slides = (data.slides ?? []).slice(0, 12);
   // Clamp pillars / audiences / channels / steps to spec
   for (const s of slides) {
-    if (s.pillars) s.pillars = s.pillars.slice(0, 4);
-    if (s.audiences) s.audiences = s.audiences.slice(0, 4);
-    if (s.channels) s.channels = s.channels.slice(0, 6);
+    if (s.pillars) s.pillars = s.pillars.slice(0, 5);
+    if (s.audiences) s.audiences = s.audiences.slice(0, 6);
+    if (s.channels) s.channels = s.channels.slice(0, 8);
     if (s.phases) s.phases = s.phases.slice(0, 4);
-    if (s.steps) s.steps = s.steps.slice(0, 5);
+    if (s.steps) s.steps = s.steps.slice(0, 6);
     if (s.investment?.breakdown) s.investment.breakdown = s.investment.breakdown.slice(0, 8);
     // Clean copy
     if (s.headline) s.headline = cleanEmDashes(s.headline);
