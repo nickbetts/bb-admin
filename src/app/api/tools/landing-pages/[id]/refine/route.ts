@@ -34,6 +34,7 @@ export async function POST(
       prompt: string;
       conversationHistory?: { role: "user" | "assistant"; content: string }[];
       referenceHtml?: string;
+      imageUrls?: string[];
     };
 
     if (!body.prompt) {
@@ -54,6 +55,7 @@ export async function POST(
       brandContext,
       conversationHistory: body.conversationHistory,
       referenceHtml: body.referenceHtml,
+      imageUrls: body.imageUrls,
     });
 
     // Determine next version number

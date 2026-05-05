@@ -32,6 +32,7 @@ export async function POST(
       message: string;
       conversationHistory?: { role: "user" | "assistant"; content: string }[];
       referenceHtml?: string;
+      imageUrls?: string[];
     };
 
     if (!body.message) {
@@ -51,6 +52,7 @@ export async function POST(
       brandContext,
       conversationHistory: body.conversationHistory,
       referenceHtml: body.referenceHtml,
+      imageUrls: body.imageUrls,
     });
 
     return NextResponse.json(result);

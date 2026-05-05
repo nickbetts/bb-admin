@@ -39,6 +39,7 @@ export interface RefineLPOptions {
   brandContext: BrandContext;
   conversationHistory?: { role: "user" | "assistant"; content: string }[];
   referenceHtml?: string; // Uploaded inspiration page from the user
+  imageUrls?: string[];   // Images attached by the user in the chat input
 }
 
 export interface ChatLPOptions {
@@ -47,6 +48,7 @@ export interface ChatLPOptions {
   brandContext: BrandContext;
   conversationHistory?: { role: "user" | "assistant"; content: string }[];
   referenceHtml?: string;
+  imageUrls?: string[];   // Images attached by the user in the chat input
 }
 
 export interface ChatLPResponse {
@@ -1017,7 +1019,8 @@ export async function refineLandingPage(opts: RefineLPOptions): Promise<string> 
     .map((c) => `${c.role}: ${c.hex}`)
     .join(", ");
 
-  const messages: { role: "user" | "assistant"; content: string }[] = [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const messages: { role: "user" | "assistant"; content: any }[] = [];
 
   // Include recent conversation history for context (last 6 turns)
   if (opts.conversationHistory?.length) {
@@ -1029,12 +1032,15 @@ export async function refineLandingPage(opts: RefineLPOptions): Promise<string> 
   let userContent = `Here is the current landing page HTML:\n\n${opts.currentHtml}\n\nBrand colours: ${colourSummary}`;
 
   if (opts.brandContext.rawHtml) {
-    // The current LP HTML is sent in full above; this is the SCRAPED ORIGINAL
-    // website kept as a brand/copy reference so Claude can pull more authentic
-    // wording when adding new sections. 20 KB is a safe middle ground —
-    // enough to retain hero + several inner sections without burning the
-    // function-duration budget on a refine.
-    userContent += `\n\n## Original scraped website HTML (brand and copy reference):\n${opts.brandContext.rawHtml.slice(0, 20000)}`;
+    // Raw HTML of the original scraped website — kept for brand/copy reference.
+    // Capped at 40 KB to capture more of the site without overwhelming context.
+    userContent += `\n\n## Original scraped website HTML (brand and copy reference):\n${opts.brandContext.rawHtml.slice(0, 40000)}`;
+  }
+
+  if (opts.brandContext.pageContent?.allBodyText) {
+    // Cleaned page text (scripts/styles stripped) — denser than raw HTML for
+    // finding accurate copy like team bios, service descriptions, and stats.
+    userContent += `\n\n## Scraped website copy (use this for accurate brand wording when adding new sections):\n${opts.brandContext.pageContent.allBodyText.slice(0, 15000)}`;
   }
 
   userContent += `\n\nPlease make the following changes:\n${opts.prompt}`;
@@ -1043,13 +1049,23 @@ export async function refineLandingPage(opts: RefineLPOptions): Promise<string> 
     userContent += `\n\n## Reference page for inspiration\nThe user has uploaded an HTML page they like. Use it for structural and feature inspiration only — preserve the current page's brand identity, colours, and all existing copy:\n\n${opts.referenceHtml}`;
   }
 
-  messages.push({ role: "user", content: userContent });
+  if (opts.imageUrls?.length) {
+    const imageBlocks = await buildImageBlocks(opts.imageUrls, undefined, 6);
+    const urlList = opts.imageUrls.map((u, i) => `${i + 1}. ${u}`).join("\n");
+    const augmentedText = `${userContent}\n\nThe following images are attached by the user. Embed them in the new section using their original URLs as <img src="..."> values — do not use placeholder or data-URI src values.\n\n${urlList}`;
+    messages.push({
+      role: "user",
+      content: [...imageBlocks, { type: "text" as const, text: augmentedText }],
+    });
+  } else {
+    messages.push({ role: "user", content: userContent });
+  }
 
   const stream = anthropic.messages.stream({
     model: MODEL,
     max_tokens: MAX_TOKENS,
     system: REFINE_SYSTEM_PROMPT,
-    messages,
+    messages: messages as Parameters<typeof anthropic.messages.stream>[0]["messages"],
   });
 
   const response = await stream.finalMessage();
@@ -1095,7 +1111,8 @@ Use British English. Never use em dashes (— or &mdash;). Use commas, colons, o
 export async function chatAboutLandingPage(opts: ChatLPOptions): Promise<ChatLPResponse> {
   const anthropic = await getAnthropicClient();
 
-  const messages: { role: "user" | "assistant"; content: string }[] = [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const messages: { role: "user" | "assistant"; content: any }[] = [];
 
   // Include recent conversation history (last 12 turns)
   if (opts.conversationHistory?.length) {
@@ -1104,11 +1121,27 @@ export async function chatAboutLandingPage(opts: ChatLPOptions): Promise<ChatLPR
 
   let userContent = `Here is the current landing page HTML:\n\n${opts.currentHtml}\n\n${opts.message}`;
 
+  if (opts.brandContext.pageContent?.allBodyText) {
+    // Cleaned original site copy — helps Claude give brand-accurate suggestions
+    // and describe what images show when they're attached.
+    userContent += `\n\n## Original website copy (brand reference):\n${opts.brandContext.pageContent.allBodyText.slice(0, 8000)}`;
+  }
+
   if (opts.referenceHtml) {
     userContent += `\n\n## Reference page the user uploaded\n${opts.referenceHtml}`;
   }
 
-  messages.push({ role: "user", content: userContent });
+  if (opts.imageUrls?.length) {
+    const imageBlocks = await buildImageBlocks(opts.imageUrls, undefined, 6);
+    const urlList = opts.imageUrls.map((u, i) => `${i + 1}. ${u}`).join("\n");
+    const augmentedText = `${userContent}\n\nThe following images are attached. If recommending a new section, note that these images should be embedded using their original URLs.\n\n${urlList}`;
+    messages.push({
+      role: "user",
+      content: [...imageBlocks, { type: "text" as const, text: augmentedText }],
+    });
+  } else {
+    messages.push({ role: "user", content: userContent });
+  }
 
   // Use Anthropic's server-side web search tool so Claude can look up trends/layouts
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1120,7 +1153,7 @@ export async function chatAboutLandingPage(opts: ChatLPOptions): Promise<ChatLPR
     system: CHAT_SYSTEM_PROMPT,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     tools: [webSearchTool] as any,
-    messages,
+    messages: messages as Parameters<typeof anthropic.messages.create>[0]["messages"],
   });
 
   // Web search produces multiple content blocks; find the last text block (Claude's final answer)

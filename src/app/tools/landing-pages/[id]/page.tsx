@@ -36,6 +36,8 @@ import {
   Settings,
   Bug,
   Globe,
+  ImagePlus,
+  AlertCircle,
 } from "lucide-react";
 import {
   DndContext,
@@ -329,7 +331,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
 
   // Chat state
   const [prompt, setPrompt] = useState("");
-  const [chatHistory, setChatHistory] = useState<{ role: "user" | "assistant"; content: string; version?: number; type?: "chat" | "refine"; refinementPrompt?: string }[]>([]);
+  const [chatHistory, setChatHistory] = useState<{ role: "user" | "assistant"; content: string; version?: number; type?: "chat" | "refine"; refinementPrompt?: string; attachedImageUrls?: string[] }[]>([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [chatting, setChatting] = useState(false);
@@ -338,6 +340,10 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
   const [referenceHtml, setReferenceHtml] = useState<string | null>(null);
   const [referenceFileName, setReferenceFileName] = useState<string | null>(null);
   const referenceInputRef = useRef<HTMLInputElement>(null);
+
+  // Chat image attachments
+  const [chatImages, setChatImages] = useState<{ id: string; previewUrl: string; status: "uploading" | "done" | "error"; blobUrl?: string; errorMsg?: string }[]>([]);
+  const chatImageInputRef = useRef<HTMLInputElement>(null);
 
   // Staged changes (accumulated via STACK_CHANGE tags)
   const [stagedChanges, setStagedChanges] = useState<string[]>([]);
@@ -746,7 +752,9 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
     if (!overridePrompt) setPrompt("");
     setRefining(true);
 
-    setChatHistory((prev) => [...prev, { role: "user", content: userPrompt, type: "refine" as const }]);
+    const successfulImageUrls = chatImages.filter((img) => img.status === "done" && img.blobUrl).map((img) => img.blobUrl as string);
+
+    setChatHistory((prev) => [...prev, { role: "user", content: userPrompt, type: "refine" as const, attachedImageUrls: successfulImageUrls.length ? successfulImageUrls : undefined }]);
 
     try {
       const aiHistory = chatHistory
@@ -761,6 +769,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
           prompt: userPrompt,
           conversationHistory: aiHistory,
           referenceHtml: referenceHtml ?? undefined,
+          imageUrls: successfulImageUrls.length ? successfulImageUrls : undefined,
         }),
       });
 
@@ -806,6 +815,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
       setChatHistory((prev) => [...prev, { role: "assistant", content: `Error: ${err instanceof Error ? err.message : "Unknown error"}`, type: "refine" as const }]);
     } finally {
       setRefining(false);
+      setChatImages((prev) => { prev.forEach((img) => URL.revokeObjectURL(img.previewUrl)); return []; });
     }
   };
 
@@ -816,7 +826,9 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
     setPrompt("");
     setChatting(true);
 
-    setChatHistory((prev) => [...prev, { role: "user", content: userMessage, type: "chat" as const }]);
+    const successfulImageUrls = chatImages.filter((img) => img.status === "done" && img.blobUrl).map((img) => img.blobUrl as string);
+
+    setChatHistory((prev) => [...prev, { role: "user", content: userMessage, type: "chat" as const, attachedImageUrls: successfulImageUrls.length ? successfulImageUrls : undefined }]);
 
     try {
       const aiHistory = chatHistory
@@ -831,6 +843,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
           message: userMessage,
           conversationHistory: aiHistory,
           referenceHtml: referenceHtml ?? undefined,
+          imageUrls: successfulImageUrls.length ? successfulImageUrls : undefined,
         }),
       });
 
@@ -858,6 +871,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
       setChatHistory((prev) => [...prev, { role: "assistant", content: `Error: ${err instanceof Error ? err.message : "Unknown error"}`, type: "chat" as const }]);
     } finally {
       setChatting(false);
+      setChatImages((prev) => { prev.forEach((img) => URL.revokeObjectURL(img.previewUrl)); return []; });
     }
   };
 
@@ -872,6 +886,47 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
     reader.readAsText(file);
     // Reset input so same file can be re-uploaded
     e.target.value = "";
+  };
+
+  const handleChatImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    e.target.value = "";
+
+    const newItems = files.map((file) => ({
+      id: crypto.randomUUID(),
+      previewUrl: URL.createObjectURL(file),
+      status: "uploading" as const,
+    }));
+
+    setChatImages((prev) => [...prev, ...newItems]);
+
+    await Promise.all(
+      newItems.map(async (item, i) => {
+        const formData = new FormData();
+        formData.append("file", files[i]);
+        try {
+          const res = await fetch("/api/tools/landing-pages/upload-image", { method: "POST", body: formData });
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({ error: "Upload failed" }));
+            setChatImages((prev) => prev.map((img) => img.id === item.id ? { ...img, status: "error" as const, errorMsg: (data as { error?: string }).error ?? "Upload failed" } : img));
+          } else {
+            const data = await res.json() as { url: string };
+            setChatImages((prev) => prev.map((img) => img.id === item.id ? { ...img, status: "done" as const, blobUrl: data.url } : img));
+          }
+        } catch (err) {
+          setChatImages((prev) => prev.map((img) => img.id === item.id ? { ...img, status: "error" as const, errorMsg: err instanceof Error ? err.message : "Upload failed" } : img));
+        }
+      })
+    );
+  };
+
+  const removeChatImage = (id: string) => {
+    setChatImages((prev) => {
+      const item = prev.find((img) => img.id === id);
+      if (item) URL.revokeObjectURL(item.previewUrl);
+      return prev.filter((img) => img.id !== id);
+    });
   };
 
   const handleApplyAll = async () => {
@@ -1389,6 +1444,14 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                           ? renderMarkdown(msg.content)
                           : msg.content}
                       </p>
+                      {msg.role === "user" && msg.attachedImageUrls?.length && (
+                        <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 6 }}>
+                          {msg.attachedImageUrls.map((url) => (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img key={url} src={url} alt="" style={{ width: 48, height: 48, objectFit: "cover", borderRadius: 4, border: "1px solid rgba(255,255,255,0.25)" }} />
+                          ))}
+                        </div>
+                      )}
                       {msg.role === "assistant" && msg.version && (
                         <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, paddingTop: 6, borderTop: "1px solid rgba(128,128,128,0.15)" }}>
                           <span style={{ fontSize: 10, padding: "1px 6px", background: "var(--accent-bg)", color: "var(--accent)", borderRadius: 99, fontWeight: 600 }}>
@@ -1499,6 +1562,44 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
 
               {/* Chat input */}
               <div style={{ flexShrink: 0, padding: 12, borderTop: "1px solid var(--border)" }}>
+                {/* Hidden file input for image attachments */}
+                <input
+                  ref={chatImageInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/gif,image/webp"
+                  multiple
+                  onChange={handleChatImageSelect}
+                  style={{ display: "none" }}
+                />
+
+                {/* Image thumbnail strip */}
+                {chatImages.length > 0 && (
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+                    {chatImages.map((img) => (
+                      <div key={img.id} style={{ position: "relative", width: 52, height: 52, flexShrink: 0, borderRadius: 6, overflow: "hidden", border: "1px solid var(--border)", background: "var(--border-subtle)" }}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={img.previewUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        {img.status === "uploading" && (
+                          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <Loader2 style={{ width: 16, height: 16, color: "#fff", animation: "spin 1s linear infinite" }} />
+                          </div>
+                        )}
+                        {img.status === "error" && (
+                          <div style={{ position: "absolute", inset: 0, background: "rgba(220,38,38,0.65)", display: "flex", alignItems: "center", justifyContent: "center" }} title={img.errorMsg ?? "Upload failed"}>
+                            <AlertCircle style={{ width: 16, height: 16, color: "#fff" }} />
+                          </div>
+                        )}
+                        <button
+                          onClick={() => removeChatImage(img.id)}
+                          style={{ position: "absolute", top: 2, right: 2, width: 16, height: 16, borderRadius: "50%", background: "rgba(0,0,0,0.55)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
+                        >
+                          <X style={{ width: 10, height: 10, color: "#fff" }} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 <textarea
                   ref={textareaRef}
                   value={prompt}
@@ -1515,16 +1616,32 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                   }}
                 />
                 <div style={{ display: "flex", gap: 6 }}>
+                  {/* Image attach button */}
+                  <button
+                    onClick={() => chatImageInputRef.current?.click()}
+                    disabled={refining || chatting}
+                    title="Attach images"
+                    style={{
+                      display: "inline-flex", alignItems: "center", justifyContent: "center",
+                      padding: "7px 8px", flexShrink: 0,
+                      background: chatImages.length > 0 ? "var(--accent-bg)" : "var(--border-subtle)",
+                      color: chatImages.length > 0 ? "var(--accent)" : "var(--text-3)",
+                      border: "1px solid var(--border)", borderRadius: "var(--r-sm)", cursor: "pointer",
+                      opacity: (refining || chatting) ? 0.45 : 1, transition: "all 0.15s",
+                    }}
+                  >
+                    <ImagePlus style={{ width: 14, height: 14 }} />
+                  </button>
                   <button
                     onClick={handleChat}
-                    disabled={refining || chatting || !prompt.trim()}
+                    disabled={refining || chatting || !prompt.trim() || chatImages.some((img) => img.status === "uploading")}
                     title="Chat — discuss and get advice (Enter)"
                     style={{
                       flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5,
                       padding: "7px 10px", fontSize: 12, fontWeight: 500,
                       background: "var(--border-subtle)", color: "var(--text-2)",
                       border: "1px solid var(--border)", borderRadius: "var(--r-sm)", cursor: "pointer",
-                      opacity: (refining || chatting || !prompt.trim()) ? 0.45 : 1,
+                      opacity: (refining || chatting || !prompt.trim() || chatImages.some((img) => img.status === "uploading")) ? 0.45 : 1,
                       transition: "opacity 0.15s, background 0.15s",
                     }}
                   >
@@ -1533,7 +1650,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                   </button>
                   <button
                     onClick={() => handleRefine()}
-                    disabled={refining || chatting || !prompt.trim()}
+                    disabled={refining || chatting || !prompt.trim() || chatImages.some((img) => img.status === "uploading")}
                     title="Apply — generate updated HTML (⌘+Enter)"
                     className="btn btn-primary btn-sm"
                     style={{
