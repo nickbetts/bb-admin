@@ -6,8 +6,10 @@ import { jsonrepair } from "jsonrepair";
 import {
   type PresentationData,
   type PresentationSlide,
+  summariseSourcePlan,
 } from "@/lib/grand-plan-presentation-generator";
 import { renderPresentationHtml } from "@/lib/grand-plan-presentation-template";
+import type { GrandPlanData } from "@/lib/grand-plan-generator";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -31,7 +33,7 @@ export async function POST(
 
   const plan = await prisma.grandPlan.findUnique({
     where: { id },
-    select: { userId: true, presentationDataJson: true, clientBrief: true },
+    select: { userId: true, presentationDataJson: true, planDataJson: true },
   });
   if (!plan) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (plan.userId !== session.user.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -48,17 +50,26 @@ export async function POST(
   const slide = presData.slides[slideIndex];
   if (!slide) return NextResponse.json({ error: "Slide not found" }, { status: 404 });
 
-  const briefSnippet = (plan.clientBrief ?? "").slice(0, 1200);
+  // Build full plan context so the AI can pull in real specifics
+  let planContext = "";
+  if (plan.planDataJson) {
+    try {
+      const planData = JSON.parse(plan.planDataJson) as GrandPlanData;
+      planContext = summariseSourcePlan(planData);
+    } catch {
+      /* fall through with empty context */
+    }
+  }
 
-  const systemPrompt = `You are editing a single slide in a client-facing strategy presentation deck. You receive the current slide JSON and a user instruction. Return ONLY the updated slide as valid JSON — no markdown, no prose, no code fences. Keep the same \`id\` and \`kind\`. Apply the instruction faithfully, in British English. Keep content concise and impactful — this is a presentation slide, not a document.`;
+  const systemPrompt = `You are editing a single slide in a client-facing strategy presentation deck. You have access to the full grand plan context so you can pull in real specifics — actual audiences, keywords, channels, investment figures, positioning, and campaign details. Return ONLY the updated slide as valid JSON — no markdown, no prose, no code fences. Keep the same \`id\` and \`kind\`. Apply the instruction faithfully, in British English. Keep content concise and impactful — this is a presentation slide, not a document.`;
 
-  const userMessage = `Client brief (excerpt):
-${briefSnippet}
+  const userMessage = `GRAND PLAN CONTEXT:
+${planContext || "(no plan data available)"}
 
-Current slide JSON:
+CURRENT SLIDE JSON:
 ${JSON.stringify(slide, null, 2)}
 
-Instruction: ${prompt.trim()}
+INSTRUCTION: ${prompt.trim()}
 
 Return the updated slide JSON only.`;
 

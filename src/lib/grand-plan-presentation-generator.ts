@@ -107,7 +107,7 @@ export interface PresentationData {
 
 // ─── Generator ──────────────────────────────────────────────────────────────
 
-function summariseSourcePlan(plan: GrandPlanData): string {
+export function summariseSourcePlan(plan: GrandPlanData): string {
   const sb = plan.strategyBrain;
   const services = plan.sections.servicesInvestment;
   const audiences = plan.sections.audiences ?? [];
