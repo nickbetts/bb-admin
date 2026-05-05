@@ -150,6 +150,7 @@ export default function GrandPlanViewPage({ params }: Props) {
   const [slideRefining, setSlideRefining] = useState(false);
   const [presRefineAllPrompt, setPresRefineAllPrompt] = useState("");
   const [presRefineAllBusy, setPresRefineAllBusy] = useState(false);
+  const [newSlideKind, setNewSlideKind] = useState("headline");
   const [presSaving, setPresSaving] = useState(false);
 
   // Share state
@@ -2072,8 +2073,10 @@ export default function GrandPlanViewPage({ params }: Props) {
                       {presEditTab === "manage" && !iscover && slide && (() => {
                         const si = activeSlideIndex - 1;
                         const totalContent = presentationData.slides.length;
+                        const slideKinds = ["headline", "pillars", "outcome", "channels", "timeline", "investment", "audience", "next-steps"] as const;
                         return (
                           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                            <p style={{ fontSize: 11, fontWeight: 600, color: "var(--text-4)", margin: 0, textTransform: "uppercase", letterSpacing: "0.05em" }}>Reorder</p>
                             <button type="button" className="btn btn-ghost btn-sm" style={{ justifyContent: "flex-start", gap: 8 }}
                               disabled={si === 0 || presSaving}
                               onClick={() => savePresField("slide-move", { slideIndex: si, direction: "up" }).then(() => setActiveSlideIndex(activeSlideIndex - 1))}>
@@ -2084,15 +2087,35 @@ export default function GrandPlanViewPage({ params }: Props) {
                               onClick={() => savePresField("slide-move", { slideIndex: si, direction: "down" }).then(() => setActiveSlideIndex(activeSlideIndex + 1))}>
                               ↓ Move slide down
                             </button>
+
                             <div style={{ borderTop: "1px solid var(--border)", margin: "4px 0" }} />
+                            <p style={{ fontSize: 11, fontWeight: 600, color: "var(--text-4)", margin: 0, textTransform: "uppercase", letterSpacing: "0.05em" }}>Add slide</p>
+                            <select
+                              value={newSlideKind}
+                              onChange={(e) => setNewSlideKind(e.target.value)}
+                              style={{ fontSize: 12, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--surface,var(--bg))", color: "var(--text)" }}
+                            >
+                              {slideKinds.map((k) => (
+                                <option key={k} value={k}>{k.charAt(0).toUpperCase() + k.slice(1).replace("-", " ")}</option>
+                              ))}
+                            </select>
                             <button type="button" className="btn btn-ghost btn-sm" style={{ justifyContent: "flex-start", gap: 8 }}
                               disabled={presSaving}
                               onClick={async () => {
-                                await savePresField("slide-add", { afterIndex: si, kind: "headline", title: "New slide" });
+                                await savePresField("slide-add", { afterIndex: si, kind: newSlideKind, title: "New slide" });
                                 setActiveSlideIndex(activeSlideIndex + 1);
                               }}>
-                              + Add slide after this one
+                              + Add {newSlideKind} slide after this one
                             </button>
+                            <button type="button" className="btn btn-ghost btn-sm" style={{ justifyContent: "flex-start", gap: 8 }}
+                              disabled={presSaving}
+                              onClick={async () => {
+                                await savePresField("slide-duplicate", { slideIndex: si });
+                                setActiveSlideIndex(activeSlideIndex + 1);
+                              }}>
+                              ⧉ Duplicate this slide
+                            </button>
+
                             <div style={{ borderTop: "1px solid var(--border)", margin: "4px 0" }} />
                             <button type="button" className="btn btn-sm" style={{ justifyContent: "flex-start", gap: 8, color: "#ef4444", background: "rgba(239,68,68,.08)", border: "1px solid rgba(239,68,68,.2)" }}
                               disabled={presSaving}

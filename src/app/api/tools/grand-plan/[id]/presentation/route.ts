@@ -204,6 +204,18 @@ export async function PATCH(
       presData.slides.splice(afterIndex + 1, 0, newSlide);
       break;
     }
+    case "slide-duplicate": {
+      const idx = body.slideIndex as number;
+      const source = presData.slides[idx];
+      if (!source) return NextResponse.json({ error: "Slide not found" }, { status: 404 });
+      const duplicate: PresentationSlide = {
+        ...JSON.parse(JSON.stringify(source)) as PresentationSlide,
+        id: `slide-${Date.now()}`,
+        title: `${source.title} (copy)`,
+      };
+      presData.slides.splice(idx + 1, 0, duplicate);
+      break;
+    }
     case "item-update": {
       const idx = body.slideIndex as number;
       const itemType = body.itemType as string;
