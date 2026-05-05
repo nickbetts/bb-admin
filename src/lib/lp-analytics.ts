@@ -19,9 +19,9 @@
  *   - Phone click   (any <a href="tel:...">)
  *   - Email click   (any <a href="mailto:...">)
  *
- * Test mode (?test=1 on the public URL): all third-party loaders are skipped
- * and a floating overlay logs every event that *would* have fired, so you
- * can verify the wiring without polluting real ad accounts.
+ * Test mode (?test=1 on the public URL): all real third-party loaders still
+ * fire so GTM Preview can connect and receive events. A floating overlay
+ * also captures every event so you can verify wiring on-page.
  */
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -168,14 +168,17 @@ export function hasAnyTracking(cfg: LpAnalyticsConfig): boolean {
 // ── Snippet builders ─────────────────────────────────────────────────────────
 
 /**
- * Returns the snippet for inside <head>. When `testMode` is true, NO third
- * party loaders are emitted — only the test-mode shim that captures any
- * `gtag()`, `fbq()`, `lintrk()`, `ttq.track()`, `uetq.push()`,
- * `dataLayer.push()` calls and forwards them to the on-page debug overlay.
+ * Returns the snippet for inside <head>. In both normal and test mode the
+ * real third-party loaders are emitted so GTM Preview can connect and
+ * conversion events reach real ad accounts. In test mode a passive shim is
+ * appended that wraps provider globals and forwards every call to the
+ * on-page debug overlay — without blocking the real call.
  */
 export function buildAnalyticsHead(cfg: LpAnalyticsConfig, opts: { testMode?: boolean } = {}): string {
-  if (opts.testMode) return buildTestModeShim(cfg);
-  if (!hasAnyTracking(cfg)) return "";
+  if (!hasAnyTracking(cfg)) {
+    // No providers at all — in test mode still render the overlay shell
+    return opts.testMode ? buildTestModeShim(cfg) : "";
+  }
 
   const parts: string[] = [];
 
@@ -263,6 +266,12 @@ src="https://px.ads.linkedin.com/collect/?pid=${cfg.linkedInPartnerId}&fmt=gif"/
     parts.push(`<!-- Custom -->\n${cfg.customHeadHtml}`);
   }
 
+  // Test mode: append passive capture shim AFTER real snippets so the real
+  // provider globals exist when the shim wraps them on window load.
+  if (opts.testMode) {
+    parts.push(buildTestModeShim(cfg));
+  }
+
   return parts.join("\n");
 }
 
@@ -346,9 +355,10 @@ export function buildConversionScript(cfg: LpAnalyticsConfig): string {
 // ── Test-mode shim + overlay ─────────────────────────────────────────────────
 
 /**
- * Replaces all real provider loaders with stubs that log calls to a floating
- * on-page overlay. Activated by `?test=1`. Lets the agency QA conversion
- * wiring without firing real events.
+ * Passive capture shim appended after the real provider snippets. Wraps
+ * dataLayer.push immediately (so GTM events are captured from the first push)
+ * and wraps gtag/fbq/lintrk/ttq/uetq after window load (real calls still
+ * fire — the wrapper just also records to the on-page overlay).
  */
 function buildTestModeShim(cfg: LpAnalyticsConfig): string {
   const configured: string[] = [];
@@ -361,11 +371,9 @@ function buildTestModeShim(cfg: LpAnalyticsConfig): string {
   if (cfg.microsoftUetTagId) configured.push(`Microsoft UET (${cfg.microsoftUetTagId})`);
   if (cfg.customHeadHtml) configured.push("Custom HTML");
 
-  const summary = configured.length > 0 ? configured.join(", ") : "no providers configured";
-  void summary; // shown in the overlay via __lpTestConfig
   const json = JSON.stringify({ providers: configured, events: cfg.events ?? null });
 
-  return `<!-- LP Test Mode — third-party loaders disabled, calls captured -->
+  return `<!-- LP Test Mode — real providers load; calls mirrored to overlay -->
 <script>
 (function(){
   var w = window;
@@ -376,23 +384,47 @@ function buildTestModeShim(cfg: LpAnalyticsConfig): string {
     if (w.__lpTestRender) w.__lpTestRender(entry);
     try { console.info('[LP test]', provider + '.' + method, entry.args); } catch(e){}
   }
-  // dataLayer / gtag (Google: GA4, Ads, GTM)
+
+  // Wrap dataLayer immediately — GTM and gtag.js both push here, so this
+  // captures all Google events from the very first push (incl. gtm.js start).
   w.dataLayer = w.dataLayer || [];
   var origPush = w.dataLayer.push.bind(w.dataLayer);
   w.dataLayer.push = function(){ record('dataLayer', 'push', arguments); return origPush.apply(null, arguments); };
-  w.gtag = function(){ record('gtag', String(arguments[0] || 'call'), arguments); };
-  // Meta Pixel
-  w.fbq = function(){ record('fbq', String(arguments[0] || 'call'), arguments); };
-  w.fbq.queue = []; w.fbq.loaded = true; w.fbq.version = '2.0';
-  // LinkedIn
-  w.lintrk = function(){ record('lintrk', String(arguments[0] || 'call'), arguments); };
-  w.lintrk.q = [];
-  // TikTok
-  var ttqMethods = ['page','track','identify','instances','debug','on','off','once','ready','alias','group','enableCookie','disableCookie','load'];
-  w.ttq = {}; ttqMethods.forEach(function(m){ w.ttq[m] = function(){ record('ttq', m, arguments); }; });
-  // Microsoft UET
-  w.uetq = []; var origUetq = w.uetq.push.bind(w.uetq);
-  w.uetq.push = function(){ record('uetq', 'push', arguments); return origUetq.apply(null, arguments); };
+
+  // After all scripts have loaded, wrap the real provider globals so their
+  // calls also appear in the overlay while still firing for real.
+  function wrapProviders(){
+    if (w.gtag) {
+      var _gtag = w.gtag;
+      w.gtag = function(){ record('gtag', String(arguments[0] || 'call'), arguments); return _gtag.apply(this, arguments); };
+    }
+    if (w.fbq) {
+      var _fbq = w.fbq;
+      w.fbq = function(){ record('fbq', String(arguments[0] || 'call'), arguments); return _fbq.apply(this, arguments); };
+      // preserve fbq internals so the pixel SDK still works
+      for (var k in _fbq) { if (Object.prototype.hasOwnProperty.call(_fbq, k)) w.fbq[k] = _fbq[k]; }
+    }
+    if (w.lintrk) {
+      var _lintrk = w.lintrk;
+      w.lintrk = function(){ record('lintrk', String(arguments[0] || 'call'), arguments); return _lintrk.apply(this, arguments); };
+      w.lintrk.q = _lintrk.q || [];
+    }
+    if (w.ttq) {
+      ['track','page','identify'].forEach(function(m){
+        if (w.ttq[m]) {
+          var _m = w.ttq[m].bind(w.ttq);
+          w.ttq[m] = function(){ record('ttq', m, arguments); return _m.apply(null, arguments); };
+        }
+      });
+    }
+    if (w.uetq) {
+      var _uetqPush = (w.uetq.push || Array.prototype.push).bind(w.uetq);
+      w.uetq.push = function(){ record('uetq', 'push', arguments); return _uetqPush.apply(null, arguments); };
+    }
+  }
+  if (document.readyState === 'complete') wrapProviders();
+  else w.addEventListener('load', wrapProviders);
+
   // Stash config for the overlay
   w.__lpTestConfig = ${json};
 })();
@@ -447,7 +479,7 @@ export function buildTestModeOverlay(): string {
       +   '<button id="lp-test-close">×</button></div></div>'
       + '<div class="lp-test-cfg"><b>Providers:</b> ' + escape(providers)
       +   '<br/><b>Events:</b> ' + escape(events || 'none')
-      +   '<br/><b>Tip:</b> use the buttons (bottom-left) or click any tel:/mailto: link or submit a form.</div>'
+      +   '<br/><b>Tip:</b> Events fire for real — use the buttons (bottom-left) to simulate conversions and verify in GTM Preview / GA4 Debug View.</div>'
       + '<div class="lp-test-list"><div class="lp-test-empty">No events yet — interact with the page.</div></div>';
     document.body.appendChild(root);
 
