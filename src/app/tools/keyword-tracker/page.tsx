@@ -74,23 +74,13 @@ function avgVolume(vol: number | undefined): string {
   return fmtVolume(vol);
 }
 
-function DeltaBadge({ delta, previousPosition }: { delta: number | null; previousPosition: number | null }) {
-  if (delta !== null && delta !== 0) {
-    return (
-      <span style={{ fontSize: 10, fontWeight: 600, color: delta > 0 ? "#16a34a" : "#b91c1c", display: "block", lineHeight: 1, marginTop: 2 }}>
-        {delta > 0 ? "↑" : "↓"}{Math.abs(delta)}
-      </span>
-    );
-  }
-  if (previousPosition === null) {
-    // No prior ranking data — new entry this period
-    return (
-      <span style={{ fontSize: 9, fontWeight: 700, color: "#7c3aed", display: "block", lineHeight: 1, marginTop: 2, letterSpacing: "0.02em" }}>
-        NEW
-      </span>
-    );
-  }
-  return null;
+function DeltaBadge({ delta }: { delta: number | null }) {
+  if (!delta) return null;
+  return (
+    <span style={{ fontSize: 10, fontWeight: 600, color: delta > 0 ? "#16a34a" : "#b91c1c", display: "block", lineHeight: 1, marginTop: 2 }}>
+      {delta > 0 ? "↑" : "↓"}{Math.abs(delta)}
+    </span>
+  );
 }
 
 function MatrixCell({ data }: { data: CellData | undefined }) {
@@ -99,12 +89,12 @@ function MatrixCell({ data }: { data: CellData | undefined }) {
       <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-3)", fontSize: 13, borderBottom: "1px solid var(--border)", borderRight: "1px solid var(--border)" }}>–</td>
     );
   }
-  const { position, delta, previousPosition, url } = data;
+  const { position, delta, url } = data;
   return (
     <td style={{ padding: "10px 14px", textAlign: "center", background: positionBg(position), borderBottom: "1px solid var(--border)", borderRight: "1px solid var(--border)", minWidth: 90 }}>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
         <span style={{ fontSize: 15, fontWeight: 700, color: positionColor(position), lineHeight: 1 }}>{position}</span>
-        <DeltaBadge delta={delta} previousPosition={previousPosition} />
+        <DeltaBadge delta={delta} />
         {url && (
           <a href={url.startsWith("http") ? url : `https://${url}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ marginTop: 3 }}>
             <ExternalLink style={{ width: 9, height: 9, color: "var(--text-3)" }} />

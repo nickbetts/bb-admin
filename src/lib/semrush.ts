@@ -1505,6 +1505,57 @@ export async function getKeywordPositionForDomain(
   }
 }
 
+export interface PhraseOrganicEntry {
+  domain: string; // normalised, no www prefix
+  position: number;
+  url: string;
+}
+
+export interface PhraseOrganicResult {
+  volume: number;
+  entries: PhraseOrganicEntry[];
+}
+
+/**
+ * Returns all domains ranking for a keyword (top 100) plus the keyword's search volume.
+ * Much more reliable than domain_organic + display_filter for cross-client lookups.
+ */
+export async function getKeywordPhraseOrganic(
+  keyword: string,
+  database: string = "uk",
+  date?: string // YYYYMM01 — if provided, returns data for that month's snapshot
+): Promise<PhraseOrganicResult> {
+  const apiKey = getApiKey();
+  const paramObj: Record<string, string> = {
+    type: "phrase_organic",
+    key: apiKey,
+    export_columns: "Dn,Rk,Ur,Nq",
+    phrase: keyword.toLowerCase().trim(),
+    database,
+    display_limit: "100",
+  };
+  if (date) paramObj.date = date;
+  const params = new URLSearchParams(paramObj);
+  try {
+    const response = await axios.get<string>(`${SEMRUSH_BASE_URL}/?${params.toString()}`);
+    const lines = (response.data as string).trim().split("\n");
+    if (lines.length < 2 || lines[0].startsWith("ERROR")) return { volume: 0, entries: [] };
+    const entries: PhraseOrganicEntry[] = [];
+    let volume = 0;
+    for (let i = 1; i < lines.length; i++) {
+      const [dn, rk, ur, nq] = lines[i].split(";");
+      if (i === 1) volume = parseInt(nq) || 0;
+      const pos = parseInt(rk);
+      if (pos > 0 && dn) {
+        entries.push({ domain: dn.toLowerCase().replace(/^www\./, ""), position: pos, url: (ur || "").trim() });
+      }
+    }
+    return { volume, entries };
+  } catch {
+    return { volume: 0, entries: [] };
+  }
+}
+
 /** Returns the monthly search volume for a keyword regardless of who ranks for it. */
 export async function getKeywordSearchVolume(
   keyword: string,
