@@ -1298,6 +1298,19 @@ model ClickrUser {
   @@index([planTier])
 }
 
+model KeywordTrackerList {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  keywords  String   // JSON: string[]
+  clientIds String   // JSON: string[]
+  database  String   @default("uk")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, updatedAt])
+}
+
 model ClickrSession {
   id          String     @id @default(cuid())
   clickrUserId String

@@ -382,12 +382,14 @@ Never introduce emoji glyphs as icons. Lucide icons are available — replace an
 
 // ── Form capture script ──────────────────────────────────────────────────────
 
-export function getFormCaptureScript(shareToken: string, turnstileSiteKey?: string): string {
+export function getFormCaptureScript(shareToken: string | null, turnstileSiteKey?: string): string {
   const siteKeyJs = turnstileSiteKey ? JSON.stringify(turnstileSiteKey) : "null";
+  const tokenJs = shareToken ? JSON.stringify(shareToken) : "null";
 
   return `
 <script>
 (function() {
+  var SHARE_TOKEN = ${tokenJs};
   var TURNSTILE_SITE_KEY = ${siteKeyJs};
 
   // Inject Turnstile widget before the submit button of each LP form
@@ -433,15 +435,18 @@ export function getFormCaptureScript(shareToken: string, turnstileSiteKey?: stri
         if (k !== 'cf-turnstile-response') data[k] = v;
       });
 
-      // Show success and fire conversion events immediately — don't wait for
+      // Show success and fire conversion event immediately — don't wait for
       // the server round-trip. Lead capture is best-effort in the background.
       form.innerHTML = '<div style="text-align:center;padding:32px 16px"><h3 style="color:inherit;margin-bottom:8px">Thank you!</h3><p style="opacity:.8">We\\'ll be in touch shortly.</p></div>';
+      if (typeof window.__lpFireLead === 'function') window.__lpFireLead();
 
-      fetch('/api/share/landing-page/${shareToken}/lead', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      }).catch(function() { /* best-effort — success already shown */ });
+      if (SHARE_TOKEN) {
+        fetch('/api/share/landing-page/' + SHARE_TOKEN + '/lead', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        }).catch(function() { /* best-effort — success already shown */ });
+      }
     });
   });
 })();
@@ -450,7 +455,7 @@ export function getFormCaptureScript(shareToken: string, turnstileSiteKey?: stri
 
 // ── Inject form script into HTML ─────────────────────────────────────────────
 
-export function injectFormScript(html: string, shareToken: string, turnstileSiteKey?: string): string {
+export function injectFormScript(html: string, shareToken: string | null, turnstileSiteKey?: string): string {
   const script = getFormCaptureScript(shareToken, turnstileSiteKey);
   // Insert before </body> if present, otherwise append
   if (html.includes("</body>")) {

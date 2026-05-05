@@ -79,6 +79,7 @@ const toolsNavItems: NavItem[] = [
   { href: "/tools/keyword-planner", label: "Proposal Generator", icon: <Sparkles className="h-4 w-4" />, permission: "proposal_generator" },
   // PR5: /tools/proposals and /tools/content-strategy retired from sidebar
   { href: "/tools/competitor-intelligence", label: "Competitor Intel", icon: <TrendingUp className="h-4 w-4" />, permission: "competitor_intelligence" },
+  { href: "/tools/keyword-tracker", label: "Keyword Tracker", icon: <FileSpreadsheet className="h-4 w-4" />, permission: "keyword_tracker" },
   { href: "/tools/media-plan", label: "Media Planner", icon: <PieChart className="h-4 w-4" />, permission: "media_plan" },
   { href: "/tools/pricing", label: "Pricing", icon: <Tag className="h-4 w-4" />, permission: "pricing" },
   { href: "/tools/llm-generator", label: "LLM.txt Generator", icon: <Bot className="h-4 w-4" />, permission: "llm_generator" },

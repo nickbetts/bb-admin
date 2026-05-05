@@ -30,6 +30,7 @@ const PERMISSION_GROUPS = [
       { key: "proposal_generator", label: "Proposal Generator" },
       { key: "proposals", label: "Proposals" },
       { key: "competitor_intelligence", label: "Competitor Intel" },
+      { key: "keyword_tracker", label: "Keyword Tracker" },
       { key: "media_plan", label: "Media Planner" },
       { key: "pricing", label: "Pricing" },
       { key: "llm_generator", label: "LLM.txt Generator" },

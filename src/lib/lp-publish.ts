@@ -54,13 +54,12 @@ export function assemblePublicHtml(rawHtml: string, opts: AssembleOpts): string 
   }
 
   // Form capture — must run AFTER buildConversionScript so __lpFireLead exists.
-  // We add a small DOM observer that calls __lpFireLead() once the success
-  // message ("Thank you!") appears in the form.
+  // The form script intercepts submit, shows "Thank you", fires __lpFireLead(),
+  // and (when shareToken is set) POSTs the lead to the API.
   const embedCode = opts.formConfig?.embedCode?.trim();
   const hasBuiltInForm = !embedCode && html.includes('data-lp-form="true"');
   const turnstileSiteKey = opts.turnstileSiteKey || null;
-  if (hasBuiltInForm && opts.shareToken) {
-    bodyEndParts.push(formSuccessHookScript());
+  if (hasBuiltInForm) {
     // Inject Turnstile loader when a site key is configured
     if (turnstileSiteKey) {
       headParts.push(
@@ -107,39 +106,13 @@ export function assemblePublicHtml(rawHtml: string, opts: AssembleOpts): string 
   // Lucide icons — always injected so the prompt's <i data-lucide=...> tags render
   html = injectLucide(html);
 
-  // Form-capture script (existing behaviour) — injected last so its </body>
-  // insertion sits below the conversion script.
-  if (hasBuiltInForm && opts.shareToken) {
+  // Form-capture script — always injected for built-in forms so submit is
+  // intercepted (preventing native navigation), success shown, and conversion
+  // event fired. Lead storage to API only happens when shareToken is set.
+  if (hasBuiltInForm) {
     html = injectFormScript(html, opts.shareToken, turnstileSiteKey ?? undefined);
   }
 
   return html;
 }
 
-/**
- * Watches the [data-lp-form] form for the success state injected by the
- * existing form-capture script and fires the conversion event once.
- */
-function formSuccessHookScript(): string {
-  return `<script>
-(function(){
-  if (!window.MutationObserver) return;
-  function attach(){
-    var forms = document.querySelectorAll('[data-lp-form="true"]');
-    forms.forEach(function(form){
-      var fired = false;
-      var mo = new MutationObserver(function(){
-        if (fired) return;
-        if (form.textContent && form.textContent.indexOf('Thank you') !== -1) {
-          fired = true;
-          if (typeof window.__lpFireLead === 'function') window.__lpFireLead();
-        }
-      });
-      mo.observe(form, { childList: true, subtree: true, characterData: true });
-    });
-  }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', attach);
-  else attach();
-})();
-</script>`;
-}
