@@ -156,6 +156,19 @@ export async function PATCH(
       prompt = "Updated seed phrase suggestions";
       break;
     }
+    case "intro": {
+      const introText = body.intro;
+      if (typeof introText !== "string") {
+        return NextResponse.json({ error: "intro string required" }, { status: 400 });
+      }
+      // sectionIntros lives at the plan root, not inside ads
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (!planData.sectionIntros) (planData as any).sectionIntros = {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (planData.sectionIntros as any).googleAdsCampaigns = introText.trim();
+      prompt = "Updated Google Ads section intro";
+      break;
+    }
     default:
       return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 });
   }

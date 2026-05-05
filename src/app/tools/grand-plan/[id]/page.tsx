@@ -250,6 +250,7 @@ export default function GrandPlanViewPage({ params }: Props) {
         "gp:save-campaign-name", "gp:save-budget", "gp:save-locations",
         "gp:save-negatives", "gp:ag-rename", "gp:ag-audience",
         "gp:ag-negatives", "gp:ag-add", "gp:ag-delete", "gp:save-seeds",
+        "gp:save-intro",
       ];
       if (googleAdsEditTypes.includes(data.type)) {
         handleGoogleAdsEdit(data as Record<string, unknown>);

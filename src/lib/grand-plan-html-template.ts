@@ -1047,7 +1047,10 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
       <div class="section-inner">
         <div class="section-kicker blue">Paid Search</div>
         <h2>Google Ads Campaigns</h2>
-        ${intro ? `<p class="section-intro section-intro-ai">${esc(intro)}</p>` : ""}
+        ${!isPublicView
+          ? `<p class="section-intro section-intro-ai editable-inline" contenteditable="true" spellcheck="false" onblur="saveGoogleAdsIntro(this)" data-placeholder="Add a description…">${intro ? esc(intro) : ""}</p>`
+          : intro ? `<p class="section-intro section-intro-ai">${esc(intro)}</p>` : ""
+        }
         <div class="campaign-hero">
           <h3 ${!isPublicView ? `contenteditable="true" spellcheck="false" onblur="saveCampaignName(this)" onkeydown="if(event.key==='Enter'){this.blur();event.preventDefault()}" class="editable-inline"` : ""}>${esc(data.campaignName)}</h3>
         </div>
@@ -2528,6 +2531,7 @@ a{color:var(--accent);text-decoration:none}
 .ag-audience-empty:focus{opacity:1;font-style:normal}
 [contenteditable]:focus{outline:2px solid rgba(99,102,241,.45);outline-offset:2px;border-radius:4px}
 .editable-inline:hover{outline:1px dashed rgba(99,102,241,.35);outline-offset:3px;border-radius:4px;cursor:text}
+[contenteditable][data-placeholder]:empty::before{content:attr(data-placeholder);opacity:.4;pointer-events:none;font-style:italic}
 .loc-chip-edit{display:inline-flex;align-items:center;gap:4px;padding:4px 6px 4px 10px}
 .loc-remove-btn{width:16px;height:16px;padding:0;border:none;background:transparent;cursor:pointer;color:var(--mid);font-size:13px;line-height:1;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
 .loc-remove-btn:hover{background:rgba(239,68,68,.15);color:#ef4444}
@@ -3691,11 +3695,15 @@ function copyAgKeywords(btn){
 
 function removeKw(btn){
   var chip=btn.closest('.kw-chip');
-  var ag=chip.closest('.ag-section');
-  chip.remove();
-  var count=ag.querySelectorAll('.kw-chip-list .kw-chip').length;
-  var countEl=ag.querySelector('.ag-count');
-  if(countEl)countEl.textContent=count+' keyword'+(count===1?'':'s');
+  var ag=chip&&chip.closest('.ag-section');
+  if(chip)chip.remove();
+  if(ag){
+    var count=ag.querySelectorAll('.kw-chip-list .kw-chip').length;
+    var countEl=ag.querySelector('.ag-count');
+    if(countEl)countEl.textContent=count+' keyword'+(count===1?'':'s');
+    var saveBtn=ag.querySelector('.kw-save-btn');
+    if(saveBtn&&!saveBtn.disabled){saveAgKeywords(saveBtn);}
+  }
 }
 
 function addKwFromInput(input){
@@ -3730,6 +3738,11 @@ function saveAgKeywords(btn){
 }
 
 // ── Google Ads full editing ──────────────────────────────────────────────────
+
+function saveGoogleAdsIntro(el){
+  var text=(el.textContent||'').trim();
+  window.parent.postMessage({type:'gp:save-intro',intro:text},'*');
+}
 
 function saveCampaignName(el){
   var name=(el.textContent||'').trim();
