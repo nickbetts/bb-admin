@@ -104,7 +104,28 @@ export async function POST(
       }
     }
 
-    const systemPrompt = `You are editing a single slide in a client-facing strategy presentation deck. You have access to the full grand plan context so you can pull in real specifics — actual audiences, keywords, channels, investment figures, positioning, and campaign details. Return ONLY the updated slide as valid JSON — no markdown, no prose, no code fences. Keep the same \`id\` and \`kind\`. Apply the instruction faithfully, in British English. Keep content concise and impactful — this is a presentation slide, not a document.`;
+    const systemPrompt = `You are editing a single slide in a client-facing strategy presentation deck.
+You have access to the full grand plan context so you can pull in real specifics — actual audiences, keywords, channels, investment figures, positioning, and campaign details.
+
+RULES:
+- Return ONLY the updated slide as valid JSON — no markdown, no prose, no code fences.
+- Keep the same \`id\` and \`kind\` values exactly.
+- Use British English. No em dashes. No semicolons.
+- Keep copy concise — this is a presentation slide, not a document.
+
+VALID FIELDS BY KIND (only use fields listed for the slide's kind):
+
+kind="headline"  → title, eyebrow, headline (big statement), subhead (≤30 words)
+kind="pillars"   → title, eyebrow, headline (optional), subhead (optional intro ≤30 words), pillars: [{title, body (≤40 words)}] (3–5 pillars)
+kind="outcome"   → title, eyebrow, headline, subhead, metric: {value, label}
+kind="channels"  → title, eyebrow, channels: [{name, role (≤25 words)}] (up to 8)
+kind="timeline"  → title, eyebrow, phases: [{label, items: [string]}] (3–4 phases, 3–5 items each)
+kind="investment"→ title, eyebrow, investment: {headlineFigure, breakdown: [{label, amount, percentage}]}
+kind="audience"  → title, eyebrow, audiences: [{name, insight (≤35 words)}] (up to 6)
+kind="next-steps"→ title, eyebrow, steps: [{title, detail (≤35 words)}] (3–5 steps)
+
+NEVER use: "subheading", "description", "content", "bullets", "items" or any field not listed above.
+For a subheading / intro sentence on a pillars slide use the field "subhead", not "subheading".`;
 
     const userMessage = `GRAND PLAN CONTEXT:
 ${planContext || "(no plan data available)"}
@@ -166,6 +187,23 @@ Return the updated slide JSON only.`;
     // Enforce id and kind immutability
     updatedSlide.id = slide.id;
     updatedSlide.kind = slide.kind;
+
+    // Normalise common AI field-name mistakes before saving
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const s = updatedSlide as any;
+    if (s.subheading !== undefined && s.subhead === undefined) { s.subhead = s.subheading; delete s.subheading; }
+    if (s.description !== undefined && s.subhead === undefined) { s.subhead = s.description; delete s.description; }
+    if (s.subtitle !== undefined && s.subhead === undefined) { s.subhead = s.subtitle; delete s.subtitle; }
+    if (s.summary !== undefined && s.subhead === undefined) { s.subhead = s.summary; delete s.summary; }
+    // bullets/items arrays on pillars slides → convert to pillars
+    if (s.kind === "pillars" && !s.pillars && Array.isArray(s.bullets)) {
+      s.pillars = (s.bullets as string[]).map((b: string) => ({ title: b, body: "" }));
+      delete s.bullets;
+    }
+    if (s.kind === "pillars" && !s.pillars && Array.isArray(s.items)) {
+      s.pillars = (s.items as string[]).map((b: string) => ({ title: b, body: "" }));
+      delete s.items;
+    }
 
     presData.slides[slideIndex] = updatedSlide;
 
