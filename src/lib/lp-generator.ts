@@ -432,21 +432,16 @@ export function getFormCaptureScript(shareToken: string, turnstileSiteKey?: stri
         // Strip Turnstile token — one-time security token, not a lead field
         if (k !== 'cf-turnstile-response') data[k] = v;
       });
+
+      // Show success and fire conversion events immediately — don't wait for
+      // the server round-trip. Lead capture is best-effort in the background.
+      form.innerHTML = '<div style="text-align:center;padding:32px 16px"><h3 style="color:inherit;margin-bottom:8px">Thank you!</h3><p style="opacity:.8">We\\'ll be in touch shortly.</p></div>';
+
       fetch('/api/share/landing-page/${shareToken}/lead', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
-      }).then(function(r) {
-        if (r.ok) {
-          form.innerHTML = '<div style="text-align:center;padding:32px 16px"><h3 style="color:inherit;margin-bottom:8px">Thank you!</h3><p style="opacity:.8">We\\'ll be in touch shortly.</p></div>';
-        } else {
-          if (btn) { btn.disabled = false; btn.textContent = 'Try Again'; }
-          if (TURNSTILE_SITE_KEY && window.turnstile) { window.turnstile.reset(); }
-        }
-      }).catch(function() {
-        if (btn) { btn.disabled = false; btn.textContent = 'Try Again'; }
-        if (TURNSTILE_SITE_KEY && window.turnstile) { window.turnstile.reset(); }
-      });
+      }).catch(function() { /* best-effort — success already shown */ });
     });
   });
 })();

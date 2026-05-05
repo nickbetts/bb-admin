@@ -88,10 +88,12 @@ export async function GET(
     status: 200,
     headers: {
       "Content-Type": "text/html; charset=utf-8",
-      // Don't cache test mode (operator QA needs fresh state on every reload)
+      // Test mode: never cache (QA needs fresh state on every reload).
+      // Live pages: short TTL, no stale-while-revalidate so analytics/form-config
+      // changes take effect within ~30 s rather than being served stale for minutes.
       "Cache-Control": testMode
         ? "no-store, max-age=0"
-        : "public, s-maxage=60, stale-while-revalidate=300",
+        : "public, s-maxage=30, stale-while-revalidate=0",
     },
   });
 }
