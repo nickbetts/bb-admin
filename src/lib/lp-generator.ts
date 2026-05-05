@@ -1033,8 +1033,9 @@ function extractAndValidateHtml(raw: string): string {
 export interface RefineSectionOptions {
   sectionHtml: string;
   prompt: string;
+  /** Brief style/structure summary extracted from the live page HTML (title, h1, css vars, page text) */
   pageContext: string;
-  brandContext?: { colors: { role: string; hex: string }[] };
+  brandContext?: BrandContext;
 }
 
 export async function refineSectionHtml(opts: RefineSectionOptions): Promise<string> {
@@ -1049,15 +1050,23 @@ export async function refineSectionHtml(opts: RefineSectionOptions): Promise<str
   const system = `You are an expert landing page designer editing a single section of an existing page.
 Return ONLY the updated section HTML — no full page wrapper, no <html>/<head>/<body> tags, no markdown fences, no explanation.
 Preserve the section's overall structure and visual style unless the user explicitly asks to change them.
-Match the colours, fonts, and tone described in the page context.`;
+Match the colours, fonts, and tone described in the page context.
+Use the scraped website copy for accurate brand wording — real service names, real stats, real team names, real testimonials.`;
 
-  const userContent = `SECTION TO EDIT:
+  let userContent = `SECTION TO EDIT:
 ${opts.sectionHtml}
 
-PAGE CONTEXT (style and tone reference — do not include in output):
-${opts.pageContext}${colourSummary ? `\nBrand colours: ${colourSummary}` : ""}
+PAGE CONTEXT (style, structure, and tone reference — do not include in output):
+${opts.pageContext}${colourSummary ? `\nBrand colours: ${colourSummary}` : ""}`;
 
-USER REQUEST: ${opts.prompt}`;
+  // Include scraped copy so Claude can use real brand wording in the section
+  if (opts.brandContext?.pageContent?.allBodyText) {
+    userContent += `\n\n## Scraped website copy (use this for accurate brand wording):\n${opts.brandContext.pageContent.allBodyText.slice(0, 8000)}`;
+  } else if (opts.brandContext?.rawHtml) {
+    userContent += `\n\n## Original scraped website HTML (brand and copy reference):\n${opts.brandContext.rawHtml.slice(0, 20000)}`;
+  }
+
+  userContent += `\n\nUSER REQUEST: ${opts.prompt}`;
 
   const response = await anthropic.messages.create({
     model: MODEL,

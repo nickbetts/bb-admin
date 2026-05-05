@@ -844,20 +844,33 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
     [previewHtml, updateHtml],
   );
 
+  // Shared helper — extracts a style+content summary from the live page HTML
+  const buildPageContext = useCallback((html: string): string => {
+    const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+    const h1Match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+    const cssVarMatch = html.match(/:root\s*\{([^}]+)\}/);
+    // Strip scripts/styles then tags to get readable page text for copy awareness
+    const pageText = html
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 3000);
+    return [
+      titleMatch ? `Page title: ${titleMatch[1].replace(/<[^>]+>/g, "").trim()}` : "",
+      h1Match ? `Main heading: ${h1Match[1].replace(/<[^>]+>/g, "").trim()}` : "",
+      cssVarMatch ? `CSS variables: ${cssVarMatch[1].trim().slice(0, 400)}` : "",
+      pageText ? `Existing page content (for context):\n${pageText}` : "",
+    ].filter(Boolean).join("\n");
+  }, []);
+
   const handleSectionRefine = useCallback(
     async (section: LPSection, prompt: string) => {
       if (refiningSectionId) return;
       setRefiningSectionId(section.id);
 
-      // Build a brief page context so Claude can match style without seeing the whole page
-      const titleMatch = previewHtml.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
-      const h1Match = previewHtml.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
-      const cssVarMatch = previewHtml.match(/:root\s*\{([^}]+)\}/);
-      const pageContext = [
-        titleMatch ? `Page title: ${titleMatch[1].replace(/<[^>]+>/g, "").trim()}` : "",
-        h1Match ? `Main heading: ${h1Match[1].replace(/<[^>]+>/g, "").trim()}` : "",
-        cssVarMatch ? `CSS variables: ${cssVarMatch[1].trim().slice(0, 400)}` : "",
-      ].filter(Boolean).join("\n");
+      const pageContext = buildPageContext(previewHtml);
 
       try {
         const res = await fetch(`/api/tools/landing-pages/${id}/refine-section`, {
@@ -883,7 +896,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
         setRefiningSectionId(null);
       }
     },
-    [id, previewHtml, refiningSectionId, updateHtml, toast],
+    [id, previewHtml, refiningSectionId, updateHtml, toast, buildPageContext],
   );
 
   const handleAddSection = useCallback(
@@ -891,14 +904,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
       if (refiningSectionId) return;
       setRefiningSectionId("__new__");
 
-      const titleMatch = previewHtml.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
-      const h1Match = previewHtml.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
-      const cssVarMatch = previewHtml.match(/:root\s*\{([^}]+)\}/);
-      const pageContext = [
-        titleMatch ? `Page title: ${titleMatch[1].replace(/<[^>]+>/g, "").trim()}` : "",
-        h1Match ? `Main heading: ${h1Match[1].replace(/<[^>]+>/g, "").trim()}` : "",
-        cssVarMatch ? `CSS variables: ${cssVarMatch[1].trim().slice(0, 400)}` : "",
-      ].filter(Boolean).join("\n");
+      const pageContext = buildPageContext(previewHtml);
 
       // Seed section — tells Claude to build from scratch while matching page style
       const sectionHtml = `<section><div class="container"><p>placeholder</p></div></section>`;
@@ -934,7 +940,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
         setRefiningSectionId(null);
       }
     },
-    [id, previewHtml, refiningSectionId, updateHtml, toast],
+    [id, previewHtml, refiningSectionId, updateHtml, toast, buildPageContext],
   );
 
   // ── NEW: Design panel variable change ─────────────────────────────────────
