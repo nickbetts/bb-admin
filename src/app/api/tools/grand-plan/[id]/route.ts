@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/activity-logger";
+import { renderGrandPlanHtml } from "@/lib/grand-plan-html-template";
+import type { GrandPlanData } from "@/lib/grand-plan-generator";
 
 export const dynamic = "force-dynamic";
 
@@ -69,6 +71,18 @@ export async function GET(
     if (!grandPlan) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
+
+    // Always re-render HTML from planDataJson so edit controls from the latest
+    // template are present, regardless of when generatedHtml was last persisted.
+    if (grandPlan.planDataJson && grandPlan.status === "complete") {
+      try {
+        const planData = JSON.parse(grandPlan.planDataJson) as GrandPlanData;
+        grandPlan.generatedHtml = renderGrandPlanHtml(planData);
+      } catch {
+        // fall through — serve whatever is cached
+      }
+    }
+
     return NextResponse.json({ grandPlan });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
