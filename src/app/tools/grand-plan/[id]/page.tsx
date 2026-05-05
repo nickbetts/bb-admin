@@ -1828,7 +1828,7 @@ export default function GrandPlanViewPage({ params }: Props) {
               </div>
             )}
             {!iframeLoaded && <DocumentSkeleton />}
-            <div style={{ display: "flex", height: "80vh" }}>
+            <div style={{ display: "flex", ...(viewMode === "presentation" ? { height: "80vh" } : {}) }}>
               <iframe
                 ref={iframeRef}
                 src={viewMode === "presentation" && plan.presentationGeneratedAt
