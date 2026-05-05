@@ -146,6 +146,13 @@ export async function POST(
         sections: {},
       };
 
+      // Only unlink keyword research if prepare-keywords will be able to
+      // regenerate it (needs both a website and a brief). If neither is
+      // available the link must be preserved — otherwise Google Ads Campaigns
+      // has no keyword data on the next generation run.
+      const kwBriefText = config.kwBrief?.brief || brief;
+      const canAutoGenKw = !!(website && kwBriefText);
+
       await prisma.grandPlan.update({
         where: { id },
         data: {
@@ -153,10 +160,9 @@ export async function POST(
           statusMessage: "Starting generation...",
           generationError: null,
           planDataJson: JSON.stringify(initialData),
-          // Always start the Grand Plan from scratch — unlink any previously
-          // linked keyword research / content strategy so prepare-* steps
-          // regenerate fresh data instead of short-circuiting on stale links.
-          keywordResearchId: null,
+          // Unlink keyword research only when prepare-keywords will regenerate it.
+          // Unlink content strategy unconditionally — it is always rebuilt from config.
+          ...(canAutoGenKw ? { keywordResearchId: null } : {}),
           contentStrategyId: null,
           // Save overrides if provided
           ...(body.overrides?.clientBrief ? { clientBrief: body.overrides.clientBrief } : {}),
