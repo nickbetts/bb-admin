@@ -54,7 +54,7 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { injectEditorScript, removeEditorScript, applyTextEdit } from "@/lib/lp-editor-inject";
+import { injectEditorScript, removeEditorScript, applyTextEdit, deleteElementByCssSelector } from "@/lib/lp-editor-inject";
 import { parseSections, reorderSections, duplicateSection, deleteSection, replaceSection, setSectionAnimation, type LPSection } from "@/lib/lp-section-parser";
 import { ANIMATION_PRESETS, injectAnimations } from "@/lib/lp-animations";
 import { PortalPublishToggle } from "@/components/portal/PortalPublishToggle";
@@ -557,7 +557,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
     [id, pushHistory],
   );
 
-  // ── NEW: Listen for text-edit messages from iframe ────────────────────────
+  // ── NEW: Listen for text-edit / delete messages from iframe ─────────────
   useEffect(() => {
     const handler = (e: MessageEvent) => {
       if (e.data?.type === "lp-text-edit") {
@@ -566,6 +566,12 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
           const updated = applyTextEdit(previewHtml, oldText, newText);
           if (updated !== previewHtml) updateHtml(updated);
         }
+      }
+      if (e.data?.type === "lp-delete-element") {
+        const { selector } = e.data as { selector: string };
+        if (!selector) return;
+        const updated = deleteElementByCssSelector(previewHtml, selector);
+        if (updated !== previewHtml) updateHtml(updated);
       }
     };
     window.addEventListener("message", handler);
