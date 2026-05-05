@@ -385,14 +385,20 @@ const SEMRUSH_TRACKING_BASE = "https://api.semrush.com/reports/v1/projects";
 
 export async function getSemrushTrackedKeywords(
   campaignId: string,
+  compareDate?: string, // YYYYMMDD — when provided, Be field is populated with positions at that date
 ): Promise<SemrushTrackedKeyword[]> {
   const apiKey = getApiKey();
-  const qs = [
+  const qsParts = [
     `key=${encodeURIComponent(apiKey)}`,
     `action=report`,
     `type=tracking_position_organic`,
     `display_limit=200`,
-  ].join("&");
+  ];
+  if (compareDate) {
+    const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    qsParts.push(`date=${today}`, `compare_date=${compareDate}`);
+  }
+  const qs = qsParts.join("&");
 
   try {
     const response = await axios.get<Record<string, unknown>>(

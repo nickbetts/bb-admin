@@ -12,6 +12,13 @@ const TRACKING_TTL = 24;
 // Max concurrent SEMrush + DB operations at any one time
 const CONCURRENCY = 5;
 
+/** Returns a date N days ago as YYYYMMDD string. */
+function daysAgoYYYYMMDD(n: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return d.toISOString().slice(0, 10).replace(/-/g, "");
+}
+
 interface CellData {
   position: number | null;
   previousPosition: number | null;
@@ -63,6 +70,9 @@ export async function GET(request: NextRequest) {
   const cells: Record<string, Record<string, CellData>> = {};
   for (const keyword of keywords) cells[keyword] = {};
 
+  // Compare against 30 days ago for position deltas
+  const compareDate = daysAgoYYYYMMDD(30);
+
   // Pre-fetch campaign data for all clients that have campaigns (one call per client)
   const campaignMaps = new Map<string, Map<string, { position: number | null; previousPosition: number | null; searchVolume: number; url: string }>>();
 
@@ -73,15 +83,18 @@ export async function GET(request: NextRequest) {
         const campaignId = client.campaignIds[0];
         try {
           const tracked = await withApiCache(
-            `kwtracker:tracked:${campaignId}`,
+            `kwtracker:tracked:${campaignId}:${compareDate}`,
             TRACKING_TTL,
-            () => getSemrushTrackedKeywords(campaignId)
+            () => getSemrushTrackedKeywords(campaignId, compareDate)
           );
           const map = new Map<string, { position: number | null; previousPosition: number | null; searchVolume: number; url: string }>();
           for (const kw of tracked) {
+            // position=0 from SEMrush means "not in top 100" — treat as null
+            const pos = kw.position === 0 ? null : kw.position;
+            const prevPos = kw.previousPosition === 0 ? null : kw.previousPosition;
             map.set(kw.keyword.toLowerCase().trim(), {
-              position: kw.position,
-              previousPosition: kw.previousPosition,
+              position: pos,
+              previousPosition: prevPos,
               searchVolume: kw.searchVolume,
               url: kw.url,
             });
