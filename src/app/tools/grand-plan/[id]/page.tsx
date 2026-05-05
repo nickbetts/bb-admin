@@ -1828,7 +1828,7 @@ export default function GrandPlanViewPage({ params }: Props) {
               </div>
             )}
             {!iframeLoaded && <DocumentSkeleton />}
-            <div style={{ display: "flex", ...(viewMode === "presentation" ? { height: "80vh" } : {}) }}>
+            <div style={viewMode === "presentation" ? { display: "flex", height: "80vh" } : {}}>
               <iframe
                 ref={iframeRef}
                 src={viewMode === "presentation" && plan.presentationGeneratedAt
@@ -1839,10 +1839,11 @@ export default function GrandPlanViewPage({ params }: Props) {
                   height: viewMode === "presentation" ? "100%" : undefined,
                   border: "none",
                   display: "block",
+                  width: "100%",
                   transition: "flex-basis .25s",
                 }}
                 title={viewMode === "presentation" ? `${plan.title} (Presentation)` : plan.title}
-                sandbox={viewMode === "presentation" ? "allow-scripts allow-same-origin" : "allow-scripts"}
+                sandbox={viewMode === "presentation" ? "allow-scripts allow-same-origin" : "allow-scripts allow-modals"}
                 onLoad={() => {
                   try {
                     const body = iframeRef.current?.contentDocument?.body;
