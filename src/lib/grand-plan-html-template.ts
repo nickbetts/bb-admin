@@ -4069,15 +4069,24 @@ window.addEventListener('message',function(event){
 
 // Iframe → parent: announce ready and surface the list of section ids so the
 // React shell can build a TOC even if the planDataJson is unavailable.
+// Fire inside rAF so layout (including font-swap reflow) is stable before
+// we measure scrollHeight.
 (function(){
   try{
     var ids=Array.from(document.querySelectorAll('section.section[id]')).map(function(s){
       var heading=s.querySelector('h2');
       return {id:s.id,label:heading?heading.textContent.trim():s.id};
     });
-    if(window.parent&&window.parent!==window){
-      window.parent.postMessage({type:'gp:ready',sections:ids,height:document.body.scrollHeight},'*');
+    function send(){
+      try{
+        if(window.parent&&window.parent!==window){
+          window.parent.postMessage({type:'gp:ready',sections:ids,height:document.body.scrollHeight},'*');
+        }
+      }catch(e){/* ignore */}
     }
+    if(typeof requestAnimationFrame==='function'){requestAnimationFrame(send);}else{send();}
+    // Re-send after web fonts load — Inter swap can reflow the page height.
+    if(document.fonts&&document.fonts.ready){document.fonts.ready.then(send).catch(function(){});}
   }catch(e){/* ignore */}
 })();
 

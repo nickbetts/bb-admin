@@ -1843,7 +1843,7 @@ export default function GrandPlanViewPage({ params }: Props) {
                   transition: "flex-basis .25s",
                 }}
                 title={viewMode === "presentation" ? `${plan.title} (Presentation)` : plan.title}
-                sandbox={viewMode === "presentation" ? "allow-scripts allow-same-origin" : "allow-scripts allow-modals"}
+                sandbox={viewMode === "presentation" ? "allow-scripts allow-same-origin" : "allow-scripts allow-modals allow-same-origin"}
                 onLoad={() => {
                   try {
                     const body = iframeRef.current?.contentDocument?.body;
