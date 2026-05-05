@@ -63,9 +63,9 @@ export async function POST(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    if (plan.userId !== session.user.id && session.user.role !== "admin") {
+    if (plan.userId !== session.user.id && !session.user.permissions.includes("grand_plan.edit_any")) {
       console.error(
-        `${TAG} ownership mismatch — plan.userId="${plan.userId}" session.user.id="${session.user.id}" role="${session.user.role}"`
+        `${TAG} ownership mismatch — plan.userId="${plan.userId}" session.user.id="${session.user.id}" permissions=${JSON.stringify(session.user.permissions)}`
       );
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }

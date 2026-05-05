@@ -142,7 +142,7 @@ export async function PATCH(
     select: { userId: true, presentationDataJson: true },
   });
   if (!plan) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (plan.userId !== session.user.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (plan.userId !== session.user.id && !session.user.permissions.includes("grand_plan.edit_any")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   if (!plan.presentationDataJson) return NextResponse.json({ error: "No presentation data" }, { status: 400 });
 
   let presData: PresentationData;
