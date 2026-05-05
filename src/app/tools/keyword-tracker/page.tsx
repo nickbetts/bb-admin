@@ -62,6 +62,19 @@ function positionColor(pos: number | null): string {
   return "#b91c1c";
 }
 
+function fmtVolume(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(n >= 10_000 ? 0 : 1)}K`;
+  return String(n);
+}
+
+function avgVolume(cells: Record<string, CellData> | undefined): string {
+  if (!cells) return "–";
+  const vols = Object.values(cells).map((c) => c.searchVolume).filter((v) => v > 0);
+  if (vols.length === 0) return "–";
+  return fmtVolume(Math.round(vols.reduce((a, b) => a + b, 0) / vols.length));
+}
+
 function DeltaBadge({ delta }: { delta: number | null }) {
   if (!delta) return null;
   return (
@@ -462,6 +475,10 @@ export default function KeywordTrackerPage() {
                       <th style={{ padding: "10px 16px", textAlign: "left", fontSize: 12, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em", borderBottom: "1px solid var(--border)", borderRight: "1px solid var(--border)", position: "sticky", top: 0, left: 0, background: "var(--bg)", zIndex: 4, minWidth: 200 }}>
                         Keyword
                       </th>
+                      {/* Avg volume — sticky, sits right after keyword col */}
+                      <th style={{ padding: "10px 12px", textAlign: "center", fontSize: 12, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em", borderBottom: "1px solid var(--border)", borderRight: "1px solid var(--border)", position: "sticky", top: 0, left: 200, background: "var(--bg)", zIndex: 4, minWidth: 80, whiteSpace: "nowrap" }}>
+                        Avg Vol
+                      </th>
                       {matrix.clients.map((c) => (
                         <th key={c.domain} style={{ padding: "10px 14px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em", borderBottom: "1px solid var(--border)", borderRight: "1px solid var(--border)", minWidth: 110, position: "sticky", top: 0, background: "var(--bg)", zIndex: 3 }}>
                           <div style={{ fontWeight: 700, color: "var(--text)", fontSize: 12 }}>{c.name}</div>
@@ -475,6 +492,10 @@ export default function KeywordTrackerPage() {
                       <tr key={kw} style={{ background: i % 2 === 0 ? "var(--surface)" : "transparent" }}>
                         <td style={{ padding: "10px 16px", fontSize: 13, fontWeight: 500, color: "var(--text)", borderBottom: "1px solid var(--border)", borderRight: "1px solid var(--border)", position: "sticky", left: 0, background: i % 2 === 0 ? "var(--surface)" : "var(--bg)", zIndex: 1 }}>
                           {kw}
+                        </td>
+                        {/* Avg search volume across all clients */}
+                        <td style={{ padding: "10px 12px", textAlign: "center", fontSize: 12, fontWeight: 600, color: "var(--text-2)", borderBottom: "1px solid var(--border)", borderRight: "1px solid var(--border)", position: "sticky", left: 200, background: i % 2 === 0 ? "var(--surface)" : "var(--bg)", zIndex: 1, whiteSpace: "nowrap" }}>
+                          {avgVolume(matrix.cells[kw])}
                         </td>
                         {matrix.clients.map((c) => (
                           <MatrixCell key={c.domain} data={matrix.cells[kw]?.[c.domain]} />
