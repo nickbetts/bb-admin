@@ -330,15 +330,20 @@ const DECK_JS = `
   var prevBtn = document.getElementById('navPrev');
   var nextBtn = document.getElementById('navNext');
   var progress = document.getElementById('navProgress');
+  function notifyParent(){
+    try{ if(window.parent&&window.parent!==window) window.parent.postMessage({type:'pres:slide-change',index:current,total:slides.length},'*'); }catch(e){}
+  }
   function render(){
     slides.forEach(function(s,i){ s.classList.toggle('is-active', i===current); });
     if(prevBtn) prevBtn.disabled = current===0;
     if(nextBtn) nextBtn.disabled = current===slides.length-1;
     if(progress) progress.textContent = (current+1)+' / '+slides.length;
     try{ history.replaceState(null,'','#'+(current+1)); }catch(e){}
+    notifyParent();
   }
   function go(i){ current = Math.max(0, Math.min(slides.length-1, i)); render(); }
   document.addEventListener('keydown', function(e){
+    if(e.target&&(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')) return;
     if(e.key==='ArrowRight' || e.key===' ' || e.key==='PageDown') { go(current+1); e.preventDefault(); }
     else if(e.key==='ArrowLeft' || e.key==='PageUp') { go(current-1); e.preventDefault(); }
     else if(e.key==='Home') { go(0); e.preventDefault(); }
@@ -355,6 +360,12 @@ const DECK_JS = `
     if(Math.abs(dx)>50){ go(current + (dx<0 ? 1 : -1)); }
     touchX = null;
   }, {passive:true});
+  // Listen for parent commands (goto, sync)
+  window.addEventListener('message', function(event){
+    var d=event&&event.data;
+    if(!d||typeof d!=='object') return;
+    if(d.type==='pres:goto-slide'&&typeof d.index==='number') go(d.index);
+  });
   // Initial slide from hash
   var h = parseInt((location.hash||'').replace('#',''),10);
   if(!isNaN(h) && h>=1 && h<=slides.length){ current = h-1; }

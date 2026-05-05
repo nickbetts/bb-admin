@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import {
   generatePresentation,
   type PresentationData,
+  type PresentationSlide,
 } from "@/lib/grand-plan-presentation-generator";
 import { renderPresentationHtml } from "@/lib/grand-plan-presentation-template";
 import type { GrandPlanData } from "@/lib/grand-plan-generator";
@@ -114,4 +115,150 @@ export async function POST(
     console.error(`[grand-plan:${id}] presentation error:`, error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
+}
+
+/**
+ * PATCH — edit presentation data: update text fields, reorder/delete slides,
+ * add/remove items within slides (pillars, steps, audiences, channels, etc.)
+ *
+ * Body: { action, ...actionPayload }
+ * Actions: cover | slide-field | slide-delete | slide-move |
+ *          item-update | item-add | item-delete
+ */
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { id } = await params;
+  const body = await request.json() as Record<string, unknown>;
+  const { action } = body;
+  if (typeof action !== "string") return NextResponse.json({ error: "action required" }, { status: 400 });
+
+  const plan = await prisma.grandPlan.findUnique({
+    where: { id },
+    select: { userId: true, presentationDataJson: true },
+  });
+  if (!plan) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (plan.userId !== session.user.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!plan.presentationDataJson) return NextResponse.json({ error: "No presentation data" }, { status: 400 });
+
+  let presData: PresentationData;
+  try {
+    presData = JSON.parse(plan.presentationDataJson) as PresentationData;
+  } catch {
+    return NextResponse.json({ error: "Corrupted presentation data" }, { status: 400 });
+  }
+
+  switch (action) {
+    case "cover": {
+      const field = body.field as string;
+      const value = body.value as string;
+      if (!field) return NextResponse.json({ error: "field required" }, { status: 400 });
+      (presData.cover as Record<string, string>)[field] = value ?? "";
+      break;
+    }
+    case "slide-field": {
+      const idx = body.slideIndex as number;
+      const field = body.field as string;
+      const value = body.value as string | undefined;
+      const slide = presData.slides[idx];
+      if (!slide) return NextResponse.json({ error: "Slide not found" }, { status: 404 });
+      const slideAny = slide as unknown as Record<string, unknown>;
+      if (field.includes(".")) {
+        const [parent, child] = field.split(".");
+        const obj = (slideAny[parent] as Record<string, string>) ?? {};
+        obj[child] = value ?? "";
+        slideAny[parent] = obj;
+      } else {
+        slideAny[field] = value || undefined;
+      }
+      break;
+    }
+    case "slide-delete": {
+      const idx = body.slideIndex as number;
+      if (idx < 0 || idx >= presData.slides.length) return NextResponse.json({ error: "Slide not found" }, { status: 404 });
+      presData.slides.splice(idx, 1);
+      break;
+    }
+    case "slide-move": {
+      const idx = body.slideIndex as number;
+      const dir = body.direction as string;
+      const newIdx = dir === "up" ? idx - 1 : idx + 1;
+      if (newIdx < 0 || newIdx >= presData.slides.length) break;
+      [presData.slides[idx], presData.slides[newIdx]] = [presData.slides[newIdx], presData.slides[idx]];
+      break;
+    }
+    case "slide-add": {
+      const afterIndex = typeof body.afterIndex === "number" ? body.afterIndex : presData.slides.length - 1;
+      const kind = (body.kind as PresentationSlide["kind"]) ?? "headline";
+      const title = (body.title as string) ?? "New slide";
+      const newSlide: PresentationSlide = {
+        id: `slide-${Date.now()}`,
+        title,
+        kind,
+        eyebrow: "",
+      };
+      presData.slides.splice(afterIndex + 1, 0, newSlide);
+      break;
+    }
+    case "item-update": {
+      const idx = body.slideIndex as number;
+      const itemType = body.itemType as string;
+      const itemIndex = body.itemIndex as number;
+      const field = body.field as string;
+      const value = body.value as string;
+      const slide = presData.slides[idx];
+      if (!slide) return NextResponse.json({ error: "Slide not found" }, { status: 404 });
+      const slideAny2 = slide as unknown as Record<string, Record<string, string>[]>;
+      const arr = slideAny2[itemType];
+      if (arr?.[itemIndex]) arr[itemIndex][field] = value;
+      break;
+    }
+    case "item-add": {
+      const idx = body.slideIndex as number;
+      const itemType = body.itemType as string;
+      const slide = presData.slides[idx];
+      if (!slide) return NextResponse.json({ error: "Slide not found" }, { status: 404 });
+      const defaults: Record<string, Record<string, string>> = {
+        pillars: { title: "New pillar", body: "" },
+        steps: { title: "New step", detail: "" },
+        audiences: { name: "New audience", insight: "" },
+        channels: { name: "New channel", role: "" },
+        phases: { label: "New phase", items: "[]" },
+      };
+      const slideAny3 = slide as unknown as Record<string, unknown[]>;
+      const existing = slideAny3[itemType];
+      if (Array.isArray(existing)) {
+        existing.push(defaults[itemType] ?? { label: "New item" });
+      } else {
+        slideAny3[itemType] = [defaults[itemType] ?? { label: "New item" }];
+      }
+      break;
+    }
+    case "item-delete": {
+      const idx = body.slideIndex as number;
+      const itemType = body.itemType as string;
+      const itemIndex = body.itemIndex as number;
+      const slide = presData.slides[idx];
+      if (!slide) return NextResponse.json({ error: "Slide not found" }, { status: 404 });
+      const slideAny4 = slide as unknown as Record<string, unknown[]>;
+      const arr4 = slideAny4[itemType];
+      if (Array.isArray(arr4)) arr4.splice(itemIndex, 1);
+      break;
+    }
+    default:
+      return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 });
+  }
+
+  const html = renderPresentationHtml(presData);
+
+  await prisma.grandPlan.update({
+    where: { id },
+    data: { presentationHtml: html, presentationDataJson: JSON.stringify(presData) },
+  });
+
+  return NextResponse.json({ ok: true, presentationDataJson: JSON.stringify(presData) });
 }

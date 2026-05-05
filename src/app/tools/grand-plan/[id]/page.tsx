@@ -82,6 +82,7 @@ interface GrandPlanFull {
   generatedHtml: string | null;
   planDataJson: string | null;
   presentationGeneratedAt: string | null;
+  presentationDataJson: string | null;
   clientBrief: string | null;
   shareToken: string | null;
   sharePassword: string | null;
@@ -141,6 +142,13 @@ export default function GrandPlanViewPage({ params }: Props) {
   const [viewMode, setViewMode] = useState<"plan" | "presentation">("plan");
   const [presentationBusy, setPresentationBusy] = useState(false);
   const [presentationCacheBust, setPresentationCacheBust] = useState(0);
+  const [presentationEditMode, setPresentationEditMode] = useState(false);
+  const [presentationData, setPresentationData] = useState<import("@/lib/grand-plan-presentation-generator").PresentationData | null>(null);
+  const [activeSlideIndex, setActiveSlideIndex] = useState(0);
+  const [presEditTab, setPresEditTab] = useState<"refine" | "fields" | "manage">("refine");
+  const [slideRefinePrompt, setSlideRefinePrompt] = useState("");
+  const [slideRefining, setSlideRefining] = useState(false);
+  const [presSaving, setPresSaving] = useState(false);
 
   // Share state
   const [sharingBusy, setSharingBusy] = useState(false);
@@ -232,6 +240,9 @@ export default function GrandPlanViewPage({ params }: Props) {
           iframeRef.current.style.height = Math.max(data.height, 600) + "px";
         }
       }
+      if (data.type === "pres:slide-change" && typeof data.index === "number") {
+        setActiveSlideIndex(data.index);
+      }
       if (data.type === "gp:save-keywords") {
         handleSaveKeywords(data.agIndex as number, data.agName as string, data.keywords as string[]);
       }
@@ -278,6 +289,65 @@ export default function GrandPlanViewPage({ params }: Props) {
       toast("Saved", "success");
     } catch {
       toast("Failed to save", "error");
+    }
+  }
+
+  function enterPresentationEditMode(gp: GrandPlanFull) {
+    if (!gp.presentationDataJson) return;
+    try {
+      const parsed = JSON.parse(gp.presentationDataJson) as import("@/lib/grand-plan-presentation-generator").PresentationData;
+      setPresentationData(parsed);
+      setPresentationEditMode(true);
+      setPresEditTab("refine");
+      setActiveSlideIndex(0);
+    } catch {
+      toast("Could not load presentation data", "error");
+    }
+  }
+
+  async function savePresField(action: string, payload: Record<string, unknown>) {
+    setPresSaving(true);
+    try {
+      const res = await fetch(`/api/tools/grand-plan/${id}/presentation`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, ...payload }),
+      });
+      if (!res.ok) throw new Error("Save failed");
+      const result = await res.json();
+      const updated = JSON.parse(result.presentationDataJson) as import("@/lib/grand-plan-presentation-generator").PresentationData;
+      setPresentationData(updated);
+      setPresentationCacheBust((n) => n + 1);
+    } catch {
+      toast("Failed to save", "error");
+    } finally {
+      setPresSaving(false);
+    }
+  }
+
+  async function refineSlide(slideIndex: number, prompt: string) {
+    if (!prompt.trim()) return;
+    setSlideRefining(true);
+    try {
+      const res = await fetch(`/api/tools/grand-plan/${id}/presentation/refine-slide`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slideIndex, prompt }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(err.error ?? "Refine failed");
+      }
+      const result = await res.json();
+      const updated = JSON.parse(result.presentationDataJson) as import("@/lib/grand-plan-presentation-generator").PresentationData;
+      setPresentationData(updated);
+      setPresentationCacheBust((n) => n + 1);
+      setSlideRefinePrompt("");
+      toast("Slide refined", "success");
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "Refine failed", "error");
+    } finally {
+      setSlideRefining(false);
     }
   }
 
@@ -1728,6 +1798,21 @@ export default function GrandPlanViewPage({ params }: Props) {
                       Updated {new Date(plan.presentationGeneratedAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
                     </span>
                     <div style={{ flex: 1 }} />
+                    <button
+                      type="button"
+                      className={`btn btn-sm ${presentationEditMode ? "btn-primary" : "btn-ghost"}`}
+                      style={{ gap: 5 }}
+                      onClick={() => {
+                        if (presentationEditMode) {
+                          setPresentationEditMode(false);
+                        } else {
+                          enterPresentationEditMode(plan);
+                        }
+                      }}
+                    >
+                      <Pencil style={{ width: 13, height: 13 }} aria-hidden />
+                      {presentationEditMode ? "Done editing" : "Edit slides"}
+                    </button>
                     <a
                       href={`/api/tools/grand-plan/${plan.id}/presentation?ts=${presentationCacheBust}`}
                       target="_blank"
@@ -1743,33 +1828,239 @@ export default function GrandPlanViewPage({ params }: Props) {
               </div>
             )}
             {!iframeLoaded && <DocumentSkeleton />}
-            <iframe
-              ref={iframeRef}
-              src={viewMode === "presentation" && plan.presentationGeneratedAt
-                ? `/api/tools/grand-plan/${plan.id}/presentation?ts=${presentationCacheBust}`
-                : blobUrl ?? undefined}
-              style={{
-                width: "100%",
-                height: "80vh",
-                border: "none",
-                display: "block",
-              }}
-              title={viewMode === "presentation" ? `${plan.title} (Presentation)` : plan.title}
-              sandbox={viewMode === "presentation" ? "allow-scripts allow-same-origin" : "allow-scripts"}
-              onLoad={() => {
-                // Fallback in case the in-document script didn't postMessage
-                try {
-                  const body = iframeRef.current?.contentDocument?.body;
-                  if (body && iframeRef.current) {
-                    iframeRef.current.style.height = Math.max(body.scrollHeight, 600) + "px";
+            <div style={{ display: "flex", height: "80vh" }}>
+              <iframe
+                ref={iframeRef}
+                src={viewMode === "presentation" && plan.presentationGeneratedAt
+                  ? `/api/tools/grand-plan/${plan.id}/presentation?ts=${presentationCacheBust}`
+                  : blobUrl ?? undefined}
+                style={{
+                  flex: presentationEditMode && viewMode === "presentation" ? "0 0 60%" : "1 1 100%",
+                  height: viewMode === "presentation" ? "100%" : undefined,
+                  border: "none",
+                  display: "block",
+                  transition: "flex-basis .25s",
+                }}
+                title={viewMode === "presentation" ? `${plan.title} (Presentation)` : plan.title}
+                sandbox={viewMode === "presentation" ? "allow-scripts allow-same-origin" : "allow-scripts"}
+                onLoad={() => {
+                  try {
+                    const body = iframeRef.current?.contentDocument?.body;
+                    if (body && iframeRef.current && viewMode !== "presentation") {
+                      iframeRef.current.style.height = Math.max(body.scrollHeight, 600) + "px";
+                    }
+                  } catch {
+                    /* cross-origin */
                   }
-                } catch {
-                  /* cross-origin */
-                }
-                // If postMessage hasn't fired, treat as loaded after 500ms
-                setTimeout(() => setIframeLoaded(true), 500);
-              }}
-            />
+                  setTimeout(() => setIframeLoaded(true), 500);
+                }}
+              />
+              {/* ── Presentation edit sidebar ──────────────────────────── */}
+              {presentationEditMode && viewMode === "presentation" && presentationData && (() => {
+                const iscover = activeSlideIndex === 0;
+                const slide = !iscover && presentationData.slides[activeSlideIndex - 1];
+                const totalSlides = presentationData.slides.length + 1;
+
+                const tabBtn = (tab: typeof presEditTab, label: string) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => setPresEditTab(tab)}
+                    style={{
+                      padding: "5px 10px", fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer", borderRadius: 6,
+                      background: presEditTab === tab ? "var(--accent)" : "transparent",
+                      color: presEditTab === tab ? "#fff" : "var(--text-3)",
+                    }}
+                  >{label}</button>
+                );
+
+                const fieldInput = (label: string, value: string | undefined, onSave: (v: string) => void) => (
+                  <label key={label} style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: ".05em" }}>{label}</span>
+                    <textarea
+                      defaultValue={value ?? ""}
+                      rows={2}
+                      style={{ fontSize: 13, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", resize: "vertical", fontFamily: "inherit" }}
+                      onBlur={(e) => { const v = e.currentTarget.value.trim(); if (v !== (value ?? "")) onSave(v); }}
+                    />
+                  </label>
+                );
+
+                return (
+                  <div style={{ flex: "0 0 40%", borderLeft: "1px solid var(--border)", background: "var(--bg)", overflowY: "auto", display: "flex", flexDirection: "column" }}>
+                    {/* Slide nav header */}
+                    <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                      <button type="button" className="btn btn-ghost btn-sm" style={{ padding: "2px 8px" }}
+                        disabled={activeSlideIndex === 0}
+                        onClick={() => {
+                          const newIdx = activeSlideIndex - 1;
+                          setActiveSlideIndex(newIdx);
+                          iframeRef.current?.contentWindow?.postMessage({ type: "pres:goto-slide", index: newIdx }, "*");
+                        }}>←</button>
+                      <span style={{ fontSize: 12, color: "var(--text-2)", flex: 1, textAlign: "center", fontWeight: 600 }}>
+                        {iscover ? "Cover slide" : `Slide ${activeSlideIndex} of ${totalSlides - 1}`}
+                        {slide && ` · ${(slide as import("@/lib/grand-plan-presentation-generator").PresentationSlide).title}`}
+                      </span>
+                      <button type="button" className="btn btn-ghost btn-sm" style={{ padding: "2px 8px" }}
+                        disabled={activeSlideIndex === totalSlides - 1}
+                        onClick={() => {
+                          const newIdx = activeSlideIndex + 1;
+                          setActiveSlideIndex(newIdx);
+                          iframeRef.current?.contentWindow?.postMessage({ type: "pres:goto-slide", index: newIdx }, "*");
+                        }}>→</button>
+                    </div>
+                    {/* Tabs */}
+                    <div style={{ padding: "8px 14px", borderBottom: "1px solid var(--border)", display: "flex", gap: 4, flexShrink: 0 }}>
+                      {tabBtn("refine", "✦ Refine AI")}
+                      {tabBtn("fields", "Edit fields")}
+                      {!iscover && tabBtn("manage", "Manage")}
+                    </div>
+                    {/* Tab content */}
+                    <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 12, flex: 1 }}>
+                      {presEditTab === "refine" && (
+                        <>
+                          <p style={{ fontSize: 12, color: "var(--text-3)", margin: 0 }}>
+                            Describe what you want changed on {iscover ? "the cover" : "this slide"} and Claude will rewrite it.
+                          </p>
+                          <textarea
+                            value={slideRefinePrompt}
+                            onChange={(e) => setSlideRefinePrompt(e.target.value)}
+                            rows={5}
+                            placeholder={iscover ? "e.g. Change the subtitle to focus on summer campaigns…" : "e.g. Split this into 3 sub-sections, one per campaign…"}
+                            style={{ fontSize: 13, padding: "8px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--surface,var(--bg))", color: "var(--text)", resize: "vertical", fontFamily: "inherit" }}
+                            onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { refineSlide(activeSlideIndex === 0 ? -1 : activeSlideIndex - 1, slideRefinePrompt); } }}
+                          />
+                          <button
+                            type="button"
+                            className="btn btn-primary btn-sm"
+                            disabled={slideRefining || !slideRefinePrompt.trim() || iscover}
+                            onClick={() => refineSlide(activeSlideIndex - 1, slideRefinePrompt)}
+                            style={{ alignSelf: "flex-start", gap: 6 }}
+                          >
+                            {slideRefining ? <><Loader2 style={{ width: 13, height: 13 }} className="spin" aria-hidden /> Refining…</> : <><Sparkles style={{ width: 13, height: 13 }} aria-hidden /> Refine slide</>}
+                          </button>
+                          {iscover && <p style={{ fontSize: 11, color: "var(--text-4)", margin: 0 }}>AI refine is not available for the cover — use Edit fields to update the title and subtitle.</p>}
+                        </>
+                      )}
+
+                      {presEditTab === "fields" && iscover && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                          {fieldInput("Title", presentationData.cover.title, (v) => savePresField("cover", { field: "title", value: v }))}
+                          {fieldInput("Subtitle", presentationData.cover.subtitle, (v) => savePresField("cover", { field: "subtitle", value: v }))}
+                          {fieldInput("Client name", presentationData.cover.clientName, (v) => savePresField("cover", { field: "clientName", value: v }))}
+                          {fieldInput("Period", presentationData.cover.period, (v) => savePresField("cover", { field: "period", value: v }))}
+                        </div>
+                      )}
+
+                      {presEditTab === "fields" && !iscover && slide && (() => {
+                        const s = slide as import("@/lib/grand-plan-presentation-generator").PresentationSlide;
+                        const si = activeSlideIndex - 1;
+                        const sf = (label: string, field: string, value: string | undefined) =>
+                          fieldInput(label, value, (v) => savePresField("slide-field", { slideIndex: si, field, value: v }));
+
+                        return (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                            {sf("Title", "title", s.title)}
+                            {sf("Eyebrow", "eyebrow", s.eyebrow)}
+                            {(s.kind === "headline" || s.kind === "outcome") && sf("Headline", "headline", s.headline)}
+                            {(s.kind === "headline" || s.kind === "outcome") && sf("Sub-headline", "subhead", s.subhead)}
+                            {s.kind === "outcome" && sf("Metric value", "metric.value", s.metric?.value)}
+                            {s.kind === "outcome" && sf("Metric label", "metric.label", s.metric?.label)}
+                            {s.kind === "investment" && sf("Headline figure", "investment.headlineFigure", s.investment?.headlineFigure)}
+
+                            {/* Array items */}
+                            {(["pillars", "steps", "audiences", "channels"] as const).map((itemType) => {
+                              const items = (s as unknown as Record<string, unknown>)[itemType] as { [k: string]: string }[] | undefined;
+                              if (!items) return null;
+                              const fieldDefs: Record<string, string[]> = {
+                                pillars: ["title", "body"],
+                                steps: ["title", "detail"],
+                                audiences: ["name", "insight"],
+                                channels: ["name", "role"],
+                              };
+                              const fields = fieldDefs[itemType] ?? ["label"];
+                              return (
+                                <div key={itemType}>
+                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                                    <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: ".05em" }}>{itemType}</span>
+                                    <button type="button" className="btn btn-ghost btn-sm" style={{ fontSize: 11, padding: "2px 8px" }}
+                                      onClick={() => savePresField("item-add", { slideIndex: si, itemType })}>+ Add</button>
+                                  </div>
+                                  {items.map((item, ii) => (
+                                    <div key={ii} style={{ background: "var(--surface,rgba(0,0,0,.04))", borderRadius: 8, padding: "8px 10px", marginBottom: 8, border: "1px solid var(--border)" }}>
+                                      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 4 }}>
+                                        <button type="button" style={{ fontSize: 11, color: "var(--text-4)", background: "none", border: "none", cursor: "pointer" }}
+                                          onClick={() => savePresField("item-delete", { slideIndex: si, itemType, itemIndex: ii })}>Remove</button>
+                                      </div>
+                                      {fields.map((f) => (
+                                        <label key={f} style={{ display: "flex", flexDirection: "column", gap: 2, marginBottom: 6 }}>
+                                          <span style={{ fontSize: 10, fontWeight: 600, color: "var(--text-4)", textTransform: "uppercase" }}>{f}</span>
+                                          <textarea
+                                            defaultValue={item[f] ?? ""}
+                                            rows={f === "body" || f === "detail" || f === "insight" || f === "role" ? 3 : 1}
+                                            style={{ fontSize: 12, padding: "4px 6px", borderRadius: 4, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", resize: "vertical", fontFamily: "inherit" }}
+                                            onBlur={(e) => {
+                                              const v = e.currentTarget.value.trim();
+                                              if (v !== (item[f] ?? "")) savePresField("item-update", { slideIndex: si, itemType, itemIndex: ii, field: f, value: v });
+                                            }}
+                                          />
+                                        </label>
+                                      ))}
+                                    </div>
+                                  ))}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
+
+                      {presEditTab === "manage" && !iscover && slide && (() => {
+                        const si = activeSlideIndex - 1;
+                        const totalContent = presentationData.slides.length;
+                        return (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                            <button type="button" className="btn btn-ghost btn-sm" style={{ justifyContent: "flex-start", gap: 8 }}
+                              disabled={si === 0 || presSaving}
+                              onClick={() => savePresField("slide-move", { slideIndex: si, direction: "up" }).then(() => setActiveSlideIndex(activeSlideIndex - 1))}>
+                              ↑ Move slide up
+                            </button>
+                            <button type="button" className="btn btn-ghost btn-sm" style={{ justifyContent: "flex-start", gap: 8 }}
+                              disabled={si === totalContent - 1 || presSaving}
+                              onClick={() => savePresField("slide-move", { slideIndex: si, direction: "down" }).then(() => setActiveSlideIndex(activeSlideIndex + 1))}>
+                              ↓ Move slide down
+                            </button>
+                            <div style={{ borderTop: "1px solid var(--border)", margin: "4px 0" }} />
+                            <button type="button" className="btn btn-ghost btn-sm" style={{ justifyContent: "flex-start", gap: 8 }}
+                              disabled={presSaving}
+                              onClick={async () => {
+                                await savePresField("slide-add", { afterIndex: si, kind: "headline", title: "New slide" });
+                                setActiveSlideIndex(activeSlideIndex + 1);
+                              }}>
+                              + Add slide after this one
+                            </button>
+                            <div style={{ borderTop: "1px solid var(--border)", margin: "4px 0" }} />
+                            <button type="button" className="btn btn-sm" style={{ justifyContent: "flex-start", gap: 8, color: "#ef4444", background: "rgba(239,68,68,.08)", border: "1px solid rgba(239,68,68,.2)" }}
+                              disabled={presSaving}
+                              onClick={async () => {
+                                if (!window.confirm("Delete this slide?")) return;
+                                await savePresField("slide-delete", { slideIndex: si });
+                                setActiveSlideIndex(Math.max(0, activeSlideIndex - 1));
+                              }}>
+                              <Trash2 style={{ width: 13, height: 13 }} aria-hidden /> Delete slide
+                            </button>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                    {presSaving && (
+                      <div style={{ padding: "8px 14px", borderTop: "1px solid var(--border)", fontSize: 11, color: "var(--text-4)", display: "flex", alignItems: "center", gap: 6 }}>
+                        <Loader2 style={{ width: 11, height: 11 }} className="spin" aria-hidden /> Saving…
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}</div>
           </div>
         </div>
       ) : !isGenerating && plan.status !== "failed" ? (
