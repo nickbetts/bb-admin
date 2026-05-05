@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
       } else {
         tasks.push(async () => {
           const result = await withApiCache(
-            `kwtracker:organic:${domain}:${database}:${kwLower}`,
+            `kwtracker:organic:v2:${domain}:${database}:${kwLower}`,
             TRACKING_TTL,
             () => getKeywordPositionForDomain(domain, kw, database)
           );

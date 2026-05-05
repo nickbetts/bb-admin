@@ -1481,7 +1481,7 @@ export async function getKeywordPositionForDomain(
     domain,
     database,
     display_limit: "1",
-    display_filter: `+|Ph|Eq|${keyword}`,
+    display_filter: `+|Ph|Eq|${keyword.toLowerCase().trim()}`,
   });
   try {
     const response = await axios.get<string>(`${SEMRUSH_BASE_URL}/?${params.toString()}`);
