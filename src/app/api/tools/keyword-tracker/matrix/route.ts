@@ -6,11 +6,11 @@ import { getSemrushTrackedKeywords, getKeywordPositionForDomain } from "@/lib/se
 import type { TrackerClient } from "../config/route";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 const TRACKING_TTL = 24;
 // Max concurrent SEMrush + DB operations at any one time
-const CONCURRENCY = 5;
+const CONCURRENCY = 10;
 
 /** Returns a date N days ago as YYYYMMDD string. */
 function daysAgoYYYYMMDD(n: number): string {
