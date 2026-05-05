@@ -166,7 +166,6 @@ export default function KeywordTrackerPage() {
       .map((k) => k.trim().toLowerCase())
       .filter((k) => k.length > 0);
     const next = Array.from(new Set([...keywords, ...lines]));
-    if (next.length > 50) { toast("Maximum 50 keywords per list", "warning"); return; }
     setKeywords(next);
     setKeywordInput("");
     setIsDirty(true);
@@ -344,7 +343,7 @@ export default function KeywordTrackerPage() {
           <div className="card" style={{ padding: 16 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Keywords</div>
-              <span style={{ fontSize: 11, color: keywords.length > 40 ? "#b91c1c" : "var(--text-3)" }}>{keywords.length}/50</span>
+              <span style={{ fontSize: 11, color: "var(--text-3)" }}>{keywords.length}</span>
             </div>
             <textarea
               value={keywordInput}
@@ -434,9 +433,9 @@ export default function KeywordTrackerPage() {
           )}
 
           {matrix && !running && (
-            <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-              {/* Legend */}
-              <div style={{ padding: "12px 20px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+            <div className="card" style={{ padding: 0 }}>
+              {/* Legend — sticky at top of card, above the scroll area */}
+              <div style={{ padding: "12px 20px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", background: "var(--surface)" }}>
                 <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Position</span>
                 {[
                   { label: "Top 3", bg: "rgba(34,197,94,0.2)", color: "#16a34a" },
@@ -454,15 +453,17 @@ export default function KeywordTrackerPage() {
                 </span>
               </div>
 
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              {/* Scroll container — both axes, thead + first col frozen */}
+              <div style={{ overflow: "auto", maxHeight: "calc(100vh - 280px)" }}>
+                <table style={{ borderCollapse: "collapse", tableLayout: "auto" }}>
                   <thead>
-                    <tr style={{ background: "var(--bg)" }}>
-                      <th style={{ padding: "10px 16px", textAlign: "left", fontSize: 12, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em", borderBottom: "1px solid var(--border)", borderRight: "1px solid var(--border)", position: "sticky", left: 0, background: "var(--bg)", zIndex: 2, minWidth: 200 }}>
+                    <tr>
+                      {/* Top-left corner — frozen both axes */}
+                      <th style={{ padding: "10px 16px", textAlign: "left", fontSize: 12, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em", borderBottom: "1px solid var(--border)", borderRight: "1px solid var(--border)", position: "sticky", top: 0, left: 0, background: "var(--bg)", zIndex: 4, minWidth: 200 }}>
                         Keyword
                       </th>
                       {matrix.clients.map((c) => (
-                        <th key={c.domain} style={{ padding: "10px 14px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em", borderBottom: "1px solid var(--border)", borderRight: "1px solid var(--border)", minWidth: 110 }}>
+                        <th key={c.domain} style={{ padding: "10px 14px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em", borderBottom: "1px solid var(--border)", borderRight: "1px solid var(--border)", minWidth: 110, position: "sticky", top: 0, background: "var(--bg)", zIndex: 3 }}>
                           <div style={{ fontWeight: 700, color: "var(--text)", fontSize: 12 }}>{c.name}</div>
                           <div style={{ fontSize: 10, fontWeight: 400, color: "var(--text-3)", marginTop: 2 }}>{c.domain}</div>
                         </th>
