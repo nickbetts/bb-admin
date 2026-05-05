@@ -1468,32 +1468,35 @@ export interface KeywordPositionResult {
 export async function getKeywordPositionForDomain(
   domain: string,
   keyword: string,
-  database: string = "uk"
+  database: string = "uk",
+  date?: string // YYYYMM01 format — if provided, returns data for that month's snapshot
 ): Promise<KeywordPositionResult> {
   const apiKey = getApiKey();
-  const params = new URLSearchParams({
+  const paramObj: Record<string, string> = {
     type: "domain_organic",
     key: apiKey,
-    export_columns: "Ph,Po,Pp,Nq,Ur",
+    export_columns: "Ph,Po,Nq,Ur",
     domain,
     database,
     display_limit: "1",
     display_filter: `+|Ph|Eq|${keyword.toLowerCase().trim()}`,
-  });
+  };
+  if (date) paramObj.date = date;
+  const params = new URLSearchParams(paramObj);
   try {
     const response = await axios.get<string>(`${SEMRUSH_BASE_URL}/?${params.toString()}`);
     const lines = (response.data as string).trim().split("\n");
     if (lines.length < 2 || lines[0].startsWith("ERROR")) {
       return { keyword, position: null, previousPosition: null, searchVolume: 0, url: "" };
     }
-    const [ph, po, pp, nq, ur] = lines[1].split(";");
+    const [ph, po, nq, ur] = lines[1].split(";");
     if ((ph || "").toLowerCase().trim() !== keyword.toLowerCase().trim()) {
       return { keyword, position: null, previousPosition: null, searchVolume: 0, url: "" };
     }
     return {
       keyword,
       position: parseInt(po) || null,
-      previousPosition: parseInt(pp) || null,
+      previousPosition: null, // caller computes this from a separate dated call
       searchVolume: parseInt(nq) || 0,
       url: (ur || "").trim(),
     };

@@ -13,11 +13,19 @@ const VOLUME_TTL = 24 * 7; // volumes change slowly, cache for a week
 // Max concurrent SEMrush + DB operations at any one time
 const CONCURRENCY = 10;
 
-/** Returns a date N days ago as YYYYMMDD string. */
+/** Returns a date N days ago as YYYYMMDD string (for Position Tracking API). */
 function daysAgoYYYYMMDD(n: number): string {
   const d = new Date();
   d.setDate(d.getDate() - n);
   return d.toISOString().slice(0, 10).replace(/-/g, "");
+}
+
+/** Returns the first day of the previous month as YYYYMM01 (for domain_organic date param). */
+function prevMonthYYYYMM01(): string {
+  const d = new Date();
+  d.setDate(1);
+  d.setMonth(d.getMonth() - 1);
+  return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}01`;
 }
 
 interface CellData {
@@ -70,7 +78,8 @@ export async function GET(request: NextRequest) {
   const cells: Record<string, Record<string, CellData>> = {};
   for (const keyword of keywords) cells[keyword] = {};
 
-  const compareDate = daysAgoYYYYMMDD(30);
+  const compareDate = daysAgoYYYYMMDD(30);  // for Position Tracking API
+  const prevMonth = prevMonthYYYYMM01();     // for domain_organic historical lookup
 
   // Pre-fetch campaign data — two calls per client (current + 30-days-ago) in parallel
   // so we get reliable deltas without relying on the Be field.
@@ -137,21 +146,30 @@ export async function GET(request: NextRequest) {
         cells[kw][domain] = { ...fromCampaign, delta };
       } else {
         tasks.push(async () => {
-          const result = await withApiCache(
-            `kwtracker:organic:v2:${domain}:${database}:${kwLower}`,
-            TRACKING_TTL,
-            () => getKeywordPositionForDomain(domain, kw, database)
-          );
+          // Fetch current and previous month in parallel for delta calculation
+          const [current, previous] = await Promise.all([
+            withApiCache(
+              `kwtracker:organic:v2:${domain}:${database}:${kwLower}`,
+              TRACKING_TTL,
+              () => getKeywordPositionForDomain(domain, kw, database)
+            ),
+            withApiCache(
+              `kwtracker:organic:prev:${domain}:${database}:${kwLower}:${prevMonth}`,
+              VOLUME_TTL,
+              () => getKeywordPositionForDomain(domain, kw, database, prevMonth)
+            ),
+          ]);
+          const previousPosition = previous.position;
           const delta =
-            result.previousPosition !== null && result.position !== null
-              ? result.previousPosition - result.position
+            previousPosition !== null && current.position !== null
+              ? previousPosition - current.position
               : null;
           cells[kw][domain] = {
-            position: result.position,
-            previousPosition: result.previousPosition,
+            position: current.position,
+            previousPosition,
             delta,
-            searchVolume: result.searchVolume,
-            url: result.url,
+            searchVolume: current.searchVolume || previous.searchVolume,
+            url: current.url,
           };
         });
       }
