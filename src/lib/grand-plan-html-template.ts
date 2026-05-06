@@ -1040,7 +1040,7 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
           ${hiddenNote}${addRowHtml}
           ${agNegPanel}
           <div class="ag-actions">
-            <button class="copy-btn" onclick="copyAgKeywords(this)">Copy all keywords in this group</button>
+            ${isPublicView ? "" : `<button class="copy-btn" onclick="copyAgKeywords(this)">Copy all keywords in this group</button>`}
             ${saveBtn}
           </div>
         </div>
@@ -1067,7 +1067,7 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
         ${isHidden("negatives") ? "" : `<details class="neg-section" data-subsection="negatives">
           <summary class="neg-section-head">
             <h4>Negative Keywords <span class="neg-count-badge">${consolidatedNegatives.length || "none"}</span></h4>
-            ${consolidatedNegatives.length > 0 ? `<button class="copy-btn" onclick="event.stopPropagation();copyAllNegatives(this)">Copy all negatives</button>` : ""}
+            ${!isPublicView && consolidatedNegatives.length > 0 ? `<button class="copy-btn" onclick="event.stopPropagation();copyAllNegatives(this)">Copy all negatives</button>` : ""}
             ${!isPublicView ? `<button class="subsection-delete-btn" type="button" onclick="event.stopPropagation();event.preventDefault();deleteSubsection('negatives', 'Negative Keywords')" title="Delete this subsection">&#xD7;</button>` : ""}
           </summary>
           <div class="neg-section-body">
@@ -1090,7 +1090,7 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
         </details>`}
         <div class="ag-heading-row">
           <h3 class="ag-heading">Ad Groups</h3>
-          <button class="copy-btn" onclick="copyAllCampaignKws(this)">Copy all valid keywords (every group)</button>
+          ${isPublicView ? "" : `<button class="copy-btn" onclick="copyAllCampaignKws(this)">Copy all valid keywords (every group)</button>`}
         </div>
         ${adGroupsHtml}
         ${!isPublicView ? `
@@ -1113,7 +1113,7 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
                   <span class="seed-num">${i + 1}</span>
                   <h4 ${!isPublicView ? `contenteditable="true" spellcheck="false" onclick="event.stopPropagation()" onkeydown="if(event.key==='Enter'){this.blur();event.preventDefault()}"` : ""}>${esc(s.theme)}</h4>
                   <span class="seed-count">${s.phrases.length} phrases</span>
-                  <button class="copy-btn" onclick="event.stopPropagation();copySeedTheme(this)">Copy theme</button>
+                  ${isPublicView ? "" : `<button class="copy-btn" onclick="event.stopPropagation();copySeedTheme(this)">Copy theme</button>`}
                   ${!isPublicView ? `<button class="seed-delete-btn" type="button" onclick="event.stopPropagation();deleteSeedTheme(this)" title="Delete theme">&#xD7;</button>` : ""}
                 </summary>
                 <div class="seed-chip-list">
@@ -1130,7 +1130,7 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
           <div class="seed-section-head">
             <h3>Seed Phrase Suggestions for PPC Research</h3>
             <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-              <button class="copy-btn" onclick="copyAllSeeds(this)">Copy every seed phrase</button>
+              ${isPublicView ? "" : `<button class="copy-btn" onclick="copyAllSeeds(this)">Copy every seed phrase</button>`}
               ${!isPublicView ? `<button class="copy-btn" id="save-seeds-btn" onclick="saveAllSeeds(this)">Save seeds</button>` : ""}
               ${!isPublicView ? `<button class="subsection-delete-btn" type="button" onclick="deleteSubsection('seeds', 'Seed Phrase Suggestions')" title="Delete this subsection">&#xD7;</button>` : ""}
             </div>
