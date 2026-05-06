@@ -403,7 +403,7 @@ body{overflow:hidden}
 /* ── Image layout ──────────────────────────────────────────────────────── */
 .slide-body-content{flex:1;display:flex;flex-direction:column;justify-content:center;min-height:0}
 .slide-image{position:relative;border-radius:16px;overflow:hidden;border:1px solid var(--border);background:rgba(255,255,255,0.03);display:flex;align-items:center;justify-content:center}
-.slide-image img{display:block;max-width:100%;max-height:100%;object-fit:cover;width:100%;height:100%}
+.slide-image img{display:block;max-width:100%;max-height:100%;object-fit:contain;width:100%;height:100%}
 
 .slide.with-image .slide-body{flex:1;display:grid;gap:32px;min-height:0}
 .slide.with-image.image-right .slide-body{grid-template-columns:1.2fr 1fr}
@@ -420,9 +420,9 @@ body{overflow:hidden}
 .slide.with-image.image-background .slide-inner{position:relative;z-index:1}
 
 /* ── Multi-image gallery ───────────────────────────────────────────────── */
-.slide-gallery{position:relative;border-radius:16px;overflow:hidden;display:grid;gap:8px;background:rgba(255,255,255,0.02)}
-.slide-gallery .gallery-tile{overflow:hidden;border-radius:12px;border:1px solid var(--border);background:rgba(255,255,255,0.03);min-height:0}
-.slide-gallery .gallery-tile img{display:block;width:100%;height:100%;object-fit:cover}
+.slide-gallery{position:relative;border-radius:16px;display:grid;gap:8px}
+.slide-gallery .gallery-tile{overflow:hidden;border-radius:12px;border:1px solid var(--border);background:rgba(255,255,255,0.04);min-height:0;display:flex;align-items:center;justify-content:center}
+.slide-gallery .gallery-tile img{display:block;max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain}
 .gallery-2{grid-template-columns:1fr 1fr}
 .gallery-3{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
 .gallery-3 .gallery-tile:nth-child(1){grid-column:1 / 3}
@@ -438,6 +438,8 @@ body{overflow:hidden}
 /* When background, just stack as a single-image cover */
 .slide.with-image.image-background .slide-gallery{display:block}
 .slide.with-image.image-background .slide-gallery .gallery-tile{position:absolute;inset:0;border:none;border-radius:0}
+.slide.with-image.image-background .slide-gallery .gallery-tile img{object-fit:cover;width:100%;height:100%}
+.slide.with-image.image-background .slide-image img{object-fit:cover}
 .slide.with-image.image-background .slide-gallery .gallery-tile:not(:first-child){display:none}
 
 /* ── Density ───────────────────────────────────────────────────────────── */
