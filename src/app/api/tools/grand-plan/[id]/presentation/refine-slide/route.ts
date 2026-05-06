@@ -129,6 +129,8 @@ kind="bullets"   → title, eyebrow, subhead (optional ≤25 words), bullets: [s
 SHARED OPTIONAL FIELDS (any kind may include these):
 - bullets: [string] — supplementary bullet list rendered below the main body
 - image: {url, alt, position} — KEEP the existing image object on the slide unless the user explicitly asks to remove or change it. NEVER invent a new image url. position is one of "left" | "right" | "top" | "background"
+- images: [{url, alt}] — multi-image gallery (max 5). Same rules as image: KEEP existing URLs, never invent new ones. You may rewrite alt text and reorder the array; do not drop entries unless the user asked.
+- imagesPosition: "left" | "right" | "top" | "background" — placement of the gallery (defaults to "right")
 - density: "compact" | "regular" — set to "compact" when copy is heavy and you want smaller type to fit cleanly
 
 LAYOUT JUDGEMENT:
@@ -234,6 +236,32 @@ Return the updated slide JSON only.`;
       if (slide.image) s.image = { ...slide.image, ...s.image, url: slide.image.url };
       else delete s.image;
     }
+    // Same guard for the multi-image gallery — preserve URLs and order, accept alt/position changes only
+    if (Array.isArray(s.images)) {
+      const existingImages = Array.isArray(slide.images) ? slide.images : [];
+      const existingUrls = new Set(existingImages.map((img: { url: string }) => img.url));
+      const cleaned: { url: string; alt?: string }[] = [];
+      const seen = new Set<string>();
+      // Preserve AI's order, but only keep URLs that already existed on the slide
+      for (const img of s.images as Array<{ url?: unknown; alt?: unknown }>) {
+        if (!img || typeof img !== "object") continue;
+        const url = typeof img.url === "string" ? img.url : "";
+        if (!existingUrls.has(url) || seen.has(url)) continue;
+        seen.add(url);
+        const alt = typeof img.alt === "string" ? img.alt : undefined;
+        cleaned.push({ url, alt });
+      }
+      // Re-attach any images the AI dropped, in their original order
+      for (const img of existingImages) {
+        if (!seen.has(img.url)) cleaned.push({ url: img.url, alt: img.alt });
+      }
+      s.images = cleaned.length > 0 ? cleaned : undefined;
+    } else if (Array.isArray(slide.images) && slide.images.length > 0) {
+      // AI returned no images field but the slide had a gallery — restore it
+      s.images = slide.images.map((img: { url: string; alt?: string }) => ({ url: img.url, alt: img.alt }));
+    }
+    // Preserve gallery position metadata if AI didn't return it
+    if (s.imagesPosition === undefined && slide.imagesPosition) s.imagesPosition = slide.imagesPosition;
 
     presData.slides[slideIndex] = updatedSlide;
 

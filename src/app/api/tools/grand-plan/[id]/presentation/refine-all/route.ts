@@ -100,6 +100,8 @@ kind="bullets"    → title, eyebrow, subhead (opt ≤25 words), bullets: [strin
 SHARED OPTIONAL FIELDS (any kind may include these):
 - bullets: [string] — supplementary bullets rendered below the main body of any non-content slide
 - image: {url, alt, position} — KEEP existing image objects on slides that already have one. Do NOT invent or change image URLs. position is "left" | "right" | "top" | "background"
+- images: [{url, alt}] — multi-image gallery (max 5). Same rule: KEEP existing URLs, never invent new ones. You may rewrite alt text and reorder.
+- imagesPosition: "left" | "right" | "top" | "background" — placement of the gallery
 - density: "compact" | "regular" — set "compact" on slides that carry heavy copy so the renderer scales type down
 
 LAYOUT JUDGEMENT:
@@ -167,11 +169,16 @@ Return the complete updated presentation JSON only.`;
 
   const VALID_KINDS = new Set(["headline", "pillars", "outcome", "channels", "timeline", "investment", "audience", "next-steps", "content", "bullets"]);
 
-  // Build a lookup of existing images keyed by slide id so we can preserve
+  // Build lookups of existing images keyed by slide id so we can preserve
   // them and reject any AI-invented image URLs.
   const existingImagesById = new Map<string, PresentationData["slides"][number]["image"]>();
+  const existingGalleryById = new Map<string, NonNullable<PresentationData["slides"][number]["images"]>>();
+  const existingPositionById = new Map<string, NonNullable<PresentationData["slides"][number]["imagesPosition"]>>();
   for (const slide of presData.slides) {
-    if (slide.image && slide.id) existingImagesById.set(slide.id, slide.image);
+    if (!slide.id) continue;
+    if (slide.image) existingImagesById.set(slide.id, slide.image);
+    if (slide.images && slide.images.length > 0) existingGalleryById.set(slide.id, slide.images);
+    if (slide.imagesPosition) existingPositionById.set(slide.id, slide.imagesPosition);
   }
 
   // Ensure every slide has a valid id and kind — don't restore by position so
@@ -189,6 +196,32 @@ Return the complete updated presentation JSON only.`;
       delete (s as PresentationData["slides"][number]).image;
       image = undefined;
     }
+    // Same guard for the multi-image gallery: only allow URLs that existed on the slide
+    let images = s.images;
+    const existingGallery = existingGalleryById.get(id);
+    if (Array.isArray(images)) {
+      const existingUrls = new Set(existingGallery?.map((img) => img.url) ?? []);
+      const cleaned: { url: string; alt?: string }[] = [];
+      const seen = new Set<string>();
+      for (const img of images) {
+        if (!img || typeof img !== "object") continue;
+        const url = typeof img.url === "string" ? img.url : "";
+        if (!existingUrls.has(url) || seen.has(url)) continue;
+        seen.add(url);
+        cleaned.push({ url, alt: typeof img.alt === "string" ? img.alt : undefined });
+      }
+      // Restore any gallery items the AI dropped, in their original order
+      if (existingGallery) {
+        for (const img of existingGallery) {
+          if (!seen.has(img.url)) cleaned.push({ url: img.url, alt: img.alt });
+        }
+      }
+      images = cleaned.length > 0 ? cleaned : undefined;
+    } else if (existingGallery) {
+      // AI returned no images field but the slide had a gallery — restore it
+      images = existingGallery.map((img) => ({ url: img.url, alt: img.alt }));
+    }
+    const imagesPosition = s.imagesPosition ?? existingPositionById.get(id);
     // Coerce bullets to plain strings
     let bullets = s.bullets;
     if (Array.isArray(bullets)) {
@@ -203,7 +236,7 @@ Return the complete updated presentation JSON only.`;
         })
         .filter((x) => x.length > 0);
     }
-    return { ...s, id, kind, image, bullets };
+    return { ...s, id, kind, image, images, imagesPosition, bullets };
   });
 
   const html = renderPresentationHtml(updatedPres);

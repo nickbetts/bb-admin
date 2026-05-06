@@ -319,7 +319,8 @@ export default function GrandPlanViewPage({ params }: Props) {
     }
   }
 
-  async function uploadSlideImage(slideIndex: number, file: File, position: "left" | "right" | "top" | "background" = "right") {
+  async function uploadSlideImage(slideIndex: number, file: File, _position: "left" | "right" | "top" | "background" = "right") {
+    void _position;
     setUploadingImageForSlide(slideIndex);
     try {
       const fd = new FormData();
@@ -333,7 +334,7 @@ export default function GrandPlanViewPage({ params }: Props) {
         throw new Error(err.error ?? "Upload failed");
       }
       const { url } = await res.json() as { url: string };
-      await savePresField("image-set", { slideIndex, url, position, alt: file.name.replace(/\.[a-z0-9]+$/i, "") });
+      await savePresField("images-add", { slideIndex, url, alt: file.name.replace(/\.[a-z0-9]+$/i, "") });
       toast("Image added", "success");
     } catch (err) {
       toast(err instanceof Error ? err.message : "Image upload failed", "error");
@@ -3186,7 +3187,9 @@ function BulletsEditor({
   );
 }
 
-// ─── Image editor ──────────────────────────────────────────────────────────
+// ─── Image gallery editor ─────────────────────────────────────────────────
+
+const MAX_IMAGES_PER_SLIDE = 5;
 
 function ImageEditor({
   slide, si, savePresField, uploadSlideImage, uploading, fileInputRef,
@@ -3198,58 +3201,95 @@ function ImageEditor({
   uploading: boolean;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
 }) {
-  const img = slide.image;
+  // Effective gallery: prefer the array, otherwise fall back to the legacy single image.
+  const gallery: { url: string; alt?: string }[] = slide.images && slide.images.length > 0
+    ? slide.images
+    : slide.image
+      ? [{ url: slide.image.url, alt: slide.image.alt }]
+      : [];
+  const position = slide.imagesPosition ?? slide.image?.position ?? "right";
   const positions: ImagePosition[] = ["right", "left", "top", "background"];
+  const canAddMore = gallery.length < MAX_IMAGES_PER_SLIDE;
+
   return (
-    <div style={{ border: "1px solid var(--border)", borderRadius: 8, padding: 10, display: "flex", flexDirection: "column", gap: 8, background: "var(--surface,rgba(0,0,0,.02))" }}>
+    <div style={{ border: "1px solid var(--border)", borderRadius: 8, padding: 10, display: "flex", flexDirection: "column", gap: 10, background: "var(--surface,rgba(0,0,0,.02))" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
         <ImageIcon style={{ width: 13, height: 13, color: "var(--text-3)" }} aria-hidden />
         <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: ".05em" }}>
-          Image
+          Images {gallery.length > 0 && `(${gallery.length}/${MAX_IMAGES_PER_SLIDE})`}
         </span>
-        {img?.url && (
+        {gallery.length > 0 && (
           <button
             type="button"
             style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-4)", background: "none", border: "none", cursor: "pointer" }}
             onClick={() => savePresField("image-clear", { slideIndex: si })}
-          >Remove</button>
+          >Remove all</button>
         )}
       </div>
-      {img?.url ? (
-        <>
-          <div style={{ position: "relative", borderRadius: 6, overflow: "hidden", border: "1px solid var(--border)", aspectRatio: "16/9", background: "#0b1020" }}>
+
+      {gallery.length === 0 && (
+        <p style={{ fontSize: 11, color: "var(--text-4)", margin: 0 }}>
+          Add up to {MAX_IMAGES_PER_SLIDE} images. The renderer auto-arranges them into a showcase grid and the AI preserves them when refining text.
+        </p>
+      )}
+
+      {gallery.map((img, ii) => (
+        <div key={`${img.url}-${ii}`} style={{ display: "grid", gridTemplateColumns: "80px 1fr", gap: 8, padding: 6, border: "1px solid var(--border)", borderRadius: 6, background: "var(--bg)" }}>
+          <div style={{ position: "relative", borderRadius: 4, overflow: "hidden", aspectRatio: "1/1", background: "#0b1020" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={img.url} alt={img.alt ?? ""} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
           </div>
-          <label style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-            <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: ".05em" }}>Position</span>
-            <select
-              value={img.position ?? "right"}
-              onChange={(e) => savePresField("image-set", { slideIndex: si, url: img.url, alt: img.alt ?? "", position: e.target.value })}
-              style={{ fontSize: 12, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)" }}
-            >
-              {positions.map((p) => (
-                <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
-              ))}
-            </select>
-          </label>
-          <label style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-            <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: ".05em" }}>Alt text</span>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
             <input
               defaultValue={img.alt ?? ""}
-              style={{ fontSize: 12, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)" }}
+              placeholder="Alt text"
+              style={{ fontSize: 12, padding: "4px 6px", borderRadius: 4, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)" }}
               onBlur={(e) => {
                 const v = e.currentTarget.value.trim();
-                if (v !== (img.alt ?? "")) savePresField("image-set", { slideIndex: si, url: img.url, alt: v, position: img.position ?? "right" });
+                if (v !== (img.alt ?? "")) savePresField("images-alt", { slideIndex: si, imageIndex: ii, alt: v });
               }}
             />
-          </label>
-        </>
-      ) : (
-        <p style={{ fontSize: 11, color: "var(--text-4)", margin: 0 }}>
-          Add an image to highlight this slide. The renderer adapts the layout and the AI will keep the image in place when you refine text.
-        </p>
+            <div style={{ display: "flex", gap: 4 }}>
+              <button
+                type="button"
+                disabled={ii === 0}
+                onClick={() => savePresField("images-reorder", { slideIndex: si, fromIndex: ii, direction: "up" })}
+                style={{ fontSize: 11, padding: "2px 6px", border: "1px solid var(--border)", background: "transparent", color: "var(--text-2)", borderRadius: 4, cursor: ii === 0 ? "not-allowed" : "pointer", opacity: ii === 0 ? 0.4 : 1 }}
+                title="Move up"
+              >↑</button>
+              <button
+                type="button"
+                disabled={ii === gallery.length - 1}
+                onClick={() => savePresField("images-reorder", { slideIndex: si, fromIndex: ii, direction: "down" })}
+                style={{ fontSize: 11, padding: "2px 6px", border: "1px solid var(--border)", background: "transparent", color: "var(--text-2)", borderRadius: 4, cursor: ii === gallery.length - 1 ? "not-allowed" : "pointer", opacity: ii === gallery.length - 1 ? 0.4 : 1 }}
+                title="Move down"
+              >↓</button>
+              <div style={{ flex: 1 }} />
+              <button
+                type="button"
+                onClick={() => savePresField("images-remove", { slideIndex: si, imageIndex: ii })}
+                style={{ fontSize: 11, padding: "2px 6px", border: "none", background: "transparent", color: "var(--text-4)", cursor: "pointer" }}
+              >Remove</button>
+            </div>
+          </div>
+        </div>
+      ))}
+
+      {gallery.length > 0 && (
+        <label style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: ".05em" }}>Gallery position</span>
+          <select
+            value={position}
+            onChange={(e) => savePresField("images-position", { slideIndex: si, position: e.target.value })}
+            style={{ fontSize: 12, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)" }}
+          >
+            {positions.map((p) => (
+              <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
+            ))}
+          </select>
+        </label>
       )}
+
       <input
         ref={fileInputRef}
         type="file"
@@ -3259,19 +3299,20 @@ function ImageEditor({
           const file = e.target.files?.[0];
           e.target.value = "";
           if (!file) return;
-          await uploadSlideImage(si, file, img?.position ?? "right");
+          await uploadSlideImage(si, file, position);
         }}
       />
       <button
         type="button"
         className="btn btn-ghost btn-sm"
-        disabled={uploading}
+        disabled={uploading || !canAddMore}
         onClick={() => fileInputRef.current?.click()}
         style={{ alignSelf: "flex-start", gap: 6 }}
+        title={canAddMore ? "" : `Maximum of ${MAX_IMAGES_PER_SLIDE} images per slide`}
       >
         {uploading
           ? <><Loader2 style={{ width: 13, height: 13 }} className="spin" aria-hidden /> Uploading…</>
-          : <><Upload style={{ width: 13, height: 13 }} aria-hidden /> {img?.url ? "Replace image" : "Upload image"}</>}
+          : <><Upload style={{ width: 13, height: 13 }} aria-hidden /> {gallery.length === 0 ? "Upload image" : `Add image (${gallery.length}/${MAX_IMAGES_PER_SLIDE})`}</>}
       </button>
     </div>
   );

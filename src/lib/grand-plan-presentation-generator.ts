@@ -104,8 +104,12 @@ export interface PresentationSlide {
   steps?: { title: string; detail: string }[];
   /** Bullet points (kinds: bullets, content; supplementary on others). */
   bullets?: string[];
-  /** Optional slide image. */
+  /** Single image (legacy). When `images` is also set, `images` wins. */
   image?: SlideImage;
+  /** Multi-image showcase (max 5). Each item only needs url + alt — placement is shared. */
+  images?: { url: string; alt?: string }[];
+  /** Where the image / gallery sits relative to the body. Defaults to "right". */
+  imagesPosition?: "right" | "left" | "top" | "background";
   /** Hint to the renderer to scale typography down for content-heavy slides. */
   density?: "compact" | "regular";
 }
@@ -265,6 +269,7 @@ function clampSlides(data: PresentationData): PresentationData {
     if (s.steps) s.steps = s.steps.slice(0, 6);
     if (s.investment?.breakdown) s.investment.breakdown = s.investment.breakdown.slice(0, 8);
     if (s.bullets) s.bullets = s.bullets.slice(0, 10).map(cleanEmDashes);
+    if (s.images) s.images = s.images.slice(0, 5).map((img) => ({ url: img.url, alt: img.alt ? cleanEmDashes(img.alt) : undefined }));
     // Clean copy
     if (s.headline) s.headline = cleanEmDashes(s.headline);
     if (s.subhead) s.subhead = cleanEmDashes(s.subhead);

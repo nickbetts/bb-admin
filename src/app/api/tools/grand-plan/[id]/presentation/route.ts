@@ -298,6 +298,82 @@ export async function PATCH(
       const slide = presData.slides[idx];
       if (!slide) return NextResponse.json({ error: "Slide not found" }, { status: 404 });
       delete slide.image;
+      delete slide.images;
+      delete slide.imagesPosition;
+      break;
+    }
+    case "images-add": {
+      const idx = body.slideIndex as number;
+      const url = (body.url as string | undefined)?.trim();
+      const alt = (body.alt as string | undefined) ?? "";
+      if (!url) return NextResponse.json({ error: "url required" }, { status: 400 });
+      const slide = presData.slides[idx];
+      if (!slide) return NextResponse.json({ error: "Slide not found" }, { status: 404 });
+      // Migrate the legacy single-image field into the gallery on first add.
+      if (!Array.isArray(slide.images) || slide.images.length === 0) {
+        slide.images = slide.image
+          ? [{ url: slide.image.url, alt: slide.image.alt }]
+          : [];
+        if (slide.image && !slide.imagesPosition) slide.imagesPosition = slide.image.position;
+        delete slide.image;
+      }
+      if (slide.images.length >= 5) {
+        return NextResponse.json({ error: "Maximum of 5 images per slide" }, { status: 400 });
+      }
+      slide.images.push({ url, alt });
+      if (!slide.imagesPosition) slide.imagesPosition = "right";
+      break;
+    }
+    case "images-remove": {
+      const idx = body.slideIndex as number;
+      const imageIndex = body.imageIndex as number;
+      const slide = presData.slides[idx];
+      if (!slide || !Array.isArray(slide.images)) {
+        return NextResponse.json({ error: "Slide or gallery not found" }, { status: 404 });
+      }
+      slide.images.splice(imageIndex, 1);
+      if (slide.images.length === 0) {
+        delete slide.images;
+        delete slide.imagesPosition;
+      }
+      break;
+    }
+    case "images-reorder": {
+      const idx = body.slideIndex as number;
+      const fromIndex = body.fromIndex as number;
+      const direction = body.direction as string;
+      const slide = presData.slides[idx];
+      if (!slide || !Array.isArray(slide.images)) {
+        return NextResponse.json({ error: "Slide or gallery not found" }, { status: 404 });
+      }
+      const toIndex = direction === "up" ? fromIndex - 1 : fromIndex + 1;
+      if (toIndex < 0 || toIndex >= slide.images.length) break;
+      [slide.images[fromIndex], slide.images[toIndex]] = [slide.images[toIndex], slide.images[fromIndex]];
+      break;
+    }
+    case "images-alt": {
+      const idx = body.slideIndex as number;
+      const imageIndex = body.imageIndex as number;
+      const alt = (body.alt as string) ?? "";
+      const slide = presData.slides[idx];
+      if (!slide || !Array.isArray(slide.images) || !slide.images[imageIndex]) {
+        return NextResponse.json({ error: "Image not found" }, { status: 404 });
+      }
+      slide.images[imageIndex].alt = alt;
+      break;
+    }
+    case "images-position": {
+      const idx = body.slideIndex as number;
+      const positionRaw = body.position as string | undefined;
+      const allowed = ["left", "right", "top", "background"] as const;
+      const position = (allowed as readonly string[]).includes(positionRaw ?? "")
+        ? (positionRaw as typeof allowed[number])
+        : "right";
+      const slide = presData.slides[idx];
+      if (!slide) return NextResponse.json({ error: "Slide not found" }, { status: 404 });
+      slide.imagesPosition = position;
+      // Mirror onto the legacy image.position so single-image slides also update.
+      if (slide.image) slide.image.position = position;
       break;
     }
     case "bullet-update": {

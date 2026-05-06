@@ -18,9 +18,30 @@ function renderBullets(bullets: string[] | undefined): string {
 }
 
 function renderImageMedia(slide: PresentationSlide): string {
-  const img = slide.image;
-  if (!img?.url) return "";
-  return `<div class="slide-image"><img src="${esc(img.url)}" alt="${esc(img.alt ?? "")}" loading="lazy" /></div>`;
+  // Prefer the multi-image gallery when present, otherwise fall back to the
+  // legacy single image field.
+  const gallery = slide.images && slide.images.length > 0
+    ? slide.images
+    : slide.image
+      ? [{ url: slide.image.url, alt: slide.image.alt }]
+      : [];
+  if (gallery.length === 0) return "";
+  if (gallery.length === 1) {
+    const img = gallery[0];
+    return `<div class="slide-image"><img src="${esc(img.url)}" alt="${esc(img.alt ?? "")}" loading="lazy" /></div>`;
+  }
+  const tiles = gallery
+    .map((img) => `<div class="gallery-tile"><img src="${esc(img.url)}" alt="${esc(img.alt ?? "")}" loading="lazy" /></div>`)
+    .join("");
+  return `<div class="slide-gallery gallery-${gallery.length}">${tiles}</div>`;
+}
+
+function effectiveImagePosition(slide: PresentationSlide): "left" | "right" | "top" | "background" {
+  return slide.imagesPosition ?? slide.image?.position ?? "right";
+}
+
+function slideHasMedia(slide: PresentationSlide): boolean {
+  return Boolean((slide.images && slide.images.length > 0) || slide.image?.url);
 }
 
 function renderSlide(slide: PresentationSlide, index: number, total: number): string {
@@ -173,13 +194,12 @@ function renderSlide(slide: PresentationSlide, index: number, total: number): st
     body = `${body}<div class="extra-bullets">${renderBullets(slide.bullets)}</div>`;
   }
 
-  // Image layout — wrap body in a media + content grid when an image is present
-  const img = slide.image;
-  const hasImage = Boolean(img?.url);
-  const imgPos = img?.position ?? "right";
+  // Image layout — wrap body in a media + content grid when one or more images are present
+  const hasImage = slideHasMedia(slide);
+  const imgPos = effectiveImagePosition(slide);
   const slideClasses = ["slide"];
   if (slide.density === "compact") slideClasses.push("density-compact");
-  if (hasImage) slideClasses.push(`with-image`, `image-${imgPos}`);
+  if (hasImage) slideClasses.push("with-image", `image-${imgPos}`);
 
   let bodyWithMedia = body;
   if (hasImage) {
@@ -370,9 +390,30 @@ body{overflow:hidden}
 .slide.with-image.image-left .slide-image{order:-1}
 .slide.with-image.image-top .slide-body{grid-template-rows:auto 1fr}
 .slide.with-image.image-top .slide-image{height:300px}
-.slide.with-image.image-background .slide-image{position:absolute;inset:0;z-index:0;opacity:0.18;border:none;border-radius:0}
+.slide.with-image.image-background .slide-image,.slide.with-image.image-background .slide-gallery{position:absolute;inset:0;z-index:0;opacity:0.18;border:none;border-radius:0}
 .slide.with-image.image-background .slide-image::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,16,32,0.4),rgba(11,16,32,0.85))}
 .slide.with-image.image-background .slide-inner{position:relative;z-index:1}
+
+/* ── Multi-image gallery ───────────────────────────────────────────────── */
+.slide-gallery{position:relative;border-radius:16px;overflow:hidden;display:grid;gap:8px;background:rgba(255,255,255,0.02)}
+.slide-gallery .gallery-tile{overflow:hidden;border-radius:12px;border:1px solid var(--border);background:rgba(255,255,255,0.03);min-height:0}
+.slide-gallery .gallery-tile img{display:block;width:100%;height:100%;object-fit:cover}
+.gallery-2{grid-template-columns:1fr 1fr}
+.gallery-3{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
+.gallery-3 .gallery-tile:nth-child(1){grid-column:1 / 3}
+.gallery-4{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
+.gallery-5{grid-template-columns:repeat(6,1fr);grid-template-rows:1fr 1fr}
+.gallery-5 .gallery-tile:nth-child(1){grid-column:1 / 4}
+.gallery-5 .gallery-tile:nth-child(2){grid-column:4 / 7}
+.gallery-5 .gallery-tile:nth-child(3){grid-column:1 / 3}
+.gallery-5 .gallery-tile:nth-child(4){grid-column:3 / 5}
+.gallery-5 .gallery-tile:nth-child(5){grid-column:5 / 7}
+/* When a multi-image gallery sits at the top, give it a fixed band */
+.slide.with-image.image-top .slide-gallery{height:300px}
+/* When background, just stack as a single-image cover */
+.slide.with-image.image-background .slide-gallery{display:block}
+.slide.with-image.image-background .slide-gallery .gallery-tile{position:absolute;inset:0;border:none;border-radius:0}
+.slide.with-image.image-background .slide-gallery .gallery-tile:not(:first-child){display:none}
 
 /* ── Density ───────────────────────────────────────────────────────────── */
 .slide.density-compact .slide-title{font-size:36px}
@@ -534,7 +575,7 @@ const DECK_JS = `
   } else {
     setTimeout(autoFitAll, 100);
   }
-  document.querySelectorAll('.slide-image img').forEach(function(img){
+  document.querySelectorAll('.slide-image img, .slide-gallery img').forEach(function(img){
     if (img.complete) return;
     img.addEventListener('load', function(){ autoFitAll(); });
   });
