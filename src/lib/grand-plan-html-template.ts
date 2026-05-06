@@ -84,7 +84,42 @@ function heroSubtext(raw: string): string {
   return (lastSpace > 0 ? window.slice(0, lastSpace) : window) + "…";
 }
 
+// ─── Inline-edit helpers ────────────────────────────────────────────────────
+// These wrap text values in a contenteditable element with a `data-edit-path`
+// pointing at a path inside the GrandPlanData JSON. The iframe JS posts edits
+// back to the parent page, which calls /api/tools/grand-plan/[id]/edit.
+//
+// `gpEditMode` is set false for public share links so readers see plain text.
+
+let gpEditMode = true;
+
+function ed(value: string | undefined | null, path: string, opts: {
+  tag?: string;
+  cls?: string;
+  placeholder?: string;
+  multiline?: boolean;
+} = {}): string {
+  const tag = opts.tag ?? "span";
+  const cls = opts.cls ? ` ${opts.cls}` : "";
+  const text = value == null ? "" : String(value);
+  if (!gpEditMode) {
+    return `<${tag} class="${cls.trim()}">${esc(text)}</${tag}>`;
+  }
+  const ph = opts.placeholder ? ` data-placeholder="${escapeAttr(opts.placeholder)}"` : "";
+  const ml = opts.multiline ? ` data-multiline="1"` : "";
+  return `<${tag} class="gp-edit${cls}" contenteditable="true" spellcheck="false" data-edit-path="${escapeAttr(path)}"${ph}${ml}>${esc(text)}</${tag}>`;
+}
+
+function delBtn(path: string, label: string, opts: { dark?: boolean; inline?: boolean } = {}): string {
+  if (!gpEditMode) return "";
+  const cls = ["gp-del-btn"];
+  if (opts.dark) cls.push("gp-del-btn-dark");
+  if (opts.inline) cls.push("gp-del-btn-inline");
+  return `<button type="button" class="${cls.join(" ")}" data-delete-path="${escapeAttr(path)}" data-delete-label="${escapeAttr(label)}" aria-label="Delete ${escapeAttr(label)}" title="Delete ${escapeAttr(label)}">×</button>`;
+}
+
 export function renderGrandPlanHtml(plan: GrandPlanData, isPublicView = false): string {
+  gpEditMode = !isPublicView;
   const s = plan.sections;
 
   // ── Build chapter-grouped nav ──────────────────────────────────────────────
@@ -238,9 +273,9 @@ export function renderGrandPlanHtml(plan: GrandPlanData, isPublicView = false): 
   <div class="hero-inner">
     ${I3_LOGO_SVG.replace('viewBox="0 0 161 53"', 'viewBox="0 0 161 53" style="width:140px;height:auto;margin-bottom:2.5rem;display:block;color:#fff"')}
     <div class="hero-label">${plan.purpose === "pitch" ? "Pitch Deck" : plan.purpose === "onboarding" ? "Onboarding Plan" : "Strategy Overview"} &nbsp;&middot;&nbsp; ${new Date(plan.generatedAt).toLocaleDateString("en-GB", { month: "long", year: "numeric" })} &nbsp;&middot;&nbsp; i3media</div>
-    <h1>${esc(plan.title)}</h1>
+    ${ed(plan.title, "title", { tag: "h1", placeholder: "Plan title" })}
     <div class="hero-divider"></div>
-    <p class="hero-sub">${plan.heroTagline ? esc(plan.heroTagline) : s.executiveSummary ? esc(heroSubtext(s.executiveSummary)) : `A comprehensive digital marketing strategy for ${esc(plan.clientName)}.`}</p>
+    ${ed(plan.heroTagline ?? (s.executiveSummary ? heroSubtext(s.executiveSummary) : `A comprehensive digital marketing strategy for ${plan.clientName}.`), "heroTagline", { tag: "p", cls: "hero-sub", placeholder: "Add a one-line proposition…", multiline: true })}
     <div class="hero-meta">
       <div class="hero-meta-item"><strong>Client</strong><span>${esc(plan.clientName)}</span></div>
       <div class="hero-meta-item"><strong>Agency</strong><span>i3media</span></div>
@@ -270,14 +305,13 @@ ${buildChapteredSections(s, plan.clientName, plan.brief, plan.campaignPeriods, p
 <!-- Closing CTA -->
 ${renderCtaClose(plan.clientName)}
 
-<!-- TLDR view (internal only) -->
-${isPublicView ? "" : renderTldrView(plan)}
-
-<!-- TLDR toggle button (internal only) -->
-${isPublicView ? "" : `<button id="tldr-toggle" class="tldr-toggle" type="button" title="Toggle TLDR view">
-  <span class="tldr-toggle-icon" aria-hidden="true">\u2630</span>
-  <span class="tldr-toggle-label">TLDR</span>
-</button>`}
+<!-- Inline editor floating toolbar (Undo) \u2014 internal only -->
+${isPublicView ? "" : `<div id="gp-edit-toolbar" class="gp-edit-toolbar" aria-label="Editor toolbar">
+  <button id="gp-undo-btn" class="gp-undo-btn" type="button" title="Undo last edit (\u2318Z)">
+    <span class="gp-undo-icon" aria-hidden="true">\u21b6</span>
+    <span class="gp-undo-label">Undo</span>
+  </button>
+</div>`}
 
 <!-- Watermark -->
 <div class="watermark">Confidential</div>
@@ -414,278 +448,6 @@ function renderCtaClose(clientName: string): string {
 </section>`;
 }
 
-// ─── TLDR view ──────────────────────────────────────────────────────────────
-// Internal-only condensed view of the entire plan. Toggled via the floating
-// "TLDR" button. Hides the full document and shows a single column of
-// digestible cards: brief, audiences, competitors, and a one-glance overview
-// of every section that ran. Intended as a quick handoff/skim view for the
-// internal team — never shown on public share links.
-
-function stripHtml(s: string): string {
-  return String(s ?? "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
-}
-
-function firstSentence(text: string, maxLen = 220): string {
-  const clean = stripHtml(text);
-  if (!clean) return "";
-  const stop = clean.search(/[.!?]\s+[A-Z]/);
-  const cut = stop > 60 ? clean.slice(0, stop + 1) : clean;
-  if (cut.length <= maxLen) return cut;
-  const window = cut.slice(0, maxLen);
-  const lastSpace = window.lastIndexOf(" ");
-  return (lastSpace > 0 ? window.slice(0, lastSpace) : window) + "\u2026";
-}
-
-function renderTldrView(plan: GrandPlanData): string {
-  const s = plan.sections;
-  const cards: string[] = [];
-
-  const card = (id: string, title: string, body: string, kicker?: string) => `
-    <article class="tldr-card" data-tldr-id="${esc(id)}">
-      ${kicker ? `<div class="tldr-kicker">${esc(kicker)}</div>` : ""}
-      <h3 class="tldr-card-title">${esc(title)}</h3>
-      <div class="tldr-card-body">${body}</div>
-      <button type="button" class="tldr-jump" data-jump="${esc(id)}">Jump to full section &rarr;</button>
-    </article>`;
-
-  // Brief
-  if (plan.brief) {
-    cards.push(card(
-      "tldr-brief",
-      "The Brief",
-      `<p>${esc(firstSentence(plan.brief, 420))}</p>`,
-      "Context",
-    ));
-  }
-
-  // Strategic Foundation — bullets out the Strategy Brain
-  if (plan.strategyBrain) {
-    const sb = plan.strategyBrain;
-    const bulletList = (items: (string | undefined | null)[]) => {
-      const clean = items.map((i) => stripHtml(String(i ?? "")).trim()).filter(Boolean);
-      if (!clean.length) return "";
-      return `<ul class="tldr-bullets">${clean.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>`;
-    };
-    const groups: string[] = [];
-    if (sb.positioning?.statement) {
-      groups.push(`<div class="tldr-sf-group"><div class="tldr-sf-label">Positioning</div><p class="tldr-sf-statement">${esc(stripHtml(sb.positioning.statement))}</p>${bulletList(sb.positioning.proofPoints ?? [])}</div>`);
-    }
-    if (sb.messageHierarchy?.primary || sb.messageHierarchy?.secondary?.length) {
-      groups.push(`<div class="tldr-sf-group"><div class="tldr-sf-label">Message hierarchy</div>${sb.messageHierarchy.primary ? `<p class="tldr-sf-statement">${esc(stripHtml(sb.messageHierarchy.primary))}</p>` : ""}${bulletList(sb.messageHierarchy.secondary ?? [])}</div>`);
-    }
-    if (sb.marketContext) {
-      const mc = sb.marketContext;
-      const items: string[] = [];
-      if (mc.state) items.push(`State: ${stripHtml(mc.state)}`);
-      if (mc.opportunity) items.push(`Opportunity: ${stripHtml(mc.opportunity)}`);
-      if (mc.threat) items.push(`Threat: ${stripHtml(mc.threat)}`);
-      if (items.length) groups.push(`<div class="tldr-sf-group"><div class="tldr-sf-label">Market context</div>${bulletList(items)}</div>`);
-    }
-    if (sb.competitorAngle?.differentiator || sb.competitorAngle?.messagesToOwn?.length || sb.competitorAngle?.messagesToAvoid?.length) {
-      const ca = sb.competitorAngle;
-      const items: string[] = [];
-      if (ca.differentiator) items.push(`Win: ${stripHtml(ca.differentiator)}`);
-      (ca.messagesToOwn ?? []).slice(0, 4).forEach((m) => items.push(`Own: ${stripHtml(m)}`));
-      (ca.messagesToAvoid ?? []).slice(0, 4).forEach((m) => items.push(`Avoid: ${stripHtml(m)}`));
-      groups.push(`<div class="tldr-sf-group"><div class="tldr-sf-label">Competitor angle</div>${bulletList(items)}</div>`);
-    }
-    if (sb.targetGeographies?.length) {
-      groups.push(`<div class="tldr-sf-group"><div class="tldr-sf-label">Markets</div><div class="tldr-tag-row">${sb.targetGeographies.slice(0, 12).map((g) => `<span class="tldr-tag">${esc(g)}</span>`).join("")}</div></div>`);
-    }
-    if (sb.channelStrategy?.length) {
-      const items = sb.channelStrategy.slice(0, 8).map((c) => `${stripHtml(c.channel)}: ${stripHtml(c.role)}`);
-      groups.push(`<div class="tldr-sf-group"><div class="tldr-sf-label">Channel strategy</div>${bulletList(items)}</div>`);
-    }
-    if (sb.audiences?.length) {
-      const items = sb.audiences.slice(0, 6).map((a) => `${stripHtml(a.name)} \u2014 ${stripHtml(a.primaryPain || a.coreInsight || "")}`);
-      groups.push(`<div class="tldr-sf-group"><div class="tldr-sf-label">Audiences</div>${bulletList(items)}</div>`);
-    }
-    if (groups.length) {
-      cards.push(card(
-        "tldr-strategy-foundation",
-        "Strategic Foundation",
-        groups.join(""),
-        "Strategy",
-      ));
-    }
-  }
-
-  // Audiences
-  if (s.audiences?.length) {
-    const items = s.audiences.map((a) => `
-      <li class="tldr-aud">
-        <div class="tldr-aud-name">${esc(a.name)}</div>
-        <div class="tldr-aud-desc">${esc(firstSentence(a.description, 160))}</div>
-        ${a.painPoints?.length ? `<div class="tldr-aud-pains"><span class="tldr-pill">Pain</span> ${esc(a.painPoints.slice(0, 2).join(" \u00b7 "))}</div>` : ""}
-      </li>`).join("");
-    cards.push(card("tldr-audiences", "Audiences", `<ul class="tldr-list">${items}</ul>`, `${s.audiences.length} target ${s.audiences.length === 1 ? "audience" : "audiences"}`));
-  }
-
-  // Competitors — rendered as a mini-card grid alongside the Strategic Foundation
-  if (s.competitorIntel?.length) {
-    const tiles = s.competitorIntel.slice(0, 8).map((c) => {
-      const sourceBadge = c.source ? `<span class="tldr-src tldr-src-${esc(c.source)}">${esc(c.source)}</span>` : "";
-      const overlap = (c.commonKeywords ?? 0) > 0 ? `<span class="tldr-pill">${c.commonKeywords} KWs</span>` : "";
-      const strengths = (c.strengths ?? []).slice(0, 2).map((t) => `<li>${esc(stripHtml(t))}</li>`).join("");
-      const weaknesses = (c.weaknesses ?? []).slice(0, 2).map((t) => `<li>${esc(stripHtml(t))}</li>`).join("");
-      return `
-      <div class="tldr-comp-tile">
-        <div class="tldr-comp-head">
-          <span class="tldr-comp-domain">${esc(c.domain)}</span>
-          ${sourceBadge}
-          ${overlap}
-        </div>
-        ${strengths ? `<div class="tldr-comp-block"><span class="tldr-comp-block-label">Strengths</span><ul class="tldr-bullets">${strengths}</ul></div>` : ""}
-        ${weaknesses ? `<div class="tldr-comp-block"><span class="tldr-comp-block-label">Weaknesses</span><ul class="tldr-bullets">${weaknesses}</ul></div>` : ""}
-      </div>`;
-    }).join("");
-    cards.push(card(
-      "tldr-competitors",
-      "Competitor Analysis",
-      `<div class="tldr-comp-grid">${tiles}</div>`,
-      `${s.competitorIntel.length} analysed`,
-    ));
-  }
-
-  // Executive Summary (just the first sentence)
-  if (s.executiveSummary) {
-    cards.push(card("executive-summary", "Executive Summary", `<p>${esc(firstSentence(s.executiveSummary, 360))}</p>`, "Strategy"));
-  }
-
-  // Strategy Plan
-  if (s.strategyPlan) {
-    cards.push(card("strategy-plan", "Strategy Plan", `<p>${esc(firstSentence(s.strategyPlan, 320))}</p>`, "Strategy"));
-  }
-
-  // Quick Wins
-  if (s.quickWins?.length) {
-    const items = s.quickWins.slice(0, 6).map((q) => `
-      <li class="tldr-row">
-        <span class="tldr-pill tldr-pri-${esc(q.priority)}">${esc(q.priority)}</span>
-        <span class="tldr-row-text">${esc(q.title)}</span>
-      </li>`).join("");
-    cards.push(card("quick-wins", "Quick Wins", `<ul class="tldr-list">${items}</ul>`, `${s.quickWins.length} prioritised`));
-  }
-
-  // Google Ads
-  if (s.googleAdsCampaigns) {
-    const ga = s.googleAdsCampaigns;
-    const adGroups = (ga.adGroups ?? []) as { name: string; keywords: unknown[] }[];
-    const totalKws = adGroups.reduce((sum, g) => sum + (g.keywords?.length ?? 0), 0);
-    const groupNames = adGroups.slice(0, 6).map((g) => `<span class="tldr-tag">${esc(g.name)}</span>`).join("");
-    const more = adGroups.length > 6 ? `<span class="tldr-tag tldr-tag-more">+${adGroups.length - 6} more</span>` : "";
-    const negCount = (ga.negativeKeywords?.length ?? 0) + (ga.aiNegativesWithReason?.length ?? 0);
-    const overview = ga.overview ?? {};
-    const facts = [
-      overview.Budget ? `<div class="tldr-fact"><span class="tldr-fact-label">Budget</span> <strong>${esc(String(overview.Budget))}</strong></div>` : "",
-      overview.Locations ? `<div class="tldr-fact"><span class="tldr-fact-label">Locations</span> <strong>${esc(String(overview.Locations))}</strong></div>` : "",
-      `<div class="tldr-fact"><span class="tldr-fact-label">Ad groups</span> <strong>${adGroups.length}</strong></div>`,
-      `<div class="tldr-fact"><span class="tldr-fact-label">Keywords</span> <strong>${totalKws}</strong></div>`,
-      negCount ? `<div class="tldr-fact"><span class="tldr-fact-label">Negatives</span> <strong>${negCount}</strong></div>` : "",
-    ].filter(Boolean).join("");
-    cards.push(card(
-      "google-ads",
-      "Google Ads (research only)",
-      `<div class="tldr-facts">${facts}</div>${groupNames || more ? `<div class="tldr-tag-row">${groupNames}${more}</div>` : ""}`,
-      "Paid Search",
-    ));
-  }
-
-  // Meta Campaigns
-  if (s.metaCampaigns?.length) {
-    const items = s.metaCampaigns.slice(0, 6).map((c) => `
-      <li class="tldr-row">
-        <span class="tldr-row-text"><strong>${esc(c.campaignName)}</strong> <span class="tldr-muted">\u00b7 ${esc(c.objective)} \u00b7 ${esc(c.budget)}</span></span>
-      </li>`).join("");
-    cards.push(card("meta-campaigns", "Meta Campaigns", `<ul class="tldr-list">${items}</ul>`, `${s.metaCampaigns.length} campaigns`));
-  }
-
-  // LinkedIn Ads
-  if (s.linkedInAds?.length) {
-    const items = s.linkedInAds.slice(0, 6).map((c) => `
-      <li class="tldr-row">
-        <span class="tldr-row-text"><strong>${esc(c.campaignName)}</strong> <span class="tldr-muted">\u00b7 ${esc(c.objective)} \u00b7 ${esc(c.budget)}</span></span>
-      </li>`).join("");
-    cards.push(card("linkedin-ads", "LinkedIn Ads", `<ul class="tldr-list">${items}</ul>`, `${s.linkedInAds.length} campaigns`));
-  }
-
-  // Content Strategy
-  if (s.contentStrategy) {
-    const cs = s.contentStrategy;
-    const facts = [
-      cs.pageOptimisations?.length ? `<div class="tldr-fact"><span class="tldr-fact-label">Page optimisations</span> <strong>${cs.pageOptimisations.length}</strong></div>` : "",
-      cs.landingPages?.length ? `<div class="tldr-fact"><span class="tldr-fact-label">Landing pages</span> <strong>${cs.landingPages.length}</strong></div>` : "",
-      cs.blogPosts?.length ? `<div class="tldr-fact"><span class="tldr-fact-label">Blog posts</span> <strong>${cs.blogPosts.length}</strong></div>` : "",
-    ].filter(Boolean).join("");
-    cards.push(card("content-strategy", "Content Strategy", `<div class="tldr-facts">${facts}</div>`, "Content & SEO"));
-  }
-
-  // SEO Foundations
-  if (s.seoFoundations) {
-    const sf = s.seoFoundations;
-    const facts = [
-      sf.quickWins?.length ? `<div class="tldr-fact"><span class="tldr-fact-label">Page wins</span> <strong>${sf.quickWins.length}</strong></div>` : "",
-      sf.internalLinking?.hubs?.length ? `<div class="tldr-fact"><span class="tldr-fact-label">Linking hubs</span> <strong>${sf.internalLinking.hubs.length}</strong></div>` : "",
-      sf.linkBuilding?.targets?.length ? `<div class="tldr-fact"><span class="tldr-fact-label">Link targets</span> <strong>${sf.linkBuilding.targets.length}</strong></div>` : "",
-    ].filter(Boolean).join("");
-    cards.push(card("seo-foundations", "SEO Foundations", `<div class="tldr-facts">${facts}</div>${sf.intro ? `<p>${esc(firstSentence(sf.intro, 220))}</p>` : ""}`, "Content & SEO"));
-  }
-
-  // Content Calendar
-  if (s.contentCalendar?.length) {
-    const first = s.contentCalendar[0];
-    const topics = (first.blogPosts ?? []).slice(0, 4).map((p) => `<span class="tldr-tag">${esc(p.title)}</span>`).join("");
-    cards.push(card(
-      "content-calendar",
-      "Content Calendar",
-      `<div class="tldr-muted" style="margin-bottom:.5rem">${esc(first.month)} \u2014 first month preview</div><div class="tldr-tag-row">${topics}</div>`,
-      `${s.contentCalendar.length} months planned`,
-    ));
-  }
-
-  // Keyword Research TLDR card removed — keywords now live inside the Google Ads section.
-
-  // Services & Investment
-  if (s.servicesInvestment) {
-    const si = s.servicesInvestment;
-    const services = (si.services ?? []).slice(0, 6).map((sv) => `<li class="tldr-row"><span class="tldr-row-text"><strong>${esc(sv.name)}</strong>${sv.price ? ` <span class="tldr-muted">\u00b7 ${esc(sv.price)}</span>` : ""}</span></li>`).join("");
-    const ia = si.investmentAllocation;
-    const allocation = ia && ia.byChannel?.length ? `
-      <div class="tldr-muted" style="margin:.75rem 0 .35rem">Investment allocation \u2014 \u00a3${(ia.totalMonthly ?? 0).toLocaleString()}/mo total</div>
-      <ul class="tldr-list">
-        ${ia.byChannel.map((row) => `<li class="tldr-row"><span class="tldr-row-text"><strong>${esc(row.channel)}</strong> <span class="tldr-muted">\u00b7 \u00a3${(row.amount ?? 0).toLocaleString()}/mo (${row.share ?? 0}%)</span></span></li>`).join("")}
-      </ul>` : "";
-    cards.push(card("services", "Services & Investment", `<ul class="tldr-list">${services}</ul>${allocation}`, "Commercial"));
-  }
-
-  // Email Marketing
-  if (s.emailMarketing) {
-    const em = s.emailMarketing;
-    const facts = [
-      em.flows?.length ? `<div class="tldr-fact"><span class="tldr-fact-label">Flows</span> <strong>${em.flows.length}</strong></div>` : "",
-      em.campaigns?.length ? `<div class="tldr-fact"><span class="tldr-fact-label">Campaigns</span> <strong>${em.campaigns.length}</strong></div>` : "",
-      em.segmentation?.segments?.length ? `<div class="tldr-fact"><span class="tldr-fact-label">Segments</span> <strong>${em.segmentation.segments.length}</strong></div>` : "",
-    ].filter(Boolean).join("");
-    cards.push(card("email-marketing", "Email Marketing", `<div class="tldr-facts">${facts}</div>`, "Commercial"));
-  }
-
-  // KPIs TLDR card removed.
-
-  return `
-<aside id="gp-tldr-view" class="tldr-view" aria-hidden="true">
-  <header class="tldr-header">
-    <div>
-      <div class="tldr-header-kicker">Internal handoff</div>
-      <h2 class="tldr-header-title">${esc(plan.title)} \u2014 TLDR</h2>
-      <p class="tldr-header-sub">A condensed snapshot for the team. Click any card to jump into the full section.</p>
-    </div>
-    <button type="button" id="tldr-close" class="tldr-close-btn" aria-label="Close TLDR">Show full plan</button>
-  </header>
-  <div class="tldr-cards">
-    ${cards.join("\n")}
-  </div>
-</aside>`;
-}
 
 
 // ─── Section renderers ──────────────────────────────────────────────────────
@@ -1162,30 +924,33 @@ function renderMetaCampaigns(campaigns: any[], clientWebsite?: string, intro?: s
   void clientWebsite;
   const campaignsHtml = campaigns
     .map((c, idx) => {
-      const audiences = [
-        ...(c.audienceTargeting?.interests ?? []).map((i: string) => `<span class="audience-chip interest">${esc(i)}</span>`),
-        ...(c.audienceTargeting?.customAudiences ?? []).map((a: string) => `<span class="audience-chip custom">${esc(a)}</span>`),
-        ...(c.audienceTargeting?.lookalikes ?? []).map((l: string) => `<span class="audience-chip lookalike">${esc(l)}</span>`),
-      ].join(" ");
+      const base = `sections.metaCampaigns.${idx}`;
+      const interests = (c.audienceTargeting?.interests ?? []).map((i: string, ii: number) => `<span class="audience-chip interest gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(i, `${base}.audienceTargeting.interests.${ii}`, { placeholder: "Interest" })}${delBtn(`${base}.audienceTargeting.interests.${ii}`, "interest", { inline: true })}</span>`);
+      const custom = (c.audienceTargeting?.customAudiences ?? []).map((a: string, ai: number) => `<span class="audience-chip custom gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(a, `${base}.audienceTargeting.customAudiences.${ai}`, { placeholder: "Custom audience" })}${delBtn(`${base}.audienceTargeting.customAudiences.${ai}`, "custom audience", { inline: true })}</span>`);
+      const lookalikes = (c.audienceTargeting?.lookalikes ?? []).map((l: string, li: number) => `<span class="audience-chip lookalike gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(l, `${base}.audienceTargeting.lookalikes.${li}`, { placeholder: "Lookalike" })}${delBtn(`${base}.audienceTargeting.lookalikes.${li}`, "lookalike", { inline: true })}</span>`);
+      const audiences = [...interests, ...custom, ...lookalikes].join(" ");
 
       const pillars = (c.contentPillars ?? [])
-        .map((p: string) => `<li>${esc(p)}</li>`)
+        .map((p: string, pi: number) => `<li class="gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(p, `${base}.contentPillars.${pi}`, { multiline: true, placeholder: "Pillar" })}${delBtn(`${base}.contentPillars.${pi}`, "pillar", { inline: true })}</li>`)
         .join("\n");
 
+      const compliance = (c.complianceNotes ?? []).map((n: string, ni: number) => `<li class="gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(n, `${base}.complianceNotes.${ni}`, { multiline: true, placeholder: "Compliance note" })}${delBtn(`${base}.complianceNotes.${ni}`, "note", { inline: true })}</li>`).join("");
+
       return `
-      <details class="meta-campaign">
+      <details class="meta-campaign gp-deletable" data-deletable-host="1">
+        ${delBtn(base, `campaign "${c.campaignName}"`)}
         <summary class="meta-campaign-header">
           <span class="meta-num">${idx + 1}</span>
           <div>
-            <h4>${esc(c.campaignName)}${c.isFallback ? ` <span class="char-badge char-warn" style="margin-left:.5rem;vertical-align:middle" title="AI generation didn't return usable Meta campaigns. Placeholder shown — regenerate from the dashboard.">AI fallback</span>` : ""}</h4>
-            <p class="meta-obj">${esc(c.objective)} · ${esc(c.budget)} · ${esc(c.placements)}</p>
+            <h4>${ed(c.campaignName, `${base}.campaignName`, { placeholder: "Campaign name" })}${c.isFallback ? ` <span class="char-badge char-warn" style="margin-left:.5rem;vertical-align:middle" title="AI generation didn't return usable Meta campaigns. Placeholder shown — regenerate from the dashboard.">AI fallback</span>` : ""}</h4>
+            <p class="meta-obj">${ed(c.objective, `${base}.objective`, { placeholder: "Objective" })} · ${ed(c.budget, `${base}.budget`, { placeholder: "Budget" })} · ${ed(c.placements, `${base}.placements`, { placeholder: "Placements" })}</p>
           </div>
         </summary>
         <div class="meta-campaign-body">
           <h5>Audience Targeting</h5>
           <div class="audience-list">${audiences}</div>
           ${pillars ? `<h5>Content Pillars</h5><ul class="pillars-list">${pillars}</ul>` : ""}
-          ${(c.complianceNotes ?? []).length ? `<div class="compliance-callout"><strong>Platform / compliance notes</strong><ul>${(c.complianceNotes ?? []).map((n: string) => `<li>${esc(n)}</li>`).join("")}</ul></div>` : ""}
+          ${compliance ? `<div class="compliance-callout"><strong>Platform / compliance notes</strong><ul>${compliance}</ul></div>` : ""}
         </div>
       </details>`;
     })
@@ -1196,7 +961,7 @@ function renderMetaCampaigns(campaigns: any[], clientWebsite?: string, intro?: s
       <div class="section-inner">
         <div class="section-kicker">Paid Social</div>
         <h2>Meta Campaigns</h2>
-      <p class="section-intro">${intro ? esc(intro) : "Facebook and Instagram campaign structures with audience targeting and content pillars."}</p>
+      ${ed(intro ?? "Facebook and Instagram campaign structures with audience targeting and content pillars.", "sectionIntros.metaCampaigns", { tag: "p", cls: "section-intro", multiline: true, placeholder: "Add a description…" })}
       ${campaignsHtml}
       </div>
     </section>`;
@@ -1367,23 +1132,29 @@ function renderContentStrategy(data: any, intro?: string, audienceRationales?: R
     return "Awareness";
   };
 
-  const card = (entry: Entry, tier: "pillar" | "mega" | "article", typeLabel: string): string => {
+  const card = (entry: Entry, tier: "pillar" | "mega" | "article", typeLabel: string, path: string, deleteLabel: string): string => {
     const primary = entry.primaryKeyword ?? entry.keywords?.[0]?.keyword;
     const intent = entry.intent;
     const secondary = entry.secondaryKeywords ?? [];
     const longTail = entry.longTailKeywords ?? [];
     const audChips = (entry.targetAudiences ?? []).slice(0, 3)
-      .map((n) => `<span class="audience-tag">${esc(n)}</span>`).join(" ");
+      .map((n, ni) => `<span class="audience-tag gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(n, `${path}.targetAudiences.${ni}`, { placeholder: "Audience" })}${delBtn(`${path}.targetAudiences.${ni}`, "audience", { inline: true })}</span>`).join(" ");
     return `
-      <details class="cluster-card ${tier}">
+      <details class="cluster-card ${tier} gp-deletable" data-deletable-host="1">
+        ${delBtn(path, deleteLabel)}
         <summary class="cluster-card-head">
           <span class="cluster-type-pill">${esc(typeLabel)}</span>
           ${intent ? `<span class="cc-intent ${intentClass(intent)}">${esc(intentLabel(intent))}</span>` : ""}
           <span class="cc-title-summary">${esc(entry.title ?? entry.url ?? "Untitled")}</span>
         </summary>
         <div class="cluster-card-body">
-          <div class="cc-title">${esc(entry.title ?? entry.url ?? "Untitled")}</div>
-          ${primary ? `
+          ${ed(entry.title ?? entry.url ?? "", `${path}.title`, { tag: "div", cls: "cc-title", placeholder: "Title" })}
+          ${entry.url != null ? `<div class="cc-kw-block"><div class="cc-kw-label">URL</div>${ed(entry.url, `${path}.url`, { placeholder: "URL" })}</div>` : ""}
+          ${entry.primaryKeyword != null ? `
+          <div class="cc-kw-block">
+            <div class="cc-kw-label">Primary keyword</div>
+            ${ed(entry.primaryKeyword, `${path}.primaryKeyword`, { tag: "div", cls: "cc-kw-primary", placeholder: "Primary keyword" })}
+          </div>` : primary ? `
           <div class="cc-kw-block">
             <div class="cc-kw-label">Primary keyword</div>
             <div class="cc-kw-primary">${esc(primary)}</div>
@@ -1391,12 +1162,12 @@ function renderContentStrategy(data: any, intro?: string, audienceRationales?: R
           ${secondary.length ? `
           <div class="cc-kw-block">
             <div class="cc-kw-label">Secondary keywords</div>
-            <div class="cc-kw-chips">${secondary.slice(0, 6).map((k) => `<span class="kw-pill">${esc(k)}</span>`).join(" ")}</div>
+            <div class="cc-kw-chips">${secondary.slice(0, 6).map((k, ki) => `<span class="kw-pill gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(k, `${path}.secondaryKeywords.${ki}`, { placeholder: "Keyword" })}${delBtn(`${path}.secondaryKeywords.${ki}`, "keyword", { inline: true })}</span>`).join(" ")}</div>
           </div>` : ""}
           ${longTail.length ? `
           <div class="cc-kw-block">
             <div class="cc-kw-label">Long-tail variants</div>
-            <div class="cc-kw-chips">${longTail.slice(0, 8).map((k) => `<span class="kw-pill kw-pill-mute">${esc(k)}</span>`).join(" ")}</div>
+            <div class="cc-kw-chips">${longTail.slice(0, 8).map((k, ki) => `<span class="kw-pill kw-pill-mute gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(k, `${path}.longTailKeywords.${ki}`, { placeholder: "Variant" })}${delBtn(`${path}.longTailKeywords.${ki}`, "variant", { inline: true })}</span>`).join(" ")}</div>
           </div>` : ""}
           ${audChips ? `<div class="cc-audiences-block"><div class="cc-audiences-label">Planned audience</div><div class="cc-audiences">${audChips}</div></div>` : ""}
         </div>
@@ -1404,9 +1175,18 @@ function renderContentStrategy(data: any, intro?: string, audienceRationales?: R
   };
 
   const clusterCards: string[] = [];
-  if (pillar) clusterCards.push(card(pillar, "pillar", "Pillar Page"));
-  megas.forEach((m, i) => clusterCards.push(card(m, "mega", megas.length === 1 ? "Mega Guide" : `Mega Guide ${i + 1}`)));
-  articles.forEach((a, i) => clusterCards.push(card(a, "article", `Article ${i + 1}`)));
+  if (pillar) {
+    const pillarIdx = (data.landingPages ?? []).indexOf(pillar);
+    clusterCards.push(card(pillar, "pillar", "Pillar Page", `sections.contentStrategy.landingPages.${pillarIdx >= 0 ? pillarIdx : 0}`, "pillar page"));
+  }
+  megas.forEach((m, i) => {
+    const idx = (data.landingPages ?? []).indexOf(m);
+    clusterCards.push(card(m, "mega", megas.length === 1 ? "Mega Guide" : `Mega Guide ${i + 1}`, `sections.contentStrategy.landingPages.${idx >= 0 ? idx : i}`, `mega guide ${i + 1}`));
+  });
+  articles.forEach((a, i) => {
+    const idx = (data.blogPosts ?? []).indexOf(a);
+    clusterCards.push(card(a, "article", `Article ${i + 1}`, `sections.contentStrategy.blogPosts.${idx >= 0 ? idx : i}`, `article ${i + 1}`));
+  });
 
   const allInternalLinks = [
     ...(pillar?.internalLinks ?? []),
@@ -1588,7 +1368,7 @@ function renderContentStrategy(data: any, intro?: string, audienceRationales?: R
       <div class="section-inner">
         <div class="section-kicker">Content & SEO</div>
         <h2>Content & SEO Strategy</h2>
-        <p class="section-intro">${intro ? esc(intro) : "A topic-cluster approach: one anchoring pillar page, supporting deep-dive guides, and themed articles that capture every stage of intent."}</p>
+        ${ed(intro ?? "A topic-cluster approach: one anchoring pillar page, supporting deep-dive guides, and themed articles that capture every stage of intent.", "sectionIntros.contentStrategy", { tag: "p", cls: "section-intro", multiline: true, placeholder: "Add a description…" })}
       ${clusterBlock}
       </div>
     </section>`;
@@ -1701,15 +1481,16 @@ function renderSeoFoundations(data: SeoFoundationsData): string {
           ? `<script type="application/json" id="${schemaId}">${safeJsonForScript({ url: q.url, items: schemaItems })}</script>`
           : "";
         return `
-        <div class="qw-card" id="qw-card-${qi}">
+        <div class="qw-card gp-deletable" data-deletable-host="1" id="qw-card-${qi}">
+          ${delBtn(`sections.seoFoundations.quickWins.${qi}`, `quick win for "${q.url}"`)}
           <div class="qw-head">
             <a class="qw-url" href="${esc(linkUrl(q.url))}" target="_blank" rel="noopener">${esc(q.url)}</a>
             <div class="qw-badges">
               ${q.intent ? `<span class="qw-badge qw-intent qw-intent-${esc(intentClass)}">${esc(q.intent)} intent</span>` : ""}
             </div>
           </div>
-          ${q.pageTitle ? `<div class="qw-page-title">${esc(q.pageTitle)}</div>` : ""}
-          ${q.rationale ? `<p class="qw-rationale">${esc(q.rationale)}</p>` : ""}
+          ${q.pageTitle != null ? `${ed(q.pageTitle, `sections.seoFoundations.quickWins.${qi}.pageTitle`, { tag: "div", cls: "qw-page-title", placeholder: "Page title" })}` : ""}
+          ${q.rationale != null ? `${ed(q.rationale, `sections.seoFoundations.quickWins.${qi}.rationale`, { tag: "p", cls: "qw-rationale", multiline: true, placeholder: "Why this win matters…" })}` : ""}
           ${kw.primary ? `
           <div class="qw-row">
             <div class="qw-row-label">Target keywords</div>
@@ -1726,18 +1507,18 @@ function renderSeoFoundations(data: SeoFoundationsData): string {
           ${title ? `
           <div class="qw-row">
             <div class="qw-row-label">New title tag</div>
-            <div class="qw-row-val">${esc(title)} <span class="char-badge ${title.length <= 60 ? "char-ok" : "char-over"}">${title.length}/60</span></div>
+            <div class="qw-row-val">${ed(title, `sections.seoFoundations.quickWins.${qi}.newTitleTag`, { placeholder: "Title tag", multiline: true })} <span class="char-badge ${title.length <= 60 ? "char-ok" : "char-over"}">${title.length}/60</span></div>
           </div>` : ""}
           ${meta ? `
           <div class="qw-row">
             <div class="qw-row-label">New meta description</div>
-            <div class="qw-row-val">${esc(meta)} <span class="char-badge ${meta.length <= 160 ? "char-ok" : "char-over"}">${meta.length}/160</span></div>
+            <div class="qw-row-val">${ed(meta, `sections.seoFoundations.quickWins.${qi}.newMetaDescription`, { placeholder: "Meta description", multiline: true })} <span class="char-badge ${meta.length <= 160 ? "char-ok" : "char-over"}">${meta.length}/160</span></div>
           </div>` : ""}
           ${onPage.length ? `
           <div class="qw-row">
             <div class="qw-row-label">On-page suggestions</div>
             <ul class="qw-onpage-list">
-              ${onPage.map((s) => `<li>${esc(s)}</li>`).join("")}
+              ${onPage.map((s, oi) => `<li class="gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(s, `sections.seoFoundations.quickWins.${qi}.onPageSuggestions.${oi}`, { multiline: true, placeholder: "Suggestion" })}${delBtn(`sections.seoFoundations.quickWins.${qi}.onPageSuggestions.${oi}`, "suggestion", { inline: true })}</li>`).join("")}
             </ul>
           </div>` : ""}
           ${cross.length ? `
@@ -1767,25 +1548,27 @@ function renderSeoFoundations(data: SeoFoundationsData): string {
 
   const internalLinkingHtml = hubs.length ? `
     <h3 class="seo-sub-heading">Internal Linking Structure</h3>
-    ${linking.overview ? `<p class="seo-sub-intro">${esc(linking.overview)}</p>` : ""}
+    ${linking.overview != null ? `${ed(linking.overview, "sections.seoFoundations.internalLinking.overview", { tag: "p", cls: "seo-sub-intro", multiline: true, placeholder: "Linking overview" })}` : ""}
     <div class="ils-grid">
-      ${hubs.map((h) => `
-        <div class="ils-hub">
+      ${hubs.map((h, hi) => `
+        <div class="ils-hub gp-deletable" data-deletable-host="1">
+          ${delBtn(`sections.seoFoundations.internalLinking.hubs.${hi}`, `hub "${h.hubTitle || h.hubUrl}"`)}
           <div class="ils-hub-head">
             <span class="ils-hub-pill">Hub</span>
             <a class="ils-hub-url" href="${esc(linkUrl(h.hubUrl))}" target="_blank" rel="noopener">${esc(h.hubTitle || h.hubUrl)}</a>
           </div>
-          ${h.hubUrl && h.hubTitle ? `<div class="ils-hub-sub">${esc(h.hubUrl)}</div>` : ""}
-          ${h.hubRole ? `<p class="ils-hub-role">${esc(h.hubRole)}</p>` : ""}
+          ${h.hubUrl != null && h.hubTitle != null ? `<div class="ils-hub-sub">${esc(h.hubUrl)}</div>` : ""}
+          ${h.hubRole != null ? `${ed(h.hubRole, `sections.seoFoundations.internalLinking.hubs.${hi}.hubRole`, { tag: "p", cls: "ils-hub-role", multiline: true, placeholder: "Hub role" })}` : ""}
           ${h.inboundLinks?.length ? `
           <div class="ils-inbound-label">Inbound links from</div>
           <ul class="ils-inbound-list">
-            ${h.inboundLinks.map((l) => `
-              <li>
+            ${h.inboundLinks.map((l, li) => `
+              <li class="gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">
+                ${delBtn(`sections.seoFoundations.internalLinking.hubs.${hi}.inboundLinks.${li}`, "inbound link", { inline: true })}
                 <a class="ils-from-url" href="${esc(linkUrl(l.fromUrl))}" target="_blank" rel="noopener">${esc(l.fromUrl)}</a>
                 <span class="ils-arrow">&rarr;</span>
-                <span class="ils-anchor">"${esc(l.anchorText)}"</span>
-                ${l.rationale ? `<div class="ils-why">${esc(l.rationale)}</div>` : ""}
+                <span class="ils-anchor">"${ed(l.anchorText, `sections.seoFoundations.internalLinking.hubs.${hi}.inboundLinks.${li}.anchorText`, { placeholder: "Anchor" })}"</span>
+                ${l.rationale != null ? `${ed(l.rationale, `sections.seoFoundations.internalLinking.hubs.${hi}.inboundLinks.${li}.rationale`, { tag: "div", cls: "ils-why", multiline: true, placeholder: "Why" })}` : ""}
               </li>`).join("")}
           </ul>` : ""}
         </div>`).join("\n")}
@@ -1793,38 +1576,39 @@ function renderSeoFoundations(data: SeoFoundationsData): string {
 
   const linkBuildingHtml = (targets.length || lb.overallStrategy) ? `
     <h3 class="seo-sub-heading">Outbound Link-Building Plan</h3>
-    ${lb.overallStrategy ? `<p class="seo-sub-intro">${esc(lb.overallStrategy)}</p>` : ""}
+    ${lb.overallStrategy != null ? `${ed(lb.overallStrategy, "sections.seoFoundations.linkBuilding.overallStrategy", { tag: "p", cls: "seo-sub-intro", multiline: true, placeholder: "Link-building strategy" })}` : ""}
     ${channels.length ? `
     <div class="lb-channels">
       <span class="lb-channels-label">Outreach channels</span>
-      ${channels.map((c) => `<span class="lb-channel-chip">${esc(c)}</span>`).join("")}
+      ${channels.map((c, ci) => `<span class="lb-channel-chip gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(c, `sections.seoFoundations.linkBuilding.outreachChannels.${ci}`, { placeholder: "Channel" })}${delBtn(`sections.seoFoundations.linkBuilding.outreachChannels.${ci}`, "channel", { inline: true })}</span>`).join("")}
     </div>` : ""}
     <div class="lb-grid">
-      ${targets.map((t) => `
-        <div class="lb-target">
+      ${targets.map((t, ti) => `
+        <div class="lb-target gp-deletable" data-deletable-host="1">
+          ${delBtn(`sections.seoFoundations.linkBuilding.targets.${ti}`, `target "${t.targetUrl}"`)}
           <div class="lb-target-head">
             <span class="tier-pill ${priorityClass(t.priority)}">${esc(t.priority || "tier-3")}</span>
             <a class="lb-target-url" href="${esc(linkUrl(t.targetUrl))}" target="_blank" rel="noopener">${esc(t.targetPageTitle || t.targetUrl)}</a>
-            ${t.estimatedLinksNeeded ? `<span class="lb-est">${esc(t.estimatedLinksNeeded)}</span>` : ""}
+            ${t.estimatedLinksNeeded != null ? `<span class="lb-est">${ed(t.estimatedLinksNeeded, `sections.seoFoundations.linkBuilding.targets.${ti}.estimatedLinksNeeded`, { placeholder: "Est. links" })}</span>` : ""}
           </div>
-          ${t.targetPageTitle ? `<div class="lb-target-sub">${esc(t.targetUrl)}</div>` : ""}
-          ${t.rationale ? `<p class="lb-rationale">${esc(t.rationale)}</p>` : ""}
+          ${t.targetPageTitle != null ? `<div class="lb-target-sub">${esc(t.targetUrl)}</div>` : ""}
+          ${t.rationale != null ? `${ed(t.rationale, `sections.seoFoundations.linkBuilding.targets.${ti}.rationale`, { tag: "p", cls: "lb-rationale", multiline: true, placeholder: "Rationale" })}` : ""}
           ${t.anchorMix?.length ? `
           <div class="lb-anchor-label">Anchor text mix</div>
           <table class="lb-anchor-table">
             <thead><tr><th>Anchor text</th><th>Type</th><th>Share</th></tr></thead>
             <tbody>
-              ${t.anchorMix.map((a) => `
+              ${t.anchorMix.map((a, ai) => `
                 <tr>
-                  <td class="lb-anchor-text">"${esc(a.anchorText)}"</td>
+                  <td class="lb-anchor-text">"${ed(a.anchorText, `sections.seoFoundations.linkBuilding.targets.${ti}.anchorMix.${ai}.anchorText`, { placeholder: "Anchor" })}"</td>
                   <td><span class="anchor-type-pill ${anchorTypeClass(a.anchorType)}">${esc(anchorTypeLabel(a.anchorType))}</span></td>
-                  <td class="lb-anchor-share">${esc(a.suggestedShare || "")}</td>
+                  <td class="lb-anchor-share">${ed(a.suggestedShare ?? "", `sections.seoFoundations.linkBuilding.targets.${ti}.anchorMix.${ai}.suggestedShare`, { placeholder: "Share" })}${delBtn(`sections.seoFoundations.linkBuilding.targets.${ti}.anchorMix.${ai}`, "row", { inline: true })}</td>
                 </tr>`).join("")}
             </tbody>
           </table>` : ""}
           ${t.outreachAngles?.length ? `
           <div class="lb-angles-label">Outreach angles</div>
-          <ul class="lb-angles">${t.outreachAngles.map((a) => `<li>${esc(a)}</li>`).join("")}</ul>` : ""}
+          <ul class="lb-angles">${t.outreachAngles.map((a, ai) => `<li class="gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(a, `sections.seoFoundations.linkBuilding.targets.${ti}.outreachAngles.${ai}`, { multiline: true, placeholder: "Angle" })}${delBtn(`sections.seoFoundations.linkBuilding.targets.${ti}.outreachAngles.${ai}`, "angle", { inline: true })}</li>`).join("")}</ul>` : ""}
         </div>`).join("\n")}
     </div>` : "";
 
@@ -1833,7 +1617,7 @@ function renderSeoFoundations(data: SeoFoundationsData): string {
       <div class="section-inner">
         <div class="section-kicker">Content & SEO</div>
         <h2>SEO Foundations</h2>
-        <p class="section-intro">${data.intro ? esc(data.intro) : "The on-page, internal linking and outbound link-building work that compounds the content cluster's results."}</p>
+        ${ed(data.intro ?? "The on-page, internal linking and outbound link-building work that compounds the content cluster's results.", "sections.seoFoundations.intro", { tag: "p", cls: "section-intro", multiline: true, placeholder: "Add a description…" })}
         ${quickWinsHtml}
         ${internalLinkingHtml}
         ${linkBuildingHtml}
@@ -1931,18 +1715,19 @@ function renderContentCalendar(months: any[]): string {
   }).filter(Boolean).join("");
 
   // Month cards view — each month as a card listing all content items
-  const monthCardsHtml = monthBuckets.map((m) => {
-    const allSlots = m.weeks.flat();
-    const blogs = allSlots.filter((s) => s.type === "blog" || s.type === "pillar");
-    const socials = allSlots.filter((s) => s.type !== "blog" && s.type !== "pillar");
-    const blogItems = blogs.map((s) => `<li class="cal-card-item cal-card-blog"><span class="cal-card-dot cal-card-dot-blog"></span><span>${esc(s.topic)}</span>${s.meta ? `<span class="cal-card-meta">${esc(s.meta)}</span>` : ""}</li>`).join("");
-    const socialItems = socials.map((s) => `<li class="cal-card-item cal-card-social"><span class="cal-card-dot cal-card-dot-social"></span><span class="cal-card-type">${esc(s.label)}</span> <span>${esc(s.topic)}</span></li>`).join("");
+  const monthCardsHtml = monthBuckets.map((m, monthIdx) => {
+    const month = months[monthIdx] ?? {};
+    const blogs = (month.blogPosts ?? []) as { title: string; angle?: string; targetKeyword?: string }[];
+    const socials = (month.socialPosts ?? []) as { platform: string; type: string; topic: string }[];
+    const blogItems = blogs.map((b, bi) => `<li class="cal-card-item cal-card-blog gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.6rem">${delBtn(`sections.contentCalendar.${monthIdx}.blogPosts.${bi}`, "blog post", { inline: true })}<span class="cal-card-dot cal-card-dot-blog"></span>${ed(b.title, `sections.contentCalendar.${monthIdx}.blogPosts.${bi}.title`, { placeholder: "Title" })}${b.angle != null ? `<span class="cal-card-meta">${ed(b.angle, `sections.contentCalendar.${monthIdx}.blogPosts.${bi}.angle`, { placeholder: "Angle" })}</span>` : ""}</li>`).join("");
+    const socialItems = socials.map((s, si) => `<li class="cal-card-item cal-card-social gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.6rem">${delBtn(`sections.contentCalendar.${monthIdx}.socialPosts.${si}`, "social post", { inline: true })}<span class="cal-card-dot cal-card-dot-social"></span><span class="cal-card-type">${ed(s.type, `sections.contentCalendar.${monthIdx}.socialPosts.${si}.type`, { placeholder: "Type" })}</span> ${ed(s.topic, `sections.contentCalendar.${monthIdx}.socialPosts.${si}.topic`, { placeholder: "Topic" })}</li>`).join("");
     return `
-    <div class="cal-month-card">
+    <div class="cal-month-card gp-deletable" data-deletable-host="1">
+      ${delBtn(`sections.contentCalendar.${monthIdx}`, `month "${m.label}"`)}
       <div class="cal-month-card-head">
-        <span class="cal-month-name">${esc(m.label)}</span>
-        ${m.focus ? `<span class="cal-month-focus">${esc(m.focus)}</span>` : ""}
-        <span class="cal-month-count">${allSlots.length} piece${allSlots.length === 1 ? "" : "s"}</span>
+        ${ed(m.label ?? "", `sections.contentCalendar.${monthIdx}.month`, { tag: "span", cls: "cal-month-name", placeholder: "Month" })}
+        ${m.focus != null ? `${ed(m.focus, `sections.contentCalendar.${monthIdx}.focusLabel`, { tag: "span", cls: "cal-month-focus", placeholder: "Focus" })}` : ""}
+        <span class="cal-month-count">${(blogs.length + socials.length)} piece${(blogs.length + socials.length) === 1 ? "" : "s"}</span>
       </div>
       <ul class="cal-month-list">
         ${blogItems}
@@ -2004,20 +1789,21 @@ function renderServicesInvestment(data: any): string {
   const delivGrid = (data.services ?? []).length > 0 ? `
     <div class="deliv-grid">
       ${(data.services as { name: string; description?: string; price?: string }[]).map((s, i) => `
-      <div class="deliv-card">
-        <div class="deliv-head ${DELIV_COLORS[i % DELIV_COLORS.length]}">${esc(s.name)}${s.price ? ` <span style="float:right;opacity:.8;font-weight:500">${esc(s.price)}</span>` : ""}</div>
+      <div class="deliv-card gp-deletable" data-deletable-host="1">
+        ${delBtn(`sections.servicesInvestment.services.${i}`, `service "${s.name}"`, { dark: true })}
+        <div class="deliv-head ${DELIV_COLORS[i % DELIV_COLORS.length]}">${ed(s.name, `sections.servicesInvestment.services.${i}.name`, { placeholder: "Service" })}${s.price != null ? ` <span style="float:right;opacity:.8;font-weight:500">${ed(s.price, `sections.servicesInvestment.services.${i}.price`, { placeholder: "Price" })}</span>` : ""}</div>
         <div class="deliv-body">
-          ${s.description ? s.description.split(".").filter(Boolean).map((line: string) => `
-          <div class="deliv-row"><div class="deliv-dot"></div><div>${esc(line.trim())}.</div></div>`).join("") : '<div class="deliv-row"><div class="deliv-dot"></div><div>See scope of work for full details.</div></div>'}
+          ${ed(s.description ?? "", `sections.servicesInvestment.services.${i}.description`, { tag: "div", cls: "deliv-row", multiline: true, placeholder: "Description" })}
         </div>
       </div>`).join("\n")}
     </div>` : "";
 
   const timelineHtml = (data.timeline ?? [])
-    .map((t: { phase: string; items: string[] }) => `
-    <div class="timeline-phase">
-      <h4>${esc(t.phase)}</h4>
-      <ul>${t.items.map((item: string) => `<li>${esc(item)}</li>`).join("\n")}</ul>
+    .map((t: { phase: string; items: string[] }, ti: number) => `
+    <div class="timeline-phase gp-deletable" data-deletable-host="1">
+      ${delBtn(`sections.servicesInvestment.timeline.${ti}`, `phase "${t.phase}"`)}
+      <h4>${ed(t.phase, `sections.servicesInvestment.timeline.${ti}.phase`, { placeholder: "Phase" })}</h4>
+      <ul>${(t.items ?? []).map((item: string, ii: number) => `<li class="gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(item, `sections.servicesInvestment.timeline.${ti}.items.${ii}`, { multiline: true, placeholder: "Item" })}${delBtn(`sections.servicesInvestment.timeline.${ti}.items.${ii}`, "item", { inline: true })}</li>`).join("\n")}</ul>
     </div>`)
     .join("\n");
 
@@ -2028,12 +1814,12 @@ function renderServicesInvestment(data: any): string {
     <table class="channel-table">
       <thead><tr><th>Channel</th><th>Monthly</th><th>Share</th><th>Rationale</th></tr></thead>
       <tbody>
-        ${ia.byChannel.map((row) => `
+        ${ia.byChannel.map((row, ri) => `
         <tr>
-          <td style="font-weight:600;white-space:nowrap">${esc(row.channel)}</td>
+          <td style="font-weight:600;white-space:nowrap">${ed(row.channel, `sections.servicesInvestment.investmentAllocation.byChannel.${ri}.channel`, { placeholder: "Channel" })}</td>
           <td style="font-weight:600">£${(row.amount ?? 0).toLocaleString()}</td>
           <td>${row.share ?? 0}%</td>
-          <td>${esc(row.rationale ?? "")}</td>
+          <td>${ed(row.rationale ?? "", `sections.servicesInvestment.investmentAllocation.byChannel.${ri}.rationale`, { multiline: true, placeholder: "Rationale" })}${delBtn(`sections.servicesInvestment.investmentAllocation.byChannel.${ri}`, `row "${row.channel}"`, { inline: true })}</td>
         </tr>`).join("")}
       </tbody>
     </table>` : "";
@@ -2043,9 +1829,10 @@ function renderServicesInvestment(data: any): string {
     <h3 style="margin:2rem 0 1rem">Why i3media</h3>
     <div class="deliv-grid">
       ${whyUs.map((w, i) => `
-      <div class="deliv-card">
-        <div class="deliv-head ${DELIV_COLORS[i % DELIV_COLORS.length]}">${esc(w.title)}</div>
-        <div class="deliv-body"><div class="deliv-row"><div class="deliv-dot"></div><div>${esc(w.description ?? "")}</div></div></div>
+      <div class="deliv-card gp-deletable" data-deletable-host="1">
+        ${delBtn(`sections.servicesInvestment.whyUs.${i}`, `point "${w.title}"`, { dark: true })}
+        <div class="deliv-head ${DELIV_COLORS[i % DELIV_COLORS.length]}">${ed(w.title, `sections.servicesInvestment.whyUs.${i}.title`, { placeholder: "Title" })}</div>
+        <div class="deliv-body"><div class="deliv-row"><div class="deliv-dot"></div><div>${ed(w.description ?? "", `sections.servicesInvestment.whyUs.${i}.description`, { multiline: true, placeholder: "Description" })}</div></div></div>
       </div>`).join("")}
     </div>` : "";
 
@@ -2106,23 +1893,25 @@ function renderMediaPlan(data: any): string {
 function renderEmailMarketing(data: any): string {
   const flowsHtml = (data.flows ?? [])
     .map((flow: { name: string; trigger: string; emails: { subject: string; purpose: string; delay?: string }[] }, i: number) => `
-    <div class="em-flow">
-      <div class="em-flow-header" onclick="this.parentElement.classList.toggle('open')">
+    <div class="em-flow gp-deletable" data-deletable-host="1">
+      ${delBtn(`sections.emailMarketing.flows.${i}`, `flow "${flow.name}"`)}
+      <div class="em-flow-header" onclick="if(event.target.closest('[data-edit-path],[data-delete-path]'))return;this.parentElement.classList.toggle('open')">
         <span class="ag-num">${i + 1}</span>
-        <span class="ag-name">${esc(flow.name)}</span>
+        <span class="ag-name">${ed(flow.name, `sections.emailMarketing.flows.${i}.name`, { placeholder: "Flow name" })}</span>
         <span class="ag-count">${(flow.emails ?? []).length} emails</span>
         <span class="ag-chevron">+</span>
       </div>
       <div class="em-flow-body">
-        <p class="em-trigger"><strong>Trigger:</strong> ${esc(flow.trigger)}</p>
+        <p class="em-trigger"><strong>Trigger:</strong> ${ed(flow.trigger, `sections.emailMarketing.flows.${i}.trigger`, { multiline: true, placeholder: "Trigger" })}</p>
         <div class="em-emails">
           ${(flow.emails ?? []).map((e: { subject: string; purpose: string; delay?: string }, j: number) => `
-          <div class="em-email-item">
+          <div class="em-email-item gp-deletable" data-deletable-host="1">
+            ${delBtn(`sections.emailMarketing.flows.${i}.emails.${j}`, "email", { inline: true })}
             <span class="em-email-num">${j + 1}</span>
             <div class="em-email-content">
-              <div class="em-subject">${esc(e.subject)}</div>
-              <div class="em-purpose">${esc(e.purpose)}</div>
-              ${e.delay ? `<span class="em-delay">${esc(e.delay)}</span>` : ""}
+              <div class="em-subject">${ed(e.subject, `sections.emailMarketing.flows.${i}.emails.${j}.subject`, { placeholder: "Subject" })}</div>
+              <div class="em-purpose">${ed(e.purpose, `sections.emailMarketing.flows.${i}.emails.${j}.purpose`, { multiline: true, placeholder: "Purpose" })}</div>
+              ${e.delay != null ? `<span class="em-delay">${ed(e.delay, `sections.emailMarketing.flows.${i}.emails.${j}.delay`, { placeholder: "Delay" })}</span>` : ""}
             </div>
           </div>`).join("\n")}
         </div>
@@ -2131,23 +1920,25 @@ function renderEmailMarketing(data: any): string {
     .join("\n");
 
   const campaignsHtml = (data.campaigns ?? [])
-    .map((c: { name: string; frequency: string; audience: string; objectiveText: string }) => `
-    <div class="em-campaign-card">
-      <h4>${esc(c.name)}</h4>
+    .map((c: { name: string; frequency: string; audience: string; objectiveText: string }, i: number) => `
+    <div class="em-campaign-card gp-deletable" data-deletable-host="1">
+      ${delBtn(`sections.emailMarketing.campaigns.${i}`, `campaign "${c.name}"`)}
+      <h4>${ed(c.name, `sections.emailMarketing.campaigns.${i}.name`, { placeholder: "Name" })}</h4>
       <div class="em-campaign-meta">
-        <span class="em-tag">${esc(c.frequency)}</span>
-        <span class="em-tag">${esc(c.audience)}</span>
+        <span class="em-tag">${ed(c.frequency, `sections.emailMarketing.campaigns.${i}.frequency`, { placeholder: "Frequency" })}</span>
+        <span class="em-tag">${ed(c.audience, `sections.emailMarketing.campaigns.${i}.audience`, { placeholder: "Audience" })}</span>
       </div>
-      <p>${esc(c.objectiveText)}</p>
+      <p>${ed(c.objectiveText, `sections.emailMarketing.campaigns.${i}.objectiveText`, { multiline: true, placeholder: "Objective" })}</p>
     </div>`)
     .join("\n");
 
   const segmentsHtml = (data.segmentation?.segments ?? [])
-    .map((s: { name: string; criteria: string; purpose: string }) => `
-    <div class="em-segment">
-      <strong>${esc(s.name)}</strong>
-      <span class="em-criteria">${esc(s.criteria)}</span>
-      <span class="em-seg-purpose">${esc(s.purpose)}</span>
+    .map((s: { name: string; criteria: string; purpose: string }, i: number) => `
+    <div class="em-segment gp-deletable" data-deletable-host="1">
+      ${delBtn(`sections.emailMarketing.segmentation.segments.${i}`, `segment "${s.name}"`, { inline: true })}
+      <strong>${ed(s.name, `sections.emailMarketing.segmentation.segments.${i}.name`, { placeholder: "Segment" })}</strong>
+      <span class="em-criteria">${ed(s.criteria, `sections.emailMarketing.segmentation.segments.${i}.criteria`, { multiline: true, placeholder: "Criteria" })}</span>
+      <span class="em-seg-purpose">${ed(s.purpose, `sections.emailMarketing.segmentation.segments.${i}.purpose`, { multiline: true, placeholder: "Purpose" })}</span>
     </div>`)
     .join("\n");
 
@@ -2169,29 +1960,31 @@ function renderEmailMarketing(data: any): string {
 function renderLinkedInAds(campaigns: any[]): string {
   const campaignsHtml = campaigns
     .map((c, idx) => {
+      const base = `sections.linkedInAds.${idx}`;
       const targeting = c.audienceTargeting ?? {};
       const targetingChips = [
-        ...(targeting.jobTitles ?? []).map((t: string) => `<span class="audience-chip interest">${esc(t)}</span>`),
-        ...(targeting.industries ?? []).map((i: string) => `<span class="audience-chip custom">${esc(i)}</span>`),
-        ...(targeting.seniority ?? []).map((s: string) => `<span class="audience-chip lookalike">${esc(s)}</span>`),
+        ...(targeting.jobTitles ?? []).map((t: string, ti: number) => `<span class="audience-chip interest gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(t, `${base}.audienceTargeting.jobTitles.${ti}`, { placeholder: "Job title" })}${delBtn(`${base}.audienceTargeting.jobTitles.${ti}`, "job title", { inline: true })}</span>`),
+        ...(targeting.industries ?? []).map((i: string, ii: number) => `<span class="audience-chip custom gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(i, `${base}.audienceTargeting.industries.${ii}`, { placeholder: "Industry" })}${delBtn(`${base}.audienceTargeting.industries.${ii}`, "industry", { inline: true })}</span>`),
+        ...(targeting.seniority ?? []).map((s: string, si: number) => `<span class="audience-chip lookalike gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(s, `${base}.audienceTargeting.seniority.${si}`, { placeholder: "Seniority" })}${delBtn(`${base}.audienceTargeting.seniority.${si}`, "seniority", { inline: true })}</span>`),
       ].join(" ");
 
       const creativesHtml = (c.adCreatives ?? [])
-        .map((cr: { headline: string; introText: string; description?: string; cta: string }) => `
-        <div class="ad-card">
+        .map((cr: { headline: string; introText: string; description?: string; cta: string }, cri: number) => `
+        <div class="ad-card gp-deletable" data-deletable-host="1">
+          ${delBtn(`${base}.adCreatives.${cri}`, "creative")}
           <div class="ad-card-header"><span class="ad-badge linkedin">LinkedIn</span></div>
           <div class="ad-card-body">
             <div class="lad-profile">
               <div class="lad-avatar">i3</div>
               <div><div class="lad-info-name">${esc(c.campaignName ?? "LinkedIn Ad")}</div><div class="lad-info-sub">Sponsored</div><div class="lad-follow">+ Follow</div></div>
             </div>
-            <p class="lad-caption">${esc(cr.introText)}<span class="char-badge ${(cr.introText ?? "").length <= 150 ? "char-ok" : "char-over"}" style="margin-left:6px">${(cr.introText ?? "").length}/150</span></p>
+            <p class="lad-caption">${ed(cr.introText, `${base}.adCreatives.${cri}.introText`, { multiline: true, placeholder: "Intro text" })}<span class="char-badge ${(cr.introText ?? "").length <= 150 ? "char-ok" : "char-over"}" style="margin-left:6px">${(cr.introText ?? "").length}/150</span></p>
             <div class="lad-image-wrap">
-              <div class="lad-img-txt">${esc(cr.headline)}<span class="char-badge ${(cr.headline ?? "").length <= 70 ? "char-ok" : "char-over"}" style="margin-left:6px">${(cr.headline ?? "").length}/70</span></div>
+              <div class="lad-img-txt">${ed(cr.headline, `${base}.adCreatives.${cri}.headline`, { placeholder: "Headline" })}<span class="char-badge ${(cr.headline ?? "").length <= 70 ? "char-ok" : "char-over"}" style="margin-left:6px">${(cr.headline ?? "").length}/70</span></div>
             </div>
-            ${cr.description ? `<p style="font-size:12px;color:var(--text-light);margin-bottom:8px">${esc(cr.description)}<span class="char-badge ${(cr.description ?? '').length <= 100 ? 'char-ok' : 'char-over'}" style="margin-left:6px">${(cr.description ?? '').length}/100</span></p>` : ""}
+            ${cr.description != null ? `<p style="font-size:12px;color:var(--text-light);margin-bottom:8px">${ed(cr.description, `${base}.adCreatives.${cri}.description`, { multiline: true, placeholder: "Description" })}<span class="char-badge ${(cr.description ?? '').length <= 100 ? 'char-ok' : 'char-over'}" style="margin-left:6px">${(cr.description ?? '').length}/100</span></p>` : ""}
             <div class="lad-cta-row">
-              <div class="lad-cta-btn">${esc(cr.cta)}</div>
+              <div class="lad-cta-btn">${ed(cr.cta, `${base}.adCreatives.${cri}.cta`, { placeholder: "CTA" })}</div>
               <div class="lad-stats">Sponsored</div>
             </div>
           </div>
@@ -2199,13 +1992,14 @@ function renderLinkedInAds(campaigns: any[]): string {
         .join("\n");
 
       return `
-      <div class="li-campaign">
-        <h3>${esc(c.campaignName ?? `Campaign ${idx + 1}`)}${c.isFallback ? ` <span class="char-badge char-warn" style="margin-left:.5rem;vertical-align:middle" title="AI generation didn't return usable LinkedIn campaigns. Placeholder shown — regenerate from the dashboard.">AI fallback</span>` : ""}</h3>
+      <div class="li-campaign gp-deletable" data-deletable-host="1">
+        ${delBtn(base, `LinkedIn campaign "${c.campaignName}"`)}
+        <h3>${ed(c.campaignName ?? `Campaign ${idx + 1}`, `${base}.campaignName`, { placeholder: "Campaign name" })}${c.isFallback ? ` <span class="char-badge char-warn" style="margin-left:.5rem;vertical-align:middle" title="AI generation didn't return usable LinkedIn campaigns. Placeholder shown — regenerate from the dashboard.">AI fallback</span>` : ""}</h3>
         <div class="overview-grid">
-          <div class="ov-item"><span class="ov-label">Objective</span><span class="ov-value">${esc(c.objective ?? "")}</span></div>
-          <div class="ov-item"><span class="ov-label">Budget</span><span class="ov-value">${esc(c.budget ?? "")}</span></div>
-          <div class="ov-item"><span class="ov-label">Format</span><span class="ov-value">${esc(c.format ?? "")}</span></div>
-          ${targeting.companySize ? `<div class="ov-item"><span class="ov-label">Company Size</span><span class="ov-value">${esc(targeting.companySize)}</span></div>` : ""}
+          <div class="ov-item"><span class="ov-label">Objective</span><span class="ov-value">${ed(c.objective ?? "", `${base}.objective`, { placeholder: "Objective" })}</span></div>
+          <div class="ov-item"><span class="ov-label">Budget</span><span class="ov-value">${ed(c.budget ?? "", `${base}.budget`, { placeholder: "Budget" })}</span></div>
+          <div class="ov-item"><span class="ov-label">Format</span><span class="ov-value">${ed(c.format ?? "", `${base}.format`, { placeholder: "Format" })}</span></div>
+          ${targeting.companySize != null ? `<div class="ov-item"><span class="ov-label">Company Size</span><span class="ov-value">${ed(targeting.companySize, `${base}.audienceTargeting.companySize`, { placeholder: "Company size" })}</span></div>` : ""}
         </div>
         ${targetingChips ? `<div class="li-targeting"><h4>Audience Targeting</h4><div class="audience-chips">${targetingChips}</div></div>` : ""}
         ${creativesHtml ? `<div class="li-creatives"><h4>Ad Creatives</h4><div class="ad-mockup-grid">${creativesHtml}</div></div>` : ""}
@@ -2279,9 +2073,9 @@ function renderCompetitorIntel(competitors: any[], grounding?: string): string {
       : "";
 
   const tableRows = competitors
-    .map((c) => `
+    .map((c, idx) => `
     <tr>
-      <td class="comp-domain">${esc(c.domain ?? "")} ${sourceBadge(c.source)}</td>
+      <td class="comp-domain">${ed(c.domain ?? "", `sections.competitorIntel.${idx}.domain`, { placeholder: "domain.com" })} ${sourceBadge(c.source)}</td>
       <td class="comp-num">${c.organicTraffic ? fmtNum(c.organicTraffic) : "—"}</td>
       <td class="comp-num">${c.organicKeywords ? fmtNum(c.organicKeywords) : "—"}</td>
       <td class="comp-num">${c.paidKeywords ? fmtNum(c.paidKeywords) : "—"}</td>
@@ -2290,24 +2084,33 @@ function renderCompetitorIntel(competitors: any[], grounding?: string): string {
     .join("\n");
 
   const detailCards = competitors
-    .map((c) => `
-    <div class="comp-detail-card">
-      <h4>${esc(c.domain ?? "")} ${sourceBadge(c.source)} ${overlapPill(c.commonKeywords)}</h4>
-      <div class="comp-keywords"><span class="comp-kw-label">Top Keywords:</span> ${(c.topKeywords ?? []).map((k: string) => `<span class="comp-kw-chip">${esc(k)}</span>`).join(" ")}</div>
+    .map((c, idx) => {
+      const base = `sections.competitorIntel.${idx}`;
+      const topKeywords = (c.topKeywords ?? []).map((k: string, ki: number) => `<span class="comp-kw-chip gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(k, `${base}.topKeywords.${ki}`, { placeholder: "Keyword" })}${delBtn(`${base}.topKeywords.${ki}`, "keyword", { inline: true })}</span>`).join(" ");
+      const strengths = (c.strengths ?? []).map((s: string, si: number) => `<li class="gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(s, `${base}.strengths.${si}`, { multiline: true, placeholder: "Strength" })}${delBtn(`${base}.strengths.${si}`, "strength", { inline: true })}</li>`).join("");
+      const weaknesses = (c.weaknesses ?? []).map((w: string, wi: number) => `<li class="gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(w, `${base}.weaknesses.${wi}`, { multiline: true, placeholder: "Weakness" })}${delBtn(`${base}.weaknesses.${wi}`, "weakness", { inline: true })}</li>`).join("");
+      const opportunitiesArr = (c.opportunities ?? []) as string[];
+      const opportunities = opportunitiesArr.map((o: string, oi: number) => `<li class="gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(o, `${base}.opportunities.${oi}`, { multiline: true, placeholder: "Opportunity" })}${delBtn(`${base}.opportunities.${oi}`, "opportunity", { inline: true })}</li>`).join("");
+      return `
+    <div class="comp-detail-card gp-deletable" data-deletable-host="1">
+      ${delBtn(base, `competitor "${c.domain ?? ""}"`)}
+      <h4>${ed(c.domain ?? "", `${base}.domain`, { placeholder: "domain.com" })} ${sourceBadge(c.source)} ${overlapPill(c.commonKeywords)}</h4>
+      <div class="comp-keywords"><span class="comp-kw-label">Top Keywords:</span> ${topKeywords}</div>
       <div class="comp-sw-grid">
-        <div class="comp-sw-col"><span class="comp-sw-title comp-strength">Strengths</span><ul>${(c.strengths ?? []).map((s: string) => `<li>${esc(s)}</li>`).join("")}</ul></div>
-        <div class="comp-sw-col"><span class="comp-sw-title comp-weakness">Weaknesses</span><ul>${(c.weaknesses ?? []).map((w: string) => `<li>${esc(w)}</li>`).join("")}</ul></div>
+        <div class="comp-sw-col"><span class="comp-sw-title comp-strength">Strengths</span><ul>${strengths}</ul></div>
+        <div class="comp-sw-col"><span class="comp-sw-title comp-weakness">Weaknesses</span><ul>${weaknesses}</ul></div>
       </div>
-      ${(c.opportunities ?? []).length ? `
+      ${opportunitiesArr.length ? `
       <div class="comp-opportunities">
         <span class="comp-sw-title comp-opportunity">Opportunities for us</span>
-        <ul>${(c.opportunities as string[]).map((o: string) => `<li>${esc(o)}</li>`).join("")}</ul>
+        <ul>${opportunities}</ul>
       </div>` : (c.strengths ?? []).length ? `
       <div class="comp-opportunities">
         <span class="comp-sw-title comp-opportunity">Opportunities for us</span>
         <ul>${(c.strengths as string[]).slice(0, 2).map((s: string) => `<li>They perform well here — we should match and differentiate: <em>${esc(s)}</em></li>`).join("")}</ul>
       </div>` : ""}
-    </div>`)
+    </div>`;
+    })
     .join("\n");
 
   return `
@@ -3559,84 +3362,40 @@ a{color:var(--accent);text-decoration:none}
 .coh-fix{display:block;font-size:12px;color:#78350f;margin-top:2px}
 .coh-high{color:#7f1d1d}.coh-medium{color:#78350f}.coh-low{color:#92400e}
 
-/* ── TLDR view (internal handoff) ─────────────────────────────────────── */
-.tldr-toggle{position:fixed;top:1rem;right:1rem;z-index:9998;display:inline-flex;align-items:center;gap:.5rem;padding:.55rem .9rem;border-radius:999px;background:#0f172a;color:#fff;border:1px solid rgba(255,255,255,.1);font-family:inherit;font-size:13px;font-weight:600;letter-spacing:.02em;cursor:pointer;box-shadow:0 6px 24px rgba(15,23,42,.18);transition:transform .15s ease,background .15s ease}
-.tldr-toggle:hover{transform:translateY(-1px);background:#1e293b}
-.tldr-toggle-icon{font-size:14px;line-height:1}
-body.tldr-mode .tldr-toggle{background:#7c3aed;border-color:rgba(255,255,255,.18)}
-body.tldr-mode .tldr-toggle .tldr-toggle-label::after{content:" \u2715";opacity:.7;margin-left:.15rem}
+/* ── Inline editor — text edit + delete affordances ───────────────────── */
+/* Every editable element gets a soft outline on hover and a focus ring while
+ * the user is typing. Save indicator pulses briefly on blur. */
+.gp-edit{position:relative;outline:none;border-radius:4px;transition:background .12s ease,box-shadow .12s ease;cursor:text}
+.gp-edit:hover{background:rgba(99,102,241,.06);box-shadow:inset 0 0 0 1px rgba(99,102,241,.18)}
+.gp-edit:focus{background:#fff;box-shadow:inset 0 0 0 2px rgba(99,102,241,.55);outline:none}
+.gp-edit[data-placeholder]:empty::before{content:attr(data-placeholder);opacity:.4;font-style:italic;pointer-events:none}
+.gp-edit.gp-saving{box-shadow:inset 0 0 0 2px rgba(99,102,241,.55)}
+.gp-edit.gp-saved::after{content:'\u2713';position:absolute;top:-12px;right:-2px;font-size:11px;color:#10b981;font-weight:700;animation:gpSavedFade 1s ease-out forwards;pointer-events:none}
+@keyframes gpSavedFade{0%{opacity:0;transform:translateY(2px)}20%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-3px)}}
 
-.tldr-view{display:none;position:fixed;inset:0;z-index:9990;background:#f8fafc;overflow-y:auto;padding:5rem 1.5rem 4rem;font-family:inherit;color:#0f172a}
-body.tldr-mode .tldr-view{display:block}
-body.tldr-mode .hero,body.tldr-mode .stats-band,body.tldr-mode .strategy-brain-panel,body.tldr-mode .coherence-panel,body.tldr-mode .chapter-panel,body.tldr-mode .section,body.tldr-mode .cta-section,body.tldr-mode #sticky-nav,body.tldr-mode #gp-toc,body.tldr-mode .watermark{display:none !important}
-body.tldr-mode{background:#f8fafc}
+/* Wrapper that hosts a × delete button inside a card. The wrapper must have
+ * position:relative for the absolute-positioned button. We apply this from
+ * the renderer by adding gp-deletable to existing card classes where needed. */
+.gp-deletable{position:relative}
+.gp-deletable:hover > .gp-del-btn,.gp-deletable:focus-within > .gp-del-btn{opacity:1;transform:scale(1)}
+.gp-del-btn{position:absolute;top:.45rem;right:.45rem;z-index:5;width:24px;height:24px;border-radius:50%;border:1px solid rgba(239,68,68,.4);background:#fff;color:#ef4444;font-size:14px;line-height:1;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;opacity:0;transform:scale(.85);transition:opacity .15s ease,transform .15s ease,background .15s ease,color .15s ease;font-family:inherit;padding:0;box-shadow:0 2px 6px rgba(15,23,42,.08)}
+.gp-del-btn:hover{background:#ef4444;color:#fff;border-color:#ef4444}
+.gp-del-btn:focus-visible{opacity:1;transform:scale(1);outline:2px solid rgba(239,68,68,.4);outline-offset:2px}
+.gp-del-btn-inline{position:static;opacity:.6;width:18px;height:18px;font-size:11px;margin-left:.4rem;vertical-align:middle;transform:scale(1);box-shadow:none}
+.gp-del-btn-inline:hover{opacity:1}
+.gp-del-btn-dark{background:rgba(255,255,255,.1);color:rgba(255,255,255,.85);border-color:rgba(255,255,255,.18)}
+.gp-del-btn-dark:hover{background:rgba(239,68,68,.85);color:#fff;border-color:#ef4444}
 
-.tldr-header{max-width:1100px;margin:0 auto 2rem;display:flex;justify-content:space-between;align-items:flex-start;gap:1.5rem;padding-bottom:1.25rem;border-bottom:1px solid #e2e8f0}
-.tldr-header-kicker{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#7c3aed;margin-bottom:.4rem}
-.tldr-header-title{font-size:clamp(1.5rem,3vw,2rem);font-weight:800;letter-spacing:-.5px;margin:0 0 .35rem;color:#0f172a}
-.tldr-header-sub{margin:0;color:#64748b;font-size:14px;max-width:560px}
-.tldr-close-btn{flex:0 0 auto;padding:.6rem 1.1rem;border-radius:8px;border:1px solid #cbd5e1;background:#fff;color:#0f172a;font-weight:600;font-size:13px;cursor:pointer;transition:background .15s ease}
-.tldr-close-btn:hover{background:#f1f5f9}
+/* Floating editor toolbar with Undo button. Bottom-right, internal-only. */
+.gp-edit-toolbar{position:fixed;bottom:1rem;right:1rem;z-index:9998;display:flex;align-items:center;gap:.5rem}
+.gp-undo-btn{display:inline-flex;align-items:center;gap:.45rem;padding:.55rem .9rem;border-radius:999px;background:#0f172a;color:#fff;border:1px solid rgba(255,255,255,.1);font-family:inherit;font-size:13px;font-weight:600;letter-spacing:.02em;cursor:pointer;box-shadow:0 6px 24px rgba(15,23,42,.18);transition:transform .15s ease,background .15s ease,opacity .15s ease}
+.gp-undo-btn:hover{transform:translateY(-1px);background:#1e293b}
+.gp-undo-btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.gp-undo-icon{font-size:15px;line-height:1}
+.gp-undo-btn.gp-undo-saving{opacity:.7;cursor:progress}
+.gp-undo-btn.gp-undo-flash{background:#10b981;border-color:#10b981}
 
-.tldr-cards{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1rem}
-.tldr-card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:1.1rem 1.15rem 1rem;display:flex;flex-direction:column;gap:.6rem;box-shadow:0 1px 2px rgba(15,23,42,.04);transition:border-color .15s ease,box-shadow .15s ease}
-.tldr-card:hover{border-color:#cbd5e1;box-shadow:0 4px 16px rgba(15,23,42,.06)}
-.tldr-kicker{font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#7c3aed}
-.tldr-card-title{font-size:1rem;font-weight:700;color:#0f172a;margin:0;letter-spacing:-.2px}
-.tldr-card-body{font-size:13.5px;color:#334155;line-height:1.55}
-.tldr-card-body p{margin:0 0 .4rem}
-.tldr-jump{align-self:flex-start;background:none;border:none;color:#7c3aed;font-weight:600;font-size:12.5px;cursor:pointer;padding:0;margin-top:.25rem;font-family:inherit}
-.tldr-jump:hover{text-decoration:underline}
-
-.tldr-list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:.45rem}
-.tldr-row{display:flex;align-items:center;gap:.5rem;font-size:13px;color:#334155;line-height:1.45}
-.tldr-row-text{flex:1;min-width:0}
-.tldr-muted{color:#94a3b8;font-weight:400}
-.tldr-pill{display:inline-flex;align-items:center;padding:.12rem .5rem;border-radius:999px;background:#f1f5f9;color:#475569;font-size:11px;font-weight:600;letter-spacing:.02em;white-space:nowrap}
-.tldr-pri-high{background:#fee2e2;color:#991b1b}
-.tldr-pri-medium-high{background:#ffedd5;color:#9a3412}
-.tldr-pri-medium{background:#fef3c7;color:#854d0e}
-.tldr-pri-ongoing{background:#dbeafe;color:#1e40af}
-.tldr-pri-long-term{background:#e0e7ff;color:#3730a3}
-
-.tldr-aud{display:flex;flex-direction:column;gap:.2rem;padding:.55rem .65rem;border-radius:8px;background:#f8fafc;border:1px solid #e2e8f0}
-.tldr-aud-name{font-weight:700;font-size:13px;color:#0f172a}
-.tldr-aud-desc{font-size:12.5px;color:#475569;line-height:1.5}
-.tldr-aud-pains{display:flex;align-items:center;gap:.4rem;font-size:12px;color:#64748b;margin-top:.15rem}
-
-.tldr-comp{display:flex;flex-direction:column;gap:.3rem;padding:.55rem .65rem;border-radius:8px;background:#f8fafc;border:1px solid #e2e8f0}
-.tldr-comp-head{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
-.tldr-comp-domain{font-weight:700;font-size:13px;color:#0f172a}
-.tldr-comp-take{font-size:12.5px;color:#475569;line-height:1.5}
-.tldr-src{display:inline-flex;padding:.1rem .45rem;border-radius:999px;font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
-.tldr-src-manual{background:#dbeafe;color:#1e3a8a}
-.tldr-src-auto{background:#dcfce7;color:#166534}
-.tldr-src-inferred{background:#fef3c7;color:#854d0e}
-
-.tldr-bullets{margin:.25rem 0 0;padding-left:1.05rem;display:flex;flex-direction:column;gap:.18rem}
-.tldr-bullets li{font-size:12.5px;color:#475569;line-height:1.5}
-
-.tldr-sf-group{padding:.55rem .65rem;border-radius:8px;background:#f8fafc;border:1px solid #e2e8f0;margin-bottom:.5rem}
-.tldr-sf-group:last-child{margin-bottom:0}
-.tldr-sf-label{display:block;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#6366f1;margin-bottom:.3rem}
-.tldr-sf-statement{font-size:13px;font-weight:600;color:#0f172a;margin:0 0 .25rem;line-height:1.5}
-
-.tldr-comp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.5rem}
-.tldr-comp-tile{display:flex;flex-direction:column;gap:.4rem;padding:.6rem .7rem;border-radius:8px;background:#f8fafc;border:1px solid #e2e8f0}
-.tldr-comp-block{display:flex;flex-direction:column;gap:.15rem}
-.tldr-comp-block-label{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#94a3b8}
-
-.tldr-facts{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:.5rem;margin-bottom:.4rem}
-.tldr-fact{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:.5rem .65rem;font-size:12px;color:#64748b;line-height:1.4}
-.tldr-fact-label{display:block;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#94a3b8;margin-bottom:.15rem}
-.tldr-fact strong{color:#0f172a;font-size:14px;font-weight:700}
-
-.tldr-tag-row{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.25rem}
-.tldr-tag{display:inline-flex;padding:.18rem .55rem;border-radius:6px;background:#f1f5f9;color:#334155;font-size:11.5px;font-weight:500;line-height:1.3}
-.tldr-tag-more{background:#e2e8f0;color:#64748b;font-style:italic}
-
-@media print{.tldr-toggle{display:none !important}}
-@media (max-width:640px){.tldr-header{flex-direction:column;align-items:flex-start}.tldr-cards{grid-template-columns:1fr}}
+@media print{.gp-edit-toolbar,.gp-del-btn{display:none !important}.gp-edit{outline:none !important;background:none !important;box-shadow:none !important}}
 `;
 
 
@@ -4168,40 +3927,152 @@ document.querySelectorAll('.lp-iframe[data-lp-html]').forEach(function(iframe){
   }catch(e){console.error('LP decode error:',e);}
 });
 
-// TLDR toggle (internal handoff view). Not present in public share view.
+// Generic inline editor — text save (any element with .gp-edit + data-edit-path)
+// and × delete (any element with [data-delete-path]). Saves go via postMessage
+// to the parent React page, which calls the edit API. Saves replace this iframe
+// with new HTML, so we stash scroll position in sessionStorage and restore it
+// when the next iframe boots.
 (function(){
-  var btn=document.getElementById('tldr-toggle');
-  if(!btn)return;
-  var view=document.getElementById('gp-tldr-view');
-  var closeBtn=document.getElementById('tldr-close');
-  function setMode(on){
-    document.body.classList.toggle('tldr-mode',on);
-    if(view)view.setAttribute('aria-hidden',on?'false':'true');
-    try{sessionStorage.setItem('gp_tldr_mode',on?'1':'0');}catch(e){}
-    if(on)window.scrollTo({top:0,behavior:'instant'});
+  // Restore scroll position from a prior edit-triggered reload.
+  try{
+    var stashedY = parseInt(sessionStorage.getItem('gp_scroll_y') || '0', 10);
+    if(stashedY > 0){
+      sessionStorage.removeItem('gp_scroll_y');
+      var restore = function(){ window.scrollTo(0, stashedY); };
+      // Defer past the layout pass + font swap so the height is right.
+      requestAnimationFrame(function(){ requestAnimationFrame(restore); });
+      if(document.fonts && document.fonts.ready) document.fonts.ready.then(restore).catch(function(){});
+    }
+  }catch(e){}
+
+  function stashScroll(){ try{ sessionStorage.setItem('gp_scroll_y', String(window.scrollY || 0)); }catch(e){} }
+
+  function setSavingState(el, on){
+    if(!el)return;
+    el.classList.toggle('gp-saving', !!on);
   }
-  btn.addEventListener('click',function(){setMode(!document.body.classList.contains('tldr-mode'));});
-  if(closeBtn)closeBtn.addEventListener('click',function(){setMode(false);});
-  // Restore prior mode
-  try{if(sessionStorage.getItem('gp_tldr_mode')==='1')setMode(true);}catch(e){}
-  // Jump-to-section from TLDR cards
-  document.querySelectorAll('.tldr-jump').forEach(function(b){
-    b.addEventListener('click',function(){
-      var id=this.getAttribute('data-jump');
-      if(!id)return;
-      setMode(false);
-      requestAnimationFrame(function(){
-        var el=document.getElementById(id);
-        if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
-      });
-    });
+  function flashSaved(el){
+    if(!el)return;
+    el.classList.remove('gp-saving');
+    el.classList.add('gp-saved');
+    setTimeout(function(){ el.classList.remove('gp-saved'); }, 1100);
+  }
+  // Track elements currently mid-save so the parent can flash them on success.
+  var pending = {};
+  var seq = 0;
+  function nextId(){ seq += 1; return 'gpe_' + seq; }
+
+  document.addEventListener('blur', function(e){
+    var el = e.target;
+    if(!el || !el.classList || !el.classList.contains('gp-edit')) return;
+    var path = el.getAttribute('data-edit-path');
+    if(!path) return;
+    var prev = el.getAttribute('data-prev-value');
+    var value = (el.textContent || '').replace(/\u00a0/g,' ').trim();
+    // No change — skip.
+    if(prev != null && prev === value){ return; }
+    el.setAttribute('data-prev-value', value);
+    var id = nextId();
+    pending[id] = el;
+    setSavingState(el, true);
+    stashScroll();
+    try{
+      window.parent.postMessage({ type:'gp:edit-set', id:id, path:path, value:value }, '*');
+    }catch(err){ console.error('gp edit post failed', err); }
+  }, true);
+
+  document.addEventListener('focus', function(e){
+    var el = e.target;
+    if(!el || !el.classList || !el.classList.contains('gp-edit')) return;
+    el.setAttribute('data-prev-value', (el.textContent || '').trim());
+  }, true);
+
+  // Enter blurs single-line edits; Shift+Enter still inserts a newline; Esc reverts.
+  document.addEventListener('keydown', function(e){
+    var el = e.target;
+    if(!el || !el.classList || !el.classList.contains('gp-edit')) return;
+    if(e.key === 'Enter' && !e.shiftKey && !el.hasAttribute('data-multiline')){
+      e.preventDefault();
+      el.blur();
+    } else if(e.key === 'Escape'){
+      var prev = el.getAttribute('data-prev-value');
+      if(prev != null){ el.textContent = prev; }
+      el.blur();
+    }
   });
-  // Keyboard shortcut: "t" to toggle (internal use)
-  document.addEventListener('keydown',function(e){
-    if(e.target&&(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'))return;
-    if(e.key==='t'||e.key==='T'){setMode(!document.body.classList.contains('tldr-mode'));}
+
+  // Delete buttons — × that nukes a card / array element.
+  document.addEventListener('click', function(e){
+    var btn = e.target.closest && e.target.closest('[data-delete-path]');
+    if(!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    var path = btn.getAttribute('data-delete-path');
+    if(!path) return;
+    var label = btn.getAttribute('data-delete-label') || 'this item';
+    if(!confirm('Delete ' + label + '? You can undo from the toolbar.')) return;
+    // Visually collapse the host card immediately for a snappy feel.
+    var host = btn.closest('[data-deletable-host]') || btn.parentElement;
+    if(host){ host.style.transition='opacity .18s ease,transform .18s ease'; host.style.opacity='.4'; host.style.transform='scale(.98)'; }
+    stashScroll();
+    try{
+      window.parent.postMessage({ type:'gp:edit-delete', path:path }, '*');
+    }catch(err){ console.error('gp delete post failed', err); }
+  });
+
+  // Undo button + Cmd/Ctrl+Z keyboard shortcut.
+  var undoBtn = document.getElementById('gp-undo-btn');
+  function fireUndo(){
+    if(!undoBtn) return;
+    if(undoBtn.disabled) return;
+    undoBtn.disabled = true;
+    undoBtn.classList.add('gp-undo-saving');
+    stashScroll();
+    try{
+      window.parent.postMessage({ type:'gp:edit-undo' }, '*');
+    }catch(err){ console.error('gp undo post failed', err); }
+  }
+  if(undoBtn){
+    undoBtn.addEventListener('click', fireUndo);
+  }
+  document.addEventListener('keydown', function(e){
+    if((e.metaKey || e.ctrlKey) && (e.key === 'z' || e.key === 'Z') && !e.shiftKey){
+      var t = e.target;
+      // Allow native undo while typing inside a contenteditable / input.
+      if(t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
+      if(t && t.isContentEditable) return;
+      e.preventDefault();
+      fireUndo();
+    }
+  });
+
+  // Parent acks — flash the saving element with a tick, or restore on error.
+  window.addEventListener('message', function(e){
+    var d = e.data;
+    if(!d || typeof d !== 'object') return;
+    if(d.type === 'gp:edit-saved' && d.id && pending[d.id]){
+      flashSaved(pending[d.id]);
+      delete pending[d.id];
+    } else if(d.type === 'gp:edit-error' && d.id && pending[d.id]){
+      var el = pending[d.id];
+      setSavingState(el, false);
+      var prev = el.getAttribute('data-prev-value');
+      // No-op: server rejected, leave content as-is so the user can fix.
+      if(d.message){ el.title = 'Save failed: ' + d.message; }
+      delete pending[d.id];
+    } else if(d.type === 'gp:undo-done' || d.type === 'gp:undo-error'){
+      if(undoBtn){
+        undoBtn.disabled = false;
+        undoBtn.classList.remove('gp-undo-saving');
+        if(d.type === 'gp:undo-done'){
+          undoBtn.classList.add('gp-undo-flash');
+          setTimeout(function(){ undoBtn.classList.remove('gp-undo-flash'); }, 700);
+        }
+      }
+    }
   });
 })();
+
 
 // Quick-win FAQ / schema modal
 (function(){
@@ -4320,26 +4191,34 @@ const I3_LOGO_SVG = `<svg viewBox="0 0 161 53" fill="none" xmlns="http://www.w3.
 function renderStrategyBrainPanel(brain: StrategyBrain | undefined, _isPublicView = false): string {
   if (!brain || !brain.positioning?.statement) return "";
   void _isPublicView; // brain is now public-friendly and rendered in both views
-  const audiences = (brain.audiences ?? []).slice(0, 6).map((a) => `
-    <details class="brain-audience">
+
+  const audiences = (brain.audiences ?? []).slice(0, 6).map((a, i) => `
+    <details class="brain-audience gp-deletable" data-deletable-host="1">
+      ${delBtn(`strategyBrain.audiences.${i}`, `audience "${a.name}"`)}
       <summary class="brain-audience-summary">
-        <span class="brain-audience-name">${esc(a.name)}</span>
-        <span class="brain-audience-insight">${esc(a.coreInsight)}</span>
+        ${ed(a.name, `strategyBrain.audiences.${i}.name`, { tag: "span", cls: "brain-audience-name", placeholder: "Name" })}
+        ${ed(a.coreInsight, `strategyBrain.audiences.${i}.coreInsight`, { tag: "span", cls: "brain-audience-insight", placeholder: "Core insight", multiline: true })}
       </summary>
       <div class="brain-audience-detail">
-        <div class="brain-audience-line"><strong>Lead pain:</strong> ${esc(a.primaryPain)}</div>
-        <div class="brain-audience-line"><strong>Trigger:</strong> ${esc(a.decisionTrigger)}</div>
-        ${a.channels?.length ? `<div class="brain-audience-line"><strong>Channels:</strong> ${a.channels.map(esc).join(", ")}</div>` : ""}
+        <div class="brain-audience-line"><strong>Lead pain:</strong> ${ed(a.primaryPain, `strategyBrain.audiences.${i}.primaryPain`, { multiline: true, placeholder: "Lead pain" })}</div>
+        <div class="brain-audience-line"><strong>Trigger:</strong> ${ed(a.decisionTrigger, `strategyBrain.audiences.${i}.decisionTrigger`, { multiline: true, placeholder: "Decision trigger" })}</div>
+        ${a.channels?.length ? `<div class="brain-audience-line"><strong>Channels:</strong> ${a.channels.map((c, ci) => ed(c, `strategyBrain.audiences.${i}.channels.${ci}`, { placeholder: "Channel" })).join(", ")}</div>` : ""}
       </div>
     </details>`).join("");
 
-  const channels = (brain.channelStrategy ?? []).map((c) => `
-    <li><strong>${esc(c.channel)}:</strong> ${esc(c.role)} <span class="brain-meta">(audience: ${esc(c.primaryAudience)} · success: ${esc(c.successMetric)})</span></li>`).join("");
+  const channels = (brain.channelStrategy ?? []).map((c, i) => `
+    <li class="gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.6rem">
+      ${delBtn(`strategyBrain.channelStrategy.${i}`, `channel "${c.channel}"`, { inline: true })}
+      <strong>${ed(c.channel, `strategyBrain.channelStrategy.${i}.channel`, { placeholder: "Channel" })}:</strong>
+      ${ed(c.role, `strategyBrain.channelStrategy.${i}.role`, { multiline: true, placeholder: "Role" })}
+      <span class="brain-meta">(audience: ${ed(c.primaryAudience, `strategyBrain.channelStrategy.${i}.primaryAudience`, { placeholder: "Audience" })} · success: ${ed(c.successMetric, `strategyBrain.channelStrategy.${i}.successMetric`, { placeholder: "Success metric" })})</span>
+    </li>`).join("");
 
-  const messagesToOwn = (brain.competitorAngle?.messagesToOwn ?? []).map((m) => `<li>${esc(m)}</li>`).join("");
-  const messagesToAvoid = (brain.competitorAngle?.messagesToAvoid ?? []).map((m) => `<li>${esc(m)}</li>`).join("");
-  const supporting = (brain.messageHierarchy?.secondary ?? []).map((m) => `<li>${esc(m)}</li>`).join("");
-  const geos = (brain.targetGeographies ?? []).map((g) => `<span class="brain-geo-chip">${esc(g)}</span>`).join("");
+  const messagesToOwn = (brain.competitorAngle?.messagesToOwn ?? []).map((m, i) => `<li class="gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(m, `strategyBrain.competitorAngle.messagesToOwn.${i}`, { multiline: true, placeholder: "Message" })}${delBtn(`strategyBrain.competitorAngle.messagesToOwn.${i}`, "message", { inline: true })}</li>`).join("");
+  const messagesToAvoid = (brain.competitorAngle?.messagesToAvoid ?? []).map((m, i) => `<li class="gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(m, `strategyBrain.competitorAngle.messagesToAvoid.${i}`, { multiline: true, placeholder: "Message" })}${delBtn(`strategyBrain.competitorAngle.messagesToAvoid.${i}`, "message", { inline: true })}</li>`).join("");
+  const supporting = (brain.messageHierarchy?.secondary ?? []).map((m, i) => `<li class="gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(m, `strategyBrain.messageHierarchy.secondary.${i}`, { multiline: true, placeholder: "Supporting message" })}${delBtn(`strategyBrain.messageHierarchy.secondary.${i}`, "message", { inline: true })}</li>`).join("");
+  const geos = (brain.targetGeographies ?? []).map((g, i) => `<span class="brain-geo-chip gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.5rem">${ed(g, `strategyBrain.targetGeographies.${i}`, { placeholder: "Market" })}${delBtn(`strategyBrain.targetGeographies.${i}`, "market", { inline: true })}</span>`).join("");
+  const proofPoints = (brain.positioning.proofPoints ?? []).map((p, i) => `<li class="gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(p, `strategyBrain.positioning.proofPoints.${i}`, { multiline: true, placeholder: "Proof point" })}${delBtn(`strategyBrain.positioning.proofPoints.${i}`, "proof point", { inline: true })}</li>`).join("");
 
   return `
 <section class="section-block brain-panel" id="strategy-brain" data-snap>
@@ -4350,25 +4229,25 @@ function renderStrategyBrainPanel(brain: StrategyBrain | undefined, _isPublicVie
     <div class="brain-inner">
       <div class="brain-headline">
         <div class="brain-headline-label">Positioning</div>
-        <p class="brain-headline-statement">${esc(brain.positioning.statement)}</p>
-        ${brain.positioning.proofPoints?.length ? `<ul class="brain-proof">${brain.positioning.proofPoints.map((p) => `<li>${esc(p)}</li>`).join("")}</ul>` : ""}
+        ${ed(brain.positioning.statement, "strategyBrain.positioning.statement", { tag: "p", cls: "brain-headline-statement", multiline: true, placeholder: "Positioning statement" })}
+        ${proofPoints ? `<ul class="brain-proof">${proofPoints}</ul>` : ""}
       </div>
       <div class="brain-grid">
         <div class="brain-cell">
           <h4>Market context</h4>
-          <p><strong>State:</strong> ${esc(brain.marketContext?.state ?? "")}</p>
-          <p><strong>Opportunity:</strong> ${esc(brain.marketContext?.opportunity ?? "")}</p>
-          <p><strong>Threat:</strong> ${esc(brain.marketContext?.threat ?? "")}</p>
+          <p><strong>State:</strong> ${ed(brain.marketContext?.state ?? "", "strategyBrain.marketContext.state", { multiline: true, placeholder: "Current state" })}</p>
+          <p><strong>Opportunity:</strong> ${ed(brain.marketContext?.opportunity ?? "", "strategyBrain.marketContext.opportunity", { multiline: true, placeholder: "Opportunity" })}</p>
+          <p><strong>Threat:</strong> ${ed(brain.marketContext?.threat ?? "", "strategyBrain.marketContext.threat", { multiline: true, placeholder: "Threat" })}</p>
         </div>
         <div class="brain-cell">
           <h4>Competitor angle</h4>
-          <p><strong>How we win:</strong> ${esc(brain.competitorAngle?.differentiator ?? "")}</p>
+          <p><strong>How we win:</strong> ${ed(brain.competitorAngle?.differentiator ?? "", "strategyBrain.competitorAngle.differentiator", { multiline: true, placeholder: "Differentiator" })}</p>
           ${messagesToOwn ? `<p><strong>Messages to own:</strong></p><ul>${messagesToOwn}</ul>` : ""}
           ${messagesToAvoid ? `<p><strong>Messages to avoid (saturated):</strong></p><ul>${messagesToAvoid}</ul>` : ""}
         </div>
         <div class="brain-cell">
           <h4>Message hierarchy</h4>
-          <p class="brain-primary-msg">${esc(brain.messageHierarchy?.primary ?? "")}</p>
+          ${ed(brain.messageHierarchy?.primary ?? "", "strategyBrain.messageHierarchy.primary", { tag: "p", cls: "brain-primary-msg", multiline: true, placeholder: "Primary message" })}
           ${supporting ? `<p><strong>Supporting:</strong></p><ul>${supporting}</ul>` : ""}
         </div>
         ${geos ? `
