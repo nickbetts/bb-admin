@@ -31,9 +31,7 @@ export function ClientFolderGroup<T>({
     return aVal.name.localeCompare(bVal.name);
   });
 
-  const [openKeys, setOpenKeys] = useState<Set<string>>(
-    () => new Set(sorted.map(([k]) => k))
-  );
+  const [openKeys, setOpenKeys] = useState<Set<string>>(() => new Set());
 
   const toggle = (key: string) =>
     setOpenKeys((prev) => {
