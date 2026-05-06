@@ -10,6 +10,21 @@ function esc(text: string | undefined | null): string {
     .replace(/'/g, "&#39;");
 }
 
+/** Render a body-type field as raw HTML, stripping only dangerous constructs. */
+function renderBody(text: string | undefined | null): string {
+  if (!text) return "";
+  let safe = String(text);
+  // Remove script/iframe/object/embed blocks
+  safe = safe.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "");
+  safe = safe.replace(/<iframe\b[^>]*>[\s\S]*?<\/iframe>/gi, "");
+  safe = safe.replace(/<(object|embed)\b[^>]*\/?>([\s\S]*?<\/\1>)?/gi, "");
+  // Remove inline event handlers
+  safe = safe.replace(/\s+on\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]*)/gi, "");
+  // Remove javascript: protocol
+  safe = safe.replace(/javascript\s*:/gi, "");
+  return safe;
+}
+
 function renderBullets(bullets: string[] | undefined): string {
   if (!bullets || bullets.length === 0) return "";
   return `<ul class="bullets-list">${bullets
@@ -71,7 +86,7 @@ function renderSlide(slide: PresentationSlide, index: number, total: number): st
       body = `
         <div class="headline-block">
           ${slide.headline ? `<div class="big-headline">${esc(slide.headline)}</div>` : ""}
-          ${slide.subhead ? `<p class="big-subhead">${esc(slide.subhead)}</p>` : ""}
+          ${slide.subhead ? `<p class="big-subhead">${renderBody(slide.subhead)}</p>` : ""}
         </div>`;
       break;
     }
@@ -86,7 +101,7 @@ function renderSlide(slide: PresentationSlide, index: number, total: number): st
         <div class="outcome-block">
           ${metric}
           ${slide.headline ? `<div class="big-headline">${esc(slide.headline)}</div>` : ""}
-          ${slide.subhead ? `<p class="big-subhead">${esc(slide.subhead)}</p>` : ""}
+          ${slide.subhead ? `<p class="big-subhead">${renderBody(slide.subhead)}</p>` : ""}
         </div>`;
       break;
     }
@@ -96,7 +111,7 @@ function renderSlide(slide: PresentationSlide, index: number, total: number): st
           (p) => `
             <div class="pillar-card">
               <div class="pillar-title">${esc(p.title)}</div>
-              <p class="pillar-body">${esc(p.body)}</p>
+              <p class="pillar-body">${renderBody(p.body)}</p>
             </div>`
         )
         .join("");
@@ -109,7 +124,7 @@ function renderSlide(slide: PresentationSlide, index: number, total: number): st
           (a) => `
             <div class="audience-card">
               <div class="audience-name">${esc(a.name)}</div>
-              <p class="audience-insight">${esc(a.insight)}</p>
+              <p class="audience-insight">${renderBody(a.insight)}</p>
             </div>`
         )
         .join("");
@@ -122,7 +137,7 @@ function renderSlide(slide: PresentationSlide, index: number, total: number): st
           (c) => `
             <div class="channel-chip">
               <div class="channel-name">${esc(c.name)}</div>
-              <div class="channel-role">${esc(c.role)}</div>
+              <div class="channel-role">${renderBody(c.role)}</div>
             </div>`
         )
         .join("");
@@ -178,7 +193,7 @@ function renderSlide(slide: PresentationSlide, index: number, total: number): st
               <div class="step-num">${i + 1}</div>
               <div class="step-body">
                 <div class="step-title">${esc(s.title)}</div>
-                <p class="step-detail">${esc(s.detail)}</p>
+                <p class="step-detail">${renderBody(s.detail)}</p>
               </div>
             </li>`
         )
@@ -190,7 +205,7 @@ function renderSlide(slide: PresentationSlide, index: number, total: number): st
       body = `
         <div class="content-block">
           ${slide.headline ? `<div class="content-headline">${esc(slide.headline)}</div>` : ""}
-          ${slide.subhead ? `<p class="content-subhead">${esc(slide.subhead)}</p>` : ""}
+          ${slide.subhead ? `<p class="content-subhead">${renderBody(slide.subhead)}</p>` : ""}
           ${renderBullets(slide.bullets)}
         </div>`;
       break;
@@ -198,7 +213,7 @@ function renderSlide(slide: PresentationSlide, index: number, total: number): st
     case "bullets": {
       body = `
         <div class="content-block">
-          ${slide.subhead ? `<p class="content-subhead">${esc(slide.subhead)}</p>` : ""}
+          ${slide.subhead ? `<p class="content-subhead">${renderBody(slide.subhead)}</p>` : ""}
           ${renderBullets(slide.bullets)}
         </div>`;
       break;

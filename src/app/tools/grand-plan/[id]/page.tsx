@@ -2812,7 +2812,7 @@ function PresentationEditorModal(props: PresentationEditorModalProps) {
     >{label}</button>
   );
 
-  const fieldInput = (label: string, value: string | undefined, onSave: (v: string) => void, rows = 2) => (
+  const fieldInput = (label: string, value: string | undefined, onSave: (v: string) => void, rows = 2, htmlHint = false) => (
     <label key={label} style={{ display: "flex", flexDirection: "column", gap: 3 }}>
       <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: ".05em" }}>{label}</span>
       <textarea
@@ -2821,6 +2821,7 @@ function PresentationEditorModal(props: PresentationEditorModalProps) {
         style={{ fontSize: 13, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", resize: "vertical", fontFamily: "inherit" }}
         onBlur={(e) => { const v = e.currentTarget.value.trim(); if (v !== (value ?? "")) onSave(v); }}
       />
+      {htmlHint && <span style={{ fontSize: 10, color: "var(--text-4)" }}>HTML supported — e.g. &lt;br&gt;, &lt;strong&gt;</span>}
     </label>
   );
 
@@ -2975,8 +2976,8 @@ function PresentationEditorModal(props: PresentationEditorModalProps) {
               {presEditTab === "fields" && !iscover && slide && (() => {
                 const s = slide as PresentationSlideT;
                 const si = activeSlideIndex - 1;
-                const sf = (label: string, field: string, value: string | undefined, rows = 2) =>
-                  fieldInput(label, value, (v) => savePresField("slide-field", { slideIndex: si, field, value: v }), rows);
+                const sf = (label: string, field: string, value: string | undefined, rows = 2, htmlHint = false) =>
+                  fieldInput(label, value, (v) => savePresField("slide-field", { slideIndex: si, field, value: v }), rows, htmlHint);
 
                 const isContentLike = s.kind === "content" || s.kind === "bullets";
 
@@ -2985,7 +2986,7 @@ function PresentationEditorModal(props: PresentationEditorModalProps) {
                     {sf("Title", "title", s.title)}
                     {sf("Eyebrow", "eyebrow", s.eyebrow)}
                     {(s.kind === "headline" || s.kind === "outcome" || s.kind === "content") && sf("Headline", "headline", s.headline)}
-                    {(s.kind === "headline" || s.kind === "outcome" || s.kind === "content" || s.kind === "bullets" || s.kind === "pillars") && sf("Sub-headline", "subhead", s.subhead, 2)}
+                    {(s.kind === "headline" || s.kind === "outcome" || s.kind === "content" || s.kind === "bullets" || s.kind === "pillars") && sf("Sub-headline", "subhead", s.subhead, 2, true)}
                     {s.kind === "outcome" && sf("Metric value", "metric.value", s.metric?.value)}
                     {s.kind === "outcome" && sf("Metric label", "metric.label", s.metric?.label)}
                     {s.kind === "investment" && sf("Headline figure", "investment.headlineFigure", s.investment?.headlineFigure)}
@@ -3052,6 +3053,7 @@ function PresentationEditorModal(props: PresentationEditorModalProps) {
                                       if (v !== (item[f] ?? "")) savePresField("item-update", { slideIndex: si, itemType, itemIndex: ii, field: f, value: v });
                                     }}
                                   />
+                                  {(f === "body" || f === "detail" || f === "insight" || f === "role") && <span style={{ fontSize: 10, color: "var(--text-4)" }}>HTML supported — e.g. &lt;br&gt;, &lt;strong&gt;</span>}
                                 </label>
                               ))}
                             </div>
