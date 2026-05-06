@@ -10,6 +10,15 @@
  * the final call on whether what was detected is actually effective.
  */
 
+export type CroCategory = "urgency" | "proof" | "offer" | "mechanics";
+
+export const CRO_CATEGORY_LABELS: Record<CroCategory, string> = {
+  urgency: "Urgency & scarcity",
+  proof: "Social proof & trust",
+  offer: "Offer & value framing",
+  mechanics: "Conversion mechanics",
+};
+
 export interface CroElement {
   id: string;
   name: string;
@@ -21,6 +30,8 @@ export interface CroElement {
   detectHints: string[];
   /** high = auditor should flag as missing if absent; medium = worth considering */
   priority: "high" | "medium";
+  /** Used to group elements in the form's component picker. */
+  category: CroCategory;
 }
 
 export const CRO_ELEMENTS: CroElement[] = [
@@ -32,6 +43,7 @@ export const CRO_ELEMENTS: CroElement[] = [
     campaignTypes: ["event", "lead-gen", "product-launch", "ecommerce"],
     detectHints: ["countdown", "data-countdown", "data-deadline", "time-remaining", "timer"],
     priority: "high",
+    category: "urgency",
   },
   {
     id: "spots-remaining",
@@ -41,6 +53,7 @@ export const CRO_ELEMENTS: CroElement[] = [
     campaignTypes: ["event", "lead-gen", "product-launch"],
     detectHints: ["spots remaining", "places left", "spaces left", "seats remaining", "limited places", "only ", " left"],
     priority: "high",
+    category: "urgency",
   },
   {
     id: "risk-reversal",
@@ -50,6 +63,7 @@ export const CRO_ELEMENTS: CroElement[] = [
     campaignTypes: ["lead-gen", "service", "ecommerce", "product-launch"],
     detectHints: ["guarantee", "money back", "money-back", "cancel anytime", "no commitment", "risk-free", "risk free", "refund", "no-questions"],
     priority: "high",
+    category: "proof",
   },
   {
     id: "social-proof-count",
@@ -59,6 +73,7 @@ export const CRO_ELEMENTS: CroElement[] = [
     campaignTypes: ["all"],
     detectHints: ["trusted by", "students enrolled", "customers", "reviews", "rated", "★", "stars", "testimonials"],
     priority: "high",
+    category: "proof",
   },
   {
     id: "urgency-banner",
@@ -68,6 +83,7 @@ export const CRO_ELEMENTS: CroElement[] = [
     campaignTypes: ["event", "product-launch", "ecommerce", "lead-gen"],
     detectHints: ["announcement", "banner", "closes", "ends midnight", "early-bird", "early bird", "limited availability", "book now"],
     priority: "high",
+    category: "urgency",
   },
   {
     id: "form-above-fold",
@@ -77,6 +93,7 @@ export const CRO_ELEMENTS: CroElement[] = [
     campaignTypes: ["lead-gen"],
     detectHints: ["<form", "data-lp-form"],
     priority: "high",
+    category: "mechanics",
   },
   {
     id: "trust-badges",
@@ -86,6 +103,7 @@ export const CRO_ELEMENTS: CroElement[] = [
     campaignTypes: ["ecommerce", "service", "lead-gen", "product-launch"],
     detectHints: ["accredited", "certified", "badge", "trust", "featured in", "as seen in", "ssl", "secure"],
     priority: "medium",
+    category: "proof",
   },
   {
     id: "video-embed",
@@ -95,6 +113,7 @@ export const CRO_ELEMENTS: CroElement[] = [
     campaignTypes: ["service", "product-launch", "lead-gen"],
     detectHints: ["<video", "youtube.com", "youtu.be", "vimeo.com", "iframe", "video-container", "watch"],
     priority: "medium",
+    category: "proof",
   },
   {
     id: "comparison-table",
@@ -104,6 +123,7 @@ export const CRO_ELEMENTS: CroElement[] = [
     campaignTypes: ["service", "product-launch", "ecommerce"],
     detectHints: ["comparison", "compare", "vs ", "versus", "<table", "competitor"],
     priority: "medium",
+    category: "offer",
   },
   {
     id: "before-after",
@@ -113,6 +133,7 @@ export const CRO_ELEMENTS: CroElement[] = [
     campaignTypes: ["service", "ecommerce"],
     detectHints: ["before", "after", "transformation", "results", "before-after", "before/after"],
     priority: "medium",
+    category: "offer",
   },
   {
     id: "offer-box",
@@ -122,6 +143,7 @@ export const CRO_ELEMENTS: CroElement[] = [
     campaignTypes: ["ecommerce", "product-launch", "lead-gen", "event"],
     detectHints: ["offer", "deal", "package", "what's included", "what you get", "includes", "pricing"],
     priority: "medium",
+    category: "offer",
   },
   {
     id: "live-activity-feed",
@@ -131,6 +153,7 @@ export const CRO_ELEMENTS: CroElement[] = [
     campaignTypes: ["lead-gen", "event", "ecommerce"],
     detectHints: ["just booked", "just signed up", "people viewing", "recently", "activity", "notification", "fomo"],
     priority: "medium",
+    category: "urgency",
   },
   {
     id: "progress-indicator",
@@ -140,6 +163,7 @@ export const CRO_ELEMENTS: CroElement[] = [
     campaignTypes: ["lead-gen"],
     detectHints: ["step 1", "step 2", "progress", "multi-step", "next step", "data-step"],
     priority: "medium",
+    category: "mechanics",
   },
   {
     id: "sticky-cta-bar",
@@ -149,6 +173,7 @@ export const CRO_ELEMENTS: CroElement[] = [
     campaignTypes: ["all"],
     detectHints: ["sticky", "position: fixed", "position:fixed", "sticky-bar", "fixed-bar"],
     priority: "medium",
+    category: "mechanics",
   },
   {
     id: "exit-intent-offer",
@@ -158,6 +183,7 @@ export const CRO_ELEMENTS: CroElement[] = [
     campaignTypes: ["lead-gen", "ecommerce", "product-launch"],
     detectHints: ["exit-intent", "exitintent", "mouseleave", "scroll-trigger", "last chance", "wait", "before you go"],
     priority: "medium",
+    category: "urgency",
   },
   {
     id: "click-to-call",
@@ -167,6 +193,7 @@ export const CRO_ELEMENTS: CroElement[] = [
     campaignTypes: ["service", "lead-gen", "event"],
     detectHints: ["tel:", "href=\"tel", "href='tel", "click-to-call", "phone"],
     priority: "high",
+    category: "mechanics",
   },
   {
     id: "price-anchoring",
@@ -176,6 +203,7 @@ export const CRO_ELEMENTS: CroElement[] = [
     campaignTypes: ["ecommerce", "product-launch", "event"],
     detectHints: ["was ", "save ", "line-through", "text-decoration: line", "strikethrough", "original-price", "~~"],
     priority: "high",
+    category: "offer",
   },
   {
     id: "two-step-optin",
@@ -185,6 +213,7 @@ export const CRO_ELEMENTS: CroElement[] = [
     campaignTypes: ["lead-gen"],
     detectHints: ["data-toggle", "show-form", "reveal-form", "two-step", "twostep", "openModal", "open-modal"],
     priority: "medium",
+    category: "mechanics",
   },
   {
     id: "hero-secondary-cta",
@@ -194,6 +223,7 @@ export const CRO_ELEMENTS: CroElement[] = [
     campaignTypes: ["all"],
     detectHints: ["secondary-cta", "or call", "see how", "learn more", "find out more", "watch the video"],
     priority: "medium",
+    category: "mechanics",
   },
   {
     id: "trust-policy-icons",
@@ -203,6 +233,7 @@ export const CRO_ELEMENTS: CroElement[] = [
     campaignTypes: ["lead-gen", "ecommerce"],
     detectHints: ["gdpr", "spam-free", "privacy", "data safe", "padlock", "secure", "never share"],
     priority: "medium",
+    category: "proof",
   },
   {
     id: "media-award-proof",
@@ -212,6 +243,7 @@ export const CRO_ELEMENTS: CroElement[] = [
     campaignTypes: ["all"],
     detectHints: ["as seen in", "featured in", "award", "winner", "recognised", "media-strip", "press"],
     priority: "medium",
+    category: "proof",
   },
   {
     id: "whatsapp-chat",
@@ -221,6 +253,7 @@ export const CRO_ELEMENTS: CroElement[] = [
     campaignTypes: ["service", "lead-gen", "event"],
     detectHints: ["whatsapp", "wa.me", "tawk.to", "intercom", "crisp", "livechat", "chat-widget", "floating-chat"],
     priority: "medium",
+    category: "mechanics",
   },
   {
     id: "embedded-map",
@@ -230,6 +263,7 @@ export const CRO_ELEMENTS: CroElement[] = [
     campaignTypes: ["event", "service"],
     detectHints: ["google.com/maps", "maps.google", "maps/embed", "iframe", "location", "find us", "how to find"],
     priority: "medium",
+    category: "mechanics",
   },
 ];
 
@@ -282,6 +316,25 @@ Consider including these high-impact conversion tactics. Each is a suggestion �
 ${lines}
 
 Do not force any element that doesn't fit the brief. If you include one, ensure it uses real, specific content (not placeholder text).`;
+}
+
+/**
+ * Build a planner block listing the components the user explicitly flagged
+ * as "would like to see considered". The AI is told to evaluate fit and
+ * include only those that genuinely serve the brief — never to force them.
+ */
+export function buildUserRequestedCroBlock(ids: string[]): string {
+  if (!ids?.length) return "";
+  const elements = ids
+    .map((id) => CRO_ELEMENTS.find((el) => el.id === id))
+    .filter((el): el is CroElement => Boolean(el));
+  if (!elements.length) return "";
+
+  const lines = elements.map((el) => `• **${el.name}** — ${el.description}`).join("\n");
+  return `## Components the user has flagged for consideration
+The user has specifically asked you to consider the following components for this page. Treat each as a candidate, not a requirement: include any that genuinely fit the brief, target offering and audience; skip the rest without comment. Quality of fit beats quantity — never force one in:
+
+${lines}`;
 }
 
 /**

@@ -905,11 +905,17 @@ function renderQuickWins(items: { title: string; description: string; priority: 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: string, isPublicView = false): string {
   void clientWebsite;
+  const hiddenSubs: string[] = Array.isArray(data.hiddenSubsections) ? data.hiddenSubsections : [];
+  const isHidden = (key: string) => hiddenSubs.includes(key);
   const monthlyBudget = (data.overview ?? {})["Monthly Budget"] ?? (data.overview ?? {})["Budget"] ?? "Custom";
   const suggestedLocations = Array.isArray(data.suggestedLocations) ? data.suggestedLocations : [];
-  const locationsHtml = suggestedLocations.length || !isPublicView
-    ? `<div class="loc-card">
-        <div class="loc-card-label">Suggested Locations</div>
+  const showLocations = !isHidden("locations") && (suggestedLocations.length || !isPublicView);
+  const locationsHtml = showLocations
+    ? `<div class="loc-card" data-subsection="locations">
+        <div class="loc-card-label">
+          <span>Suggested Locations</span>
+          ${!isPublicView ? `<button class="subsection-delete-btn" type="button" onclick="deleteSubsection('locations', 'Suggested Locations')" title="Delete this subsection">&#xD7;</button>` : ""}
+        </div>
         <div class="loc-chips" id="loc-chips-list">
           ${suggestedLocations.map((l: string) => isPublicView
             ? `<span class="loc-chip">${esc(l)}</span>`
@@ -1058,10 +1064,11 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
           <div class="loc-card"><div class="loc-card-label">Monthly Budget</div><div class="loc-budget" ${!isPublicView ? `contenteditable="true" spellcheck="false" onblur="saveBudget(this)" onkeydown="if(event.key==='Enter'){this.blur();event.preventDefault()}"` : ""}>${esc(monthlyBudget)}</div></div>
           ${locationsHtml}
         </div>
-        <details class="neg-section">
+        ${isHidden("negatives") ? "" : `<details class="neg-section" data-subsection="negatives">
           <summary class="neg-section-head">
             <h4>Negative Keywords <span class="neg-count-badge">${consolidatedNegatives.length || "none"}</span></h4>
             ${consolidatedNegatives.length > 0 ? `<button class="copy-btn" onclick="event.stopPropagation();copyAllNegatives(this)">Copy all negatives</button>` : ""}
+            ${!isPublicView ? `<button class="subsection-delete-btn" type="button" onclick="event.stopPropagation();event.preventDefault();deleteSubsection('negatives', 'Negative Keywords')" title="Delete this subsection">&#xD7;</button>` : ""}
           </summary>
           <div class="neg-section-body">
           <p class="section-intro" style="margin-top:.25rem">Single combined list across the campaign and every ad group. Click "Copy all negatives" to grab them in one go.</p>
@@ -1080,7 +1087,7 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
             </div>
           </div>` : ""}
           </div>
-        </details>
+        </details>`}
         <div class="ag-heading-row">
           <h3 class="ag-heading">Ad Groups</h3>
           <button class="copy-btn" onclick="copyAllCampaignKws(this)">Copy all valid keywords (every group)</button>
@@ -1092,6 +1099,7 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
           <button class="copy-btn kw-add-btn" type="button" onclick="addAdGroup()">Add ad group</button>
         </div>` : ""}
         ${(() => {
+          if (isHidden("seeds")) return "";
           const seeds = (data.seedSuggestions ?? []) as { theme: string; phrases: string[] }[];
           if (!seeds.length && isPublicView) return "";
           const themesHtml = seeds.map((s, i) => {
@@ -1118,12 +1126,13 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
               </details>`;
           }).join("\n");
           return `
-        <div class="seed-section">
+        <div class="seed-section" data-subsection="seeds">
           <div class="seed-section-head">
             <h3>Seed Phrase Suggestions for PPC Research</h3>
             <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
               <button class="copy-btn" onclick="copyAllSeeds(this)">Copy every seed phrase</button>
               ${!isPublicView ? `<button class="copy-btn" id="save-seeds-btn" onclick="saveAllSeeds(this)">Save seeds</button>` : ""}
+              ${!isPublicView ? `<button class="subsection-delete-btn" type="button" onclick="deleteSubsection('seeds', 'Seed Phrase Suggestions')" title="Delete this subsection">&#xD7;</button>` : ""}
             </div>
           </div>
           <p class="section-intro" style="margin-top:.25rem">Variants of the core terms above \u2014 alternative names, misspellings, synonyms, abbreviations, regional phrasings. Plug them into Google Keyword Planner and Search Term reports to expand the keyword pool. These are research seeds, not bid recommendations.</p>
@@ -1131,6 +1140,19 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
           ${!isPublicView ? `<button class="copy-btn" id="add-seed-theme-btn" onclick="addSeedTheme()" style="margin-top:1rem">+ Add theme</button>` : ""}
         </div>`;
         })()}
+        ${!isPublicView && hiddenSubs.length > 0 ? `
+        <div class="subsection-restore-strip">
+          <span class="subsection-restore-label">Hidden subsections:</span>
+          ${hiddenSubs.map((key) => {
+            const labels: Record<string, string> = {
+              locations: "Suggested Locations",
+              negatives: "Negative Keywords",
+              seeds: "Seed Phrase Suggestions",
+            };
+            const label = labels[key] ?? key;
+            return `<button class="copy-btn subsection-restore-btn" type="button" onclick="restoreSubsection('${esc(key)}')">+ Restore ${esc(label)}</button>`;
+          }).join("")}
+        </div>` : ""}
       </div>
     </section>`;
 }
@@ -2551,6 +2573,16 @@ a{color:var(--accent);text-decoration:none}
 .seed-delete-btn{width:22px;height:22px;padding:0;border:none;background:transparent;cursor:pointer;color:var(--mid);font-size:16px;line-height:1;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .seed-delete-btn:hover{background:rgba(239,68,68,.15);color:#ef4444}
 .section.dark .seed-delete-btn:hover{background:rgba(239,68,68,.25);color:#fca5a5}
+.subsection-delete-btn{width:24px;height:24px;padding:0;border:1px solid transparent;background:transparent;cursor:pointer;color:var(--mid);font-size:16px;line-height:1;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:auto}
+.subsection-delete-btn:hover{background:rgba(239,68,68,.15);color:#ef4444;border-color:rgba(239,68,68,.4)}
+.section.dark .subsection-delete-btn:hover{background:rgba(239,68,68,.25);color:#fca5a5;border-color:rgba(252,165,165,.4)}
+.loc-card-label{display:flex;align-items:center;gap:8px}
+.neg-section-actions{display:flex;align-items:center;gap:8px}
+.subsection-restore-strip{margin-top:2rem;padding:1rem 1.25rem;border:1px dashed var(--border);border-radius:12px;display:flex;flex-wrap:wrap;align-items:center;gap:10px;background:rgba(99,102,241,.04)}
+.section.dark .subsection-restore-strip{border-color:rgba(255,255,255,.18);background:rgba(255,255,255,.04)}
+.subsection-restore-label{font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-light)}
+.section.dark .subsection-restore-label{color:#cbd5e1}
+.subsection-restore-btn{font-size:.8rem}
 /* Seed phrase suggestions panel (PPC research) */
 .seed-section{margin-top:2.25rem;padding-top:1.5rem;border-top:1px dashed var(--border)}
 .section.dark .seed-section{border-top-color:rgba(255,255,255,.12)}
@@ -3905,6 +3937,15 @@ function deleteSeedTheme(btn){
   var name=h4?h4.textContent.trim():'this theme';
   if(!confirm('Delete seed theme "'+name+'"?'))return;
   theme.remove();
+}
+
+function deleteSubsection(key,label){
+  if(!confirm('Delete the "'+label+'" subsection? You can restore it from the bottom of the section.'))return;
+  window.parent.postMessage({type:'gp:subsection-hide',subsection:key},'*');
+}
+
+function restoreSubsection(key){
+  window.parent.postMessage({type:'gp:subsection-restore',subsection:key},'*');
 }
 
 function addSeedTheme(){

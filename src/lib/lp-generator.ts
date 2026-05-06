@@ -9,7 +9,7 @@ import sharp from "sharp";
 import { getAnthropicClient } from "@/lib/anthropic-client";
 import type { BrandContext, PageContent } from "@/lib/brand-extractor";
 import { screenshotHtml } from "@/lib/puppeteer";
-import { buildPlannerCroBlock, buildAuditCroBlock } from "@/lib/lp-cro-elements";
+import { buildPlannerCroBlock, buildAuditCroBlock, buildUserRequestedCroBlock } from "@/lib/lp-cro-elements";
 import { buildDesignAuditBlock } from "@/lib/lp-design-elements";
 import { buildCopyAuditBlock } from "@/lib/lp-copy-elements";
 
@@ -27,6 +27,8 @@ export interface GenerateLPOptions {
   campaignType: string; // "lead-gen" | "event" | "product-launch" | "service" | "ecommerce"
   brandContext: BrandContext;
   targetAudience?: string;
+  targetOffering?: string; // The single service / product / offer this PPC page is converting on
+  requestedComponentIds?: string[]; // CRO_ELEMENTS ids the user has flagged for the AI to consider (not require)
   templateHtml?: string; // If generating from a saved template
   additionalInstructions?: string;
   uploadedImageUrls?: string[]; // User-provided images uploaded in the wizard
@@ -513,6 +515,7 @@ export async function generateLandingPage(opts: GenerateLPOptions): Promise<stri
 
   let userPrompt = `Generate a complete, high-converting post-click landing page for a paid advertising campaign. This page is the destination someone lands on after clicking a Google/Meta/LinkedIn ad. It must message-match the ad, have ONE conversion goal, no escape routes, and look like it was designed by a premium creative agency.\n\nStudy every piece of scraped website content in the system prompt and use ALL of it — real services, real stats, real testimonials, real process steps. Every section must be fully populated with real, specific content. Do not leave any section sparse.\n\nBe bold and creative with the design. Make it visually stunning.\n\n`;
   userPrompt += `Campaign type: ${opts.campaignType}\n`;
+  if (opts.targetOffering) userPrompt += `Target offering (the ONE thing this page sells): ${opts.targetOffering}\n`;
   userPrompt += `Brief: ${opts.brief}\n`;
   if (opts.targetAudience) userPrompt += `Target audience: ${opts.targetAudience}\n`;
   if (opts.additionalInstructions) userPrompt += `\nAdditional instructions: ${opts.additionalInstructions}\n`;
@@ -620,6 +623,7 @@ export async function critiqueLandingPage(opts: {
   campaignType: string;
   brandContext: BrandContext;
   targetAudience?: string;
+  targetOffering?: string;
 }): Promise<LPCritiqueItem[]> {
   const anthropic = await getAnthropicClient();
 
@@ -631,7 +635,7 @@ export async function critiqueLandingPage(opts: {
 
   const userPrompt = `Review the following landing page HTML for a ${opts.campaignType} campaign.
 
-## Campaign brief
+${opts.targetOffering ? `## Target offering (the ONE thing this page sells)\n${opts.targetOffering}\n\n` : ""}## Campaign brief
 ${opts.brief}
 
 ${opts.targetAudience ? `## Target audience\n${opts.targetAudience}\n` : ""}
@@ -712,6 +716,7 @@ export async function auditDesignAndSector(opts: {
   campaignType: string;
   brandContext: BrandContext;
   targetAudience?: string;
+  targetOffering?: string;
   uploadedImageUrls?: string[];
   /** JPEG screenshot of the rendered page (from Puppeteer). When supplied it
    * is prepended as the first vision block so Claude can see the page as a
@@ -752,7 +757,7 @@ ${screenshotNote}
 
 ## Sector context
 Campaign type: ${opts.campaignType}
-Brief: ${opts.brief}
+${opts.targetOffering ? `Target offering: ${opts.targetOffering}\n` : ""}Brief: ${opts.brief}
 ${opts.targetAudience ? `Target audience: ${opts.targetAudience}\n` : ""}
 ## Company
 ${opts.brandContext.companyName ?? "Unknown"}${opts.brandContext.tagline ? ` — ${opts.brandContext.tagline}` : ""}
@@ -869,6 +874,7 @@ export async function auditCopyQuality(opts: {
   campaignType: string;
   brandContext: BrandContext;
   targetAudience?: string;
+  targetOffering?: string;
 }): Promise<LPCritiqueItem[]> {
   const anthropic = await getAnthropicClient();
 
@@ -882,7 +888,7 @@ export async function auditCopyQuality(opts: {
 
 ## Campaign context
 Type: ${opts.campaignType}
-Brief: ${opts.brief}
+${opts.targetOffering ? `Target offering: ${opts.targetOffering}\n` : ""}Brief: ${opts.brief}
 ${opts.targetAudience ? `Target audience: ${opts.targetAudience}\n` : ""}
 ## Company
 ${opts.brandContext.companyName ?? "Unknown"}${opts.brandContext.tagline ? ` — ${opts.brandContext.tagline}` : ""}
@@ -963,6 +969,7 @@ export async function generateLandingPageWithCritique(
     campaignType: opts.campaignType,
     brandContext: opts.brandContext,
     targetAudience: opts.targetAudience,
+    targetOffering: opts.targetOffering,
   });
 
   if (critique.length === 0) {
@@ -1423,9 +1430,9 @@ function buildLPPlanUserPrompt(opts: GenerateLPOptions): string {
 
 ## Campaign (PRIMARY GOAL — everything on this page must serve this)
 Type: ${opts.campaignType}
-Brief: ${opts.brief}
+${opts.targetOffering ? `Target offering (the ONE thing this page sells — keep the page laser-focused on it): ${opts.targetOffering}\n` : ""}Brief: ${opts.brief}
 ${opts.targetAudience ? `Target audience: ${opts.targetAudience}\n` : ""}${opts.additionalInstructions ? `Additional instructions: ${opts.additionalInstructions}\n` : ""}
-Every section angle, every headline, every content item you select from the scraped data below must directly serve this brief and speak to this audience. Do NOT use scraped content that is irrelevant to the campaign type and target audience above.
+Every section angle, every headline, every content item you select from the scraped data below must directly serve this brief, sell the target offering above, and speak to the target audience. Do NOT include scraped content that is unrelated to the offering or campaign type — the page targets one offering only.
 
 ## Brand
 Company: ${bc.companyName ?? "Unknown"}${bc.tagline ? `\nTagline: ${bc.tagline}` : ""}
@@ -1467,6 +1474,7 @@ ${
     : ""
 }
 ${buildPlannerCroBlock(opts.campaignType)}
+${buildUserRequestedCroBlock(opts.requestedComponentIds ?? [])}
 
 Available imagery — images are visually attached for analysis. Study each one: what people, locations, products, or actions are depicted? These are real photos from the client's brand — use them to populate sections with genuine visual content.
 
@@ -1512,8 +1520,9 @@ function buildSectionUserPrompt(params: {
   brief: string;
   campaignType: string;
   targetAudience?: string;
+  targetOffering?: string;
 }): string {
-  const { plan, section, previousSectionsHtml, brandContext, uploadedImageUrls, brief, campaignType, targetAudience } = params;
+  const { plan, section, previousSectionsHtml, brandContext, uploadedImageUrls, brief, campaignType, targetAudience, targetOffering } = params;
 
   // Use section-assigned images if the plan provided them; fall back to the
   // general brand pool. This ensures each section gets the right images rather
@@ -1536,7 +1545,7 @@ ${plan.cssDesignSystem}
 
 ## CAMPAIGN — write every word of this section for this specific brief and audience
 Type: ${campaignType}
-Brief: ${brief}
+${targetOffering ? `Target offering (the ONE thing this page sells): ${targetOffering}\n` : ""}Brief: ${brief}
 ${targetAudience ? `Target audience: ${targetAudience}\n` : ""}Goal: ${plan.conversionGoal}
 Primary CTA: "${plan.primaryCtaText}"
 
@@ -1625,6 +1634,7 @@ async function generateSectionHtml(params: {
   brief: string;
   campaignType: string;
   targetAudience?: string;
+  targetOffering?: string;
 }): Promise<string> {
   const anthropic = await getAnthropicClient();
 
@@ -1788,6 +1798,7 @@ export async function generateLandingPageSectionBySection(
         brief: genOpts.brief,
         campaignType: genOpts.campaignType,
         targetAudience: genOpts.targetAudience,
+        targetOffering: genOpts.targetOffering,
       }).then((html) => {
         console.log(`[lp-generator] Section "${section.name}" complete (${html.length} chars)`);
         return html;
@@ -1830,6 +1841,7 @@ export interface AuditAndRefineOptions {
   campaignType: string;
   brandContext: BrandContext;
   targetAudience?: string;
+  targetOffering?: string;
   uploadedImageUrls?: string[];
   onProgress?: (msg: string) => Promise<void> | void;
 }
@@ -1846,14 +1858,14 @@ export interface AuditAndRefineOptions {
  *   Total: ~90-120 s
  */
 export async function auditAndRefineLandingPage(opts: AuditAndRefineOptions): Promise<string> {
-  const { html: inputHtml, brief, campaignType, brandContext, targetAudience, uploadedImageUrls, onProgress } = opts;
+  const { html: inputHtml, brief, campaignType, brandContext, targetAudience, targetOffering, uploadedImageUrls, onProgress } = opts;
 
   // Step 1 — CRO audit + Copy audit + screenshot in parallel
   if (onProgress) await onProgress("Running quality audits...");
   const [croIssues, copyIssues, pageScreenshot] = await Promise.all([
-    critiqueLandingPage({ html: inputHtml, brief, campaignType, brandContext, targetAudience })
+    critiqueLandingPage({ html: inputHtml, brief, campaignType, brandContext, targetAudience, targetOffering })
       .catch((err) => { console.warn("[lp-generator] CRO audit failed:", err); return [] as LPCritiqueItem[]; }),
-    auditCopyQuality({ html: inputHtml, brief, campaignType, brandContext, targetAudience })
+    auditCopyQuality({ html: inputHtml, brief, campaignType, brandContext, targetAudience, targetOffering })
       .catch((err) => { console.warn("[lp-generator] Copy audit failed:", err); return [] as LPCritiqueItem[]; }),
     screenshotHtml(inputHtml).catch(() => null),
   ]);
@@ -1872,6 +1884,7 @@ export async function auditAndRefineLandingPage(opts: AuditAndRefineOptions): Pr
     campaignType,
     brandContext,
     targetAudience,
+    targetOffering,
     uploadedImageUrls,
     pageScreenshot,
   }).catch((err) => { console.warn("[lp-generator] Design audit failed:", err); return [] as LPCritiqueItem[]; });

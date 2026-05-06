@@ -6,10 +6,13 @@ import type { GrandPlanData } from "@/lib/grand-plan-generator";
 
 export const dynamic = "force-dynamic";
 
+const VALID_SUBSECTIONS = ["locations", "negatives", "seeds"] as const;
+
 // PATCH /api/tools/grand-plan/[id]/google-ads-edit
 // Body: { action: string, ...actionPayload }
 // Actions: campaign-name, budget, locations, negatives,
-//          ag-rename, ag-audience, ag-negatives, ag-add, ag-delete, seeds
+//          ag-rename, ag-audience, ag-negatives, ag-add, ag-delete, seeds,
+//          subsection-hide, subsection-restore
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -154,6 +157,28 @@ export async function PATCH(
           phrases: (s.phrases ?? []).map((p: string) => String(p).trim()).filter(Boolean),
         }));
       prompt = "Updated seed phrase suggestions";
+      break;
+    }
+    case "subsection-hide": {
+      const subsection = body.subsection;
+      if (typeof subsection !== "string" || !(VALID_SUBSECTIONS as readonly string[]).includes(subsection)) {
+        return NextResponse.json({ error: "valid subsection required" }, { status: 400 });
+      }
+      const current = Array.isArray(ads.hiddenSubsections) ? ads.hiddenSubsections : [];
+      if (!current.includes(subsection)) {
+        ads.hiddenSubsections = [...current, subsection];
+      }
+      prompt = `Hidden Google Ads subsection: ${subsection}`;
+      break;
+    }
+    case "subsection-restore": {
+      const subsection = body.subsection;
+      if (typeof subsection !== "string") {
+        return NextResponse.json({ error: "subsection required" }, { status: 400 });
+      }
+      const current = Array.isArray(ads.hiddenSubsections) ? ads.hiddenSubsections : [];
+      ads.hiddenSubsections = current.filter((s) => s !== subsection);
+      prompt = `Restored Google Ads subsection: ${subsection}`;
       break;
     }
     case "intro": {

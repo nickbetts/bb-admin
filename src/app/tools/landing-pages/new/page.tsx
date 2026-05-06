@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { AnalyticsConfigForm } from "@/components/landing-pages/AnalyticsConfigForm";
 import type { LpAnalyticsConfig } from "@/lib/lp-analytics";
+import { CRO_ELEMENTS, CRO_CATEGORY_LABELS, type CroCategory } from "@/lib/lp-cro-elements";
 
 interface Client {
   id: string;
@@ -70,8 +71,14 @@ export default function NewLandingPage() {
   const [additionalUrls, setAdditionalUrls] = useState<string[]>([]);
   const [brief, setBrief] = useState("");
   const [campaignType, setCampaignType] = useState("lead-gen");
+  const [targetOffering, setTargetOffering] = useState("");
   const [targetAudience, setTargetAudience] = useState("");
   const [templateId, setTemplateId] = useState("");
+  const [suggestedAudiences, setSuggestedAudiences] = useState<{ name: string; description: string }[]>([]);
+  const [suggestingAudiences, setSuggestingAudiences] = useState(false);
+  const [audienceSuggestError, setAudienceSuggestError] = useState<string | null>(null);
+  const [requestedComponentIds, setRequestedComponentIds] = useState<string[]>([]);
+  const [componentsExpanded, setComponentsExpanded] = useState(false);
 
   // Tracking & conversions
   const [analyticsConfig, setAnalyticsConfig] = useState<LpAnalyticsConfig>({});
@@ -193,6 +200,35 @@ export default function NewLandingPage() {
     }
   };
 
+  const handleSuggestAudiences = async () => {
+    if (brief.trim().length < 20) return;
+    setSuggestingAudiences(true);
+    setAudienceSuggestError(null);
+    try {
+      const res = await fetch("/api/tools/landing-pages/suggest-audiences", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          brief,
+          campaignType,
+          targetOffering: targetOffering || undefined,
+          clientId: clientId || undefined,
+          clientName: clients.find((c) => c.id === clientId)?.name,
+        }),
+      });
+      const data = await res.json() as { audiences?: { name: string; description: string }[]; error?: string };
+      if (!res.ok) {
+        setAudienceSuggestError(data.error || "Failed to suggest audiences");
+        return;
+      }
+      setSuggestedAudiences(Array.isArray(data.audiences) ? data.audiences : []);
+    } catch (err) {
+      setAudienceSuggestError(err instanceof Error ? err.message : "Failed to suggest audiences");
+    } finally {
+      setSuggestingAudiences(false);
+    }
+  };
+
   const handleGenerate = async () => {
     if (!title || !url || !brief) {
       setError("Please fill in the title, website URL, and brief.");
@@ -212,7 +248,9 @@ export default function NewLandingPage() {
           url,
           brief,
           campaignType,
+          targetOffering: targetOffering || undefined,
           targetAudience: targetAudience || undefined,
+          requestedComponentIds: requestedComponentIds.length > 0 ? requestedComponentIds : undefined,
           templateId: templateId || undefined,
           analyticsConfig: Object.keys(analyticsConfig).length > 0 ? analyticsConfig : undefined,
           additionalImageUrls: uploadedImages.length > 0 ? uploadedImages.map((i) => i.url) : undefined,
@@ -536,11 +574,42 @@ export default function NewLandingPage() {
             />
           </div>
 
-          {/* Target audience */}
+          {/* Target offering — the ONE thing this PPC page sells */}
           <div>
             <label style={labelStyle}>
-              Target Audience <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span>
+              Target Service / Product / Offering <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span>
             </label>
+            <input
+              type="text"
+              value={targetOffering}
+              onChange={(e) => setTargetOffering(e.target.value)}
+              placeholder="e.g. GCSE Maths online tutoring — 1:1 weekly sessions"
+              style={inputStyle}
+            />
+            <div style={{ fontSize: 11.5, color: "var(--text-3)", marginTop: 4, lineHeight: 1.4 }}>
+              The single service or product this page sells. Keeping the page laser-focused on one offering converts best on PPC.
+            </div>
+          </div>
+
+          {/* Target audience */}
+          <div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+              <label style={{ ...labelStyle, marginBottom: 0 }}>
+                Target Audience <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span>
+              </label>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                disabled={brief.trim().length < 20 || suggestingAudiences}
+                onClick={handleSuggestAudiences}
+                title={brief.trim().length < 20 ? "Write a brief first (20+ characters)" : "Suggest audience options from the brief"}
+              >
+                {suggestingAudiences
+                  ? <Loader2 style={{ width: 12, height: 12, animation: "spin 1s linear infinite" }} />
+                  : <Sparkles style={{ width: 12, height: 12 }} />}
+                {suggestingAudiences ? "Suggesting…" : "Suggest from brief"}
+              </button>
+            </div>
             <input
               type="text"
               value={targetAudience}
@@ -548,6 +617,160 @@ export default function NewLandingPage() {
               placeholder="e.g. Parents of children aged 14-19 in the UK"
               style={inputStyle}
             />
+            {audienceSuggestError && (
+              <div style={{ marginTop: 8, fontSize: 12, color: "var(--danger)" }}>{audienceSuggestError}</div>
+            )}
+            {suggestedAudiences.length > 0 && (
+              <div style={{ marginTop: 10 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                  <span style={{ fontSize: 11.5, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: 0.4 }}>
+                    Pick one to use, or keep typing
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSuggestedAudiences([])}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-3)", fontSize: 12, padding: 0, display: "inline-flex", alignItems: "center", gap: 4 }}
+                  >
+                    <X style={{ width: 11, height: 11 }} /> Dismiss
+                  </button>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {suggestedAudiences.map((a) => {
+                    const selected = targetAudience === a.name;
+                    return (
+                      <button
+                        key={a.name}
+                        type="button"
+                        onClick={() => {
+                          setTargetAudience(a.name);
+                          setSuggestedAudiences([]);
+                        }}
+                        style={{
+                          textAlign: "left",
+                          padding: "10px 12px",
+                          borderRadius: 8,
+                          border: `1px solid ${selected ? "var(--accent)" : "var(--border)"}`,
+                          background: selected ? "var(--accent-bg)" : "var(--surface)",
+                          color: "var(--text)",
+                          cursor: "pointer",
+                          fontFamily: "inherit",
+                        }}
+                      >
+                        <div style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.35 }}>{a.name}</div>
+                        {a.description && (
+                          <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 3, lineHeight: 1.4 }}>{a.description}</div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Components to consider — collapsible CRO element picker */}
+          <div>
+            <button
+              type="button"
+              onClick={() => setComponentsExpanded((v) => !v)}
+              style={{
+                width: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "10px 14px",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--r)",
+                background: "var(--surface)",
+                color: "var(--text)",
+                cursor: "pointer",
+                fontFamily: "inherit",
+                fontSize: 13,
+                fontWeight: 600,
+              }}
+              aria-expanded={componentsExpanded}
+            >
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                <Zap style={{ width: 14, height: 14 }} />
+                Components to consider
+                <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span>
+                {requestedComponentIds.length > 0 && (
+                  <span style={{
+                    fontSize: 11, fontWeight: 600,
+                    padding: "1px 8px", borderRadius: 999,
+                    background: "var(--accent-bg)", color: "var(--accent)",
+                  }}>{requestedComponentIds.length} selected</span>
+                )}
+              </span>
+              <ChevronRight style={{ width: 14, height: 14, transform: componentsExpanded ? "rotate(90deg)" : "none", transition: "transform 0.15s" }} />
+            </button>
+            {componentsExpanded && (
+              <div style={{
+                marginTop: 8, padding: 14,
+                border: "1px solid var(--border)", borderRadius: "var(--r)",
+                background: "var(--surface)",
+              }}>
+                <div style={{ fontSize: 12, color: "var(--text-3)", lineHeight: 1.5, marginBottom: 12 }}>
+                  Tick the conversion components you&apos;d like the AI to consider for this page. The AI judges fit against your brief, offering and audience — it&apos;ll include the ones that genuinely help and skip the rest. Pick from any category, regardless of campaign type.
+                </div>
+                {(["urgency", "proof", "offer", "mechanics"] as CroCategory[]).map((cat) => {
+                  const items = CRO_ELEMENTS.filter((el) => el.category === cat);
+                  return (
+                    <div key={cat} style={{ marginBottom: 14 }}>
+                      <div style={{ fontSize: 11.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: "var(--text-3)", marginBottom: 8 }}>
+                        {CRO_CATEGORY_LABELS[cat]}
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 6 }}>
+                        {items.map((el) => {
+                          const checked = requestedComponentIds.includes(el.id);
+                          return (
+                            <label
+                              key={el.id}
+                              style={{
+                                display: "flex", alignItems: "flex-start", gap: 8,
+                                padding: "8px 10px", borderRadius: 6,
+                                border: `1px solid ${checked ? "var(--accent)" : "var(--border)"}`,
+                                background: checked ? "var(--accent-bg)" : "transparent",
+                                cursor: "pointer",
+                                fontSize: 12.5, lineHeight: 1.4,
+                              }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={(e) => {
+                                  setRequestedComponentIds((prev) =>
+                                    e.target.checked ? [...prev, el.id] : prev.filter((id) => id !== el.id),
+                                  );
+                                }}
+                                style={{ marginTop: 2, cursor: "pointer" }}
+                              />
+                              <span style={{ flex: 1 }}>
+                                <span style={{ fontWeight: 600, color: "var(--text)" }}>{el.name}</span>
+                                <span style={{ display: "block", color: "var(--text-3)", fontSize: 11.5, marginTop: 2 }}>{el.description}</span>
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+                {requestedComponentIds.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setRequestedComponentIds([])}
+                    style={{
+                      marginTop: 4, background: "none", border: "none", cursor: "pointer",
+                      color: "var(--text-3)", fontSize: 12, padding: 0,
+                      display: "inline-flex", alignItems: "center", gap: 4,
+                    }}
+                  >
+                    <X style={{ width: 11, height: 11 }} /> Clear all
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Reference images */}

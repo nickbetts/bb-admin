@@ -49,7 +49,7 @@ export async function POST(
     return Response.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  let briefData: { brief?: string; campaignType?: string; targetAudience?: string; url?: string } = {};
+  let briefData: { brief?: string; campaignType?: string; targetAudience?: string; targetOffering?: string; url?: string } = {};
   try { briefData = JSON.parse(landingPage.briefJson); } catch { /* use defaults */ }
 
   let brandContext: BrandContext;
@@ -73,6 +73,7 @@ export async function POST(
           campaignType: briefData.campaignType ?? "general",
           brandContext,
           targetAudience: briefData.targetAudience,
+          targetOffering: briefData.targetOffering,
           onProgress: async (msg) => { send({ type: "progress", message: msg }); },
         });
 

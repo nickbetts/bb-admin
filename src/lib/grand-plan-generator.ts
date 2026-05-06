@@ -569,6 +569,11 @@ export interface GrandPlanData {
        *  abbreviations, regional terms) for the team to research with the
        *  Keyword Planner. Surfaced as a panel under the ad groups. */
       seedSuggestions?: { theme: string; phrases: string[] }[];
+      /** Subsection keys hidden by the strategist via the editor. Currently
+       *  supports: "locations", "negatives", "seeds". Hidden subsections are
+       *  not rendered but their underlying data is preserved so they can be
+       *  restored later. */
+      hiddenSubsections?: string[];
     };
     metaCampaigns?: MetaCampaign[];
     contentStrategy?: {

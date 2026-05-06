@@ -87,6 +87,8 @@ export async function POST(request: NextRequest) {
     brief: string;
     campaignType: string;
     targetAudience?: string;
+    targetOffering?: string;
+    requestedComponentIds?: string[];
     templateId?: string;
     formConfig?: Record<string, unknown>;
     analyticsConfig?: Record<string, unknown>;
@@ -100,7 +102,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { clientId, title, url, brief, campaignType, targetAudience, templateId, formConfig, analyticsConfig, additionalImageUrls, additionalUrls } = body;
+  const { clientId, title, url, brief, campaignType, targetAudience, targetOffering, requestedComponentIds, templateId, formConfig, analyticsConfig, additionalImageUrls, additionalUrls } = body;
 
   if (!title || !url || !brief || !campaignType) {
     return NextResponse.json({ error: "title, url, brief, and campaignType are required" }, { status: 400 });
@@ -153,6 +155,8 @@ export async function POST(request: NextRequest) {
           campaignType,
           brandContext,
           targetAudience,
+          targetOffering,
+          requestedComponentIds,
           templateHtml,
           uploadedImageUrls: additionalImageUrls && additionalImageUrls.length > 0 ? additionalImageUrls : undefined,
           additionalPageContents: additionalPageContents.length > 0 ? additionalPageContents : undefined,
@@ -172,7 +176,7 @@ export async function POST(request: NextRequest) {
             title,
             slug,
             currentHtml: html,
-            briefJson: JSON.stringify({ url, additionalUrls: additionalUrls?.length ? additionalUrls : undefined, brief, campaignType, targetAudience }),
+            briefJson: JSON.stringify({ url, additionalUrls: additionalUrls?.length ? additionalUrls : undefined, brief, campaignType, targetAudience, targetOffering, requestedComponentIds: requestedComponentIds?.length ? requestedComponentIds : undefined }),
             brandContextJson: JSON.stringify(brandContext),
             formConfig: JSON.stringify(formConfig ?? {}),
             analyticsConfig: JSON.stringify(
