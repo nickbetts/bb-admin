@@ -44,6 +44,22 @@ function slideHasMedia(slide: PresentationSlide): boolean {
   return Boolean((slide.images && slide.images.length > 0) || slide.image?.url);
 }
 
+function slideHasBodyContent(slide: PresentationSlide): boolean {
+  return Boolean(
+    slide.headline?.trim() ||
+    slide.subhead?.trim() ||
+    (slide.bullets && slide.bullets.some((b) => b.trim())) ||
+    (slide.pillars && slide.pillars.length > 0) ||
+    (slide.audiences && slide.audiences.length > 0) ||
+    (slide.channels && slide.channels.length > 0) ||
+    (slide.steps && slide.steps.length > 0) ||
+    (slide.phases && slide.phases.length > 0) ||
+    slide.metric?.value ||
+    slide.investment?.headlineFigure ||
+    (slide.investment?.breakdown && slide.investment.breakdown.length > 0)
+  );
+}
+
 function renderSlide(slide: PresentationSlide, index: number, total: number): string {
   const eyebrow = slide.eyebrow ? `<div class="eyebrow">${esc(slide.eyebrow)}</div>` : "";
   const counter = `<div class="counter">${index + 1} / ${total}</div>`;
@@ -197,13 +213,18 @@ function renderSlide(slide: PresentationSlide, index: number, total: number): st
   // Image layout — wrap body in a media + content grid when one or more images are present
   const hasImage = slideHasMedia(slide);
   const imgPos = effectiveImagePosition(slide);
+  const hasBody = slideHasBodyContent(slide);
   const slideClasses = ["slide"];
   if (slide.density === "compact") slideClasses.push("density-compact");
   if (hasImage) slideClasses.push("with-image", `image-${imgPos}`);
+  if (hasImage && !hasBody) slideClasses.push("images-only");
 
   let bodyWithMedia = body;
   if (hasImage) {
-    if (imgPos === "background") {
+    if (!hasBody) {
+      // No body copy on this slide — let the gallery take the full slide-body area.
+      bodyWithMedia = renderImageMedia(slide);
+    } else if (imgPos === "background") {
       bodyWithMedia = `${renderImageMedia(slide)}<div class="slide-body-content">${body}</div>`;
     } else if (imgPos === "top") {
       bodyWithMedia = `${renderImageMedia(slide)}<div class="slide-body-content">${body}</div>`;
@@ -390,6 +411,10 @@ body{overflow:hidden}
 .slide.with-image.image-left .slide-image{order:-1}
 .slide.with-image.image-top .slide-body{grid-template-rows:auto 1fr}
 .slide.with-image.image-top .slide-image{height:300px}
+/* Slide has only images (no body copy) — let the gallery fill the slide body */
+.slide.with-image.images-only .slide-body{display:flex;grid-template-columns:none;grid-template-rows:none}
+.slide.with-image.images-only .slide-image,.slide.with-image.images-only .slide-gallery{flex:1;width:100%;height:100%}
+.slide.with-image.images-only.image-top .slide-gallery,.slide.with-image.images-only.image-top .slide-image{height:auto}
 .slide.with-image.image-background .slide-image,.slide.with-image.image-background .slide-gallery{position:absolute;inset:0;z-index:0;opacity:0.18;border:none;border-radius:0}
 .slide.with-image.image-background .slide-image::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,16,32,0.4),rgba(11,16,32,0.85))}
 .slide.with-image.image-background .slide-inner{position:relative;z-index:1}
