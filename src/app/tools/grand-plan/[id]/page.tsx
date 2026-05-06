@@ -2763,6 +2763,10 @@ function PresentationEditorModal(props: PresentationEditorModalProps) {
   } = props;
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  // Mirror activeSlideIndex into a ref so the iframe onLoad handler always
+  // posts the latest value, regardless of when its closure was created.
+  const activeSlideIndexRef = useRef(activeSlideIndex);
+  useEffect(() => { activeSlideIndexRef.current = activeSlideIndex; }, [activeSlideIndex]);
 
   // Listen for escape to close
   useEffect(() => {
@@ -2877,8 +2881,10 @@ function PresentationEditorModal(props: PresentationEditorModalProps) {
               sandbox="allow-scripts allow-same-origin"
               onLoad={() => {
                 // Restore the slide position after each reload caused by a save.
+                // Read from the ref so we always send the current value, even
+                // if React has scheduled state updates we haven't seen yet.
                 setTimeout(() => {
-                  editorIframeRef.current?.contentWindow?.postMessage({ type: "pres:goto-slide", index: activeSlideIndex }, "*");
+                  editorIframeRef.current?.contentWindow?.postMessage({ type: "pres:goto-slide", index: activeSlideIndexRef.current }, "*");
                 }, 80);
               }}
             />

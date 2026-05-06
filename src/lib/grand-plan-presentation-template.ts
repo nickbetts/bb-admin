@@ -452,10 +452,15 @@ const DECK_JS = `
 (function(){
   var slides = document.querySelectorAll('.slide');
   var current = 0;
+  var didInit = false;
   var prevBtn = document.getElementById('navPrev');
   var nextBtn = document.getElementById('navNext');
   var progress = document.getElementById('navProgress');
   function notifyParent(){
+    // Don't notify on initial render — the parent already knows the active
+    // slide it asked for, and during a save the inline iframe reloads in the
+    // background and would otherwise race and stomp the parent's state.
+    if(!didInit) return;
     try{ if(window.parent&&window.parent!==window) window.parent.postMessage({type:'pres:slide-change',index:current,total:slides.length},'*'); }catch(e){}
   }
   // Auto-fit: if a slide's content overflows the inner box, step down a fit class.
@@ -522,6 +527,7 @@ const DECK_JS = `
   var h = parseInt((location.hash||'').replace('#',''),10);
   if(!isNaN(h) && h>=1 && h<=slides.length){ current = h-1; }
   render();
+  didInit = true;
   // Run auto-fit after fonts and any images have settled.
   if (document.fonts && document.fonts.ready) {
     document.fonts.ready.then(function(){ setTimeout(autoFitAll, 30); });
