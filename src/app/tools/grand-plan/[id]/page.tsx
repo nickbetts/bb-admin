@@ -36,6 +36,10 @@ import {
   ChevronRight,
   Upload,
   Presentation,
+  Image as ImageIcon,
+  Plus,
+  Minimize2,
+  Maximize2,
 } from "lucide-react";
 
 // ─── Section configuration ─────────────────────────────────────────────────
@@ -152,6 +156,11 @@ export default function GrandPlanViewPage({ params }: Props) {
   const [presRefineAllBusy, setPresRefineAllBusy] = useState(false);
   const [newSlideKind, setNewSlideKind] = useState("headline");
   const [presSaving, setPresSaving] = useState(false);
+  // Fullscreen modal editor state — when edit mode opens, default to expanded.
+  const [presentationEditExpanded, setPresentationEditExpanded] = useState(true);
+  const [uploadingImageForSlide, setUploadingImageForSlide] = useState<number | null>(null);
+  // Separate iframe ref for the fullscreen editor (so we can postMessage to it independently)
+  const editorIframeRef = useRef<HTMLIFrameElement | null>(null);
 
   // Share state
   const [sharingBusy, setSharingBusy] = useState(false);
@@ -253,7 +262,7 @@ export default function GrandPlanViewPage({ params }: Props) {
         "gp:save-campaign-name", "gp:save-budget", "gp:save-locations",
         "gp:save-negatives", "gp:ag-rename", "gp:ag-audience",
         "gp:ag-negatives", "gp:ag-add", "gp:ag-delete", "gp:save-seeds",
-        "gp:save-intro",
+        "gp:save-intro", "gp:subsection-hide", "gp:subsection-restore",
       ];
       if (googleAdsEditTypes.includes(data.type)) {
         handleGoogleAdsEdit(data as Record<string, unknown>);
@@ -302,10 +311,34 @@ export default function GrandPlanViewPage({ params }: Props) {
       const parsed = JSON.parse(gp.presentationDataJson) as import("@/lib/grand-plan-presentation-generator").PresentationData;
       setPresentationData(parsed);
       setPresentationEditMode(true);
+      setPresentationEditExpanded(true);
       setPresEditTab("refine");
       setActiveSlideIndex(0);
     } catch {
       toast("Could not load presentation data", "error");
+    }
+  }
+
+  async function uploadSlideImage(slideIndex: number, file: File, position: "left" | "right" | "top" | "background" = "right") {
+    setUploadingImageForSlide(slideIndex);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch(`/api/tools/grand-plan/${id}/upload-image`, {
+        method: "POST",
+        body: fd,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(err.error ?? "Upload failed");
+      }
+      const { url } = await res.json() as { url: string };
+      await savePresField("image-set", { slideIndex, url, position, alt: file.name.replace(/\.[a-z0-9]+$/i, "") });
+      toast("Image added", "success");
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "Image upload failed", "error");
+    } finally {
+      setUploadingImageForSlide(null);
     }
   }
 
@@ -1865,7 +1898,7 @@ export default function GrandPlanViewPage({ params }: Props) {
                   ? `/api/tools/grand-plan/${plan.id}/presentation?ts=${presentationCacheBust}`
                   : blobUrl ?? undefined}
                 style={{
-                  flex: presentationEditMode && viewMode === "presentation" ? "0 0 60%" : "1 1 100%",
+                  flex: "1 1 100%",
                   height: viewMode === "presentation" ? "100%" : undefined,
                   border: "none",
                   display: "block",
@@ -1886,258 +1919,8 @@ export default function GrandPlanViewPage({ params }: Props) {
                   setTimeout(() => setIframeLoaded(true), 500);
                 }}
               />
-              {/* ── Presentation edit sidebar ──────────────────────────── */}
-              {presentationEditMode && viewMode === "presentation" && presentationData && (() => {
-                const iscover = activeSlideIndex === 0;
-                const slide = !iscover && presentationData.slides[activeSlideIndex - 1];
-                const totalSlides = presentationData.slides.length + 1;
-
-                const tabBtn = (tab: typeof presEditTab, label: string) => (
-                  <button
-                    key={tab}
-                    type="button"
-                    onClick={() => setPresEditTab(tab)}
-                    style={{
-                      padding: "5px 10px", fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer", borderRadius: 6,
-                      background: presEditTab === tab ? "var(--accent)" : "transparent",
-                      color: presEditTab === tab ? "#fff" : "var(--text-3)",
-                    }}
-                  >{label}</button>
-                );
-
-                const fieldInput = (label: string, value: string | undefined, onSave: (v: string) => void) => (
-                  <label key={label} style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: ".05em" }}>{label}</span>
-                    <textarea
-                      defaultValue={value ?? ""}
-                      rows={2}
-                      style={{ fontSize: 13, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", resize: "vertical", fontFamily: "inherit" }}
-                      onBlur={(e) => { const v = e.currentTarget.value.trim(); if (v !== (value ?? "")) onSave(v); }}
-                    />
-                  </label>
-                );
-
-                return (
-                  <div style={{ flex: "0 0 40%", borderLeft: "1px solid var(--border)", background: "var(--bg)", overflowY: "auto", display: "flex", flexDirection: "column" }}>
-                    {/* Slide nav header */}
-                    <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-                      <button type="button" className="btn btn-ghost btn-sm" style={{ padding: "2px 8px" }}
-                        disabled={activeSlideIndex === 0}
-                        onClick={() => {
-                          const newIdx = activeSlideIndex - 1;
-                          setActiveSlideIndex(newIdx);
-                          iframeRef.current?.contentWindow?.postMessage({ type: "pres:goto-slide", index: newIdx }, "*");
-                        }}>←</button>
-                      <span style={{ fontSize: 12, color: "var(--text-2)", flex: 1, textAlign: "center", fontWeight: 600 }}>
-                        {iscover ? "Cover slide" : `Slide ${activeSlideIndex} of ${totalSlides - 1}`}
-                        {slide && ` · ${(slide as import("@/lib/grand-plan-presentation-generator").PresentationSlide).title}`}
-                      </span>
-                      <button type="button" className="btn btn-ghost btn-sm" style={{ padding: "2px 8px" }}
-                        disabled={activeSlideIndex === totalSlides - 1}
-                        onClick={() => {
-                          const newIdx = activeSlideIndex + 1;
-                          setActiveSlideIndex(newIdx);
-                          iframeRef.current?.contentWindow?.postMessage({ type: "pres:goto-slide", index: newIdx }, "*");
-                        }}>→</button>
-                    </div>
-                    {/* Tabs */}
-                    <div style={{ padding: "8px 14px", borderBottom: "1px solid var(--border)", display: "flex", gap: 4, flexShrink: 0 }}>
-                      {tabBtn("refine", "✦ Refine AI")}
-                      {tabBtn("fields", "Edit fields")}
-                      {!iscover && tabBtn("manage", "Manage")}
-                    </div>
-                    {/* Tab content */}
-                    <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 12, flex: 1 }}>
-                      {presEditTab === "refine" && (
-                        <>
-                          <p style={{ fontSize: 12, color: "var(--text-3)", margin: 0 }}>
-                            Describe what you want changed on {iscover ? "the cover" : "this slide"} and Claude will rewrite it.
-                          </p>
-                          <textarea
-                            value={slideRefinePrompt}
-                            onChange={(e) => setSlideRefinePrompt(e.target.value)}
-                            rows={5}
-                            placeholder={iscover ? "e.g. Change the subtitle to focus on summer campaigns…" : "e.g. Split this into 3 sub-sections, one per campaign…"}
-                            style={{ fontSize: 13, padding: "8px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--surface,var(--bg))", color: "var(--text)", resize: "vertical", fontFamily: "inherit" }}
-                            onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { refineSlide(activeSlideIndex === 0 ? -1 : activeSlideIndex - 1, slideRefinePrompt); } }}
-                          />
-                          <button
-                            type="button"
-                            className="btn btn-primary btn-sm"
-                            disabled={slideRefining || !slideRefinePrompt.trim() || iscover}
-                            onClick={() => refineSlide(activeSlideIndex - 1, slideRefinePrompt)}
-                            style={{ alignSelf: "flex-start", gap: 6 }}
-                          >
-                            {slideRefining ? <><Loader2 style={{ width: 13, height: 13 }} className="spin" aria-hidden /> Refining…</> : <><Sparkles style={{ width: 13, height: 13 }} aria-hidden /> Refine slide</>}
-                          </button>
-                          {iscover && <p style={{ fontSize: 11, color: "var(--text-4)", margin: 0 }}>AI refine is not available for the cover — use Edit fields to update the title and subtitle.</p>}
-
-                          {/* Refine whole deck */}
-                          <hr style={{ border: "none", borderTop: "1px solid var(--border)", margin: "4px 0" }} />
-                          <p style={{ fontSize: 12, fontWeight: 600, margin: 0, color: "var(--text-2)" }}>Refine whole deck</p>
-                          <p style={{ fontSize: 12, color: "var(--text-3)", margin: 0 }}>
-                            Claude will reason about your instruction and edit copy, add new slides, remove slides, or restructure the deck as needed.
-                          </p>
-                          <textarea
-                            value={presRefineAllPrompt}
-                            onChange={(e) => setPresRefineAllPrompt(e.target.value)}
-                            rows={4}
-                            placeholder="e.g. Add a dedicated slide for Google Ads strategy and make all copy more outcome-focused…"
-                            style={{ fontSize: 13, padding: "8px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--surface,var(--bg))", color: "var(--text)", resize: "vertical", fontFamily: "inherit" }}
-                            onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { refineAllSlides(presRefineAllPrompt); } }}
-                          />
-                          <button
-                            type="button"
-                            className="btn btn-primary btn-sm"
-                            disabled={presRefineAllBusy || !presRefineAllPrompt.trim()}
-                            onClick={() => refineAllSlides(presRefineAllPrompt)}
-                            style={{ alignSelf: "flex-start", gap: 6 }}
-                          >
-                            {presRefineAllBusy ? <><Loader2 style={{ width: 13, height: 13 }} className="spin" aria-hidden /> Refining deck…</> : <><Sparkles style={{ width: 13, height: 13 }} aria-hidden /> Refine all slides</>}
-                          </button>
-                        </>
-                      )}
-
-                      {presEditTab === "fields" && iscover && (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                          {fieldInput("Title", presentationData.cover.title, (v) => savePresField("cover", { field: "title", value: v }))}
-                          {fieldInput("Subtitle", presentationData.cover.subtitle, (v) => savePresField("cover", { field: "subtitle", value: v }))}
-                          {fieldInput("Client name", presentationData.cover.clientName, (v) => savePresField("cover", { field: "clientName", value: v }))}
-                          {fieldInput("Period", presentationData.cover.period, (v) => savePresField("cover", { field: "period", value: v }))}
-                        </div>
-                      )}
-
-                      {presEditTab === "fields" && !iscover && slide && (() => {
-                        const s = slide as import("@/lib/grand-plan-presentation-generator").PresentationSlide;
-                        const si = activeSlideIndex - 1;
-                        const sf = (label: string, field: string, value: string | undefined) =>
-                          fieldInput(label, value, (v) => savePresField("slide-field", { slideIndex: si, field, value: v }));
-
-                        return (
-                          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                            {sf("Title", "title", s.title)}
-                            {sf("Eyebrow", "eyebrow", s.eyebrow)}
-                            {(s.kind === "headline" || s.kind === "outcome") && sf("Headline", "headline", s.headline)}
-                            {(s.kind === "headline" || s.kind === "outcome") && sf("Sub-headline", "subhead", s.subhead)}
-                            {s.kind === "outcome" && sf("Metric value", "metric.value", s.metric?.value)}
-                            {s.kind === "outcome" && sf("Metric label", "metric.label", s.metric?.label)}
-                            {s.kind === "investment" && sf("Headline figure", "investment.headlineFigure", s.investment?.headlineFigure)}
-
-                            {/* Array items */}
-                            {(["pillars", "steps", "audiences", "channels"] as const).map((itemType) => {
-                              const items = (s as unknown as Record<string, unknown>)[itemType] as { [k: string]: string }[] | undefined;
-                              if (!items) return null;
-                              const fieldDefs: Record<string, string[]> = {
-                                pillars: ["title", "body"],
-                                steps: ["title", "detail"],
-                                audiences: ["name", "insight"],
-                                channels: ["name", "role"],
-                              };
-                              const fields = fieldDefs[itemType] ?? ["label"];
-                              return (
-                                <div key={itemType}>
-                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                                    <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: ".05em" }}>{itemType}</span>
-                                    <button type="button" className="btn btn-ghost btn-sm" style={{ fontSize: 11, padding: "2px 8px" }}
-                                      onClick={() => savePresField("item-add", { slideIndex: si, itemType })}>+ Add</button>
-                                  </div>
-                                  {items.map((item, ii) => (
-                                    <div key={ii} style={{ background: "var(--surface,rgba(0,0,0,.04))", borderRadius: 8, padding: "8px 10px", marginBottom: 8, border: "1px solid var(--border)" }}>
-                                      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 4 }}>
-                                        <button type="button" style={{ fontSize: 11, color: "var(--text-4)", background: "none", border: "none", cursor: "pointer" }}
-                                          onClick={() => savePresField("item-delete", { slideIndex: si, itemType, itemIndex: ii })}>Remove</button>
-                                      </div>
-                                      {fields.map((f) => (
-                                        <label key={f} style={{ display: "flex", flexDirection: "column", gap: 2, marginBottom: 6 }}>
-                                          <span style={{ fontSize: 10, fontWeight: 600, color: "var(--text-4)", textTransform: "uppercase" }}>{f}</span>
-                                          <textarea
-                                            defaultValue={item[f] ?? ""}
-                                            rows={f === "body" || f === "detail" || f === "insight" || f === "role" ? 3 : 1}
-                                            style={{ fontSize: 12, padding: "4px 6px", borderRadius: 4, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", resize: "vertical", fontFamily: "inherit" }}
-                                            onBlur={(e) => {
-                                              const v = e.currentTarget.value.trim();
-                                              if (v !== (item[f] ?? "")) savePresField("item-update", { slideIndex: si, itemType, itemIndex: ii, field: f, value: v });
-                                            }}
-                                          />
-                                        </label>
-                                      ))}
-                                    </div>
-                                  ))}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        );
-                      })()}
-
-                      {presEditTab === "manage" && !iscover && slide && (() => {
-                        const si = activeSlideIndex - 1;
-                        const totalContent = presentationData.slides.length;
-                        const slideKinds = ["headline", "pillars", "outcome", "channels", "timeline", "investment", "audience", "next-steps"] as const;
-                        return (
-                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                            <p style={{ fontSize: 11, fontWeight: 600, color: "var(--text-4)", margin: 0, textTransform: "uppercase", letterSpacing: "0.05em" }}>Reorder</p>
-                            <button type="button" className="btn btn-ghost btn-sm" style={{ justifyContent: "flex-start", gap: 8 }}
-                              disabled={si === 0 || presSaving}
-                              onClick={() => savePresField("slide-move", { slideIndex: si, direction: "up" }).then(() => setActiveSlideIndex(activeSlideIndex - 1))}>
-                              ↑ Move slide up
-                            </button>
-                            <button type="button" className="btn btn-ghost btn-sm" style={{ justifyContent: "flex-start", gap: 8 }}
-                              disabled={si === totalContent - 1 || presSaving}
-                              onClick={() => savePresField("slide-move", { slideIndex: si, direction: "down" }).then(() => setActiveSlideIndex(activeSlideIndex + 1))}>
-                              ↓ Move slide down
-                            </button>
-
-                            <div style={{ borderTop: "1px solid var(--border)", margin: "4px 0" }} />
-                            <p style={{ fontSize: 11, fontWeight: 600, color: "var(--text-4)", margin: 0, textTransform: "uppercase", letterSpacing: "0.05em" }}>Add slide</p>
-                            <select
-                              value={newSlideKind}
-                              onChange={(e) => setNewSlideKind(e.target.value)}
-                              style={{ fontSize: 12, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--surface,var(--bg))", color: "var(--text)" }}
-                            >
-                              {slideKinds.map((k) => (
-                                <option key={k} value={k}>{k.charAt(0).toUpperCase() + k.slice(1).replace("-", " ")}</option>
-                              ))}
-                            </select>
-                            <button type="button" className="btn btn-ghost btn-sm" style={{ justifyContent: "flex-start", gap: 8 }}
-                              disabled={presSaving}
-                              onClick={async () => {
-                                await savePresField("slide-add", { afterIndex: si, kind: newSlideKind, title: "New slide" });
-                                setActiveSlideIndex(activeSlideIndex + 1);
-                              }}>
-                              + Add {newSlideKind} slide after this one
-                            </button>
-                            <button type="button" className="btn btn-ghost btn-sm" style={{ justifyContent: "flex-start", gap: 8 }}
-                              disabled={presSaving}
-                              onClick={async () => {
-                                await savePresField("slide-duplicate", { slideIndex: si });
-                                setActiveSlideIndex(activeSlideIndex + 1);
-                              }}>
-                              ⧉ Duplicate this slide
-                            </button>
-
-                            <div style={{ borderTop: "1px solid var(--border)", margin: "4px 0" }} />
-                            <button type="button" className="btn btn-sm" style={{ justifyContent: "flex-start", gap: 8, color: "#ef4444", background: "rgba(239,68,68,.08)", border: "1px solid rgba(239,68,68,.2)" }}
-                              disabled={presSaving}
-                              onClick={async () => {
-                                if (!window.confirm("Delete this slide?")) return;
-                                await savePresField("slide-delete", { slideIndex: si });
-                                setActiveSlideIndex(Math.max(0, activeSlideIndex - 1));
-                              }}>
-                              <Trash2 style={{ width: 13, height: 13 }} aria-hidden /> Delete slide
-                            </button>
-                          </div>
-                        );
-                      })()}
-                    </div>
-                    {presSaving && (
-                      <div style={{ padding: "8px 14px", borderTop: "1px solid var(--border)", fontSize: 11, color: "var(--text-4)", display: "flex", alignItems: "center", gap: 6 }}>
-                        <Loader2 style={{ width: 11, height: 11 }} className="spin" aria-hidden /> Saving…
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}</div>
+              {/* Edit sidebar lives in the fullscreen modal (PresentationEditorModal) below */}
+            </div>
           </div>
         </div>
       ) : !isGenerating && plan.status !== "failed" ? (
@@ -2319,6 +2102,37 @@ export default function GrandPlanViewPage({ params }: Props) {
           </label>
         </div>
       </Modal>
+
+      {/* ── Presentation editor modal (near-fullscreen) ─────────────────── */}
+      {plan && presentationEditMode && presentationData && (
+        <PresentationEditorModal
+          plan={plan}
+          presentationData={presentationData}
+          activeSlideIndex={activeSlideIndex}
+          setActiveSlideIndex={setActiveSlideIndex}
+          presEditTab={presEditTab}
+          setPresEditTab={setPresEditTab}
+          slideRefinePrompt={slideRefinePrompt}
+          setSlideRefinePrompt={setSlideRefinePrompt}
+          slideRefining={slideRefining}
+          presRefineAllPrompt={presRefineAllPrompt}
+          setPresRefineAllPrompt={setPresRefineAllPrompt}
+          presRefineAllBusy={presRefineAllBusy}
+          presSaving={presSaving}
+          newSlideKind={newSlideKind}
+          setNewSlideKind={setNewSlideKind}
+          presentationCacheBust={presentationCacheBust}
+          uploadingImageForSlide={uploadingImageForSlide}
+          editorIframeRef={editorIframeRef}
+          expanded={presentationEditExpanded}
+          setExpanded={setPresentationEditExpanded}
+          onClose={() => setPresentationEditMode(false)}
+          refineSlide={refineSlide}
+          refineAllSlides={refineAllSlides}
+          savePresField={savePresField}
+          uploadSlideImage={uploadSlideImage}
+        />
+      )}
 
       {/* Mobile responsive override for the doc grid */}
       <style>{`
@@ -2899,6 +2713,560 @@ function GrandPlanChaosOverlay({ active, message }: { active: boolean; message?:
           {p.emoji}
         </span>
       ))}
+    </div>
+  );
+}
+
+// ─── Presentation editor modal ─────────────────────────────────────────────
+
+type PresentationDataT = import("@/lib/grand-plan-presentation-generator").PresentationData;
+type PresentationSlideT = import("@/lib/grand-plan-presentation-generator").PresentationSlide;
+type PresEditTab = "refine" | "fields" | "manage";
+type ImagePosition = "left" | "right" | "top" | "background";
+
+interface PresentationEditorModalProps {
+  plan: GrandPlanFull;
+  presentationData: PresentationDataT;
+  activeSlideIndex: number;
+  setActiveSlideIndex: (n: number) => void;
+  presEditTab: PresEditTab;
+  setPresEditTab: (t: PresEditTab) => void;
+  slideRefinePrompt: string;
+  setSlideRefinePrompt: (s: string) => void;
+  slideRefining: boolean;
+  presRefineAllPrompt: string;
+  setPresRefineAllPrompt: (s: string) => void;
+  presRefineAllBusy: boolean;
+  presSaving: boolean;
+  newSlideKind: string;
+  setNewSlideKind: (s: string) => void;
+  presentationCacheBust: number;
+  uploadingImageForSlide: number | null;
+  editorIframeRef: React.RefObject<HTMLIFrameElement | null>;
+  expanded: boolean;
+  setExpanded: (b: boolean) => void;
+  onClose: () => void;
+  refineSlide: (slideIndex: number, prompt: string) => Promise<void> | void;
+  refineAllSlides: (prompt: string) => Promise<void> | void;
+  savePresField: (action: string, payload: Record<string, unknown>) => Promise<void>;
+  uploadSlideImage: (slideIndex: number, file: File, position?: ImagePosition) => Promise<void>;
+}
+
+function PresentationEditorModal(props: PresentationEditorModalProps) {
+  const {
+    plan, presentationData, activeSlideIndex, setActiveSlideIndex,
+    presEditTab, setPresEditTab, slideRefinePrompt, setSlideRefinePrompt, slideRefining,
+    presRefineAllPrompt, setPresRefineAllPrompt, presRefineAllBusy, presSaving,
+    newSlideKind, setNewSlideKind, presentationCacheBust, uploadingImageForSlide,
+    editorIframeRef, expanded, setExpanded, onClose,
+    refineSlide, refineAllSlides, savePresField, uploadSlideImage,
+  } = props;
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Listen for escape to close
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        // Don't close if focused inside a textarea/input — let escape blur instead
+        const tag = (e.target as HTMLElement | null)?.tagName;
+        if (tag === "TEXTAREA" || tag === "INPUT" || tag === "SELECT") return;
+        onClose();
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  // Body scroll lock while modal open
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
+  const iscover = activeSlideIndex === 0;
+  const slide = !iscover ? presentationData.slides[activeSlideIndex - 1] : null;
+  const totalSlides = presentationData.slides.length + 1;
+
+  function gotoSlide(newIdx: number) {
+    setActiveSlideIndex(newIdx);
+    editorIframeRef.current?.contentWindow?.postMessage({ type: "pres:goto-slide", index: newIdx }, "*");
+  }
+
+  const tabBtn = (tab: PresEditTab, label: string) => (
+    <button
+      key={tab}
+      type="button"
+      onClick={() => setPresEditTab(tab)}
+      style={{
+        padding: "6px 12px", fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer", borderRadius: 6,
+        background: presEditTab === tab ? "var(--accent)" : "transparent",
+        color: presEditTab === tab ? "#fff" : "var(--text-3)",
+      }}
+    >{label}</button>
+  );
+
+  const fieldInput = (label: string, value: string | undefined, onSave: (v: string) => void, rows = 2) => (
+    <label key={label} style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+      <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: ".05em" }}>{label}</span>
+      <textarea
+        defaultValue={value ?? ""}
+        rows={rows}
+        style={{ fontSize: 13, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", resize: "vertical", fontFamily: "inherit" }}
+        onBlur={(e) => { const v = e.currentTarget.value.trim(); if (v !== (value ?? "")) onSave(v); }}
+      />
+    </label>
+  );
+
+  // Main panel positioning — near-fullscreen (24px inset on desktop)
+  const overlayStyle: React.CSSProperties = expanded
+    ? { position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "stretch", justifyContent: "stretch" }
+    : { position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "flex-end", justifyContent: "flex-end" };
+
+  const panelStyle: React.CSSProperties = expanded
+    ? { position: "absolute", inset: 24, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, boxShadow: "0 25px 50px -12px rgba(0,0,0,0.45)", display: "flex", flexDirection: "column", overflow: "hidden" }
+    : { position: "absolute", right: 16, bottom: 16, width: "min(96vw, 1200px)", height: "min(80vh, 760px)", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, boxShadow: "0 25px 50px -12px rgba(0,0,0,0.45)", display: "flex", flexDirection: "column", overflow: "hidden" };
+
+  return (
+    <div role="dialog" aria-modal="true" aria-label="Presentation editor" style={overlayStyle}>
+      {/* Backdrop */}
+      <div
+        onClick={onClose}
+        style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(2px)" }}
+        aria-hidden
+      />
+      {/* Panel */}
+      <div style={panelStyle}>
+        {/* Header */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
+          <Pencil style={{ width: 14, height: 14, color: "var(--accent)" }} aria-hidden />
+          <strong style={{ fontSize: 13, color: "var(--text)" }}>Edit presentation</strong>
+          <span style={{ fontSize: 12, color: "var(--text-3)" }}>{plan.title}</span>
+          <div style={{ flex: 1 }} />
+          {presSaving && (
+            <span style={{ fontSize: 11, color: "var(--text-4)", display: "flex", alignItems: "center", gap: 6 }}>
+              <Loader2 style={{ width: 11, height: 11 }} className="spin" aria-hidden /> Saving…
+            </span>
+          )}
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => setExpanded(!expanded)}
+            title={expanded ? "Minimise editor" : "Maximise editor"}
+            style={{ gap: 5 }}
+          >
+            {expanded
+              ? <><Minimize2 style={{ width: 13, height: 13 }} aria-hidden /> Minimise</>
+              : <><Maximize2 style={{ width: 13, height: 13 }} aria-hidden /> Maximise</>}
+          </button>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={onClose} style={{ gap: 5 }}>
+            <X style={{ width: 13, height: 13 }} aria-hidden /> Done
+          </button>
+        </div>
+
+        {/* Body — 2 columns: preview (large) + sidebar (right) */}
+        <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
+          {/* Iframe preview */}
+          <div style={{ flex: "1 1 auto", minWidth: 0, background: "#0b1020", position: "relative" }}>
+            <iframe
+              ref={editorIframeRef}
+              src={`/api/tools/grand-plan/${plan.id}/presentation?ts=${presentationCacheBust}`}
+              style={{ width: "100%", height: "100%", border: "none", display: "block" }}
+              title={`${plan.title} (Editing)`}
+              sandbox="allow-scripts allow-same-origin"
+              onLoad={() => {
+                // Restore the slide position after each reload caused by a save.
+                setTimeout(() => {
+                  editorIframeRef.current?.contentWindow?.postMessage({ type: "pres:goto-slide", index: activeSlideIndex }, "*");
+                }, 80);
+              }}
+            />
+          </div>
+          {/* Sidebar */}
+          <aside style={{ flex: "0 0 380px", maxWidth: "40vw", borderLeft: "1px solid var(--border)", background: "var(--bg)", overflowY: "auto", display: "flex", flexDirection: "column" }}>
+            {/* Slide nav */}
+            <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+              <button type="button" className="btn btn-ghost btn-sm" style={{ padding: "2px 8px" }}
+                disabled={activeSlideIndex === 0}
+                onClick={() => gotoSlide(activeSlideIndex - 1)}>←</button>
+              <span style={{ fontSize: 12, color: "var(--text-2)", flex: 1, textAlign: "center", fontWeight: 600 }}>
+                {iscover ? "Cover slide" : `Slide ${activeSlideIndex} of ${totalSlides - 1}`}
+                {slide && ` · ${slide.title}`}
+              </span>
+              <button type="button" className="btn btn-ghost btn-sm" style={{ padding: "2px 8px" }}
+                disabled={activeSlideIndex === totalSlides - 1}
+                onClick={() => gotoSlide(activeSlideIndex + 1)}>→</button>
+            </div>
+            {/* Tabs */}
+            <div style={{ padding: "8px 14px", borderBottom: "1px solid var(--border)", display: "flex", gap: 4, flexShrink: 0 }}>
+              {tabBtn("refine", "✦ Refine AI")}
+              {tabBtn("fields", "Edit fields")}
+              {!iscover && tabBtn("manage", "Manage")}
+            </div>
+
+            {/* Tab content */}
+            <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 12, flex: 1 }}>
+              {presEditTab === "refine" && (
+                <>
+                  <p style={{ fontSize: 12, color: "var(--text-3)", margin: 0 }}>
+                    Describe what you want changed on {iscover ? "the cover" : "this slide"} and Claude will rewrite it. The AI can add bullet points, restructure copy, set densities, and choose suitable layouts when you describe the content you want.
+                  </p>
+                  <textarea
+                    value={slideRefinePrompt}
+                    onChange={(e) => setSlideRefinePrompt(e.target.value)}
+                    rows={5}
+                    placeholder={iscover ? "e.g. Change the subtitle to focus on summer campaigns…" : "e.g. Turn this into bullet points and use compact density…"}
+                    style={{ fontSize: 13, padding: "8px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--surface,var(--bg))", color: "var(--text)", resize: "vertical", fontFamily: "inherit" }}
+                    onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { refineSlide(activeSlideIndex === 0 ? -1 : activeSlideIndex - 1, slideRefinePrompt); } }}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    disabled={slideRefining || !slideRefinePrompt.trim() || iscover}
+                    onClick={() => refineSlide(activeSlideIndex - 1, slideRefinePrompt)}
+                    style={{ alignSelf: "flex-start", gap: 6 }}
+                  >
+                    {slideRefining ? <><Loader2 style={{ width: 13, height: 13 }} className="spin" aria-hidden /> Refining…</> : <><Sparkles style={{ width: 13, height: 13 }} aria-hidden /> Refine slide</>}
+                  </button>
+                  {iscover && <p style={{ fontSize: 11, color: "var(--text-4)", margin: 0 }}>AI refine is not available for the cover — use Edit fields to update the title and subtitle.</p>}
+
+                  <hr style={{ border: "none", borderTop: "1px solid var(--border)", margin: "4px 0" }} />
+                  <p style={{ fontSize: 12, fontWeight: 600, margin: 0, color: "var(--text-2)" }}>Refine whole deck</p>
+                  <p style={{ fontSize: 12, color: "var(--text-3)", margin: 0 }}>
+                    Claude can edit copy, add or remove slides, and restructure the whole deck. Existing image assets are preserved.
+                  </p>
+                  <textarea
+                    value={presRefineAllPrompt}
+                    onChange={(e) => setPresRefineAllPrompt(e.target.value)}
+                    rows={4}
+                    placeholder="e.g. Add a bullets slide listing our content pillars and make all copy more outcome-focused…"
+                    style={{ fontSize: 13, padding: "8px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--surface,var(--bg))", color: "var(--text)", resize: "vertical", fontFamily: "inherit" }}
+                    onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { refineAllSlides(presRefineAllPrompt); } }}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    disabled={presRefineAllBusy || !presRefineAllPrompt.trim()}
+                    onClick={() => refineAllSlides(presRefineAllPrompt)}
+                    style={{ alignSelf: "flex-start", gap: 6 }}
+                  >
+                    {presRefineAllBusy ? <><Loader2 style={{ width: 13, height: 13 }} className="spin" aria-hidden /> Refining deck…</> : <><Sparkles style={{ width: 13, height: 13 }} aria-hidden /> Refine all slides</>}
+                  </button>
+                </>
+              )}
+
+              {presEditTab === "fields" && iscover && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {fieldInput("Title", presentationData.cover.title, (v) => savePresField("cover", { field: "title", value: v }))}
+                  {fieldInput("Subtitle", presentationData.cover.subtitle, (v) => savePresField("cover", { field: "subtitle", value: v }))}
+                  {fieldInput("Client name", presentationData.cover.clientName, (v) => savePresField("cover", { field: "clientName", value: v }))}
+                  {fieldInput("Period", presentationData.cover.period, (v) => savePresField("cover", { field: "period", value: v }))}
+                </div>
+              )}
+
+              {presEditTab === "fields" && !iscover && slide && (() => {
+                const s = slide as PresentationSlideT;
+                const si = activeSlideIndex - 1;
+                const sf = (label: string, field: string, value: string | undefined, rows = 2) =>
+                  fieldInput(label, value, (v) => savePresField("slide-field", { slideIndex: si, field, value: v }), rows);
+
+                const isContentLike = s.kind === "content" || s.kind === "bullets";
+
+                return (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    {sf("Title", "title", s.title)}
+                    {sf("Eyebrow", "eyebrow", s.eyebrow)}
+                    {(s.kind === "headline" || s.kind === "outcome" || s.kind === "content") && sf("Headline", "headline", s.headline)}
+                    {(s.kind === "headline" || s.kind === "outcome" || s.kind === "content" || s.kind === "bullets" || s.kind === "pillars") && sf("Sub-headline", "subhead", s.subhead, 2)}
+                    {s.kind === "outcome" && sf("Metric value", "metric.value", s.metric?.value)}
+                    {s.kind === "outcome" && sf("Metric label", "metric.label", s.metric?.label)}
+                    {s.kind === "investment" && sf("Headline figure", "investment.headlineFigure", s.investment?.headlineFigure)}
+
+                    {/* Bullets section — primary for content/bullets, supplementary for others */}
+                    <BulletsEditor slide={s} si={si} primary={isContentLike} savePresField={savePresField} presSaving={presSaving} />
+
+                    {/* Image section */}
+                    <ImageEditor
+                      slide={s}
+                      si={si}
+                      savePresField={savePresField}
+                      uploadSlideImage={uploadSlideImage}
+                      uploading={uploadingImageForSlide === si}
+                      fileInputRef={fileInputRef}
+                    />
+
+                    {/* Density */}
+                    <label style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: ".05em" }}>Density</span>
+                      <select
+                        value={s.density ?? "regular"}
+                        onChange={(e) => savePresField("density-set", { slideIndex: si, density: e.target.value })}
+                        style={{ fontSize: 12, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--surface,var(--bg))", color: "var(--text)" }}
+                      >
+                        <option value="regular">Regular</option>
+                        <option value="compact">Compact (smaller type)</option>
+                      </select>
+                    </label>
+
+                    {/* Existing array items (pillars/steps/audiences/channels) */}
+                    {(["pillars", "steps", "audiences", "channels"] as const).map((itemType) => {
+                      const items = (s as unknown as Record<string, unknown>)[itemType] as { [k: string]: string }[] | undefined;
+                      if (!items) return null;
+                      const fieldDefs: Record<string, string[]> = {
+                        pillars: ["title", "body"],
+                        steps: ["title", "detail"],
+                        audiences: ["name", "insight"],
+                        channels: ["name", "role"],
+                      };
+                      const fields = fieldDefs[itemType] ?? ["label"];
+                      return (
+                        <div key={itemType}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: ".05em" }}>{itemType}</span>
+                            <button type="button" className="btn btn-ghost btn-sm" style={{ fontSize: 11, padding: "2px 8px" }}
+                              onClick={() => savePresField("item-add", { slideIndex: si, itemType })}>+ Add</button>
+                          </div>
+                          {items.map((item, ii) => (
+                            <div key={ii} style={{ background: "var(--surface,rgba(0,0,0,.04))", borderRadius: 8, padding: "8px 10px", marginBottom: 8, border: "1px solid var(--border)" }}>
+                              <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 4 }}>
+                                <button type="button" style={{ fontSize: 11, color: "var(--text-4)", background: "none", border: "none", cursor: "pointer" }}
+                                  onClick={() => savePresField("item-delete", { slideIndex: si, itemType, itemIndex: ii })}>Remove</button>
+                              </div>
+                              {fields.map((f) => (
+                                <label key={f} style={{ display: "flex", flexDirection: "column", gap: 2, marginBottom: 6 }}>
+                                  <span style={{ fontSize: 10, fontWeight: 600, color: "var(--text-4)", textTransform: "uppercase" }}>{f}</span>
+                                  <textarea
+                                    defaultValue={item[f] ?? ""}
+                                    rows={f === "body" || f === "detail" || f === "insight" || f === "role" ? 3 : 1}
+                                    style={{ fontSize: 12, padding: "4px 6px", borderRadius: 4, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", resize: "vertical", fontFamily: "inherit" }}
+                                    onBlur={(e) => {
+                                      const v = e.currentTarget.value.trim();
+                                      if (v !== (item[f] ?? "")) savePresField("item-update", { slideIndex: si, itemType, itemIndex: ii, field: f, value: v });
+                                    }}
+                                  />
+                                </label>
+                              ))}
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+
+              {presEditTab === "manage" && !iscover && slide && (() => {
+                const si = activeSlideIndex - 1;
+                const totalContent = presentationData.slides.length;
+                const slideKinds = ["headline", "content", "bullets", "pillars", "outcome", "channels", "timeline", "investment", "audience", "next-steps"] as const;
+                return (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <p style={{ fontSize: 11, fontWeight: 600, color: "var(--text-4)", margin: 0, textTransform: "uppercase", letterSpacing: "0.05em" }}>Reorder</p>
+                    <button type="button" className="btn btn-ghost btn-sm" style={{ justifyContent: "flex-start", gap: 8 }}
+                      disabled={si === 0 || presSaving}
+                      onClick={() => savePresField("slide-move", { slideIndex: si, direction: "up" }).then(() => setActiveSlideIndex(activeSlideIndex - 1))}>
+                      ↑ Move slide up
+                    </button>
+                    <button type="button" className="btn btn-ghost btn-sm" style={{ justifyContent: "flex-start", gap: 8 }}
+                      disabled={si === totalContent - 1 || presSaving}
+                      onClick={() => savePresField("slide-move", { slideIndex: si, direction: "down" }).then(() => setActiveSlideIndex(activeSlideIndex + 1))}>
+                      ↓ Move slide down
+                    </button>
+
+                    <div style={{ borderTop: "1px solid var(--border)", margin: "4px 0" }} />
+                    <p style={{ fontSize: 11, fontWeight: 600, color: "var(--text-4)", margin: 0, textTransform: "uppercase", letterSpacing: "0.05em" }}>Add slide</p>
+                    <select
+                      value={newSlideKind}
+                      onChange={(e) => setNewSlideKind(e.target.value)}
+                      style={{ fontSize: 12, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--surface,var(--bg))", color: "var(--text)" }}
+                    >
+                      {slideKinds.map((k) => (
+                        <option key={k} value={k}>{k.charAt(0).toUpperCase() + k.slice(1).replace("-", " ")}</option>
+                      ))}
+                    </select>
+                    <button type="button" className="btn btn-ghost btn-sm" style={{ justifyContent: "flex-start", gap: 8 }}
+                      disabled={presSaving}
+                      onClick={async () => {
+                        await savePresField("slide-add", { afterIndex: si, kind: newSlideKind, title: "New slide" });
+                        setActiveSlideIndex(activeSlideIndex + 1);
+                      }}>
+                      <Plus style={{ width: 12, height: 12 }} aria-hidden /> Add {newSlideKind} slide after this one
+                    </button>
+                    <button type="button" className="btn btn-ghost btn-sm" style={{ justifyContent: "flex-start", gap: 8 }}
+                      disabled={presSaving}
+                      onClick={async () => {
+                        await savePresField("slide-duplicate", { slideIndex: si });
+                        setActiveSlideIndex(activeSlideIndex + 1);
+                      }}>
+                      ⧉ Duplicate this slide
+                    </button>
+
+                    <div style={{ borderTop: "1px solid var(--border)", margin: "4px 0" }} />
+                    <button type="button" className="btn btn-sm" style={{ justifyContent: "flex-start", gap: 8, color: "#ef4444", background: "rgba(239,68,68,.08)", border: "1px solid rgba(239,68,68,.2)" }}
+                      disabled={presSaving}
+                      onClick={async () => {
+                        if (!window.confirm("Delete this slide?")) return;
+                        await savePresField("slide-delete", { slideIndex: si });
+                        setActiveSlideIndex(Math.max(0, activeSlideIndex - 1));
+                      }}>
+                      <Trash2 style={{ width: 13, height: 13 }} aria-hidden /> Delete slide
+                    </button>
+                  </div>
+                );
+              })()}
+            </div>
+          </aside>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Bullets editor ────────────────────────────────────────────────────────
+
+function BulletsEditor({
+  slide, si, primary, savePresField, presSaving,
+}: {
+  slide: PresentationSlideT;
+  si: number;
+  primary: boolean;
+  savePresField: (action: string, payload: Record<string, unknown>) => Promise<void>;
+  presSaving: boolean;
+}) {
+  const bullets = slide.bullets ?? [];
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: ".05em" }}>
+          Bullets {primary ? "" : "(optional)"}
+        </span>
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          style={{ fontSize: 11, padding: "2px 8px" }}
+          disabled={presSaving}
+          onClick={() => savePresField("bullet-add", { slideIndex: si, value: "New bullet" })}
+        >+ Add bullet</button>
+      </div>
+      {bullets.length === 0 && (
+        <p style={{ fontSize: 11, color: "var(--text-4)", margin: "0 0 6px" }}>
+          {primary
+            ? "Add 3–7 bullet points to this slide. The AI Refine tab can also generate them from a description."
+            : "No bullets. Add some to render a bullet list below the main slide body."}
+        </p>
+      )}
+      {bullets.map((b, bi) => (
+        <div key={bi} style={{ background: "var(--surface,rgba(0,0,0,.04))", borderRadius: 8, padding: "8px 10px", marginBottom: 8, border: "1px solid var(--border)" }}>
+          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 4 }}>
+            <button
+              type="button"
+              style={{ fontSize: 11, color: "var(--text-4)", background: "none", border: "none", cursor: "pointer" }}
+              onClick={() => savePresField("bullet-delete", { slideIndex: si, bulletIndex: bi })}
+            >Remove</button>
+          </div>
+          <textarea
+            defaultValue={b}
+            rows={2}
+            style={{ fontSize: 12, padding: "4px 6px", borderRadius: 4, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", resize: "vertical", fontFamily: "inherit", width: "100%" }}
+            onBlur={(e) => {
+              const v = e.currentTarget.value.trim();
+              if (v !== b) savePresField("bullet-update", { slideIndex: si, bulletIndex: bi, value: v });
+            }}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Image editor ──────────────────────────────────────────────────────────
+
+function ImageEditor({
+  slide, si, savePresField, uploadSlideImage, uploading, fileInputRef,
+}: {
+  slide: PresentationSlideT;
+  si: number;
+  savePresField: (action: string, payload: Record<string, unknown>) => Promise<void>;
+  uploadSlideImage: (slideIndex: number, file: File, position?: ImagePosition) => Promise<void>;
+  uploading: boolean;
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
+}) {
+  const img = slide.image;
+  const positions: ImagePosition[] = ["right", "left", "top", "background"];
+  return (
+    <div style={{ border: "1px solid var(--border)", borderRadius: 8, padding: 10, display: "flex", flexDirection: "column", gap: 8, background: "var(--surface,rgba(0,0,0,.02))" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <ImageIcon style={{ width: 13, height: 13, color: "var(--text-3)" }} aria-hidden />
+        <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: ".05em" }}>
+          Image
+        </span>
+        {img?.url && (
+          <button
+            type="button"
+            style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-4)", background: "none", border: "none", cursor: "pointer" }}
+            onClick={() => savePresField("image-clear", { slideIndex: si })}
+          >Remove</button>
+        )}
+      </div>
+      {img?.url ? (
+        <>
+          <div style={{ position: "relative", borderRadius: 6, overflow: "hidden", border: "1px solid var(--border)", aspectRatio: "16/9", background: "#0b1020" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={img.url} alt={img.alt ?? ""} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+          </div>
+          <label style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: ".05em" }}>Position</span>
+            <select
+              value={img.position ?? "right"}
+              onChange={(e) => savePresField("image-set", { slideIndex: si, url: img.url, alt: img.alt ?? "", position: e.target.value })}
+              style={{ fontSize: 12, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)" }}
+            >
+              {positions.map((p) => (
+                <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
+              ))}
+            </select>
+          </label>
+          <label style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: ".05em" }}>Alt text</span>
+            <input
+              defaultValue={img.alt ?? ""}
+              style={{ fontSize: 12, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)" }}
+              onBlur={(e) => {
+                const v = e.currentTarget.value.trim();
+                if (v !== (img.alt ?? "")) savePresField("image-set", { slideIndex: si, url: img.url, alt: v, position: img.position ?? "right" });
+              }}
+            />
+          </label>
+        </>
+      ) : (
+        <p style={{ fontSize: 11, color: "var(--text-4)", margin: 0 }}>
+          Add an image to highlight this slide. The renderer adapts the layout and the AI will keep the image in place when you refine text.
+        </p>
+      )}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/gif,image/webp,image/svg+xml"
+        style={{ display: "none" }}
+        onChange={async (e) => {
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          if (!file) return;
+          await uploadSlideImage(si, file, img?.position ?? "right");
+        }}
+      />
+      <button
+        type="button"
+        className="btn btn-ghost btn-sm"
+        disabled={uploading}
+        onClick={() => fileInputRef.current?.click()}
+        style={{ alignSelf: "flex-start", gap: 6 }}
+      >
+        {uploading
+          ? <><Loader2 style={{ width: 13, height: 13 }} className="spin" aria-hidden /> Uploading…</>
+          : <><Upload style={{ width: 13, height: 13 }} aria-hidden /> {img?.url ? "Replace image" : "Upload image"}</>}
+      </button>
     </div>
   );
 }

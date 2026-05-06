@@ -10,6 +10,19 @@ function esc(text: string | undefined | null): string {
     .replace(/'/g, "&#39;");
 }
 
+function renderBullets(bullets: string[] | undefined): string {
+  if (!bullets || bullets.length === 0) return "";
+  return `<ul class="bullets-list">${bullets
+    .map((b) => `<li>${esc(b)}</li>`)
+    .join("")}</ul>`;
+}
+
+function renderImageMedia(slide: PresentationSlide): string {
+  const img = slide.image;
+  if (!img?.url) return "";
+  return `<div class="slide-image"><img src="${esc(img.url)}" alt="${esc(img.alt ?? "")}" loading="lazy" /></div>`;
+}
+
 function renderSlide(slide: PresentationSlide, index: number, total: number): string {
   const eyebrow = slide.eyebrow ? `<div class="eyebrow">${esc(slide.eyebrow)}</div>` : "";
   const counter = `<div class="counter">${index + 1} / ${total}</div>`;
@@ -136,17 +149,61 @@ function renderSlide(slide: PresentationSlide, index: number, total: number): st
       body = `<ol class="steps-list">${items}</ol>`;
       break;
     }
+    case "content": {
+      body = `
+        <div class="content-block">
+          ${slide.headline ? `<div class="content-headline">${esc(slide.headline)}</div>` : ""}
+          ${slide.subhead ? `<p class="content-subhead">${esc(slide.subhead)}</p>` : ""}
+          ${renderBullets(slide.bullets)}
+        </div>`;
+      break;
+    }
+    case "bullets": {
+      body = `
+        <div class="content-block">
+          ${slide.subhead ? `<p class="content-subhead">${esc(slide.subhead)}</p>` : ""}
+          ${renderBullets(slide.bullets)}
+        </div>`;
+      break;
+    }
+  }
+
+  // Append supplementary bullets to other kinds when present (excluding content/bullets where they are primary)
+  if (slide.bullets && slide.bullets.length > 0 && slide.kind !== "content" && slide.kind !== "bullets") {
+    body = `${body}<div class="extra-bullets">${renderBullets(slide.bullets)}</div>`;
+  }
+
+  // Image layout — wrap body in a media + content grid when an image is present
+  const img = slide.image;
+  const hasImage = Boolean(img?.url);
+  const imgPos = img?.position ?? "right";
+  const slideClasses = ["slide"];
+  if (slide.density === "compact") slideClasses.push("density-compact");
+  if (hasImage) slideClasses.push(`with-image`, `image-${imgPos}`);
+
+  let bodyWithMedia = body;
+  if (hasImage) {
+    if (imgPos === "background") {
+      bodyWithMedia = `${renderImageMedia(slide)}<div class="slide-body-content">${body}</div>`;
+    } else if (imgPos === "top") {
+      bodyWithMedia = `${renderImageMedia(slide)}<div class="slide-body-content">${body}</div>`;
+    } else {
+      // left or right
+      const mediaSlot = renderImageMedia(slide);
+      const content = `<div class="slide-body-content">${body}</div>`;
+      bodyWithMedia = imgPos === "left" ? `${mediaSlot}${content}` : `${content}${mediaSlot}`;
+    }
   }
 
   return `
-    <section class="slide" data-slide-index="${index}">
+    <section class="${slideClasses.join(" ")}" data-slide-index="${index}">
       <div class="slide-inner">
         <div class="slide-head">
           ${eyebrow}
           ${counter}
         </div>
         ${title}
-        <div class="slide-body">${body}</div>
+        <div class="slide-body">${bodyWithMedia}</div>
         <div class="slide-foot">
           <div class="brand-mark">i3media</div>
         </div>
@@ -292,6 +349,72 @@ body{overflow:hidden}
 .step-title{font-size:17px;font-weight:600;color:#fff}
 .step-detail{font-size:13px;line-height:1.5;color:#cdd5f5}
 
+/* ── Content / Bullets ─────────────────────────────────────────────────── */
+.content-block{display:flex;flex-direction:column;gap:14px;max-width:1080px;justify-content:center;height:100%}
+.content-headline{font-size:38px;line-height:1.18;font-weight:700;color:#fff;letter-spacing:-0.015em;max-width:1000px}
+.content-subhead{font-size:20px;line-height:1.55;color:#cdd5f5;max-width:880px;font-weight:400}
+.bullets-list{list-style:none;display:flex;flex-direction:column;gap:10px;max-width:920px;padding:0;margin:0}
+.bullets-list li{font-size:18px;line-height:1.55;color:#e5e7f5;padding-left:24px;position:relative}
+.bullets-list li::before{content:"";position:absolute;left:4px;top:11px;width:8px;height:8px;border-radius:50%;background:var(--gradient);box-shadow:0 0 0 3px rgba(99,102,241,0.18)}
+.extra-bullets{margin-top:20px}
+.extra-bullets .bullets-list li{font-size:15px}
+
+/* ── Image layout ──────────────────────────────────────────────────────── */
+.slide-body-content{flex:1;display:flex;flex-direction:column;justify-content:center;min-height:0}
+.slide-image{position:relative;border-radius:16px;overflow:hidden;border:1px solid var(--border);background:rgba(255,255,255,0.03);display:flex;align-items:center;justify-content:center}
+.slide-image img{display:block;max-width:100%;max-height:100%;object-fit:cover;width:100%;height:100%}
+
+.slide.with-image .slide-body{flex:1;display:grid;gap:32px;min-height:0}
+.slide.with-image.image-right .slide-body{grid-template-columns:1.2fr 1fr}
+.slide.with-image.image-left .slide-body{grid-template-columns:1fr 1.2fr}
+.slide.with-image.image-left .slide-image{order:-1}
+.slide.with-image.image-top .slide-body{grid-template-rows:auto 1fr}
+.slide.with-image.image-top .slide-image{height:300px}
+.slide.with-image.image-background .slide-image{position:absolute;inset:0;z-index:0;opacity:0.18;border:none;border-radius:0}
+.slide.with-image.image-background .slide-image::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,16,32,0.4),rgba(11,16,32,0.85))}
+.slide.with-image.image-background .slide-inner{position:relative;z-index:1}
+
+/* ── Density ───────────────────────────────────────────────────────────── */
+.slide.density-compact .slide-title{font-size:36px}
+.slide.density-compact .content-headline{font-size:30px}
+.slide.density-compact .content-subhead{font-size:16px}
+.slide.density-compact .bullets-list li{font-size:15px}
+.slide.density-compact .pillar-title{font-size:17px}
+.slide.density-compact .pillar-body{font-size:13px}
+.slide.density-compact .audience-name{font-size:17px}
+.slide.density-compact .audience-insight{font-size:13px}
+.slide.density-compact .channel-name{font-size:15px}
+.slide.density-compact .channel-role{font-size:12px}
+.slide.density-compact .big-headline{font-size:42px}
+.slide.density-compact .big-subhead{font-size:18px}
+.slide.density-compact .step-title{font-size:15px}
+.slide.density-compact .step-detail{font-size:12px}
+
+/* ── Auto-fit scaling — applied via JS data-fit attribute ──────────────── */
+.slide[data-fit-scale]{--fit-scale:attr(data-fit-scale number, 1)}
+.slide.fit-90 .slide-title,.slide.fit-90 .content-headline,.slide.fit-90 .big-headline{font-size:90%}
+.slide.fit-90 .bullets-list li,.slide.fit-90 .content-subhead,.slide.fit-90 .big-subhead{font-size:90%}
+.slide.fit-80 .slide-title{font-size:38px}
+.slide.fit-80 .content-headline{font-size:30px}
+.slide.fit-80 .content-subhead,.slide.fit-80 .bullets-list li{font-size:16px}
+.slide.fit-80 .big-headline{font-size:44px}
+.slide.fit-80 .big-subhead{font-size:18px}
+.slide.fit-80 .pillar-title{font-size:17px}
+.slide.fit-80 .pillar-body{font-size:13px}
+.slide.fit-80 .audience-name{font-size:17px}
+.slide.fit-80 .audience-insight{font-size:13px}
+.slide.fit-70 .slide-title{font-size:32px}
+.slide.fit-70 .content-headline{font-size:26px}
+.slide.fit-70 .content-subhead,.slide.fit-70 .bullets-list li{font-size:14px}
+.slide.fit-70 .big-headline{font-size:36px}
+.slide.fit-70 .big-subhead{font-size:16px}
+.slide.fit-70 .pillar-title{font-size:15px}
+.slide.fit-70 .pillar-body{font-size:12px}
+.slide.fit-70 .audience-name{font-size:15px}
+.slide.fit-70 .audience-insight{font-size:12px}
+.slide.fit-70 .step-title{font-size:14px}
+.slide.fit-70 .step-detail{font-size:12px}
+
 /* ── Nav controls ──────────────────────────────────────────────────────── */
 .deck-controls{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(17,23,46,0.85);border:1px solid var(--border);border-radius:999px;backdrop-filter:blur(8px);z-index:100;font-size:13px;color:var(--muted)}
 .nav-btn{width:32px;height:32px;border-radius:50%;border:1px solid var(--border);background:rgba(255,255,255,0.04);color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s}
@@ -320,6 +443,8 @@ body{overflow:hidden}
   .pillars-grid,.audience-grid,.channels-grid,.timeline-strip{grid-template-columns:repeat(2,1fr)!important;max-width:none}
   .pillars-5,.audience-grid.audience-5,.audience-grid.audience-6{grid-template-columns:repeat(2,1fr)!important}
   .cover-meta{grid-template-columns:1fr}
+  .slide.with-image.image-right .slide-body,.slide.with-image.image-left .slide-body{grid-template-columns:1fr;grid-template-rows:240px 1fr}
+  .slide.with-image.image-left .slide-image{order:-1}
 }
 `;
 
@@ -332,6 +457,33 @@ const DECK_JS = `
   var progress = document.getElementById('navProgress');
   function notifyParent(){
     try{ if(window.parent&&window.parent!==window) window.parent.postMessage({type:'pres:slide-change',index:current,total:slides.length},'*'); }catch(e){}
+  }
+  // Auto-fit: if a slide's content overflows the inner box, step down a fit class.
+  // Runs once on load and again after image loads / resize.
+  function autoFitSlide(slide){
+    var inner = slide.querySelector('.slide-inner');
+    if(!inner) return;
+    slide.classList.remove('fit-90','fit-80','fit-70');
+    var steps = ['fit-90','fit-80','fit-70'];
+    var i = 0;
+    while ((inner.scrollHeight > slide.clientHeight - 8 || inner.scrollWidth > slide.clientWidth - 8) && i < steps.length){
+      slide.classList.add(steps[i]);
+      // remove previous step so we don't stack
+      if(i>0) slide.classList.remove(steps[i-1]);
+      i++;
+    }
+  }
+  function autoFitAll(){
+    // Briefly mark each slide active so we can measure (then restore)
+    var prev = current;
+    slides.forEach(function(s,i){
+      var wasActive = s.classList.contains('is-active');
+      s.classList.add('is-active');
+      autoFitSlide(s);
+      if(!wasActive) s.classList.remove('is-active');
+    });
+    // Reapply current
+    if(slides[prev]) slides[prev].classList.add('is-active');
   }
   function render(){
     slides.forEach(function(s,i){ s.classList.toggle('is-active', i===current); });
@@ -370,6 +522,18 @@ const DECK_JS = `
   var h = parseInt((location.hash||'').replace('#',''),10);
   if(!isNaN(h) && h>=1 && h<=slides.length){ current = h-1; }
   render();
+  // Run auto-fit after fonts and any images have settled.
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(function(){ setTimeout(autoFitAll, 30); });
+  } else {
+    setTimeout(autoFitAll, 100);
+  }
+  document.querySelectorAll('.slide-image img').forEach(function(img){
+    if (img.complete) return;
+    img.addEventListener('load', function(){ autoFitAll(); });
+  });
+  var resizeT;
+  window.addEventListener('resize', function(){ clearTimeout(resizeT); resizeT = setTimeout(autoFitAll, 120); });
 })();
 `;
 

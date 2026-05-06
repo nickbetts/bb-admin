@@ -113,7 +113,7 @@ RULES:
 - Use British English. No em dashes. No semicolons.
 - Keep copy concise — this is a presentation slide, not a document.
 
-VALID FIELDS BY KIND (only use fields listed for the slide's kind):
+VALID FIELDS BY KIND (only use fields listed for the slide's kind, plus the SHARED OPTIONAL fields):
 
 kind="headline"  → title, eyebrow, headline (big statement), subhead (≤30 words)
 kind="pillars"   → title, eyebrow, headline (optional), subhead (optional intro ≤30 words), pillars: [{title, body (≤40 words)}] (3–5 pillars)
@@ -123,8 +123,20 @@ kind="timeline"  → title, eyebrow, phases: [{label, items: [string]}] (3–4 p
 kind="investment"→ title, eyebrow, investment: {headlineFigure, breakdown: [{label, amount, percentage}]}
 kind="audience"  → title, eyebrow, audiences: [{name, insight (≤35 words)}] (up to 6)
 kind="next-steps"→ title, eyebrow, steps: [{title, detail (≤35 words)}] (3–5 steps)
+kind="content"   → title, eyebrow, headline (optional, ≤14 words), subhead (optional ≤30 words), bullets: [string] (3–7 bullets, ≤18 words each)
+kind="bullets"   → title, eyebrow, subhead (optional ≤25 words), bullets: [string] (3–8 bullets, ≤18 words each)
 
-NEVER use: "subheading", "description", "content", "bullets", "items" or any field not listed above.
+SHARED OPTIONAL FIELDS (any kind may include these):
+- bullets: [string] — supplementary bullet list rendered below the main body
+- image: {url, alt, position} — KEEP the existing image object on the slide unless the user explicitly asks to remove or change it. NEVER invent a new image url. position is one of "left" | "right" | "top" | "background"
+- density: "compact" | "regular" — set to "compact" when copy is heavy and you want smaller type to fit cleanly
+
+LAYOUT JUDGEMENT:
+- If the slide has an image, prefer position "right" or "left" with bullets/short copy that flows beside the image.
+- If the user adds heavy content (long bullets, many pillars, dense audience cards), set density="compact" so type scales down. The renderer will also auto-fit, but density is a stronger signal.
+- If the slide is "content" or "bullets" and the user mentions "summarise", "list", "checklist" or "key points" — produce 3–7 punchy bullets.
+
+NEVER use: "subheading", "description", "content", "items" or any field not listed above.
 For a subheading / intro sentence on a pillars slide use the field "subhead", not "subheading".`;
 
     const userMessage = `GRAND PLAN CONTEXT:
@@ -195,14 +207,32 @@ Return the updated slide JSON only.`;
     if (s.description !== undefined && s.subhead === undefined) { s.subhead = s.description; delete s.description; }
     if (s.subtitle !== undefined && s.subhead === undefined) { s.subhead = s.subtitle; delete s.subtitle; }
     if (s.summary !== undefined && s.subhead === undefined) { s.subhead = s.summary; delete s.summary; }
-    // bullets/items arrays on pillars slides → convert to pillars
-    if (s.kind === "pillars" && !s.pillars && Array.isArray(s.bullets)) {
-      s.pillars = (s.bullets as string[]).map((b: string) => ({ title: b, body: "" }));
-      delete s.bullets;
+    // items/points → bullets for content/bullets kinds
+    if ((s.kind === "content" || s.kind === "bullets") && !Array.isArray(s.bullets)) {
+      if (Array.isArray(s.items)) { s.bullets = s.items; delete s.items; }
+      else if (Array.isArray(s.points)) { s.bullets = s.points; delete s.points; }
     }
+    // bullets/items arrays on pillars slides → convert to pillars (only if no real bullets supplied)
     if (s.kind === "pillars" && !s.pillars && Array.isArray(s.items)) {
       s.pillars = (s.items as string[]).map((b: string) => ({ title: b, body: "" }));
       delete s.items;
+    }
+    // Coerce bullets to string[] if it came back as objects
+    if (Array.isArray(s.bullets)) {
+      s.bullets = s.bullets.map((b: unknown) => {
+        if (typeof b === "string") return b;
+        if (b && typeof b === "object") {
+          const obj = b as Record<string, unknown>;
+          return String(obj.text ?? obj.label ?? obj.title ?? obj.body ?? "").trim();
+        }
+        return String(b ?? "").trim();
+      }).filter((x: string) => x.length > 0);
+    }
+    // Reject AI-invented image URLs — only keep image if it matches what was already on the slide
+    if (s.image && (!slide.image || s.image.url !== slide.image.url)) {
+      // Allow the AI to keep or remove the original image, but don't accept a new url
+      if (slide.image) s.image = { ...slide.image, ...s.image, url: slide.image.url };
+      else delete s.image;
     }
 
     presData.slides[slideIndex] = updatedSlide;

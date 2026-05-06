@@ -85,7 +85,7 @@ RULES:
 - British English. No em dashes. No semicolons.
 - Concise copy — this is a presentation, not a document.
 
-VALID SLIDE KINDS AND THEIR FIELDS (only use the fields listed for the slide's kind):
+VALID SLIDE KINDS AND THEIR FIELDS (only use the fields listed for the slide's kind, plus the SHARED OPTIONAL fields below):
 kind="headline"   → title, eyebrow, headline (big statement), subhead (≤30 words)
 kind="pillars"    → title, eyebrow, headline (opt), subhead (opt ≤30 words), pillars: [{title, body ≤40 words}] (3–5 pillars)
 kind="outcome"    → title, eyebrow, headline, subhead, metric: {value, label}
@@ -94,8 +94,20 @@ kind="timeline"   → title, eyebrow, phases: [{label, items: [string]}] (3–4 
 kind="investment" → title, eyebrow, investment: {headlineFigure, breakdown: [{label, amount, percentage}]}
 kind="audience"   → title, eyebrow, audiences: [{name, insight ≤35 words}] (up to 6)
 kind="next-steps" → title, eyebrow, steps: [{title, detail ≤35 words}] (3–5 steps)
+kind="content"    → title, eyebrow, headline (opt ≤14 words), subhead (opt ≤30 words), bullets: [string] (3–7 bullets ≤18 words each)
+kind="bullets"    → title, eyebrow, subhead (opt ≤25 words), bullets: [string] (3–8 bullets ≤18 words each)
 
-NEVER use: "subheading", "description", "content", "bullets", "items" or any unlisted field.
+SHARED OPTIONAL FIELDS (any kind may include these):
+- bullets: [string] — supplementary bullets rendered below the main body of any non-content slide
+- image: {url, alt, position} — KEEP existing image objects on slides that already have one. Do NOT invent or change image URLs. position is "left" | "right" | "top" | "background"
+- density: "compact" | "regular" — set "compact" on slides that carry heavy copy so the renderer scales type down
+
+LAYOUT JUDGEMENT:
+- If a slide has an image, prefer "left" or "right" position so bullets sit beside the image.
+- If you add lots of content to a slide, set density="compact".
+- Use the new "content" or "bullets" kinds when the user asks for a free-form text slide, a checklist, or "just bullets".
+
+NEVER use: "subheading", "description", "content" (the JSON field), "items" (except inside a phase) or any unlisted field.
 For a subheading / intro sentence on a pillars slide use the field "subhead", not "subheading".`;
 
   const userMessage = `GRAND PLAN CONTEXT:
@@ -153,15 +165,46 @@ Return the complete updated presentation JSON only.`;
     return NextResponse.json({ error: "AI returned no slides — try again" }, { status: 422 });
   }
 
-  const VALID_KINDS = new Set(["headline", "pillars", "outcome", "channels", "timeline", "investment", "audience", "next-steps"]);
+  const VALID_KINDS = new Set(["headline", "pillars", "outcome", "channels", "timeline", "investment", "audience", "next-steps", "content", "bullets"]);
+
+  // Build a lookup of existing images keyed by slide id so we can preserve
+  // them and reject any AI-invented image URLs.
+  const existingImagesById = new Map<string, PresentationData["slides"][number]["image"]>();
+  for (const slide of presData.slides) {
+    if (slide.image && slide.id) existingImagesById.set(slide.id, slide.image);
+  }
 
   // Ensure every slide has a valid id and kind — don't restore by position so
   // Claude can freely add, remove, and reorder slides.
-  updatedPres.slides = updatedPres.slides.map((s, i) => ({
-    ...s,
-    id: s.id?.trim() ? s.id : `slide-${Date.now()}-${i}`,
-    kind: VALID_KINDS.has(s.kind) ? s.kind : "headline",
-  }));
+  updatedPres.slides = updatedPres.slides.map((s, i) => {
+    const id = s.id?.trim() ? s.id : `slide-${Date.now()}-${i}`;
+    const kind = VALID_KINDS.has(s.kind) ? s.kind : "headline";
+    let image = s.image;
+    const existing = existingImagesById.get(id);
+    if (image && existing && image.url !== existing.url) {
+      // AI tried to swap the URL — keep the original asset, accept any new alt/position
+      image = { ...existing, alt: image.alt ?? existing.alt, position: image.position ?? existing.position };
+    } else if (image && !existing) {
+      // AI invented an image on a slide that didn't have one — reject the URL
+      delete (s as PresentationData["slides"][number]).image;
+      image = undefined;
+    }
+    // Coerce bullets to plain strings
+    let bullets = s.bullets;
+    if (Array.isArray(bullets)) {
+      bullets = bullets
+        .map((b: unknown) => {
+          if (typeof b === "string") return b;
+          if (b && typeof b === "object") {
+            const obj = b as Record<string, unknown>;
+            return String(obj.text ?? obj.label ?? obj.title ?? obj.body ?? "").trim();
+          }
+          return String(b ?? "").trim();
+        })
+        .filter((x) => x.length > 0);
+    }
+    return { ...s, id, kind, image, bullets };
+  });
 
   const html = renderPresentationHtml(updatedPres);
 

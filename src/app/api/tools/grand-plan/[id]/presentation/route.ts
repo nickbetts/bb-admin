@@ -201,6 +201,20 @@ export async function PATCH(
         kind,
         eyebrow: "",
       };
+      // Seed sensible defaults so the new slide renders something visible.
+      if (kind === "content" || kind === "bullets") {
+        newSlide.bullets = ["First point", "Second point", "Third point"];
+      } else if (kind === "pillars") {
+        newSlide.pillars = [{ title: "Pillar one", body: "" }, { title: "Pillar two", body: "" }, { title: "Pillar three", body: "" }];
+      } else if (kind === "audience") {
+        newSlide.audiences = [{ name: "Audience name", insight: "" }];
+      } else if (kind === "channels") {
+        newSlide.channels = [{ name: "Channel", role: "" }];
+      } else if (kind === "next-steps") {
+        newSlide.steps = [{ title: "Step one", detail: "" }];
+      } else if (kind === "timeline") {
+        newSlide.phases = [{ label: "Phase 1", items: [] }];
+      }
       presData.slides.splice(afterIndex + 1, 0, newSlide);
       break;
     }
@@ -259,6 +273,67 @@ export async function PATCH(
       const slideAny4 = slide as unknown as Record<string, unknown[]>;
       const arr4 = slideAny4[itemType];
       if (Array.isArray(arr4)) arr4.splice(itemIndex, 1);
+      break;
+    }
+    case "image-set": {
+      const idx = body.slideIndex as number;
+      const url = (body.url as string | undefined)?.trim();
+      const alt = (body.alt as string | undefined) ?? "";
+      const positionRaw = body.position as string | undefined;
+      const allowed = ["left", "right", "top", "background"] as const;
+      const position = (allowed as readonly string[]).includes(positionRaw ?? "")
+        ? (positionRaw as typeof allowed[number])
+        : "right";
+      const slide = presData.slides[idx];
+      if (!slide) return NextResponse.json({ error: "Slide not found" }, { status: 404 });
+      if (!url) {
+        delete slide.image;
+      } else {
+        slide.image = { url, alt, position };
+      }
+      break;
+    }
+    case "image-clear": {
+      const idx = body.slideIndex as number;
+      const slide = presData.slides[idx];
+      if (!slide) return NextResponse.json({ error: "Slide not found" }, { status: 404 });
+      delete slide.image;
+      break;
+    }
+    case "bullet-update": {
+      const idx = body.slideIndex as number;
+      const bulletIndex = body.bulletIndex as number;
+      const value = (body.value as string) ?? "";
+      const slide = presData.slides[idx];
+      if (!slide) return NextResponse.json({ error: "Slide not found" }, { status: 404 });
+      if (!slide.bullets) slide.bullets = [];
+      if (bulletIndex >= 0 && bulletIndex < slide.bullets.length) slide.bullets[bulletIndex] = value;
+      break;
+    }
+    case "bullet-add": {
+      const idx = body.slideIndex as number;
+      const value = (body.value as string) ?? "New bullet";
+      const slide = presData.slides[idx];
+      if (!slide) return NextResponse.json({ error: "Slide not found" }, { status: 404 });
+      if (!slide.bullets) slide.bullets = [];
+      slide.bullets.push(value);
+      break;
+    }
+    case "bullet-delete": {
+      const idx = body.slideIndex as number;
+      const bulletIndex = body.bulletIndex as number;
+      const slide = presData.slides[idx];
+      if (!slide) return NextResponse.json({ error: "Slide not found" }, { status: 404 });
+      if (Array.isArray(slide.bullets)) slide.bullets.splice(bulletIndex, 1);
+      break;
+    }
+    case "density-set": {
+      const idx = body.slideIndex as number;
+      const density = body.density as "compact" | "regular" | undefined;
+      const slide = presData.slides[idx];
+      if (!slide) return NextResponse.json({ error: "Slide not found" }, { status: 404 });
+      if (density === "compact" || density === "regular") slide.density = density;
+      else delete slide.density;
       break;
     }
     default:

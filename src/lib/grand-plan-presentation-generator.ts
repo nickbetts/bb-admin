@@ -60,7 +60,17 @@ export type SlideKind =
   | "timeline"
   | "investment"
   | "audience"
-  | "next-steps";
+  | "next-steps"
+  | "content"
+  | "bullets";
+
+export interface SlideImage {
+  /** Public URL (Vercel Blob). */
+  url: string;
+  alt?: string;
+  /** Where to place the image relative to the slide body. */
+  position?: "right" | "left" | "top" | "background";
+}
 
 export interface PresentationSlide {
   id: string;
@@ -70,9 +80,9 @@ export interface PresentationSlide {
   eyebrow?: string;
   /** Visual treatment selector. */
   kind: SlideKind;
-  /** Headline body — single big statement (kinds: headline, outcome). */
+  /** Headline body — single big statement (kinds: headline, outcome, content). */
   headline?: string;
-  /** Sub-statement under the headline (kinds: headline, outcome). */
+  /** Sub-statement under the headline (kinds: headline, outcome, content). */
   subhead?: string;
   /** 3–5 strategy pillars (kind: pillars). */
   pillars?: { title: string; body: string }[];
@@ -92,6 +102,12 @@ export interface PresentationSlide {
   audiences?: { name: string; insight: string }[];
   /** Numbered next steps (kind: next-steps). */
   steps?: { title: string; detail: string }[];
+  /** Bullet points (kinds: bullets, content; supplementary on others). */
+  bullets?: string[];
+  /** Optional slide image. */
+  image?: SlideImage;
+  /** Hint to the renderer to scale typography down for content-heavy slides. */
+  density?: "compact" | "regular";
 }
 
 export interface PresentationData {
@@ -248,6 +264,7 @@ function clampSlides(data: PresentationData): PresentationData {
     if (s.phases) s.phases = s.phases.slice(0, 4);
     if (s.steps) s.steps = s.steps.slice(0, 6);
     if (s.investment?.breakdown) s.investment.breakdown = s.investment.breakdown.slice(0, 8);
+    if (s.bullets) s.bullets = s.bullets.slice(0, 10).map(cleanEmDashes);
     // Clean copy
     if (s.headline) s.headline = cleanEmDashes(s.headline);
     if (s.subhead) s.subhead = cleanEmDashes(s.subhead);
@@ -257,6 +274,7 @@ function clampSlides(data: PresentationData): PresentationData {
     if (s.audiences) s.audiences.forEach((a) => { a.name = cleanEmDashes(a.name); a.insight = cleanEmDashes(a.insight); });
     if (s.channels) s.channels.forEach((c) => { c.name = cleanEmDashes(c.name); c.role = cleanEmDashes(c.role); });
     if (s.phases) s.phases.forEach((p) => { p.label = cleanEmDashes(p.label); p.items = p.items.map(cleanEmDashes); });
+    if (s.image && s.image.alt) s.image.alt = cleanEmDashes(s.image.alt);
   }
   return {
     cover: {
