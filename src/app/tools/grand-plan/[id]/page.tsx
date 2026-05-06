@@ -267,10 +267,67 @@ export default function GrandPlanViewPage({ params }: Props) {
       if (googleAdsEditTypes.includes(data.type)) {
         handleGoogleAdsEdit(data as Record<string, unknown>);
       }
+      // Generic inline editor — set / delete / undo via /edit endpoint.
+      if (data.type === "gp:edit-set" && typeof data.path === "string") {
+        handleGenericEdit("set", { id: data.id, path: data.path, value: data.value });
+      } else if (data.type === "gp:edit-delete" && typeof data.path === "string") {
+        handleGenericEdit("delete", { path: data.path });
+      } else if (data.type === "gp:edit-undo") {
+        handleGenericEdit("undo", {});
+      }
     }
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Generic edit handler — speaks to /api/tools/grand-plan/[id]/edit. Used by
+  // every contenteditable element rendered with `data-edit-path` and every ×
+  // delete button rendered with `data-delete-path`. Acks the iframe so save
+  // indicators settle correctly even though the iframe gets replaced via blob
+  // URL on every successful save.
+  async function handleGenericEdit(
+    action: "set" | "delete" | "undo",
+    payload: { id?: string; path?: string; value?: unknown }
+  ) {
+    const target = iframeRef.current?.contentWindow;
+    try {
+      const res = await fetch(`/api/tools/grand-plan/${id}/edit`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, ...payload }),
+      });
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const message = (result as { error?: string }).error ?? "Save failed";
+        if (action === "set" && payload.id) {
+          target?.postMessage({ type: "gp:edit-error", id: payload.id, message }, "*");
+        } else if (action === "undo") {
+          target?.postMessage({ type: "gp:undo-error", message }, "*");
+        }
+        toast(message, "error");
+        return;
+      }
+      const html = (result as { html?: string }).html;
+      if (html) updateBlobUrl(html);
+      if (action === "set" && payload.id) {
+        target?.postMessage({ type: "gp:edit-saved", id: payload.id }, "*");
+      } else if (action === "undo") {
+        target?.postMessage({ type: "gp:undo-done" }, "*");
+        toast("Undone", "success");
+      } else if (action === "delete") {
+        toast("Deleted", "success");
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Save failed";
+      toast(message, "error");
+      if (action === "set" && payload.id) {
+        target?.postMessage({ type: "gp:edit-error", id: payload.id, message }, "*");
+      } else if (action === "undo") {
+        target?.postMessage({ type: "gp:undo-error", message }, "*");
+      }
+    }
+  }
 
   async function handleSaveKeywords(agIndex: number, agName: string, keywords: string[]) {
     try {
@@ -1887,6 +1944,14 @@ export default function GrandPlanViewPage({ params }: Props) {
                     >
                       <ArrowUpRight style={{ width: 13, height: 13 }} aria-hidden /> Open full-screen
                     </a>
+                    <a
+                      href={`/api/tools/grand-plan/${plan.id}/presentation/pdf`}
+                      className="btn btn-ghost btn-sm"
+                      style={{ gap: 5 }}
+                      title="Download the deck as a 16:9 PDF"
+                    >
+                      <Download style={{ width: 13, height: 13 }} aria-hidden /> Download PDF
+                    </a>
                   </>
                 )}
               </div>
@@ -2855,6 +2920,14 @@ function PresentationEditorModal(props: PresentationEditorModalProps) {
               <Loader2 style={{ width: 11, height: 11 }} className="spin" aria-hidden /> Saving…
             </span>
           )}
+          <a
+            href={`/api/tools/grand-plan/${plan.id}/presentation/pdf`}
+            className="btn btn-ghost btn-sm"
+            style={{ gap: 5 }}
+            title="Download the deck as a 16:9 PDF"
+          >
+            <Download style={{ width: 13, height: 13 }} aria-hidden /> Download PDF
+          </a>
           <button
             type="button"
             className="btn btn-ghost btn-sm"

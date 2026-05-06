@@ -15,20 +15,43 @@ export const maxDuration = 120; // single Anthropic call, ~10–25s typical
 /**
  * GET — return the latest stored presentation HTML for iframe rendering.
  * Returns 404 if no presentation has been generated yet.
+ *
+ * Query params:
+ * - `print=1` — re-render from `presentationDataJson` in print mode (no nav,
+ *   one slide per page at 1920x1080) so headless browsers can produce a clean PDF.
  */
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
+  const isPrint = req.nextUrl.searchParams.get("print") === "1";
+
   const plan = await prisma.grandPlan.findUnique({
     where: { id },
-    select: { presentationHtml: true },
+    select: { presentationHtml: true, presentationDataJson: true },
   });
   if (!plan) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  if (isPrint) {
+    if (!plan.presentationDataJson) {
+      return NextResponse.json({ error: "Presentation not generated" }, { status: 404 });
+    }
+    let presData: PresentationData;
+    try {
+      presData = JSON.parse(plan.presentationDataJson) as PresentationData;
+    } catch {
+      return NextResponse.json({ error: "Corrupted presentation data" }, { status: 500 });
+    }
+    const html = renderPresentationHtml(presData, { print: true });
+    return new NextResponse(html, {
+      headers: { "Content-Type": "text/html; charset=utf-8" },
+    });
+  }
+
   if (!plan.presentationHtml) {
     return NextResponse.json({ error: "Presentation not generated" }, { status: 404 });
   }

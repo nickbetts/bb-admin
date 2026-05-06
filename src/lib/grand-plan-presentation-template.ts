@@ -309,7 +309,12 @@ const PRESENTATION_CSS = `
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
 body{overflow:hidden}
 
-.deck{position:relative;width:100vw;height:100vh;overflow:hidden}
+/* Fixed 1920x1080 design canvas. The .deck-stage holds every slide at design
+ * size; deck JS scales the stage uniformly to fit the viewport, so the editor
+ * preview and full-screen presentation are exactly the same layout, just at
+ * different sizes. */
+.deck{position:relative;width:100vw;height:100vh;overflow:hidden;background:var(--bg)}
+.deck-stage{position:absolute;top:50%;left:50%;width:1920px;height:1080px;transform-origin:center center;transform:translate(-50%,-50%);will-change:transform}
 .slide{position:absolute;inset:0;display:flex;align-items:stretch;justify-content:center;padding:48px 64px;opacity:0;pointer-events:none;transition:opacity .35s ease}
 .slide.is-active{opacity:1;pointer-events:auto;z-index:1}
 
@@ -505,40 +510,39 @@ body{overflow:hidden}
 .nav-btn:disabled{opacity:0.3;cursor:not-allowed}
 .deck-progress{font-variant-numeric:tabular-nums;padding:0 8px;min-width:56px;text-align:center}
 
-/* ── Print: one slide per page ─────────────────────────────────────────── */
-@media print{
-  body{overflow:visible;background:#fff}
-  .deck-controls{display:none}
-  .deck{height:auto;width:auto;overflow:visible}
-  .slide{position:relative;inset:auto;opacity:1!important;pointer-events:auto;page-break-after:always;height:100vh;min-height:100vh}
-  .slide:last-child{page-break-after:auto}
-}
-
-/* ── Responsive ────────────────────────────────────────────────────────── */
-@media (max-width: 900px){
-  .slide{padding:32px 24px}
-  .slide-title{font-size:32px}
-  .cover-title{font-size:48px}
-  .cover-subtitle{font-size:18px}
-  .big-headline{font-size:34px}
-  .big-subhead{font-size:18px}
-  .metric-value{font-size:46px}
-  .pillars-grid,.audience-grid,.channels-grid,.timeline-strip{grid-template-columns:repeat(2,1fr)!important;max-width:none}
-  .pillars-5,.audience-grid.audience-5,.audience-grid.audience-6{grid-template-columns:repeat(2,1fr)!important}
-  .cover-meta{grid-template-columns:1fr}
-  .slide.with-image.image-right .slide-body,.slide.with-image.image-left .slide-body{grid-template-columns:1fr;grid-template-rows:240px 1fr}
-  .slide.with-image.image-left .slide-image{order:-1}
-}
+/* ── Print mode: every slide laid out vertically at 1920x1080, no scaling, no nav.
+ * Triggered by the .print-mode class on <body> (set when ?print=1 is passed
+ * to the GET endpoint). Used by the headless-browser PDF export to produce
+ * one slide per page at the design canvas size. */
+.print-mode{overflow:visible}
+.print-mode body{overflow:visible}
+.print-mode .deck{position:relative;width:1920px;height:auto;overflow:visible;background:transparent}
+.print-mode .deck-stage{position:relative;top:auto;left:auto;width:1920px;height:auto;transform:none}
+.print-mode .slide{position:relative;inset:auto;width:1920px;height:1080px;opacity:1!important;pointer-events:auto;page-break-after:always;break-after:page}
+.print-mode .slide:last-child{page-break-after:auto;break-after:auto}
+.print-mode .slide{transition:none}
+.print-mode .deck-controls{display:none!important}
+@page{size:1920px 1080px;margin:0}
 `;
 
 const DECK_JS = `
 (function(){
+  var isPrint = document.body.classList.contains('print-mode');
   var slides = document.querySelectorAll('.slide');
   var current = 0;
   var didInit = false;
   var prevBtn = document.getElementById('navPrev');
   var nextBtn = document.getElementById('navNext');
   var progress = document.getElementById('navProgress');
+  var stage = document.querySelector('.deck-stage');
+  // Scale the fixed 1920x1080 stage to fit any viewport. Skipped in print mode
+  // where the stage flows naturally (one slide per page).
+  function fitStage(){
+    if(isPrint || !stage) return;
+    var w = window.innerWidth, h = window.innerHeight;
+    var s = Math.min(w / 1920, h / 1080);
+    stage.style.transform = 'translate(-50%, -50%) scale(' + s + ')';
+  }
   function notifyParent(){
     // Don't notify on initial render — the parent already knows the active
     // slide it asked for, and during a save the inline iframe reloads in the
@@ -607,10 +611,17 @@ const DECK_JS = `
     if(d.type==='pres:goto-slide'&&typeof d.index==='number') go(d.index);
   });
   // Initial slide from hash
-  var h = parseInt((location.hash||'').replace('#',''),10);
-  if(!isNaN(h) && h>=1 && h<=slides.length){ current = h-1; }
-  render();
+  var hashSlide = parseInt((location.hash||'').replace('#',''),10);
+  if(!isNaN(hashSlide) && hashSlide>=1 && hashSlide<=slides.length){ current = hashSlide-1; }
+  // Print mode: show every slide; otherwise activate just the current one.
+  if (isPrint) {
+    slides.forEach(function(s){ s.classList.add('is-active'); });
+  } else {
+    render();
+  }
   didInit = true;
+  // Apply initial stage scale, then re-apply on viewport changes.
+  fitStage();
   // Run auto-fit after fonts and any images have settled.
   if (document.fonts && document.fonts.ready) {
     document.fonts.ready.then(function(){ setTimeout(autoFitAll, 30); });
@@ -622,16 +633,31 @@ const DECK_JS = `
     img.addEventListener('load', function(){ autoFitAll(); });
   });
   var resizeT;
-  window.addEventListener('resize', function(){ clearTimeout(resizeT); resizeT = setTimeout(autoFitAll, 120); });
+  window.addEventListener('resize', function(){
+    clearTimeout(resizeT);
+    resizeT = setTimeout(function(){ fitStage(); autoFitAll(); }, 120);
+  });
 })();
 `;
 
 /**
  * Render a self-contained presentation deck HTML document.
  * Single-file, embedded CSS + JS, no external dependencies.
+ *
+ * Modes:
+ * - `print: true` — every slide rendered at fixed 1920x1080, page-break-after on
+ *   each, no nav controls, no scaling. Used by the headless-browser PDF export.
+ * - default — interactive deck with stage-scale-to-fit and nav controls.
  */
-export function renderPresentationHtml(data: PresentationData, _isPublicView = false): string {
-  void _isPublicView; // reserved for future per-view tweaks
+export function renderPresentationHtml(
+  data: PresentationData,
+  options: { isPublicView?: boolean; print?: boolean } | boolean = false
+): string {
+  // Backwards-compat: callers used to pass a single boolean for isPublicView.
+  const opts = typeof options === "boolean" ? { isPublicView: options } : options;
+  void opts.isPublicView; // reserved for future per-view tweaks
+  const isPrint = Boolean(opts.print);
+
   const slides = data.slides ?? [];
   const total = slides.length + 1; // +1 for cover
 
@@ -640,8 +666,17 @@ export function renderPresentationHtml(data: PresentationData, _isPublicView = f
     .map((s, i) => renderSlide(s, i + 1, total))
     .join("\n");
 
+  const bodyClass = isPrint ? "print-mode" : "";
+  const navHtml = isPrint
+    ? ""
+    : `<div class="deck-controls" role="navigation" aria-label="Slide navigation">
+  <button id="navPrev" class="nav-btn" type="button" aria-label="Previous slide">&larr;</button>
+  <div id="navProgress" class="deck-progress">1 / ${total}</div>
+  <button id="navNext" class="nav-btn" type="button" aria-label="Next slide">&rarr;</button>
+</div>`;
+
   return `<!DOCTYPE html>
-<html lang="en-GB">
+<html lang="en-GB"${isPrint ? ' class="print-mode"' : ""}>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -652,16 +687,14 @@ export function renderPresentationHtml(data: PresentationData, _isPublicView = f
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>${PRESENTATION_CSS}</style>
 </head>
-<body>
+<body${bodyClass ? ` class="${bodyClass}"` : ""}>
 <main class="deck">
-  ${cover}
-  ${slideHtml}
+  <div class="deck-stage">
+    ${cover}
+    ${slideHtml}
+  </div>
 </main>
-<div class="deck-controls" role="navigation" aria-label="Slide navigation">
-  <button id="navPrev" class="nav-btn" type="button" aria-label="Previous slide">&larr;</button>
-  <div id="navProgress" class="deck-progress">1 / ${total}</div>
-  <button id="navNext" class="nav-btn" type="button" aria-label="Next slide">&rarr;</button>
-</div>
+${navHtml}
 <script>${DECK_JS}</script>
 </body>
 </html>`;
