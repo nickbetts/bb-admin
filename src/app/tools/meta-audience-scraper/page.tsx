@@ -617,6 +617,53 @@ export default function MetaAudienceScraperPage() {
                 </div>
               </div>
 
+              <div style={{ marginTop: 18, paddingTop: 14, borderTop: "1px dashed var(--border)" }}>
+                <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-3)" }}>
+                  Campaign plan inputs (used after pillars are generated)
+                </p>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 110px 1fr", gap: 10 }}>
+                  <div>
+                    <label style={labelStyle}>Daily budget</label>
+                    <input
+                      type="number"
+                      min="1"
+                      step="any"
+                      value={dailyBudget}
+                      onChange={(e) => setDailyBudget(e.target.value)}
+                      placeholder="e.g. 100"
+                      style={inputStyle}
+                      disabled={aiLoading}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Currency</label>
+                    <select
+                      value={currency}
+                      onChange={(e) => setCurrency(e.target.value)}
+                      style={inputStyle}
+                      disabled={aiLoading}
+                    >
+                      <option value="GBP">GBP</option>
+                      <option value="EUR">EUR</option>
+                      <option value="USD">USD</option>
+                      <option value="AED">AED</option>
+                      <option value="AUD">AUD</option>
+                      <option value="CAD">CAD</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Objective hint (optional)</label>
+                    <input
+                      value={objective}
+                      onChange={(e) => setObjective(e.target.value)}
+                      placeholder="e.g. Sales, Leads, Awareness"
+                      style={inputStyle}
+                      disabled={aiLoading}
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16 }}>
                 <span style={{ fontSize: 12, color: "var(--text-3)" }}>
                   Claude reads the brief, runs a first wave of Meta searches, identifies what was missed, runs a gap-fill second wave, then curates the strongest options into pillars. Takes 30-90 seconds.
@@ -740,11 +787,7 @@ export default function MetaAudienceScraperPage() {
           {tab === "ai" && aiResult && aiResult.pillars.length > 0 && (
             <CampaignPlanSection
               dailyBudget={dailyBudget}
-              setDailyBudget={setDailyBudget}
               currency={currency}
-              setCurrency={setCurrency}
-              objective={objective}
-              setObjective={setObjective}
               planLoading={planLoading}
               plan={plan}
               onBuildPlan={buildPlan}
@@ -971,11 +1014,7 @@ export default function MetaAudienceScraperPage() {
 
 interface CampaignPlanSectionProps {
   dailyBudget: string;
-  setDailyBudget: (v: string) => void;
   currency: string;
-  setCurrency: (v: string) => void;
-  objective: string;
-  setObjective: (v: string) => void;
   planLoading: boolean;
   plan: FullPlan | null;
   onBuildPlan: () => void;
@@ -996,12 +1035,14 @@ interface CampaignPlanSectionProps {
 
 function CampaignPlanSection(props: CampaignPlanSectionProps) {
   const {
-    dailyBudget, setDailyBudget, currency, setCurrency, objective, setObjective,
+    dailyBudget, currency,
     planLoading, plan, onBuildPlan,
     refineFeedback, setRefineFeedback, refineLoading, onRefinePlan,
     images, imageKey, imagePromptOverrides, setImagePromptOverrides,
     refinePrompts, setRefinePrompts, onGenerateImage, onRefineImage, hasSelection,
   } = props;
+
+  const budgetReady = parseFloat(dailyBudget) > 0;
 
   return (
     <section style={{ ...cardStyle, marginTop: 24 }}>
@@ -1010,54 +1051,19 @@ function CampaignPlanSection(props: CampaignPlanSectionProps) {
         <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>Campaign Plan</h2>
       </div>
       <p style={{ margin: "0 0 14px", fontSize: 12, color: "var(--text-3)" }}>
-        Set your daily budget and Claude will design the full campaign structure — campaigns, ad sets, budget split, placements, Advantage+, attribution, and creative concepts (with AI-generated imagery) — explaining every decision.
+        Claude designs the full campaign structure — campaigns, ad sets, budget split, placements, Advantage+, attribution, bid strategy, and creative concepts (with AI-generated imagery) — explaining every decision.
         {hasSelection ? " Using your selected audiences." : " Using all AI-suggested pillars (add to selection to focus on specific ones)."}
       </p>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 120px 1fr", gap: 10, marginBottom: 12 }}>
-        <div>
-          <label style={labelStyle}>Daily budget</label>
-          <input
-            type="number"
-            min="1"
-            step="any"
-            value={dailyBudget}
-            onChange={(e) => setDailyBudget(e.target.value)}
-            placeholder="e.g. 100"
-            style={inputStyle}
-            disabled={planLoading}
-          />
-        </div>
-        <div>
-          <label style={labelStyle}>Currency</label>
-          <select
-            value={currency}
-            onChange={(e) => setCurrency(e.target.value)}
-            style={inputStyle}
-            disabled={planLoading}
-          >
-            <option value="GBP">GBP</option>
-            <option value="EUR">EUR</option>
-            <option value="USD">USD</option>
-            <option value="AED">AED</option>
-            <option value="AUD">AUD</option>
-            <option value="CAD">CAD</option>
-          </select>
-        </div>
-        <div>
-          <label style={labelStyle}>Objective hint (optional)</label>
-          <input
-            value={objective}
-            onChange={(e) => setObjective(e.target.value)}
-            placeholder="e.g. Sales, Leads, Awareness"
-            style={inputStyle}
-            disabled={planLoading}
-          />
-        </div>
-      </div>
-
-      <div style={{ display: "flex", justifyContent: "flex-end" }}>
-        <button type="button" onClick={onBuildPlan} disabled={planLoading} style={primaryBtnStyle}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, padding: "10px 14px", background: "var(--surface-2)", borderRadius: "var(--r)", marginBottom: 14 }}>
+        <span style={{ fontSize: 12, color: "var(--text-2)" }}>
+          {budgetReady ? (
+            <>Daily budget: <strong style={{ color: "var(--text)" }}>{currency} {parseFloat(dailyBudget).toFixed(2)}</strong></>
+          ) : (
+            <span style={{ color: "var(--warning-text)" }}>Set a daily budget in the brief panel above to enable plan generation.</span>
+          )}
+        </span>
+        <button type="button" onClick={onBuildPlan} disabled={planLoading || !budgetReady} style={primaryBtnStyle}>
           {planLoading ? <Loader2 style={{ width: 14, height: 14 }} className="spin" /> : <Wand2 style={{ width: 14, height: 14 }} />}
           {planLoading ? "Building plan…" : plan ? "Rebuild plan" : "Build campaign plan"}
         </button>
