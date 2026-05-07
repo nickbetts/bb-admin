@@ -5,7 +5,6 @@ import {
   Crosshair,
   Sparkles,
   Loader2,
-  Plus,
   Check,
   Copy,
   AlertTriangle,
@@ -45,7 +44,9 @@ interface AISuggestResponse {
     explicit?: string[];
     implicit?: string[];
     adjacent?: string[];
+    cultural?: string[];
     media?: string[];
+    diaspora?: string[];
     niches?: string[];
     contrarian?: string[];
   } | null;
@@ -60,9 +61,13 @@ interface AISuggestResponse {
   warning?: string;
 }
 
-type SelectedItem = TargetingResult & { pillar?: string };
 
 // ─── Campaign plan types ──────────────────────────────────────────────────
+
+interface LongFormVariant {
+  tone: string;
+  text: string;
+}
 
 interface CreativeConcept {
   format: string;
@@ -70,6 +75,7 @@ interface CreativeConcept {
   hooks?: string[];
   headlines?: string[];
   primaryTexts?: string[];
+  longFormVariants?: LongFormVariant[];
   // Legacy single-variant fields kept for backward compatibility with older plans
   hook?: string;
   headline?: string;
@@ -82,6 +88,12 @@ interface CreativeConcept {
 
 interface AdSetPlan {
   name: string;
+  group?: string;
+  geoTargeting?: string[];
+  geoTargetingNotes?: string;
+  expatTargeting?: string;
+  cohort?: string;
+  detailedTargeting?: string;
   pillarName: string;
   audienceSummary: string;
   targetingOptionIds: string[];
@@ -150,11 +162,12 @@ export default function MetaAudienceScraperPage() {
   const [aiResult, setAiResult] = useState<AISuggestResponse | null>(null);
   const [collapsedPillars, setCollapsedPillars] = useState<Set<string>>(new Set());
 
-  // Selection state — drives whether the campaign plan focuses on a subset
-  // of the AI pillars or uses them all. The visible Selection panel was
-  // removed; per-pillar "Add all" and per-option +/- on the cards still
-  // toggle this state for influence over plan generation.
-  const [selected, setSelected] = useState<SelectedItem[]>([]);
+  // Selection model: pillars and options are CHECKED BY DEFAULT once AI
+  // suggestions return. The user un-ticks pillars or individual options to
+  // exclude them from plan generation. Storing exclusions (rather than
+  // inclusions) means new AI runs default to "everything on".
+  const [excludedPillars, setExcludedPillars] = useState<Set<string>>(new Set());
+  const [excludedOptionIds, setExcludedOptionIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -172,15 +185,36 @@ export default function MetaAudienceScraperPage() {
   const [imagePromptOverrides, setImagePromptOverrides] = useState<Record<string, string>>({});
   const [refinePrompts, setRefinePrompts] = useState<Record<string, string>>({});
 
-  const selectedIds = useMemo(() => new Set(selected.map((s) => s.id)), [selected]);
+  // Convenience: an option/pillar is "active" when it's NOT in the exclusion set.
+  const isPillarActive = useCallback((name: string) => !excludedPillars.has(name), [excludedPillars]);
+  const isOptionActive = useCallback((id: string) => !excludedOptionIds.has(id), [excludedOptionIds]);
 
-  function addSelection(item: TargetingResult, pillar?: string) {
-    setSelected((prev) =>
-      prev.some((p) => p.id === item.id) ? prev : [...prev, { ...item, pillar }]
-    );
+  function togglePillarActive(pillar: Pillar) {
+    setExcludedPillars((prev) => {
+      const next = new Set(prev);
+      if (next.has(pillar.name)) {
+        next.delete(pillar.name);
+        // Reactivating a pillar also reactivates any options inside it that
+        // were turned off when the whole pillar was excluded.
+        setExcludedOptionIds((prevOpts) => {
+          const nextOpts = new Set(prevOpts);
+          for (const o of pillar.options) nextOpts.delete(o.id);
+          return nextOpts;
+        });
+      } else {
+        next.add(pillar.name);
+      }
+      return next;
+    });
   }
-  function removeSelection(id: string) {
-    setSelected((prev) => prev.filter((p) => p.id !== id));
+
+  function toggleOptionActive(optionId: string) {
+    setExcludedOptionIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(optionId)) next.delete(optionId);
+      else next.add(optionId);
+      return next;
+    });
   }
 
   function copyId(id: string) {
@@ -234,30 +268,36 @@ export default function MetaAudienceScraperPage() {
   }, [brief, keywordsText, sector, clientName, geography]);
 
   // ── Build pillars to send to the campaign-plan endpoint ────────────────
-  // If user selection is non-empty AND came from AI pillars we group selected
-  // items by their pillar tag. Otherwise we fall back to the full pillars
-  // returned by the AI suggest pass.
+  // Active pillars are those NOT in excludedPillars; within each active
+  // pillar we filter to options NOT in excludedOptionIds. Empty pillars
+  // are dropped entirely.
   function buildPillarsForPlan(): { name: string; rationale: string; options: { id: string; name: string; type: string }[] }[] {
-    if (selected.length > 0) {
-      const groups = new Map<string, { id: string; name: string; type: string }[]>();
-      for (const s of selected) {
-        const key = s.pillar ?? "Selected audiences";
-        if (!groups.has(key)) groups.set(key, []);
-        groups.get(key)!.push({ id: s.id, name: s.name, type: s.type });
-      }
-      const result: { name: string; rationale: string; options: { id: string; name: string; type: string }[] }[] = [];
-      for (const [name, options] of groups) {
-        const matchingPillar = aiResult?.pillars.find((p) => p.name === name);
-        result.push({ name, rationale: matchingPillar?.rationale ?? "", options });
-      }
-      return result;
-    }
-    return (aiResult?.pillars ?? []).map((p) => ({
-      name: p.name,
-      rationale: p.rationale,
-      options: p.options.map((o) => ({ id: o.id, name: o.name, type: o.type })),
-    }));
+    return (aiResult?.pillars ?? [])
+      .filter((p) => !excludedPillars.has(p.name))
+      .map((p) => ({
+        name: p.name,
+        rationale: p.rationale,
+        options: p.options
+          .filter((o) => !excludedOptionIds.has(o.id))
+          .map((o) => ({ id: o.id, name: o.name, type: o.type })),
+      }))
+      .filter((p) => p.options.length > 0);
   }
+
+  // Quick stats for the plan-generation UI.
+  const activeStats = useMemo(() => {
+    if (!aiResult) return { pillars: 0, options: 0 };
+    let p = 0;
+    let o = 0;
+    for (const pillar of aiResult.pillars) {
+      if (excludedPillars.has(pillar.name)) continue;
+      const remaining = pillar.options.filter((opt) => !excludedOptionIds.has(opt.id));
+      if (remaining.length === 0) continue;
+      p += 1;
+      o += remaining.length;
+    }
+    return { pillars: p, options: o };
+  }, [aiResult, excludedPillars, excludedOptionIds]);
 
   const buildPlan = useCallback(async () => {
     setError(null);
@@ -300,7 +340,7 @@ export default function MetaAudienceScraperPage() {
       setPlanLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dailyBudget, currency, objective, brief, clientName, sector, geography, aiResult, selected]);
+  }, [dailyBudget, currency, objective, brief, clientName, sector, geography, aiResult, excludedPillars, excludedOptionIds]);
 
   const refinePlan = useCallback(async () => {
     if (!plan || !refineFeedback.trim()) return;
@@ -458,12 +498,10 @@ export default function MetaAudienceScraperPage() {
     if (myToken === generationToken.current) setAutoGenerating(null);
   }, []);
 
-  // Whenever a plan is set or replaced, auto-generate its images.
-  useEffect(() => {
-    if (!plan) return;
-    void autoGenerateImagesForPlan(plan);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plan]);
+  // Image generation is MANUAL — user clicks "Generate all images" at the
+  // bottom of the plan, or the per-frame Generate button on each creative.
+  // We deliberately do not auto-generate on plan load to avoid burning
+  // OpenAI credits on creative the user may not want imagery for.
 
   async function refineImage(key: string, aspect: "square" | "portrait" | "landscape") {
     const existing = images[key];
@@ -686,77 +724,95 @@ export default function MetaAudienceScraperPage() {
                               overflow: "hidden",
                             }}
                           >
-                            <button
-                              type="button"
-                              onClick={() => togglePillar(pillar.name)}
-                              style={{
-                                display: "flex",
-                                width: "100%",
-                                alignItems: "flex-start",
-                                gap: 10,
-                                padding: "12px 14px",
-                                background: "var(--surface-2)",
-                                border: "none",
-                                borderBottom: collapsed ? "none" : "1px solid var(--border)",
-                                cursor: "pointer",
-                                textAlign: "left",
-                              }}
-                            >
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                                  <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "var(--text)" }}>
-                                    {pillar.name}
-                                  </h3>
-                                  <span
+                            {(() => {
+                              const pillarActive = isPillarActive(pillar.name);
+                              const activeOptions = pillar.options.filter((o) => isOptionActive(o.id));
+                              const activeCount = pillarActive ? activeOptions.length : 0;
+                              return (
+                                <>
+                                  <div
                                     style={{
-                                      fontSize: 10,
-                                      fontWeight: 600,
-                                      padding: "1px 6px",
-                                      borderRadius: 4,
-                                      background: "var(--accent-bg)",
-                                      color: "var(--accent)",
+                                      display: "flex",
+                                      alignItems: "flex-start",
+                                      gap: 10,
+                                      padding: "12px 14px",
+                                      background: "var(--surface-2)",
+                                      borderBottom: collapsed ? "none" : "1px solid var(--border)",
+                                      opacity: pillarActive ? 1 : 0.55,
                                     }}
                                   >
-                                    {pillar.options.length} option{pillar.options.length === 1 ? "" : "s"}
-                                  </span>
-                                </div>
-                                {pillar.rationale && (
-                                  <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--text-2)" }}>
-                                    {pillar.rationale}
-                                  </p>
-                                )}
-                              </div>
-                              {collapsed ? (
-                                <ChevronDown style={{ width: 14, height: 14, color: "var(--text-3)", flexShrink: 0, marginTop: 2 }} />
-                              ) : (
-                                <ChevronUp style={{ width: 14, height: 14, color: "var(--text-3)", flexShrink: 0, marginTop: 2 }} />
-                              )}
-                            </button>
-                            {!collapsed && (
-                              <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: 10 }}>
-                                <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                                  <button
-                                    type="button"
-                                    onClick={() => pillar.options.forEach((o) => addSelection(o, pillar.name))}
-                                    style={{ ...fileBtnStyle, fontSize: 11 }}
-                                  >
-                                    <Plus style={{ width: 11, height: 11 }} /> Add all
-                                  </button>
-                                </div>
-                                {pillar.options.map((opt) => (
-                                  <ResultCard
-                                    key={opt.id}
-                                    item={opt}
-                                    why={opt.why}
-                                    selected={selectedIds.has(opt.id)}
-                                    copied={copiedId === opt.id}
-                                    onAdd={() => addSelection(opt, pillar.name)}
-                                    onRemove={() => removeSelection(opt.id)}
-                                    onCopy={() => copyId(opt.id)}
-                                  />
-                                ))}
-                              </div>
-                            )}
+                                    <CheckBox
+                                      checked={pillarActive}
+                                      onChange={() => togglePillarActive(pillar)}
+                                      label={`Toggle pillar ${pillar.name}`}
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => togglePillar(pillar.name)}
+                                      style={{
+                                        display: "flex",
+                                        flex: 1,
+                                        alignItems: "flex-start",
+                                        gap: 10,
+                                        background: "none",
+                                        border: "none",
+                                        cursor: "pointer",
+                                        textAlign: "left",
+                                        padding: 0,
+                                        minWidth: 0,
+                                      }}
+                                    >
+                                      <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                                          <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "var(--text)", textDecoration: pillarActive ? "none" : "line-through" }}>
+                                            {pillar.name}
+                                          </h3>
+                                          <span
+                                            style={{
+                                              fontSize: 10,
+                                              fontWeight: 600,
+                                              padding: "1px 6px",
+                                              borderRadius: 4,
+                                              background: pillarActive ? "var(--accent-bg)" : "var(--surface)",
+                                              color: pillarActive ? "var(--accent)" : "var(--text-3)",
+                                              border: "1px solid " + (pillarActive ? "var(--accent)" : "var(--border)"),
+                                            }}
+                                          >
+                                            {activeCount}/{pillar.options.length} active
+                                          </span>
+                                        </div>
+                                        {pillar.rationale && (
+                                          <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--text-2)" }}>
+                                            {pillar.rationale}
+                                          </p>
+                                        )}
+                                      </div>
+                                      {collapsed ? (
+                                        <ChevronDown style={{ width: 14, height: 14, color: "var(--text-3)", flexShrink: 0, marginTop: 2 }} />
+                                      ) : (
+                                        <ChevronUp style={{ width: 14, height: 14, color: "var(--text-3)", flexShrink: 0, marginTop: 2 }} />
+                                      )}
+                                    </button>
+                                  </div>
+                                  {!collapsed && (
+                                    <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: 10, opacity: pillarActive ? 1 : 0.55 }}>
+                                      {pillar.options.map((opt) => (
+                                        <ResultCard
+                                          key={opt.id}
+                                          item={opt}
+                                          why={opt.why}
+                                          selected={pillarActive && isOptionActive(opt.id)}
+                                          copied={copiedId === opt.id}
+                                          onAdd={() => toggleOptionActive(opt.id)}
+                                          onRemove={() => toggleOptionActive(opt.id)}
+                                          onCopy={() => copyId(opt.id)}
+                                        />
+                                      ))}
+                                    </div>
+                                  )}
+                                </>
+                              );
+                            })()}
                           </div>
                         );
                       })}
@@ -785,7 +841,8 @@ export default function MetaAudienceScraperPage() {
               setRefinePrompts={setRefinePrompts}
               onGenerateImage={generateImage}
               onRefineImage={refineImage}
-              hasSelection={selected.length > 0}
+              onGenerateAllImages={() => plan && autoGenerateImagesForPlan(plan)}
+              hasSelection={activeStats.options > 0}
               autoGenerating={autoGenerating}
             />
           )}
@@ -1509,6 +1566,31 @@ export default function MetaAudienceScraperPage() {
             0 0 32px rgba(255, 43, 214, 0.18);
         }
 
+        /* Checkbox */
+        .cyber-checkbox {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 18px;
+          height: 18px;
+          margin-top: 2px;
+          background: rgba(8, 6, 18, 0.8);
+          border: 1px solid var(--cyber-cyan);
+          color: #06050d;
+          cursor: pointer;
+          flex-shrink: 0;
+          transition: all 140ms ease;
+          padding: 0;
+        }
+        .cyber-checkbox[data-checked="true"] {
+          background: var(--cyber-cyan);
+          color: #06050d;
+          box-shadow: 0 0 10px rgba(0, 255, 247, 0.55);
+        }
+        .cyber-checkbox[data-checked="false"]:hover {
+          box-shadow: 0 0 10px rgba(0, 255, 247, 0.4);
+        }
+
         /* Variant fields */
         .cyber-variant {
           position: relative;
@@ -1637,6 +1719,7 @@ interface CampaignPlanSectionProps {
   setRefinePrompts: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   onGenerateImage: (key: string, prompt: string, aspect: "square" | "portrait" | "landscape") => void;
   onRefineImage: (key: string, aspect: "square" | "portrait" | "landscape") => void;
+  onGenerateAllImages: () => void;
   hasSelection: boolean;
   autoGenerating: { done: number; total: number } | null;
 }
@@ -1647,7 +1730,7 @@ function CampaignPlanSection(props: CampaignPlanSectionProps) {
     planLoading, plan, onBuildPlan,
     refineFeedback, setRefineFeedback, refineLoading, onRefinePlan,
     images, imageKey, imagePromptOverrides, setImagePromptOverrides,
-    refinePrompts, setRefinePrompts, onGenerateImage, onRefineImage, hasSelection,
+    refinePrompts, setRefinePrompts, onGenerateImage, onRefineImage, onGenerateAllImages, hasSelection,
     autoGenerating,
   } = props;
 
@@ -1686,24 +1769,6 @@ function CampaignPlanSection(props: CampaignPlanSectionProps) {
             <p style={{ margin: "8px 0 0", fontSize: 12, color: "var(--text-2)" }}>
               <strong>Why this structure:</strong> {plan.structureRationale}
             </p>
-            {autoGenerating && autoGenerating.total > 0 && (
-              <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px dashed var(--border)", display: "flex", alignItems: "center", gap: 10 }}>
-                <Loader2 style={{ width: 13, height: 13, color: "var(--accent)" }} className="spin" />
-                <span style={{ fontSize: 11, color: "var(--text-2)", fontFamily: "ui-monospace, SF Mono, Menlo, monospace", letterSpacing: "0.05em", textTransform: "uppercase" }}>
-                  Generating creative imagery · {autoGenerating.done}/{autoGenerating.total}
-                </span>
-                <div style={{ flex: 1, height: 3, background: "rgba(0,0,0,0.2)", borderRadius: 2, overflow: "hidden" }}>
-                  <div
-                    style={{
-                      height: "100%",
-                      width: `${(autoGenerating.done / autoGenerating.total) * 100}%`,
-                      background: "linear-gradient(90deg, var(--cyber-magenta, var(--accent)), var(--cyber-cyan, var(--accent)))",
-                      transition: "width 300ms ease",
-                    }}
-                  />
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Campaigns */}
@@ -1779,6 +1844,31 @@ function CampaignPlanSection(props: CampaignPlanSectionProps) {
             <div style={{ padding: 14, background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: "var(--r)" }}>
               <h3 style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "var(--success-text)" }}>Scale-up plan</h3>
               <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--text-2)" }}>{plan.scaleUp}</p>
+            </div>
+          </div>
+
+          {/* Generate all images */}
+          <div style={{ borderTop: "1px solid var(--border)", paddingTop: 16 }}>
+            <h3 style={{ margin: 0, fontSize: 13, fontWeight: 600 }}>Imagery</h3>
+            <p style={{ margin: "4px 0 8px", fontSize: 11, color: "var(--text-3)" }}>
+              Images are NOT generated automatically. Click below to generate every frame on the plan, or use the per-frame buttons on individual creatives. OpenAI gpt-image-1, medium quality, 3 in parallel.
+            </p>
+            <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 12 }}>
+              {autoGenerating && autoGenerating.total > 0 && (
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <Loader2 style={{ width: 13, height: 13, color: "var(--accent)" }} className="spin" />
+                  <span style={{ fontSize: 11, color: "var(--text-2)", fontFamily: "ui-monospace, SF Mono, Menlo, monospace", letterSpacing: "0.05em", textTransform: "uppercase" }}>
+                    {autoGenerating.done}/{autoGenerating.total}
+                  </span>
+                  <div style={{ width: 120, height: 3, background: "rgba(0,0,0,0.2)", borderRadius: 2, overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${(autoGenerating.done / autoGenerating.total) * 100}%`, background: "linear-gradient(90deg, var(--cyber-magenta, var(--accent)), var(--cyber-cyan, var(--accent)))", transition: "width 300ms ease" }} />
+                  </div>
+                </div>
+              )}
+              <button type="button" onClick={onGenerateAllImages} disabled={!!autoGenerating} style={primaryBtnStyle}>
+                {autoGenerating ? <Loader2 style={{ width: 14, height: 14 }} className="spin" /> : <ImagePlus style={{ width: 14, height: 14 }} />}
+                {autoGenerating ? "Generating…" : "Generate all images"}
+              </button>
             </div>
           </div>
 
@@ -1861,24 +1951,71 @@ function CampaignCard({
         </div>
       </div>
 
-      <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 12 }}>
-        {campaign.adSets.map((adSet, ai) => (
-          <AdSetCard
-            key={ai}
-            adSet={adSet}
-            campaignIndex={campaignIndex}
-            adSetIndex={ai}
-            currency={currency}
-            images={images}
-            imageKey={imageKey}
-            imagePromptOverrides={imagePromptOverrides}
-            setImagePromptOverrides={setImagePromptOverrides}
-            refinePrompts={refinePrompts}
-            setRefinePrompts={setRefinePrompts}
-            onGenerateImage={onGenerateImage}
-            onRefineImage={onRefineImage}
-          />
-        ))}
+      <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 18 }}>
+        {(() => {
+          // Group ad sets by their `group` field so the UI clusters
+          // by region/audience-group. Ad sets without a group share an
+          // implicit "" bucket and render flat.
+          const groups = new Map<string, { adSet: AdSetPlan; index: number }[]>();
+          campaign.adSets.forEach((adSet, ai) => {
+            const key = (adSet.group ?? "").trim();
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key)!.push({ adSet, index: ai });
+          });
+
+          return Array.from(groups.entries()).map(([groupName, members]) => (
+            <div key={groupName || `__nogroup`} style={groupName ? {
+              border: "1px solid rgba(0, 255, 247, 0.18)",
+              borderRadius: 8,
+              padding: "10px 12px 12px",
+              background: "rgba(0, 255, 247, 0.03)",
+            } : undefined}>
+              {groupName && (
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                  <span className="cyber-region-marker" />
+                  <h4 style={{
+                    margin: 0,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    letterSpacing: "0.18em",
+                    textTransform: "uppercase",
+                    color: "var(--cyber-cyan, var(--accent))",
+                    fontFamily: "ui-monospace, SF Mono, Menlo, Consolas, monospace",
+                  }}>
+                    [ {groupName} ]
+                  </h4>
+                  <span style={{
+                    fontSize: 10,
+                    color: "var(--text-3)",
+                    fontFamily: "ui-monospace, SF Mono, Menlo, monospace",
+                    letterSpacing: "0.05em",
+                  }}>
+                    {members.length} ad set{members.length === 1 ? "" : "s"}
+                  </span>
+                </div>
+              )}
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {members.map(({ adSet, index }) => (
+                  <AdSetCard
+                    key={index}
+                    adSet={adSet}
+                    campaignIndex={campaignIndex}
+                    adSetIndex={index}
+                    currency={currency}
+                    images={images}
+                    imageKey={imageKey}
+                    imagePromptOverrides={imagePromptOverrides}
+                    setImagePromptOverrides={setImagePromptOverrides}
+                    refinePrompts={refinePrompts}
+                    setRefinePrompts={setRefinePrompts}
+                    onGenerateImage={onGenerateImage}
+                    onRefineImage={onRefineImage}
+                  />
+                ))}
+              </div>
+            </div>
+          ));
+        })()}
       </div>
     </div>
   );
@@ -1911,41 +2048,137 @@ function AdSetCard({
   onGenerateImage: (key: string, prompt: string, aspect: "square" | "portrait" | "landscape") => void;
   onRefineImage: (key: string, aspect: "square" | "portrait" | "landscape") => void;
 }) {
+  const hasGeo = (adSet.geoTargeting?.length ?? 0) > 0;
   return (
-    <div style={{ border: "1px solid var(--border)", borderRadius: 8, padding: 12, background: "var(--bg)" }}>
+    <div style={{ border: "1px solid var(--border)", borderRadius: 8, padding: 14, background: "var(--bg)" }}>
+      {/* Title row */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
         <div style={{ minWidth: 0, flex: 1 }}>
-          <h4 style={{ margin: 0, fontSize: 13, fontWeight: 600 }}>{adSet.name}</h4>
-          <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--text-2)" }}>{adSet.audienceSummary}</p>
+          <h4 style={{ margin: 0, fontSize: 14, fontWeight: 700, fontFamily: "ui-monospace, SF Mono, Menlo, Consolas, monospace", letterSpacing: "0.02em" }}>
+            {adSet.cohort && (
+              <span style={{ color: "var(--cyber-magenta, var(--accent))", marginRight: 8 }}>
+                [{adSet.cohort}]
+              </span>
+            )}
+            {adSet.name}
+          </h4>
+          {adSet.audienceSummary && (
+            <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--text-2)" }}>{adSet.audienceSummary}</p>
+          )}
         </div>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           <Tag>{currency} {adSet.dailyBudget.toFixed(0)}/day</Tag>
-          <Tag>{adSet.optimizationGoal}</Tag>
-          <Tag>{adSet.placements === "advantage_plus" ? "Advantage+ Placements" : "Manual placements"}</Tag>
+          <Tag>Age {adSet.ageRange.min}–{adSet.ageRange.max}</Tag>
+          <Tag>{adSet.genders === "all" ? "All genders" : adSet.genders}</Tag>
           {adSet.advantageAudience && <Tag tone="accent">Advantage+ Audience</Tag>}
         </div>
       </div>
 
-      <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "6px 16px", fontSize: 11, color: "var(--text-3)" }}>
+      {/* Geo block — prominent */}
+      {hasGeo && (
+        <div style={{
+          marginTop: 12,
+          padding: "10px 12px",
+          background: "rgba(0, 255, 247, 0.05)",
+          border: "1px solid rgba(0, 255, 247, 0.2)",
+          borderRadius: 6,
+        }}>
+          <div style={{
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: "0.18em",
+            textTransform: "uppercase",
+            color: "var(--cyber-cyan, var(--accent))",
+            fontFamily: "ui-monospace, SF Mono, Menlo, Consolas, monospace",
+            marginBottom: 5,
+          }}>
+            &gt; Geo-targeting <span style={{ opacity: 0.5 }}>[{adSet.geoTargeting!.length}]</span>
+          </div>
+          <p style={{ margin: 0, fontSize: 12, color: "var(--text)", fontFamily: "ui-monospace, SF Mono, Menlo, Consolas, monospace", letterSpacing: "0.02em", lineHeight: 1.5 }}>
+            {adSet.geoTargeting!.join(", ")}
+          </p>
+          {adSet.geoTargetingNotes && (
+            <p style={{ margin: "5px 0 0", fontSize: 11, color: "var(--text-2)", fontStyle: "italic" }}>
+              {adSet.geoTargetingNotes}
+            </p>
+          )}
+          {adSet.expatTargeting && (
+            <p style={{
+              margin: "6px 0 0",
+              fontSize: 11,
+              color: "var(--cyber-magenta, var(--accent))",
+              padding: "4px 8px",
+              background: "rgba(255, 43, 214, 0.08)",
+              border: "1px solid rgba(255, 43, 214, 0.25)",
+              borderRadius: 4,
+              display: "inline-block",
+            }}>
+              <strong>Expat / Lived-in: </strong>{adSet.expatTargeting}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Cohort + lookalike line */}
+      {(adSet.cohort || adSet.lookalikeStrategy) && (
+        <div style={{ marginTop: 10, fontSize: 12, color: "var(--text-2)", lineHeight: 1.6 }}>
+          {adSet.cohort && (
+            <p style={{ margin: 0 }}>
+              <strong style={{ color: "var(--text)" }}>{adSet.cohort}</strong>
+              {adSet.lookalikeStrategy && <span style={{ color: "var(--text-3)" }}> — {adSet.lookalikeStrategy}</span>}
+            </p>
+          )}
+          {!adSet.cohort && adSet.lookalikeStrategy && (
+            <p style={{ margin: 0 }}>
+              <strong style={{ color: "var(--text)" }}>Lookalikes: </strong>
+              {adSet.lookalikeStrategy}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Detailed targeting block */}
+      {adSet.detailedTargeting && (
+        <div style={{
+          marginTop: 10,
+          padding: "8px 12px",
+          background: "var(--surface-2)",
+          border: "1px solid var(--border)",
+          borderRadius: 6,
+        }}>
+          <div style={{
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: "0.18em",
+            textTransform: "uppercase",
+            color: "var(--text-3)",
+            fontFamily: "ui-monospace, SF Mono, Menlo, Consolas, monospace",
+            marginBottom: 4,
+          }}>
+            &gt; Detailed targeting
+          </div>
+          <p style={{ margin: 0, fontSize: 12, color: "var(--text-2)", lineHeight: 1.5 }}>
+            {adSet.detailedTargeting}
+          </p>
+        </div>
+      )}
+
+      {/* Compact specs row */}
+      <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: "6px 16px", fontSize: 11, color: "var(--text-3)" }}>
         <span><strong style={{ color: "var(--text-2)" }}>Pillar:</strong> {adSet.pillarName}</span>
-        <span><strong style={{ color: "var(--text-2)" }}>Age:</strong> {adSet.ageRange.min}–{adSet.ageRange.max}</span>
-        <span><strong style={{ color: "var(--text-2)" }}>Gender:</strong> {adSet.genders === "all" ? "All" : adSet.genders}</span>
+        <span><strong style={{ color: "var(--text-2)" }}>Optimisation:</strong> {adSet.optimizationGoal}</span>
         {adSet.conversionEvent && (
           <span><strong style={{ color: "var(--text-2)" }}>Event:</strong> {adSet.conversionEvent}</span>
         )}
+        <span><strong style={{ color: "var(--text-2)" }}>Placements:</strong> {adSet.placements === "advantage_plus" ? "Advantage+" : "Manual"}</span>
         {adSet.frequencyCap && (
           <span><strong style={{ color: "var(--text-2)" }}>Frequency:</strong> {adSet.frequencyCap}</span>
         )}
         {adSet.placements === "manual" && adSet.manualPlacements?.length ? (
           <span style={{ gridColumn: "1 / -1" }}>
-            <strong style={{ color: "var(--text-2)" }}>Placements:</strong> {adSet.manualPlacements.join(", ")}
+            <strong style={{ color: "var(--text-2)" }}>Manual placements:</strong> {adSet.manualPlacements.join(", ")}
           </span>
         ) : null}
-        {adSet.lookalikeStrategy && (
-          <span style={{ gridColumn: "1 / -1" }}>
-            <strong style={{ color: "var(--text-2)" }}>Lookalikes:</strong> {adSet.lookalikeStrategy}
-          </span>
-        )}
         {adSet.exclusions && adSet.exclusions.length > 0 && (
           <span style={{ gridColumn: "1 / -1" }}>
             <strong style={{ color: "var(--text-2)" }}>Exclusions:</strong> {adSet.exclusions.join(" · ")}
@@ -1953,16 +2186,16 @@ function AdSetCard({
         )}
       </div>
 
-      <p style={{ margin: "10px 0 0", fontSize: 12, color: "var(--text-2)", lineHeight: 1.5 }}>
-        <strong>Why:</strong> {adSet.why}
+      <p style={{ margin: "12px 0 0", fontSize: 12, color: "var(--text-2)", lineHeight: 1.55, paddingLeft: 10, borderLeft: "2px solid var(--cyber-magenta, var(--accent))" }}>
+        <strong style={{ color: "var(--text)" }}>Why:</strong> {adSet.why}
       </p>
 
       {adSet.targetingOptionIds.length > 0 && (
-        <details style={{ marginTop: 6 }}>
-          <summary style={{ fontSize: 11, color: "var(--text-3)", cursor: "pointer" }}>
+        <details style={{ marginTop: 8 }}>
+          <summary style={{ fontSize: 10, color: "var(--text-3)", cursor: "pointer", fontFamily: "ui-monospace, SF Mono, Menlo, monospace", letterSpacing: "0.1em", textTransform: "uppercase" }}>
             {adSet.targetingOptionIds.length} targeting IDs
           </summary>
-          <p style={{ margin: "4px 0 0", fontSize: 11, color: "var(--text-2)", fontFamily: "monospace", wordBreak: "break-all" }}>
+          <p style={{ margin: "4px 0 0", fontSize: 10.5, color: "var(--text-2)", fontFamily: "monospace", wordBreak: "break-all" }}>
             {adSet.targetingOptionIds.join(", ")}
           </p>
         </details>
@@ -2054,6 +2287,9 @@ function CreativeCard({
         {hooks.length > 0 && <CopyVariantList label="Hooks" items={hooks} multiline />}
         {headlines.length > 0 && <CopyVariantList label="Headlines" items={headlines} />}
         {primaryTexts.length > 0 && <CopyVariantList label="Primary text" items={primaryTexts} multiline />}
+        {creative.longFormVariants && creative.longFormVariants.length > 0 && (
+          <LongFormVariantList items={creative.longFormVariants} />
+        )}
         <p style={{ margin: "14px 0 0", fontSize: 12, color: "var(--text-2)", fontStyle: "italic", lineHeight: 1.5 }}>
           <strong style={{ color: "var(--text)" }}>Why this concept:</strong> {creative.why}
         </p>
@@ -2222,12 +2458,116 @@ function CopyVariantList({ label, items, multiline }: { label: string; items: st
   );
 }
 
-function CopyVariantField({ index, value, multiline }: { index: number; value: string; multiline?: boolean }) {
-  const [text, setText] = useState(value);
+function LongFormVariantList({ items }: { items: LongFormVariant[] }) {
+  return (
+    <div style={{ marginTop: 14 }}>
+      <p
+        style={{
+          margin: 0,
+          marginBottom: 6,
+          fontSize: 10,
+          fontWeight: 700,
+          textTransform: "uppercase",
+          letterSpacing: "0.18em",
+          color: "var(--cyber-magenta, var(--accent))",
+          fontFamily: "ui-monospace, SF Mono, Menlo, Consolas, monospace",
+        }}
+      >
+        &gt; Long-form copy <span style={{ opacity: 0.5 }}>[{items.length}]</span>
+      </p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {items.map((v, i) => (
+          <LongFormVariantField key={i} index={i} variant={v} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function LongFormVariantField({ index, variant }: { index: number; variant: LongFormVariant }) {
+  // Derived-state pattern: re-sync local edits when the underlying plan
+  // refines, using setState-during-render (React's recommended approach).
+  const [state, setState] = useState({ prop: variant.text, text: variant.text });
+  if (state.prop !== variant.text) {
+    setState({ prop: variant.text, text: variant.text });
+  }
+  const text = state.text;
+  const setText = (v: string) => setState((s) => ({ ...s, text: v }));
   const [copied, setCopied] = useState(false);
 
-  // Keep local edits in sync if the underlying value changes (e.g. plan refine)
-  useEffect(() => { setText(value); }, [value]);
+  function copy() {
+    navigator.clipboard.writeText(text).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1100);
+  }
+
+  const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
+
+  return (
+    <div className="cyber-variant" style={{ display: "flex", alignItems: "stretch", gap: 6 }}>
+      <span className="cyber-variant-index" style={{ alignItems: "flex-start", paddingTop: 6, minWidth: 30 }}>{String(index + 1).padStart(2, "0")}</span>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{
+            display: "inline-flex",
+            alignItems: "center",
+            fontSize: 10,
+            fontWeight: 700,
+            padding: "2px 8px",
+            background: "rgba(255, 43, 214, 0.12)",
+            border: "1px solid rgba(255, 43, 214, 0.4)",
+            color: "var(--cyber-magenta, var(--accent))",
+            textTransform: "uppercase",
+            letterSpacing: "0.1em",
+            fontFamily: "ui-monospace, SF Mono, Menlo, Consolas, monospace",
+          }}>
+            {variant.tone || "Tone"}
+          </span>
+          <span style={{ fontSize: 10, color: "var(--text-3)", fontFamily: "ui-monospace, SF Mono, Menlo, monospace", letterSpacing: "0.05em" }}>
+            {wordCount} word{wordCount === 1 ? "" : "s"}
+          </span>
+        </div>
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          rows={Math.min(10, Math.max(4, Math.ceil(text.length / 70)))}
+          spellCheck={false}
+          className="cyber-variant-input"
+          style={{
+            padding: "8px 10px",
+            fontSize: 12.5,
+            lineHeight: 1.55,
+            fontFamily: "inherit",
+            resize: "vertical",
+          }}
+        />
+      </div>
+      <button
+        type="button"
+        onClick={copy}
+        className="cyber-variant-copy"
+        title="Copy to clipboard"
+        aria-label="Copy long-form variant"
+        style={{ alignItems: "flex-start", paddingTop: 8 }}
+      >
+        {copied ? <Check style={{ width: 12, height: 12 }} /> : <Copy style={{ width: 12, height: 12 }} />}
+      </button>
+    </div>
+  );
+}
+
+function CopyVariantField({ index, value, multiline }: { index: number; value: string; multiline?: boolean }) {
+  // Derived-state pattern: store the prop value alongside the editable text.
+  // When the prop changes (e.g. plan refines), we reset the local text via
+  // setState during render. React handles this cleanly without the
+  // setState-in-effect anti-pattern.
+  const [state, setState] = useState({ prop: value, text: value });
+  if (state.prop !== value) {
+    setState({ prop: value, text: value });
+  }
+  const text = state.text;
+  const setText = (v: string) => setState((s) => ({ ...s, text: v }));
+  const [copied, setCopied] = useState(false);
 
   function copy() {
     navigator.clipboard.writeText(text).catch(() => {});
@@ -2291,6 +2631,22 @@ function formatBidStrategy(s: string): string {
   }
 }
 
+function CheckBox({ checked, onChange, label }: { checked: boolean; onChange: () => void; label: string }) {
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={checked}
+      aria-label={label}
+      onClick={(e) => { e.stopPropagation(); onChange(); }}
+      className="cyber-checkbox"
+      data-checked={checked}
+    >
+      {checked ? <Check style={{ width: 11, height: 11 }} /> : null}
+    </button>
+  );
+}
+
 function Tag({ children, tone }: { children: React.ReactNode; tone?: "accent" | "default" }) {
   return (
     <span
@@ -2323,7 +2679,9 @@ function AnalysisPanel({ result }: { result: AISuggestResponse }) {
     { key: "explicit", label: "Explicit signals" },
     { key: "implicit", label: "Implicit signals" },
     { key: "adjacent", label: "Adjacent communities" },
-    { key: "media", label: "Cultural / media proxies" },
+    { key: "cultural", label: "Cultural / food / tradition" },
+    { key: "media", label: "Media proxies" },
+    { key: "diaspora", label: "Diaspora / lived-in / expat" },
     { key: "niches", label: "Niche sub-segments" },
     { key: "contrarian", label: "Contrarian angles" },
   ];
@@ -2442,7 +2800,6 @@ function ResultCard({
   selected,
   copied,
   onAdd,
-  onRemove,
   onCopy,
 }: {
   item: TargetingResult;
@@ -2462,14 +2819,17 @@ function ResultCard({
         alignItems: "flex-start",
         gap: 10,
         padding: "8px 10px",
-        border: "1px solid var(--border)",
+        border: "1px solid " + (selected ? "rgba(0, 255, 247, 0.4)" : "var(--border)"),
         borderRadius: 8,
         background: selected ? "var(--accent-bg)" : "var(--surface-2)",
+        opacity: selected ? 1 : 0.5,
+        transition: "opacity 160ms ease, border-color 160ms ease",
       }}
     >
+      <CheckBox checked={selected} onChange={onAdd} label={`Toggle ${item.name}`} />
       <div style={{ minWidth: 0, flex: 1 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text)" }}>{item.name}</span>
+          <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", textDecoration: selected ? "none" : "line-through" }}>{item.name}</span>
           <span
             style={{
               fontSize: 10,
@@ -2500,25 +2860,9 @@ function ResultCard({
           </p>
         )}
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
-        <button
-          type="button"
-          onClick={selected ? onRemove : onAdd}
-          title={selected ? "Remove" : "Add to selection"}
-          style={{
-            ...iconBtnStyle,
-            background: selected ? "var(--accent)" : "var(--surface)",
-            color: selected ? "white" : "var(--text-2)",
-            borderColor: selected ? "var(--accent)" : "var(--border)",
-          }}
-          aria-label={selected ? "Remove from selection" : "Add to selection"}
-        >
-          {selected ? <Check style={{ width: 13, height: 13 }} /> : <Plus style={{ width: 13, height: 13 }} />}
-        </button>
-        <button type="button" onClick={onCopy} title="Copy ID" style={iconBtnStyle} aria-label="Copy ID">
-          {copied ? <Check style={{ width: 12, height: 12 }} /> : <Copy style={{ width: 12, height: 12 }} />}
-        </button>
-      </div>
+      <button type="button" onClick={onCopy} title="Copy ID" style={iconBtnStyle} aria-label="Copy ID">
+        {copied ? <Check style={{ width: 12, height: 12 }} /> : <Copy style={{ width: 12, height: 12 }} />}
+      </button>
     </div>
   );
 }

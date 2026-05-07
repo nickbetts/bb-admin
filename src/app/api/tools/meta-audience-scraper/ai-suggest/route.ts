@@ -60,9 +60,11 @@ Think hard about the audience before producing queries. Specifically work throug
 1. EXPLICIT signals — who the brief literally names (demographics, professions, interests).
 2. IMPLICIT signals — what the brief implies about life stage, income bracket, values, daily routines, decision triggers.
 3. ADJACENT communities — neighbouring affinity groups, competing brands, parallel hobbies, complementary purchases.
-4. CULTURAL/MEDIA proxies — magazines, podcasts, TV shows, influencers, events, public figures these people consume.
-5. NICHE sub-segments — micro-tribes inside the broader audience that media buyers often miss.
-6. CONTRARIAN angles — non-obvious or opposite affinities that may still convert (the "luxury watches → vintage car owners" lateral leap).
+4. CULTURAL / FOOD / TRADITION proxies — cuisines (Middle Eastern, South Asian, West African etc), languages, religious observances (Eid, Ramadan, Diwali, Christmas, Lent), traditional clothing, religious media, halal / kosher / vegan markers, festivals, language-specific publishers and influencers. For charity, religion, food, or community briefs these are usually the strongest single signals available — surface them aggressively even when the brief doesn't name them.
+5. MEDIA proxies — magazines, podcasts, TV shows, influencers, events, public figures the audience consumes.
+6. DIASPORA / LIVED-IN / EXPAT — for any brief tied to a country, language, religion or community, surface the diaspora dimension explicitly. Meta supports targeting "people who have lived in <country>" who currently live elsewhere; this is often the highest-converting pool for charity, religious giving (Qurbani, Zakat), heritage tourism, immigration services, foreign-language media, and cultural products. List the most relevant origin countries and the most relevant destination countries for the diaspora. Also surface affinity-only proxies (interest in <country> cuisine, language, festivals) for people who never lived there but still affiliate.
+7. NICHE sub-segments — micro-tribes inside the broader audience that media buyers often miss.
+8. CONTRARIAN angles — non-obvious or opposite affinities that may still convert (the "luxury watches → vintage car owners" lateral leap).
 
 Then translate that thinking into 20-25 short search terms (1-3 words each) we will fire at Meta's Graph API \`/search?type=adTargetingCategory\` endpoint.
 
@@ -78,7 +80,9 @@ Return ONLY valid JSON in this exact shape (no markdown, no commentary):
     "explicit": ["short bullet", "..."],
     "implicit": ["short bullet", "..."],
     "adjacent": ["short bullet", "..."],
+    "cultural": ["short bullet — cuisines, religion, language, festivals, traditional clothing, halal/kosher etc. Empty array if not relevant.", "..."],
     "media": ["short bullet", "..."],
+    "diaspora": ["short bullet — expat / lived-in / affinity-only diaspora signals. Empty array if not relevant.", "..."],
     "niches": ["short bullet", "..."],
     "contrarian": ["short bullet", "..."]
   },

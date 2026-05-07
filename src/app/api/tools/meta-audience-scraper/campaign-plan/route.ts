@@ -88,7 +88,27 @@ Produce a build-ready campaign plan that a media buyer could plug straight into 
 6. BIDDING — Default to Lowest Cost (highest volume). Only recommend Cost Cap or Bid Cap when there's a clear unit-economics reason and the account has the data to back it.
 7. ATTRIBUTION — Default to 7-day click + 1-day view for ecom/leads. Use 1-day click only for awareness or very short consideration cycles.
 8. PLACEMENTS — Default to Advantage+ Placements. Only restrict to specific placements (e.g. Reels-only for short-form video creative) when you genuinely have format-specific creative.
-9. CREATIVE — This is where campaigns are won. For each ad set, give 2 distinct creative concepts. Each concept must include: 3 hook variants (different angles, e.g. problem-led, benefit-led, social-proof-led, curiosity), 3 headline variants, 3 primary-text variants, a CTA, and a detailed image-prompt array suitable for gpt-image-1. Specify the copy angle (e.g. "Problem-Agitate-Solve", "Founder story", "User-generated style", "Direct response", "Aspirational lifestyle"). Image prompts must describe scene, subject, composition, mood, lighting, colour palette, camera angle and style. Concrete visual language only. No invented brand logos, no celebrities, no recognisable real people.
+
+8b. GEOGRAPHY & DIASPORA — This is critical. Whenever the brief involves a country, religion, culture, language or community, the geo strategy MUST consider THREE dimensions:
+    (a) People physically located in the country/region.
+    (b) Diaspora / "lived in" / Expats — Meta lets you target "People who have lived in <country>" who currently live elsewhere. For charity, immigration services, cultural products, foreign-language media, religious giving (Qurbani / Zakat / Christmas appeals), heritage tourism etc., this is often the highest-converting cohort.
+    (c) People with a stated or behavioural cultural/linguistic affinity to the country/community even without lived-in history (e.g. interest in Middle Eastern cuisine, Halal food, Arabic language, Eid, Ramadan; interest in Polish food, Polish language; interest in Indian cuisine, Bollywood; interest in Caribbean culture; etc).
+    Always SPLIT prospecting ad sets along these dimensions — do not collapse "in-country", "expat", and "affinity" into a single ad set unless budget genuinely forbids it. Each performs differently and needs its own creative angle.
+
+8c. REGIONAL GROUPING & COHORT SPLITS — When the brief covers multiple countries or regions, GROUP ad sets by region (e.g. "Europe", "Middle East", "Asia", "Oceania", "North America", "UK & Ireland", "Diaspora — Western Europe"). Use the "group" field on each ad set so the UI can render them clustered. Within a region, if there are clearly distinct AGE COHORTS in the brief (e.g. students 18-23 vs parents 35-59, first-time donors vs lapsed donors, GenZ vs Millennials), produce a SEPARATE ad set per cohort with its own age range, its own lookalike, its own creative angle. Meta only allows one age range per ad set so cohort splits are real ad sets.
+
+9. CREATIVE — This is where campaigns are won. For each ad set, give 2 distinct creative concepts. Each concept must include: 3 short-form hook variants, 3 short-form headline variants, 3 short-form primary-text variants (under 125 chars each), a CTA, and a detailed image-prompt array suitable for gpt-image-1. Specify the copy angle (e.g. "Problem-Agitate-Solve", "Founder story", "User-generated style", "Direct response", "Aspirational lifestyle"). Image prompts must describe scene, subject, composition, mood, lighting, colour palette, camera angle and style. Concrete visual language only. No invented brand logos, no celebrities, no recognisable real people.
+
+9b. LONG-FORM COPY — In addition to the short-form variants, give 2-4 LONG-FORM body-copy variants (each 80-220 words) per creative concept. Each long-form variant must use a DIFFERENT TONE so the media buyer can split-test angle, not phrasing. Tones to draw from (pick the 2-4 that fit the brief best, no duplicates within a concept):
+    - "Emotive" — story-driven, vivid imagery, present tense, makes the reader feel something specific. Strong for charity, healthcare, family.
+    - "Stat-led" — opens with a real number or research-backed fact, builds the case rationally. Strong for B2B, charity impact reporting, finance.
+    - "Story" — first-person or named-third-person mini-narrative. A specific person, a specific moment, a specific outcome.
+    - "Urgency" — time-bound, real deadline, real stakes, no manufactured FOMO. Use only when there's a genuine deadline (Eid, end-of-tax-year, season finale, limited stock).
+    - "Direct" — clear value prop, no warm-up, plain language, ends with the ask. Strong for performance and bottom-of-funnel.
+    - "Social proof" — leads with quoted customers, testimonials, named references.
+    - "Authority" — leads with credential, accreditation, named expert, named partner.
+    - "Educational" — explainer, teaches the reader the mechanism (how Qurbani works, how a tax-relief gift works, how a service works).
+    Each long-form variant must respect the COPY HYGIENE rules below. Do NOT just pad the short-form text — each long-form variant should feel like a different writer wrote it.
 
    COPY HYGIENE (NON-NEGOTIABLE — this copy goes live unchanged in real Facebook/Instagram ads):
    - NEVER use em dashes (—). Never use en dashes (–) in body copy. Use full stops, commas, or short sentences instead.
@@ -108,7 +128,7 @@ Produce a build-ready campaign plan that a media buyer could plug straight into 
 10. EXCLUSIONS, FREQUENCY, LOOKALIKES — Recommend when relevant. Exclude existing customers from prospecting. Frequency cap retargeting. Lookalikes off purchasers (or value-based LALs) when there's enough seed data; ${dailyBudget < 50 ? "at this budget skip LALs initially — pixel data first." : "make the call based on the brief and explain it."}
 11. WHY EVERYTHING — Every "why" field must be 2-3 sentences of *specific, expert* reasoning. Not "this audience is good for the brand" — actually explain the media-buying logic ("Stacking three behaviour signals that Meta's auction can intersect lets us hold CPM down while still hitting a high-intent pool. Optimising for Purchase rather than ATC means delivery skews to people who Meta has seen complete checkouts on similar products in the last 7 days.").
 
-Map the audience pillars below to ad sets. Consolidate aggressively — each ad set needs ~50 conversions per week to exit learning. If the budget can't support a pillar as its own ad set, fold it into another or drop it.
+Map the audience pillars below to ad sets. Consolidate aggressively. Each ad set needs ~50 conversions per week to exit learning. If the budget can't support a pillar as its own ad set, fold it into another or drop it. BUT — per rule 8c — if the brief naturally splits across regions or distinct cohorts, do produce one ad set per region+cohort combination and let the budget split sort itself out. Do not collapse Europe and the Middle East into one ad set just to save budget.
 
 AUDIENCE PILLARS
 ${pillarsBlock}
@@ -137,14 +157,20 @@ Return ONLY valid JSON (no markdown fences, no commentary). British English thro
       "why": "2-3 sentences. Why this campaign exists, why this objective, why this budget share.",
       "adSets": [
         {
-          "name": "string — descriptive, e.g. 'PROS | Marathon hobbyists | Adv+ Audience'",
+          "name": "string — descriptive, e.g. 'EUROPE | Students 18-23 | Adv+ Audience'",
+          "group": "string — visual grouping label so the UI can cluster ad sets, e.g. 'Europe', 'Middle East', 'Asia', 'Oceania', 'North America', 'Diaspora — Western Europe'. Required when there are multiple regions; leave empty string '' when there's only one ad set or no useful grouping.",
+          "geoTargeting": ["GB", "IE", "FR", "DE", "..."],
+          "geoTargetingNotes": "string — 1 sentence describing the geo logic, e.g. 'In-country prospecting across western Europe', 'Diaspora: people who lived in Pakistan now living in the UK/EU', 'Affinity: interest in Middle Eastern cuisine and Halal food across western Europe' — be explicit about WHICH of the three geo dimensions (in-country / expat-lived-in / affinity-only) this ad set is hitting.",
+          "expatTargeting": "string — if this ad set targets expats / 'people who lived in X', describe it precisely, e.g. 'People who have lived in Pakistan or Bangladesh, currently living in UK, IE, FR, DE'. Otherwise empty string.",
+          "cohort": "string — short cohort label, e.g. 'Students 18-23', 'Parents 35-59', 'First-time donors', 'Lapsed donors 12m+'. Empty string if no cohort split.",
           "pillarName": "string",
           "audienceSummary": "1-2 sentences describing who is in this ad set and why they should convert",
           "targetingOptionIds": ["meta_id", "..."],
+          "detailedTargeting": "string — short summary of the layered detailed-targeting interests/behaviours used, e.g. 'Interests: Middle Eastern cuisine, Halal food, Eid al-Adha, Ramadan; Behaviours: Charitable donations, Engaged shoppers'. Use the option NAMES so a media buyer can paste them straight in.",
           "exclusions": ["string — e.g. 'Existing purchasers (CRM)', 'Website visitors 30d'", "..."],
-          "lookalikeStrategy": "string — e.g. '1-3% LAL of past 90d purchasers, GB seed' or 'Skip LALs at this budget' — short, decisive",
+          "lookalikeStrategy": "string — be specific about the SEED list and percentage, e.g. '1-3% LAL of past 90d donors, GB seed', '1% LAL of student-form submissions, EU seed', or 'Skip LALs at this budget'.",
           "optimizationGoal": "OFFSITE_CONVERSIONS | LEAD_GENERATION | LINK_CLICKS | THRUPLAY | REACH | IMPRESSIONS | LANDING_PAGE_VIEWS | VALUE | ADD_TO_CART | INITIATE_CHECKOUT",
-          "conversionEvent": "string — only for conversions optimisation, e.g. 'Purchase', 'Lead', 'Complete Registration'",
+          "conversionEvent": "string — only for conversions optimisation, e.g. 'Purchase', 'Lead', 'Complete Registration', 'Donation'",
           "billingEvent": "IMPRESSIONS",
           "dailyBudget": number,
           "frequencyCap": "string — e.g. '2 impressions per 7 days (retargeting)' or 'No cap — broad prospecting' — short, decisive",
@@ -153,15 +179,22 @@ Return ONLY valid JSON (no markdown fences, no commentary). British English thro
           "ageRange": { "min": number, "max": number },
           "genders": "all" | "female" | "male",
           "advantageAudience": boolean,
-          "why": "3-4 sentences. Why this audience configuration, why this optimisation goal, why this budget share, why this Advantage+ choice.",
+          "why": "3-4 sentences. Why this audience configuration, why this geo dimension, why this cohort split, why this optimisation goal, why this Advantage+ choice.",
           "creatives": [
             {
               "format": "single_image" | "carousel" | "video" | "collection",
               "copyAngle": "string — e.g. 'Problem-Agitate-Solve', 'Founder story', 'User-generated', 'Direct-response offer', 'Aspirational lifestyle', 'Social proof', 'Comparison'",
-              "hooks": ["3 distinct first-line hook variants — different angles"],
-              "headlines": ["3 headline variants under 40 chars each"],
-              "primaryTexts": ["3 primary-text variants under 125 chars each"],
-              "cta": "SHOP_NOW | LEARN_MORE | SIGN_UP | GET_OFFER | DOWNLOAD | BOOK_NOW | SUBSCRIBE | CONTACT_US",
+              "hooks": ["3 distinct short-form first-line hook variants — different angles"],
+              "headlines": ["3 short-form headline variants under 40 chars each"],
+              "primaryTexts": ["3 short-form primary-text variants under 125 chars each"],
+              "longFormVariants": [
+                {
+                  "tone": "Emotive | Stat-led | Story | Urgency | Direct | Social proof | Authority | Educational",
+                  "text": "80-220 word body copy in this tone. Respect copy hygiene. Each variant must feel like a different writer wrote it."
+                },
+                "... (2-4 variants total, each a DIFFERENT tone)"
+              ],
+              "cta": "SHOP_NOW | LEARN_MORE | SIGN_UP | GET_OFFER | DOWNLOAD | BOOK_NOW | SUBSCRIBE | CONTACT_US | DONATE_NOW",
               "imagePrompts": [
                 "Detailed visual brief — 2-4 sentences each. Scene, subject, composition, mood, lighting, colour palette, style. Brand-safe (no logos, no celebrities, no real recognisable people).",
                 "..."
