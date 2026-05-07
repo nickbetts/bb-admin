@@ -182,6 +182,24 @@ export default function MetaAudienceScraperPage() {
   const [estimates, setEstimates] = useState<Record<string, { ok: true; estimate: { estimatedDauLower: number; estimatedDauUpper: number; estimatedMauLower: number; estimatedMauUpper: number } } | { ok: false; error: string }>>({});
   const [estimatesLoading, setEstimatesLoading] = useState(false);
 
+  // ── Persistence ──────────────────────────────────────────────────────
+  type SavedPlanSummary = { id: string; title: string; clientId: string | null; createdAt: string; updatedAt: string };
+  const [savedPlans, setSavedPlans] = useState<SavedPlanSummary[]>([]);
+  const [currentPlanId, setCurrentPlanId] = useState<string | null>(null);
+  const [savingPlan, setSavingPlan] = useState(false);
+  const [loadingPlan, setLoadingPlan] = useState(false);
+
+  const refreshSavedPlans = useCallback(async () => {
+    try {
+      const res = await fetch("/api/tools/meta-audience-scraper/plans");
+      if (!res.ok) return;
+      const data = (await res.json()) as { plans: SavedPlanSummary[] };
+      setSavedPlans(data.plans);
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => { refreshSavedPlans(); }, [refreshSavedPlans]);
+
   // Per-slice refinement: which ad set or creative is the user currently
   // editing? Map of slice key -> { feedback, loading }.
   type SliceRefineState = { feedback: string; loading: boolean };
@@ -411,6 +429,99 @@ export default function MetaAudienceScraperPage() {
       setRefineLoading(false);
     }
   }, [plan, refineFeedback, brief, clientName, aiResult, refinementHistory]);
+
+  // ── Save / load whole-plan state ────────────────────────────────────────
+  // Bundles the entire tool state into one JSON blob so we can rehydrate it
+  // later. Title defaults to client name + brief snippet.
+  const buildStateSnapshot = useCallback(() => ({
+    brief, keywordsText, sector, clientName, geography,
+    dailyBudget, currency, objective,
+    accountId,
+    aiResult, plan, excludedPillars: [...excludedPillars], excludedOptionIds: [...excludedOptionIds],
+    refinementHistory, images, estimates,
+  }), [brief, keywordsText, sector, clientName, geography, dailyBudget, currency, objective, accountId, aiResult, plan, excludedPillars, excludedOptionIds, refinementHistory, images, estimates]);
+
+  const savePlan = useCallback(async () => {
+    setSavingPlan(true);
+    setError(null);
+    try {
+      const snapshot = buildStateSnapshot();
+      const titlePieces = [clientName.trim(), brief.trim().slice(0, 60)].filter(Boolean);
+      const title = titlePieces.join(" · ") || `Plan ${new Date().toLocaleString("en-GB")}`;
+      if (currentPlanId) {
+        const res = await fetch(`/api/tools/meta-audience-scraper/plans/${currentPlanId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title, state: snapshot }),
+        });
+        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Save failed");
+      } else {
+        const res = await fetch("/api/tools/meta-audience-scraper/plans", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title, state: snapshot }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? "Save failed");
+        setCurrentPlanId(data.plan.id);
+      }
+      await refreshSavedPlans();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setSavingPlan(false);
+    }
+  }, [buildStateSnapshot, clientName, brief, currentPlanId, refreshSavedPlans]);
+
+  const loadPlan = useCallback(async (id: string) => {
+    setLoadingPlan(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/tools/meta-audience-scraper/plans/${id}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Load failed");
+      const s = data.plan?.state ?? {};
+      setBrief(s.brief ?? "");
+      setKeywordsText(s.keywordsText ?? "");
+      setSector(s.sector ?? "");
+      setClientName(s.clientName ?? "");
+      setGeography(s.geography ?? "");
+      setDailyBudget(s.dailyBudget ?? "");
+      setCurrency(s.currency ?? "GBP");
+      setObjective(s.objective ?? "");
+      setAccountId(s.accountId ?? "");
+      setAiResult(s.aiResult ?? null);
+      setPlan(s.plan ?? null);
+      setExcludedPillars(new Set<string>(Array.isArray(s.excludedPillars) ? s.excludedPillars : []));
+      setExcludedOptionIds(new Set<string>(Array.isArray(s.excludedOptionIds) ? s.excludedOptionIds : []));
+      setRefinementHistory(Array.isArray(s.refinementHistory) ? s.refinementHistory : []);
+      setImages(s.images ?? {});
+      setEstimates(s.estimates ?? {});
+      setCurrentPlanId(id);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Load failed");
+    } finally {
+      setLoadingPlan(false);
+    }
+  }, []);
+
+  const deleteSavedPlan = useCallback(async (id: string) => {
+    try {
+      await fetch(`/api/tools/meta-audience-scraper/plans/${id}`, { method: "DELETE" });
+      if (currentPlanId === id) setCurrentPlanId(null);
+      await refreshSavedPlans();
+    } catch { /* ignore */ }
+  }, [currentPlanId, refreshSavedPlans]);
+
+  function startNewPlan() {
+    setCurrentPlanId(null);
+    setBrief(""); setKeywordsText(""); setSector(""); setClientName(""); setGeography("");
+    setDailyBudget(""); setObjective("");
+    setAiResult(null); setPlan(null);
+    setExcludedPillars(new Set()); setExcludedOptionIds(new Set());
+    setRefinementHistory([]); setImages({}); setEstimates({});
+    setError(null);
+  }
 
   // ── Per-slice refinement (ad set / creative) ───────────────────────────
   const refineSlice = useCallback(async (scope: { campaignIndex: number; adSetIndex?: number; creativeIndex?: number }) => {
@@ -726,6 +837,78 @@ export default function MetaAudienceScraperPage() {
 
       <div style={{ marginTop: 16 }}>
         <div>
+          {/* Saved-plan toolbar */}
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 10,
+            padding: "10px 14px",
+            marginBottom: 12,
+            background: "rgba(0, 255, 247, 0.04)",
+            border: "1px solid rgba(0, 255, 247, 0.2)",
+            borderRadius: 6,
+            flexWrap: "wrap",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
+              <span style={{
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: "0.18em",
+                textTransform: "uppercase",
+                color: "var(--cyber-cyan, var(--accent))",
+                fontFamily: "ui-monospace, SF Mono, Menlo, Consolas, monospace",
+              }}>
+                &gt; Saved plans
+              </span>
+              <select
+                value={currentPlanId ?? ""}
+                onChange={(e) => { if (e.target.value) loadPlan(e.target.value); }}
+                disabled={loadingPlan || savedPlans.length === 0}
+                style={{ ...inputStyle, fontSize: 12, maxWidth: 360 }}
+              >
+                <option value="">{savedPlans.length === 0 ? "No saved plans" : "Load a saved plan…"}</option>
+                {savedPlans.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.title} · {new Date(p.updatedAt).toLocaleDateString("en-GB")}
+                  </option>
+                ))}
+              </select>
+              {currentPlanId && (
+                <span style={{ fontSize: 10, color: "var(--text-3)", fontFamily: "ui-monospace, SF Mono, Menlo, monospace", letterSpacing: "0.05em" }}>
+                  EDITING #{currentPlanId.slice(-6)}
+                </span>
+              )}
+            </div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              <button
+                type="button"
+                onClick={startNewPlan}
+                disabled={savingPlan || loadingPlan}
+                style={{ ...fileBtnStyle, fontSize: 11 }}
+              >
+                New
+              </button>
+              <button
+                type="button"
+                onClick={savePlan}
+                disabled={savingPlan || (!brief.trim() && !aiResult && !plan)}
+                style={{ ...primaryBtnStyle, padding: "6px 12px", fontSize: 11 }}
+              >
+                {savingPlan ? <Loader2 style={{ width: 12, height: 12 }} className="spin" /> : null}
+                {currentPlanId ? "Save changes" : "Save plan"}
+              </button>
+              {currentPlanId && (
+                <button
+                  type="button"
+                  onClick={() => currentPlanId && deleteSavedPlan(currentPlanId)}
+                  style={{ ...fileBtnStyle, fontSize: 11 }}
+                >
+                  Delete
+                </button>
+              )}
+            </div>
+          </div>
           <section style={cardStyle}>
               <label style={labelStyle}>Brief (or campaign objective)</label>
               <textarea
