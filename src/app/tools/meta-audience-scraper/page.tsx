@@ -4,15 +4,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Crosshair,
   Sparkles,
-  Search,
   Loader2,
   Plus,
   Check,
   Copy,
-  Trash2,
   AlertTriangle,
-  Download,
-  X,
   ChevronDown,
   ChevronUp,
   Layers,
@@ -144,8 +140,6 @@ interface GeneratedImage {
 // ─── Component ────────────────────────────────────────────────────────────
 
 export default function MetaAudienceScraperPage() {
-  const [tab, setTab] = useState<"ai" | "manual">("ai");
-
   // AI suggest
   const [brief, setBrief] = useState("");
   const [keywordsText, setKeywordsText] = useState("");
@@ -156,14 +150,10 @@ export default function MetaAudienceScraperPage() {
   const [aiResult, setAiResult] = useState<AISuggestResponse | null>(null);
   const [collapsedPillars, setCollapsedPillars] = useState<Set<string>>(new Set());
 
-  // Manual search
-  const [searchMode, setSearchMode] = useState<"all" | "interests" | "suggest">("all");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchSeeds, setSearchSeeds] = useState("");
-  const [searchLoading, setSearchLoading] = useState(false);
-  const [searchResults, setSearchResults] = useState<TargetingResult[]>([]);
-
-  // Shared
+  // Selection state — drives whether the campaign plan focuses on a subset
+  // of the AI pillars or uses them all. The visible Selection panel was
+  // removed; per-pillar "Add all" and per-option +/- on the cards still
+  // toggle this state for influence over plan generation.
   const [selected, setSelected] = useState<SelectedItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -192,7 +182,6 @@ export default function MetaAudienceScraperPage() {
   function removeSelection(id: string) {
     setSelected((prev) => prev.filter((p) => p.id !== id));
   }
-  function clearSelection() { setSelected([]); }
 
   function copyId(id: string) {
     navigator.clipboard.writeText(id).catch(() => {});
@@ -243,86 +232,6 @@ export default function MetaAudienceScraperPage() {
       setAiLoading(false);
     }
   }, [brief, keywordsText, sector, clientName, geography]);
-
-  // ── Manual search ─────────────────────────────────────────────────────
-  const runSearch = useCallback(async () => {
-    setError(null);
-    setSearchResults([]);
-    if (searchMode === "suggest") {
-      const seeds = searchSeeds.split(/\r?\n|,/).map((s) => s.trim()).filter(Boolean);
-      if (seeds.length === 0) {
-        setError("Add at least one seed interest name.");
-        return;
-      }
-      setSearchLoading(true);
-      try {
-        const res = await fetch("/api/tools/meta-audience-scraper/search", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ mode: "suggest", seedNames: seeds, limit: 50 }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error ?? "Search failed");
-        setSearchResults(data.results as TargetingResult[]);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Search failed");
-      } finally {
-        setSearchLoading(false);
-      }
-      return;
-    }
-    if (!searchQuery.trim()) {
-      setError("Enter a search term.");
-      return;
-    }
-    setSearchLoading(true);
-    try {
-      const res = await fetch("/api/tools/meta-audience-scraper/search", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode: searchMode, query: searchQuery.trim(), limit: 50 }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Search failed");
-      setSearchResults(data.results as TargetingResult[]);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Search failed");
-    } finally {
-      setSearchLoading(false);
-    }
-  }, [searchMode, searchQuery, searchSeeds]);
-
-  // ── Selection export ──────────────────────────────────────────────────
-  function exportSelection() {
-    const interests = selected.filter((s) => /interest/i.test(s.type)).map((s) => ({ id: s.id, name: s.name }));
-    const behaviors = selected.filter((s) => /behavior|behaviour/i.test(s.type)).map((s) => ({ id: s.id, name: s.name }));
-    const other = selected.filter((s) => !/interest|behavior|behaviour/i.test(s.type)).map((s) => ({ id: s.id, name: s.name, type: s.type }));
-
-    const payload = {
-      generatedAt: new Date().toISOString(),
-      total: selected.length,
-      targeting_spec: {
-        ...(interests.length ? { interests } : {}),
-        ...(behaviors.length ? { behaviors } : {}),
-        ...(other.length ? { other } : {}),
-      },
-      items: selected,
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `meta-audience-${Date.now()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
-  function copySelectionIds() {
-    const text = selected.map((s) => `${s.id}\t${s.name}\t${s.type}`).join("\n");
-    navigator.clipboard.writeText(text).catch(() => {});
-    setCopiedId("__all");
-    setTimeout(() => setCopiedId(null), 1200);
-  }
 
   // ── Build pillars to send to the campaign-plan endpoint ────────────────
   // If user selection is non-empty AND came from AI pillars we group selected
@@ -424,16 +333,6 @@ export default function MetaAudienceScraperPage() {
     return `${c}-${a}-${cr}-${frame}`;
   }
 
-  function aspectForFormat(format: string): "square" | "portrait" | "landscape" {
-    if (format === "video") return "portrait";
-    return "square";
-  }
-
-  function getImagePrompts(creative: CreativeConcept): string[] {
-    if (creative.imagePrompts?.length) return creative.imagePrompts;
-    if (creative.imagePrompt) return [creative.imagePrompt];
-    return [];
-  }
 
   async function generateImage(key: string, basePrompt: string, aspect: "square" | "portrait" | "landscape") {
     const overridden = imagePromptOverrides[key];
@@ -643,7 +542,7 @@ export default function MetaAudienceScraperPage() {
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 340px", gap: 24, marginTop: 16 }}>
+      <div style={{ marginTop: 16 }}>
         <div>
           <section style={cardStyle}>
               <label style={labelStyle}>Brief (or campaign objective)</label>
@@ -892,110 +791,6 @@ export default function MetaAudienceScraperPage() {
           )}
 
         </div>
-
-        {/* ── Selection panel ──────────────────────────────────────────── */}
-        <aside
-          style={{
-            position: "sticky",
-            top: 24,
-            alignSelf: "flex-start",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--r)",
-            background: "var(--surface)",
-            maxHeight: "calc(100vh - 48px)",
-            display: "flex",
-            flexDirection: "column",
-          }}
-        >
-          <div
-            style={{
-              padding: "12px 14px",
-              borderBottom: "1px solid var(--border)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 8,
-            }}
-          >
-            <div>
-              <h2 style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>Selection</h2>
-              <p style={{ margin: "2px 0 0", fontSize: 11, color: "var(--text-3)" }}>
-                {selected.length} item{selected.length === 1 ? "" : "s"}
-              </p>
-            </div>
-            {selected.length > 0 && (
-              <button
-                type="button"
-                onClick={clearSelection}
-                title="Clear all"
-                style={iconBtnStyle}
-                aria-label="Clear selection"
-              >
-                <Trash2 style={{ width: 13, height: 13 }} />
-              </button>
-            )}
-          </div>
-
-          <div style={{ flex: 1, overflowY: "auto", padding: 10 }}>
-            {selected.length === 0 ? (
-              <p style={{ fontSize: 12, color: "var(--text-3)" }}>
-                Click <strong>+</strong> on any option to add it here. Export when you&rsquo;re ready to plug into Ads Manager.
-              </p>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {selected.map((s) => (
-                  <div
-                    key={s.id}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      padding: "6px 8px",
-                      border: "1px solid var(--border)",
-                      borderRadius: 8,
-                      background: "var(--surface-2)",
-                    }}
-                  >
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <p style={{ margin: 0, fontSize: 12, fontWeight: 500, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {s.name}
-                      </p>
-                      <p style={{ margin: 0, fontSize: 10, color: "var(--text-3)" }}>
-                        {s.type}
-                        {s.pillar ? ` · ${s.pillar}` : ""}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removeSelection(s.id)}
-                      style={{
-                        ...iconBtnStyle,
-                        width: 24,
-                        height: 24,
-                      }}
-                      aria-label="Remove"
-                    >
-                      <X style={{ width: 11, height: 11 }} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {selected.length > 0 && (
-            <div style={{ padding: 10, borderTop: "1px solid var(--border)", display: "flex", gap: 6 }}>
-              <button type="button" onClick={copySelectionIds} style={{ ...fileBtnStyle, flex: 1, justifyContent: "center" }}>
-                {copiedId === "__all" ? <Check style={{ width: 12, height: 12 }} /> : <Copy style={{ width: 12, height: 12 }} />}
-                {copiedId === "__all" ? "Copied" : "Copy"}
-              </button>
-              <button type="button" onClick={exportSelection} style={{ ...primaryBtnStyle, flex: 1, justifyContent: "center" }}>
-                <Download style={{ width: 12, height: 12 }} />
-                Export JSON
-              </button>
-            </div>
-          )}
-        </aside>
       </div>
 
       </main>
@@ -1460,15 +1255,178 @@ export default function MetaAudienceScraperPage() {
            UNHINGED MODE — additional visual chaos.
            ───────────────────────────────────────────────────────────── */
 
-        /* Hide Stratos sidebar when Meta Assassin is mounted */
-        body.meta-assassin-fullscreen .sidebar { display: none !important; }
-        body.meta-assassin-fullscreen .app-main {
-          background: var(--cyber-bg-deep) !important;
-          padding: 0 !important;
+        /* ─────────────────────────────────────────────────────────────
+           STRATOS TAKEOVER — when Meta Assassin is mounted, the rest of
+           the app gets dragged into the cyberpunk aesthetic. Reverts
+           cleanly when the user navigates away.
+           ───────────────────────────────────────────────────────────── */
+        body.meta-assassin-fullscreen {
+          --cyber-magenta-x: #ff2bd6;
+          --cyber-cyan-x: #00fff7;
+          --cyber-bg-x: #06050d;
         }
-        body.meta-assassin-fullscreen .sidebar-mobile-trigger { display: none !important; }
-        body.meta-assassin-fullscreen .back-to-top,
-        body.meta-assassin-fullscreen .scroll-progress { display: none !important; }
+        body.meta-assassin-fullscreen .app-main {
+          background:
+            radial-gradient(ellipse at 20% 0%, rgba(255, 43, 214, 0.12) 0%, transparent 50%),
+            radial-gradient(ellipse at 80% 100%, rgba(0, 255, 247, 0.10) 0%, transparent 50%),
+            var(--cyber-bg-x) !important;
+        }
+
+        /* ── Sidebar takeover ───────────────────────────────────────── */
+        body.meta-assassin-fullscreen .sidebar {
+          background: linear-gradient(180deg, rgba(12, 10, 28, 0.92) 0%, rgba(20, 17, 42, 0.92) 100%) !important;
+          border-right: 1px solid rgba(255, 43, 214, 0.4) !important;
+          box-shadow:
+            inset -1px 0 0 rgba(0, 255, 247, 0.18),
+            12px 0 60px -20px rgba(255, 43, 214, 0.5) !important;
+          position: relative;
+          overflow: hidden;
+        }
+        body.meta-assassin-fullscreen .sidebar::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background-image:
+            linear-gradient(rgba(255, 43, 214, 0.04) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0, 255, 247, 0.04) 1px, transparent 1px);
+          background-size: 24px 24px;
+          pointer-events: none;
+          mask-image: radial-gradient(ellipse at 50% 30%, rgba(0,0,0,1) 0%, rgba(0,0,0,0.3) 100%);
+        }
+        body.meta-assassin-fullscreen .sidebar::after {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background-image: linear-gradient(transparent 50%, rgba(0,0,0,0.25) 50%);
+          background-size: 100% 2px;
+          pointer-events: none;
+          opacity: 0.4;
+          animation: cyber-scanmove 6s linear infinite;
+        }
+
+        /* Sidebar logo area — replace with neon banner */
+        body.meta-assassin-fullscreen .sidebar-logo {
+          border-bottom: 1px solid rgba(255, 43, 214, 0.3) !important;
+          position: relative;
+          z-index: 1;
+        }
+        body.meta-assassin-fullscreen .sidebar-logo img {
+          filter: hue-rotate(280deg) saturate(2) brightness(1.2) drop-shadow(0 0 8px rgba(255, 43, 214, 0.7));
+        }
+
+        /* Section headings inside sidebar */
+        body.meta-assassin-fullscreen .sidebar-nav-label {
+          color: var(--cyber-cyan-x) !important;
+          font-family: ui-monospace, SF Mono, Menlo, Consolas, monospace !important;
+          letter-spacing: 0.18em !important;
+          text-transform: uppercase !important;
+          text-shadow: 0 0 8px rgba(0, 255, 247, 0.4);
+          position: relative;
+          z-index: 1;
+        }
+        body.meta-assassin-fullscreen .sidebar-nav-label::before {
+          content: "// ";
+          color: rgba(0, 255, 247, 0.5);
+        }
+
+        /* Nav items */
+        body.meta-assassin-fullscreen .nav-item {
+          color: rgba(205, 198, 230, 0.88) !important;
+          font-family: ui-monospace, SF Mono, Menlo, Consolas, monospace !important;
+          font-size: 12px !important;
+          letter-spacing: 0.04em !important;
+          border: 1px solid transparent !important;
+          border-radius: 0 !important;
+          position: relative;
+          z-index: 1;
+          transition: all 160ms ease;
+        }
+        body.meta-assassin-fullscreen .nav-item:hover {
+          background: rgba(0, 255, 247, 0.08) !important;
+          color: #fff !important;
+          border-color: rgba(0, 255, 247, 0.4) !important;
+          box-shadow:
+            inset 3px 0 0 var(--cyber-cyan-x),
+            0 0 14px rgba(0, 255, 247, 0.3);
+          transform: translateX(2px);
+        }
+        body.meta-assassin-fullscreen .nav-item.active {
+          background: linear-gradient(90deg, rgba(255, 43, 214, 0.22), rgba(255, 43, 214, 0.05)) !important;
+          color: #fff !important;
+          border-color: rgba(255, 43, 214, 0.5) !important;
+          box-shadow:
+            inset 3px 0 0 var(--cyber-magenta-x),
+            0 0 18px rgba(255, 43, 214, 0.35);
+          text-shadow: 0 0 8px rgba(255, 43, 214, 0.6);
+        }
+        body.meta-assassin-fullscreen .nav-item.active .nav-item-icon {
+          color: var(--cyber-magenta-x) !important;
+          filter: drop-shadow(0 0 4px var(--cyber-magenta-x));
+        }
+        body.meta-assassin-fullscreen .nav-item:hover .nav-item-icon {
+          color: var(--cyber-cyan-x) !important;
+          filter: drop-shadow(0 0 4px var(--cyber-cyan-x));
+        }
+
+        /* Sidebar footer / user / theme toggle / logout */
+        body.meta-assassin-fullscreen .sidebar-footer {
+          border-top: 1px solid rgba(255, 43, 214, 0.3) !important;
+          background: rgba(8, 6, 18, 0.5) !important;
+          position: relative;
+          z-index: 1;
+        }
+        body.meta-assassin-fullscreen .sidebar-user {
+          background: rgba(0, 255, 247, 0.05) !important;
+          border: 1px solid rgba(0, 255, 247, 0.2) !important;
+        }
+        body.meta-assassin-fullscreen .sidebar-avatar {
+          background: linear-gradient(135deg, var(--cyber-magenta-x), var(--cyber-cyan-x)) !important;
+          color: #06050d !important;
+          font-weight: 700;
+          box-shadow: 0 0 12px rgba(255, 43, 214, 0.5);
+        }
+        body.meta-assassin-fullscreen .sidebar-logout-btn:hover {
+          color: #ff5577 !important;
+          border-color: #ff5577 !important;
+          box-shadow: inset 3px 0 0 #ff5577, 0 0 12px rgba(255, 85, 119, 0.3) !important;
+        }
+
+        /* DA Checker mini-tool inside sidebar */
+        body.meta-assassin-fullscreen .sidebar input,
+        body.meta-assassin-fullscreen .sidebar select {
+          background: rgba(8, 6, 18, 0.7) !important;
+          border-color: rgba(255, 43, 214, 0.25) !important;
+          color: #f5efff !important;
+          font-family: ui-monospace, SF Mono, Menlo, Consolas, monospace !important;
+        }
+        body.meta-assassin-fullscreen .sidebar input:focus,
+        body.meta-assassin-fullscreen .sidebar select:focus {
+          border-color: var(--cyber-cyan-x) !important;
+          box-shadow: 0 0 0 1px var(--cyber-cyan-x), 0 0 12px rgba(0, 255, 247, 0.3) !important;
+        }
+        body.meta-assassin-fullscreen .sidebar button {
+          font-family: inherit;
+        }
+
+        /* Search/cmd palette button at top */
+        body.meta-assassin-fullscreen .nav-item kbd {
+          background: rgba(0, 255, 247, 0.1) !important;
+          border-color: rgba(0, 255, 247, 0.3) !important;
+          color: var(--cyber-cyan-x) !important;
+          font-family: ui-monospace, SF Mono, Menlo, Consolas, monospace !important;
+        }
+
+        /* Mobile takeover cleanups */
+        body.meta-assassin-fullscreen .sidebar-mobile-trigger {
+          background: var(--cyber-bg-x) !important;
+          border: 1px solid var(--cyber-magenta-x) !important;
+          color: var(--cyber-magenta-x) !important;
+          box-shadow: 0 0 14px rgba(255, 43, 214, 0.4);
+        }
+        body.meta-assassin-fullscreen .sidebar-overlay {
+          background: rgba(6, 5, 13, 0.8) !important;
+          backdrop-filter: blur(4px);
+        }
 
         /* Aggressive scanlines */
         .cyber-scanlines {
