@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession, hasPermission } from "@/lib/auth";
 import { getAnthropicClient } from "@/lib/anthropic-client";
-import { searchTargetingMany, type MetaTargetingResult } from "@/lib/meta-targeting";
+import { exhaustiveTargetingSearch, type MetaTargetingResult } from "@/lib/meta-targeting";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -66,13 +66,23 @@ Think hard about the audience before producing queries. Specifically work throug
 7. NICHE sub-segments — micro-tribes inside the broader audience that media buyers often miss.
 8. CONTRARIAN angles — non-obvious or opposite affinities that may still convert (the "luxury watches → vintage car owners" lateral leap).
 
-Then translate that thinking into 20-25 short search terms (1-3 words each) we will fire at Meta's Graph API \`/search?type=adTargetingCategory\` endpoint.
+Then translate that thinking into 28-35 short search terms (1-3 words each) we will fire across Meta's Graph API search endpoints. Behind the scenes each query is run against FOUR endpoints (adTargetingCategory, adinterest, behaviours-class, demographics-class) plus single-word splits and a similar-interest expansion — so generous coverage matters more than tight count.
 
-Rules for the queries:
-- Mix categories: brand names, hobbies, professions, life stages, purchase behaviours, related media, life events.
-- Single words usually return broader results — prefer them when the topic allows.
-- No duplicates, no near-duplicates, no overly generic terms ("people", "men", "users").
-- Use British English spellings and proper nouns where applicable.
+Rules for the queries (HARD CONSTRAINTS — not optional):
+- Aim for ~50/50 split between single-word and 2-3 word queries. Single words pull broader interest pools; multi-word phrases pull tighter niches. We need both.
+- Mix the categories aggressively. Every plan should include some of each:
+   • Brand / product names (specific commercial entities — e.g. "Strava", "Patek Philippe", "JustGiving")
+   • Cuisines, foods, religions, languages, festivals (e.g. "Halal", "Eid", "Iftar", "Ramadan", "Qurbani", "Middle Eastern cuisine", "Arabic")
+   • Hobbies and activities (e.g. "Marathon", "Sailing", "Crochet")
+   • Professions and roles (e.g. "Architect", "Plumber", "Headteacher")
+   • Life stages and events (e.g. "Newlyweds", "First-time parents", "Empty nesters", "Recently moved")
+   • Purchase behaviours (e.g. "Charitable donations", "Premium brand purchasers", "Online shoppers")
+   • Media properties (e.g. "Vogue", "BBC News", "Joe Rogan Experience")
+   • Communities / fandoms (e.g. "Liverpool FC", "K-pop", "Crossfit")
+   • Where relevant, geographic or diaspora terms (country names, region names, "Pakistani diaspora")
+- No duplicates, no near-duplicates, no generic filler ("people", "users", "men").
+- British English spellings; preserve proper nouns and brand capitalisation.
+- It is FINE to include obvious queries even if they feel basic. The exhaustive search downstream will dedupe automatically and broad queries often pull options that lateral queries miss.
 
 Return ONLY valid JSON in this exact shape (no markdown, no commentary):
 {
@@ -117,7 +127,7 @@ ${briefContext}`;
     }
 
     const pass1Queries = Array.isArray(analysis.queries)
-      ? Array.from(new Set(analysis.queries.map((q) => String(q).trim()).filter(Boolean))).slice(0, 25)
+      ? Array.from(new Set(analysis.queries.map((q) => String(q).trim()).filter(Boolean))).slice(0, 35)
       : [];
     const allInitialQueries = Array.from(new Set([...keywords, ...pass1Queries]));
 
@@ -125,8 +135,13 @@ ${briefContext}`;
       return NextResponse.json({ error: "No usable search queries generated" }, { status: 502 });
     }
 
-    // ── Pass 2: Meta search (first wave) ────────────────────────────────────
-    const firstWave = await searchTargetingMany(allInitialQueries, { perQueryLimit: 15 });
+    // ── Pass 2: Meta search (first wave, exhaustive) ────────────────────────
+    // Hits four Meta endpoints per query (adTargetingCategory, adinterest,
+    // behaviours-class, demographics-class) plus single-word variants of
+    // any multi-word query, plus a similar-interest expansion seeded by
+    // the top results. Telemetry is returned so we can show coverage.
+    const firstWaveRun = await exhaustiveTargetingSearch(allInitialQueries, { perQueryLimit: 18 });
+    const firstWave = firstWaveRun.results;
 
     // ── Pass 3: gap analysis — what did the first wave miss? ────────────────
     const firstWaveSummary = summariseForGapPrompt(firstWave);
@@ -181,10 +196,11 @@ ${firstWaveSummary}`;
         )).slice(0, 15)
       : [];
 
-    // ── Pass 4: Meta search (gap wave) ──────────────────────────────────────
-    const secondWave = pass2Queries.length
-      ? await searchTargetingMany(pass2Queries, { perQueryLimit: 15 })
-      : [];
+    // ── Pass 4: Meta search (gap wave, exhaustive) ──────────────────────────
+    const secondWaveRun = pass2Queries.length
+      ? await exhaustiveTargetingSearch(pass2Queries, { perQueryLimit: 15 })
+      : { results: [], telemetry: { queriesUsed: 0, callsFired: 0, byEndpoint: {}, expansionSeeds: [], expansionAdded: 0 } };
+    const secondWave = secondWaveRun.results;
 
     // Merge both waves, deduping by id.
     const merged = new Map<string, MetaTargetingResult>();
@@ -310,6 +326,9 @@ ${catalogueLines}`;
       }))
       .filter((p) => p.options.length > 0);
 
+    // Combine telemetry across both waves for the UI.
+    const combinedTelemetry = mergeTelemetry(firstWaveRun.telemetry, secondWaveRun.telemetry);
+
     return NextResponse.json({
       analysis: analysis.analysis ?? null,
       thesis: analysis.thesis ?? "",
@@ -320,6 +339,7 @@ ${catalogueLines}`;
       pass2ResultCount: secondWave.length,
       totalCandidates: mergedList.length,
       pillars,
+      coverage: combinedTelemetry,
     });
   } catch (error) {
     console.error("meta-audience-scraper ai-suggest error:", error);
@@ -329,6 +349,28 @@ ${catalogueLines}`;
 }
 
 // ─── helpers ───────────────────────────────────────────────────────────────
+
+interface SearchTelemetry {
+  queriesUsed: number;
+  callsFired: number;
+  byEndpoint: Record<string, number>;
+  expansionSeeds: string[];
+  expansionAdded: number;
+}
+
+function mergeTelemetry(a: SearchTelemetry, b: SearchTelemetry): SearchTelemetry {
+  const byEndpoint: Record<string, number> = { ...a.byEndpoint };
+  for (const [k, v] of Object.entries(b.byEndpoint)) {
+    byEndpoint[k] = (byEndpoint[k] ?? 0) + v;
+  }
+  return {
+    queriesUsed: a.queriesUsed + b.queriesUsed,
+    callsFired: a.callsFired + b.callsFired,
+    byEndpoint,
+    expansionSeeds: [...new Set([...a.expansionSeeds, ...b.expansionSeeds])],
+    expansionAdded: a.expansionAdded + b.expansionAdded,
+  };
+}
 
 function stripJsonFences(s: string): string {
   return s.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();

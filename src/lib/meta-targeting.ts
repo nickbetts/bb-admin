@@ -261,3 +261,141 @@ export async function searchTargetingMany(
   }
   return [...byId.values()];
 }
+
+// ─── Exhaustive multi-endpoint search ──────────────────────────────────
+// For each query we hit:
+//   1. /search?type=adTargetingCategory                  (everything: interests, behaviours, demos, life events)
+//   2. /search?type=adinterest                           (interests-only, often returns better audience-size data)
+//   3. /search?type=adTargetingCategory&class=behaviors  (forces Meta to surface behaviour signals it might rank
+//      lower in the unfiltered call)
+//   4. /search?type=adTargetingCategory&class=demographics
+// We also synthesise extra single-word variants for any multi-word query
+// (e.g. "Middle Eastern cuisine" also fires "Middle", "Eastern", "cuisine"
+// — Meta's search ranks single nouns differently and typically returns a
+// broader spread).
+// After the broad pass, we expand the catalogue once via /search?type=
+// adinterestsuggestion using the top N highest-audience interests as
+// seeds — Meta's own "people who like X also like Y" recommender.
+//
+// Returns the merged, deduped catalogue plus telemetry so the UI can show
+// coverage stats (queries fired, results per endpoint, expansion seeds).
+
+export interface ExhaustiveSearchResult {
+  results: MetaTargetingResult[];
+  telemetry: {
+    queriesUsed: number;
+    callsFired: number;
+    byEndpoint: Record<string, number>;
+    expansionSeeds: string[];
+    expansionAdded: number;
+  };
+}
+
+function expandToSingleWords(queries: string[]): string[] {
+  const out = new Set<string>(queries);
+  for (const q of queries) {
+    const words = q.split(/\s+/).filter((w) => w.length >= 4);
+    if (words.length <= 1) continue;
+    // Add each word individually. Meta's search handles single nouns well
+    // and often returns audiences the multi-word query missed.
+    for (const w of words) out.add(w);
+  }
+  return [...out];
+}
+
+export async function exhaustiveTargetingSearch(
+  queries: string[],
+  opts: { token?: string; perQueryLimit?: number; expansionLimit?: number; concurrency?: number } = {}
+): Promise<ExhaustiveSearchResult> {
+  const trimmed = Array.from(new Set(queries.map((q) => q.trim()).filter(Boolean)));
+  const expanded = expandToSingleWords(trimmed);
+  const limit = opts.perQueryLimit ?? 18;
+  const expansionLimit = opts.expansionLimit ?? 30;
+
+  const byId = new Map<string, MetaTargetingResult>();
+  const byEndpoint: Record<string, number> = {
+    adTargetingCategory: 0,
+    adinterest: 0,
+    behaviors: 0,
+    demographics: 0,
+    interestSuggestion: 0,
+  };
+
+  // Build the call plan: 4 endpoints per unique query.
+  type Call = () => Promise<{ endpoint: keyof typeof byEndpoint; results: MetaTargetingResult[] }>;
+  const calls: Call[] = [];
+  for (const q of expanded) {
+    calls.push(async () => ({
+      endpoint: "adTargetingCategory",
+      results: await searchTargetingCategories(q, { token: opts.token, limit }).catch(() => []),
+    }));
+    calls.push(async () => ({
+      endpoint: "adinterest",
+      results: await searchInterests(q, { token: opts.token, limit: Math.min(limit, 15) }).catch(() => []),
+    }));
+    calls.push(async () => ({
+      endpoint: "behaviors",
+      results: await searchTargetingCategories(q, { token: opts.token, limit: 10, classes: ["behaviors"] }).catch(() => []),
+    }));
+    calls.push(async () => ({
+      endpoint: "demographics",
+      results: await searchTargetingCategories(q, { token: opts.token, limit: 8, classes: ["demographics", "life_events", "family_statuses"] }).catch(() => []),
+    }));
+  }
+
+  // Run with a concurrency cap to be polite to the Meta API.
+  const concurrency = opts.concurrency ?? 8;
+  let cursor = 0;
+  async function worker() {
+    while (true) {
+      const i = cursor++;
+      if (i >= calls.length) return;
+      try {
+        const { endpoint, results } = await calls[i]();
+        byEndpoint[endpoint] += results.length;
+        for (const r of results) if (!byId.has(r.id)) byId.set(r.id, r);
+      } catch {
+        // ignore individual failures
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(concurrency, calls.length) }, worker));
+
+  // Expansion pass: take the top interests we already have and ask Meta's
+  // recommender for more like them. Skip if we have nothing yet.
+  const topInterests = [...byId.values()]
+    .filter((r) => /interest/i.test(r.type ?? ""))
+    .sort((a, b) => ((b.audienceSizeUpper ?? 0) - (a.audienceSizeUpper ?? 0)))
+    .slice(0, 8);
+
+  let expansionAdded = 0;
+  const expansionSeeds = topInterests.map((r) => r.name);
+  if (topInterests.length > 0) {
+    try {
+      const similar = await suggestSimilarInterests(
+        topInterests.map((r) => r.name),
+        { token: opts.token, limit: expansionLimit }
+      );
+      byEndpoint.interestSuggestion += similar.length;
+      for (const r of similar) {
+        if (!byId.has(r.id)) {
+          byId.set(r.id, r);
+          expansionAdded += 1;
+        }
+      }
+    } catch {
+      // best-effort
+    }
+  }
+
+  return {
+    results: [...byId.values()],
+    telemetry: {
+      queriesUsed: expanded.length,
+      callsFired: calls.length + (topInterests.length > 0 ? 1 : 0),
+      byEndpoint,
+      expansionSeeds,
+      expansionAdded,
+    },
+  };
+}

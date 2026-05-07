@@ -50,6 +50,13 @@ interface AISuggestResponse {
     niches?: string[];
     contrarian?: string[];
   } | null;
+  coverage?: {
+    queriesUsed: number;
+    callsFired: number;
+    byEndpoint: Record<string, number>;
+    expansionSeeds: string[];
+    expansionAdded: number;
+  };
   thesis: string;
   pass1Queries: string[];
   pass2Queries: string[];
@@ -3204,7 +3211,7 @@ function AnalysisPanel({ result }: { result: AISuggestResponse }) {
         <Sparkles style={{ width: 13, height: 13, color: "var(--accent)" }} />
         <strong style={{ fontSize: 12, color: "var(--text)" }}>How Claude thought about this brief</strong>
         <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-3)" }}>
-          {result.totalCandidates.toLocaleString()} candidates · pass 1: {result.pass1ResultCount ?? 0} · pass 2: {result.pass2ResultCount ?? 0}
+          {result.totalCandidates.toLocaleString()} candidates · pass 1: {result.pass1ResultCount ?? 0} · pass 2: {result.pass2ResultCount ?? 0}{result.coverage ? ` · ${result.coverage.callsFired} Meta API calls` : ""}
         </span>
         {open ? (
           <ChevronUp style={{ width: 13, height: 13, color: "var(--text-3)" }} />
@@ -3272,6 +3279,34 @@ function AnalysisPanel({ result }: { result: AISuggestResponse }) {
                 <p style={{ margin: "4px 0 0", fontSize: 11, color: "var(--text-2)" }}>
                   {result.pass2Queries.join(", ")}
                 </p>
+              </details>
+            )}
+            {result.coverage && (
+              <details>
+                <summary style={{ fontSize: 11, color: "var(--cyber-cyan, var(--text-3))", cursor: "pointer", letterSpacing: "0.05em" }}>
+                  &gt; Coverage telemetry — {result.coverage.callsFired} Meta API calls across {Object.keys(result.coverage.byEndpoint).length} endpoints
+                </summary>
+                <div style={{ margin: "6px 0 0", fontSize: 11, color: "var(--text-2)", fontFamily: "ui-monospace, SF Mono, Menlo, Consolas, monospace", lineHeight: 1.6 }}>
+                  <div>queries fired (incl. single-word variants): <strong>{result.coverage.queriesUsed}</strong></div>
+                  <div>total Meta API calls: <strong>{result.coverage.callsFired}</strong></div>
+                  <div style={{ marginTop: 4 }}>by endpoint:</div>
+                  <ul style={{ margin: "2px 0 4px", paddingLeft: 16 }}>
+                    {Object.entries(result.coverage.byEndpoint).map(([k, v]) => (
+                      <li key={k}>
+                        <span style={{ color: "var(--cyber-cyan, var(--accent))" }}>{k}</span>: {v} result{v === 1 ? "" : "s"}
+                      </li>
+                    ))}
+                  </ul>
+                  {result.coverage.expansionSeeds.length > 0 && (
+                    <div>
+                      similar-interest expansion seeded by{" "}
+                      <strong>{result.coverage.expansionSeeds.join(", ")}</strong>
+                      {" — added "}
+                      <strong>{result.coverage.expansionAdded}</strong>
+                      {" new options"}
+                    </div>
+                  )}
+                </div>
               </details>
             )}
           </div>
