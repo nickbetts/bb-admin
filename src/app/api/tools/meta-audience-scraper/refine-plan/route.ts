@@ -83,7 +83,8 @@ ${JSON.stringify(body.plan)}`;
     const res = await createLongMessage(anthropic, {
       model: MODEL,
       max_tokens: MAX_TOKENS,
-      thinking: { type: "enabled", budget_tokens: THINKING_BUDGET },
+      thinking: { type: "adaptive" },
+      output_config: { effort: "xhigh" },
       temperature: 1,
       messages: [{ role: "user", content: prompt }],
     });
@@ -122,7 +123,8 @@ Return ONLY corrected JSON with the same shape. No em dashes / en dashes. No ban
         const fixRes = await createLongMessage(anthropic, {
           model: MODEL,
           max_tokens: MAX_TOKENS,
-          thinking: { type: "enabled", budget_tokens: 5000 },
+          thinking: { type: "adaptive" },
+          output_config: { effort: "high" },
           temperature: 1,
           messages: [{ role: "user", content: fixPrompt }],
         });

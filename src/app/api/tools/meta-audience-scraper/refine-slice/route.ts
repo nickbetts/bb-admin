@@ -120,7 +120,8 @@ ${JSON.stringify(sliceForPrompt)}`;
     const res = await createLongMessage(anthropic, {
       model: MODEL,
       max_tokens: MAX_TOKENS,
-      thinking: { type: "enabled", budget_tokens: THINKING_BUDGET },
+      thinking: { type: "adaptive" },
+      output_config: { effort: "high" },
       temperature: 1,
       messages: [{ role: "user", content: prompt }],
     });
@@ -169,7 +170,8 @@ No em dashes. No banned phrases. Long-form 80-220 words. Variants read different
         const fixRes = await createLongMessage(anthropic, {
           model: MODEL,
           max_tokens: MAX_TOKENS + 6000,
-          thinking: { type: "enabled", budget_tokens: 5000 },
+          thinking: { type: "adaptive" },
+          output_config: { effort: "high" },
           temperature: 1,
           messages: [{ role: "user", content: fixPrompt }],
         });

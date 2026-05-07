@@ -296,7 +296,8 @@ ${body.brief ? `BRIEF\n${body.brief}` : ""}`;
     const res = await createLongMessage(anthropic, {
       model: MODEL,
       max_tokens: MAX_TOKENS,
-      thinking: { type: "enabled", budget_tokens: THINKING_BUDGET },
+      thinking: { type: "adaptive" },
+      output_config: { effort: "xhigh" },
       temperature: 1,
       messages: [{ role: "user", content: prompt }],
     });
@@ -344,7 +345,8 @@ ${JSON.stringify(plan)}`;
         const fixRes = await createLongMessage(anthropic, {
           model: MODEL,
           max_tokens: MAX_TOKENS,
-          thinking: { type: "enabled", budget_tokens: 6000 },
+          thinking: { type: "adaptive" },
+          output_config: { effort: "high" },
           temperature: 1,
           messages: [{ role: "user", content: fixPrompt }],
         });
