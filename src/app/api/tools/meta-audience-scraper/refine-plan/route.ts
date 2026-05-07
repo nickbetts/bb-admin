@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession, hasPermission } from "@/lib/auth";
-import { getAnthropicClient } from "@/lib/anthropic-client";
+import { getAnthropicClient, createLongMessage } from "@/lib/anthropic-client";
 import {
   findCopyHygieneViolations,
   formatViolationsForPrompt,
@@ -80,8 +80,7 @@ ${feedback}
 EXISTING PLAN
 ${JSON.stringify(body.plan)}`;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const res = await (anthropic.messages.create as any)({
+    const res = await createLongMessage(anthropic, {
       model: MODEL,
       max_tokens: MAX_TOKENS,
       thinking: { type: "enabled", budget_tokens: THINKING_BUDGET },
@@ -120,8 +119,7 @@ ${JSON.stringify(plan)}
 
 Return ONLY corrected JSON with the same shape. No em dashes / en dashes. No banned phrases. Long-form 80-220 words. Variants must read differently from siblings.`;
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const fixRes = await (anthropic.messages.create as any)({
+        const fixRes = await createLongMessage(anthropic, {
           model: MODEL,
           max_tokens: MAX_TOKENS,
           thinking: { type: "enabled", budget_tokens: 5000 },

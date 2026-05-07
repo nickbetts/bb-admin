@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession, hasPermission } from "@/lib/auth";
-import { getAnthropicClient } from "@/lib/anthropic-client";
+import { getAnthropicClient, createLongMessage } from "@/lib/anthropic-client";
 import { getOpenAiClient } from "@/lib/openai-client";
 import {
   findCopyHygieneViolations,
@@ -291,8 +291,9 @@ Return ONLY valid JSON (no markdown fences, no commentary). British English thro
 ${body.brief ? `BRIEF\n${body.brief}` : ""}`;
 
     // ── First pass: extended thinking ──────────────────────────────────
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const res = await (anthropic.messages.create as any)({
+    // Use the streaming API: the SDK refuses non-streaming requests when
+    // thinking budget + max_tokens push us past the 10-minute timeout.
+    const res = await createLongMessage(anthropic, {
       model: MODEL,
       max_tokens: MAX_TOKENS,
       thinking: { type: "enabled", budget_tokens: THINKING_BUDGET },
@@ -340,8 +341,7 @@ ORIGINAL PLAN:
 ${JSON.stringify(plan)}`;
 
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const fixRes = await (anthropic.messages.create as any)({
+        const fixRes = await createLongMessage(anthropic, {
           model: MODEL,
           max_tokens: MAX_TOKENS,
           thinking: { type: "enabled", budget_tokens: 6000 },
