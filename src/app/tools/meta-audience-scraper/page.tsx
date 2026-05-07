@@ -70,9 +70,14 @@ type SelectedItem = TargetingResult & { pillar?: string };
 
 interface CreativeConcept {
   format: string;
-  hook: string;
-  headline: string;
-  primaryText: string;
+  copyAngle?: string;
+  hooks?: string[];
+  headlines?: string[];
+  primaryTexts?: string[];
+  // Legacy single-variant fields kept for backward compatibility with older plans
+  hook?: string;
+  headline?: string;
+  primaryText?: string;
   cta: string;
   imagePrompt: string;
   why: string;
@@ -83,9 +88,13 @@ interface AdSetPlan {
   pillarName: string;
   audienceSummary: string;
   targetingOptionIds: string[];
+  exclusions?: string[];
+  lookalikeStrategy?: string;
   optimizationGoal: string;
+  conversionEvent?: string;
   billingEvent: string;
   dailyBudget: number;
+  frequencyCap?: string;
   placements: "advantage_plus" | "manual";
   manualPlacements?: string[];
   ageRange: { min: number; max: number };
@@ -101,6 +110,8 @@ interface CampaignPlan {
   buyingType: string;
   budgetMode: "CBO" | "ABO";
   dailyBudget: number;
+  bidStrategy?: string;
+  bidStrategyValue?: string;
   advantagePlus: { enabled: boolean; type: string; why: string };
   attribution: string;
   why: string;
@@ -111,6 +122,8 @@ interface FullPlan {
   summary: string;
   structureRationale: string;
   campaigns: CampaignPlan[];
+  creativeTestingFramework?: string;
+  weekByWeek?: string[];
   measurement: {
     primaryKpi: string;
     secondaryKpis: string[];
@@ -420,7 +433,7 @@ export default function MetaAudienceScraperPage() {
       const res = await fetch("/api/tools/meta-audience-scraper/generate-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, aspect, quality: "high" }),
+        body: JSON.stringify({ prompt, aspect, quality: "medium" }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Image generation failed");
@@ -450,7 +463,7 @@ export default function MetaAudienceScraperPage() {
           originalPrompt: existing.prompt,
           refinement,
           aspect,
-          quality: "high",
+          quality: "medium",
         }),
       });
       const data = await res.json();
@@ -1078,6 +1091,24 @@ function CampaignPlanSection(props: CampaignPlanSectionProps) {
             />
           ))}
 
+          {/* Creative testing framework */}
+          {plan.creativeTestingFramework && (
+            <div style={{ padding: 14, background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: "var(--r)" }}>
+              <h3 style={{ margin: 0, fontSize: 13, fontWeight: 600 }}>Creative testing framework</h3>
+              <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--text-2)", lineHeight: 1.5 }}>{plan.creativeTestingFramework}</p>
+            </div>
+          )}
+
+          {/* Week-by-week */}
+          {plan.weekByWeek && plan.weekByWeek.length > 0 && (
+            <div style={{ padding: 14, background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: "var(--r)" }}>
+              <h3 style={{ margin: 0, fontSize: 13, fontWeight: 600 }}>Week-by-week playbook</h3>
+              <ul style={{ margin: "6px 0 0", paddingLeft: 18, fontSize: 12, color: "var(--text-2)", lineHeight: 1.5 }}>
+                {plan.weekByWeek.map((w, i) => <li key={i}>{w}</li>)}
+              </ul>
+            </div>
+          )}
+
           {/* Measurement */}
           <div
             style={{
@@ -1179,20 +1210,22 @@ function CampaignCard({
             <Tag>{campaign.objective}</Tag>
             <Tag>{campaign.budgetMode}</Tag>
             <Tag>{currency} {campaign.dailyBudget.toFixed(0)}/day</Tag>
+            {campaign.bidStrategy && <Tag>{formatBidStrategy(campaign.bidStrategy)}</Tag>}
             {campaign.advantagePlus.enabled && <Tag tone="accent">Advantage+</Tag>}
           </div>
         </div>
-        <p style={{ margin: "8px 0 0", fontSize: 12, color: "var(--text-2)" }}>
+        <p style={{ margin: "10px 0 0", fontSize: 12, color: "var(--text-2)", lineHeight: 1.5 }}>
           <strong>Why:</strong> {campaign.why}
         </p>
         {campaign.advantagePlus.enabled && (
-          <p style={{ margin: "4px 0 0", fontSize: 11, color: "var(--accent)" }}>
+          <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--accent)", lineHeight: 1.5 }}>
             <strong>Advantage+ ({campaign.advantagePlus.type}):</strong> {campaign.advantagePlus.why}
           </p>
         )}
-        <p style={{ margin: "4px 0 0", fontSize: 11, color: "var(--text-3)" }}>
-          Attribution: {campaign.attribution}
-        </p>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginTop: 8, fontSize: 11, color: "var(--text-3)" }}>
+          <span><strong style={{ color: "var(--text-2)" }}>Attribution:</strong> {campaign.attribution}</span>
+          {campaign.bidStrategyValue && <span><strong style={{ color: "var(--text-2)" }}>Bid:</strong> {campaign.bidStrategyValue}</span>}
+        </div>
       </div>
 
       <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 12 }}>
@@ -1260,16 +1293,34 @@ function AdSetCard({
         </div>
       </div>
 
-      <div style={{ marginTop: 8, fontSize: 11, color: "var(--text-3)" }}>
-        Pillar: <strong style={{ color: "var(--text-2)" }}>{adSet.pillarName}</strong> ·
-        Age {adSet.ageRange.min}–{adSet.ageRange.max} ·
-        {" "}{adSet.genders === "all" ? "All genders" : adSet.genders}
+      <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "6px 16px", fontSize: 11, color: "var(--text-3)" }}>
+        <span><strong style={{ color: "var(--text-2)" }}>Pillar:</strong> {adSet.pillarName}</span>
+        <span><strong style={{ color: "var(--text-2)" }}>Age:</strong> {adSet.ageRange.min}–{adSet.ageRange.max}</span>
+        <span><strong style={{ color: "var(--text-2)" }}>Gender:</strong> {adSet.genders === "all" ? "All" : adSet.genders}</span>
+        {adSet.conversionEvent && (
+          <span><strong style={{ color: "var(--text-2)" }}>Event:</strong> {adSet.conversionEvent}</span>
+        )}
+        {adSet.frequencyCap && (
+          <span><strong style={{ color: "var(--text-2)" }}>Frequency:</strong> {adSet.frequencyCap}</span>
+        )}
         {adSet.placements === "manual" && adSet.manualPlacements?.length ? (
-          <> · {adSet.manualPlacements.join(", ")}</>
+          <span style={{ gridColumn: "1 / -1" }}>
+            <strong style={{ color: "var(--text-2)" }}>Placements:</strong> {adSet.manualPlacements.join(", ")}
+          </span>
         ) : null}
+        {adSet.lookalikeStrategy && (
+          <span style={{ gridColumn: "1 / -1" }}>
+            <strong style={{ color: "var(--text-2)" }}>Lookalikes:</strong> {adSet.lookalikeStrategy}
+          </span>
+        )}
+        {adSet.exclusions && adSet.exclusions.length > 0 && (
+          <span style={{ gridColumn: "1 / -1" }}>
+            <strong style={{ color: "var(--text-2)" }}>Exclusions:</strong> {adSet.exclusions.join(" · ")}
+          </span>
+        )}
       </div>
 
-      <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--text-2)" }}>
+      <p style={{ margin: "10px 0 0", fontSize: 12, color: "var(--text-2)", lineHeight: 1.5 }}>
         <strong>Why:</strong> {adSet.why}
       </p>
 
@@ -1340,20 +1391,36 @@ function CreativeCard({
   onRefine: () => void;
 }) {
   const [promptOpen, setPromptOpen] = useState(false);
+
+  // Normalise legacy single-variant fields into the multi-variant arrays.
+  const hooks = creative.hooks?.length ? creative.hooks : (creative.hook ? [creative.hook] : []);
+  const headlines = creative.headlines?.length ? creative.headlines : (creative.headline ? [creative.headline] : []);
+  const primaryTexts = creative.primaryTexts?.length ? creative.primaryTexts : (creative.primaryText ? [creative.primaryText] : []);
+
   return (
     <div style={{ border: "1px solid var(--border)", borderRadius: 8, padding: 10, background: "var(--surface)" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, flexWrap: "wrap", gap: 6 }}>
         <span style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-3)" }}>
           {creative.format.replace("_", " ")} · {creative.cta}
         </span>
+        {creative.copyAngle && (
+          <Tag tone="accent">{creative.copyAngle}</Tag>
+        )}
       </div>
       <div style={{ display: "grid", gridTemplateColumns: image || image === undefined ? "1fr 200px" : "1fr", gap: 12 }}>
         <div>
-          <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: "var(--text)" }}>{creative.hook}</p>
-          <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--text-2)" }}>{creative.headline}</p>
-          <p style={{ margin: "3px 0 0", fontSize: 11, color: "var(--text-3)" }}>{creative.primaryText}</p>
-          <p style={{ margin: "6px 0 0", fontSize: 11, color: "var(--text-3)", fontStyle: "italic" }}>
-            <strong>Why:</strong> {creative.why}
+          {hooks.length > 0 && (
+            <CopyVariantList label="Hook variants" items={hooks} />
+          )}
+          {headlines.length > 0 && (
+            <CopyVariantList label="Headline variants" items={headlines} small />
+          )}
+          {primaryTexts.length > 0 && (
+            <CopyVariantList label="Primary text variants" items={primaryTexts} small muted />
+          )}
+
+          <p style={{ margin: "10px 0 0", fontSize: 12, color: "var(--text-2)", fontStyle: "italic", lineHeight: 1.5 }}>
+            <strong style={{ color: "var(--text)" }}>Why this concept:</strong> {creative.why}
           </p>
 
           <details
@@ -1449,6 +1516,31 @@ function CreativeCard({
       </div>
     </div>
   );
+}
+
+function CopyVariantList({ label, items, small, muted }: { label: string; items: string[]; small?: boolean; muted?: boolean }) {
+  return (
+    <div style={{ marginTop: 8 }}>
+      <p style={{ margin: 0, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-3)" }}>
+        {label}
+      </p>
+      <ul style={{ margin: "4px 0 0", paddingLeft: 16, fontSize: small ? 12 : 13, color: muted ? "var(--text-3)" : "var(--text)", lineHeight: 1.45 }}>
+        {items.map((it, i) => (
+          <li key={i} style={{ marginBottom: 2 }}>{it}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function formatBidStrategy(s: string): string {
+  switch (s) {
+    case "lowest_cost": return "Lowest cost";
+    case "cost_cap": return "Cost cap";
+    case "bid_cap": return "Bid cap";
+    case "lowest_cost_with_min_roas": return "Min ROAS";
+    default: return s;
+  }
 }
 
 function Tag({ children, tone }: { children: React.ReactNode; tone?: "accent" | "default" }) {

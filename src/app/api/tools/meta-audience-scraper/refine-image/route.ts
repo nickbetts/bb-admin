@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     if (!refinement) return NextResponse.json({ error: "refinement is required" }, { status: 400 });
 
     const size = ASPECT_TO_SIZE[body.aspect ?? "square"] ?? "1024x1024";
-    const quality = body.quality ?? "medium";
+    const quality: "low" | "medium" | "high" = body.quality ?? "medium";
 
     const openai = await getOpenAiClient();
 

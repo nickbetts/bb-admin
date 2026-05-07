@@ -34,17 +34,22 @@ export async function POST(request: NextRequest) {
 
     const anthropic = await getAnthropicClient();
 
-    const prompt = `You are revising an existing Meta campaign plan based on user feedback. Apply the feedback faithfully but keep everything else strong: do not regress decisions the user did not ask you to change.
+    const prompt = `ROLE
+You are a senior Meta Ads specialist with 10+ years of in-the-platform experience. You are revising an existing campaign plan based on direct feedback from the team. Apply the feedback faithfully and confidently — but keep every other decision intact unless the change forces a recalculation. Do not water down strong calls or regress decisions the user did not ask you to change.
 
-Return ONLY valid JSON matching the SAME shape as the input plan (campaigns, adSets, creatives, etc.) — no markdown, no commentary. Use British English.
+INSTRUCTIONS
+- Return ONLY valid JSON matching the SAME shape as the input plan (summary, structureRationale, campaigns, adSets, creatives, creativeTestingFramework, weekByWeek, measurement, risks, scaleUp). No markdown fences, no commentary.
+- If the feedback changes the budget or campaign count, update budgets so they sum correctly across campaigns and ad sets.
+- Update the relevant "why" fields with 2-3 sentences of expert reasoning that reflects the new decision — don't leave stale rationale behind.
+- British English throughout.
+- If a creative is replaced, regenerate the hooks, headlines, primaryTexts, copyAngle and imagePrompt — don't just tweak surface words.
+- If the feedback is wrong-headed (e.g. asking for an action that breaks Meta's learning phase), apply it but call out the trade-off in the relevant "why" field.
 
-If the feedback changes budget or structure, update budgets so they sum correctly. Update "why" fields to reflect any new decisions.
-
-${body.clientName ? `Client: ${body.clientName}\n` : ""}${body.brief ? `Brief:\n${body.brief}\n\n` : ""}
-User feedback:
+${body.clientName ? `CLIENT: ${body.clientName}\n` : ""}${body.brief ? `BRIEF:\n${body.brief}\n\n` : ""}
+USER FEEDBACK
 ${feedback}
 
-Existing plan:
+EXISTING PLAN
 ${JSON.stringify(body.plan)}`;
 
     const res = await anthropic.messages.create({
