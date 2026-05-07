@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Crosshair,
   Sparkles,
@@ -79,7 +79,8 @@ interface CreativeConcept {
   headline?: string;
   primaryText?: string;
   cta: string;
-  imagePrompt: string;
+  imagePrompts?: string[];
+  imagePrompt?: string;        // legacy single-prompt field
   why: string;
 }
 
@@ -419,8 +420,19 @@ export default function MetaAudienceScraperPage() {
   }, [plan, refineFeedback, brief, clientName]);
 
   // ── Image generation per creative ─────────────────────────────────────
-  function imageKey(c: number, a: number, cr: number): string {
-    return `${c}-${a}-${cr}`;
+  function imageKey(c: number, a: number, cr: number, frame = 0): string {
+    return `${c}-${a}-${cr}-${frame}`;
+  }
+
+  function aspectForFormat(format: string): "square" | "portrait" | "landscape" {
+    if (format === "video") return "portrait";
+    return "square";
+  }
+
+  function getImagePrompts(creative: CreativeConcept): string[] {
+    if (creative.imagePrompts?.length) return creative.imagePrompts;
+    if (creative.imagePrompt) return [creative.imagePrompt];
+    return [];
   }
 
   async function generateImage(key: string, basePrompt: string, aspect: "square" | "portrait" | "landscape") {
@@ -447,6 +459,105 @@ export default function MetaAudienceScraperPage() {
       });
     }
   }
+
+  // ── Auto-generate every image for a freshly-built plan ────────────────
+  // Runs through every (campaign, ad set, creative, frame) tuple in the plan
+  // and fires generation requests with a small concurrency cap so we don't
+  // hammer OpenAI. Cancellable: if the user rebuilds or refines the plan
+  // mid-flight, we bump generationToken to abort the in-flight queue.
+  const generationToken = useRef(0);
+  const imagesRef = useRef(images);
+  useEffect(() => { imagesRef.current = images; }, [images]);
+  const [autoGenerating, setAutoGenerating] = useState<{ done: number; total: number } | null>(null);
+
+  const autoGenerateImagesForPlan = useCallback(async (p: FullPlan) => {
+    type Task = { key: string; prompt: string; aspect: "square" | "portrait" | "landscape" };
+    const tasks: Task[] = [];
+    const existing = imagesRef.current;
+
+    p.campaigns.forEach((campaign, ci) => {
+      campaign.adSets.forEach((adSet, ai) => {
+        adSet.creatives.forEach((creative, cri) => {
+          const prompts = creative.imagePrompts?.length
+            ? creative.imagePrompts
+            : (creative.imagePrompt ? [creative.imagePrompt] : []);
+          const aspect: "square" | "portrait" | "landscape" =
+            creative.format === "video" ? "portrait" : "square";
+          prompts.forEach((prompt, frame) => {
+            const key = `${ci}-${ai}-${cri}-${frame}`;
+            // Skip frames that already have a usable image (preserves manual
+            // refines and earlier auto-gen runs across plan refinements).
+            if (existing[key]?.url) return;
+            tasks.push({ key, prompt, aspect });
+          });
+        });
+      });
+    });
+
+    if (tasks.length === 0) return;
+
+    generationToken.current += 1;
+    const myToken = generationToken.current;
+
+    setAutoGenerating({ done: 0, total: tasks.length });
+    // Mark every slot as loading immediately so the UI shows skeleton state.
+    setImages((prev) => {
+      const next = { ...prev };
+      for (const t of tasks) next[t.key] = { url: "", prompt: t.prompt, loading: true };
+      return next;
+    });
+
+    const concurrency = 3;
+    let cursor = 0;
+    let done = 0;
+
+    async function worker() {
+      while (true) {
+        if (myToken !== generationToken.current) return;     // cancelled
+        const i = cursor++;
+        if (i >= tasks.length) return;
+        const t = tasks[i];
+        try {
+          const res = await fetch("/api/tools/meta-audience-scraper/generate-image", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ prompt: t.prompt, aspect: t.aspect, quality: "medium" }),
+          });
+          if (myToken !== generationToken.current) return;
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({} as { error?: string }));
+            throw new Error(err.error ?? "Image generation failed");
+          }
+          const data = (await res.json()) as { url: string };
+          setImages((prev) => ({ ...prev, [t.key]: { url: data.url, prompt: t.prompt, loading: false } }));
+        } catch (e) {
+          // Mark this slot as failed without the loading state
+          setImages((prev) => {
+            const next = { ...prev };
+            delete next[t.key];
+            return next;
+          });
+          // Surface the first failure but keep going
+          if (done === 0) setError(e instanceof Error ? e.message : "Image generation failed");
+        } finally {
+          done += 1;
+          if (myToken === generationToken.current) {
+            setAutoGenerating({ done, total: tasks.length });
+          }
+        }
+      }
+    }
+
+    await Promise.all(Array.from({ length: concurrency }, worker));
+    if (myToken === generationToken.current) setAutoGenerating(null);
+  }, []);
+
+  // Whenever a plan is set or replaced, auto-generate its images.
+  useEffect(() => {
+    if (!plan) return;
+    void autoGenerateImagesForPlan(plan);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plan]);
 
   async function refineImage(key: string, aspect: "square" | "portrait" | "landscape") {
     const existing = images[key];
@@ -807,6 +918,7 @@ export default function MetaAudienceScraperPage() {
               onGenerateImage={generateImage}
               onRefineImage={refineImage}
               hasSelection={selected.length > 0}
+              autoGenerating={autoGenerating}
             />
           )}
 
@@ -1489,7 +1601,7 @@ interface CampaignPlanSectionProps {
   refineLoading: boolean;
   onRefinePlan: () => void;
   images: Record<string, GeneratedImage>;
-  imageKey: (c: number, a: number, cr: number) => string;
+  imageKey: (c: number, a: number, cr: number, frame?: number) => string;
   imagePromptOverrides: Record<string, string>;
   setImagePromptOverrides: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   refinePrompts: Record<string, string>;
@@ -1497,6 +1609,7 @@ interface CampaignPlanSectionProps {
   onGenerateImage: (key: string, prompt: string, aspect: "square" | "portrait" | "landscape") => void;
   onRefineImage: (key: string, aspect: "square" | "portrait" | "landscape") => void;
   hasSelection: boolean;
+  autoGenerating: { done: number; total: number } | null;
 }
 
 function CampaignPlanSection(props: CampaignPlanSectionProps) {
@@ -1506,6 +1619,7 @@ function CampaignPlanSection(props: CampaignPlanSectionProps) {
     refineFeedback, setRefineFeedback, refineLoading, onRefinePlan,
     images, imageKey, imagePromptOverrides, setImagePromptOverrides,
     refinePrompts, setRefinePrompts, onGenerateImage, onRefineImage, hasSelection,
+    autoGenerating,
   } = props;
 
   const budgetReady = parseFloat(dailyBudget) > 0;
@@ -1543,6 +1657,24 @@ function CampaignPlanSection(props: CampaignPlanSectionProps) {
             <p style={{ margin: "8px 0 0", fontSize: 12, color: "var(--text-2)" }}>
               <strong>Why this structure:</strong> {plan.structureRationale}
             </p>
+            {autoGenerating && autoGenerating.total > 0 && (
+              <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px dashed var(--border)", display: "flex", alignItems: "center", gap: 10 }}>
+                <Loader2 style={{ width: 13, height: 13, color: "var(--accent)" }} className="spin" />
+                <span style={{ fontSize: 11, color: "var(--text-2)", fontFamily: "ui-monospace, SF Mono, Menlo, monospace", letterSpacing: "0.05em", textTransform: "uppercase" }}>
+                  Generating creative imagery · {autoGenerating.done}/{autoGenerating.total}
+                </span>
+                <div style={{ flex: 1, height: 3, background: "rgba(0,0,0,0.2)", borderRadius: 2, overflow: "hidden" }}>
+                  <div
+                    style={{
+                      height: "100%",
+                      width: `${(autoGenerating.done / autoGenerating.total) * 100}%`,
+                      background: "linear-gradient(90deg, var(--cyber-magenta, var(--accent)), var(--cyber-cyan, var(--accent)))",
+                      transition: "width 300ms ease",
+                    }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Campaigns */}
@@ -1665,7 +1797,7 @@ function CampaignCard({
   campaignIndex: number;
   currency: string;
   images: Record<string, GeneratedImage>;
-  imageKey: (c: number, a: number, cr: number) => string;
+  imageKey: (c: number, a: number, cr: number, frame?: number) => string;
   imagePromptOverrides: Record<string, string>;
   setImagePromptOverrides: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   refinePrompts: Record<string, string>;
@@ -1742,7 +1874,7 @@ function AdSetCard({
   adSetIndex: number;
   currency: string;
   images: Record<string, GeneratedImage>;
-  imageKey: (c: number, a: number, cr: number) => string;
+  imageKey: (c: number, a: number, cr: number, frame?: number) => string;
   imagePromptOverrides: Record<string, string>;
   setImagePromptOverrides: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   refinePrompts: Record<string, string>;
@@ -1810,28 +1942,35 @@ function AdSetCard({
       {/* Creatives */}
       <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
         {adSet.creatives.map((creative, cri) => {
-          const key = imageKey(campaignIndex, adSetIndex, cri);
           const aspect: "square" | "portrait" | "landscape" =
-            creative.format === "video" ? "portrait"
-              : creative.format === "carousel" ? "square"
-              : "square";
+            creative.format === "video" ? "portrait" : "square";
+          const prompts = creative.imagePrompts?.length
+            ? creative.imagePrompts
+            : (creative.imagePrompt ? [creative.imagePrompt] : []);
+
+          const frames = prompts.map((basePrompt, frameIdx) => {
+            const key = imageKey(campaignIndex, adSetIndex, cri, frameIdx);
+            return {
+              key,
+              basePrompt,
+              image: images[key],
+              promptOverride: imagePromptOverrides[key] ?? "",
+              setPromptOverride: (v: string) =>
+                setImagePromptOverrides((prev) => ({ ...prev, [key]: v })),
+              refinePrompt: refinePrompts[key] ?? "",
+              setRefinePrompt: (v: string) =>
+                setRefinePrompts((prev) => ({ ...prev, [key]: v })),
+              onGenerate: () => onGenerateImage(key, basePrompt, aspect),
+              onRefine: () => onRefineImage(key, aspect),
+            };
+          });
+
           return (
             <CreativeCard
               key={cri}
               creative={creative}
-              imageKey={key}
               aspect={aspect}
-              image={images[key]}
-              promptOverride={imagePromptOverrides[key] ?? ""}
-              setPromptOverride={(v) =>
-                setImagePromptOverrides((prev) => ({ ...prev, [key]: v }))
-              }
-              refinePrompt={refinePrompts[key] ?? ""}
-              setRefinePrompt={(v) =>
-                setRefinePrompts((prev) => ({ ...prev, [key]: v }))
-              }
-              onGenerate={() => onGenerateImage(key, creative.imagePrompt, aspect)}
-              onRefine={() => onRefineImage(key, aspect)}
+              frames={frames}
             />
           );
         })}
@@ -1840,20 +1979,9 @@ function AdSetCard({
   );
 }
 
-function CreativeCard({
-  creative,
-  aspect,
-  image,
-  promptOverride,
-  setPromptOverride,
-  refinePrompt,
-  setRefinePrompt,
-  onGenerate,
-  onRefine,
-}: {
-  creative: CreativeConcept;
-  imageKey: string;
-  aspect: "square" | "portrait" | "landscape";
+interface CreativeFrame {
+  key: string;
+  basePrompt: string;
   image: GeneratedImage | undefined;
   promptOverride: string;
   setPromptOverride: (v: string) => void;
@@ -1861,131 +1989,180 @@ function CreativeCard({
   setRefinePrompt: (v: string) => void;
   onGenerate: () => void;
   onRefine: () => void;
-}) {
-  const [promptOpen, setPromptOpen] = useState(false);
+}
 
+function CreativeCard({
+  creative,
+  aspect,
+  frames,
+}: {
+  creative: CreativeConcept;
+  aspect: "square" | "portrait" | "landscape";
+  frames: CreativeFrame[];
+}) {
   // Normalise legacy single-variant fields into the multi-variant arrays.
   const hooks = creative.hooks?.length ? creative.hooks : (creative.hook ? [creative.hook] : []);
   const headlines = creative.headlines?.length ? creative.headlines : (creative.headline ? [creative.headline] : []);
   const primaryTexts = creative.primaryTexts?.length ? creative.primaryTexts : (creative.primaryText ? [creative.primaryText] : []);
 
+  const isMulti = frames.length > 1;
+
   return (
     <div style={{ border: "1px solid var(--border)", borderRadius: 8, padding: 10, background: "var(--surface)" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, flexWrap: "wrap", gap: 6 }}>
         <span style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-3)" }}>
-          {creative.format.replace("_", " ")} · {creative.cta}
+          {creative.format.replace("_", " ")}
+          {isMulti ? ` · ${frames.length} frames` : ""}
+          {" · "}{creative.cta}
         </span>
         {creative.copyAngle && (
           <Tag tone="accent">{creative.copyAngle}</Tag>
         )}
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: image || image === undefined ? "1fr 200px" : "1fr", gap: 12 }}>
-        <div>
-          {hooks.length > 0 && (
-            <CopyVariantList label="Hook variants" items={hooks} />
-          )}
-          {headlines.length > 0 && (
-            <CopyVariantList label="Headline variants" items={headlines} small />
-          )}
-          {primaryTexts.length > 0 && (
-            <CopyVariantList label="Primary text variants" items={primaryTexts} small muted />
-          )}
 
-          <p style={{ margin: "10px 0 0", fontSize: 12, color: "var(--text-2)", fontStyle: "italic", lineHeight: 1.5 }}>
-            <strong style={{ color: "var(--text)" }}>Why this concept:</strong> {creative.why}
-          </p>
+      {/* Copy variants — full width */}
+      <div>
+        {hooks.length > 0 && <CopyVariantList label="Hook variants" items={hooks} />}
+        {headlines.length > 0 && <CopyVariantList label="Headline variants" items={headlines} small />}
+        {primaryTexts.length > 0 && <CopyVariantList label="Primary text variants" items={primaryTexts} small muted />}
+        <p style={{ margin: "10px 0 0", fontSize: 12, color: "var(--text-2)", fontStyle: "italic", lineHeight: 1.5 }}>
+          <strong style={{ color: "var(--text)" }}>Why this concept:</strong> {creative.why}
+        </p>
+      </div>
 
-          <details
-            open={promptOpen}
-            onToggle={(e) => setPromptOpen((e.currentTarget as HTMLDetailsElement).open)}
-            style={{ marginTop: 8 }}
-          >
-            <summary style={{ fontSize: 11, color: "var(--text-3)", cursor: "pointer" }}>
-              Image prompt
-            </summary>
-            <textarea
-              value={promptOverride || creative.imagePrompt}
-              onChange={(e) => setPromptOverride(e.target.value)}
-              rows={3}
-              style={{ ...textareaStyle, marginTop: 6, fontSize: 11 }}
+      {/* Image frames — horizontal scroll if many, grid otherwise */}
+      {frames.length > 0 && (
+        <div
+          style={{
+            marginTop: 12,
+            display: "grid",
+            gridTemplateColumns: `repeat(auto-fit, minmax(${aspect === "portrait" ? 180 : 200}px, 1fr))`,
+            gap: 10,
+          }}
+        >
+          {frames.map((frame, idx) => (
+            <FrameSlot
+              key={frame.key}
+              frame={frame}
+              aspect={aspect}
+              label={isMulti ? `Frame ${idx + 1}` : undefined}
             />
-          </details>
+          ))}
         </div>
+      )}
+    </div>
+  );
+}
 
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "stretch", gap: 6 }}>
-          {image?.url ? (
-            <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={image.url}
-                alt={creative.headline}
-                style={{
-                  width: "100%",
-                  height: aspect === "landscape" ? 130 : aspect === "portrait" ? 280 : 200,
-                  objectFit: "cover",
-                  borderRadius: 6,
-                  border: "1px solid var(--border)",
-                  opacity: image.loading ? 0.5 : 1,
-                }}
-              />
-              <input
-                value={refinePrompt}
-                onChange={(e) => setRefinePrompt(e.target.value)}
-                placeholder="Refine: e.g. warmer light"
-                style={{ ...inputStyle, fontSize: 11, padding: "6px 8px" }}
-                disabled={image.loading}
-              />
-              <div style={{ display: "flex", gap: 4 }}>
-                <button
-                  type="button"
-                  onClick={onRefine}
-                  disabled={image.loading || !refinePrompt.trim()}
-                  style={{ ...fileBtnStyle, flex: 1, justifyContent: "center", fontSize: 11 }}
-                >
-                  {image.loading ? <Loader2 style={{ width: 11, height: 11 }} className="spin" /> : <RefreshCw style={{ width: 11, height: 11 }} />}
-                  Refine
-                </button>
-                <button
-                  type="button"
-                  onClick={onGenerate}
-                  disabled={image.loading}
-                  style={{ ...fileBtnStyle, flex: 1, justifyContent: "center", fontSize: 11 }}
-                  title="Regenerate from prompt"
-                >
-                  <Wand2 style={{ width: 11, height: 11 }} />
-                  Redo
-                </button>
-              </div>
-            </>
-          ) : (
+function FrameSlot({
+  frame,
+  aspect,
+  label,
+}: {
+  frame: CreativeFrame;
+  aspect: "square" | "portrait" | "landscape";
+  label?: string;
+}) {
+  const [promptOpen, setPromptOpen] = useState(false);
+  const height = aspect === "landscape" ? 130 : aspect === "portrait" ? 240 : 200;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      {label && (
+        <span style={{ fontSize: 10, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+          {label}
+        </span>
+      )}
+
+      {frame.image?.url ? (
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={frame.image.url}
+            alt=""
+            style={{
+              width: "100%",
+              height,
+              objectFit: "cover",
+              borderRadius: 6,
+              border: "1px solid var(--border)",
+              opacity: frame.image.loading ? 0.45 : 1,
+              transition: "opacity 200ms ease",
+            }}
+          />
+          <input
+            value={frame.refinePrompt}
+            onChange={(e) => frame.setRefinePrompt(e.target.value)}
+            placeholder="Refine: e.g. warmer light"
+            style={{ ...inputStyle, fontSize: 11, padding: "6px 8px" }}
+            disabled={frame.image.loading}
+          />
+          <div style={{ display: "flex", gap: 4 }}>
             <button
               type="button"
-              onClick={onGenerate}
-              disabled={image?.loading}
-              style={{
-                ...fileBtnStyle,
-                justifyContent: "center",
-                height: aspect === "landscape" ? 130 : aspect === "portrait" ? 280 : 200,
-                flexDirection: "column",
-                gap: 8,
-                fontSize: 12,
-              }}
+              onClick={frame.onRefine}
+              disabled={frame.image.loading || !frame.refinePrompt.trim()}
+              style={{ ...fileBtnStyle, flex: 1, justifyContent: "center", fontSize: 11 }}
             >
-              {image?.loading ? (
-                <>
-                  <Loader2 style={{ width: 16, height: 16 }} className="spin" />
-                  Generating…
-                </>
-              ) : (
-                <>
-                  <ImagePlus style={{ width: 18, height: 18 }} />
-                  Generate image
-                </>
-              )}
+              {frame.image.loading ? <Loader2 style={{ width: 11, height: 11 }} className="spin" /> : <RefreshCw style={{ width: 11, height: 11 }} />}
+              Refine
             </button>
+            <button
+              type="button"
+              onClick={frame.onGenerate}
+              disabled={frame.image.loading}
+              style={{ ...fileBtnStyle, flex: 1, justifyContent: "center", fontSize: 11 }}
+              title="Regenerate from prompt"
+            >
+              <Wand2 style={{ width: 11, height: 11 }} />
+              Redo
+            </button>
+          </div>
+        </>
+      ) : (
+        <button
+          type="button"
+          onClick={frame.onGenerate}
+          disabled={frame.image?.loading}
+          style={{
+            ...fileBtnStyle,
+            justifyContent: "center",
+            height,
+            flexDirection: "column",
+            gap: 8,
+            fontSize: 12,
+            position: "relative",
+            overflow: "hidden",
+          }}
+        >
+          {frame.image?.loading ? (
+            <>
+              <Loader2 style={{ width: 16, height: 16 }} className="spin" />
+              Generating…
+            </>
+          ) : (
+            <>
+              <ImagePlus style={{ width: 18, height: 18 }} />
+              Generate image
+            </>
           )}
-        </div>
-      </div>
+        </button>
+      )}
+
+      <details
+        open={promptOpen}
+        onToggle={(e) => setPromptOpen((e.currentTarget as HTMLDetailsElement).open)}
+      >
+        <summary style={{ fontSize: 10, color: "var(--text-3)", cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+          Prompt
+        </summary>
+        <textarea
+          value={frame.promptOverride || frame.basePrompt}
+          onChange={(e) => frame.setPromptOverride(e.target.value)}
+          rows={3}
+          style={{ ...textareaStyle, marginTop: 4, fontSize: 11 }}
+        />
+      </details>
     </div>
   );
 }

@@ -88,7 +88,14 @@ Produce a build-ready campaign plan that a media buyer could plug straight into 
 6. BIDDING — Default to Lowest Cost (highest volume). Only recommend Cost Cap or Bid Cap when there's a clear unit-economics reason and the account has the data to back it.
 7. ATTRIBUTION — Default to 7-day click + 1-day view for ecom/leads. Use 1-day click only for awareness or very short consideration cycles.
 8. PLACEMENTS — Default to Advantage+ Placements. Only restrict to specific placements (e.g. Reels-only for short-form video creative) when you genuinely have format-specific creative.
-9. CREATIVE — This is where campaigns are won. For each ad set, give 2 distinct creative concepts. Each concept must include: 3 hook variants (different angles — e.g. problem-led, benefit-led, social-proof-led, curiosity), 3 headline variants, 3 primary-text variants, a CTA, and a detailed image prompt suitable for gpt-image-1. Specify the copy angle (e.g. "Problem-Agitate-Solve", "Founder story", "User-generated style", "Direct response", "Aspirational lifestyle"). Image prompts must describe scene, subject, composition, mood, lighting, colour palette, camera angle and style — concrete visual language only, no invented brand logos, no celebrities or recognisable real people.
+9. CREATIVE — This is where campaigns are won. For each ad set, give 2 distinct creative concepts. Each concept must include: 3 hook variants (different angles — e.g. problem-led, benefit-led, social-proof-led, curiosity), 3 headline variants, 3 primary-text variants, a CTA, and a detailed image-prompt array suitable for gpt-image-1. Specify the copy angle (e.g. "Problem-Agitate-Solve", "Founder story", "User-generated style", "Direct response", "Aspirational lifestyle"). Image prompts must describe scene, subject, composition, mood, lighting, colour palette, camera angle and style — concrete visual language only, no invented brand logos, no celebrities or recognisable real people.
+
+   IMAGE-PROMPT COUNT BY FORMAT (this is non-negotiable — each frame is generated independently):
+   - single_image → exactly 1 prompt.
+   - carousel → 3-5 prompts. Each card a distinct visual beat in the same concept (e.g. card 1 "the problem", card 2 "the hero product shot", card 3 "the result/transformation", card 4 "social proof / quote", card 5 "the CTA close-up"). Cards should feel like a sequence, not five variations of the same shot.
+   - video → 1 prompt describing the COVER/keyframe still — the opening shot a media buyer would freeze.
+   - collection → 3-4 prompts. Card 1 is the hero shot, the rest are product tiles or feature close-ups.
+   The number of items in imagePrompts MUST match these rules. Do not generate fewer than the format requires.
 10. EXCLUSIONS, FREQUENCY, LOOKALIKES — Recommend when relevant. Exclude existing customers from prospecting. Frequency cap retargeting. Lookalikes off purchasers (or value-based LALs) when there's enough seed data; ${dailyBudget < 50 ? "at this budget skip LALs initially — pixel data first." : "make the call based on the brief and explain it."}
 11. WHY EVERYTHING — Every "why" field must be 2-3 sentences of *specific, expert* reasoning. Not "this audience is good for the brand" — actually explain the media-buying logic ("Stacking three behaviour signals that Meta's auction can intersect lets us hold CPM down while still hitting a high-intent pool. Optimising for Purchase rather than ATC means delivery skews to people who Meta has seen complete checkouts on similar products in the last 7 days.").
 
@@ -146,7 +153,10 @@ Return ONLY valid JSON (no markdown fences, no commentary). British English thro
               "headlines": ["3 headline variants under 40 chars each"],
               "primaryTexts": ["3 primary-text variants under 125 chars each"],
               "cta": "SHOP_NOW | LEARN_MORE | SIGN_UP | GET_OFFER | DOWNLOAD | BOOK_NOW | SUBSCRIBE | CONTACT_US",
-              "imagePrompt": "string — 2-4 sentences. Detailed visual brief for gpt-image-1: scene, subject, composition, mood, lighting, colour palette, style. Brand-safe.",
+              "imagePrompts": [
+                "Detailed visual brief — 2-4 sentences each. Scene, subject, composition, mood, lighting, colour palette, style. Brand-safe (no logos, no celebrities, no real recognisable people).",
+                "..."
+              ],
               "why": "2-3 sentences. Why this concept fits this audience and what it's testing against the other concept."
             }
           ]
