@@ -1438,18 +1438,18 @@ export default function MetaAudienceScraperPage() {
           50% { background-position: 100% 50%; }
         }
         @keyframes cyber-glitch-a {
-          0%, 92%, 100% { transform: translate(0, 0); opacity: 0; }
-          93% { transform: translate(-2px, 1px); opacity: 0.6; }
-          94% { transform: translate(0, 0); opacity: 0; }
-          96% { transform: translate(2px, -1px); opacity: 0.6; }
+          0%, 96%, 100% { transform: translate(0, 0); opacity: 0; }
+          96.5% { transform: translate(-1px, 1px); opacity: 0.4; }
           97% { transform: translate(0, 0); opacity: 0; }
+          98.5% { transform: translate(1px, -1px); opacity: 0.4; }
+          99% { transform: translate(0, 0); opacity: 0; }
         }
         @keyframes cyber-glitch-b {
-          0%, 90%, 100% { transform: translate(0, 0); opacity: 0; }
-          91% { transform: translate(2px, -1px); opacity: 0.6; }
-          92% { transform: translate(0, 0); opacity: 0; }
-          95% { transform: translate(-2px, 1px); opacity: 0.6; }
-          95.5% { transform: translate(0, 0); opacity: 0; }
+          0%, 95%, 100% { transform: translate(0, 0); opacity: 0; }
+          95.5% { transform: translate(1px, -1px); opacity: 0.4; }
+          96% { transform: translate(0, 0); opacity: 0; }
+          98% { transform: translate(-1px, 1px); opacity: 0.4; }
+          98.5% { transform: translate(0, 0); opacity: 0; }
         }
 
         .cyber-tagline {
@@ -1835,54 +1835,23 @@ export default function MetaAudienceScraperPage() {
           backdrop-filter: blur(4px);
         }
 
-        /* Aggressive scanlines */
+        /* Static scanlines — softer than v1 (no movement, lower contrast).
+           One subtle layer is enough to read as "screen" without making the
+           tool feel busy. */
         .cyber-scanlines {
-          opacity: 0.42 !important;
-          background-image: linear-gradient(transparent 50%, rgba(0,0,0,0.32) 50%) !important;
-          background-size: 100% 2px !important;
-          animation: cyber-scanmove 6s linear infinite;
+          opacity: 0.22 !important;
+          background-image: linear-gradient(transparent 50%, rgba(0,0,0,0.18) 50%) !important;
+          background-size: 100% 3px !important;
         }
+        /* Animated scanline movement removed — kept the keyframe for
+           sidebar-takeover where it's gentler and shorter-lived. */
         @keyframes cyber-scanmove {
           0% { background-position: 0 0; }
           100% { background-position: 0 24px; }
         }
-
-        /* Film grain layer */
-        .cyber-bg::before {
-          content: "";
-          position: absolute;
-          inset: 0;
-          background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.4 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/></svg>");
-          opacity: 0.07;
-          mix-blend-mode: overlay;
-          animation: cyber-grain-shift 0.6s steps(4) infinite;
-          pointer-events: none;
-        }
-        @keyframes cyber-grain-shift {
-          0% { transform: translate(0,0); }
-          25% { transform: translate(-2px,1px); }
-          50% { transform: translate(1px,-2px); }
-          75% { transform: translate(-1px,-1px); }
-          100% { transform: translate(0,0); }
-        }
-
-        /* Whole-page periodic flicker */
-        .cyber-shell::after {
-          content: "";
-          position: fixed;
-          inset: 0;
-          background: rgba(0,0,0,0);
-          pointer-events: none;
-          z-index: 9000;
-          animation: cyber-flicker 11s ease-in-out infinite;
-        }
-        @keyframes cyber-flicker {
-          0%, 96%, 100% { background: rgba(0,0,0,0); }
-          96.3% { background: rgba(0,0,0,0.55); }
-          96.6% { background: rgba(0,0,0,0); }
-          97% { background: rgba(255, 43, 214, 0.07); }
-          97.4% { background: rgba(0,0,0,0); }
-        }
+        /* Film grain + fullscreen flicker removed — too noisy with the
+           orbs and scanlines layered. The orbs and the tasteful scanlines
+           do the heavy lifting now. */
 
         /* Cyber Cartel highlight */
         .cyber-cartel {
@@ -1997,14 +1966,13 @@ export default function MetaAudienceScraperPage() {
           box-shadow: 0 0 14px rgba(255, 43, 214, 0.7);
         }
 
-        /* Heading text glitch on hover (cards / pillars) */
+        /* Subtle heading hover — soft cyan tint, no chromatic split.
+           The title gets a glitch effect of its own; everything below stays
+           calm. */
         .cyber-shell h2:hover,
         .cyber-shell h3:hover {
-          animation: cyber-text-glitch 0.4s steps(1) 1;
           color: var(--cyber-cyan);
-          text-shadow:
-            -2px 0 var(--cyber-magenta),
-            2px 0 var(--cyber-cyan);
+          transition: color 180ms ease;
         }
         @keyframes cyber-text-glitch {
           0%, 100% { transform: translate(0,0); }
@@ -2039,8 +2007,7 @@ export default function MetaAudienceScraperPage() {
           .cyber-orb, .cyber-target-icon, .cyber-target-pulse,
           .cyber-title, .cyber-title::before, .cyber-title::after,
           .cyber-shell button[style*="var(--accent)"]::after,
-          .cyber-dot, .cyber-bg::before, .cyber-shell::after,
-          .cyber-cartel, .cyber-scanlines {
+          .cyber-dot, .cyber-cartel {
             animation: none !important;
           }
         }
