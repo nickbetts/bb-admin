@@ -442,6 +442,150 @@ export async function getSemrushTrackedKeywords(
   }
 }
 
+// ─────────────────────────────────────────────────────────────
+// Tagged keyword position tracking (period comparison with tag filter)
+// ─────────────────────────────────────────────────────────────
+
+export interface SemrushTaggedKeyword {
+  keyword: string;
+  tags: string[];
+  currentPosition: number | null;
+  previousPosition: number | null;
+  /** Positive value = improved (position number decreased). Mirrors the SEMrush `Diff` field (Be − Fi). */
+  delta: number | null;
+  searchVolume: number;
+  url: string;
+}
+
+/**
+ * Returns the earliest crawl date for a SEMrush Position Tracking campaign
+ * by querying `tracking_campaign_dates`. Returns null if unavailable.
+ */
+export async function getSemrushCampaignStartDate(campaignId: string): Promise<string | null> {
+  const apiKey = getApiKey();
+  const qs = [
+    `key=${encodeURIComponent(apiKey)}`,
+    `action=report`,
+    `type=tracking_campaign_dates`,
+  ].join("&");
+  try {
+    const response = await axios.get<Record<string, unknown>>(
+      `${SEMRUSH_TRACKING_BASE}/${campaignId}/tracking/?${qs}`
+    );
+    const data = response.data as { total?: string; data?: Record<string, { Dt?: string }> };
+    if (!data?.data) return null;
+    const dates = Object.values(data.data).map((d) => d.Dt).filter(Boolean) as string[];
+    if (dates.length === 0) return null;
+    return dates.sort()[0] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Fetches tracked keywords with tag metadata and period comparison.
+ * @param campaignId SEMrush Position Tracking campaign ID
+ * @param dateBegin  Period start date as YYYYMMDD
+ * @param dateEnd    Period end date as YYYYMMDD
+ * @param tags       Optional pipe-separated tag filter, e.g. "brand|product"
+ * @param limit      Max keywords to return (default 500)
+ */
+export async function getSemrushTrackedKeywordsWithTags(
+  campaignId: string,
+  dateBegin: string,
+  dateEnd: string,
+  tags?: string,
+  limit = 500,
+): Promise<SemrushTaggedKeyword[]> {
+  const apiKey = getApiKey();
+  const qsParts = [
+    `key=${encodeURIComponent(apiKey)}`,
+    `action=report`,
+    `type=tracking_position_organic`,
+    `display_limit=${limit}`,
+    `date_begin=${dateBegin}`,
+    `date_end=${dateEnd}`,
+  ];
+  if (tags) qsParts.push(`display_tags_condition=${encodeURIComponent(tags)}`);
+  const qs = qsParts.join("&");
+
+  try {
+    const response = await axios.get<Record<string, unknown>>(
+      `${SEMRUSH_TRACKING_BASE}/${campaignId}/tracking/?${qs}`
+    );
+    const data = response.data as {
+      total?: number;
+      data?: Record<string, {
+        Ph?: string;
+        Nq?: string;
+        Tg?: Record<string, string>;
+        Fi?: Record<string, number | string>;
+        Be?: Record<string, number | string>;
+        Diff?: Record<string, number | string>;
+        Lu?: Record<string, Record<string, string>>;
+      }>;
+    };
+    if (!data?.data || data.total === 0) return [];
+
+    const toPos = (v: unknown): number | null => {
+      if (v === "-" || v == null) return null;
+      const n = typeof v === "number" ? v : parseInt(String(v));
+      return isNaN(n) ? null : n;
+    };
+
+    return Object.values(data.data).map((kw) => {
+      const fiEntries = kw.Fi ? Object.values(kw.Fi) : [];
+      const beEntries = kw.Be ? Object.values(kw.Be) : [];
+      const diffEntries = kw.Diff ? Object.values(kw.Diff) : [];
+      const luDates = kw.Lu ? Object.values(kw.Lu) : [];
+      const landingUrl =
+        luDates.length > 0 ? Object.values(luDates[luDates.length - 1] ?? {})[0] ?? "" : "";
+
+      return {
+        keyword: kw.Ph ?? "",
+        tags: kw.Tg ? Object.values(kw.Tg).filter(Boolean) : [],
+        currentPosition: toPos(fiEntries[0]),
+        previousPosition: toPos(beEntries[0]),
+        delta: toPos(diffEntries[0]),
+        searchVolume: parseInt(kw.Nq ?? "0") || 0,
+        url: landingUrl,
+      };
+    });
+  } catch (err) {
+    console.error("SEMrush tagged keywords fetch error:", err);
+    if (axios.isAxiosError(err) && err.response) {
+      console.error("SEMrush response body:", typeof err.response.data === "string" ? err.response.data.slice(0, 300) : JSON.stringify(err.response.data));
+    }
+    return [];
+  }
+}
+
+/**
+ * Returns all unique tag names used in a Position Tracking campaign
+ * by fetching a broad 7-day snapshot and collecting every `Tg` value.
+ */
+export async function getSemrushCampaignTags(campaignId: string): Promise<string[]> {
+  const today = new Date();
+  const fmt = (d: Date) => d.toISOString().slice(0, 10).replace(/-/g, "");
+  const weekAgo = new Date(today);
+  weekAgo.setDate(today.getDate() - 7);
+
+  const keywords = await getSemrushTrackedKeywordsWithTags(
+    campaignId,
+    fmt(weekAgo),
+    fmt(today),
+    undefined,
+    500,
+  );
+  const tagSet = new Set<string>();
+  for (const kw of keywords) {
+    for (const tag of kw.tags) {
+      if (tag) tagSet.add(tag);
+    }
+  }
+  return Array.from(tagSet).sort();
+}
+
 export interface SemrushAIKeyword {
   keyword: string;
   position: number;

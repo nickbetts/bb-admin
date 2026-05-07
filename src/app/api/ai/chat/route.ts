@@ -4,10 +4,19 @@ import { enforceAiRateLimit } from "@/lib/ai/rate-limit";
 import { prisma } from "@/lib/prisma";
 import OpenAI from "openai";
 import { getOpenAiClient } from "@/lib/openai-client";
+import { getAnthropicClient } from "@/lib/anthropic-client";
 import { logActivity } from "@/lib/activity-logger";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
+
+const SUPPORTED_MODELS = {
+  "gpt-5.4-nano": { provider: "openai" as const, label: "GPT-5.4 nano" },
+  "claude-sonnet-4-6": { provider: "anthropic" as const, label: "Claude Sonnet 4.6" },
+  "claude-opus-4-7": { provider: "anthropic" as const, label: "Claude Opus 4.7" },
+};
+type SupportedModel = keyof typeof SUPPORTED_MODELS;
+const DEFAULT_MODEL: SupportedModel = "gpt-5.4-nano";
 
 // POST /api/ai/chat — conversational AI for client data queries
 export async function POST(request: NextRequest) {
@@ -16,11 +25,17 @@ export async function POST(request: NextRequest) {
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const rl = enforceAiRateLimit(session.user.id); if (!rl.ok) return rl.response!;
 
-    const { clientId, message, conversationHistory } = await request.json() as {
+    const { clientId, message, conversationHistory, model } = await request.json() as {
       clientId: string;
       message: string;
       conversationHistory?: { role: string; content: string }[];
+      model?: string;
     };
+
+    const selectedModel: SupportedModel = (model && model in SUPPORTED_MODELS)
+      ? (model as SupportedModel)
+      : DEFAULT_MODEL;
+    const provider = SUPPORTED_MODELS[selectedModel].provider;
 
     if (!clientId || !message) {
       return NextResponse.json({ error: "clientId and message are required" }, { status: 400 });
@@ -143,8 +158,6 @@ export async function POST(request: NextRequest) {
       data: { clientId, userId: session.user.id, role: "user", content: message },
     });
 
-    const openai = await getOpenAiClient();
-
     // Build conversation messages
     const systemPrompt = `You are an expert digital marketing analyst for ${client.name}. You have access to their marketing performance data across multiple channels.
 
@@ -174,30 +187,44 @@ Instructions:
 - If data is insufficient, say so and suggest what data would help
 - Be concise but thorough${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}`;
 
-    const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-      { role: "system", content: systemPrompt },
-    ];
+    const history = (conversationHistory ?? []).slice(-10).map((m) => ({
+      role: m.role === "assistant" ? ("assistant" as const) : ("user" as const),
+      content: m.content,
+    }));
 
-    // Add conversation history
-    if (conversationHistory?.length) {
-      for (const msg of conversationHistory.slice(-10)) {
-        messages.push({
-          role: msg.role as "user" | "assistant",
-          content: msg.content,
-        });
-      }
+    let reply: string;
+    if (provider === "anthropic") {
+      const anthropic = await getAnthropicClient();
+      const completion = await anthropic.messages.create({
+        model: selectedModel,
+        max_tokens: 2000,
+        temperature: 0.3,
+        system: systemPrompt,
+        messages: [
+          ...history,
+          { role: "user", content: message },
+        ],
+      });
+      reply = completion.content
+        .map((block) => (block.type === "text" ? block.text : ""))
+        .filter(Boolean)
+        .join("\n")
+        || "I couldn't generate a response. Please try again.";
+    } else {
+      const openai = await getOpenAiClient();
+      const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+        { role: "system", content: systemPrompt },
+        ...history,
+        { role: "user", content: message },
+      ];
+      const completion = await openai.chat.completions.create({
+        model: selectedModel,
+        messages,
+        temperature: 0.3,
+        max_completion_tokens: 2000,
+      });
+      reply = completion.choices[0]?.message?.content ?? "I couldn't generate a response. Please try again.";
     }
-
-    messages.push({ role: "user", content: message });
-
-    const completion = await openai.chat.completions.create({
-      model: "gpt-5.4-nano",
-      messages,
-      temperature: 0.3,
-      max_completion_tokens: 2000,
-    });
-
-    const reply = completion.choices[0]?.message?.content ?? "I couldn't generate a response. Please try again.";
 
     // Store assistant message
     await prisma.clientConversation.create({
@@ -211,9 +238,9 @@ Instructions:
       action: "ai_chat_message",
       clientId,
       clientName: client.name,
-      description: `Sent AI chat message for ${client.name}`,
+      description: `Sent AI chat message for ${client.name} (${SUPPORTED_MODELS[selectedModel].label})`,
     });
-    return NextResponse.json({ reply });
+    return NextResponse.json({ reply, model: selectedModel });
   } catch (error) {
     console.error("AI chat error:", error);
     return NextResponse.json(

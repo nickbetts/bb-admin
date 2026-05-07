@@ -11,6 +11,9 @@ import {
   getBacklinks,
   getSemrushTrackedKeywords,
   getSemrushAIVisibility,
+  getSemrushTrackedKeywordsWithTags,
+  getSemrushCampaignTags,
+  getSemrushCampaignStartDate,
   getKeywordDifficultyAndIntent,
   getContentGap,
   getSerpFeatures,
@@ -60,7 +63,7 @@ export async function GET(request: NextRequest) {
     // It takes priority over projectId for position-tracking endpoints.
     const campaignId = searchParams.get("campaignId");
 
-    if (!domain && type !== "project-keywords" && type !== "ai-visibility" && type !== "keyword-difficulty") {
+    if (!domain && type !== "project-keywords" && type !== "ai-visibility" && type !== "keyword-difficulty" && type !== "tagged-positions" && type !== "campaign-tags") {
       return NextResponse.json({ error: "domain is required" }, { status: 400 });
     }
 
@@ -186,6 +189,57 @@ export async function GET(request: NextRequest) {
         if (!domain) return NextResponse.json({ error: "domain is required" }, { status: 400 });
         const pcCacheKey = `semrush:position-changes:${domain}:${database}`;
         return NextResponse.json(await withApiCache(pcCacheKey, SEMRUSH_DATABASE_TTL, () => getOrganicPositionChanges(domain, database)));
+      }
+      case "campaign-tags": {
+        if (!campaignId) return NextResponse.json({ error: "campaignId is required" }, { status: 400 });
+        const tagsCacheKey = `semrush:campaign-tags:${campaignId}`;
+        return NextResponse.json(await withApiCache(tagsCacheKey, SEMRUSH_TRACKING_TTL, () => getSemrushCampaignTags(campaignId)));
+      }
+      case "tagged-positions": {
+        if (!campaignId) return NextResponse.json({ error: "campaignId is required" }, { status: 400 });
+        const period = searchParams.get("period") ?? "30d";
+        const providedBegin = searchParams.get("dateBegin") ?? undefined;
+        const providedEnd = searchParams.get("dateEnd") ?? undefined;
+        const tagsParam = searchParams.get("tags") ?? undefined;
+
+        const today = new Date();
+        const fmtDate = (d: Date) => d.toISOString().slice(0, 10).replace(/-/g, "");
+        let dateBegin: string;
+        let dateEnd: string;
+
+        if (period === "campaign_start") {
+          const startDate = await getSemrushCampaignStartDate(campaignId);
+          const fallback = new Date(today);
+          fallback.setFullYear(fallback.getFullYear() - 1);
+          dateBegin = startDate ?? fmtDate(fallback);
+          dateEnd = fmtDate(today);
+        } else if (period === "custom" && providedBegin && providedEnd) {
+          dateBegin = providedBegin;
+          dateEnd = providedEnd;
+        } else if (period === "prev_month") {
+          const start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+          const end = new Date(today.getFullYear(), today.getMonth(), 0);
+          dateBegin = fmtDate(start);
+          dateEnd = fmtDate(end);
+        } else if (period === "7d") {
+          const d = new Date(today);
+          d.setDate(today.getDate() - 7);
+          dateBegin = fmtDate(d);
+          dateEnd = fmtDate(today);
+        } else {
+          // Default: 30d
+          const d = new Date(today);
+          d.setDate(today.getDate() - 30);
+          dateBegin = fmtDate(d);
+          dateEnd = fmtDate(today);
+        }
+
+        const taggedCacheKey = `semrush:tagged-positions:${campaignId}:${dateBegin}:${dateEnd}:${tagsParam ?? ""}`;
+        return NextResponse.json(
+          await withApiCache(taggedCacheKey, SEMRUSH_TRACKING_TTL, () =>
+            getSemrushTrackedKeywordsWithTags(campaignId, dateBegin, dateEnd, tagsParam)
+          )
+        );
       }
       default:
         return NextResponse.json({ error: "Invalid type" }, { status: 400 });

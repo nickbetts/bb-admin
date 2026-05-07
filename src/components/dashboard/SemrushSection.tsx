@@ -172,6 +172,26 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
   const [backlinkComparison, setBacklinkComparison] = useState<Array<{ domain: string; ascore: number; totalBacklinks: number; referringDomains: number; followLinks: number; nofollowLinks: number }>>([]);
   const [positionChanges, setPositionChanges] = useState<Array<{ keyword: string; previousPosition: number; currentPosition: number; change: number; searchVolume: number; url: string }>>([]);
 
+  // ── Tagged keyword positions state ─────────────────────────
+  interface TaggedKeyword {
+    keyword: string;
+    tags: string[];
+    currentPosition: number | null;
+    previousPosition: number | null;
+    delta: number | null;
+    searchVolume: number;
+    url: string;
+  }
+  const [campaignTags, setCampaignTags] = useState<string[]>([]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [tagPeriod, setTagPeriod] = useState<string>("30d");
+  const [customDateBegin, setCustomDateBegin] = useState<string>("");
+  const [customDateEnd, setCustomDateEnd] = useState<string>("");
+  const [taggedKeywords, setTaggedKeywords] = useState<TaggedKeyword[]>([]);
+  const [taggedKwLoading, setTaggedKwLoading] = useState(false);
+  const [taggedKwError, setTaggedKwError] = useState<string | null>(null);
+  // ──────────────────────────────────────────────────────────
+
   useEffect(() => {
     const controller = new AbortController();
 
@@ -343,6 +363,51 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
     fetchData();
     return () => controller.abort();
   }, [domain, projectId, campaignIdsKey, startDate, endDate]);
+
+  // Fetch available tags from campaign on mount (when campaignId is present)
+  useEffect(() => {
+    const activeCampaignId = campaignIds?.[0] ?? null;
+    if (!activeCampaignId) return;
+    fetch(`/api/semrush?type=campaign-tags&campaignId=${encodeURIComponent(activeCampaignId)}`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((tags: string[]) => {
+        if (Array.isArray(tags)) setCampaignTags(tags);
+      })
+      .catch(() => {});
+  }, [campaignIdsKey]);
+
+  // Fetch tagged keyword positions when filters change
+  useEffect(() => {
+    const activeCampaignId = campaignIds?.[0] ?? null;
+    if (!activeCampaignId) return;
+
+    const controller = new AbortController();
+    const params = new URLSearchParams({
+      type: "tagged-positions",
+      campaignId: activeCampaignId,
+      period: tagPeriod,
+    });
+    if (selectedTags.length > 0) params.set("tags", selectedTags.join("|"));
+    if (tagPeriod === "custom" && customDateBegin && customDateEnd) {
+      params.set("dateBegin", customDateBegin);
+      params.set("dateEnd", customDateEnd);
+    }
+
+    setTaggedKwLoading(true);
+    setTaggedKwError(null);
+    fetch(`/api/semrush?${params.toString()}`, { signal: controller.signal })
+      .then((r) => (r.ok ? r.json() : r.json().then((e: { error?: string }) => Promise.reject(e.error ?? "Failed"))))
+      .then((data: TaggedKeyword[]) => {
+        setTaggedKeywords(Array.isArray(data) ? data : []);
+      })
+      .catch((err) => {
+        if (err instanceof Error && err.name === "AbortError") return;
+        setTaggedKwError(typeof err === "string" ? err : "Failed to load tagged keywords");
+      })
+      .finally(() => setTaggedKwLoading(false));
+
+    return () => controller.abort();
+  }, [campaignIdsKey, tagPeriod, selectedTags, customDateBegin, customDateEnd]);
 
   // Compute anomaly alerts from SEMrush data
   const semrushAlerts = useMemo<SemrushAlert[]>(() => {
@@ -846,6 +911,205 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
                       }`}>
                         {change > 0 ? <CssArrowUp /> : change < 0 ? <CssArrowDown /> : <CssMinus />}
                         {change > 0 ? `+${change}` : change < 0 ? `${change}` : "="}
+                      </span>
+                    );
+                  },
+                },
+                {
+                  key: "searchVolume",
+                  label: "Volume",
+                  align: "right",
+                  sortable: true,
+                  render: (_v, row) => formatNumber(row.searchVolume),
+                },
+              ]}
+            />
+          )}
+        </SectionCard>
+      )}
+
+      {/* Keyword Rankings by Tag */}
+      {show("tagged_kw_positions") && (campaignIds?.[0] ?? null) && (
+        <SectionCard
+          title="Keyword Rankings by Tag"
+          subtitle="Tracked keyword positions filtered by SEMrush campaign tag"
+        >
+          {/* Controls row */}
+          <div className="flex flex-wrap items-center gap-3 mb-5">
+            {/* Period selector */}
+            <select
+              value={tagPeriod}
+              onChange={(e) => setTagPeriod(e.target.value)}
+              className="text-sm rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            >
+              <option value="7d">Last 7 days</option>
+              <option value="30d">Last 30 days</option>
+              <option value="prev_month">Previous month</option>
+              <option value="campaign_start">Since campaign start</option>
+              <option value="custom">Custom range</option>
+            </select>
+            {tagPeriod === "custom" && (
+              <>
+                <input
+                  type="date"
+                  value={customDateBegin}
+                  onChange={(e) => setCustomDateBegin(e.target.value)}
+                  className="text-sm rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                />
+                <span className="text-[var(--text-3)] text-sm">to</span>
+                <input
+                  type="date"
+                  value={customDateEnd}
+                  onChange={(e) => setCustomDateEnd(e.target.value)}
+                  className="text-sm rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                />
+              </>
+            )}
+          </div>
+          {/* Tag filter chips */}
+          {campaignTags.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-4">
+              <button
+                onClick={() => setSelectedTags([])}
+                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                  selectedTags.length === 0
+                    ? "bg-indigo-600 text-white border-indigo-600"
+                    : "border-[var(--border)] text-[var(--text-2)] hover:border-indigo-400"
+                }`}
+              >
+                All tags
+              </button>
+              {campaignTags.map((tag) => (
+                <button
+                  key={tag}
+                  onClick={() =>
+                    setSelectedTags((prev) =>
+                      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+                    )
+                  }
+                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                    selectedTags.includes(tag)
+                      ? "bg-indigo-600 text-white border-indigo-600"
+                      : "border-[var(--border)] text-[var(--text-2)] hover:border-indigo-400"
+                  }`}
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {taggedKwLoading ? (
+            <p className="text-sm text-[var(--text-3)] py-4">Loading keyword positions&hellip;</p>
+          ) : taggedKwError ? (
+            <p className="text-sm text-red-600 py-2">{taggedKwError}</p>
+          ) : taggedKeywords.length === 0 ? (
+            <p className="text-sm text-[var(--text-4)] italic py-2">
+              No keyword data returned for this tag and period combination. SEMrush may still be
+              crawling or the campaign may not have any tagged keywords.
+            </p>
+          ) : (
+            <DataTable<TaggedKeyword>
+              data={taggedKeywords}
+              searchable
+              exportable
+              exportFilename="tagged-keyword-positions"
+              pageSize={25}
+              columns={[
+                {
+                  key: "keyword",
+                  label: "Keyword",
+                  render: (_v, row) => (
+                    <div>
+                      <p className="text-[var(--text)] font-medium truncate max-w-[220px]">{row.keyword}</p>
+                      {row.url && (
+                        <p className="text-xs text-[var(--text-3)] truncate max-w-[220px]">
+                          {row.url.replace(/^https?:\/\/[^/]+/, "")}
+                        </p>
+                      )}
+                    </div>
+                  ),
+                },
+                {
+                  key: "tags",
+                  label: "Tags",
+                  render: (_v, row) =>
+                    row.tags.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {row.tags.map((t) => (
+                          <span
+                            key={t}
+                            className="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-50 text-indigo-700"
+                          >
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-[var(--text-3)] text-xs">—</span>
+                    ),
+                },
+                {
+                  key: "currentPosition",
+                  label: "Current",
+                  align: "center",
+                  sortable: true,
+                  render: (_v, row) =>
+                    row.currentPosition != null ? (
+                      <span
+                        className={`inline-flex items-center justify-center w-8 h-8 rounded-lg text-xs font-bold ${
+                          row.currentPosition <= 3
+                            ? "bg-emerald-50 text-emerald-700"
+                            : row.currentPosition <= 10
+                            ? "bg-blue-50 text-blue-700"
+                            : row.currentPosition <= 20
+                            ? "bg-amber-50 text-amber-700"
+                            : "bg-[var(--border-subtle)] text-[var(--text-2)]"
+                        }`}
+                      >
+                        {row.currentPosition}
+                      </span>
+                    ) : (
+                      <span className="text-[var(--text-3)] text-xs">—</span>
+                    ),
+                },
+                {
+                  key: "previousPosition",
+                  label: "Previous",
+                  align: "center",
+                  sortable: true,
+                  render: (_v, row) =>
+                    row.previousPosition != null ? (
+                      <span className="text-sm text-[var(--text-2)]">{row.previousPosition}</span>
+                    ) : (
+                      <span className="text-[var(--text-3)] text-xs">—</span>
+                    ),
+                },
+                {
+                  key: "delta",
+                  label: "Change",
+                  align: "center",
+                  sortable: true,
+                  render: (_v, row) => {
+                    if (row.delta == null) return <span className="text-[var(--text-3)] text-xs">—</span>;
+                    // delta = Be − Fi; positive means position improved (number went down)
+                    return (
+                      <span
+                        className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-semibold ${
+                          row.delta > 0
+                            ? "bg-emerald-50 text-emerald-700"
+                            : row.delta < 0
+                            ? "bg-red-50 text-red-700"
+                            : "bg-[var(--border-subtle)] text-[var(--text-3)]"
+                        }`}
+                      >
+                        {row.delta > 0 ? (
+                          <><CssArrowUp />+{row.delta}</>
+                        ) : row.delta < 0 ? (
+                          <><CssArrowDown />{row.delta}</>
+                        ) : (
+                          <><CssMinus />0</>
+                        )}
                       </span>
                     );
                   },

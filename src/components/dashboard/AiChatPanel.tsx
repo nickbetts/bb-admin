@@ -22,14 +22,35 @@ const SUGGESTED_PROMPTS = [
   "What should we focus on next month?",
 ];
 
+const MODEL_OPTIONS = [
+  { value: "gpt-5.4-nano", label: "GPT-5.4 nano" },
+  { value: "claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
+  { value: "claude-opus-4-7", label: "Claude Opus 4.7" },
+] as const;
+type ModelValue = typeof MODEL_OPTIONS[number]["value"];
+const MODEL_STORAGE_KEY = "ai-chat-model";
+
 export function AiChatPanel({ clientId, clientName }: AiChatPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [model, setModel] = useState<ModelValue>("gpt-5.4-nano");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const saved = typeof window !== "undefined" ? window.localStorage.getItem(MODEL_STORAGE_KEY) : null;
+    if (saved && MODEL_OPTIONS.some((m) => m.value === saved)) {
+      setModel(saved as ModelValue);
+    }
+  }, []);
+
+  const handleModelChange = (value: ModelValue) => {
+    setModel(value);
+    if (typeof window !== "undefined") window.localStorage.setItem(MODEL_STORAGE_KEY, value);
+  };
 
   // Load conversation history
   useEffect(() => {
@@ -66,6 +87,7 @@ export function AiChatPanel({ clientId, clientName }: AiChatPanelProps) {
           clientId,
           message: text.trim(),
           conversationHistory: messages.slice(-10),
+          model,
         }),
       });
 
@@ -81,7 +103,7 @@ export function AiChatPanel({ clientId, clientName }: AiChatPanelProps) {
       setLoading(false);
       inputRef.current?.focus();
     }
-  }, [clientId, loading, messages]);
+  }, [clientId, loading, messages, model]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -154,11 +176,36 @@ export function AiChatPanel({ clientId, clientName }: AiChatPanelProps) {
               justifyContent: "space-between",
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <Sparkles style={{ width: 20, height: 20 }} />
-              <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+              <Sparkles style={{ width: 20, height: 20, flexShrink: 0 }} />
+              <div style={{ minWidth: 0 }}>
                 <div style={{ fontWeight: 600, fontSize: 15 }}>Ask the Data</div>
-                <div style={{ fontSize: 12, opacity: 0.85 }}>{clientName}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, opacity: 0.9 }}>
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{clientName}</span>
+                  <span style={{ opacity: 0.6 }}>·</span>
+                  <select
+                    value={model}
+                    onChange={(e) => handleModelChange(e.target.value as ModelValue)}
+                    title="Model"
+                    style={{
+                      background: "rgba(255,255,255,0.18)",
+                      color: "white",
+                      border: "1px solid rgba(255,255,255,0.25)",
+                      borderRadius: 6,
+                      padding: "2px 6px",
+                      fontSize: 11,
+                      fontFamily: "inherit",
+                      cursor: "pointer",
+                      outline: "none",
+                    }}
+                  >
+                    {MODEL_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value} style={{ color: "#1a1a1a" }}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
             <div style={{ display: "flex", gap: 8 }}>

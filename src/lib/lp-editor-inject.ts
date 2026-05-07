@@ -62,12 +62,7 @@ export function getEditorInjectionScript(): string {
 
   function removeDeleteBtn() {
     if (deleteBtn && deleteBtn.parentNode) {
-      var host = deleteBtn.parentNode;
-      if (host.getAttribute && host.getAttribute('data-lp-pos-reset')) {
-        host.style.position = '';
-        host.removeAttribute('data-lp-pos-reset');
-      }
-      host.removeChild(deleteBtn);
+      deleteBtn.parentNode.removeChild(deleteBtn);
     }
     deleteBtn = null;
     deleteBtnTarget = null;
@@ -81,8 +76,11 @@ export function getEditorInjectionScript(): string {
     var btn = document.createElement('button');
     btn.setAttribute('data-lp-delete-btn', '1');
     btn.title = 'Delete element';
+    var rect = el.getBoundingClientRect();
     btn.style.cssText = [
-      'position:absolute', 'top:-9px', 'right:-9px',
+      'position:fixed',
+      'top:' + Math.round(rect.top - 9) + 'px',
+      'left:' + Math.round(rect.right - 11) + 'px',
       'width:20px', 'height:20px',
       'background:#ef4444', 'color:#fff',
       'border:none', 'border-radius:50%',
@@ -107,12 +105,7 @@ export function getEditorInjectionScript(): string {
       window.parent.postMessage({ type: 'lp-delete-element', selector: selector }, '*');
     });
 
-    var pos = window.getComputedStyle(el).position;
-    if (pos === 'static') {
-      el.style.position = 'relative';
-      el.setAttribute('data-lp-pos-reset', '1');
-    }
-    el.appendChild(btn);
+    document.body.appendChild(btn);
     deleteBtn = btn;
     deleteBtnTarget = el;
   }
@@ -142,11 +135,21 @@ export function getEditorInjectionScript(): string {
     removeDeleteBtn();
   }, true);
 
+  // Remove the fixed-position delete button on scroll (position becomes stale)
+  document.addEventListener('scroll', removeDeleteBtn, true);
+
   // Click to edit
   document.addEventListener('click', function(e) {
     var el = e.target;
     // Let the delete button's own handler fire — don't intercept it here
     if (el && el.getAttribute && el.getAttribute('data-lp-delete-btn')) return;
+    // Let accordion / disclosure widgets toggle natively (details/summary, aria-expanded)
+    var node = el;
+    while (node && node !== document.documentElement) {
+      if (node.tagName === 'SUMMARY' || node.tagName === 'DETAILS') return;
+      if (node.getAttribute && (node.getAttribute('aria-expanded') !== null || node.getAttribute('aria-controls') !== null)) return;
+      node = node.parentNode;
+    }
     if (!isEditable(el)) return;
     e.preventDefault();
     e.stopPropagation();

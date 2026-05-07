@@ -287,17 +287,28 @@ function SortableSectionRow({
   );
 }
 
-function AddSectionRow({ loading, onAdd }: { loading: boolean; onAdd: (desc: string) => void }) {
+function AddSectionRow({ loading, onAdd }: { loading: boolean; onAdd: (desc: string, images: File[], crawlUrls: string[]) => void }) {
   const [open, setOpen] = useState(false);
   const [desc, setDesc] = useState("");
+  const [images, setImages] = useState<File[]>([]);
+  const [crawlUrls, setCrawlUrls] = useState<string[]>([""]);
+
+  const handleClose = () => {
+    setOpen(false);
+    setDesc("");
+    setImages([]);
+    setCrawlUrls([""]);
+  };
 
   const handleSubmit = () => {
     const d = desc.trim();
     if (!d || loading) return;
-    onAdd(d);
-    setDesc("");
-    setOpen(false);
+    onAdd(d, images, crawlUrls.filter((u) => u.trim()));
+    handleClose();
   };
+
+  const inputStyle: React.CSSProperties = { fontSize: 12, padding: "5px 8px", border: "1px solid var(--border)", borderRadius: "var(--r-sm)", background: "var(--bg)", color: "var(--text)", outline: "none", fontFamily: "inherit", width: "100%", boxSizing: "border-box" };
+  const labelStyle: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: "var(--text-3)" };
 
   return (
     <div style={{ marginTop: 10, borderRadius: "var(--r-sm)", border: open ? "1px solid var(--accent)" : "1px dashed var(--border)", background: "var(--surface)" }}>
@@ -312,18 +323,64 @@ function AddSectionRow({ loading, onAdd }: { loading: boolean; onAdd: (desc: str
             : <><Sparkles style={{ width: 12, height: 12 }} /> Add new section with AI</>}
         </button>
       ) : (
-        <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
+        <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", gap: 8 }}>
           <span style={{ fontSize: 11, fontWeight: 600, color: "var(--accent)" }}>Describe the new section</span>
           <input
             autoFocus
             type="text"
             value={desc}
             onChange={(e) => setDesc(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); if (e.key === "Escape") setOpen(false); }}
+            onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); if (e.key === "Escape") handleClose(); }}
             placeholder="e.g. testimonials with 3 cards, or a pricing table…"
-            style={{ fontSize: 12, padding: "5px 8px", border: "1px solid var(--border)", borderRadius: "var(--r-sm)", background: "var(--bg)", color: "var(--text)", outline: "none", fontFamily: "inherit" }}
+            style={inputStyle}
           />
-          <div style={{ display: "flex", gap: 6 }}>
+
+          {/* Reference images */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <label style={labelStyle}>Reference images <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span></label>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--accent)", cursor: "pointer", padding: "4px 0" }}>
+              <ImagePlus style={{ width: 12, height: 12, flexShrink: 0 }} />
+              {images.length === 0 ? "Upload images…" : `${images.length} image${images.length > 1 ? "s" : ""} selected`}
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                multiple
+                style={{ display: "none" }}
+                onChange={(e) => setImages(Array.from(e.target.files ?? []))}
+              />
+            </label>
+            {images.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                {images.map((f, i) => (
+                  <span key={i} style={{ fontSize: 10, padding: "2px 6px", background: "var(--accent-bg)", color: "var(--accent)", borderRadius: "var(--r-sm)", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Crawl URLs */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <label style={labelStyle}>Crawl URLs for context <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span></label>
+            {crawlUrls.map((url, i) => (
+              <div key={i} style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                <input
+                  type="url"
+                  value={url}
+                  onChange={(e) => setCrawlUrls((prev) => { const next = [...prev]; next[i] = e.target.value; return next; })}
+                  placeholder="https://example.com/about"
+                  style={{ ...inputStyle, flex: 1 }}
+                />
+                {crawlUrls.length > 1 && (
+                  <button onClick={() => setCrawlUrls((prev) => prev.filter((_, j) => j !== i))} style={{ padding: "3px 6px", background: "none", border: "none", cursor: "pointer", color: "var(--text-4)", fontSize: 14, lineHeight: 1 }}>×</button>
+                )}
+              </div>
+            ))}
+            {crawlUrls.length < 3 && (
+              <button onClick={() => setCrawlUrls((prev) => [...prev, ""])} style={{ alignSelf: "flex-start", fontSize: 11, padding: "3px 0", background: "none", border: "none", cursor: "pointer", color: "var(--accent)", fontFamily: "inherit" }}>+ Add another URL</button>
+            )}
+          </div>
+
+          <div style={{ display: "flex", gap: 6, marginTop: 2 }}>
             <button
               onClick={handleSubmit}
               disabled={!desc.trim()}
@@ -332,7 +389,7 @@ function AddSectionRow({ loading, onAdd }: { loading: boolean; onAdd: (desc: str
               Generate
             </button>
             <button
-              onClick={() => setOpen(false)}
+              onClick={handleClose}
               style={{ fontSize: 11, padding: "5px 10px", background: "none", border: "1px solid var(--border)", borderRadius: "var(--r-sm)", cursor: "pointer", color: "var(--text-3)", fontFamily: "inherit" }}
             >
               Cancel
@@ -900,7 +957,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
   );
 
   const handleAddSection = useCallback(
-    async (description: string) => {
+    async (description: string, images: File[], crawlUrls: string[]) => {
       if (refiningSectionId) return;
       setRefiningSectionId("__new__");
 
@@ -910,6 +967,26 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
       const sectionHtml = `<section><div class="container"><p>placeholder</p></div></section>`;
 
       try {
+        // Upload any reference images in parallel
+        let imageUrls: string[] = [];
+        if (images.length > 0) {
+          const uploads = await Promise.all(
+            images.map(async (file) => {
+              const fd = new FormData();
+              fd.append("file", file);
+              const res = await fetch(`/api/tools/landing-pages/upload-image`, { method: "POST", body: fd });
+              if (!res.ok) return null;
+              const data = await res.json() as { url?: string };
+              return data.url ?? null;
+            }),
+          );
+          imageUrls = uploads.filter((u): u is string => u !== null);
+        }
+
+        const validCrawlUrls = crawlUrls.filter((u) => {
+          try { new URL(u); return true; } catch { return false; }
+        }).slice(0, 3);
+
         const res = await fetch(`/api/tools/landing-pages/${id}/refine-section`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -917,6 +994,8 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
             sectionHtml,
             prompt: `Create a brand-new section: ${description}. Build it from scratch — do not keep the placeholder text. Match the visual style, colours, and tone described in the page context.`,
             pageContext,
+            imageUrls: imageUrls.length ? imageUrls : undefined,
+            crawlUrls: validCrawlUrls.length ? validCrawlUrls : undefined,
           }),
         });
 

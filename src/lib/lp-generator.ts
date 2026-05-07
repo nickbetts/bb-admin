@@ -1048,6 +1048,10 @@ export interface RefineSectionOptions {
   /** Brief style/structure summary extracted from the live page HTML (title, h1, css vars, page text) */
   pageContext: string;
   brandContext?: BrandContext;
+  /** Uploaded image URLs to include as visual reference for Claude vision */
+  imageUrls?: string[];
+  /** Additional context scraped from user-provided URLs */
+  additionalContext?: string;
 }
 
 export async function refineSectionHtml(opts: RefineSectionOptions): Promise<string> {
@@ -1063,7 +1067,8 @@ export async function refineSectionHtml(opts: RefineSectionOptions): Promise<str
 Return ONLY the updated section HTML — no full page wrapper, no <html>/<head>/<body> tags, no markdown fences, no explanation.
 Preserve the section's overall structure and visual style unless the user explicitly asks to change them.
 Match the colours, fonts, and tone described in the page context.
-Use the scraped website copy for accurate brand wording — real service names, real stats, real team names, real testimonials.`;
+Use the scraped website copy for accurate brand wording — real service names, real stats, real team names, real testimonials.
+For FAQ or accordion sections, always use native <details>/<summary> elements — they require zero JavaScript and work everywhere. If the design calls for custom styling, add a self-contained <style> block; never rely on external libraries.`;
 
   let userContent = `SECTION TO EDIT:
 ${opts.sectionHtml}
@@ -1078,13 +1083,26 @@ ${opts.pageContext}${colourSummary ? `\nBrand colours: ${colourSummary}` : ""}`;
     userContent += `\n\n## Original scraped website HTML (brand and copy reference):\n${opts.brandContext.rawHtml.slice(0, 20000)}`;
   }
 
+  if (opts.additionalContext) {
+    userContent += `\n\n## Additional context from provided URLs:\n${opts.additionalContext}`;
+  }
+
   userContent += `\n\nUSER REQUEST: ${opts.prompt}`;
+
+  const imageBlocks = opts.imageUrls?.length
+    ? await buildImageBlocks(opts.imageUrls, undefined, 4)
+    : [];
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const messageContent: any = imageBlocks.length
+    ? [{ type: "text", text: userContent }, ...imageBlocks]
+    : userContent;
 
   const response = await anthropic.messages.create({
     model: MODEL,
     max_tokens: 8192,
     system,
-    messages: [{ role: "user", content: userContent }],
+    messages: [{ role: "user", content: messageContent }],
   });
 
   const block = response.content?.[0];
