@@ -182,6 +182,19 @@ export default function MetaAudienceScraperPage() {
   const [estimates, setEstimates] = useState<Record<string, { ok: true; estimate: { estimatedDauLower: number; estimatedDauUpper: number; estimatedMauLower: number; estimatedMauUpper: number } } | { ok: false; error: string }>>({});
   const [estimatesLoading, setEstimatesLoading] = useState(false);
 
+  // Per-slice refinement: which ad set or creative is the user currently
+  // editing? Map of slice key -> { feedback, loading }.
+  type SliceRefineState = { feedback: string; loading: boolean };
+  const [sliceRefines, setSliceRefines] = useState<Record<string, SliceRefineState>>({});
+  function sliceKey(ci: number, ai?: number, cri?: number) {
+    if (typeof cri === "number" && typeof ai === "number") return `c${ci}-a${ai}-cr${cri}`;
+    if (typeof ai === "number") return `c${ci}-a${ai}`;
+    return `c${ci}`;
+  }
+  function setSliceFeedback(key: string, feedback: string) {
+    setSliceRefines((prev) => ({ ...prev, [key]: { feedback, loading: prev[key]?.loading ?? false } }));
+  }
+
   useEffect(() => {
     fetch("/api/meta/accounts")
       .then((r) => r.json())
@@ -398,6 +411,40 @@ export default function MetaAudienceScraperPage() {
       setRefineLoading(false);
     }
   }, [plan, refineFeedback, brief, clientName, aiResult, refinementHistory]);
+
+  // ── Per-slice refinement (ad set / creative) ───────────────────────────
+  const refineSlice = useCallback(async (scope: { campaignIndex: number; adSetIndex?: number; creativeIndex?: number }) => {
+    if (!plan) return;
+    const key = sliceKey(scope.campaignIndex, scope.adSetIndex, scope.creativeIndex);
+    const feedback = (sliceRefines[key]?.feedback ?? "").trim();
+    if (!feedback) return;
+    setSliceRefines((prev) => ({ ...prev, [key]: { feedback, loading: true } }));
+    setError(null);
+    try {
+      const validIds = (aiResult?.pillars ?? []).flatMap((p) => p.options.map((o) => o.id));
+      const res = await fetch("/api/tools/meta-audience-scraper/refine-slice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          plan,
+          scope,
+          feedback,
+          brief: brief.trim() || undefined,
+          clientName: clientName.trim() || undefined,
+          validIds,
+          refinementHistory,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Slice refinement failed");
+      setPlan(data.plan as FullPlan);
+      setRefinementHistory((prev) => [...prev, { feedback: `[scoped] ${feedback}`, appliedAt: new Date().toISOString() }]);
+      setSliceRefines((prev) => ({ ...prev, [key]: { feedback: "", loading: false } }));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Slice refinement failed");
+      setSliceRefines((prev) => ({ ...prev, [key]: { feedback, loading: false } }));
+    }
+  }, [plan, sliceRefines, aiResult, brief, clientName, refinementHistory]);
 
   // ── Reach / delivery estimates per ad set ─────────────────────────────
   // Builds a quick lookup of pillar option → type so we can split
@@ -960,6 +1007,10 @@ export default function MetaAudienceScraperPage() {
               estimatesLoading={estimatesLoading}
               onFetchEstimates={fetchEstimates}
               hasAccount={!!accountId}
+              sliceRefines={sliceRefines}
+              setSliceFeedback={setSliceFeedback}
+              onRefineSlice={refineSlice}
+              sliceKey={sliceKey}
             />
           )}
 
@@ -1842,6 +1893,10 @@ interface CampaignPlanSectionProps {
   estimatesLoading: boolean;
   onFetchEstimates: () => void;
   hasAccount: boolean;
+  sliceRefines: Record<string, { feedback: string; loading: boolean }>;
+  setSliceFeedback: (key: string, feedback: string) => void;
+  onRefineSlice: (scope: { campaignIndex: number; adSetIndex?: number; creativeIndex?: number }) => void;
+  sliceKey: (ci: number, ai?: number, cri?: number) => string;
 }
 
 function CampaignPlanSection(props: CampaignPlanSectionProps) {
@@ -1852,6 +1907,7 @@ function CampaignPlanSection(props: CampaignPlanSectionProps) {
     images, imageKey, imagePromptOverrides, setImagePromptOverrides,
     refinePrompts, setRefinePrompts, onGenerateImage, onRefineImage, onGenerateAllImages, hasSelection,
     autoGenerating, estimates, estimatesLoading, onFetchEstimates, hasAccount,
+    sliceRefines, setSliceFeedback, onRefineSlice, sliceKey,
   } = props;
 
   const budgetReady = parseFloat(dailyBudget) > 0;
@@ -1907,6 +1963,10 @@ function CampaignPlanSection(props: CampaignPlanSectionProps) {
               onGenerateImage={onGenerateImage}
               onRefineImage={onRefineImage}
               estimates={estimates}
+              sliceRefines={sliceRefines}
+              setSliceFeedback={setSliceFeedback}
+              onRefineSlice={onRefineSlice}
+              sliceKey={sliceKey}
             />
           ))}
 
@@ -2049,6 +2109,10 @@ function CampaignCard({
   onGenerateImage,
   onRefineImage,
   estimates,
+  sliceRefines,
+  setSliceFeedback,
+  onRefineSlice,
+  sliceKey,
 }: {
   campaign: CampaignPlan;
   campaignIndex: number;
@@ -2062,6 +2126,10 @@ function CampaignCard({
   onGenerateImage: (key: string, prompt: string, aspect: "square" | "portrait" | "landscape") => void;
   onRefineImage: (key: string, aspect: "square" | "portrait" | "landscape") => void;
   estimates: Record<string, { ok: true; estimate: { estimatedDauLower: number; estimatedDauUpper: number; estimatedMauLower: number; estimatedMauUpper: number } } | { ok: false; error: string }>;
+  sliceRefines: Record<string, { feedback: string; loading: boolean }>;
+  setSliceFeedback: (key: string, feedback: string) => void;
+  onRefineSlice: (scope: { campaignIndex: number; adSetIndex?: number; creativeIndex?: number }) => void;
+  sliceKey: (ci: number, ai?: number, cri?: number) => string;
 }) {
   return (
     <div style={{ border: "1px solid var(--border)", borderRadius: "var(--r)", overflow: "hidden", background: "var(--surface)" }}>
@@ -2150,6 +2218,10 @@ function CampaignCard({
                     onGenerateImage={onGenerateImage}
                     onRefineImage={onRefineImage}
                     estimate={estimates[`${campaignIndex}-${index}`]}
+                    sliceRefines={sliceRefines}
+                    setSliceFeedback={setSliceFeedback}
+                    onRefineSlice={onRefineSlice}
+                    sliceKey={sliceKey}
                   />
                 ))}
               </div>
@@ -2175,6 +2247,10 @@ function AdSetCard({
   onGenerateImage,
   onRefineImage,
   estimate,
+  sliceRefines,
+  setSliceFeedback,
+  onRefineSlice,
+  sliceKey,
 }: {
   adSet: AdSetPlan;
   campaignIndex: number;
@@ -2189,8 +2265,14 @@ function AdSetCard({
   onGenerateImage: (key: string, prompt: string, aspect: "square" | "portrait" | "landscape") => void;
   onRefineImage: (key: string, aspect: "square" | "portrait" | "landscape") => void;
   estimate?: { ok: true; estimate: { estimatedDauLower: number; estimatedDauUpper: number; estimatedMauLower: number; estimatedMauUpper: number } } | { ok: false; error: string };
+  sliceRefines: Record<string, { feedback: string; loading: boolean }>;
+  setSliceFeedback: (key: string, feedback: string) => void;
+  onRefineSlice: (scope: { campaignIndex: number; adSetIndex?: number; creativeIndex?: number }) => void;
+  sliceKey: (ci: number, ai?: number, cri?: number) => string;
 }) {
   const hasGeo = (adSet.geoTargeting?.length ?? 0) > 0;
+  const adSetRefineKey = sliceKey(campaignIndex, adSetIndex);
+  const adSetRefine = sliceRefines[adSetRefineKey] ?? { feedback: "", loading: false };
   return (
     <div style={{ border: "1px solid var(--border)", borderRadius: 8, padding: 14, background: "var(--bg)" }}>
       {/* Title row */}
@@ -2408,15 +2490,46 @@ function AdSetCard({
             };
           });
 
+          const creativeRefineKey = sliceKey(campaignIndex, adSetIndex, cri);
+          const creativeRefine = sliceRefines[creativeRefineKey] ?? { feedback: "", loading: false };
           return (
             <CreativeCard
               key={cri}
               creative={creative}
               aspect={aspect}
               frames={frames}
+              refineFeedback={creativeRefine.feedback}
+              refineLoading={creativeRefine.loading}
+              onSetRefineFeedback={(v) => setSliceFeedback(creativeRefineKey, v)}
+              onApplyRefine={() => onRefineSlice({ campaignIndex, adSetIndex, creativeIndex: cri })}
             />
           );
         })}
+      </div>
+
+      {/* Per-ad-set refinement */}
+      <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px dashed var(--border)" }}>
+        <p style={{ margin: "0 0 6px", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.16em", color: "var(--cyber-magenta, var(--accent))", fontFamily: "ui-monospace, SF Mono, Menlo, monospace" }}>
+          &gt; Refine this ad set
+        </p>
+        <div style={{ display: "flex", gap: 6 }}>
+          <input
+            value={adSetRefine.feedback}
+            onChange={(e) => setSliceFeedback(adSetRefineKey, e.target.value)}
+            placeholder="e.g. Drop Advantage+ Audience here. Tighten geo to GB only. Bump budget by 30%."
+            style={{ ...inputStyle, fontSize: 12 }}
+            disabled={adSetRefine.loading}
+          />
+          <button
+            type="button"
+            onClick={() => onRefineSlice({ campaignIndex, adSetIndex })}
+            disabled={adSetRefine.loading || !adSetRefine.feedback.trim()}
+            style={{ ...primaryBtnStyle, padding: "6px 12px", fontSize: 11 }}
+          >
+            {adSetRefine.loading ? <Loader2 style={{ width: 12, height: 12 }} className="spin" /> : <RefreshCw style={{ width: 12, height: 12 }} />}
+            Apply
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -2438,10 +2551,18 @@ function CreativeCard({
   creative,
   aspect,
   frames,
+  refineFeedback,
+  refineLoading,
+  onSetRefineFeedback,
+  onApplyRefine,
 }: {
   creative: CreativeConcept;
   aspect: "square" | "portrait" | "landscape";
   frames: CreativeFrame[];
+  refineFeedback: string;
+  refineLoading: boolean;
+  onSetRefineFeedback: (v: string) => void;
+  onApplyRefine: () => void;
 }) {
   // Normalise legacy single-variant fields into the multi-variant arrays.
   const hooks = creative.hooks?.length ? creative.hooks : (creative.hook ? [creative.hook] : []);
@@ -2496,6 +2617,31 @@ function CreativeCard({
           ))}
         </div>
       )}
+
+      {/* Per-creative refinement */}
+      <div style={{ marginTop: 12, paddingTop: 8, borderTop: "1px dashed var(--border)" }}>
+        <p style={{ margin: "0 0 6px", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.16em", color: "var(--cyber-magenta, var(--accent))", fontFamily: "ui-monospace, SF Mono, Menlo, monospace" }}>
+          &gt; Refine this creative
+        </p>
+        <div style={{ display: "flex", gap: 6 }}>
+          <input
+            value={refineFeedback}
+            onChange={(e) => onSetRefineFeedback(e.target.value)}
+            placeholder="e.g. Make hooks more emotive. Switch tone to story-led. Use a darker visual mood."
+            style={{ ...inputStyle, fontSize: 12 }}
+            disabled={refineLoading}
+          />
+          <button
+            type="button"
+            onClick={onApplyRefine}
+            disabled={refineLoading || !refineFeedback.trim()}
+            style={{ ...primaryBtnStyle, padding: "6px 12px", fontSize: 11 }}
+          >
+            {refineLoading ? <Loader2 style={{ width: 12, height: 12 }} className="spin" /> : <RefreshCw style={{ width: 12, height: 12 }} />}
+            Apply
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
