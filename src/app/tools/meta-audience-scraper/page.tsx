@@ -15,6 +15,10 @@ import {
   X,
   ChevronDown,
   ChevronUp,
+  Layers,
+  Wand2,
+  ImagePlus,
+  RefreshCw,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────
@@ -62,6 +66,67 @@ interface AISuggestResponse {
 
 type SelectedItem = TargetingResult & { pillar?: string };
 
+// ─── Campaign plan types ──────────────────────────────────────────────────
+
+interface CreativeConcept {
+  format: string;
+  hook: string;
+  headline: string;
+  primaryText: string;
+  cta: string;
+  imagePrompt: string;
+  why: string;
+}
+
+interface AdSetPlan {
+  name: string;
+  pillarName: string;
+  audienceSummary: string;
+  targetingOptionIds: string[];
+  optimizationGoal: string;
+  billingEvent: string;
+  dailyBudget: number;
+  placements: "advantage_plus" | "manual";
+  manualPlacements?: string[];
+  ageRange: { min: number; max: number };
+  genders: "all" | "female" | "male";
+  advantageAudience: boolean;
+  why: string;
+  creatives: CreativeConcept[];
+}
+
+interface CampaignPlan {
+  name: string;
+  objective: string;
+  buyingType: string;
+  budgetMode: "CBO" | "ABO";
+  dailyBudget: number;
+  advantagePlus: { enabled: boolean; type: string; why: string };
+  attribution: string;
+  why: string;
+  adSets: AdSetPlan[];
+}
+
+interface FullPlan {
+  summary: string;
+  structureRationale: string;
+  campaigns: CampaignPlan[];
+  measurement: {
+    primaryKpi: string;
+    secondaryKpis: string[];
+    minLearningPhaseEvents: string;
+    ctaToHoldOff: string;
+  };
+  risks: string[];
+  scaleUp: string;
+}
+
+interface GeneratedImage {
+  url: string;
+  prompt: string;
+  loading?: boolean;
+}
+
 // ─── Component ────────────────────────────────────────────────────────────
 
 export default function MetaAudienceScraperPage() {
@@ -88,6 +153,20 @@ export default function MetaAudienceScraperPage() {
   const [selected, setSelected] = useState<SelectedItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // Campaign plan
+  const [dailyBudget, setDailyBudget] = useState("");
+  const [currency, setCurrency] = useState("GBP");
+  const [objective, setObjective] = useState("");
+  const [planLoading, setPlanLoading] = useState(false);
+  const [plan, setPlan] = useState<FullPlan | null>(null);
+  const [refineFeedback, setRefineFeedback] = useState("");
+  const [refineLoading, setRefineLoading] = useState(false);
+
+  // Per-creative image state — keyed by `${campaignIdx}-${adSetIdx}-${creativeIdx}`
+  const [images, setImages] = useState<Record<string, GeneratedImage>>({});
+  const [imagePromptOverrides, setImagePromptOverrides] = useState<Record<string, string>>({});
+  const [refinePrompts, setRefinePrompts] = useState<Record<string, string>>({});
 
   const selectedIds = useMemo(() => new Set(selected.map((s) => s.id)), [selected]);
 
@@ -229,6 +308,159 @@ export default function MetaAudienceScraperPage() {
     navigator.clipboard.writeText(text).catch(() => {});
     setCopiedId("__all");
     setTimeout(() => setCopiedId(null), 1200);
+  }
+
+  // ── Build pillars to send to the campaign-plan endpoint ────────────────
+  // If user selection is non-empty AND came from AI pillars we group selected
+  // items by their pillar tag. Otherwise we fall back to the full pillars
+  // returned by the AI suggest pass.
+  function buildPillarsForPlan(): { name: string; rationale: string; options: { id: string; name: string; type: string }[] }[] {
+    if (selected.length > 0) {
+      const groups = new Map<string, { id: string; name: string; type: string }[]>();
+      for (const s of selected) {
+        const key = s.pillar ?? "Selected audiences";
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key)!.push({ id: s.id, name: s.name, type: s.type });
+      }
+      const result: { name: string; rationale: string; options: { id: string; name: string; type: string }[] }[] = [];
+      for (const [name, options] of groups) {
+        const matchingPillar = aiResult?.pillars.find((p) => p.name === name);
+        result.push({ name, rationale: matchingPillar?.rationale ?? "", options });
+      }
+      return result;
+    }
+    return (aiResult?.pillars ?? []).map((p) => ({
+      name: p.name,
+      rationale: p.rationale,
+      options: p.options.map((o) => ({ id: o.id, name: o.name, type: o.type })),
+    }));
+  }
+
+  const buildPlan = useCallback(async () => {
+    setError(null);
+    const budgetNum = parseFloat(dailyBudget);
+    if (!Number.isFinite(budgetNum) || budgetNum <= 0) {
+      setError("Enter a daily budget greater than 0.");
+      return;
+    }
+    const pillarsForPlan = buildPillarsForPlan();
+    if (pillarsForPlan.length === 0) {
+      setError("Generate AI suggestions or pick at least one audience option first.");
+      return;
+    }
+
+    setPlanLoading(true);
+    setPlan(null);
+    setImages({});
+    try {
+      const res = await fetch("/api/tools/meta-audience-scraper/campaign-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          brief: brief.trim() || undefined,
+          thesis: aiResult?.thesis ?? undefined,
+          clientName: clientName.trim() || undefined,
+          sector: sector.trim() || undefined,
+          geography: geography.trim() || undefined,
+          dailyBudget: budgetNum,
+          currency,
+          objective: objective.trim() || undefined,
+          pillars: pillarsForPlan,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Plan generation failed");
+      setPlan(data.plan as FullPlan);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Plan generation failed");
+    } finally {
+      setPlanLoading(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dailyBudget, currency, objective, brief, clientName, sector, geography, aiResult, selected]);
+
+  const refinePlan = useCallback(async () => {
+    if (!plan || !refineFeedback.trim()) return;
+    setError(null);
+    setRefineLoading(true);
+    try {
+      const res = await fetch("/api/tools/meta-audience-scraper/refine-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          plan,
+          feedback: refineFeedback.trim(),
+          brief: brief.trim() || undefined,
+          clientName: clientName.trim() || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Refinement failed");
+      setPlan(data.plan as FullPlan);
+      setRefineFeedback("");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Refinement failed");
+    } finally {
+      setRefineLoading(false);
+    }
+  }, [plan, refineFeedback, brief, clientName]);
+
+  // ── Image generation per creative ─────────────────────────────────────
+  function imageKey(c: number, a: number, cr: number): string {
+    return `${c}-${a}-${cr}`;
+  }
+
+  async function generateImage(key: string, basePrompt: string, aspect: "square" | "portrait" | "landscape") {
+    const overridden = imagePromptOverrides[key];
+    const prompt = (overridden && overridden.trim()) || basePrompt;
+    if (!prompt.trim()) return;
+
+    setImages((prev) => ({ ...prev, [key]: { url: "", prompt, loading: true } }));
+    try {
+      const res = await fetch("/api/tools/meta-audience-scraper/generate-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt, aspect, quality: "high" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Image generation failed");
+      setImages((prev) => ({ ...prev, [key]: { url: data.url, prompt, loading: false } }));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Image generation failed");
+      setImages((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+    }
+  }
+
+  async function refineImage(key: string, aspect: "square" | "portrait" | "landscape") {
+    const existing = images[key];
+    const refinement = refinePrompts[key]?.trim();
+    if (!existing?.url || !refinement) return;
+
+    setImages((prev) => ({ ...prev, [key]: { ...existing, loading: true } }));
+    try {
+      const res = await fetch("/api/tools/meta-audience-scraper/refine-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          originalUrl: existing.url,
+          originalPrompt: existing.prompt,
+          refinement,
+          aspect,
+          quality: "high",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Image refinement failed");
+      setImages((prev) => ({ ...prev, [key]: { url: data.url, prompt: existing.prompt, loading: false } }));
+      setRefinePrompts((prev) => ({ ...prev, [key]: "" }));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Image refinement failed");
+      setImages((prev) => ({ ...prev, [key]: { ...existing, loading: false } }));
+    }
   }
 
   // ── Render ────────────────────────────────────────────────────────────
@@ -492,6 +724,33 @@ export default function MetaAudienceScraperPage() {
             </section>
           )}
 
+          {tab === "ai" && aiResult && aiResult.pillars.length > 0 && (
+            <CampaignPlanSection
+              dailyBudget={dailyBudget}
+              setDailyBudget={setDailyBudget}
+              currency={currency}
+              setCurrency={setCurrency}
+              objective={objective}
+              setObjective={setObjective}
+              planLoading={planLoading}
+              plan={plan}
+              onBuildPlan={buildPlan}
+              refineFeedback={refineFeedback}
+              setRefineFeedback={setRefineFeedback}
+              refineLoading={refineLoading}
+              onRefinePlan={refinePlan}
+              images={images}
+              imageKey={imageKey}
+              imagePromptOverrides={imagePromptOverrides}
+              setImagePromptOverrides={setImagePromptOverrides}
+              refinePrompts={refinePrompts}
+              setRefinePrompts={setRefinePrompts}
+              onGenerateImage={generateImage}
+              onRefineImage={refineImage}
+              hasSelection={selected.length > 0}
+            />
+          )}
+
           {tab === "manual" && (
             <section style={cardStyle}>
               <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
@@ -692,6 +951,526 @@ export default function MetaAudienceScraperPage() {
         @keyframes spin { to { transform: rotate(360deg); } }
       `}</style>
     </main>
+  );
+}
+
+// ─── Campaign plan section ──────────────────────────────────────────────
+
+interface CampaignPlanSectionProps {
+  dailyBudget: string;
+  setDailyBudget: (v: string) => void;
+  currency: string;
+  setCurrency: (v: string) => void;
+  objective: string;
+  setObjective: (v: string) => void;
+  planLoading: boolean;
+  plan: FullPlan | null;
+  onBuildPlan: () => void;
+  refineFeedback: string;
+  setRefineFeedback: (v: string) => void;
+  refineLoading: boolean;
+  onRefinePlan: () => void;
+  images: Record<string, GeneratedImage>;
+  imageKey: (c: number, a: number, cr: number) => string;
+  imagePromptOverrides: Record<string, string>;
+  setImagePromptOverrides: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  refinePrompts: Record<string, string>;
+  setRefinePrompts: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  onGenerateImage: (key: string, prompt: string, aspect: "square" | "portrait" | "landscape") => void;
+  onRefineImage: (key: string, aspect: "square" | "portrait" | "landscape") => void;
+  hasSelection: boolean;
+}
+
+function CampaignPlanSection(props: CampaignPlanSectionProps) {
+  const {
+    dailyBudget, setDailyBudget, currency, setCurrency, objective, setObjective,
+    planLoading, plan, onBuildPlan,
+    refineFeedback, setRefineFeedback, refineLoading, onRefinePlan,
+    images, imageKey, imagePromptOverrides, setImagePromptOverrides,
+    refinePrompts, setRefinePrompts, onGenerateImage, onRefineImage, hasSelection,
+  } = props;
+
+  return (
+    <section style={{ ...cardStyle, marginTop: 24 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+        <Layers style={{ width: 18, height: 18, color: "var(--accent)" }} />
+        <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>Campaign Plan</h2>
+      </div>
+      <p style={{ margin: "0 0 14px", fontSize: 12, color: "var(--text-3)" }}>
+        Set your daily budget and Claude will design the full campaign structure — campaigns, ad sets, budget split, placements, Advantage+, attribution, and creative concepts (with AI-generated imagery) — explaining every decision.
+        {hasSelection ? " Using your selected audiences." : " Using all AI-suggested pillars (add to selection to focus on specific ones)."}
+      </p>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 120px 1fr", gap: 10, marginBottom: 12 }}>
+        <div>
+          <label style={labelStyle}>Daily budget</label>
+          <input
+            type="number"
+            min="1"
+            step="any"
+            value={dailyBudget}
+            onChange={(e) => setDailyBudget(e.target.value)}
+            placeholder="e.g. 100"
+            style={inputStyle}
+            disabled={planLoading}
+          />
+        </div>
+        <div>
+          <label style={labelStyle}>Currency</label>
+          <select
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value)}
+            style={inputStyle}
+            disabled={planLoading}
+          >
+            <option value="GBP">GBP</option>
+            <option value="EUR">EUR</option>
+            <option value="USD">USD</option>
+            <option value="AED">AED</option>
+            <option value="AUD">AUD</option>
+            <option value="CAD">CAD</option>
+          </select>
+        </div>
+        <div>
+          <label style={labelStyle}>Objective hint (optional)</label>
+          <input
+            value={objective}
+            onChange={(e) => setObjective(e.target.value)}
+            placeholder="e.g. Sales, Leads, Awareness"
+            style={inputStyle}
+            disabled={planLoading}
+          />
+        </div>
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+        <button type="button" onClick={onBuildPlan} disabled={planLoading} style={primaryBtnStyle}>
+          {planLoading ? <Loader2 style={{ width: 14, height: 14 }} className="spin" /> : <Wand2 style={{ width: 14, height: 14 }} />}
+          {planLoading ? "Building plan…" : plan ? "Rebuild plan" : "Build campaign plan"}
+        </button>
+      </div>
+
+      {plan && (
+        <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 18 }}>
+          {/* Summary */}
+          <div style={{ padding: 14, background: "var(--accent-bg)", borderRadius: "var(--r)", borderLeft: "3px solid var(--accent)" }}>
+            <p style={{ margin: 0, fontSize: 13, color: "var(--text)", fontWeight: 500 }}>{plan.summary}</p>
+            <p style={{ margin: "8px 0 0", fontSize: 12, color: "var(--text-2)" }}>
+              <strong>Why this structure:</strong> {plan.structureRationale}
+            </p>
+          </div>
+
+          {/* Campaigns */}
+          {plan.campaigns.map((campaign, ci) => (
+            <CampaignCard
+              key={ci}
+              campaign={campaign}
+              campaignIndex={ci}
+              currency={currency}
+              images={images}
+              imageKey={imageKey}
+              imagePromptOverrides={imagePromptOverrides}
+              setImagePromptOverrides={setImagePromptOverrides}
+              refinePrompts={refinePrompts}
+              setRefinePrompts={setRefinePrompts}
+              onGenerateImage={onGenerateImage}
+              onRefineImage={onRefineImage}
+            />
+          ))}
+
+          {/* Measurement */}
+          <div
+            style={{
+              padding: 14,
+              background: "var(--surface-2)",
+              border: "1px solid var(--border)",
+              borderRadius: "var(--r)",
+            }}
+          >
+            <h3 style={{ margin: 0, fontSize: 13, fontWeight: 600 }}>Measurement</h3>
+            <div style={{ marginTop: 8, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10, fontSize: 12, color: "var(--text-2)" }}>
+              <div>
+                <strong style={{ color: "var(--text)" }}>Primary KPI:</strong> {plan.measurement.primaryKpi}
+              </div>
+              <div>
+                <strong style={{ color: "var(--text)" }}>Secondary KPIs:</strong> {plan.measurement.secondaryKpis.join(", ")}
+              </div>
+              <div>
+                <strong style={{ color: "var(--text)" }}>Learning phase:</strong> {plan.measurement.minLearningPhaseEvents}
+              </div>
+              <div>
+                <strong style={{ color: "var(--text)" }}>Hands-off rule:</strong> {plan.measurement.ctaToHoldOff}
+              </div>
+            </div>
+          </div>
+
+          {/* Risks + Scale-up */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div style={{ padding: 14, background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: "var(--r)" }}>
+              <h3 style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "var(--warning-text)" }}>Risks to watch</h3>
+              <ul style={{ margin: "6px 0 0", paddingLeft: 18, fontSize: 12, color: "var(--text-2)" }}>
+                {plan.risks.map((r, i) => <li key={i}>{r}</li>)}
+              </ul>
+            </div>
+            <div style={{ padding: 14, background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: "var(--r)" }}>
+              <h3 style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "var(--success-text)" }}>Scale-up plan</h3>
+              <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--text-2)" }}>{plan.scaleUp}</p>
+            </div>
+          </div>
+
+          {/* Refinement */}
+          <div style={{ borderTop: "1px solid var(--border)", paddingTop: 16 }}>
+            <h3 style={{ margin: 0, fontSize: 13, fontWeight: 600 }}>Refine the plan</h3>
+            <p style={{ margin: "4px 0 8px", fontSize: 11, color: "var(--text-3)" }}>
+              Tell Claude what you want to change. Be specific — e.g. &ldquo;Move 30% of budget from prospecting to retargeting&rdquo;, or &ldquo;Drop Advantage+ Audience and use a tight interest stack instead&rdquo;.
+            </p>
+            <textarea
+              value={refineFeedback}
+              onChange={(e) => setRefineFeedback(e.target.value)}
+              placeholder="Your refinement…"
+              rows={3}
+              style={textareaStyle}
+              disabled={refineLoading}
+            />
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
+              <button type="button" onClick={onRefinePlan} disabled={refineLoading || !refineFeedback.trim()} style={primaryBtnStyle}>
+                {refineLoading ? <Loader2 style={{ width: 14, height: 14 }} className="spin" /> : <RefreshCw style={{ width: 14, height: 14 }} />}
+                {refineLoading ? "Refining…" : "Apply refinement"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function CampaignCard({
+  campaign,
+  campaignIndex,
+  currency,
+  images,
+  imageKey,
+  imagePromptOverrides,
+  setImagePromptOverrides,
+  refinePrompts,
+  setRefinePrompts,
+  onGenerateImage,
+  onRefineImage,
+}: {
+  campaign: CampaignPlan;
+  campaignIndex: number;
+  currency: string;
+  images: Record<string, GeneratedImage>;
+  imageKey: (c: number, a: number, cr: number) => string;
+  imagePromptOverrides: Record<string, string>;
+  setImagePromptOverrides: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  refinePrompts: Record<string, string>;
+  setRefinePrompts: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  onGenerateImage: (key: string, prompt: string, aspect: "square" | "portrait" | "landscape") => void;
+  onRefineImage: (key: string, aspect: "square" | "portrait" | "landscape") => void;
+}) {
+  return (
+    <div style={{ border: "1px solid var(--border)", borderRadius: "var(--r)", overflow: "hidden", background: "var(--surface)" }}>
+      <div style={{ padding: "12px 14px", background: "var(--surface-2)", borderBottom: "1px solid var(--border)" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+          <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>{campaign.name}</h3>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            <Tag>{campaign.objective}</Tag>
+            <Tag>{campaign.budgetMode}</Tag>
+            <Tag>{currency} {campaign.dailyBudget.toFixed(0)}/day</Tag>
+            {campaign.advantagePlus.enabled && <Tag tone="accent">Advantage+</Tag>}
+          </div>
+        </div>
+        <p style={{ margin: "8px 0 0", fontSize: 12, color: "var(--text-2)" }}>
+          <strong>Why:</strong> {campaign.why}
+        </p>
+        {campaign.advantagePlus.enabled && (
+          <p style={{ margin: "4px 0 0", fontSize: 11, color: "var(--accent)" }}>
+            <strong>Advantage+ ({campaign.advantagePlus.type}):</strong> {campaign.advantagePlus.why}
+          </p>
+        )}
+        <p style={{ margin: "4px 0 0", fontSize: 11, color: "var(--text-3)" }}>
+          Attribution: {campaign.attribution}
+        </p>
+      </div>
+
+      <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 12 }}>
+        {campaign.adSets.map((adSet, ai) => (
+          <AdSetCard
+            key={ai}
+            adSet={adSet}
+            campaignIndex={campaignIndex}
+            adSetIndex={ai}
+            currency={currency}
+            images={images}
+            imageKey={imageKey}
+            imagePromptOverrides={imagePromptOverrides}
+            setImagePromptOverrides={setImagePromptOverrides}
+            refinePrompts={refinePrompts}
+            setRefinePrompts={setRefinePrompts}
+            onGenerateImage={onGenerateImage}
+            onRefineImage={onRefineImage}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AdSetCard({
+  adSet,
+  campaignIndex,
+  adSetIndex,
+  currency,
+  images,
+  imageKey,
+  imagePromptOverrides,
+  setImagePromptOverrides,
+  refinePrompts,
+  setRefinePrompts,
+  onGenerateImage,
+  onRefineImage,
+}: {
+  adSet: AdSetPlan;
+  campaignIndex: number;
+  adSetIndex: number;
+  currency: string;
+  images: Record<string, GeneratedImage>;
+  imageKey: (c: number, a: number, cr: number) => string;
+  imagePromptOverrides: Record<string, string>;
+  setImagePromptOverrides: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  refinePrompts: Record<string, string>;
+  setRefinePrompts: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  onGenerateImage: (key: string, prompt: string, aspect: "square" | "portrait" | "landscape") => void;
+  onRefineImage: (key: string, aspect: "square" | "portrait" | "landscape") => void;
+}) {
+  return (
+    <div style={{ border: "1px solid var(--border)", borderRadius: 8, padding: 12, background: "var(--bg)" }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <h4 style={{ margin: 0, fontSize: 13, fontWeight: 600 }}>{adSet.name}</h4>
+          <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--text-2)" }}>{adSet.audienceSummary}</p>
+        </div>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          <Tag>{currency} {adSet.dailyBudget.toFixed(0)}/day</Tag>
+          <Tag>{adSet.optimizationGoal}</Tag>
+          <Tag>{adSet.placements === "advantage_plus" ? "Advantage+ Placements" : "Manual placements"}</Tag>
+          {adSet.advantageAudience && <Tag tone="accent">Advantage+ Audience</Tag>}
+        </div>
+      </div>
+
+      <div style={{ marginTop: 8, fontSize: 11, color: "var(--text-3)" }}>
+        Pillar: <strong style={{ color: "var(--text-2)" }}>{adSet.pillarName}</strong> ·
+        Age {adSet.ageRange.min}–{adSet.ageRange.max} ·
+        {" "}{adSet.genders === "all" ? "All genders" : adSet.genders}
+        {adSet.placements === "manual" && adSet.manualPlacements?.length ? (
+          <> · {adSet.manualPlacements.join(", ")}</>
+        ) : null}
+      </div>
+
+      <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--text-2)" }}>
+        <strong>Why:</strong> {adSet.why}
+      </p>
+
+      {adSet.targetingOptionIds.length > 0 && (
+        <details style={{ marginTop: 6 }}>
+          <summary style={{ fontSize: 11, color: "var(--text-3)", cursor: "pointer" }}>
+            {adSet.targetingOptionIds.length} targeting IDs
+          </summary>
+          <p style={{ margin: "4px 0 0", fontSize: 11, color: "var(--text-2)", fontFamily: "monospace", wordBreak: "break-all" }}>
+            {adSet.targetingOptionIds.join(", ")}
+          </p>
+        </details>
+      )}
+
+      {/* Creatives */}
+      <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+        {adSet.creatives.map((creative, cri) => {
+          const key = imageKey(campaignIndex, adSetIndex, cri);
+          const aspect: "square" | "portrait" | "landscape" =
+            creative.format === "video" ? "portrait"
+              : creative.format === "carousel" ? "square"
+              : "square";
+          return (
+            <CreativeCard
+              key={cri}
+              creative={creative}
+              imageKey={key}
+              aspect={aspect}
+              image={images[key]}
+              promptOverride={imagePromptOverrides[key] ?? ""}
+              setPromptOverride={(v) =>
+                setImagePromptOverrides((prev) => ({ ...prev, [key]: v }))
+              }
+              refinePrompt={refinePrompts[key] ?? ""}
+              setRefinePrompt={(v) =>
+                setRefinePrompts((prev) => ({ ...prev, [key]: v }))
+              }
+              onGenerate={() => onGenerateImage(key, creative.imagePrompt, aspect)}
+              onRefine={() => onRefineImage(key, aspect)}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function CreativeCard({
+  creative,
+  aspect,
+  image,
+  promptOverride,
+  setPromptOverride,
+  refinePrompt,
+  setRefinePrompt,
+  onGenerate,
+  onRefine,
+}: {
+  creative: CreativeConcept;
+  imageKey: string;
+  aspect: "square" | "portrait" | "landscape";
+  image: GeneratedImage | undefined;
+  promptOverride: string;
+  setPromptOverride: (v: string) => void;
+  refinePrompt: string;
+  setRefinePrompt: (v: string) => void;
+  onGenerate: () => void;
+  onRefine: () => void;
+}) {
+  const [promptOpen, setPromptOpen] = useState(false);
+  return (
+    <div style={{ border: "1px solid var(--border)", borderRadius: 8, padding: 10, background: "var(--surface)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+        <span style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-3)" }}>
+          {creative.format.replace("_", " ")} · {creative.cta}
+        </span>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: image || image === undefined ? "1fr 200px" : "1fr", gap: 12 }}>
+        <div>
+          <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: "var(--text)" }}>{creative.hook}</p>
+          <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--text-2)" }}>{creative.headline}</p>
+          <p style={{ margin: "3px 0 0", fontSize: 11, color: "var(--text-3)" }}>{creative.primaryText}</p>
+          <p style={{ margin: "6px 0 0", fontSize: 11, color: "var(--text-3)", fontStyle: "italic" }}>
+            <strong>Why:</strong> {creative.why}
+          </p>
+
+          <details
+            open={promptOpen}
+            onToggle={(e) => setPromptOpen((e.currentTarget as HTMLDetailsElement).open)}
+            style={{ marginTop: 8 }}
+          >
+            <summary style={{ fontSize: 11, color: "var(--text-3)", cursor: "pointer" }}>
+              Image prompt
+            </summary>
+            <textarea
+              value={promptOverride || creative.imagePrompt}
+              onChange={(e) => setPromptOverride(e.target.value)}
+              rows={3}
+              style={{ ...textareaStyle, marginTop: 6, fontSize: 11 }}
+            />
+          </details>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "stretch", gap: 6 }}>
+          {image?.url ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={image.url}
+                alt={creative.headline}
+                style={{
+                  width: "100%",
+                  height: aspect === "landscape" ? 130 : aspect === "portrait" ? 280 : 200,
+                  objectFit: "cover",
+                  borderRadius: 6,
+                  border: "1px solid var(--border)",
+                  opacity: image.loading ? 0.5 : 1,
+                }}
+              />
+              <input
+                value={refinePrompt}
+                onChange={(e) => setRefinePrompt(e.target.value)}
+                placeholder="Refine: e.g. warmer light"
+                style={{ ...inputStyle, fontSize: 11, padding: "6px 8px" }}
+                disabled={image.loading}
+              />
+              <div style={{ display: "flex", gap: 4 }}>
+                <button
+                  type="button"
+                  onClick={onRefine}
+                  disabled={image.loading || !refinePrompt.trim()}
+                  style={{ ...fileBtnStyle, flex: 1, justifyContent: "center", fontSize: 11 }}
+                >
+                  {image.loading ? <Loader2 style={{ width: 11, height: 11 }} className="spin" /> : <RefreshCw style={{ width: 11, height: 11 }} />}
+                  Refine
+                </button>
+                <button
+                  type="button"
+                  onClick={onGenerate}
+                  disabled={image.loading}
+                  style={{ ...fileBtnStyle, flex: 1, justifyContent: "center", fontSize: 11 }}
+                  title="Regenerate from prompt"
+                >
+                  <Wand2 style={{ width: 11, height: 11 }} />
+                  Redo
+                </button>
+              </div>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={onGenerate}
+              disabled={image?.loading}
+              style={{
+                ...fileBtnStyle,
+                justifyContent: "center",
+                height: aspect === "landscape" ? 130 : aspect === "portrait" ? 280 : 200,
+                flexDirection: "column",
+                gap: 8,
+                fontSize: 12,
+              }}
+            >
+              {image?.loading ? (
+                <>
+                  <Loader2 style={{ width: 16, height: 16 }} className="spin" />
+                  Generating…
+                </>
+              ) : (
+                <>
+                  <ImagePlus style={{ width: 18, height: 18 }} />
+                  Generate image
+                </>
+              )}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Tag({ children, tone }: { children: React.ReactNode; tone?: "accent" | "default" }) {
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        fontSize: 10,
+        fontWeight: 600,
+        padding: "2px 7px",
+        borderRadius: 999,
+        background: tone === "accent" ? "var(--accent-bg)" : "var(--surface)",
+        color: tone === "accent" ? "var(--accent)" : "var(--text-2)",
+        border: "1px solid",
+        borderColor: tone === "accent" ? "var(--accent)" : "var(--border)",
+        textTransform: "uppercase",
+        letterSpacing: "0.04em",
+      }}
+    >
+      {children}
+    </span>
   );
 }
 
