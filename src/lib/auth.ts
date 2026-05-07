@@ -35,6 +35,7 @@ export const ALL_PERMISSIONS = [
   "ad_image_generator",
   "internal_linking",
   "keyword_tracker",
+  "meta_audience_scraper",
   // Portal publishing — gates the "Publish to client portal" action on
   // reports, grand plans, content strategies and landing pages.
   "publish_to_portal",
