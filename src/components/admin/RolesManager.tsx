@@ -44,7 +44,7 @@ const PERMISSION_GROUPS = [
       { key: "subscriptions", label: "Subscriptions" },
       { key: "email_verifier", label: "Email Verifier" },
       { key: "ad_image_generator", label: "Ad Image Generator" },
-      { key: "meta_audience_scraper", label: "Meta Audience Scraper" },
+      { key: "meta_audience_scraper", label: "Meta Assassin" },
     ],
   },
   {

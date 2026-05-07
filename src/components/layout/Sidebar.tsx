@@ -91,7 +91,7 @@ const toolsNavItems: NavItem[] = [
   { href: "/tools/email-verifier", label: "Email Verifier", icon: <MailCheck className="h-4 w-4" />, permission: "email_verifier" },
   { href: "/tools/ad-image-generator", label: "AI Assistant", icon: <Brain className="h-4 w-4" />, permission: "ad_image_generator" },
   { href: "/tools/internal-linking", label: "Internal Linking", icon: <Link2 className="h-4 w-4" />, permission: "internal_linking" },
-  { href: "/tools/meta-audience-scraper", label: "Meta Audience Scraper", icon: <Crosshair className="h-4 w-4" />, permission: "meta_audience_scraper" },
+  { href: "/tools/meta-audience-scraper", label: "Meta Assassin", icon: <Crosshair className="h-4 w-4" />, permission: "meta_audience_scraper" },
 ];
 
 interface SidebarProps {

@@ -478,29 +478,32 @@ export default function MetaAudienceScraperPage() {
 
   // ── Render ────────────────────────────────────────────────────────────
   return (
-    <main style={{ maxWidth: 1300, margin: "0 auto", padding: "24px 32px 80px" }}>
-      <header style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
-        <span
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: 40,
-            height: 40,
-            borderRadius: 12,
-            background: "var(--accent-bg)",
-            color: "var(--accent)",
-          }}
-        >
-          <Crosshair style={{ width: 20, height: 20 }} />
-        </span>
-        <div>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 600 }}>Meta Audience Scraper</h1>
-          <p style={{ margin: "2px 0 0", fontSize: 13, color: "var(--text-3)" }}>
-            Discover real interests, behaviours and demographics you can drop straight into a Facebook campaign — powered by Meta&rsquo;s Graph API and Claude.
-          </p>
-        </div>
-      </header>
+    <div className="cyber-shell">
+      {/* Animated ambient background */}
+      <div className="cyber-bg" aria-hidden="true">
+        <div className="cyber-grid" />
+        <div className="cyber-orb cyber-orb-1" />
+        <div className="cyber-orb cyber-orb-2" />
+        <div className="cyber-orb cyber-orb-3" />
+        <div className="cyber-scanlines" />
+      </div>
+
+      <main className="cyber-main">
+        <header className="cyber-header">
+          <div className="cyber-target">
+            <Crosshair className="cyber-target-icon" />
+            <span className="cyber-target-pulse" />
+          </div>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div className="cyber-eyebrow">
+              <span className="cyber-dot" /> SYS // META.ASSASSIN <span className="cyber-version">v2.7</span> · STATUS: <span className="cyber-status-online">ONLINE</span>
+            </div>
+            <h1 className="cyber-title" data-text="META ASSASSIN">META ASSASSIN</h1>
+            <p className="cyber-tagline">
+              <span className="cyber-tagline-prefix">&gt;</span> Audience reconnaissance · Campaign architecture · Creative payload · Powered by Meta Graph + Claude.
+            </p>
+          </div>
+        </header>
 
       {error && (
         <div
@@ -1002,11 +1005,474 @@ export default function MetaAudienceScraperPage() {
         </aside>
       </div>
 
-      <style jsx>{`
+      </main>
+
+      <style jsx global>{`
+        /* ─────────────────────────────────────────────────────────────
+           META ASSASSIN — cyberpunk theme, scoped to .cyber-shell only.
+           Overrides the global Stratos design tokens within this tool
+           without bleeding into the rest of the app.
+           ───────────────────────────────────────────────────────────── */
+        .cyber-shell {
+          --cyber-magenta: #ff2bd6;
+          --cyber-cyan: #00fff7;
+          --cyber-lime: #84ff4f;
+          --cyber-violet: #b026ff;
+          --cyber-amber: #ffb300;
+          --cyber-bg-deep: #06050d;
+          --cyber-bg-mid: #0c0a1c;
+          --cyber-bg-soft: #14112a;
+
+          /* Override Stratos design tokens */
+          --bg: var(--cyber-bg-deep);
+          --surface: rgba(20, 17, 42, 0.55);
+          --surface-2: rgba(34, 28, 64, 0.55);
+          --border: rgba(255, 43, 214, 0.22);
+          --border-subtle: rgba(0, 255, 247, 0.15);
+          --text: #f5efff;
+          --text-2: #cdc6e6;
+          --text-3: #7d77a1;
+          --text-4: #5a5479;
+          --accent: var(--cyber-magenta);
+          --accent-bg: rgba(255, 43, 214, 0.12);
+          --warning-text: var(--cyber-amber);
+          --warning-bg: rgba(255, 179, 0, 0.12);
+          --warning-border: rgba(255, 179, 0, 0.4);
+          --success-text: var(--cyber-lime);
+          --success-bg: rgba(132, 255, 79, 0.10);
+          --success-border: rgba(132, 255, 79, 0.4);
+          --danger-text: #ff5577;
+          --danger-bg: rgba(255, 85, 119, 0.12);
+          --danger-border: rgba(255, 85, 119, 0.4);
+          --r: 4px;
+
+          position: relative;
+          min-height: calc(100vh - 0px);
+          background: var(--cyber-bg-deep);
+          color: var(--text);
+          overflow: hidden;
+          font-feature-settings: "ss01", "ss02";
+        }
+
+        /* Background layers */
+        .cyber-bg {
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          z-index: 0;
+          overflow: hidden;
+        }
+        .cyber-grid {
+          position: absolute;
+          inset: -2px;
+          background-image:
+            linear-gradient(rgba(255, 43, 214, 0.045) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0, 255, 247, 0.045) 1px, transparent 1px);
+          background-size: 48px 48px;
+          mask-image: radial-gradient(ellipse at 50% 0%, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.4) 60%, rgba(0,0,0,0.1) 100%);
+        }
+        .cyber-orb {
+          position: absolute;
+          border-radius: 50%;
+          filter: blur(80px);
+          opacity: 0.32;
+          mix-blend-mode: screen;
+        }
+        .cyber-orb-1 {
+          width: 520px; height: 520px;
+          background: radial-gradient(circle, var(--cyber-magenta) 0%, transparent 65%);
+          top: -120px; left: -100px;
+          animation: cyber-drift-a 22s ease-in-out infinite;
+        }
+        .cyber-orb-2 {
+          width: 600px; height: 600px;
+          background: radial-gradient(circle, var(--cyber-cyan) 0%, transparent 60%);
+          top: 30%; right: -180px;
+          animation: cyber-drift-b 28s ease-in-out infinite;
+        }
+        .cyber-orb-3 {
+          width: 480px; height: 480px;
+          background: radial-gradient(circle, var(--cyber-violet) 0%, transparent 65%);
+          bottom: -120px; left: 30%;
+          animation: cyber-drift-c 34s ease-in-out infinite;
+          opacity: 0.28;
+        }
+        .cyber-scanlines {
+          position: absolute;
+          inset: 0;
+          background-image: linear-gradient(transparent 50%, rgba(0,0,0,0.18) 50%);
+          background-size: 100% 3px;
+          opacity: 0.35;
+          mix-blend-mode: multiply;
+        }
+        @keyframes cyber-drift-a {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          50% { transform: translate(60px, 80px) scale(1.1); }
+        }
+        @keyframes cyber-drift-b {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          50% { transform: translate(-50px, 60px) scale(1.08); }
+        }
+        @keyframes cyber-drift-c {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          50% { transform: translate(40px, -50px) scale(1.05); }
+        }
+
+        /* Main column on top of background */
+        .cyber-main {
+          position: relative;
+          z-index: 1;
+          max-width: 1300px;
+          margin: 0 auto;
+          padding: 32px 32px 96px;
+        }
+
+        /* ── Header ─────────────────────────────────────────── */
+        .cyber-header {
+          display: flex;
+          align-items: flex-start;
+          gap: 16px;
+          margin-bottom: 8px;
+        }
+        .cyber-target {
+          position: relative;
+          width: 56px; height: 56px;
+          flex-shrink: 0;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid var(--cyber-magenta);
+          background:
+            linear-gradient(135deg, rgba(255, 43, 214, 0.15), rgba(0, 255, 247, 0.05));
+          box-shadow:
+            0 0 18px rgba(255, 43, 214, 0.45),
+            inset 0 0 18px rgba(255, 43, 214, 0.18);
+          clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+        }
+        .cyber-target-icon {
+          width: 28px; height: 28px;
+          color: var(--cyber-magenta);
+          filter: drop-shadow(0 0 6px var(--cyber-magenta));
+          animation: cyber-target-spin 6s linear infinite;
+        }
+        .cyber-target-pulse {
+          position: absolute;
+          inset: -4px;
+          border: 1px solid var(--cyber-cyan);
+          opacity: 0;
+          animation: cyber-pulse 2.4s ease-out infinite;
+          clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+        }
+        @keyframes cyber-target-spin { to { transform: rotate(360deg); } }
+        @keyframes cyber-pulse {
+          0% { opacity: 0.7; transform: scale(1); }
+          100% { opacity: 0; transform: scale(1.25); }
+        }
+
+        .cyber-eyebrow {
+          font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+          font-size: 10.5px;
+          letter-spacing: 0.15em;
+          text-transform: uppercase;
+          color: var(--text-3);
+          margin-bottom: 6px;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .cyber-version {
+          color: var(--cyber-cyan);
+          margin: 0 6px;
+        }
+        .cyber-dot {
+          width: 6px; height: 6px;
+          border-radius: 50%;
+          background: var(--cyber-lime);
+          box-shadow: 0 0 8px var(--cyber-lime);
+          animation: cyber-blink 1.6s ease-in-out infinite;
+        }
+        .cyber-status-online {
+          color: var(--cyber-lime);
+          text-shadow: 0 0 6px rgba(132, 255, 79, 0.6);
+        }
+        @keyframes cyber-blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.4; }
+        }
+
+        .cyber-title {
+          font-size: 34px;
+          font-weight: 800;
+          letter-spacing: 0.04em;
+          margin: 0;
+          line-height: 1;
+          background: linear-gradient(95deg, #ffffff 0%, var(--cyber-magenta) 35%, var(--cyber-cyan) 70%, #ffffff 100%);
+          background-size: 200% 100%;
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
+          text-shadow: 0 0 28px rgba(255, 43, 214, 0.35);
+          position: relative;
+          animation: cyber-shimmer 6s ease-in-out infinite;
+          font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        }
+        .cyber-title::before,
+        .cyber-title::after {
+          content: attr(data-text);
+          position: absolute;
+          top: 0; left: 0;
+          width: 100%; height: 100%;
+          -webkit-text-fill-color: initial;
+        }
+        .cyber-title::before {
+          color: var(--cyber-cyan);
+          text-shadow: 0 0 10px var(--cyber-cyan);
+          opacity: 0.6;
+          animation: cyber-glitch-a 4.8s steps(1) infinite;
+          mix-blend-mode: screen;
+        }
+        .cyber-title::after {
+          color: var(--cyber-magenta);
+          text-shadow: 0 0 10px var(--cyber-magenta);
+          opacity: 0.6;
+          animation: cyber-glitch-b 4.8s steps(1) infinite;
+          mix-blend-mode: screen;
+        }
+        @keyframes cyber-shimmer {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+        }
+        @keyframes cyber-glitch-a {
+          0%, 92%, 100% { transform: translate(0, 0); opacity: 0; }
+          93% { transform: translate(-2px, 1px); opacity: 0.6; }
+          94% { transform: translate(0, 0); opacity: 0; }
+          96% { transform: translate(2px, -1px); opacity: 0.6; }
+          97% { transform: translate(0, 0); opacity: 0; }
+        }
+        @keyframes cyber-glitch-b {
+          0%, 90%, 100% { transform: translate(0, 0); opacity: 0; }
+          91% { transform: translate(2px, -1px); opacity: 0.6; }
+          92% { transform: translate(0, 0); opacity: 0; }
+          95% { transform: translate(-2px, 1px); opacity: 0.6; }
+          95.5% { transform: translate(0, 0); opacity: 0; }
+        }
+
+        .cyber-tagline {
+          margin: 8px 0 0;
+          font-size: 12.5px;
+          color: var(--text-2);
+          font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+          letter-spacing: 0.01em;
+        }
+        .cyber-tagline-prefix {
+          color: var(--cyber-cyan);
+          margin-right: 6px;
+        }
+
+        /* ── Tabs ─────────────────────────────────────────── */
+        .cyber-shell button {
+          font-family: inherit;
+        }
+        .cyber-shell h1, .cyber-shell h2, .cyber-shell h3 {
+          color: var(--text);
+        }
+
+        /* ── Cards (overrides inline cardStyle) ───────────── */
+        .cyber-shell section {
+          position: relative;
+          background:
+            linear-gradient(180deg, rgba(20, 17, 42, 0.65) 0%, rgba(12, 10, 28, 0.65) 100%) !important;
+          border: 1px solid var(--border) !important;
+          border-radius: var(--r) !important;
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          box-shadow:
+            0 0 0 1px rgba(255, 43, 214, 0.04),
+            0 24px 80px -40px rgba(255, 43, 214, 0.5);
+          overflow: hidden;
+        }
+        .cyber-shell section::before {
+          content: "";
+          position: absolute;
+          top: 0; left: 0; right: 0;
+          height: 1px;
+          background: linear-gradient(90deg,
+            transparent,
+            rgba(255, 43, 214, 0) 5%,
+            var(--cyber-magenta) 35%,
+            var(--cyber-cyan) 65%,
+            transparent 95%);
+          opacity: 0.7;
+        }
+        .cyber-shell section::after {
+          content: "";
+          position: absolute;
+          top: 8px;
+          right: 12px;
+          font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+          font-size: 9px;
+          color: var(--text-4);
+          letter-spacing: 0.2em;
+        }
+
+        /* Aside (right-rail selection panel) */
+        .cyber-shell aside {
+          background:
+            linear-gradient(180deg, rgba(20, 17, 42, 0.7) 0%, rgba(12, 10, 28, 0.7) 100%) !important;
+          border: 1px solid var(--border) !important;
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          box-shadow:
+            0 24px 80px -40px rgba(0, 255, 247, 0.5);
+          position: relative;
+          overflow: hidden;
+        }
+        .cyber-shell aside::before {
+          content: "";
+          position: absolute;
+          left: 0; top: 0; bottom: 0;
+          width: 2px;
+          background: linear-gradient(180deg, var(--cyber-magenta), var(--cyber-cyan));
+          box-shadow: 0 0 12px var(--cyber-magenta);
+        }
+
+        /* Inputs / textareas */
+        .cyber-shell input,
+        .cyber-shell textarea,
+        .cyber-shell select {
+          background: rgba(8, 6, 18, 0.6) !important;
+          border: 1px solid var(--border-subtle) !important;
+          color: var(--text) !important;
+          font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+          font-size: 12.5px !important;
+          letter-spacing: 0.01em;
+          transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+        }
+        .cyber-shell input::placeholder,
+        .cyber-shell textarea::placeholder {
+          color: var(--text-4);
+        }
+        .cyber-shell input:focus,
+        .cyber-shell textarea:focus,
+        .cyber-shell select:focus {
+          outline: none;
+          border-color: var(--cyber-cyan) !important;
+          box-shadow: 0 0 0 1px var(--cyber-cyan), 0 0 16px rgba(0, 255, 247, 0.25);
+        }
+
+        /* Primary buttons (the var(--accent) ones) */
+        .cyber-shell button[type="button"][style*="var(--accent)"],
+        .cyber-shell button[style*="background: var(--accent)"] {
+          background: linear-gradient(135deg, var(--cyber-magenta) 0%, var(--cyber-violet) 100%) !important;
+          color: #fff !important;
+          border: 1px solid var(--cyber-magenta) !important;
+          box-shadow:
+            0 0 16px rgba(255, 43, 214, 0.5),
+            inset 0 1px 0 rgba(255, 255, 255, 0.2);
+          font-weight: 600 !important;
+          letter-spacing: 0.05em;
+          text-transform: uppercase;
+          font-size: 12px !important;
+          position: relative;
+          overflow: hidden;
+          transition: transform 120ms ease, box-shadow 200ms ease;
+        }
+        .cyber-shell button[style*="var(--accent)"]:not(:disabled):hover {
+          transform: translateY(-1px);
+          box-shadow:
+            0 0 24px rgba(255, 43, 214, 0.7),
+            inset 0 1px 0 rgba(255, 255, 255, 0.3);
+        }
+        .cyber-shell button[style*="var(--accent)"]::after {
+          content: "";
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 60%;
+          height: 100%;
+          background: linear-gradient(90deg,
+            transparent,
+            rgba(255, 255, 255, 0.25),
+            transparent);
+          animation: cyber-sweep 3.2s ease-in-out infinite;
+        }
+        @keyframes cyber-sweep {
+          0% { left: -60%; }
+          50%, 100% { left: 120%; }
+        }
+
+        /* Secondary / file buttons */
+        .cyber-shell button[type="button"][style*="surface-2"]:not([style*="var(--accent)"]) {
+          background: rgba(20, 17, 42, 0.55) !important;
+          border: 1px solid var(--border) !important;
+          color: var(--text-2) !important;
+          font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+          font-size: 11px !important;
+          transition: all 160ms ease;
+        }
+        .cyber-shell button[style*="surface-2"]:hover {
+          border-color: var(--cyber-cyan) !important;
+          color: var(--cyber-cyan) !important;
+          box-shadow: 0 0 12px rgba(0, 255, 247, 0.25);
+        }
+
+        /* Selection chip in nav */
+        .cyber-shell strong {
+          color: var(--text);
+        }
+
+        /* Loading spinner */
         .spin { animation: spin 0.8s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Scrollbar inside the shell */
+        .cyber-shell *::-webkit-scrollbar {
+          width: 8px;
+          height: 8px;
+        }
+        .cyber-shell *::-webkit-scrollbar-track { background: rgba(8, 6, 18, 0.4); }
+        .cyber-shell *::-webkit-scrollbar-thumb {
+          background: linear-gradient(180deg, var(--cyber-magenta), var(--cyber-violet));
+          border-radius: 0;
+        }
+
+        /* Image cards in creatives — neon edge on hover */
+        .cyber-shell img {
+          transition: filter 180ms ease, box-shadow 180ms ease;
+        }
+        .cyber-shell img:hover {
+          filter: brightness(1.05) saturate(1.1);
+          box-shadow: 0 0 20px rgba(255, 43, 214, 0.4);
+        }
+
+        /* "Add to selection" / + / × tiny icon buttons */
+        .cyber-shell button[aria-label="Add to selection"]:not(:disabled):hover,
+        .cyber-shell button[aria-label="Remove from selection"]:not(:disabled):hover,
+        .cyber-shell button[aria-label="Copy ID"]:not(:disabled):hover {
+          border-color: var(--cyber-cyan) !important;
+          color: var(--cyber-cyan) !important;
+          box-shadow: 0 0 10px rgba(0, 255, 247, 0.4);
+        }
+
+        /* Decorate any "Tools >" divider lines etc. */
+        .cyber-shell hr,
+        .cyber-shell [style*="dashed"] {
+          border-color: var(--border-subtle) !important;
+        }
+
+        /* Small accessibility nicety: reduce motion */
+        @media (prefers-reduced-motion: reduce) {
+          .cyber-orb, .cyber-target-icon, .cyber-target-pulse,
+          .cyber-title, .cyber-title::before, .cyber-title::after,
+          .cyber-shell button[style*="var(--accent)"]::after,
+          .cyber-dot {
+            animation: none !important;
+          }
+        }
       `}</style>
-    </main>
+    </div>
   );
 }
 
