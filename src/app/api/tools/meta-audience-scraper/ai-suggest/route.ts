@@ -4,20 +4,26 @@ import { getAnthropicClient } from "@/lib/anthropic-client";
 import { searchTargetingMany, type MetaTargetingResult } from "@/lib/meta-targeting";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 180;
+export const maxDuration = 300;
 
 const MODEL = "claude-opus-4-7";
 
 // POST /api/tools/meta-audience-scraper/ai-suggest
 // Body: { brief?: string; keywords?: string[]; sector?: string; clientName?: string; geography?: string }
 //
-// Pipeline:
-//  1. Claude reads the brief / keywords and proposes 12-20 search queries
-//     spanning interests, behaviours, demographics and life events.
-//  2. We hit Meta's targeting search API in parallel for each query and merge
-//     the results.
-//  3. Claude scores and groups the merged catalogue, returning a curated set
-//     of recommended targeting options grouped by audience pillar.
+// Multi-pass pipeline:
+//   1. Deep brief analysis     — Claude reasons about the audience and produces
+//                                 a structured model: explicit segments, implicit
+//                                 signals, lateral angles, parallel markets, plus
+//                                 the first 20-25 search queries.
+//   2. Pass-1 search           — Meta /search?type=adTargetingCategory in parallel.
+//   3. Gap analysis            — Claude reviews what came back from pass-1, names
+//                                 the blind spots, and produces 10-15 more queries
+//                                 specifically aimed at filling those gaps.
+//   4. Pass-2 search           — Meta search again on the gap queries.
+//   5. Curation                — Claude scores the merged catalogue and groups
+//                                 the strongest options into 4-7 audience pillars.
+
 export async function POST(request: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -45,81 +51,162 @@ export async function POST(request: NextRequest) {
     }
 
     const anthropic = await getAnthropicClient();
+    const briefContext = `${body.clientName ? `Client: ${body.clientName}\n` : ""}${body.sector ? `Sector: ${body.sector}\n` : ""}${body.geography ? `Geography: ${body.geography}\n` : ""}${brief ? `Brief:\n${brief}\n` : ""}${keywords.length ? `Seed keywords: ${keywords.join(", ")}\n` : ""}`.trim();
 
-    // ── Step 1: ask Claude for a search-query plan ──────────────────────────
-    const queryPlanPrompt = `You are a Meta Ads media strategist preparing a campaign for ${body.clientName ?? "a client"}${body.sector ? ` in the ${body.sector} sector` : ""}${body.geography ? ` targeting ${body.geography}` : ""}.
+    // ── Pass 1: deep analysis + initial query plan ──────────────────────────
+    const analysisPrompt = `You are a senior Meta Ads strategist. You will plan audience targeting for a real campaign, but FIRST you need to genuinely understand the brief.
 
-Your task: produce 14-20 short search terms we will fire at Meta's Graph API \`/search?type=adTargetingCategory\` endpoint to discover real interests, behaviours, demographics and life events we can actually target on Facebook/Instagram.
+Think hard about the audience before producing queries. Specifically work through:
+1. EXPLICIT signals — who the brief literally names (demographics, professions, interests).
+2. IMPLICIT signals — what the brief implies about life stage, income bracket, values, daily routines, decision triggers.
+3. ADJACENT communities — neighbouring affinity groups, competing brands, parallel hobbies, complementary purchases.
+4. CULTURAL/MEDIA proxies — magazines, podcasts, TV shows, influencers, events, public figures these people consume.
+5. NICHE sub-segments — micro-tribes inside the broader audience that media buyers often miss.
+6. CONTRARIAN angles — non-obvious or opposite affinities that may still convert (the "luxury watches → vintage car owners" lateral leap).
+
+Then translate that thinking into 20-25 short search terms (1-3 words each) we will fire at Meta's Graph API \`/search?type=adTargetingCategory\` endpoint.
 
 Rules for the queries:
-- Each term should be 1-3 words. Single words generally produce broader results — prefer them where the topic allows.
-- Mix categories: brand names, hobbies, professions, life stages, purchase behaviours, related media (publications, TV shows), affinity groups.
-- Avoid duplicates, near-duplicates, and overly generic terms ("people", "men").
-- Think laterally about the audience — if the brief mentions luxury watches, consider "Rolex", "Patek Philippe", "Hodinkee", "Watch enthusiasts", "Frequent international travelers" etc.
-- Use British English where relevant.
+- Mix categories: brand names, hobbies, professions, life stages, purchase behaviours, related media, life events.
+- Single words usually return broader results — prefer them when the topic allows.
+- No duplicates, no near-duplicates, no overly generic terms ("people", "men", "users").
+- Use British English spellings and proper nouns where applicable.
 
 Return ONLY valid JSON in this exact shape (no markdown, no commentary):
 {
-  "queries": ["string", "string", ...],
-  "reasoning": "one short sentence explaining the angle"
+  "analysis": {
+    "explicit": ["short bullet", "..."],
+    "implicit": ["short bullet", "..."],
+    "adjacent": ["short bullet", "..."],
+    "media": ["short bullet", "..."],
+    "niches": ["short bullet", "..."],
+    "contrarian": ["short bullet", "..."]
+  },
+  "thesis": "one sentence summarising the targeting strategy",
+  "queries": ["string", "string", ...]
 }
 
-${brief ? `Brief:\n${brief}` : ""}
-${keywords.length ? `\nSeed keywords from the user: ${keywords.join(", ")}` : ""}`;
+${briefContext}`;
 
-    const planRes = await anthropic.messages.create({
+    const analysisRes = await anthropic.messages.create({
       model: MODEL,
-      max_tokens: 1500,
-      messages: [{ role: "user", content: queryPlanPrompt }],
+      max_tokens: 4000,
+      messages: [{ role: "user", content: analysisPrompt }],
     });
 
-    const planText = planRes.content.find((c) => c.type === "text");
-    const planRaw = planText && planText.type === "text" ? planText.text : "";
-    const planClean = planRaw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
+    const analysisText = analysisRes.content.find((c) => c.type === "text");
+    const analysisRaw = analysisText && analysisText.type === "text" ? analysisText.text : "";
+    const analysisClean = stripJsonFences(analysisRaw);
 
-    let plan: { queries?: string[]; reasoning?: string } = {};
+    let analysis: {
+      analysis?: Record<string, string[]>;
+      thesis?: string;
+      queries?: string[];
+    } = {};
     try {
-      plan = JSON.parse(planClean);
+      analysis = JSON.parse(analysisClean);
     } catch {
       return NextResponse.json(
-        { error: "Could not parse AI query plan", raw: planClean },
+        { error: "Could not parse AI analysis pass", raw: analysisClean },
         { status: 502 }
       );
     }
 
-    const queries = Array.isArray(plan.queries)
-      ? Array.from(new Set(plan.queries.map((q) => String(q).trim()).filter(Boolean))).slice(0, 20)
+    const pass1Queries = Array.isArray(analysis.queries)
+      ? Array.from(new Set(analysis.queries.map((q) => String(q).trim()).filter(Boolean))).slice(0, 25)
       : [];
+    const allInitialQueries = Array.from(new Set([...keywords, ...pass1Queries]));
 
-    // Always include the user's own keywords too — they know their brief best.
-    const allQueries = Array.from(new Set([...keywords, ...queries]));
-
-    if (allQueries.length === 0) {
+    if (allInitialQueries.length === 0) {
       return NextResponse.json({ error: "No usable search queries generated" }, { status: 502 });
     }
 
-    // ── Step 2: hit Meta's API in parallel ──────────────────────────────────
-    const merged = await searchTargetingMany(allQueries, { perQueryLimit: 15 });
+    // ── Pass 2: Meta search (first wave) ────────────────────────────────────
+    const firstWave = await searchTargetingMany(allInitialQueries, { perQueryLimit: 15 });
 
-    if (merged.length === 0) {
+    // ── Pass 3: gap analysis — what did the first wave miss? ────────────────
+    const firstWaveSummary = summariseForGapPrompt(firstWave);
+
+    const gapPrompt = `You are reviewing the first wave of Meta targeting results for the campaign below.
+
+Your job: identify what the first wave MISSED. Look at the catalogue summary and call out:
+- Audience pillars from your earlier analysis that are under-represented or absent.
+- Lateral or niche angles you didn't probe in the first wave.
+- Parallel-market or contrarian queries you didn't try.
+- Stronger specific brand names, publications, communities, or behaviours we should look up directly.
+
+Then produce 10-15 NEW search terms that target those gaps. Do NOT repeat anything already tried in the first wave.
+
+Return ONLY valid JSON:
+{
+  "gaps": ["short bullet", "..."],
+  "queries": ["string", "string", ...]
+}
+
+${briefContext}
+
+First-wave queries already attempted (do not repeat):
+${allInitialQueries.join(", ")}
+
+First-wave catalogue summary (top results returned, by type):
+${firstWaveSummary}`;
+
+    const gapRes = await anthropic.messages.create({
+      model: MODEL,
+      max_tokens: 2500,
+      messages: [{ role: "user", content: gapPrompt }],
+    });
+
+    const gapText = gapRes.content.find((c) => c.type === "text");
+    const gapRaw = gapText && gapText.type === "text" ? gapText.text : "";
+    const gapClean = stripJsonFences(gapRaw);
+
+    let gap: { gaps?: string[]; queries?: string[] } = {};
+    try {
+      gap = JSON.parse(gapClean);
+    } catch {
+      // Non-fatal — we can still curate from pass 1.
+      gap = {};
+    }
+
+    const pass2Queries = Array.isArray(gap.queries)
+      ? Array.from(new Set(
+          gap.queries
+            .map((q) => String(q).trim())
+            .filter((q) => q && !allInitialQueries.includes(q))
+        )).slice(0, 15)
+      : [];
+
+    // ── Pass 4: Meta search (gap wave) ──────────────────────────────────────
+    const secondWave = pass2Queries.length
+      ? await searchTargetingMany(pass2Queries, { perQueryLimit: 15 })
+      : [];
+
+    // Merge both waves, deduping by id.
+    const merged = new Map<string, MetaTargetingResult>();
+    for (const r of firstWave) merged.set(r.id, r);
+    for (const r of secondWave) merged.set(r.id, r);
+    const mergedList = [...merged.values()];
+
+    if (mergedList.length === 0) {
       return NextResponse.json({
-        queries: allQueries,
-        reasoning: plan.reasoning ?? "",
-        suggestions: [],
+        analysis: analysis.analysis ?? null,
+        thesis: analysis.thesis ?? "",
+        pass1Queries: allInitialQueries,
+        pass2Queries,
+        gaps: gap.gaps ?? [],
+        pillars: [],
         totalCandidates: 0,
         warning: "Meta returned no targeting matches for any of the generated queries.",
       });
     }
 
-    // ── Step 3: Claude curates ──────────────────────────────────────────────
-    // Cap the catalogue we send to Claude — Meta can return a lot and we want
-    // to keep the prompt small. We sort by audience-size midpoint descending so
-    // bigger, well-defined options bubble up first.
-    const ranked = [...merged].sort((a, b) => {
+    // ── Pass 5: curation ────────────────────────────────────────────────────
+    const ranked = [...mergedList].sort((a, b) => {
       const am = ((a.audienceSizeLower ?? 0) + (a.audienceSizeUpper ?? 0)) / 2;
       const bm = ((b.audienceSizeLower ?? 0) + (b.audienceSizeUpper ?? 0)) / 2;
       return bm - am;
-    }).slice(0, 200);
+    }).slice(0, 250);
 
     const catalogueLines = ranked.map((r, i) => {
       const size = r.audienceSizeLower && r.audienceSizeUpper
@@ -129,21 +216,25 @@ ${keywords.length ? `\nSeed keywords from the user: ${keywords.join(", ")}` : ""
       return `${i + 1}. [${r.id}] ${r.name} — ${r.type}${path ? ` (${path})` : ""} · ${size}`;
     }).join("\n");
 
-    const curatePrompt = `You are picking Meta targeting options for ${body.clientName ?? "a campaign"}${body.sector ? ` in the ${body.sector} sector` : ""}.
+    const curatePrompt = `You are now picking the final Meta targeting set for the campaign below.
 
-Below are real Meta targeting options matched against the brief. Each line shows:
+Your earlier strategic thesis was:
+"${analysis.thesis ?? "(no thesis)"}"
+
+Below are real Meta targeting options matched against the brief — both first-wave and gap-fill wave merged. Each line shows:
 [META_ID] name — type (path) · audience size
 
-Choose the strongest 25-40 options and group them into 4-7 audience pillars. For each pillar give it a short name, a one-sentence rationale, and the list of options to include.
+Select the strongest 30-45 options and group them into 4-7 audience pillars. For each pillar give it a short name, a one-sentence rationale (linking it back to the thesis where possible), and the list of options to include.
 
 Hard rules:
 - ONLY use ids and names from the catalogue below — do not invent.
-- Drop options that are vague, irrelevant or near-duplicates of stronger picks.
-- Prefer options with defined audience size over "size unknown" when the choice is otherwise equal.
-- Mix interests, behaviours, demographics and life events where they exist.
+- Drop options that are vague, irrelevant, or near-duplicates of stronger picks.
+- Prefer options with a defined audience size when the choice is otherwise equal.
+- Mix interests, behaviours, demographics and life events where they exist in the catalogue.
+- Pillars should be clearly distinct — no two pillars covering the same ground.
 - British English. No platitudes.
 
-Return ONLY valid JSON in this shape:
+Return ONLY valid JSON:
 {
   "pillars": [
     {
@@ -156,21 +247,20 @@ Return ONLY valid JSON in this shape:
   ]
 }
 
-${brief ? `Brief:\n${brief}\n` : ""}
-${keywords.length ? `Seed keywords: ${keywords.join(", ")}\n` : ""}
+${briefContext}
 
 Catalogue (${ranked.length} options):
 ${catalogueLines}`;
 
     const curateRes = await anthropic.messages.create({
       model: MODEL,
-      max_tokens: 6000,
+      max_tokens: 8000,
       messages: [{ role: "user", content: curatePrompt }],
     });
 
     const curateText = curateRes.content.find((c) => c.type === "text");
     const curateRaw = curateText && curateText.type === "text" ? curateText.text : "";
-    const curateClean = curateRaw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
+    const curateClean = stripJsonFences(curateRaw);
 
     let curated: {
       pillars?: {
@@ -188,10 +278,8 @@ ${catalogueLines}`;
       );
     }
 
-    // Re-attach the full Meta record (audience size, path, description) by id
-    // so the UI has everything it needs to render and to build a targeting spec.
     const byId = new Map<string, MetaTargetingResult>();
-    for (const r of merged) byId.set(r.id, r);
+    for (const r of mergedList) byId.set(r.id, r);
 
     const pillars = (curated.pillars ?? [])
       .filter((p) => p && Array.isArray(p.options))
@@ -219,10 +307,15 @@ ${catalogueLines}`;
       .filter((p) => p.options.length > 0);
 
     return NextResponse.json({
-      queries: allQueries,
-      reasoning: plan.reasoning ?? "",
+      analysis: analysis.analysis ?? null,
+      thesis: analysis.thesis ?? "",
+      pass1Queries: allInitialQueries,
+      pass2Queries,
+      gaps: gap.gaps ?? [],
+      pass1ResultCount: firstWave.length,
+      pass2ResultCount: secondWave.length,
+      totalCandidates: mergedList.length,
       pillars,
-      totalCandidates: merged.length,
     });
   } catch (error) {
     console.error("meta-audience-scraper ai-suggest error:", error);
@@ -231,8 +324,37 @@ ${catalogueLines}`;
   }
 }
 
+// ─── helpers ───────────────────────────────────────────────────────────────
+
+function stripJsonFences(s: string): string {
+  return s.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
+}
+
 function formatNumber(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return String(n);
+}
+
+// Compact representation of the first-wave catalogue for the gap prompt —
+// keeps tokens reasonable while giving Claude enough signal to spot omissions.
+function summariseForGapPrompt(results: MetaTargetingResult[]): string {
+  if (results.length === 0) return "(no results returned)";
+  const byType = new Map<string, MetaTargetingResult[]>();
+  for (const r of results) {
+    const k = r.type || "unknown";
+    if (!byType.has(k)) byType.set(k, []);
+    byType.get(k)!.push(r);
+  }
+  // Cap each type bucket at 25 names to control prompt size.
+  const lines: string[] = [];
+  for (const [type, rows] of byType) {
+    const names = rows
+      .sort((a, b) => ((b.audienceSizeUpper ?? 0) - (a.audienceSizeUpper ?? 0)))
+      .slice(0, 25)
+      .map((r) => r.name)
+      .join(", ");
+    lines.push(`${type} (${rows.length}): ${names}`);
+  }
+  return lines.join("\n");
 }

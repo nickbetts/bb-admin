@@ -41,10 +41,22 @@ interface Pillar {
 }
 
 interface AISuggestResponse {
-  queries: string[];
-  reasoning: string;
-  pillars: Pillar[];
+  analysis: {
+    explicit?: string[];
+    implicit?: string[];
+    adjacent?: string[];
+    media?: string[];
+    niches?: string[];
+    contrarian?: string[];
+  } | null;
+  thesis: string;
+  pass1Queries: string[];
+  pass2Queries: string[];
+  gaps: string[];
+  pass1ResultCount?: number;
+  pass2ResultCount?: number;
   totalCandidates: number;
+  pillars: Pillar[];
   warning?: string;
 }
 
@@ -362,7 +374,7 @@ export default function MetaAudienceScraperPage() {
 
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16 }}>
                 <span style={{ fontSize: 12, color: "var(--text-3)" }}>
-                  Claude generates ~16 search queries, hits Meta&rsquo;s targeting API, then curates the strongest options into pillars.
+                  Claude reads the brief, runs a first wave of Meta searches, identifies what was missed, runs a gap-fill second wave, then curates the strongest options into pillars. Takes 30-90 seconds.
                 </span>
                 <button
                   type="button"
@@ -380,18 +392,8 @@ export default function MetaAudienceScraperPage() {
                   {aiResult.warning && (
                     <p style={{ fontSize: 12, color: "var(--warning-text)", marginBottom: 10 }}>{aiResult.warning}</p>
                   )}
-                  {aiResult.reasoning && (
-                    <p style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 10, fontStyle: "italic" }}>
-                      &ldquo;{aiResult.reasoning}&rdquo;
-                    </p>
-                  )}
-                  <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 14 }}>
-                    {aiResult.totalCandidates.toLocaleString()} candidate options retrieved from {aiResult.queries.length} queries.{" "}
-                    <details style={{ display: "inline" }}>
-                      <summary style={{ cursor: "pointer", display: "inline" }}>Show queries</summary>
-                      <span style={{ marginLeft: 6 }}>{aiResult.queries.join(", ")}</span>
-                    </details>
-                  </div>
+
+                  <AnalysisPanel result={aiResult} />
 
                   {aiResult.pillars.length === 0 ? (
                     <p style={{ fontSize: 13, color: "var(--text-3)" }}>No pillars produced.</p>
@@ -690,6 +692,126 @@ export default function MetaAudienceScraperPage() {
         @keyframes spin { to { transform: rotate(360deg); } }
       `}</style>
     </main>
+  );
+}
+
+// ─── Analysis panel ─────────────────────────────────────────────────────
+
+function AnalysisPanel({ result }: { result: AISuggestResponse }) {
+  const [open, setOpen] = useState(true);
+  const a = result.analysis ?? {};
+  const sections: { key: keyof typeof a; label: string }[] = [
+    { key: "explicit", label: "Explicit signals" },
+    { key: "implicit", label: "Implicit signals" },
+    { key: "adjacent", label: "Adjacent communities" },
+    { key: "media", label: "Cultural / media proxies" },
+    { key: "niches", label: "Niche sub-segments" },
+    { key: "contrarian", label: "Contrarian angles" },
+  ];
+  const hasAnalysis = sections.some((s) => (a[s.key]?.length ?? 0) > 0);
+
+  return (
+    <div
+      style={{
+        border: "1px solid var(--border)",
+        borderRadius: "var(--r)",
+        background: "var(--surface-2)",
+        marginBottom: 16,
+        overflow: "hidden",
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        style={{
+          width: "100%",
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          padding: "10px 14px",
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          textAlign: "left",
+        }}
+      >
+        <Sparkles style={{ width: 13, height: 13, color: "var(--accent)" }} />
+        <strong style={{ fontSize: 12, color: "var(--text)" }}>How Claude thought about this brief</strong>
+        <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-3)" }}>
+          {result.totalCandidates.toLocaleString()} candidates · pass 1: {result.pass1ResultCount ?? 0} · pass 2: {result.pass2ResultCount ?? 0}
+        </span>
+        {open ? (
+          <ChevronUp style={{ width: 13, height: 13, color: "var(--text-3)" }} />
+        ) : (
+          <ChevronDown style={{ width: 13, height: 13, color: "var(--text-3)" }} />
+        )}
+      </button>
+
+      {open && (
+        <div style={{ borderTop: "1px solid var(--border)", padding: 14, display: "flex", flexDirection: "column", gap: 12 }}>
+          {result.thesis && (
+            <p style={{ margin: 0, fontSize: 13, color: "var(--text)", fontStyle: "italic", borderLeft: "2px solid var(--accent)", paddingLeft: 10 }}>
+              {result.thesis}
+            </p>
+          )}
+
+          {hasAnalysis && (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+              {sections.map((s) => {
+                const items = a[s.key] ?? [];
+                if (!items.length) return null;
+                return (
+                  <div key={String(s.key)}>
+                    <p style={{ margin: 0, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-3)" }}>
+                      {s.label}
+                    </p>
+                    <ul style={{ margin: "5px 0 0", paddingLeft: 16, fontSize: 12, color: "var(--text-2)", lineHeight: 1.45 }}>
+                      {items.map((it, i) => (
+                        <li key={i}>{it}</li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {result.gaps.length > 0 && (
+            <div>
+              <p style={{ margin: 0, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--warning-text)" }}>
+                Gaps the second pass targeted
+              </p>
+              <ul style={{ margin: "5px 0 0", paddingLeft: 16, fontSize: 12, color: "var(--text-2)", lineHeight: 1.45 }}>
+                {result.gaps.map((g, i) => (
+                  <li key={i}>{g}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <details>
+              <summary style={{ fontSize: 11, color: "var(--text-3)", cursor: "pointer" }}>
+                Pass 1 queries ({result.pass1Queries.length})
+              </summary>
+              <p style={{ margin: "4px 0 0", fontSize: 11, color: "var(--text-2)" }}>
+                {result.pass1Queries.join(", ")}
+              </p>
+            </details>
+            {result.pass2Queries.length > 0 && (
+              <details>
+                <summary style={{ fontSize: 11, color: "var(--text-3)", cursor: "pointer" }}>
+                  Pass 2 (gap-fill) queries ({result.pass2Queries.length})
+                </summary>
+                <p style={{ margin: "4px 0 0", fontSize: 11, color: "var(--text-2)" }}>
+                  {result.pass2Queries.join(", ")}
+                </p>
+              </details>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
