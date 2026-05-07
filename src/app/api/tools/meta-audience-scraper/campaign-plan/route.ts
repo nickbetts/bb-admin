@@ -1,11 +1,58 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession, hasPermission } from "@/lib/auth";
 import { getAnthropicClient } from "@/lib/anthropic-client";
+import { getOpenAiClient } from "@/lib/openai-client";
+import {
+  findCopyHygieneViolations,
+  formatViolationsForPrompt,
+  validateAndRescaleBudgets,
+  validateTargetingIds,
+} from "@/lib/meta-assassin-validators";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 const MODEL = "claude-opus-4-7";
+
+// Extended thinking budget for the campaign-plan call. Bigger than the
+// default reasoning we get for free; gives Claude room to actually work
+// through the geo + cohort + budget split before producing JSON.
+const THINKING_BUDGET = 12000;
+const MAX_TOKENS = 24000;
+
+// Quick KPI / benchmark grounding via OpenAI web search. Runs in parallel
+// with the main campaign-plan call setup so it doesn't add to latency.
+// Returns a small block of text we paste into Claude's prompt as context.
+async function fetchSectorBenchmarks(args: {
+  sector?: string;
+  geography?: string;
+  objective?: string;
+  clientName?: string;
+}): Promise<string> {
+  const { sector, geography, objective, clientName } = args;
+  if (!sector && !objective) return "";
+  try {
+    const openai = await getOpenAiClient();
+    const query = `Find current 2025 Meta Ads (Facebook/Instagram) benchmarks for ${
+      sector ? `the ${sector} sector` : "this objective"
+    }${geography ? ` in ${geography}` : ""}${
+      objective ? `, with the campaign objective "${objective}"` : ""
+    }${clientName ? ` (similar to ${clientName})` : ""}. List specific real numbers from authoritative sources (WordStream, Statista, charity benchmark reports, vertical agencies, Meta's own publications). Cover: typical CPM, CPC, CTR, CPA / cost-per-result, ROAS, and any sector-specific KPIs (e.g. cost-per-donation, cost-per-lead, application rate). Be terse — just numbers and the source name in parentheses. No marketing advice.`;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await (openai.responses.create as any)({
+      model: "gpt-4o-search-preview",
+      tools: [{ type: "web_search_preview" }],
+      input: query,
+    });
+    const text = (result?.output_text ?? "").trim();
+    if (!text) return "";
+    return text.slice(0, 2200);
+  } catch {
+    // Benchmarking is best-effort. If web search fails (rate limit / network
+    // / no key) we just proceed without grounding rather than fail the plan.
+    return "";
+  }
+}
 
 // POST /api/tools/meta-audience-scraper/campaign-plan
 // Body: {
@@ -58,7 +105,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "At least one audience pillar is required" }, { status: 400 });
     }
 
-    const anthropic = await getAnthropicClient();
+    // Run web-search benchmarking and the Anthropic client setup in parallel.
+    const [anthropic, benchmarks] = await Promise.all([
+      getAnthropicClient(),
+      fetchSectorBenchmarks({
+        sector: body.sector,
+        geography: body.geography,
+        objective: body.objective,
+        clientName: body.clientName,
+      }),
+    ]);
+
+    // Build the catalogue of valid Meta IDs we can later validate the plan
+    // against. The AI is given these IDs in the prompt; anything it returns
+    // outside this set is a hallucination and gets dropped.
+    const validIds = new Set<string>();
+    for (const p of pillars) for (const o of p.options) if (o.id) validIds.add(String(o.id));
 
     const monthlyBudget = dailyBudget * 30;
     const pillarsBlock = pillars.map((p, i) => {
@@ -76,6 +138,10 @@ Geography: ${body.geography ?? "(not specified)"}
 Daily budget: ${currency} ${dailyBudget.toFixed(2)} (≈ ${currency} ${monthlyBudget.toFixed(0)} / month)
 ${body.objective ? `Stated campaign objective: ${body.objective}` : "Pick the most appropriate Meta objective yourself based on the brief."}
 ${body.thesis ? `Strategic thesis from the audience workup: "${body.thesis}"` : ""}
+
+${benchmarks ? `LIVE SECTOR BENCHMARKS (web-fetched, 2025)
+Use these to anchor the measurement section's KPI targets. Where a number contradicts your gut, trust the source over your priors. Cite the source name in measurement.primaryKpi when you reference a number.
+${benchmarks}` : ""}
 
 WHAT YOU MUST DO
 Produce a build-ready campaign plan that a media buyer could plug straight into Ads Manager today. Apply the modern Meta playbook:
@@ -224,30 +290,121 @@ Return ONLY valid JSON (no markdown fences, no commentary). British English thro
 
 ${body.brief ? `BRIEF\n${body.brief}` : ""}`;
 
-    const res = await anthropic.messages.create({
+    // ── First pass: extended thinking ──────────────────────────────────
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const res = await (anthropic.messages.create as any)({
       model: MODEL,
-      max_tokens: 12000,
+      max_tokens: MAX_TOKENS,
+      thinking: { type: "enabled", budget_tokens: THINKING_BUDGET },
+      temperature: 1,
       messages: [{ role: "user", content: prompt }],
     });
 
-    const textBlock = res.content.find((c) => c.type === "text");
-    const raw = textBlock && textBlock.type === "text" ? textBlock.text : "";
-    const cleaned = raw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
-
-    let plan: unknown;
-    try {
-      plan = JSON.parse(cleaned);
-    } catch {
+    let plan: unknown = parsePlanFromAnthropicResponse(res);
+    if (!plan) {
       return NextResponse.json(
-        { error: "Could not parse AI campaign plan", raw: cleaned },
+        { error: "Could not parse AI campaign plan", raw: serialiseRaw(res) },
         { status: 502 }
       );
     }
 
-    return NextResponse.json({ plan });
+    // ── Validate: targeting IDs ────────────────────────────────────────
+    // Drop any IDs Claude wrote that weren't in the input pillar catalogue.
+    const idCheck = validateTargetingIds(plan, validIds);
+    plan = idCheck.plan;
+
+    // ── Validate: budget split per campaign ────────────────────────────
+    // Rescale ad-set budgets proportionally so they sum to the campaign
+    // dailyBudget.
+    const budgetCheck = validateAndRescaleBudgets(plan);
+    plan = budgetCheck.plan;
+
+    // ── Validate: copy hygiene ────────────────────────────────────────
+    // If em dashes / banned phrases / off word counts slipped through,
+    // do a single targeted re-ask with the violations listed.
+    const violations = findCopyHygieneViolations(plan);
+    let copyFixAttempted = false;
+    let remainingViolations = violations;
+    if (violations.length > 0) {
+      copyFixAttempted = true;
+      const fixPrompt = `You produced this campaign plan with copy-hygiene violations. Below are the exact paths and reasons. Return ONLY the corrected JSON for the FULL plan with the same shape. Fix every violation listed without changing anything else (hooks/headlines/primaryTexts/longFormVariants only). Strictly:
+- NO em dashes (—) or en dashes (–) anywhere in copy. Use commas, full stops, or short sentences.
+- NO banned phrases. Replace them with concrete, specific language.
+- Long-form variants must be 80-220 words.
+- Each variant must read DIFFERENTLY from siblings (different opening word, different angle, different sentence length).
+
+VIOLATIONS:
+${formatViolationsForPrompt(violations)}
+
+ORIGINAL PLAN:
+${JSON.stringify(plan)}`;
+
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const fixRes = await (anthropic.messages.create as any)({
+          model: MODEL,
+          max_tokens: MAX_TOKENS,
+          thinking: { type: "enabled", budget_tokens: 6000 },
+          temperature: 1,
+          messages: [{ role: "user", content: fixPrompt }],
+        });
+        const fixed = parsePlanFromAnthropicResponse(fixRes);
+        if (fixed) {
+          // Re-run ID + budget validators on the fixed plan.
+          const fixedIds = validateTargetingIds(fixed, validIds);
+          const fixedBudgets = validateAndRescaleBudgets(fixedIds.plan);
+          plan = fixedBudgets.plan;
+          remainingViolations = findCopyHygieneViolations(plan);
+        }
+      } catch {
+        // The fix pass is best-effort; if it fails, return the original.
+      }
+    }
+
+    return NextResponse.json({
+      plan,
+      meta: {
+        droppedIds: idCheck.droppedIds,
+        budgetReports: budgetCheck.reports,
+        copyHygiene: {
+          initialViolations: violations.length,
+          remainingViolations: remainingViolations.length,
+          fixAttempted: copyFixAttempted,
+        },
+        benchmarksUsed: benchmarks.length > 0,
+      },
+    });
   } catch (error) {
     console.error("meta-audience-scraper campaign-plan error:", error);
     const message = error instanceof Error ? error.message : "Plan generation failed";
     return NextResponse.json({ error: message }, { status: 500 });
   }
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────
+
+// Extracts the JSON payload out of an Anthropic Messages response that may
+// contain thinking blocks plus text blocks. Returns null if no parseable
+// JSON text block was found.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function parsePlanFromAnthropicResponse(res: any): unknown {
+  const blocks = (res?.content ?? []) as { type: string; text?: string }[];
+  const textBlock = blocks.find((b) => b.type === "text" && typeof b.text === "string");
+  const raw = textBlock?.text ?? "";
+  const cleaned = raw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
+  if (!cleaned) return null;
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    return null;
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function serialiseRaw(res: any): string {
+  const blocks = (res?.content ?? []) as { type: string; text?: string }[];
+  return blocks
+    .filter((b) => b.type === "text" && typeof b.text === "string")
+    .map((b) => b.text)
+    .join("\n\n");
 }

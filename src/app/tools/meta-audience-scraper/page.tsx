@@ -179,6 +179,10 @@ export default function MetaAudienceScraperPage() {
   const [plan, setPlan] = useState<FullPlan | null>(null);
   const [refineFeedback, setRefineFeedback] = useState("");
   const [refineLoading, setRefineLoading] = useState(false);
+  // Trail of prior refinement notes; sent back to the AI on each refine so
+  // it can reason about cumulative direction rather than treating each
+  // refine in isolation.
+  const [refinementHistory, setRefinementHistory] = useState<{ feedback: string; appliedAt: string }[]>([]);
 
   // Per-creative image state — keyed by `${campaignIdx}-${adSetIdx}-${creativeIdx}`
   const [images, setImages] = useState<Record<string, GeneratedImage>>({});
@@ -315,6 +319,7 @@ export default function MetaAudienceScraperPage() {
     setPlanLoading(true);
     setPlan(null);
     setImages({});
+    setRefinementHistory([]);
     try {
       const res = await fetch("/api/tools/meta-audience-scraper/campaign-plan", {
         method: "POST",
@@ -346,27 +351,34 @@ export default function MetaAudienceScraperPage() {
     if (!plan || !refineFeedback.trim()) return;
     setError(null);
     setRefineLoading(true);
+    const feedbackText = refineFeedback.trim();
     try {
+      // Collect every Meta ID from the current pillars so the server can
+      // validate any IDs the AI keeps or introduces post-refine.
+      const validIds = (aiResult?.pillars ?? []).flatMap((p) => p.options.map((o) => o.id));
       const res = await fetch("/api/tools/meta-audience-scraper/refine-plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           plan,
-          feedback: refineFeedback.trim(),
+          feedback: feedbackText,
           brief: brief.trim() || undefined,
           clientName: clientName.trim() || undefined,
+          validIds,
+          refinementHistory,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Refinement failed");
       setPlan(data.plan as FullPlan);
+      setRefinementHistory((prev) => [...prev, { feedback: feedbackText, appliedAt: new Date().toISOString() }]);
       setRefineFeedback("");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Refinement failed");
     } finally {
       setRefineLoading(false);
     }
-  }, [plan, refineFeedback, brief, clientName]);
+  }, [plan, refineFeedback, brief, clientName, aiResult, refinementHistory]);
 
   // ── Image generation per creative ─────────────────────────────────────
   function imageKey(c: number, a: number, cr: number, frame = 0): string {
