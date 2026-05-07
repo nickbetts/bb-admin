@@ -175,6 +175,24 @@ export default function MetaAudienceScraperPage() {
   const [dailyBudget, setDailyBudget] = useState("");
   const [currency, setCurrency] = useState("GBP");
   const [objective, setObjective] = useState("");
+
+  // Meta ad accounts (used to fire delivery estimates per ad set).
+  const [accounts, setAccounts] = useState<{ id: string; name: string }[]>([]);
+  const [accountId, setAccountId] = useState<string>("");
+  const [estimates, setEstimates] = useState<Record<string, { ok: true; estimate: { estimatedDauLower: number; estimatedDauUpper: number; estimatedMauLower: number; estimatedMauUpper: number } } | { ok: false; error: string }>>({});
+  const [estimatesLoading, setEstimatesLoading] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/meta/accounts")
+      .then((r) => r.json())
+      .then((data: { id: string; name: string }[] | { error?: string }) => {
+        if (Array.isArray(data)) {
+          setAccounts(data);
+          if (data.length > 0) setAccountId((prev) => prev || data[0].id);
+        }
+      })
+      .catch(() => {});
+  }, []);
   const [planLoading, setPlanLoading] = useState(false);
   const [plan, setPlan] = useState<FullPlan | null>(null);
   const [refineFeedback, setRefineFeedback] = useState("");
@@ -320,6 +338,7 @@ export default function MetaAudienceScraperPage() {
     setPlan(null);
     setImages({});
     setRefinementHistory([]);
+    setEstimates({});
     try {
       const res = await fetch("/api/tools/meta-audience-scraper/campaign-plan", {
         method: "POST",
@@ -379,6 +398,72 @@ export default function MetaAudienceScraperPage() {
       setRefineLoading(false);
     }
   }, [plan, refineFeedback, brief, clientName, aiResult, refinementHistory]);
+
+  // ── Reach / delivery estimates per ad set ─────────────────────────────
+  // Builds a quick lookup of pillar option → type so we can split
+  // targetingOptionIds into interests vs behaviours when calling Meta's
+  // delivery_estimate endpoint.
+  const optionTypeById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of aiResult?.pillars ?? []) {
+      for (const o of p.options) map.set(String(o.id), String(o.type ?? ""));
+    }
+    return map;
+  }, [aiResult]);
+
+  const fetchEstimates = useCallback(async () => {
+    if (!plan || !accountId) return;
+    setEstimatesLoading(true);
+    try {
+      // Build the per-ad-set request shape with typed targeting splits.
+      const adSets: {
+        campaignIndex: number;
+        adSetIndex: number;
+        geoCountries?: string[];
+        ageMin: number;
+        ageMax: number;
+        genders: "all" | "female" | "male";
+        interestIds?: { id: string }[];
+        behaviorIds?: { id: string }[];
+        advantageAudience?: boolean;
+      }[] = [];
+      plan.campaigns.forEach((c, ci) => {
+        c.adSets.forEach((a, ai) => {
+          const interestIds: { id: string }[] = [];
+          const behaviorIds: { id: string }[] = [];
+          for (const id of a.targetingOptionIds ?? []) {
+            const t = (optionTypeById.get(String(id)) ?? "").toLowerCase();
+            if (t.includes("behavior") || t.includes("behaviour")) behaviorIds.push({ id: String(id) });
+            else interestIds.push({ id: String(id) });
+          }
+          adSets.push({
+            campaignIndex: ci,
+            adSetIndex: ai,
+            geoCountries: a.geoTargeting && a.geoTargeting.length > 0 ? a.geoTargeting : undefined,
+            ageMin: a.ageRange.min,
+            ageMax: a.ageRange.max,
+            genders: a.genders,
+            interestIds: interestIds.length > 0 ? interestIds : undefined,
+            behaviorIds: behaviorIds.length > 0 ? behaviorIds : undefined,
+            advantageAudience: a.advantageAudience,
+          });
+        });
+      });
+
+      const res = await fetch("/api/tools/meta-audience-scraper/estimate-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accountId, adSets }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Estimate failed");
+      setEstimates(data.estimates ?? {});
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Estimate failed");
+    } finally {
+      setEstimatesLoading(false);
+    }
+  }, [plan, accountId, optionTypeById]);
 
   // ── Image generation per creative ─────────────────────────────────────
   function imageKey(c: number, a: number, cr: number, frame = 0): string {
@@ -695,6 +780,21 @@ export default function MetaAudienceScraperPage() {
                     />
                   </div>
                 </div>
+                {accounts.length > 0 && (
+                  <div style={{ marginTop: 10 }}>
+                    <label style={labelStyle}>Meta ad account (used for live reach estimates)</label>
+                    <select
+                      value={accountId}
+                      onChange={(e) => setAccountId(e.target.value)}
+                      style={inputStyle}
+                      disabled={aiLoading}
+                    >
+                      {accounts.map((a) => (
+                        <option key={a.id} value={a.id}>{a.name} · act_{a.id}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
 
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16 }}>
@@ -856,6 +956,10 @@ export default function MetaAudienceScraperPage() {
               onGenerateAllImages={() => plan && autoGenerateImagesForPlan(plan)}
               hasSelection={activeStats.options > 0}
               autoGenerating={autoGenerating}
+              estimates={estimates}
+              estimatesLoading={estimatesLoading}
+              onFetchEstimates={fetchEstimates}
+              hasAccount={!!accountId}
             />
           )}
 
@@ -1734,6 +1838,10 @@ interface CampaignPlanSectionProps {
   onGenerateAllImages: () => void;
   hasSelection: boolean;
   autoGenerating: { done: number; total: number } | null;
+  estimates: Record<string, { ok: true; estimate: { estimatedDauLower: number; estimatedDauUpper: number; estimatedMauLower: number; estimatedMauUpper: number } } | { ok: false; error: string }>;
+  estimatesLoading: boolean;
+  onFetchEstimates: () => void;
+  hasAccount: boolean;
 }
 
 function CampaignPlanSection(props: CampaignPlanSectionProps) {
@@ -1743,7 +1851,7 @@ function CampaignPlanSection(props: CampaignPlanSectionProps) {
     refineFeedback, setRefineFeedback, refineLoading, onRefinePlan,
     images, imageKey, imagePromptOverrides, setImagePromptOverrides,
     refinePrompts, setRefinePrompts, onGenerateImage, onRefineImage, onGenerateAllImages, hasSelection,
-    autoGenerating,
+    autoGenerating, estimates, estimatesLoading, onFetchEstimates, hasAccount,
   } = props;
 
   const budgetReady = parseFloat(dailyBudget) > 0;
@@ -1798,6 +1906,7 @@ function CampaignPlanSection(props: CampaignPlanSectionProps) {
               setRefinePrompts={setRefinePrompts}
               onGenerateImage={onGenerateImage}
               onRefineImage={onRefineImage}
+              estimates={estimates}
             />
           ))}
 
@@ -1856,6 +1965,22 @@ function CampaignPlanSection(props: CampaignPlanSectionProps) {
             <div style={{ padding: 14, background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: "var(--r)" }}>
               <h3 style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "var(--success-text)" }}>Scale-up plan</h3>
               <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--text-2)" }}>{plan.scaleUp}</p>
+            </div>
+          </div>
+
+          {/* Reach estimates */}
+          <div style={{ borderTop: "1px solid var(--border)", paddingTop: 16 }}>
+            <h3 style={{ margin: 0, fontSize: 13, fontWeight: 600 }}>Live reach estimates</h3>
+            <p style={{ margin: "4px 0 8px", fontSize: 11, color: "var(--text-3)" }}>
+              {hasAccount
+                ? "Hits Meta's delivery_estimate endpoint per ad set using the geo, age, gender and targeting IDs in the plan. Numbers appear inside each ad-set card."
+                : "Pick a Meta ad account in the brief panel above to enable live audience-size estimates per ad set."}
+            </p>
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <button type="button" onClick={onFetchEstimates} disabled={!hasAccount || estimatesLoading} style={primaryBtnStyle}>
+                {estimatesLoading ? <Loader2 style={{ width: 14, height: 14 }} className="spin" /> : <RefreshCw style={{ width: 14, height: 14 }} />}
+                {estimatesLoading ? "Estimating…" : "Fetch reach estimates"}
+              </button>
             </div>
           </div>
 
@@ -1923,6 +2048,7 @@ function CampaignCard({
   setRefinePrompts,
   onGenerateImage,
   onRefineImage,
+  estimates,
 }: {
   campaign: CampaignPlan;
   campaignIndex: number;
@@ -1935,6 +2061,7 @@ function CampaignCard({
   setRefinePrompts: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   onGenerateImage: (key: string, prompt: string, aspect: "square" | "portrait" | "landscape") => void;
   onRefineImage: (key: string, aspect: "square" | "portrait" | "landscape") => void;
+  estimates: Record<string, { ok: true; estimate: { estimatedDauLower: number; estimatedDauUpper: number; estimatedMauLower: number; estimatedMauUpper: number } } | { ok: false; error: string }>;
 }) {
   return (
     <div style={{ border: "1px solid var(--border)", borderRadius: "var(--r)", overflow: "hidden", background: "var(--surface)" }}>
@@ -2022,6 +2149,7 @@ function CampaignCard({
                     setRefinePrompts={setRefinePrompts}
                     onGenerateImage={onGenerateImage}
                     onRefineImage={onRefineImage}
+                    estimate={estimates[`${campaignIndex}-${index}`]}
                   />
                 ))}
               </div>
@@ -2046,6 +2174,7 @@ function AdSetCard({
   setRefinePrompts,
   onGenerateImage,
   onRefineImage,
+  estimate,
 }: {
   adSet: AdSetPlan;
   campaignIndex: number;
@@ -2059,6 +2188,7 @@ function AdSetCard({
   setRefinePrompts: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   onGenerateImage: (key: string, prompt: string, aspect: "square" | "portrait" | "landscape") => void;
   onRefineImage: (key: string, aspect: "square" | "portrait" | "landscape") => void;
+  estimate?: { ok: true; estimate: { estimatedDauLower: number; estimatedDauUpper: number; estimatedMauLower: number; estimatedMauUpper: number } } | { ok: false; error: string };
 }) {
   const hasGeo = (adSet.geoTargeting?.length ?? 0) > 0;
   return (
@@ -2085,6 +2215,45 @@ function AdSetCard({
           {adSet.advantageAudience && <Tag tone="accent">Advantage+ Audience</Tag>}
         </div>
       </div>
+
+      {/* Reach estimate */}
+      {estimate && (
+        <div style={{
+          marginTop: 10,
+          padding: "8px 12px",
+          background: estimate.ok ? "rgba(132, 255, 79, 0.06)" : "rgba(255, 85, 119, 0.06)",
+          border: "1px solid " + (estimate.ok ? "rgba(132, 255, 79, 0.3)" : "rgba(255, 85, 119, 0.3)"),
+          borderRadius: 6,
+          fontSize: 11,
+          fontFamily: "ui-monospace, SF Mono, Menlo, Consolas, monospace",
+          letterSpacing: "0.02em",
+          color: "var(--text-2)",
+        }}>
+          {estimate.ok ? (
+            <span>
+              <strong style={{ color: "var(--cyber-lime, var(--success-text))", letterSpacing: "0.16em", textTransform: "uppercase" }}>
+                &gt; Live reach
+              </strong>
+              {" "}
+              <strong style={{ color: "var(--text)" }}>
+                {formatRange(estimate.estimate.estimatedMauLower, estimate.estimate.estimatedMauUpper)}
+              </strong>
+              {" monthly active · "}
+              <strong style={{ color: "var(--text)" }}>
+                {formatRange(estimate.estimate.estimatedDauLower, estimate.estimate.estimatedDauUpper)}
+              </strong>
+              {" daily active"}
+            </span>
+          ) : (
+            <span>
+              <strong style={{ color: "var(--cyber-magenta, var(--danger-text))", letterSpacing: "0.16em", textTransform: "uppercase" }}>
+                &gt; Reach estimate failed
+              </strong>{" "}
+              <span style={{ color: "var(--text-3)" }}>{estimate.error}</span>
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Geo block — prominent */}
       {hasGeo && (
@@ -2631,6 +2800,18 @@ function CopyVariantField({ index, value, multiline }: { index: number; value: s
       </button>
     </div>
   );
+}
+
+function formatRange(lower: number, upper: number): string {
+  const f = (n: number) => {
+    if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}B`;
+    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+    if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+    return String(n);
+  };
+  if (!lower && !upper) return "—";
+  if (lower === upper) return f(lower);
+  return `${f(lower)}–${f(upper)}`;
 }
 
 function formatBidStrategy(s: string): string {
