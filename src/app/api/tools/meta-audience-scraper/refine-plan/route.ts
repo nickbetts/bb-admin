@@ -42,8 +42,9 @@ INSTRUCTIONS
 - If the feedback changes the budget or campaign count, update budgets so they sum correctly across campaigns and ad sets.
 - Update the relevant "why" fields with 2-3 sentences of expert reasoning that reflects the new decision — don't leave stale rationale behind.
 - British English throughout.
-- If a creative is replaced, regenerate the hooks, headlines, primaryTexts, copyAngle and imagePrompt — don't just tweak surface words.
+- If a creative is replaced, regenerate the hooks, headlines, primaryTexts, copyAngle and imagePrompt. Do not just tweak surface words.
 - If the feedback is wrong-headed (e.g. asking for an action that breaks Meta's learning phase), apply it but call out the trade-off in the relevant "why" field.
+- COPY HYGIENE (still non-negotiable on revised creatives): NO em dashes (—) or en dashes (–) in any body copy. NO AI-tell phrasing — banned: "Unlock", "Discover", "Elevate", "In today's world", "Game-changer", "Take your X to the next level", "Whether you're a…", "Cutting-edge", "Revolutionary", "Seamless", "Empower", "Harness", "Leverage", "Tap into", "Step into", "Dive into", "Journey", "It's important to note", "Furthermore", "Moreover", "Crafted", "Curated", "Transform your X", "Reimagine", "Redefine", "World of", "Picture this", "Imagine if". Variants must read differently from each other (different opening word, different angle, different sentence length).
 
 ${body.clientName ? `CLIENT: ${body.clientName}\n` : ""}${body.brief ? `BRIEF:\n${body.brief}\n\n` : ""}
 USER FEEDBACK

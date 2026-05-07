@@ -468,6 +468,13 @@ export default function MetaAudienceScraperPage() {
   const generationToken = useRef(0);
   const imagesRef = useRef(images);
   useEffect(() => { imagesRef.current = images; }, [images]);
+
+  // Fullscreen takeover: hide the Stratos sidebar while this tool is mounted
+  // so Meta Assassin gets the full canvas.
+  useEffect(() => {
+    document.body.classList.add("meta-assassin-fullscreen");
+    return () => { document.body.classList.remove("meta-assassin-fullscreen"); };
+  }, []);
   const [autoGenerating, setAutoGenerating] = useState<{ done: number; total: number } | null>(null);
 
   const autoGenerateImagesForPlan = useCallback(async (p: FullPlan) => {
@@ -611,7 +618,7 @@ export default function MetaAudienceScraperPage() {
             </div>
             <h1 className="cyber-title" data-text="META ASSASSIN">META ASSASSIN</h1>
             <p className="cyber-tagline">
-              <span className="cyber-tagline-prefix">&gt;</span> Audience reconnaissance · Campaign architecture · Creative payload · Powered by Meta Graph + Claude.
+              <span className="cyber-tagline-prefix">&gt;</span> Audience reconnaissance · Campaign architecture · Creative payload · <span className="cyber-cartel">Powered by the Cyber Cartel.</span>
             </p>
           </div>
         </header>
@@ -638,44 +645,7 @@ export default function MetaAudienceScraperPage() {
 
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 340px", gap: 24, marginTop: 16 }}>
         <div>
-          {/* Tabs */}
-          <div style={{ display: "flex", gap: 4, borderBottom: "1px solid var(--border)" }}>
-            {(
-              [
-                { key: "ai", label: "AI Suggest", icon: Sparkles },
-                { key: "manual", label: "Manual Search", icon: Search },
-              ] as const
-            ).map((t) => {
-              const Icon = t.icon;
-              return (
-                <button
-                  key={t.key}
-                  type="button"
-                  onClick={() => setTab(t.key)}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 6,
-                    padding: "10px 14px",
-                    background: "none",
-                    border: "none",
-                    borderBottom:
-                      tab === t.key ? "2px solid var(--accent)" : "2px solid transparent",
-                    color: tab === t.key ? "var(--text)" : "var(--text-3)",
-                    fontSize: 13,
-                    fontWeight: 500,
-                    cursor: "pointer",
-                  }}
-                >
-                  <Icon style={{ width: 14, height: 14 }} />
-                  {t.label}
-                </button>
-              );
-            })}
-          </div>
-
-          {tab === "ai" && (
-            <section style={cardStyle}>
+          <section style={cardStyle}>
               <label style={labelStyle}>Brief (or campaign objective)</label>
               <textarea
                 value={brief}
@@ -896,9 +866,8 @@ export default function MetaAudienceScraperPage() {
                 </div>
               )}
             </section>
-          )}
 
-          {tab === "ai" && aiResult && aiResult.pillars.length > 0 && (
+          {aiResult && aiResult.pillars.length > 0 && (
             <CampaignPlanSection
               dailyBudget={dailyBudget}
               currency={currency}
@@ -922,94 +891,6 @@ export default function MetaAudienceScraperPage() {
             />
           )}
 
-          {tab === "manual" && (
-            <section style={cardStyle}>
-              <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
-                {(
-                  [
-                    { key: "all", label: "All categories" },
-                    { key: "interests", label: "Interests only" },
-                    { key: "suggest", label: "Suggest similar" },
-                  ] as const
-                ).map((m) => (
-                  <button
-                    key={m.key}
-                    type="button"
-                    onClick={() => { setSearchMode(m.key); setSearchResults([]); }}
-                    style={{
-                      padding: "6px 12px",
-                      fontSize: 12,
-                      borderRadius: 999,
-                      border: "1px solid var(--border)",
-                      background: searchMode === m.key ? "var(--accent)" : "var(--surface-2)",
-                      color: searchMode === m.key ? "white" : "var(--text-2)",
-                      cursor: "pointer",
-                      fontWeight: 500,
-                    }}
-                  >
-                    {m.label}
-                  </button>
-                ))}
-              </div>
-
-              {searchMode === "suggest" ? (
-                <>
-                  <label style={labelStyle}>Seed interest names</label>
-                  <textarea
-                    value={searchSeeds}
-                    onChange={(e) => setSearchSeeds(e.target.value)}
-                    placeholder={"Tennis\nGolf\nSailing"}
-                    rows={3}
-                    style={textareaStyle}
-                    disabled={searchLoading}
-                  />
-                  <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 6 }}>
-                    Meta will return similar interests it considers related to these seeds.
-                  </p>
-                </>
-              ) : (
-                <>
-                  <label style={labelStyle}>
-                    Search {searchMode === "interests" ? "interests" : "all targeting categories"}
-                  </label>
-                  <input
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") runSearch(); }}
-                    placeholder="e.g. running, Patek Philippe, frequent international travelers"
-                    style={inputStyle}
-                    disabled={searchLoading}
-                  />
-                </>
-              )}
-
-              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14 }}>
-                <button type="button" onClick={runSearch} disabled={searchLoading} style={primaryBtnStyle}>
-                  {searchLoading ? <Loader2 style={{ width: 14, height: 14 }} className="spin" /> : <Search style={{ width: 14, height: 14 }} />}
-                  {searchLoading ? "Searching…" : "Search"}
-                </button>
-              </div>
-
-              {searchResults.length > 0 && (
-                <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 6 }}>
-                  <p style={{ fontSize: 11, color: "var(--text-3)" }}>
-                    {searchResults.length} result{searchResults.length === 1 ? "" : "s"}
-                  </p>
-                  {searchResults.map((r) => (
-                    <ResultCard
-                      key={r.id}
-                      item={r}
-                      selected={selectedIds.has(r.id)}
-                      copied={copiedId === r.id}
-                      onAdd={() => addSelection(r)}
-                      onRemove={() => removeSelection(r.id)}
-                      onCopy={() => copyId(r.id)}
-                    />
-                  ))}
-                </div>
-              )}
-            </section>
-          )}
         </div>
 
         {/* ── Selection panel ──────────────────────────────────────────── */}
@@ -1575,11 +1456,201 @@ export default function MetaAudienceScraperPage() {
         }
 
         /* Small accessibility nicety: reduce motion */
+        /* ─────────────────────────────────────────────────────────────
+           UNHINGED MODE — additional visual chaos.
+           ───────────────────────────────────────────────────────────── */
+
+        /* Hide Stratos sidebar when Meta Assassin is mounted */
+        body.meta-assassin-fullscreen .sidebar { display: none !important; }
+        body.meta-assassin-fullscreen .app-main {
+          background: var(--cyber-bg-deep) !important;
+          padding: 0 !important;
+        }
+        body.meta-assassin-fullscreen .sidebar-mobile-trigger { display: none !important; }
+        body.meta-assassin-fullscreen .back-to-top,
+        body.meta-assassin-fullscreen .scroll-progress { display: none !important; }
+
+        /* Aggressive scanlines */
+        .cyber-scanlines {
+          opacity: 0.42 !important;
+          background-image: linear-gradient(transparent 50%, rgba(0,0,0,0.32) 50%) !important;
+          background-size: 100% 2px !important;
+          animation: cyber-scanmove 6s linear infinite;
+        }
+        @keyframes cyber-scanmove {
+          0% { background-position: 0 0; }
+          100% { background-position: 0 24px; }
+        }
+
+        /* Film grain layer */
+        .cyber-bg::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.4 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/></svg>");
+          opacity: 0.07;
+          mix-blend-mode: overlay;
+          animation: cyber-grain-shift 0.6s steps(4) infinite;
+          pointer-events: none;
+        }
+        @keyframes cyber-grain-shift {
+          0% { transform: translate(0,0); }
+          25% { transform: translate(-2px,1px); }
+          50% { transform: translate(1px,-2px); }
+          75% { transform: translate(-1px,-1px); }
+          100% { transform: translate(0,0); }
+        }
+
+        /* Whole-page periodic flicker */
+        .cyber-shell::after {
+          content: "";
+          position: fixed;
+          inset: 0;
+          background: rgba(0,0,0,0);
+          pointer-events: none;
+          z-index: 9000;
+          animation: cyber-flicker 11s ease-in-out infinite;
+        }
+        @keyframes cyber-flicker {
+          0%, 96%, 100% { background: rgba(0,0,0,0); }
+          96.3% { background: rgba(0,0,0,0.55); }
+          96.6% { background: rgba(0,0,0,0); }
+          97% { background: rgba(255, 43, 214, 0.07); }
+          97.4% { background: rgba(0,0,0,0); }
+        }
+
+        /* Cyber Cartel highlight */
+        .cyber-cartel {
+          color: var(--cyber-magenta);
+          text-shadow:
+            0 0 6px rgba(255, 43, 214, 0.7),
+            0 0 12px rgba(255, 43, 214, 0.35);
+          font-weight: 700;
+          letter-spacing: 0.04em;
+          animation: cyber-cartel-pulse 2.6s ease-in-out infinite;
+        }
+        @keyframes cyber-cartel-pulse {
+          0%, 100% { text-shadow: 0 0 6px rgba(255, 43, 214, 0.7), 0 0 12px rgba(255, 43, 214, 0.35); }
+          50% { text-shadow: 0 0 10px rgba(255, 43, 214, 0.95), 0 0 22px rgba(0, 255, 247, 0.5); }
+        }
+
+        /* Corner brackets on every card */
+        .cyber-shell section > .cyber-corner {
+          position: absolute;
+          width: 14px; height: 14px;
+          pointer-events: none;
+          z-index: 2;
+        }
+        .cyber-shell section {
+          position: relative;
+        }
+        .cyber-shell section:hover {
+          box-shadow:
+            0 0 0 1px rgba(255, 43, 214, 0.18),
+            0 24px 80px -32px rgba(0, 255, 247, 0.45),
+            0 0 32px rgba(255, 43, 214, 0.18);
+        }
+
+        /* Variant fields */
+        .cyber-variant {
+          position: relative;
+        }
+        .cyber-variant-index {
+          font-family: ui-monospace, SF Mono, Menlo, Consolas, monospace;
+          font-size: 9.5px;
+          font-weight: 700;
+          letter-spacing: 0.1em;
+          color: var(--cyber-cyan);
+          background: rgba(0, 255, 247, 0.08);
+          border: 1px solid rgba(0, 255, 247, 0.3);
+          padding: 0 6px;
+          display: inline-flex;
+          align-items: center;
+          flex-shrink: 0;
+          min-width: 24px;
+          justify-content: center;
+        }
+        .cyber-variant:hover .cyber-variant-index {
+          background: rgba(0, 255, 247, 0.18);
+          color: #fff;
+          box-shadow: 0 0 10px rgba(0, 255, 247, 0.5);
+        }
+        .cyber-variant-input {
+          background: rgba(8, 6, 18, 0.78) !important;
+          border: 1px solid rgba(255, 43, 214, 0.22) !important;
+          color: var(--text) !important;
+          font-family: ui-monospace, SF Mono, Menlo, Consolas, monospace !important;
+          letter-spacing: 0;
+          transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease, transform 80ms ease;
+        }
+        .cyber-variant-input:focus {
+          outline: none !important;
+          border-color: var(--cyber-magenta) !important;
+          background: rgba(8, 6, 18, 0.92) !important;
+          box-shadow: 0 0 0 1px var(--cyber-magenta), 0 0 18px rgba(255, 43, 214, 0.35) !important;
+        }
+        .cyber-variant-copy {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0 10px;
+          background: rgba(255, 43, 214, 0.08);
+          border: 1px solid rgba(255, 43, 214, 0.3);
+          color: var(--cyber-magenta);
+          cursor: pointer;
+          flex-shrink: 0;
+          transition: all 140ms ease;
+        }
+        .cyber-variant-copy:hover {
+          background: var(--cyber-magenta);
+          color: #fff;
+          box-shadow: 0 0 14px rgba(255, 43, 214, 0.7);
+        }
+
+        /* Heading text glitch on hover (cards / pillars) */
+        .cyber-shell h2:hover,
+        .cyber-shell h3:hover {
+          animation: cyber-text-glitch 0.4s steps(1) 1;
+          color: var(--cyber-cyan);
+          text-shadow:
+            -2px 0 var(--cyber-magenta),
+            2px 0 var(--cyber-cyan);
+        }
+        @keyframes cyber-text-glitch {
+          0%, 100% { transform: translate(0,0); }
+          20% { transform: translate(-2px, 1px); }
+          40% { transform: translate(2px, -1px); }
+          60% { transform: translate(-1px, -2px); }
+          80% { transform: translate(1px, 2px); }
+        }
+
+        /* Tagline emphasis */
+        .cyber-tagline {
+          padding: 6px 0;
+          border-bottom: 1px dashed rgba(0, 255, 247, 0.18);
+        }
+
+        /* Cursor blink wherever we want a terminal feel */
+        .cyber-cursor::after {
+          content: "▌";
+          color: var(--cyber-cyan);
+          margin-left: 2px;
+          animation: cyber-blink 1.1s steps(2) infinite;
+        }
+
+        /* Title — louder */
+        .cyber-title {
+          font-size: 44px !important;
+          font-weight: 900 !important;
+          letter-spacing: 0.06em !important;
+        }
+
         @media (prefers-reduced-motion: reduce) {
           .cyber-orb, .cyber-target-icon, .cyber-target-pulse,
           .cyber-title, .cyber-title::before, .cyber-title::after,
           .cyber-shell button[style*="var(--accent)"]::after,
-          .cyber-dot {
+          .cyber-dot, .cyber-bg::before, .cyber-shell::after,
+          .cyber-cartel, .cyber-scanlines {
             animation: none !important;
           }
         }
@@ -2020,12 +2091,12 @@ function CreativeCard({
         )}
       </div>
 
-      {/* Copy variants — full width */}
+      {/* Copy variants — each one its own copyable field */}
       <div>
-        {hooks.length > 0 && <CopyVariantList label="Hook variants" items={hooks} />}
-        {headlines.length > 0 && <CopyVariantList label="Headline variants" items={headlines} small />}
-        {primaryTexts.length > 0 && <CopyVariantList label="Primary text variants" items={primaryTexts} small muted />}
-        <p style={{ margin: "10px 0 0", fontSize: 12, color: "var(--text-2)", fontStyle: "italic", lineHeight: 1.5 }}>
+        {hooks.length > 0 && <CopyVariantList label="Hooks" items={hooks} multiline />}
+        {headlines.length > 0 && <CopyVariantList label="Headlines" items={headlines} />}
+        {primaryTexts.length > 0 && <CopyVariantList label="Primary text" items={primaryTexts} multiline />}
+        <p style={{ margin: "14px 0 0", fontSize: 12, color: "var(--text-2)", fontStyle: "italic", lineHeight: 1.5 }}>
           <strong style={{ color: "var(--text)" }}>Why this concept:</strong> {creative.why}
         </p>
       </div>
@@ -2167,17 +2238,87 @@ function FrameSlot({
   );
 }
 
-function CopyVariantList({ label, items, small, muted }: { label: string; items: string[]; small?: boolean; muted?: boolean }) {
+function CopyVariantList({ label, items, multiline }: { label: string; items: string[]; small?: boolean; muted?: boolean; multiline?: boolean }) {
   return (
-    <div style={{ marginTop: 8 }}>
-      <p style={{ margin: 0, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-3)" }}>
-        {label}
+    <div style={{ marginTop: 12 }}>
+      <p
+        style={{
+          margin: 0,
+          marginBottom: 6,
+          fontSize: 10,
+          fontWeight: 700,
+          textTransform: "uppercase",
+          letterSpacing: "0.18em",
+          color: "var(--cyber-cyan, var(--text-3))",
+          fontFamily: "ui-monospace, SF Mono, Menlo, Consolas, monospace",
+        }}
+      >
+        &gt; {label} &nbsp;<span style={{ opacity: 0.5 }}>[{items.length}]</span>
       </p>
-      <ul style={{ margin: "4px 0 0", paddingLeft: 16, fontSize: small ? 12 : 13, color: muted ? "var(--text-3)" : "var(--text)", lineHeight: 1.45 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
         {items.map((it, i) => (
-          <li key={i} style={{ marginBottom: 2 }}>{it}</li>
+          <CopyVariantField key={i} index={i} value={it} multiline={multiline} />
         ))}
-      </ul>
+      </div>
+    </div>
+  );
+}
+
+function CopyVariantField({ index, value, multiline }: { index: number; value: string; multiline?: boolean }) {
+  const [text, setText] = useState(value);
+  const [copied, setCopied] = useState(false);
+
+  // Keep local edits in sync if the underlying value changes (e.g. plan refine)
+  useEffect(() => { setText(value); }, [value]);
+
+  function copy() {
+    navigator.clipboard.writeText(text).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1100);
+  }
+
+  return (
+    <div className="cyber-variant" style={{ display: "flex", alignItems: "stretch", gap: 6 }}>
+      <span className="cyber-variant-index">{String(index + 1).padStart(2, "0")}</span>
+      {multiline ? (
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          rows={Math.max(2, Math.ceil(text.length / 90))}
+          spellCheck={false}
+          className="cyber-variant-input"
+          style={{
+            flex: 1,
+            padding: "7px 10px",
+            fontSize: 12.5,
+            lineHeight: 1.5,
+            fontFamily: "inherit",
+            resize: "vertical",
+          }}
+        />
+      ) : (
+        <input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          spellCheck={false}
+          className="cyber-variant-input"
+          style={{
+            flex: 1,
+            padding: "7px 10px",
+            fontSize: 13,
+            fontFamily: "inherit",
+          }}
+        />
+      )}
+      <button
+        type="button"
+        onClick={copy}
+        className="cyber-variant-copy"
+        title="Copy to clipboard"
+        aria-label="Copy variant"
+      >
+        {copied ? <Check style={{ width: 12, height: 12 }} /> : <Copy style={{ width: 12, height: 12 }} />}
+      </button>
     </div>
   );
 }
