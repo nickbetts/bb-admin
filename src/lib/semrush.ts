@@ -611,16 +611,10 @@ export async function getSemrushTrackedKeywordsWithTags(
         Tr?: Record<string, Record<string, number>>;
         Sov?: Record<string, Record<string, number>>;
         Sf?: Record<string, string[] | null>;
-        Lt?: Record<string, string[] | null>;
+        Lt?: Record<string, Record<string, string[]> | null>;
       }>;
     };
     if (!data?.data || data.total === 0) return [];
-
-    // DEBUG: inspect raw Lt field on first keyword
-    const firstKw = Object.values(data.data)[0];
-    console.log("[semrush debug] first keyword keys:", firstKw ? Object.keys(firstKw) : "none");
-    console.log("[semrush debug] first keyword Sf:", JSON.stringify(firstKw?.Sf));
-    console.log("[semrush debug] first keyword Lt:", JSON.stringify(firstKw?.Lt));
 
     const toPos = (v: unknown): number | null => {
       if (v === "-" || v == null) return null;
@@ -677,7 +671,9 @@ export async function getSemrushTrackedKeywordsWithTags(
           const dates = Object.keys(kw.Lt).filter(k => /^\d{8}$/.test(k)).sort();
           if (!dates.length) return [];
           const latest = kw.Lt[dates[dates.length - 1]];
-          return Array.isArray(latest) ? latest.filter(Boolean) : [];
+          // Lt is keyed date → urlMask → string[], unlike Sf which is date → string[]
+          if (!latest || typeof latest !== 'object' || Array.isArray(latest)) return [];
+          return [...new Set(Object.values(latest).flat().filter(Boolean))];
         })(),
         url: landingUrl,
       };
