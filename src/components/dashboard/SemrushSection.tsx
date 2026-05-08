@@ -1003,7 +1003,7 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
                     return (
                       <div className="flex flex-wrap gap-1">
                         {row.serpFeatures.map((f) => {
-                          const owned = row.ownedFeatures.includes(f);
+                          const owned = (row.ownedFeatures ?? []).includes(f);
                           const isAio = f === "aio";
                           if (isAio) {
                             return (
