@@ -1049,7 +1049,7 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
                               <span
                                 key={f}
                                 title="Client appears in AI Overview"
-                                className="inline-flex items-center gap-1 px-1.5 py-1 rounded text-[9px] font-semibold border bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 text-purple-700 border-purple-300"
+                                className="inline-flex items-center gap-1 px-2 py-1.5 rounded text-[10px] font-semibold border bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 text-purple-700 border-purple-300"
                               >
                                 <svg width="9" height="9" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                                   <path d="M12 2C12 2 13.5 8.5 18 12C13.5 15.5 12 22 12 22C12 22 10.5 15.5 6 12C10.5 8.5 12 2 12 2Z" fill="url(#gemini-grad-sf)" />
@@ -1070,7 +1070,7 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
                             <span
                               key={f}
                               title={`Client appears in ${f.toUpperCase()}`}
-                              className="inline-flex items-center gap-1 px-1.5 py-1 rounded text-[9px] font-medium uppercase bg-[var(--border-subtle)] text-[var(--text-1)]"
+                              className="inline-flex items-center gap-1 px-2 py-1.5 rounded text-[10px] font-medium uppercase bg-[var(--border-subtle)] text-[var(--text-1)]"
                             >
                               {f}
                               <span className="text-green-500">✓</span>
