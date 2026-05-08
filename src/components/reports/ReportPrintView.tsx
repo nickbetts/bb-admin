@@ -225,9 +225,9 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
           "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
         background: "var(--surface)",
         color: "#1e293b",
-        maxWidth: 900,
+        maxWidth: 1100,
         margin: "0 auto",
-        padding: "48px 48px",
+        padding: "48px 40px",
       }}
     >
       {/* Cover card */}
