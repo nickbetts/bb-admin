@@ -423,7 +423,7 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
               `meta:${client.metaAccountId ?? client.id}`,
               `googleads:${client.googleAdsCustomerId ?? client.id}`,
               `searchconsole:${client.searchConsoleSiteUrl ?? client.id}`,
-              `semrush:${client.semrushDomain ?? client.id}`,
+              `semrush:`,
               `tiktok:${client.tiktokAdvertiserId ?? client.id}`,
               `microsoftads:${client.microsoftAdsAccountId ?? client.id}`,
               `linkedin:${client.linkedinAccountId ?? client.id}`,
