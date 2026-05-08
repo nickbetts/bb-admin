@@ -995,7 +995,7 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
                 {
                   key: "serpFeatures",
                   label: "SERP Features",
-                  render: (_v, row) => row.serpFeatures.length > 0 ? (
+                  render: (_v, row) => row.currentPosition !== null && row.serpFeatures.length > 0 ? (
                     <div className="flex flex-wrap gap-1">
                       {row.serpFeatures.map((f) => {
                         if (f === "aio") {
