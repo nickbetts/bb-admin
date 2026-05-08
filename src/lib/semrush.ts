@@ -525,7 +525,14 @@ export async function getSemrushTrackedKeywordsWithTags(
   ];
   if (domain) {
     // rootdomain mask per SEMrush docs: *.example.com/*
-    const cleanDomain = domain.replace(/^https?:\/\//, "").replace(/\/$/, "");
+    // Strip www. prefix — campaigns are typically set up against the root domain
+    // (e.g. emaanrelief.org) and the ranking URLs are on the non-www variant.
+    // Querying with *.www.example.com/* returns only the www positions which are
+    // almost always "-" even when the root domain ranks correctly.
+    const cleanDomain = domain
+      .replace(/^https?:\/\//, "")
+      .replace(/\/$/, "")
+      .replace(/^www\./, "");
     qsParts.push(`url=${encodeURIComponent(`*.${cleanDomain}/*`)}`);
   }
   if (tags) {
