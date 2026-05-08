@@ -1117,7 +1117,16 @@ ${opts.pageContext}${colourSummary ? `\nBrand colours: ${colourSummary}` : ""}`;
 
   const block = response.content?.[0];
   const raw = block?.type === "text" ? block.text.trim() : "";
-  const html = stripMarkdownFences(raw);
+  const stripped = stripMarkdownFences(raw);
+
+  // Claude occasionally prefixes the HTML with a brief explanation even when
+  // told not to. Trim everything before the first < and after the last >
+  // so only the section markup is returned.
+  const htmlStart = stripped.indexOf("<");
+  const htmlEnd = stripped.lastIndexOf(">");
+  const html = (htmlStart !== -1 && htmlEnd > htmlStart)
+    ? stripped.slice(htmlStart, htmlEnd + 1).trim()
+    : stripped.trim();
 
   if (!html || html.length < 10) {
     throw new HtmlValidationError("The model returned an empty response for this section. Please try again.");
