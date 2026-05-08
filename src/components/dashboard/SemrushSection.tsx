@@ -907,15 +907,15 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
           ) : (
             <>
               {/* SERP Feature legend */}
-              <details className="mb-3 group">
+              <details className="mb-5 group">
                 <summary className="cursor-pointer inline-flex items-center gap-1.5 text-xs text-[var(--text-3)] hover:text-[var(--text-2)] select-none list-none">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
                   What do the SERP feature badges mean?
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="transition-transform group-open:rotate-180"><path d="M6 9l6 6 6-6"/></svg>
                 </summary>
-                <div className="mt-2 p-3 rounded-lg bg-[var(--bg-subtle,#f8f9fb)] border border-[var(--border-subtle)] text-xs text-[var(--text-2)]">
+                <div className="mt-2 p-4 rounded-lg bg-[var(--bg-subtle,#f8f9fb)] border border-[var(--border-subtle)] text-xs text-[var(--text-2)]">
                   <p className="mb-2 text-[var(--text-3)]">Badges show which Google search features appear for each keyword. <strong className="text-[var(--text-2)]">Solid badges with ✓</strong> mean your site appears in that feature.</p>
-                  <div className="grid grid-cols-2 gap-x-6 gap-y-1 sm:grid-cols-3">
+                  <div className="grid grid-cols-2 gap-x-8 gap-y-2 sm:grid-cols-3">
                     {([
                       ["org", "Standard organic result"],
                       ["aio", "AI Overview — client is cited as a source in Google's AI-generated answer."],
@@ -933,8 +933,8 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
                       ["new", "Top stories / news"],
                       ["res", "Related searches"],
                     ] as [string, string][]).map(([code, desc]) => (
-                      <div key={code} className="flex items-center gap-1.5">
-                        <span className="inline-block px-1 py-0.5 rounded text-[9px] font-medium bg-[var(--border-subtle)] text-[var(--text-2)] uppercase shrink-0">{code}</span>
+                      <div key={code} className="flex items-center gap-2">
+                        <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-medium bg-[var(--border-subtle)] text-[var(--text-2)] uppercase shrink-0">{code}</span>
                         <span className="text-[var(--text-3)]">{desc}</span>
                       </div>
                     ))}
@@ -994,7 +994,7 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
                     if (row.delta == null) return <span className="text-[var(--text-3)] text-xs">—</span>;
                     return (
                       <span
-                        className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-semibold ${
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
                           row.delta > 0
                             ? "bg-emerald-50 text-emerald-700"
                             : row.delta < 0
@@ -1037,7 +1037,7 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
                       return <span className="text-[var(--text-3)] text-xs">—</span>;
                     }
                     return (
-                      <div className="flex flex-wrap gap-1">
+                      <div className="flex flex-wrap gap-1.5">
                         {row.serpFeatures.map((f) => {
                           const ownedFeats = row.ownedFeatures ?? [];
                           const owned = ownedFeats.includes(f) || (f === "org" && ownedFeats.includes("aio"));
@@ -1047,7 +1047,7 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
                               <span
                                 key={f}
                                 title={owned ? "Client appears in AI Overview" : "AI Overview present on SERP"}
-                                className={`inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] font-semibold border transition-opacity ${
+                                className={`inline-flex items-center gap-1 px-1.5 py-1 rounded text-[9px] font-semibold border transition-opacity ${
                                   owned
                                     ? "bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 text-purple-700 border-purple-300"
                                     : "bg-transparent text-purple-400 border-purple-200/40 opacity-40"
@@ -1072,7 +1072,7 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
                             <span
                               key={f}
                               title={owned ? `Client appears in ${f.toUpperCase()}` : `${f.toUpperCase()} present on SERP`}
-                              className={`inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] font-medium uppercase transition-opacity ${
+                              className={`inline-flex items-center gap-1 px-1.5 py-1 rounded text-[9px] font-medium uppercase transition-opacity ${
                                 owned
                                   ? "bg-[var(--border-subtle)] text-[var(--text-1)]"
                                   : "bg-transparent border border-[var(--border-subtle)] text-[var(--text-3)] opacity-50"
