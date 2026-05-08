@@ -39,6 +39,7 @@ jobs:
           BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN != '' && secrets.BLOB_READ_WRITE_TOKEN || 'vercel_blob_rw_placeholder' }}
           SEMRUSH_API_KEY: ${{ secrets.SEMRUSH_API_KEY != '' && secrets.SEMRUSH_API_KEY || 'placeholder' }}
           SESSION_SECRET: placeholder-session-secret-for-ci
+          NEXTAUTH_SECRET: placeholder-nextauth-secret-for-ci
           CRON_SECRET: placeholder-cron-secret-for-ci
           OPENAI_API_KEY: placeholder
           GA4_CLIENT_EMAIL: placeholder@placeholder.iam.gserviceaccount.com

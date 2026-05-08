@@ -1,0 +1,55 @@
+{
+  // TypeScript — use workspace SDK so TS version matches package.json
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+
+  // Format on save via ESLint (covers TS, TSX, JS, JSON)
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "dbaeumer.vscode-eslint",
+  "[typescript]": {
+    "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "ms-vscode.vscode-json"
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "ms-vscode.vscode-json"
+  },
+
+  // Tailwind v4 — config lives in globals.css, not a JS config file
+  "tailwindCSS.experimental.configFile": "src/app/globals.css",
+  "files.associations": {
+    "*.css": "tailwindcss"
+  },
+  // Enable Tailwind class suggestions inside strings (useful for template literals)
+  "editor.quickSuggestions": {
+    "strings": "on"
+  },
+
+  // Prisma
+  "prisma.fileWatcher": true,
+
+  // Editor quality-of-life
+  "editor.tabSize": 2,
+  "editor.insertSpaces": true,
+  "editor.rulers": [120],
+  "editor.wordWrap": "off",
+
+  // Suppress noisy file watchers
+  "files.watcherExclude": {
+    "**/.git/objects/**": true,
+    "**/node_modules/**": true,
+    "**/.next/**": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/.next": true,
+    "**/prisma/migrations": true
+  }
+}

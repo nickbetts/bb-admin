@@ -7,7 +7,7 @@ i3media Report is the central nervous system of a modern digital marketing agenc
 | Capability Area | Highlights |
 |---|---|
 | **Data integrations** | 15 channels: GA4, Google Ads, Meta, TikTok, Microsoft Ads, LinkedIn, Klaviyo, SemRush, GSC, Moz, WooCommerce, Shopify, YouTube, HubSpot, CallRail |
-| **AI intelligence** | 14+ endpoints: anomaly detection, root cause analysis, forecasting, budget advice, creative intelligence, conversational chat, strategy documents, attribution |
+| **AI intelligence** | 24+ endpoints: anomaly detection, root cause analysis, forecasting, budget advice, creative intelligence, conversational chat, strategy documents, attribution, audience suggestions, cross-platform creative, keyword suggestions, QA summary, content strategy |
 | **Report builder** | Drag-and-drop sections, AI commentary, collaboration comments, approval workflow, PDF export, share links, automated monthly generation |
 | **Agency tools** | Keyword planner, PPC proposals with pipeline CRM, landing page analyser, media plan builder, content strategy generator, LLM.txt generator |
 | **Client management** | Full CRUD, integration badges, contracted hours, AI instructions, action tracking, communication hub |

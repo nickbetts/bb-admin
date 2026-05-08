@@ -114,7 +114,7 @@ export async function fetchAndParsePage(url: string): Promise<ParsedPage> {
     .slice(0, 800);
 
   const bodyText = $("body").text().replace(/\s+/g, " ").trim();
-  let wordCount = bodyText.split(/\s+/).filter(Boolean).length;
+  const wordCount = bodyText.split(/\s+/).filter(Boolean).length;
 
   // Collect outbound anchors from main content
   const pageUrlObj = new URL(url);

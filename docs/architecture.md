@@ -44,10 +44,10 @@ This document covers the system architecture, database schema, project structure
                                       |
 +-------------------------------------v---------------------------------------------+
 |                              NEXT.JS API LAYER                                     |
-|                         ~100 API Route Handlers                                    |
+|                         ~270 API Route Handlers                                   |
 |                                                                                    |
 |  /api/auth/*          Authentication (login, logout, session, Google OAuth)        |
-|  /api/ai/*            14 AI endpoints (summary, forecast, budget-advisor, etc.)    |
+|  /api/ai/*            24 AI endpoints (summary, forecast, budget-advisor, etc.)    |
 |  /api/ga4/*           GA4 data dispatcher + property discovery                     |
 |  /api/google-ads/*    Google Ads data + account discovery                          |
 |  /api/meta/*          Meta Ads data + account/video proxy                          |
@@ -68,12 +68,20 @@ This document covers the system architecture, database schema, project structure
 |  /api/reports/*       Report CRUD, sections, screenshots, comments, PDF, share     |
 |  /api/report-templates/* Template CRUD                                             |
 |  /api/tools/*         Keyword planner, proposals, LLM, page analyser, media plan   |
+|  /api/financials/*    Client retainer and invoice management                       |
+|  /api/tasks/*         Task management + categories + time logging                  |
+|  /api/users/*         User management endpoints                                    |
 |  /api/admin/*         User/role management + run-snapshots trigger                 |
 |  /api/settings/*      App config + Google connection management                    |
 |  /api/cross/*         Cross-platform analysis (keyword overlap)                    |
 |  /api/share/*         Public share endpoints (proposals, reports)                  |
 |  /api/notifications/* Notifications list + preferences + mark-read                 |
 |  /api/portal/*        Client portal auth, data, users, magic-link                  |
+|  /api/portal-publish/* Portal content publishing                                   |
+|  /api/pillar-insights/* Content pillar insights                                    |
+|  /api/click-protection/* Click fraud event ingestion                               |
+|  /api/action-queue/*  Background action queue management                           |
+|  /api/cache/*         Cache management and invalidation                            |
 |  /api/portfolio/*     Agency-wide portfolio health endpoint                        |
 |  /api/competitor-intelligence/* Competitor monitoring + snapshots                  |
 |  /api/cron/*          Cron jobs (snapshots + automated reports)                    |
@@ -91,20 +99,23 @@ This document covers the system architecture, database schema, project structure
 
 +--------------------------------------------+  +---------------------------+
 |          DATABASE (Prisma ORM)             |  |     EXTERNAL SERVICES     |
-|  SQLite (local) / Turso libSQL (prod)      |  |                           |
+|  Vercel Postgres (Neon)                    |  |                           |
 |                                            |  |  OpenAI API (GPT-4o-mini, |
-|  25 models: User, Role, Session, Client,   |  |    GPT-4o, GPT-4o with    |
+|  65 models: User, Role, Session, Client,   |  |    GPT-4o, GPT-4o with    |
 |  Report, ReportSection, Screenshot,        |  |    web search)            |
-|  ReportTemplate, ReportComment,            |  |                           |
-|  GoogleConnection, MetricSnapshot,         |  |  Vercel Blob (file        |
-|  AppSetting, KeywordPlannerResearch,        |  |    storage for screenshots |
-|  Proposal, ProposalEnquiry, LlmTemplate,   |  |    and logos)              |
-|  Notification, ClientConversation,         |  |                           |
-|  ClientGoal, StrategyDocument,             |  |  Resend (email delivery)  |
-|  BudgetRecommendation, ActionItem,         |  |                           |
-|  ClientCommunication, ClientPortalUser,    |  |  Slack (webhook alerts)   |
-|  CompetitorSnapshot, MediaPlan             |  |                           |
-+--------------------------------------------+  +---------------------------+
+|  MetricSnapshot, KeywordPlannerResearch,   |  |                           |
+|  Proposal, LlmTemplate, ClientGoal,        |  |  Vercel Blob (file        |
+|  StrategyDocument, BudgetRecommendation,   |  |    storage for screenshots |
+|  ActionItem, ClientCommunication,          |  |    and logos)              |
+|  ClientPortalUser, CompetitorSnapshot,     |  |                           |
+|  MediaPlan, Notification, ContentStrategy, |  |  Resend (email delivery)  |
+|  DetectedAnomaly, ClickFraudEvent,         |  |                           |
+|  LandingPage, LandingPageVersion,          |  |  Slack (webhook alerts)   |
+|  GrandPlan, ClientRetainer, ClientInvoice, |  |                           |
+|  TaskCategory, TaskAssignee, TaskComment,  |  |  Microsoft 365 OAuth      |
+|  EmailVerificationJob, AdImageSession,     |  |                           |
+|  PortalThread, AgencySubscription, + more  |  +---------------------------+
++--------------------------------------------+
 ```
 
 ---
@@ -120,7 +131,7 @@ This document covers the system architecture, database schema, project structure
 | **Charts** | Recharts 3.8 | Area charts, bar charts, pie charts across all dashboard sections |
 | **Icons** | Lucide React | Consistent icon system |
 | **Drag & Drop** | dnd-kit | Report section reordering |
-| **Database** | Prisma v7 + SQLite (dev) / Turso libSQL (prod) | ORM with 25 models |
+| **Database** | Prisma v7 + Vercel Postgres (Neon) | ORM with 65 models |
 | **Auth** | HMAC-SHA256 signed cookies + bcrypt | Session management and password hashing |
 | **AI** | OpenAI (gpt-4o-mini, gpt-4o, gpt-4o-search-preview) | Insights, commentary, proposals, analysis |
 | **File Storage** | Vercel Blob | Screenshots and client logos |
@@ -136,7 +147,7 @@ This document covers the system architecture, database schema, project structure
 
 ## Database Schema
 
-25 Prisma models across Phases 1, 2, and 3:
+65 Prisma models across all build phases:
 
 ```
 Role ──────────────< User ──────────< Session
@@ -155,16 +166,45 @@ Role ──────────────< User ────────�
                                           ├──< BudgetRecommendation
                                           ├──< ActionItem
                                           ├──< ClientCommunication
-                                          ├──< ClientPortalUser
+                                          ├──< ClientPortalUser ──< PortalThread ──< PortalMessage
                                           ├──< CompetitorSnapshot
                                           ├──< MediaPlan
                                           ├──< Notification
-                                          └──< ClientConversation
+                                          ├──< ClientConversation
+                                          ├──< ContentStrategy
+                                          ├──< DetectedAnomaly
+                                          ├──< ClickFraudEvent
+                                          ├──< ClientFile
+                                          ├──< LandingPage ──< LandingPageVersion
+                                          │                 └──< LandingPageLead
+                                          ├──< GrandPlan ──< GrandPlanVersion
+                                          │              └──< GrandPlanEnquiry
+                                          ├──< ClientRetainer ──< ClientInvoice
+                                          ├──< AgencyTimeEntry
+                                          ├──< EmailVerificationJob ──< EmailVerificationResult
+                                          ├──< AdImageSession
+                                          ├──< ContentGenerator
+                                          ├──< InternalLinkingPlan
+                                          └──< MetaAssassinPlan
 
-GoogleConnection (standalone — multi-account OAuth)
-AppSetting       (standalone — key/value config)
-ReportTemplate   (standalone — reusable report structures)
-LlmTemplate      (standalone — LLM.txt generation templates)
+TaskCategory ──< ClientTaskCategory
+                      │
+                      └──< TaskAssignee / TaskComment / TaskTimeLog / TaskAttachment
+
+GoogleConnection  (standalone — multi-account OAuth)
+Ms365Connection   (standalone — Microsoft 365 OAuth)
+AppSetting        (standalone — key/value config)
+ReportTemplate    (standalone — reusable report structures)
+LlmTemplate       (standalone — LLM.txt generation templates)
+LandingPageTemplate (standalone — landing page builder templates)
+LandingPageTranslation (standalone — per-language translations for LP pages)
+KeywordTrackerList  (standalone — saved keyword tracking lists)
+AgencySubscription  (standalone — agency SaaS subscription)
+UserActivityLog     (standalone — full user audit trail)
+ServerLog / CronLog (standalone — operational logging)
+ClickrUser / ClickrSession (standalone — Clickr SaaS builder auth, separate from main auth)
+ApiCache            (standalone — short-lived API response cache)
+QaChecklist         (standalone — pre-launch and campaign QA checklists)
 ```
 
 | Model | Key Fields | Purpose |
@@ -195,6 +235,45 @@ LlmTemplate      (standalone — LLM.txt generation templates)
 | **MediaPlan** | title, objective, totalBudget, channels (JSON), forecast (JSON), status | Paid media planning with forecast outputs |
 | **Notification** | type, severity, title, body, channel, status | System notifications (email, Slack, in-app) |
 | **ClientConversation** | role, content, metadata (JSON) | Chat messages for "Ask the Data" feature |
+| **ServerLog** | level, message, context (JSON) | Operational server-side log records |
+| **CronLog** | jobName, status, duration, output | Cron job execution audit trail |
+| **ApiCache** | key, value, expiresAt | Short-lived API response cache (reduces external API calls) |
+| **QaChecklist** | title, items (JSON), clientId, status | QA checklists for pre-launch and campaign audits |
+| **TaskCategory** | name, colour, icon | Shared task category definitions |
+| **ClientTaskCategory** | clientId, taskCategoryId | Per-client task category assignments |
+| **TaskAssignee** | actionItemId, userId | Action item assignees (many-to-many) |
+| **TaskComment** | actionItemId, userId, content | Threaded comments on action items |
+| **TaskTimeLog** | actionItemId, userId, minutes | Time tracking entries per task |
+| **TaskAttachment** | actionItemId, url, filename | File attachments on action items |
+| **ClientFile** | clientId, url, filename, size | Client-scoped file storage records |
+| **DetectedAnomaly** | clientId, sectionType, metric, severity, description | Persisted anomaly records from AI/rules detection |
+| **ClickFraudEvent** | clientId, ip, userAgent, campaignId, platform | Click fraud events flagged by ad traffic protection |
+| **ContentStrategy** | clientId, title, spreadsheetData (JSON) | AI-generated content strategy documents |
+| **UserActivityLog** | userId, action, entity, entityId | Full audit trail of user actions |
+| **Ms365Connection** | userId, accessToken, refreshToken, scopes | Microsoft 365 OAuth connections |
+| **LandingPage** | clientId, title, slug, status, templateId | Landing pages built with the Clickr builder |
+| **LandingPageVersion** | landingPageId, content (JSON), publishedAt | Version history for landing pages |
+| **LandingPageLead** | landingPageId, email, data (JSON) | Leads captured via landing page forms |
+| **LandingPageTemplate** | name, category, content (JSON) | Reusable landing page templates |
+| **GrandPlan** | clientId, title, content (JSON), status | Comprehensive strategic grand plan documents |
+| **GrandPlanVersion** | grandPlanId, content (JSON) | Version history for grand plans |
+| **GrandPlanEnquiry** | grandPlanId, name, email, message | Enquiries submitted via shared grand plans |
+| **ClientRetainer** | clientId, monthlyValue, startDate, services (JSON) | Client retainer and billing configuration |
+| **ClientInvoice** | clientId, retainerId, amount, status, dueDate | Invoice records against client retainers |
+| **AgencyTimeEntry** | clientId, userId, minutes, date, description | Agency staff time entries per client |
+| **PortalThread** | clientPortalUserId, subject, status | Messaging threads in the client portal |
+| **PortalMessage** | threadId, senderType, content | Messages within portal threads |
+| **AgencySubscription** | plan, status, billingEmail, seats | Agency-level SaaS subscription record |
+| **EmailVerificationJob** | clientId, listName, status, totalEmails | Email list verification job records |
+| **EmailVerificationResult** | jobId, email, status, reason | Per-email result for a verification job |
+| **AdImageSession** | clientId, userId, prompt, imageUrl, platform | AI-generated ad image sessions |
+| **ContentGenerator** | clientId, title, topic, pillars (JSON), status | AI-generated long-form content strategies with pillar structure |
+| **InternalLinkingPlan** | clientId, siteUrl, status, planData (JSON) | Internal linking opportunity plans generated by AI |
+| **MetaAssassinPlan** | clientId, title, planData (JSON), status | Meta audience targeting plans with AI-generated insights |
+| **KeywordTrackerList** | name, keywords (JSON), clientId | Saved keyword tracking lists for position monitoring |
+| **LandingPageTranslation** | landingPageId, language, content (JSON) | Per-language translation content for landing pages |
+| **ClickrUser** | email, password, plan, stripeCustomerId | Standalone Clickr SaaS user accounts (separate auth from main platform) |
+| **ClickrSession** | clickrUserId, token, expiresAt | Session records for Clickr SaaS authenticated users |
 
 ---
 
@@ -203,7 +282,7 @@ LlmTemplate      (standalone — LLM.txt generation templates)
 ```
 i3media-report/
 ├── prisma/
-│   ├── schema.prisma              # 25 database models
+│   ├── schema.prisma              # 65 database models
 │   ├── migrations/                # SQL migration files
 │   └── seed.ts                    # Default users and demo client
 ├── public/
@@ -211,7 +290,7 @@ i3media-report/
 ├── scripts/
 │   ├── get-gads-refresh-token.mjs # Google Ads OAuth token generator
 │   ├── get-meta-long-lived-token.mjs # Meta token exchange script
-│   ├── prod-setup.mjs             # Idempotent Turso schema migration
+│   ├── prod-setup.mjs             # Runs prisma migrate deploy against production Postgres
 │   └── push-env-to-vercel.py      # Push .env.local to Vercel
 ├── src/
 │   ├── app/
@@ -235,18 +314,35 @@ i3media-report/
 │   │   │   ├── actions/           # Action tracking dashboard
 │   │   │   ├── communications/    # Client communication hub
 │   │   │   ├── competitor-intelligence/ # Competitor monitoring dashboard
-│   │   │   └── media-plan/        # Media plan builder
+│   │   │   ├── media-plan/        # Media plan builder
+│   │   │   ├── landing-pages/     # Clickr landing page builder
+│   │   │   ├── grand-plan/        # Grand plan strategy tool
+│   │   │   ├── qa-checklist/      # QA checklist tool
+│   │   │   ├── ad-image-generator/ # AI ad image generator
+│   │   │   ├── email-verifier/    # Email list verification tool
+│   │   │   ├── content-strategy/  # AI content strategy generator
+│   │   │   └── access-requester/  # Integration access request tool
 │   │   ├── portal/                # Client self-serve portal
 │   │   │   ├── login/             # Magic-link portal login
 │   │   │   └── dashboard/         # Client portal dashboard
+│   │   ├── meridian/              # Meridian AI intelligence product landing page
+│   │   ├── meridian-architecture/ # Meridian architecture detail page
+│   │   ├── clickr/                # Clickr landing page builder product landing page
+│   │   ├── budget-intelligence/   # Budget intelligence feature landing page
+│   │   ├── ai-analyst/            # AI analyst feature landing page
+│   │   ├── signals/               # Signals / anomaly hub feature page
+│   │   ├── ad-traffic-protection/ # Ad traffic protection feature page
+│   │   ├── pillar-insights/       # Pillar insights feature page
+│   │   ├── forecasting/           # Forecasting feature landing page
 │   │   ├── settings/              # Global platform settings
 │   │   ├── admin/                 # User and role management
 │   │   │   └── roles/             # Role/permission editor
 │   │   ├── share/                 # Public share routes (noindex)
 │   │   │   ├── proposal/[token]/  # Shareable proposal view
 │   │   │   └── report/[token]/    # Shareable report view
-│   │   └── api/                   # ~100 API route handlers
+│   │   └── api/                   # ~270 API route handlers
 │   │       ├── auth/              # Login, logout, session, Google Ads OAuth
+│   │       ├── ai/                # 24 AI endpoints:
 │   │       ├── ai/                # 14 AI endpoints:
 │   │       │   ├── summary/       # Per-section AI insights + anomaly detection
 │   │       │   ├── super-summary/ # Deep journey analysis + landing page crawl
@@ -261,7 +357,12 @@ i3media-report/
 │   │       │   ├── root-cause/    # Anomaly root cause analysis
 │   │       │   ├── strategy-document/ # Quarterly strategy generation
 │   │       │   ├── chat/          # Conversational AI ("Ask the Data")
-│   │       │   └── snapshots/     # Historical metric storage
+│   │       │   ├── audience-suggestions/ # Cross-channel audience targeting suggestions
+│   │       │   ├── content-strategy-regen/ # Content strategy item regeneration
+│   │       │   ├── cross-platform-creative/ # Cross-platform creative analysis (Meta/TikTok/Google)
+│   │       │   ├── keyword-suggestions/ # AI keyword suggestions from multi-source data
+│   │       │   ├── qa-summary/    # QA checklist AI summary and recommendations
+│   │       │   └── snapshots/     # Historical metric retrieval (GET)
 │   │       ├── ga4/               # GA4 data dispatcher (12 data types)
 │   │       ├── google-ads/        # Google Ads data + accounts + MCC
 │   │       ├── meta/              # Meta Ads data + accounts + video proxy
@@ -283,6 +384,15 @@ i3media-report/
 │   │       ├── reports/           # Report CRUD, sections, screenshots, comments, PDF
 │   │       ├── report-templates/  # Template CRUD
 │   │       ├── tools/             # Keyword planner, proposals, LLM, page analyser, media plan
+│   │       ├── financials/        # Client retainer and invoice management
+│   │       ├── tasks/             # Task management + time logs + attachments
+│   │       ├── task-categories/   # Task category CRUD
+│   │       ├── users/             # User management
+│   │       ├── click-protection/  # Click fraud event ingestion
+│   │       ├── pillar-insights/   # Content pillar insights
+│   │       ├── portal-publish/    # Portal content publishing
+│   │       ├── action-queue/      # Background action queue
+│   │       ├── cache/             # Cache management and invalidation
 │   │       ├── admin/             # User/role management + run-snapshots
 │   │       ├── settings/          # App config + Google connections
 │   │       ├── share/             # Public share data endpoints
@@ -351,7 +461,7 @@ i3media-report/
 │   │       └── index.tsx              # LoadingSpinner, SectionCard, Delta, Badge
 │   └── lib/                       # 18 library modules
 │       ├── auth.ts                # HMAC-SHA256 sessions, permissions, guards
-│       ├── prisma.ts              # Prisma singleton (libSQL adapter in prod)
+│       ├── prisma.ts              # Prisma singleton (Vercel Postgres / Neon)
 │       ├── ga4.ts                 # GA4 Data API client
 │       ├── google-ads.ts          # Google Ads API client (GAQL)
 │       ├── meta.ts                # Meta Graph API client

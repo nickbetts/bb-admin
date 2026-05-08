@@ -109,7 +109,7 @@ Both must pass with zero errors before the work is considered done. TypeScript e
 | Data Fetching & Caching | `data-fetching.md` | Three-layer cache, cron snapshots, TTLs, anomaly lists |
 | AI Endpoint Expert | `ai-endpoint.md` | `src/app/api/ai/` routes, OpenAI prompts, structured output |
 | Report & Dashboard Component | `report-component.md` | React 19 section components, block visibility, ReportView integration |
-| Database & Prisma Expert | `database.md` | Schema, migrations, Prisma patterns, Turso/SQLite dual setup |
+| Database & Prisma Expert | `database.md` | Schema, migrations, Prisma patterns, Vercel Postgres (Neon) |
 | UI/UX Expert | `ui-ux.agent.md` | Design tokens, shared primitives, Tailwind conventions, dashboard UX |
 | Landing Page | `landing-page.agent.md` | Marketing landing page, login page, copy, animations, channel list sync |
 | Agency Tools | `agency-tools.agent.md` | Keyword planner, proposals, content strategy, media plan, page analyser, LLM generator |

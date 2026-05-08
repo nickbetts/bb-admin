@@ -230,9 +230,9 @@ Run with `npm run db:seed`.
 ## Common pitfalls
 
 - **Never run `prisma db push` for production changes** — it bypasses the migration history and can corrupt the production database's schema state. Only use `db:push` for rapid local prototyping on a throwaway dev.db.
-- **Always commit migration files** — Prisma uses them to apply changes to production Turso libSQL. Missing migration files will cause deployment failures.
-- **SQLite type coercion differs from libSQL** — `DateTime` stores as ISO string in SQLite but is a native type in libSQL. Always use `new Date()` / `new Date(isoString)`, never raw strings, when writing `DateTime` fields.
-- **`Json` fields (Prisma type) are stored as TEXT in SQLite** and as native JSON in libSQL. Always defensively parse them (see JSON field handling section above).
+- **Always commit migration files** — Prisma uses them to apply changes to production (Vercel Postgres / Neon). Missing migration files will cause deployment failures.
+- **Never store `DateTime` as a raw string** — always use `new Date()` / `new Date(isoString)` when writing `DateTime` fields.
+- **`Json` fields (Prisma type) are stored as native JSON in Postgres** — always defensively parse them in case of historical TEXT data (see JSON field handling section above).
 - **Don't add a `@default` on a new non-nullable field to an existing model** without a migration that backfills existing rows. For safety, make new required fields nullable (`String?`) initially, migrate, then add a separate migration to make them required if needed.
 - **After schema changes**, regenerate the Prisma client: it happens automatically in `npm run build` but during development you may need `npx prisma generate`.
 - **Run `npm run lint && npm run build`** before marking the task complete.

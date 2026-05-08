@@ -31,17 +31,21 @@ docs/
   data-audit.md         # Per-platform API capability audit across all 15 channels
 src/
   app/                  # Next.js App Router pages and API routes
-    api/                # ~120 API route handlers
-      ai/               # 19 AI endpoints (summary, forecast, commentary, chat, etc.)
+    api/                # ~270 API route handlers
+      ai/               # 24 AI endpoints (summary, forecast, commentary, chat, audience, content-strategy, etc.)
       auth/             # Session-based auth (login/logout/session/Google OAuth)
       clients/          # Client CRUD, goals, actions, communications
       reports/          # Report CRUD, sections, PDF, share links
-      tools/            # Keyword planner, proposals, page analyser, LLM gen
+      tools/            # Keyword planner, proposals, page analyser, LLM gen, grand-plan, landing-pages, internal-linking
+      financials/       # Client retainer and invoice management
+      tasks/            # Task management + categories + time logging
       admin/            # User/role management
       settings/         # App configuration
       cron/             # Scheduled jobs (snapshots, auto-reports)
-      share/            # Public share links (reports, proposals, strategy docs)
+      share/            # Public share links (reports, proposals, strategy docs, grand plans)
       portal/           # Client portal API (magic-link auth, dashboards)
+      clickr/           # Clickr SaaS LP builder (separate auth + billing)
+      click-protection/ # Click fraud event ingestion
     clients/            # Client dashboard pages
     reports/            # Report builder and viewer pages
     tools/              # Agency tools pages (keyword planner, proposals, media plans)

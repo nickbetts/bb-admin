@@ -12,7 +12,7 @@ i3media Report is already ahead of most agency tooling on the market. A cold aud
 | Capability | Current State | Rating |
 |---|---|---|
 | Data integrations | 15 channels (GA4, Google Ads, Meta, TikTok, Microsoft Ads, LinkedIn, Klaviyo, SemRush, GSC, Moz, WooCommerce, Shopify, YouTube, HubSpot, CallRail) | ⭐⭐⭐⭐⭐ |
-| AI insights per channel | 14 AI endpoints: anomaly detection, summaries, forecasting, budget advice, attribution, creative intelligence, root cause, strategy documents, conversational chat | ⭐⭐⭐⭐⭐ |
+| AI insights per channel | 24 AI endpoints: anomaly detection, summaries, forecasting, budget advice, attribution, creative intelligence, root cause, strategy documents, audience suggestions, cross-platform creative, keyword suggestions, QA summary, content strategy, conversational chat | ⭐⭐⭐⭐⭐ |
 | Cross-channel context | All platform metrics fed into every AI call; cross-platform intelligence in every section | ⭐⭐⭐⭐⭐ |
 | Report builder | Drag-and-drop, AI commentary, collaboration comments, approval workflow, PDF export, share links | ⭐⭐⭐⭐⭐ |
 | Proposal generation | AI-powered PPC proposals with interactive forecaster, pipeline CRM, view tracking, enquiry capture | ⭐⭐⭐⭐⭐ |
