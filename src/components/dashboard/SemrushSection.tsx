@@ -177,9 +177,12 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
     keyword: string;
     tags: string[];
     currentPosition: number | null;
-    previousPosition: number | null;
     delta: number | null;
     searchVolume: number;
+    intent: string | null;
+    estTraffic: number | null;
+    shareOfVoice: number | null;
+    serpFeatures: string[];
     url: string;
   }
   const [campaignTags, setCampaignTags] = useState<string[]>([]);
@@ -1102,25 +1105,12 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
                     ),
                 },
                 {
-                  key: "previousPosition",
-                  label: "Previous",
-                  align: "center",
-                  sortable: true,
-                  render: (_v, row) =>
-                    row.previousPosition != null ? (
-                      <span className="text-sm text-[var(--text-2)]">{row.previousPosition}</span>
-                    ) : (
-                      <span className="text-[var(--text-3)] text-xs">—</span>
-                    ),
-                },
-                {
                   key: "delta",
                   label: "Change",
                   align: "center",
                   sortable: true,
                   render: (_v, row) => {
                     if (row.delta == null) return <span className="text-[var(--text-3)] text-xs">—</span>;
-                    // delta = Be − Fi; positive means position improved (number went down)
                     return (
                       <span
                         className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-semibold ${
@@ -1143,11 +1133,48 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
                   },
                 },
                 {
+                  key: "intent",
+                  label: "Intent",
+                  align: "center",
+                  render: (_v, row) => {
+                    const map: Record<string, { label: string; color: string }> = {
+                      i: { label: "Info", color: "bg-blue-50 text-blue-700" },
+                      c: { label: "Com", color: "bg-purple-50 text-purple-700" },
+                      t: { label: "Trans", color: "bg-green-50 text-green-700" },
+                      n: { label: "Nav", color: "bg-amber-50 text-amber-700" },
+                    };
+                    const d = row.intent ? map[row.intent] : null;
+                    return d ? (
+                      <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold ${d.color}`}>{d.label}</span>
+                    ) : <span className="text-[var(--text-3)] text-xs">—</span>;
+                  },
+                },
+                {
+                  key: "estTraffic",
+                  label: "Est. Traffic",
+                  align: "right",
+                  sortable: true,
+                  render: (_v, row) => row.estTraffic != null && row.estTraffic > 0
+                    ? <span className="text-sm text-[var(--text)]">{row.estTraffic.toFixed(2)}</span>
+                    : <span className="text-[var(--text-3)] text-xs">—</span>,
+                },
+                {
                   key: "searchVolume",
                   label: "Volume",
                   align: "right",
                   sortable: true,
                   render: (_v, row) => formatNumber(row.searchVolume),
+                },
+                {
+                  key: "serpFeatures",
+                  label: "SERP Features",
+                  render: (_v, row) => row.serpFeatures.length > 0 ? (
+                    <div className="flex flex-wrap gap-1">
+                      {row.serpFeatures.map((f) => (
+                        <span key={f} className="inline-block px-1 py-0.5 rounded text-[9px] font-medium bg-[var(--border-subtle)] text-[var(--text-2)] uppercase">{f}</span>
+                      ))}
+                    </div>
+                  ) : <span className="text-[var(--text-3)] text-xs">—</span>,
                 },
               ]}
             />

@@ -450,10 +450,17 @@ export interface SemrushTaggedKeyword {
   keyword: string;
   tags: string[];
   currentPosition: number | null;
-  previousPosition: number | null;
   /** Positive value = improved (position number decreased). Mirrors the SEMrush `Diff` field (Be − Fi). */
   delta: number | null;
   searchVolume: number;
+  /** Intent code: i=informational, c=commercial, t=transactional, n=navigational */
+  intent: string | null;
+  /** Estimated organic traffic for the latest crawl date */
+  estTraffic: number | null;
+  /** Share of Voice % for the latest crawl date */
+  shareOfVoice: number | null;
+  /** SERP feature codes for the latest crawl date (e.g. "org", "img", "vid", "aio") */
+  serpFeatures: string[];
   url: string;
 }
 
@@ -567,6 +574,10 @@ export async function getSemrushTrackedKeywordsWithTags(
         Be?: Record<string, number | string>;
         Diff?: Record<string, number | string>;
         Lu?: Record<string, Record<string, string>>;
+        In?: Record<string, string>;
+        Tr?: Record<string, Record<string, number>>;
+        Sov?: Record<string, Record<string, number>>;
+        Sf?: Record<string, string[] | null>;
       }>;
     };
     if (!data?.data || data.total === 0) return [];
@@ -597,9 +608,30 @@ export async function getSemrushTrackedKeywordsWithTags(
         keyword: kw.Ph ?? "",
         tags: kw.Tg ? Object.values(kw.Tg).filter(Boolean) : [],
         currentPosition: toPos(firstReal(kw.Fi)),
-        previousPosition: toPos(firstReal(kw.Be)),
         delta: toPos(firstReal(kw.Diff)),
         searchVolume: parseInt(kw.Nq ?? "0") || 0,
+        intent: kw.In ? (Object.values(kw.In)[0] ?? null) : null,
+        estTraffic: (() => {
+          if (!kw.Tr) return null;
+          const dates = Object.keys(kw.Tr).filter(k => /^\d{8}$/.test(k)).sort();
+          if (!dates.length) return null;
+          const latest = kw.Tr[dates[dates.length - 1]];
+          return latest ? (Object.values(latest)[0] ?? null) : null;
+        })(),
+        shareOfVoice: (() => {
+          if (!kw.Sov) return null;
+          const dates = Object.keys(kw.Sov).filter(k => /^\d{8}$/.test(k)).sort();
+          if (!dates.length) return null;
+          const latest = kw.Sov[dates[dates.length - 1]];
+          return latest ? (Object.values(latest)[0] ?? null) : null;
+        })(),
+        serpFeatures: (() => {
+          if (!kw.Sf) return [];
+          const dates = Object.keys(kw.Sf).filter(k => /^\d{8}$/.test(k)).sort();
+          if (!dates.length) return [];
+          const latest = kw.Sf[dates[dates.length - 1]];
+          return Array.isArray(latest) ? latest.filter(Boolean) : [];
+        })(),
         url: landingUrl,
       };
     });
