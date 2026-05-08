@@ -1062,25 +1062,6 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
                   ),
                 },
                 {
-                  key: "tags",
-                  label: "Tags",
-                  render: (_v, row) =>
-                    row.tags.length > 0 ? (
-                      <div className="flex flex-wrap gap-1">
-                        {row.tags.map((t) => (
-                          <span
-                            key={t}
-                            className="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-50 text-indigo-700"
-                          >
-                            {t}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <span className="text-[var(--text-3)] text-xs">—</span>
-                    ),
-                },
-                {
                   key: "currentPosition",
                   label: "Current",
                   align: "center",
@@ -1130,23 +1111,6 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
                         )}
                       </span>
                     );
-                  },
-                },
-                {
-                  key: "intent",
-                  label: "Intent",
-                  align: "center",
-                  render: (_v, row) => {
-                    const map: Record<string, { label: string; color: string }> = {
-                      i: { label: "Info", color: "bg-blue-50 text-blue-700" },
-                      c: { label: "Com", color: "bg-purple-50 text-purple-700" },
-                      t: { label: "Trans", color: "bg-green-50 text-green-700" },
-                      n: { label: "Nav", color: "bg-amber-50 text-amber-700" },
-                    };
-                    const d = row.intent ? map[row.intent] : null;
-                    return d ? (
-                      <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold ${d.color}`}>{d.label}</span>
-                    ) : <span className="text-[var(--text-3)] text-xs">—</span>;
                   },
                 },
                 {
