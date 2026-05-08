@@ -240,7 +240,7 @@ export async function GET(request: NextRequest) {
           dateEnd = fmtDate(anchorDate);
         }
 
-        const taggedCacheKey = `semrush:tagged-positions:v4:${campaignId}:${domain ?? ""}:${dateBegin}:${dateEnd}:${tagsParam ?? ""}`;
+        const taggedCacheKey = `semrush:tagged-positions:v5:${campaignId}:${domain ?? ""}:${dateBegin}:${dateEnd}:${tagsParam ?? ""}`;
         return NextResponse.json(
           await withApiCache(taggedCacheKey, SEMRUSH_TRACKING_TTL, () =>
             getSemrushTrackedKeywordsWithTags(campaignId, dateBegin, dateEnd, tagsParam, domain ?? undefined)

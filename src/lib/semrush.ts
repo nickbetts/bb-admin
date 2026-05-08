@@ -517,9 +517,11 @@ export async function getSemrushTrackedKeywordsWithTags(
     `display_limit=${limit}`,
     `date_begin=${dateBegin}`,
     `date_end=${dateEnd}`,
-    // Sort by current position ascending so keywords actually ranking in the
-    // top 100 surface first, ahead of unranked keywords (which return Fi="-").
-    `display_sort=0_pos_asc`,
+    // Sort by search volume descending so the most commercially meaningful
+    // keywords surface first. Sorting by position (0_pos_asc) is unhelpful
+    // because SEMrush treats unranked "-" values as 0 and pushes them to
+    // the top of the list.
+    `display_sort=nq_desc`,
   ];
   if (domain) {
     // rootdomain mask per SEMrush docs: *.example.com/*

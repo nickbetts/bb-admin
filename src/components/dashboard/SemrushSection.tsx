@@ -1042,7 +1042,7 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
               searchable
               exportable
               exportFilename="tagged-keyword-positions"
-              pageSize={25}
+              pageSize={0}
               columns={[
                 {
                   key: "keyword",
