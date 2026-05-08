@@ -192,8 +192,8 @@ export async function GET(request: NextRequest) {
       }
       case "campaign-tags": {
         if (!campaignId) return NextResponse.json({ error: "campaignId is required" }, { status: 400 });
-        const tagsCacheKey = `semrush:campaign-tags:v2:${campaignId}`;
-        return NextResponse.json(await withApiCache(tagsCacheKey, SEMRUSH_TRACKING_TTL, () => getSemrushCampaignTags(campaignId)));
+        const tagsCacheKey = `semrush:campaign-tags:v3:${campaignId}:${domain ?? ""}`;
+        return NextResponse.json(await withApiCache(tagsCacheKey, SEMRUSH_TRACKING_TTL, () => getSemrushCampaignTags(campaignId, domain ?? undefined)));
       }
       case "tagged-positions": {
         if (!campaignId) return NextResponse.json({ error: "campaignId is required" }, { status: 400 });
@@ -240,10 +240,10 @@ export async function GET(request: NextRequest) {
           dateEnd = fmtDate(anchorDate);
         }
 
-        const taggedCacheKey = `semrush:tagged-positions:v2:${campaignId}:${dateBegin}:${dateEnd}:${tagsParam ?? ""}`;
+        const taggedCacheKey = `semrush:tagged-positions:v3:${campaignId}:${domain ?? ""}:${dateBegin}:${dateEnd}:${tagsParam ?? ""}`;
         return NextResponse.json(
           await withApiCache(taggedCacheKey, SEMRUSH_TRACKING_TTL, () =>
-            getSemrushTrackedKeywordsWithTags(campaignId, dateBegin, dateEnd, tagsParam)
+            getSemrushTrackedKeywordsWithTags(campaignId, dateBegin, dateEnd, tagsParam, domain ?? undefined)
           )
         );
       }

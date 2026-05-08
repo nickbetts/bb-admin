@@ -369,13 +369,13 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
   useEffect(() => {
     const activeCampaignId = campaignIds?.[0] ?? null;
     if (!activeCampaignId) return;
-    fetch(`/api/semrush?type=campaign-tags&campaignId=${encodeURIComponent(activeCampaignId)}`)
+    fetch(`/api/semrush?type=campaign-tags&campaignId=${encodeURIComponent(activeCampaignId)}&domain=${encodeURIComponent(domain)}`)
       .then((r) => (r.ok ? r.json() : []))
       .then((tags: string[]) => {
         if (Array.isArray(tags)) setCampaignTags(tags);
       })
       .catch(() => {});
-  }, [campaignIdsKey]);
+  }, [campaignIdsKey, domain]);
 
   // Fetch tagged keyword positions when filters change
   useEffect(() => {
@@ -387,6 +387,7 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
       type: "tagged-positions",
       campaignId: activeCampaignId,
       period: tagPeriod,
+      domain,
     });
     if (selectedTags.length > 0) params.set("tags", selectedTags.join("|"));
     if (tagPeriod === "custom" && customDateBegin && customDateEnd) {
@@ -408,7 +409,7 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
       .finally(() => setTaggedKwLoading(false));
 
     return () => controller.abort();
-  }, [campaignIdsKey, tagPeriod, selectedTags, customDateBegin, customDateEnd]);
+  }, [campaignIdsKey, tagPeriod, selectedTags, customDateBegin, customDateEnd, domain]);
 
   // Compute anomaly alerts from SEMrush data
   const semrushAlerts = useMemo<SemrushAlert[]>(() => {

@@ -495,6 +495,10 @@ export async function getSemrushCampaignStartDate(campaignId: string): Promise<s
  * @param dateBegin  Period start date as YYYYMMDD
  * @param dateEnd    Period end date as YYYYMMDD
  * @param tags       Optional pipe-separated tag filter, e.g. "brand|product"
+ * @param domain     Optional tracked root domain (e.g. "example.com"). When provided,
+ *                   we send a `url=*.{domain}/*` mask. SEMrush rejects date-range
+ *                   queries without a `url` filter (returning a misleading
+ *                   "missing required parameter competitors[]" error).
  * @param limit      Max keywords to return (default 500)
  */
 export async function getSemrushTrackedKeywordsWithTags(
@@ -502,6 +506,7 @@ export async function getSemrushTrackedKeywordsWithTags(
   dateBegin: string,
   dateEnd: string,
   tags?: string,
+  domain?: string,
   limit = 500,
 ): Promise<SemrushTaggedKeyword[]> {
   const apiKey = getApiKey();
@@ -512,8 +517,12 @@ export async function getSemrushTrackedKeywordsWithTags(
     `display_limit=${limit}`,
     `date_begin=${dateBegin}`,
     `date_end=${dateEnd}`,
-    `competitors[]=`, // required by SEMrush when using date range queries
   ];
+  if (domain) {
+    // rootdomain mask per SEMrush docs: *.example.com/*
+    const cleanDomain = domain.replace(/^https?:\/\//, "").replace(/\/$/, "");
+    qsParts.push(`url=${encodeURIComponent(`*.${cleanDomain}/*`)}`);
+  }
   if (tags) {
     // SEMrush requires tag VALUES inside display_tags_condition to be DOUBLE URL-encoded
     // so the parser can distinguish syntax operators (|, &, !) from literal characters
@@ -587,7 +596,7 @@ export async function getSemrushTrackedKeywordsWithTags(
  * Returns all unique tag names used in a Position Tracking campaign
  * by fetching keywords using the campaign's actual first and last crawl dates.
  */
-export async function getSemrushCampaignTags(campaignId: string): Promise<string[]> {
+export async function getSemrushCampaignTags(campaignId: string, domain?: string): Promise<string[]> {
   const { first, last } = await getSemrushCampaignDateRange(campaignId);
   if (!first || !last) return [];
 
@@ -596,6 +605,7 @@ export async function getSemrushCampaignTags(campaignId: string): Promise<string
     first,
     last,
     undefined,
+    domain,
     500,
   );
   const tagSet = new Set<string>();
