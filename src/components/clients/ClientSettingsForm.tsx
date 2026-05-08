@@ -537,12 +537,22 @@ export function ClientSettingsForm({ client, permissions = [], isAdmin = false }
                   Loading campaigns…
                 </div>
               ) : campaignsFetchError ? (
-                <p className="text-xs text-red-600">{campaignsFetchError}</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <p className="text-xs text-red-600">{campaignsFetchError}</p>
+                  <button type="button" onClick={() => form.semrushProjectId && fetchCampaignsForProject(form.semrushProjectId)} className="btn btn-secondary" style={{ alignSelf: "flex-start", fontSize: 12 }}>
+                    Retry
+                  </button>
+                </div>
               ) : semrushCampaigns.length === 0 ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  <p className="text-xs" style={{ color: "var(--text-4)" }}>
-                    No Position Tracking campaigns found via the API. You can paste the campaign ID manually — it appears in your SEMrush tracking URL as the path segment before <code>.html</code> (e.g. <code>22520428_2564407</code>).
-                  </p>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <p className="text-xs" style={{ color: "var(--text-4)" }}>
+                      No campaigns found automatically. Paste the ID from your SEMrush tracking URL (the path segment before <code>.html</code>).
+                    </p>
+                    <button type="button" onClick={() => form.semrushProjectId && fetchCampaignsForProject(form.semrushProjectId)} className="btn btn-secondary" style={{ whiteSpace: "nowrap", fontSize: 12, flexShrink: 0 }}>
+                      {campaignsLoading ? "Retrying…" : "Retry"}
+                    </button>
+                  </div>
                   <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                     <input
                       type="text"
