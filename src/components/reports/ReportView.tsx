@@ -1361,7 +1361,14 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
   const handleExportPdf = useCallback(async () => {
     setExportingPdf(true);
     try {
-      const res = await fetch(`/api/reports/${report.id}/pdf?showDescriptions=${showDescriptions ? "1" : "0"}`);
+      // Collect any sort_* params the user has set by sorting tables in the preview
+      const sortParams = new URLSearchParams();
+      for (const [k, v] of new URLSearchParams(window.location.search).entries()) {
+        if (k.startsWith("sort_")) sortParams.set(k, v);
+      }
+      const sortString = sortParams.toString();
+      const pdfUrl = `/api/reports/${report.id}/pdf?showDescriptions=${showDescriptions ? "1" : "0"}${sortString ? `&${sortString}` : ""}`;
+      const res = await fetch(pdfUrl);
       if (!res.ok) {
         const errData = await res.json().catch(() => null);
         throw new Error(errData?.error ?? `PDF generation failed (${res.status})`);

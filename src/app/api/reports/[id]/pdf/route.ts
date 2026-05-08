@@ -68,9 +68,18 @@ export async function GET(
       // Set viewport to a standard report width so layout is consistent.
       await page.setViewport({ width: 1200, height: 900, deviceScaleFactor: 1 });
 
+      // Forward any sort_* params from the export request so the print page
+      // DataTables render with the same sort order the user had in the preview.
+      const sortParams = new URLSearchParams();
+      for (const [k, v] of _request.nextUrl.searchParams.entries()) {
+        if (k !== "showDescriptions") sortParams.set(k, v);
+      }
+      const sortString = sortParams.toString();
+      const printUrl = `${baseUrl}/reports/${id}/print?showDescriptions=${showDescriptions}${sortString ? `&${sortString}` : ""}`;
+
       // Navigate to the dedicated print page which renders the full section
       // components (charts, metrics) without sidebar or editing chrome.
-      await page.goto(`${baseUrl}/reports/${id}/print?showDescriptions=${showDescriptions}`, {
+      await page.goto(printUrl, {
         waitUntil: "networkidle0",
         timeout: 45000,
       });

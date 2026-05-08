@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight, Download, Copy } from "lucide-react";
 
 type SortDirection = "asc" | "desc" | null;
@@ -57,8 +57,25 @@ export function DataTable<T>({
   loading = false,
   className,
 }: DataTableProps<T>) {
+  // Stable ID derived from column keys — used to persist sort state in URL params
+  // so PDF exports can restore the same sort order via ?sort_<id>=key:dir
+  const urlParamKey = useRef(`sort_${columns.map((c) => c.key).join("_").slice(0, 40)}`).current;
+
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<SortDirection>(null);
+
+  // On mount, restore sort state from URL params (enables PDF export to mirror preview sort)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = new URLSearchParams(window.location.search).get(urlParamKey);
+    if (!raw) return;
+    const [key, dir] = raw.split(":");
+    if (key && (dir === "asc" || dir === "desc")) {
+      setSortKey(key);
+      setSortDir(dir as SortDirection);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [page, setPage] = useState(0);
   const [query, setQuery] = useState("");
 
@@ -99,16 +116,29 @@ export function DataTable<T>({
   const pageData = pageSize > 0 ? sorted.slice(page * pageSize, (page + 1) * pageSize) : sorted;
 
   function handleSort(key: string) {
+    let newKey: string | null;
+    let newDir: SortDirection;
     if (sortKey !== key) {
-      setSortKey(key);
-      setSortDir("asc");
+      newKey = key; newDir = "asc";
     } else if (sortDir === "asc") {
-      setSortDir("desc");
+      newKey = key; newDir = "desc";
     } else {
-      setSortKey(null);
-      setSortDir(null);
+      newKey = null; newDir = null;
     }
+    setSortKey(newKey);
+    setSortDir(newDir);
     setPage(0);
+    // Persist sort to URL so PDF export can forward it to the print page
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (newKey && newDir) {
+        params.set(urlParamKey, `${newKey}:${newDir}`);
+      } else {
+        params.delete(urlParamKey);
+      }
+      const qs = params.toString();
+      history.replaceState(null, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
+    }
   }
 
   function handleSearch(val: string) {
