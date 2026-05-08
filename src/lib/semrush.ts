@@ -616,6 +616,12 @@ export async function getSemrushTrackedKeywordsWithTags(
     };
     if (!data?.data || data.total === 0) return [];
 
+    // DEBUG: inspect raw Lt field on first keyword
+    const firstKw = Object.values(data.data)[0];
+    console.log("[semrush debug] first keyword keys:", firstKw ? Object.keys(firstKw) : "none");
+    console.log("[semrush debug] first keyword Sf:", JSON.stringify(firstKw?.Sf));
+    console.log("[semrush debug] first keyword Lt:", JSON.stringify(firstKw?.Lt));
+
     const toPos = (v: unknown): number | null => {
       if (v === "-" || v == null) return null;
       const n = typeof v === "number" ? v : parseInt(String(v));
