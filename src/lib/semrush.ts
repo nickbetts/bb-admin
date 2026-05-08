@@ -512,6 +512,7 @@ export async function getSemrushTrackedKeywordsWithTags(
     `display_limit=${limit}`,
     `date_begin=${dateBegin}`,
     `date_end=${dateEnd}`,
+    `competitors[]=`, // required by SEMrush when using date range queries
   ];
   if (tags) qsParts.push(`display_tags_condition=${encodeURIComponent(tags)}`);
   const qs = qsParts.join("&");
