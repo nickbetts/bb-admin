@@ -276,7 +276,8 @@ export default function KeywordTrackerPage() {
   }
 
   async function runMatrix() {
-    if (keywords.length === 0) { toast("Add at least one keyword", "warning"); return; }
+    const hasCampaignClients = selectedClients.some((c) => (c.campaignIds ?? []).length > 0);
+    if (!hasCampaignClients && keywords.length === 0) { toast("Add at least one keyword, or select a client with a SEMrush Position Tracking campaign", "warning"); return; }
     if (selectedClients.length === 0) { toast("Select at least one client", "warning"); return; }
     if (!selectedListId) { toast("Save your list first", "warning"); return; }
     setRunning(true);
@@ -314,7 +315,7 @@ export default function KeywordTrackerPage() {
           </button>
           <button
             onClick={() => void runMatrix()}
-            disabled={running || keywords.length === 0 || selectedClients.length === 0 || !selectedListId}
+            disabled={running || (selectedClients.every((c) => (c.campaignIds ?? []).length === 0) && keywords.length === 0) || selectedClients.length === 0 || !selectedListId}
             className="btn btn-primary btn-sm"
             style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
           >
@@ -378,9 +379,14 @@ export default function KeywordTrackerPage() {
           {/* Keywords */}
           <div className="card" style={{ padding: 16 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Keywords</div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Extra Keywords</div>
               <span style={{ fontSize: 11, color: "var(--text-3)" }}>{keywords.length}</span>
             </div>
+            {selectedClients.some((c) => (c.campaignIds ?? []).length > 0) && (
+              <p style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 8, lineHeight: 1.5 }}>
+                Campaign keywords load automatically. Add extras here to cross-reference keywords not in the campaign.
+              </p>
+            )}
             <textarea
               value={keywordInput}
               onChange={(e) => setKeywordInput(e.target.value)}
@@ -448,13 +454,13 @@ export default function KeywordTrackerPage() {
               <div style={{ textAlign: "center" }}>
                 <p style={{ fontSize: 15, fontWeight: 600, color: "var(--text)", marginBottom: 6 }}>No matrix yet</p>
                 <p style={{ fontSize: 13, color: "var(--text-3)" }}>
-                  {keywords.length === 0 ? "Add keywords and select clients, then click Run Matrix"
+                  {!selectedListId ? "Save your list first, then click Run Matrix"
                     : selectedClients.length === 0 ? "Select at least one client to track"
-                    : !selectedListId ? "Save your list first, then click Run Matrix"
-                    : "Click Run Matrix to fetch current positions from SEMrush"}
+                    : selectedClients.every((c) => (c.campaignIds ?? []).length === 0) && keywords.length === 0 ? "Add keywords or select a client with a Position Tracking campaign"
+                    : "Click Run Matrix to fetch positions — campaign keywords load automatically"}
                 </p>
               </div>
-              <button onClick={() => void runMatrix()} disabled={running || keywords.length === 0 || selectedClients.length === 0 || !selectedListId} className="btn btn-primary btn-sm" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <button onClick={() => void runMatrix()} disabled={running || (selectedClients.every((c) => (c.campaignIds ?? []).length === 0) && keywords.length === 0) || selectedClients.length === 0 || !selectedListId} className="btn btn-primary btn-sm" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                 <RefreshCw style={{ width: 13, height: 13 }} /> Run Matrix
               </button>
             </div>

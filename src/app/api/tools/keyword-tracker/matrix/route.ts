@@ -65,16 +65,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const keywords: string[] = JSON.parse(list.keywords || "[]");
+  const storedKeywords: string[] = JSON.parse(list.keywords || "[]");
   const clients: TrackerClient[] = JSON.parse(list.clientIds || "[]");
   const database = list.database || "uk";
 
-  if (keywords.length === 0 || clients.length === 0) {
-    return NextResponse.json({ keywords, clients: [], cells: {}, volumes: {} });
+  if (clients.length === 0) {
+    return NextResponse.json({ keywords: storedKeywords, clients: [], cells: {}, volumes: {} });
   }
-
-  const cells: Record<string, Record<string, CellData>> = {};
-  for (const keyword of keywords) cells[keyword] = {};
 
   const compareDate = daysAgoYYYYMMDD(30); // for Position Tracking API
   const prevMonth = prevMonthYYYYMM01();   // for domain_organic historical lookup
@@ -117,6 +114,25 @@ export async function GET(request: NextRequest) {
       }),
     CONCURRENCY
   );
+
+  // ── Derive effective keyword list ──────────────────────────────────────────
+  // Union all keywords tracked in campaigns (across all selected clients) with
+  // any extra manual keywords stored in the list. This means the tracker matrix
+  // always reflects the full Position Tracking campaign, with no manual keyword
+  // entry required when campaign clients are selected.
+  const campaignKeywords = Array.from(
+    new Set([...campaignMaps.values()].flatMap((m) => [...m.keys()]))
+  );
+  const manualNorm = storedKeywords.map((k) => k.toLowerCase().trim());
+  // Keep campaign keywords (already lowercase) first, then any extra manual ones
+  const keywords = Array.from(new Set([...campaignKeywords, ...manualNorm]));
+
+  if (keywords.length === 0) {
+    return NextResponse.json({ keywords: [], clients: [], cells: {}, volumes: {} });
+  }
+
+  const cells: Record<string, Record<string, CellData>> = {};
+  for (const keyword of keywords) cells[keyword] = {};
 
   // ── Step 2 & 3: Fill cells — campaign data where available, domain_organic otherwise ──
   // Each organic task runs two domain_organic calls in parallel (current + prev month)
@@ -196,7 +212,7 @@ export async function GET(request: NextRequest) {
   await pLimit(volumeFallbackTasks, CONCURRENCY);
 
   return NextResponse.json({
-    keywords,
+    keywords: keywords.map((k) => k), // already normalised lowercase
     clients: clients.map((c) => ({ domain: c.domain, name: c.name })),
     cells,
     database,
