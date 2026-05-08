@@ -539,7 +539,27 @@ export function ClientSettingsForm({ client, permissions = [], isAdmin = false }
               ) : campaignsFetchError ? (
                 <p className="text-xs text-red-600">{campaignsFetchError}</p>
               ) : semrushCampaigns.length === 0 ? (
-                <p className="text-xs" style={{ color: "var(--text-4)" }}>No Position Tracking campaigns found for this project.</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <p className="text-xs" style={{ color: "var(--text-4)" }}>
+                    No Position Tracking campaigns found via the API. You can paste the campaign ID manually — it appears in your SEMrush tracking URL as the path segment before <code>.html</code> (e.g. <code>22520428_2564407</code>).
+                  </p>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <input
+                      type="text"
+                      placeholder="e.g. 22520428_2564407"
+                      defaultValue={semrushCampaignIds[0] ?? ""}
+                      onBlur={(e) => {
+                        const val = e.target.value.trim();
+                        setSemrushCampaignIds(val ? [val] : []);
+                      }}
+                      className="form-input"
+                      style={{ flex: 1, fontFamily: "monospace", fontSize: 13 }}
+                    />
+                    {semrushCampaignIds.length > 0 && (
+                      <span style={{ fontSize: 12, color: "#16a34a", whiteSpace: "nowrap" }}>✓ {semrushCampaignIds[0]}</span>
+                    )}
+                  </div>
+                </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {semrushCampaigns.map((c) => (
