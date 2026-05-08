@@ -102,26 +102,36 @@ async function fetchImageBlock(
     const contentType = response.headers.get("content-type")?.split(";")[0]?.trim() ?? "";
     if (!SUPPORTED_MIME_TYPES.has(contentType)) return null;
 
+    // Cap raw download at 10 MB to bound memory usage during fetch.
+    const RAW_CAP_BYTES = 10 * 1024 * 1024;
     const rawBuffer = await response.arrayBuffer();
-
-    // Reject images over 4 MB (raw). Larger payloads risk exceeding
-    // Anthropic's per-image size limit and can trigger download errors.
-    const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
-    if (rawBuffer.byteLength > MAX_IMAGE_BYTES) {
-      console.warn(`[lp-generator] Skipping oversized image (${rawBuffer.byteLength} bytes): ${url}`);
+    if (rawBuffer.byteLength > RAW_CAP_BYTES) {
+      console.warn(`[lp-generator] Skipping image — raw download exceeds 10 MB (${rawBuffer.byteLength} bytes): ${url}`);
       return null;
     }
 
-    // Convert to WebP for smaller payloads and consistent media type.
-    // Quality 80 gives a good size/quality trade-off for vision tasks.
+    // Convert to WebP first so the payload sent to Anthropic is as small as
+    // possible (quality 80 typically shrinks a large PNG by 70-90%).
     let imageBuffer: Buffer;
+    let usedRawFallback = false;
     try {
       imageBuffer = await sharp(Buffer.from(rawBuffer))
         .webp({ quality: 80 })
         .toBuffer();
     } catch {
-      // If sharp fails (e.g. corrupt image), fall back to the raw bytes
+      // Corrupt or unsupported format — fall back to the raw bytes.
       imageBuffer = Buffer.from(rawBuffer);
+      usedRawFallback = true;
+    }
+
+    // Anthropic's per-image limit is 5 MB (decoded). Reject only after
+    // conversion so that large raw images that compress well are accepted.
+    const ANTHROPIC_MAX_BYTES = 5 * 1024 * 1024;
+    if (imageBuffer.byteLength > ANTHROPIC_MAX_BYTES) {
+      console.warn(
+        `[lp-generator] Skipping image — ${usedRawFallback ? "raw" : "WebP"} size ${imageBuffer.byteLength} bytes exceeds 5 MB Anthropic limit: ${url}`,
+      );
+      return null;
     }
 
     const base64 = imageBuffer.toString("base64");
@@ -1344,7 +1354,7 @@ export interface LPPagePlan {
 
 // Token budgets for the section-by-section path
 const SECTION_MAX_TOKENS = 8000;
-const PLAN_MAX_TOKENS = 10000;
+const PLAN_MAX_TOKENS = 16000;
 
 // ── Plan prompt ───────────────────────────────────────────────────────────────
 
