@@ -6,7 +6,7 @@ import { getGA4Overview, getGA4DailyData, getGA4TrafficSources, getGA4TopPages, 
 import { getGoogleAdsOverview, getGoogleAdsCampaignsEnriched, getGoogleAdsDailyData, getGoogleAdsSearchTerms, getGoogleAdsDeviceBreakdown, getGoogleAdsAvgQualityScore } from "@/lib/google-ads";
 import { getMetaAdsOverview, getMetaCampaignsEnriched, getMetaAdCreatives, getMetaDailyData } from "@/lib/meta";
 import { getGSCOverview, getGSCTopQueries, getGSCTopPages, getGSCDailyData, getGSCDevices, getGSCBrandedSplit } from "@/lib/search-console";
-import { getDomainOverview, getTopOrganicKeywords, getKeywordPositionDistribution, getCompetitors, getSemrushTrackedKeywords, getSemrushAIVisibility } from "@/lib/semrush";
+import { getDomainOverview, getTopOrganicKeywords, getKeywordPositionDistribution, getCompetitors, getSemrushTrackedKeywords, getSemrushAIVisibility, getSemrushTrackedKeywordsWithTags } from "@/lib/semrush";
 import { getTikTokAdsOverview, getTikTokCampaigns, getTikTokCreatives, getTikTokAudienceDemographics } from "@/lib/tiktok-ads";
 import { getMicrosoftAdsOverview, getMicrosoftAdsCampaigns, getMicrosoftAdsKeywords, getMicrosoftAdsSearchTerms, getMicrosoftAdsDeviceBreakdown } from "@/lib/microsoft-ads";
 import { getWooCommerceStats, getWooCommerceCustomerData } from "@/lib/woocommerce";
@@ -156,9 +156,12 @@ async function fetchPlatformMetrics(
       // Tracked keywords and AI visibility require campaign IDs
       const campaignIds: string[] = client.semrushCampaignIds ? JSON.parse(client.semrushCampaignIds) : [];
       const firstCampaignId = campaignIds[0] ?? null;
+      const tagDateBegin = start.replace(/-/g, "");
+      const tagDateEnd = end.replace(/-/g, "");
       if (firstCampaignId) {
         enrichCalls.push(getSemrushTrackedKeywords(firstCampaignId));
         enrichCalls.push(getSemrushAIVisibility(firstCampaignId));
+        enrichCalls.push(getSemrushTrackedKeywordsWithTags(firstCampaignId, tagDateBegin, tagDateEnd, undefined, client.semrushDomain ?? undefined));
       }
       const settled = await Promise.allSettled(enrichCalls);
       const campaignData: Record<string, unknown> = {};
@@ -172,6 +175,7 @@ async function fetchPlatformMetrics(
           campaignData.aiVisibility = aiVis;
           if (typeof aiVis?.aiVisibilityScore === "number") metrics.aiVisibilityScore = aiVis.aiVisibilityScore;
         }
+        if (settled[5]?.status === "fulfilled") campaignData.taggedKeywords = settled[5].value;
       }
       return { metrics, campaignData };
     }

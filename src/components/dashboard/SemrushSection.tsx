@@ -185,15 +185,8 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
     serpFeatures: string[];
     url: string;
   }
-  const [campaignTags, setCampaignTags] = useState<string[]>([]);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [tagPeriod, setTagPeriod] = useState<string>("30d");
-  const [customDateBegin, setCustomDateBegin] = useState<string>("");
-  const [customDateEnd, setCustomDateEnd] = useState<string>("");
   const [taggedKeywords, setTaggedKeywords] = useState<TaggedKeyword[]>([]);
-  const [taggedKwLoading, setTaggedKwLoading] = useState(false);
   const [taggedKwError, setTaggedKwError] = useState<string | null>(null);
-  const [manualTagInput, setManualTagInput] = useState<string>("");
   // ──────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -226,15 +219,18 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
           fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=position-changes`, { signal: controller.signal }).catch(() => null),
         ];
         const activeCampaignId = campaignIds?.[0] ?? null;
+        const fmtYMD = (d: string) => d.replace(/-/g, "");
         if (activeCampaignId) {
           fetchList.push(fetch(`/api/semrush?type=project-keywords&campaignId=${encodeURIComponent(activeCampaignId)}`, { signal: controller.signal }));
           fetchList.push(fetch(`/api/semrush?type=ai-visibility&campaignId=${encodeURIComponent(activeCampaignId)}`, { signal: controller.signal }));
+          fetchList.push(fetch(`/api/semrush?type=tagged-positions&campaignId=${encodeURIComponent(activeCampaignId)}&domain=${encodeURIComponent(domain)}&period=custom&dateBegin=${fmtYMD(startDate)}&dateEnd=${fmtYMD(endDate)}`, { signal: controller.signal }).catch(() => null));
         } else if (projectId) {
           // Legacy fallback — no campaign ID configured, show empty tracked data
           fetchList.push(Promise.resolve(new Response(JSON.stringify([]), { status: 200 })));
           fetchList.push(Promise.resolve(new Response(JSON.stringify({ totalTracked: 0, aiOverviewKeywords: 0, brandCitations: 0, aiVisibilityScore: 0, keywords: [] }), { status: 200 })));
+          fetchList.push(Promise.resolve(null));
         }
-        const [overviewRes, keywordsRes, rankMoversRes, historyRes, distRes, competitorsRes, backlinksRes, contentGapRes, serpFeaturesRes, backlinkChangesRes, topicResRes, siteAuditRes, adCopyRes, displayAdvRes, shoppingCompRes, kwTrendsRes, refDomainsRes, anchorTextRes, blCompRes, posChangesRes, trackedRes, aiVisRes] = await Promise.all(fetchList);
+        const [overviewRes, keywordsRes, rankMoversRes, historyRes, distRes, competitorsRes, backlinksRes, contentGapRes, serpFeaturesRes, backlinkChangesRes, topicResRes, siteAuditRes, adCopyRes, displayAdvRes, shoppingCompRes, kwTrendsRes, refDomainsRes, anchorTextRes, blCompRes, posChangesRes, trackedRes, aiVisRes, taggedRes] = await Promise.all(fetchList);
 
         if (!overviewRes || !overviewRes.ok) {
           const err = overviewRes ? await overviewRes.json() : { error: "Failed to fetch overview" };
@@ -347,6 +343,14 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
           if (aiv && typeof aiv.totalTracked === "number") setAiVisibility(aiv);
         }
 
+        if (taggedRes?.ok) {
+          const tagged = await taggedRes.json().catch(() => []);
+          setTaggedKeywords(Array.isArray(tagged) ? tagged : []);
+        } else if (taggedRes && !taggedRes.ok) {
+          const e = await taggedRes.json().catch(() => ({})) as { error?: string };
+          setTaggedKwError(e.error ?? "Failed to load keyword rankings");
+        }
+
         // Domain Authority (config-gated — silently skip if not available)
         try {
           const daRes = await fetch(`/api/seo/domain-authority?domain=${encodeURIComponent(domain)}`, { signal: controller.signal });
@@ -367,52 +371,6 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
     fetchData();
     return () => controller.abort();
   }, [domain, projectId, campaignIdsKey, startDate, endDate]);
-
-  // Fetch available tags from campaign on mount (when campaignId is present)
-  useEffect(() => {
-    const activeCampaignId = campaignIds?.[0] ?? null;
-    if (!activeCampaignId) return;
-    fetch(`/api/semrush?type=campaign-tags&campaignId=${encodeURIComponent(activeCampaignId)}&domain=${encodeURIComponent(domain)}`)
-      .then((r) => (r.ok ? r.json() : []))
-      .then((tags: string[]) => {
-        if (Array.isArray(tags)) setCampaignTags(tags);
-      })
-      .catch(() => {});
-  }, [campaignIdsKey, domain]);
-
-  // Fetch tagged keyword positions when filters change
-  useEffect(() => {
-    const activeCampaignId = campaignIds?.[0] ?? null;
-    if (!activeCampaignId) return;
-
-    const controller = new AbortController();
-    const params = new URLSearchParams({
-      type: "tagged-positions",
-      campaignId: activeCampaignId,
-      period: tagPeriod,
-      domain,
-    });
-    if (selectedTags.length > 0) params.set("tags", selectedTags.join("|"));
-    if (tagPeriod === "custom" && customDateBegin && customDateEnd) {
-      params.set("dateBegin", customDateBegin);
-      params.set("dateEnd", customDateEnd);
-    }
-
-    setTaggedKwLoading(true);
-    setTaggedKwError(null);
-    fetch(`/api/semrush?${params.toString()}`, { signal: controller.signal })
-      .then((r) => (r.ok ? r.json() : r.json().then((e: { error?: string }) => Promise.reject(e.error ?? "Failed"))))
-      .then((data: TaggedKeyword[]) => {
-        setTaggedKeywords(Array.isArray(data) ? data : []);
-      })
-      .catch((err) => {
-        if (err instanceof Error && err.name === "AbortError") return;
-        setTaggedKwError(typeof err === "string" ? err : "Failed to load tagged keywords");
-      })
-      .finally(() => setTaggedKwLoading(false));
-
-    return () => controller.abort();
-  }, [campaignIdsKey, tagPeriod, selectedTags, customDateBegin, customDateEnd, domain]);
 
   // Compute anomaly alerts from SEMrush data
   const semrushAlerts = useMemo<SemrushAlert[]>(() => {
@@ -937,112 +895,17 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
       {show("tagged_kw_positions") && (campaignIds?.[0] ?? null) && (
         <SectionCard
           title="Keyword Rankings by Tag"
-          subtitle="Tracked keyword positions filtered by SEMrush campaign tag"
+          subtitle="All tracked keyword positions from your SEMrush campaign"
         >
-          {/* Controls row */}
-          <div className="flex flex-wrap items-center gap-3 mb-5">
-            {/* Period selector */}
-            <select
-              value={tagPeriod}
-              onChange={(e) => setTagPeriod(e.target.value)}
-              className="text-sm rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-400"
-            >
-              <option value="7d">Last 7 days</option>
-              <option value="30d">Last 30 days</option>
-              <option value="prev_month">Previous month</option>
-              <option value="campaign_start">Since campaign start</option>
-              <option value="custom">Custom range</option>
-            </select>
-            {tagPeriod === "custom" && (
-              <>
-                <input
-                  type="date"
-                  value={customDateBegin}
-                  onChange={(e) => setCustomDateBegin(e.target.value)}
-                  className="text-sm rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                />
-                <span className="text-[var(--text-3)] text-sm">to</span>
-                <input
-                  type="date"
-                  value={customDateEnd}
-                  onChange={(e) => setCustomDateEnd(e.target.value)}
-                  className="text-sm rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                />
-              </>
-            )}
-          </div>
-          {/* Tag filter chips */}
-          <div className="flex flex-wrap gap-2 mb-4 items-center">
-            {campaignTags.length > 0 && (
-              <button
-                onClick={() => setSelectedTags([])}
-                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-                  selectedTags.length === 0
-                    ? "bg-indigo-600 text-white border-indigo-600"
-                    : "border-[var(--border)] text-[var(--text-2)] hover:border-indigo-400"
-                }`}
-              >
-                All tags
-              </button>
-            )}
-            {campaignTags.map((tag) => (
-              <button
-                key={tag}
-                onClick={() =>
-                  setSelectedTags((prev) =>
-                    prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
-                  )
-                }
-                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-                  selectedTags.includes(tag)
-                    ? "bg-indigo-600 text-white border-indigo-600"
-                    : "border-[var(--border)] text-[var(--text-2)] hover:border-indigo-400"
-                }`}
-              >
-                {tag}
-              </button>
-            ))}
-            {/* Manual tag input — always visible so users can type a tag name directly */}
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                const t = manualTagInput.trim().toLowerCase();
-                if (!t) return;
-                if (!campaignTags.includes(t)) setCampaignTags((prev) => [...prev, t]);
-                setSelectedTags([t]);
-                setManualTagInput("");
-              }}
-              className="flex items-center gap-1"
-            >
-              <input
-                type="text"
-                value={manualTagInput}
-                onChange={(e) => setManualTagInput(e.target.value)}
-                placeholder={campaignTags.length === 0 ? "Enter tag name (e.g. april 2025)" : "Add tag…"}
-                className="text-xs rounded-full border border-dashed border-[var(--border)] bg-[var(--surface)] text-[var(--text)] px-3 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-400 w-44"
-              />
-              <button
-                type="submit"
-                className="text-xs px-2 py-1 rounded-full border border-indigo-300 text-indigo-600 hover:bg-indigo-50 transition-colors"
-              >
-                Filter
-              </button>
-            </form>
-          </div>
-
-          {taggedKwLoading ? (
-            <p className="text-sm text-[var(--text-3)] py-4">Loading keyword positions&hellip;</p>
-          ) : taggedKwError ? (
+          {taggedKwError ? (
             <p className="text-sm text-red-600 py-2">{taggedKwError}</p>
           ) : taggedKeywords.length === 0 ? (
             <p className="text-sm text-[var(--text-4)] italic py-2">
-              No keyword data returned for this tag and period combination. SEMrush may still be
-              crawling or the campaign may not have any tagged keywords.
+              No keyword data returned. SEMrush may still be crawling or the campaign may not have any tracked keywords.
             </p>
           ) : (
             <DataTable<TaggedKeyword>
               data={taggedKeywords}
-              searchable
               exportable
               exportFilename="tagged-keyword-positions"
               pageSize={0}
