@@ -13,7 +13,7 @@ import {
   getSemrushAIVisibility,
   getSemrushTrackedKeywordsWithTags,
   getSemrushCampaignTags,
-  getSemrushCampaignStartDate,
+  getSemrushCampaignDateRange,
   getKeywordDifficultyAndIntent,
   getContentGap,
   getSerpFeatures,
@@ -202,36 +202,42 @@ export async function GET(request: NextRequest) {
         const providedEnd = searchParams.get("dateEnd") ?? undefined;
         const tagsParam = searchParams.get("tags") ?? undefined;
 
-        const today = new Date();
         const fmtDate = (d: Date) => d.toISOString().slice(0, 10).replace(/-/g, "");
+
+        // Always resolve actual campaign crawl dates so date ranges align with real data
+        const { first: campaignFirst, last: campaignLast } = await getSemrushCampaignDateRange(campaignId);
+
         let dateBegin: string;
         let dateEnd: string;
 
-        if (period === "campaign_start") {
-          const startDate = await getSemrushCampaignStartDate(campaignId);
-          const fallback = new Date(today);
-          fallback.setFullYear(fallback.getFullYear() - 1);
-          dateBegin = startDate ?? fmtDate(fallback);
-          dateEnd = fmtDate(today);
-        } else if (period === "custom" && providedBegin && providedEnd) {
+        if (period === "custom" && providedBegin && providedEnd) {
           dateBegin = providedBegin;
           dateEnd = providedEnd;
+        } else if (period === "campaign_start") {
+          const fallback = new Date();
+          fallback.setFullYear(fallback.getFullYear() - 1);
+          dateBegin = campaignFirst ?? fmtDate(fallback);
+          dateEnd = campaignLast ?? fmtDate(new Date());
         } else if (period === "prev_month") {
+          const today = new Date();
           const start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
           const end = new Date(today.getFullYear(), today.getMonth(), 0);
           dateBegin = fmtDate(start);
           dateEnd = fmtDate(end);
-        } else if (period === "7d") {
-          const d = new Date(today);
-          d.setDate(today.getDate() - 7);
-          dateBegin = fmtDate(d);
-          dateEnd = fmtDate(today);
         } else {
-          // Default: 30d
-          const d = new Date(today);
-          d.setDate(today.getDate() - 30);
-          dateBegin = fmtDate(d);
-          dateEnd = fmtDate(today);
+          // 7d or 30d — anchor date_end to the last actual crawl so we don't end up past available data
+          const anchorDate = campaignLast
+            ? new Date(
+                parseInt(campaignLast.slice(0, 4)),
+                parseInt(campaignLast.slice(4, 6)) - 1,
+                parseInt(campaignLast.slice(6, 8)),
+              )
+            : new Date();
+          const days = period === "7d" ? 7 : 30;
+          const start = new Date(anchorDate);
+          start.setDate(anchorDate.getDate() - days);
+          dateBegin = fmtDate(start);
+          dateEnd = fmtDate(anchorDate);
         }
 
         const taggedCacheKey = `semrush:tagged-positions:${campaignId}:${dateBegin}:${dateEnd}:${tagsParam ?? ""}`;

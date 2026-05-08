@@ -461,7 +461,9 @@ export interface SemrushTaggedKeyword {
  * Returns the earliest crawl date for a SEMrush Position Tracking campaign
  * by querying `tracking_campaign_dates`. Returns null if unavailable.
  */
-export async function getSemrushCampaignStartDate(campaignId: string): Promise<string | null> {
+export async function getSemrushCampaignDateRange(
+  campaignId: string,
+): Promise<{ first: string | null; last: string | null }> {
   const apiKey = getApiKey();
   const qs = [
     `key=${encodeURIComponent(apiKey)}`,
@@ -473,13 +475,18 @@ export async function getSemrushCampaignStartDate(campaignId: string): Promise<s
       `${SEMRUSH_TRACKING_BASE}/${campaignId}/tracking/?${qs}`
     );
     const data = response.data as { total?: string; data?: Record<string, { Dt?: string }> };
-    if (!data?.data) return null;
+    if (!data?.data) return { first: null, last: null };
     const dates = Object.values(data.data).map((d) => d.Dt).filter(Boolean) as string[];
-    if (dates.length === 0) return null;
-    return dates.sort()[0] ?? null;
+    if (dates.length === 0) return { first: null, last: null };
+    const sorted = dates.sort();
+    return { first: sorted[0] ?? null, last: sorted[sorted.length - 1] ?? null };
   } catch {
-    return null;
+    return { first: null, last: null };
   }
+}
+
+export async function getSemrushCampaignStartDate(campaignId: string): Promise<string | null> {
+  return (await getSemrushCampaignDateRange(campaignId)).first;
 }
 
 /**
@@ -562,18 +569,16 @@ export async function getSemrushTrackedKeywordsWithTags(
 
 /**
  * Returns all unique tag names used in a Position Tracking campaign
- * by fetching a broad 7-day snapshot and collecting every `Tg` value.
+ * by fetching keywords using the campaign's actual first and last crawl dates.
  */
 export async function getSemrushCampaignTags(campaignId: string): Promise<string[]> {
-  const today = new Date();
-  const fmt = (d: Date) => d.toISOString().slice(0, 10).replace(/-/g, "");
-  const weekAgo = new Date(today);
-  weekAgo.setDate(today.getDate() - 7);
+  const { first, last } = await getSemrushCampaignDateRange(campaignId);
+  if (!first || !last) return [];
 
   const keywords = await getSemrushTrackedKeywordsWithTags(
     campaignId,
-    fmt(weekAgo),
-    fmt(today),
+    first,
+    last,
     undefined,
     500,
   );

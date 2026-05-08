@@ -190,6 +190,7 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
   const [taggedKeywords, setTaggedKeywords] = useState<TaggedKeyword[]>([]);
   const [taggedKwLoading, setTaggedKwLoading] = useState(false);
   const [taggedKwError, setTaggedKwError] = useState<string | null>(null);
+  const [manualTagInput, setManualTagInput] = useState<string>("");
   // ──────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -967,8 +968,8 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
             )}
           </div>
           {/* Tag filter chips */}
-          {campaignTags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-4">
+          <div className="flex flex-wrap gap-2 mb-4 items-center">
+            {campaignTags.length > 0 && (
               <button
                 onClick={() => setSelectedTags([])}
                 className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
@@ -979,25 +980,51 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
               >
                 All tags
               </button>
-              {campaignTags.map((tag) => (
-                <button
-                  key={tag}
-                  onClick={() =>
-                    setSelectedTags((prev) =>
-                      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
-                    )
-                  }
-                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-                    selectedTags.includes(tag)
-                      ? "bg-indigo-600 text-white border-indigo-600"
-                      : "border-[var(--border)] text-[var(--text-2)] hover:border-indigo-400"
-                  }`}
-                >
-                  {tag}
-                </button>
-              ))}
-            </div>
-          )}
+            )}
+            {campaignTags.map((tag) => (
+              <button
+                key={tag}
+                onClick={() =>
+                  setSelectedTags((prev) =>
+                    prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+                  )
+                }
+                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                  selectedTags.includes(tag)
+                    ? "bg-indigo-600 text-white border-indigo-600"
+                    : "border-[var(--border)] text-[var(--text-2)] hover:border-indigo-400"
+                }`}
+              >
+                {tag}
+              </button>
+            ))}
+            {/* Manual tag input — always visible so users can type a tag name directly */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const t = manualTagInput.trim().toLowerCase();
+                if (!t) return;
+                if (!campaignTags.includes(t)) setCampaignTags((prev) => [...prev, t]);
+                setSelectedTags([t]);
+                setManualTagInput("");
+              }}
+              className="flex items-center gap-1"
+            >
+              <input
+                type="text"
+                value={manualTagInput}
+                onChange={(e) => setManualTagInput(e.target.value)}
+                placeholder={campaignTags.length === 0 ? "Enter tag name (e.g. april 2025)" : "Add tag…"}
+                className="text-xs rounded-full border border-dashed border-[var(--border)] bg-[var(--surface)] text-[var(--text)] px-3 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-400 w-44"
+              />
+              <button
+                type="submit"
+                className="text-xs px-2 py-1 rounded-full border border-indigo-300 text-indigo-600 hover:bg-indigo-50 transition-colors"
+              >
+                Filter
+              </button>
+            </form>
+          </div>
 
           {taggedKwLoading ? (
             <p className="text-sm text-[var(--text-3)] py-4">Loading keyword positions&hellip;</p>
