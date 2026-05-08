@@ -905,12 +905,48 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
               No keyword data returned. SEMrush may still be crawling or the campaign may not have any tracked keywords.
             </p>
           ) : (
-            <DataTable<TaggedKeyword>
-              data={taggedKeywords}
-              exportable
-              exportFilename="tagged-keyword-positions"
-              pageSize={0}
-              columns={[
+            <>
+              {/* SERP Feature legend */}
+              <details className="mb-3 group">
+                <summary className="cursor-pointer inline-flex items-center gap-1.5 text-xs text-[var(--text-3)] hover:text-[var(--text-2)] select-none list-none">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                  What do the SERP feature badges mean?
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="transition-transform group-open:rotate-180"><path d="M6 9l6 6 6-6"/></svg>
+                </summary>
+                <div className="mt-2 p-3 rounded-lg bg-[var(--bg-subtle,#f8f9fb)] border border-[var(--border-subtle)] text-xs text-[var(--text-2)]">
+                  <p className="mb-2 text-[var(--text-3)]">Badges show which Google search features appear for each keyword. <strong className="text-[var(--text-2)]">Solid badges with ✓</strong> mean your site appears in that feature.</p>
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-1 sm:grid-cols-3">
+                    {([
+                      ["org", "Standard organic result"],
+                      ["aio", "AI Overview — client is cited as a source in Google's AI-generated answer."],
+                      ["fsn", "Featured snippet (answer box)"],
+                      ["rel", "People also ask"],
+                      ["img", "Image pack"],
+                      ["vid", "Video results"],
+                      ["stl", "Sitelinks (extra page links)"],
+                      ["geo", "Local pack (map results)"],
+                      ["kng", "Knowledge panel"],
+                      ["knw", "Instant answer"],
+                      ["adt", "Google Ads (top)"],
+                      ["adb", "Google Ads (bottom)"],
+                      ["rev", "Review stars"],
+                      ["new", "Top stories / news"],
+                      ["res", "Related searches"],
+                    ] as [string, string][]).map(([code, desc]) => (
+                      <div key={code} className="flex items-center gap-1.5">
+                        <span className="inline-block px-1 py-0.5 rounded text-[9px] font-medium bg-[var(--border-subtle)] text-[var(--text-2)] uppercase shrink-0">{code}</span>
+                        <span className="text-[var(--text-3)]">{desc}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </details>
+              <DataTable<TaggedKeyword>
+                data={taggedKeywords}
+                exportable
+                exportFilename="tagged-keyword-positions"
+                pageSize={0}
+                columns={[
                 {
                   key: "keyword",
                   label: "Keyword",
@@ -1003,7 +1039,8 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
                     return (
                       <div className="flex flex-wrap gap-1">
                         {row.serpFeatures.map((f) => {
-                          const owned = (row.ownedFeatures ?? []).includes(f);
+                          const ownedFeats = row.ownedFeatures ?? [];
+                          const owned = ownedFeats.includes(f) || (f === "org" && ownedFeats.includes("aio"));
                           const isAio = f === "aio";
                           if (isAio) {
                             return (
@@ -1051,7 +1088,8 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
                   },
                 },
               ]}
-            />
+              />
+            </>
           )}
         </SectionCard>
       )}
