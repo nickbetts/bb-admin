@@ -547,7 +547,7 @@ export function ClientSettingsForm({ client, permissions = [], isAdmin = false }
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <p className="text-xs" style={{ color: "var(--text-4)" }}>
-                      No campaigns found automatically. Paste the ID from your SEMrush tracking URL (the path segment before <code>.html</code>).
+                      No campaigns found automatically. Paste the ID from your SEMrush tracking URL — it&apos;s the number before <code>.html</code> (e.g. <code>6827694</code> or <code>22520428_2564407</code>).
                     </p>
                     <button type="button" onClick={() => form.semrushProjectId && fetchCampaignsForProject(form.semrushProjectId)} className="btn btn-secondary" style={{ whiteSpace: "nowrap", fontSize: 12, flexShrink: 0 }}>
                       {campaignsLoading ? "Retrying…" : "Retry"}
@@ -556,7 +556,7 @@ export function ClientSettingsForm({ client, permissions = [], isAdmin = false }
                   <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                     <input
                       type="text"
-                      placeholder="e.g. 22520428_2564407"
+                      placeholder="e.g. 6827694"
                       defaultValue={semrushCampaignIds[0] ?? ""}
                       onBlur={(e) => {
                         const val = e.target.value.trim();
