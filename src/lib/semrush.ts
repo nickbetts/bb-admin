@@ -564,10 +564,6 @@ export async function getSemrushTrackedKeywordsWithTags(
     };
     if (!data?.data || data.total === 0) return [];
 
-    // TEMP DEBUG — log the first keyword's raw shape so we can verify Fi/Be/Diff structure
-    const firstKw = Object.values(data.data)[0];
-    console.log("[semrush debug] first keyword raw:", JSON.stringify(firstKw, null, 2));
-
     const toPos = (v: unknown): number | null => {
       if (v === "-" || v == null) return null;
       const n = typeof v === "number" ? v : parseInt(String(v));
