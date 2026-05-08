@@ -77,7 +77,7 @@ export async function withDbRetry<T>(
       lastError = err;
       const msg = err instanceof Error ? err.message : String(err);
       const isTransient =
-        /ECONNRESET|ETIMEDOUT|EPIPE|socket hang up|fetch failed|network|read ECONNRESET|Connection terminated|Connection ended|prepared statement/i.test(msg);
+        /ECONNRESET|ETIMEDOUT|EPIPE|socket hang up|fetch failed|network|read ECONNRESET|Connection terminated|Connection ended|prepared statement|Authentication timed out|connection timeout|connect timeout/i.test(msg);
       if (!isTransient || i === attempts - 1) throw err;
       const delay = 250 * Math.pow(2, i);
       console.warn(
