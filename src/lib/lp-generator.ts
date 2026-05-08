@@ -1354,7 +1354,7 @@ export interface LPPagePlan {
 
 // Token budgets for the section-by-section path
 const SECTION_MAX_TOKENS = 8000;
-const PLAN_MAX_TOKENS = 16000;
+const PLAN_MAX_TOKENS = 30000;
 
 // ── Plan prompt ───────────────────────────────────────────────────────────────
 
