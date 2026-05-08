@@ -514,7 +514,22 @@ export async function getSemrushTrackedKeywordsWithTags(
     `date_end=${dateEnd}`,
     `competitors[]=`, // required by SEMrush when using date range queries
   ];
-  if (tags) qsParts.push(`display_tags_condition=${encodeURIComponent(tags)}`);
+  if (tags) {
+    // SEMrush requires tag VALUES inside display_tags_condition to be DOUBLE URL-encoded
+    // so the parser can distinguish syntax operators (|, &, !) from literal characters
+    // in tag names that contain spaces or other special characters. See:
+    // https://developer.semrush.com/api/projects/position-tracking/#url-encoding
+    // Example: "april 2025" must be sent as "april%25202025"; "name&co" as "name%2526co".
+    const encodedCondition = tags
+      .split(/([|&!])/)
+      .map((part) =>
+        part === "|" || part === "&" || part === "!"
+          ? encodeURIComponent(part) // operator: single-encode
+          : encodeURIComponent(encodeURIComponent(part)), // tag value: double-encode
+      )
+      .join("");
+    qsParts.push(`display_tags_condition=${encodedCondition}`);
+  }
   const qs = qsParts.join("&");
 
   try {
