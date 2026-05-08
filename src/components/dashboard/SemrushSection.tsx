@@ -1333,14 +1333,75 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
             paidKeywords: overview.paidKeywords,
           }}
           dateRange={`${formatDateDisplay(startDate)} – ${formatDateDisplay(endDate)}`}
-          extraContext={keywords.length > 0 ? [
-            "Top organic keywords:",
-            ...keywords.slice(0, 10).map((kw) => {
-              const delta = kw.previousPosition > 0 ? kw.previousPosition - kw.position : null;
-              const deltaStr = delta != null ? (delta > 0 ? ` (↑${delta})` : delta < 0 ? ` (↓${Math.abs(delta)})` : " (=)") : "";
-              return `  • "${kw.keyword}" — pos ${kw.position}${deltaStr}, vol ${kw.searchVolume.toLocaleString()}, ${kw.trafficPercent.toFixed(1)}% traffic`;
-            }),
-          ].join("\n") : undefined}
+          extraContext={(() => {
+            const parts: string[] = [];
+
+            // Domain-level top keywords (overview API)
+            if (keywords.length > 0) {
+              parts.push("Top organic keywords (domain overview):");
+              keywords.slice(0, 10).forEach((kw) => {
+                const delta = kw.previousPosition > 0 ? kw.previousPosition - kw.position : null;
+                const deltaStr = delta != null ? (delta > 0 ? ` (↑${delta})` : delta < 0 ? ` (↓${Math.abs(delta)})` : " (=)") : "";
+                parts.push(`  • "${kw.keyword}" — pos ${kw.position}${deltaStr}, vol ${kw.searchVolume.toLocaleString()}, ${kw.trafficPercent.toFixed(1)}% traffic`);
+              });
+            }
+
+            // Campaign position-tracking keywords with SERP feature ownership
+            if (taggedKeywords.length > 0) {
+              const ranked = taggedKeywords.filter(kw => kw.currentPosition != null);
+              const aioOwned = ranked.filter(kw => kw.ownedFeatures.includes("aio"));
+              const fsnOwned = ranked.filter(kw => kw.ownedFeatures.includes("fsn"));
+
+              parts.push(`\nCampaign tracked keywords (position tracking): ${ranked.length} ranked of ${taggedKeywords.length} total tracked`);
+
+              if (aioOwned.length > 0) {
+                parts.push(`AI Overview (AIO) appearances — ${aioOwned.length} keyword(s) where client is cited in Google's AI-generated answer:`);
+                aioOwned.slice(0, 8).forEach(kw => {
+                  const deltaStr = kw.delta != null ? (kw.delta > 0 ? ` (↑${kw.delta})` : kw.delta < 0 ? ` (↓${Math.abs(kw.delta)})` : " (=)") : "";
+                  const sov = kw.shareOfVoice != null ? `, SOV ${kw.shareOfVoice.toFixed(1)}%` : "";
+                  parts.push(`  • "${kw.keyword}" — pos ${kw.currentPosition}${deltaStr}, vol ${kw.searchVolume.toLocaleString()}${sov}`);
+                });
+              }
+
+              if (fsnOwned.length > 0) {
+                parts.push(`Featured Snippet (FSN) ownership — ${fsnOwned.length} keyword(s):`);
+                fsnOwned.slice(0, 5).forEach(kw => {
+                  parts.push(`  • "${kw.keyword}" — pos ${kw.currentPosition}, vol ${kw.searchVolume.toLocaleString()}`);
+                });
+              }
+
+              // Top tracked keywords by estimated traffic
+              const topByTraffic = [...ranked]
+                .filter(kw => kw.estTraffic != null && kw.estTraffic > 0)
+                .sort((a, b) => (b.estTraffic ?? 0) - (a.estTraffic ?? 0))
+                .slice(0, 10);
+              if (topByTraffic.length > 0) {
+                parts.push(`\nTop tracked keywords by estimated traffic:`);
+                topByTraffic.forEach(kw => {
+                  const deltaStr = kw.delta != null ? (kw.delta > 0 ? ` (↑${kw.delta})` : kw.delta < 0 ? ` (↓${Math.abs(kw.delta)})` : " (=)") : "";
+                  const owned = kw.ownedFeatures.length > 0 ? ` [owns: ${kw.ownedFeatures.join(", ")}]` : "";
+                  parts.push(`  • "${kw.keyword}" — pos ${kw.currentPosition}${deltaStr}, est. traffic ${kw.estTraffic?.toFixed(2)}, vol ${kw.searchVolume.toLocaleString()}${owned}`);
+                });
+              }
+
+              // Keywords with notable drops
+              const dropping = ranked.filter(kw => kw.delta != null && kw.delta < -3).sort((a, b) => (a.delta ?? 0) - (b.delta ?? 0)).slice(0, 5);
+              if (dropping.length > 0) {
+                parts.push(`\nKeywords with significant position drops (↓3+):`);
+                dropping.forEach(kw => {
+                  parts.push(`  • "${kw.keyword}" — pos ${kw.currentPosition} (↓${Math.abs(kw.delta ?? 0)}), vol ${kw.searchVolume.toLocaleString()}`);
+                });
+              }
+
+              // Feature ownership summary
+              const featureCounts: Record<string, number> = {};
+              ranked.forEach(kw => kw.ownedFeatures.forEach(f => { featureCounts[f] = (featureCounts[f] ?? 0) + 1; }));
+              const featureSummary = Object.entries(featureCounts).sort((a, b) => b[1] - a[1]).map(([f, n]) => `${f.toUpperCase()}×${n}`).join(", ");
+              if (featureSummary) parts.push(`\nOwned SERP features summary: ${featureSummary}`);
+            }
+
+            return parts.length > 0 ? parts.join("\n") : undefined;
+          })()}
           crossPlatformContext={crossPlatformContext}
         />
       )}

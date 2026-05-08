@@ -608,6 +608,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
   const [aiTone, setAiTone] = useState<"professional" | "friendly" | "technical" | "executive" | "roadman" | "uwu_anime" | "patronising" | "toxic" | "gaslighty" | "cuck">("professional");
   const [aiFormat, setAiFormat] = useState<"prose" | "bullets" | "both">("prose");
   const [aiSpin, setAiSpin] = useState<"positive" | "balanced" | "neutral">("positive");
+  const [aiNarrativeContext, setAiNarrativeContext] = useState("");
 
   // Chaos tones are for internal preview only — disable export & sharing when active
   const CHAOS_TONES = ["roadman", "uwu_anime", "patronising", "toxic", "gaslighty", "cuck"] as const;
@@ -1259,6 +1260,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
             reportId: report.id,
             clientId: report.client.id,
             sectionCommentaries: narrativeCommentaries,
+            additionalContext: aiNarrativeContext.trim() || undefined,
           }),
         });
         if (res.ok) {
@@ -2622,6 +2624,26 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                       <option value="bullets">Bullet Points</option>
                       <option value="both">Both</option>
                     </select>
+                  </div>
+
+                  {/* Additional context for narrative */}
+                  <div>
+                    <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--text-4)", marginBottom: 5 }}>Context for AI</p>
+                    <textarea
+                      value={aiNarrativeContext}
+                      onChange={(e) => setAiNarrativeContext(e.target.value)}
+                      placeholder="Optional: add context the AI should factor in, e.g. 'stats are down because it was Ramadan in March'"
+                      rows={3}
+                      style={{
+                        width: "100%", padding: "7px 10px", fontSize: 11,
+                        borderRadius: "var(--r-sm)", border: "1px solid var(--border)",
+                        background: "var(--surface)", color: "var(--text)",
+                        resize: "vertical", outline: "none", boxSizing: "border-box",
+                        lineHeight: 1.45, fontFamily: "inherit",
+                      }}
+                      onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; }}
+                      onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
+                    />
                   </div>
 
                   {/* Action buttons */}
