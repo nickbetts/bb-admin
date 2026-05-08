@@ -1113,11 +1113,11 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
             <div className="grid-3" style={{ gap: 16 }}>
               {hasYoyPaid && (
                 <>
-                  <MetricCard title="Ad Spend" value={formatCurrency(totalAdSpend)} icon={<DollarSign className="h-5 w-5" />} color="purple" change={yoyTotalAdSpend > 0 ? (pctChange(totalAdSpend, yoyTotalAdSpend) ?? undefined) : undefined} changeDiff={yoyTotalAdSpend > 0 ? diffStr(totalAdSpend, yoyTotalAdSpend, "currency") : undefined} changeLabel={`vs same period ${yoyYear}`} />
-                  <MetricCard title="Conversions" value={formatNumber(totalConversions)} icon={<ShoppingCart className="h-5 w-5" />} color="green" change={yoyTotalConversions > 0 ? (pctChange(totalConversions, yoyTotalConversions) ?? undefined) : undefined} changeDiff={yoyTotalConversions > 0 ? diffStr(totalConversions, yoyTotalConversions, "count") : undefined} changeLabel={`vs same period ${yoyYear}`} />
-                  <MetricCard title="Revenue" value={formatCurrency(totalRevenue)} icon={<TrendingUp className="h-5 w-5" />} color="green" change={yoyTotalRevenue > 0 ? (pctChange(totalRevenue, yoyTotalRevenue) ?? undefined) : undefined} changeDiff={yoyTotalRevenue > 0 ? diffStr(totalRevenue, yoyTotalRevenue, "currency") : undefined} changeLabel={`vs same period ${yoyYear}`} />
-                  <MetricCard title="Blended ROAS" value={`${blendedRoas.toFixed(2)}x`} icon={<TrendingUp className="h-5 w-5" />} color="blue" change={yoyBlendedRoas > 0 ? (pctChange(blendedRoas, yoyBlendedRoas) ?? undefined) : undefined} changeLabel={`vs same period ${yoyYear}`} />
-                  <MetricCard title="Paid Clicks" value={formatNumber(totalPaidClicks)} icon={<MousePointer className="h-5 w-5" />} color="blue" change={yoyTotalPaidClicks > 0 ? (pctChange(totalPaidClicks, yoyTotalPaidClicks) ?? undefined) : undefined} changeDiff={yoyTotalPaidClicks > 0 ? diffStr(totalPaidClicks, yoyTotalPaidClicks, "count") : undefined} changeLabel={`vs same period ${yoyYear}`} />
+                  <MetricCard title="Ad Spend" value={formatCurrency(totalAdSpend)} icon={<DollarSign className="h-5 w-5" />} color="purple" change={pctChange(totalAdSpend, yoyTotalAdSpend) ?? undefined} changeDiff={diffStr(totalAdSpend, yoyTotalAdSpend, "currency")} changeLabel={`vs same period ${yoyYear}`} />
+                  <MetricCard title="Conversions" value={formatNumber(totalConversions)} icon={<ShoppingCart className="h-5 w-5" />} color="green" change={pctChange(totalConversions, yoyTotalConversions) ?? undefined} changeDiff={diffStr(totalConversions, yoyTotalConversions, "count")} changeLabel={`vs same period ${yoyYear}`} />
+                  <MetricCard title="Revenue" value={formatCurrency(totalRevenue)} icon={<TrendingUp className="h-5 w-5" />} color="green" change={pctChange(totalRevenue, yoyTotalRevenue) ?? undefined} changeDiff={diffStr(totalRevenue, yoyTotalRevenue, "currency")} changeLabel={`vs same period ${yoyYear}`} />
+                  <MetricCard title="Blended ROAS" value={`${blendedRoas.toFixed(2)}x`} icon={<TrendingUp className="h-5 w-5" />} color="blue" change={pctChange(blendedRoas, yoyBlendedRoas) ?? undefined} changeDiff={diffStr(blendedRoas, yoyBlendedRoas, "count")} changeLabel={`vs same period ${yoyYear}`} />
+                  <MetricCard title="Paid Clicks" value={formatNumber(totalPaidClicks)} icon={<MousePointer className="h-5 w-5" />} color="blue" change={pctChange(totalPaidClicks, yoyTotalPaidClicks) ?? undefined} changeDiff={diffStr(totalPaidClicks, yoyTotalPaidClicks, "count")} changeLabel={`vs same period ${yoyYear}`} />
                 </>
               )}
               {data.ga4 && yoyData.ga4 && (
@@ -1671,8 +1671,8 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
                   value={formatCurrency(totalAdSpend)}
                   icon={<DollarSign className="h-5 w-5" />}
                   color="purple"
-                  change={yoyTotalAdSpend > 0 ? (pctChange(totalAdSpend, yoyTotalAdSpend) ?? undefined) : undefined}
-                  changeDiff={yoyTotalAdSpend > 0 ? diffStr(totalAdSpend, yoyTotalAdSpend, "currency") : undefined}
+                  change={pctChange(totalAdSpend, yoyTotalAdSpend) ?? undefined}
+                  changeDiff={diffStr(totalAdSpend, yoyTotalAdSpend, "currency")}
                   changeLabel={`vs same period ${yoyYear}`}
                 />
                 <MetricCard
@@ -1680,8 +1680,8 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
                   value={formatNumber(totalConversions)}
                   icon={<ShoppingCart className="h-5 w-5" />}
                   color="green"
-                  change={yoyTotalConversions > 0 ? (pctChange(totalConversions, yoyTotalConversions) ?? undefined) : undefined}
-                  changeDiff={yoyTotalConversions > 0 ? diffStr(totalConversions, yoyTotalConversions, "count") : undefined}
+                  change={pctChange(totalConversions, yoyTotalConversions) ?? undefined}
+                  changeDiff={diffStr(totalConversions, yoyTotalConversions, "count")}
                   changeLabel={`vs same period ${yoyYear}`}
                 />
                 <MetricCard
@@ -1689,8 +1689,8 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
                   value={formatCurrency(totalRevenue)}
                   icon={<TrendingUp className="h-5 w-5" />}
                   color="green"
-                  change={yoyTotalRevenue > 0 ? (pctChange(totalRevenue, yoyTotalRevenue) ?? undefined) : undefined}
-                  changeDiff={yoyTotalRevenue > 0 ? diffStr(totalRevenue, yoyTotalRevenue, "currency") : undefined}
+                  change={pctChange(totalRevenue, yoyTotalRevenue) ?? undefined}
+                  changeDiff={diffStr(totalRevenue, yoyTotalRevenue, "currency")}
                   changeLabel={`vs same period ${yoyYear}`}
                 />
                 <MetricCard
@@ -1698,7 +1698,8 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
                   value={`${blendedRoas.toFixed(2)}x`}
                   icon={<TrendingUp className="h-5 w-5" />}
                   color="blue"
-                  change={yoyBlendedRoas > 0 ? (pctChange(blendedRoas, yoyBlendedRoas) ?? undefined) : undefined}
+                  change={pctChange(blendedRoas, yoyBlendedRoas) ?? undefined}
+                  changeDiff={diffStr(blendedRoas, yoyBlendedRoas, "count")}
                   changeLabel={`vs same period ${yoyYear}`}
                 />
                 <MetricCard
@@ -1706,8 +1707,8 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
                   value={formatNumber(totalPaidClicks)}
                   icon={<MousePointer className="h-5 w-5" />}
                   color="blue"
-                  change={yoyTotalPaidClicks > 0 ? (pctChange(totalPaidClicks, yoyTotalPaidClicks) ?? undefined) : undefined}
-                  changeDiff={yoyTotalPaidClicks > 0 ? diffStr(totalPaidClicks, yoyTotalPaidClicks, "count") : undefined}
+                  change={pctChange(totalPaidClicks, yoyTotalPaidClicks) ?? undefined}
+                  changeDiff={diffStr(totalPaidClicks, yoyTotalPaidClicks, "count")}
                   changeLabel={`vs same period ${yoyYear}`}
                 />
               </>

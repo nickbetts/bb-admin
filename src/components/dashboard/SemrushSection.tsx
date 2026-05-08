@@ -1033,25 +1033,23 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
                   key: "serpFeatures",
                   label: "SERP Features",
                   render: (_v, row) => {
-                    if (!row.currentPosition || row.serpFeatures.length === 0) {
+                    const ownedFeats = row.ownedFeatures ?? [];
+                    const ownedSerpFeats = row.serpFeatures.filter(
+                      (f) => ownedFeats.includes(f) || (f === "org" && ownedFeats.includes("aio"))
+                    );
+                    if (!row.currentPosition || ownedSerpFeats.length === 0) {
                       return <span className="text-[var(--text-3)] text-xs">—</span>;
                     }
                     return (
                       <div className="flex flex-wrap gap-1.5">
-                        {row.serpFeatures.map((f) => {
-                          const ownedFeats = row.ownedFeatures ?? [];
-                          const owned = ownedFeats.includes(f) || (f === "org" && ownedFeats.includes("aio"));
+                        {ownedSerpFeats.map((f) => {
                           const isAio = f === "aio";
                           if (isAio) {
                             return (
                               <span
                                 key={f}
-                                title={owned ? "Client appears in AI Overview" : "AI Overview present on SERP"}
-                                className={`inline-flex items-center gap-1 px-1.5 py-1 rounded text-[9px] font-semibold border transition-opacity ${
-                                  owned
-                                    ? "bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 text-purple-700 border-purple-300"
-                                    : "bg-transparent text-purple-400 border-purple-200/40 opacity-40"
-                                }`}
+                                title="Client appears in AI Overview"
+                                className="inline-flex items-center gap-1 px-1.5 py-1 rounded text-[9px] font-semibold border bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 text-purple-700 border-purple-300"
                               >
                                 <svg width="9" height="9" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                                   <path d="M12 2C12 2 13.5 8.5 18 12C13.5 15.5 12 22 12 22C12 22 10.5 15.5 6 12C10.5 8.5 12 2 12 2Z" fill="url(#gemini-grad-sf)" />
@@ -1064,22 +1062,18 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
                                   </defs>
                                 </svg>
                                 AIO
-                                {owned && <span className="ml-0.5 text-green-500">✓</span>}
+                                <span className="ml-0.5 text-green-500">✓</span>
                               </span>
                             );
                           }
                           return (
                             <span
                               key={f}
-                              title={owned ? `Client appears in ${f.toUpperCase()}` : `${f.toUpperCase()} present on SERP`}
-                              className={`inline-flex items-center gap-1 px-1.5 py-1 rounded text-[9px] font-medium uppercase transition-opacity ${
-                                owned
-                                  ? "bg-[var(--border-subtle)] text-[var(--text-1)]"
-                                  : "bg-transparent border border-[var(--border-subtle)] text-[var(--text-3)] opacity-50"
-                              }`}
+                              title={`Client appears in ${f.toUpperCase()}`}
+                              className="inline-flex items-center gap-1 px-1.5 py-1 rounded text-[9px] font-medium uppercase bg-[var(--border-subtle)] text-[var(--text-1)]"
                             >
                               {f}
-                              {owned && <span className="text-green-500">✓</span>}
+                              <span className="text-green-500">✓</span>
                             </span>
                           );
                         })}
