@@ -517,6 +517,9 @@ export async function getSemrushTrackedKeywordsWithTags(
     `display_limit=${limit}`,
     `date_begin=${dateBegin}`,
     `date_end=${dateEnd}`,
+    // Sort by current position ascending so keywords actually ranking in the
+    // top 100 surface first, ahead of unranked keywords (which return Fi="-").
+    `display_sort=0_pos_asc`,
   ];
   if (domain) {
     // rootdomain mask per SEMrush docs: *.example.com/*
@@ -565,10 +568,18 @@ export async function getSemrushTrackedKeywordsWithTags(
       return isNaN(n) ? null : n;
     };
 
+    // Pick first non-null/non-"-" value from the URL-keyed map.
+    // The response keys Fi/Be/Diff by URL mask (e.g. "*.example.com/*");
+    // when multiple URLs are present we want the tracked domain's value.
+    const firstReal = (obj: Record<string, number | string> | undefined): unknown => {
+      if (!obj) return undefined;
+      for (const v of Object.values(obj)) {
+        if (v !== "-" && v != null) return v;
+      }
+      return Object.values(obj)[0];
+    };
+
     return Object.values(data.data).map((kw) => {
-      const fiEntries = kw.Fi ? Object.values(kw.Fi) : [];
-      const beEntries = kw.Be ? Object.values(kw.Be) : [];
-      const diffEntries = kw.Diff ? Object.values(kw.Diff) : [];
       const luDates = kw.Lu ? Object.values(kw.Lu) : [];
       const landingUrl =
         luDates.length > 0 ? Object.values(luDates[luDates.length - 1] ?? {})[0] ?? "" : "";
@@ -576,9 +587,9 @@ export async function getSemrushTrackedKeywordsWithTags(
       return {
         keyword: kw.Ph ?? "",
         tags: kw.Tg ? Object.values(kw.Tg).filter(Boolean) : [],
-        currentPosition: toPos(fiEntries[0]),
-        previousPosition: toPos(beEntries[0]),
-        delta: toPos(diffEntries[0]),
+        currentPosition: toPos(firstReal(kw.Fi)),
+        previousPosition: toPos(firstReal(kw.Be)),
+        delta: toPos(firstReal(kw.Diff)),
         searchVolume: parseInt(kw.Nq ?? "0") || 0,
         url: landingUrl,
       };
