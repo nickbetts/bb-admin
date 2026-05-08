@@ -26,6 +26,8 @@ interface CellData {
   delta: number | null;
   searchVolume: number;
   url: string;
+  estTraffic: number | null;
+  serpFeatures: string[];
 }
 
 interface MatrixData {
@@ -74,6 +76,21 @@ function avgVolume(vol: number | undefined): string {
   return fmtVolume(vol);
 }
 
+function GeminiSpark({ size = 9 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-label="AI Overview">
+      <path d="M12 2C12 2 13.5 8.5 18 12C13.5 15.5 12 22 12 22C12 22 10.5 15.5 6 12C10.5 8.5 12 2 12 2Z" fill="url(#kw-gemini)" />
+      <defs>
+        <linearGradient id="kw-gemini" x1="6" y1="2" x2="18" y2="22" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#4285F4" />
+          <stop offset="0.5" stopColor="#A855F7" />
+          <stop offset="1" stopColor="#EC4899" />
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+}
+
 function DeltaBadge({ delta }: { delta: number | null }) {
   if (!delta) return null;
   return (
@@ -89,14 +106,21 @@ function MatrixCell({ data }: { data: CellData | undefined }) {
       <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-3)", fontSize: 13, borderBottom: "1px solid var(--border)", borderRight: "1px solid var(--border)" }}>–</td>
     );
   }
-  const { position, delta, url } = data;
+  const { position, delta, url, estTraffic, serpFeatures } = data;
+  const hasAio = serpFeatures?.includes("aio");
   return (
     <td style={{ padding: "10px 14px", textAlign: "center", background: positionBg(position), borderBottom: "1px solid var(--border)", borderRight: "1px solid var(--border)", minWidth: 90 }}>
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-        <span style={{ fontSize: 15, fontWeight: 700, color: positionColor(position), lineHeight: 1 }}>{position}</span>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+          <span style={{ fontSize: 15, fontWeight: 700, color: positionColor(position), lineHeight: 1 }}>{position}</span>
+          {hasAio && <GeminiSpark />}
+        </div>
         <DeltaBadge delta={delta} />
+        {estTraffic != null && estTraffic > 0 && (
+          <span style={{ fontSize: 10, color: "var(--text-3)", lineHeight: 1 }}>{estTraffic.toFixed(1)}</span>
+        )}
         {url && (
-          <a href={url.startsWith("http") ? url : `https://${url}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ marginTop: 3 }}>
+          <a href={url.startsWith("http") ? url : `https://${url}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ marginTop: 2 }}>
             <ExternalLink style={{ width: 9, height: 9, color: "var(--text-3)" }} />
           </a>
         )}
@@ -463,6 +487,9 @@ export default function KeywordTrackerPage() {
                 <span style={{ fontSize: 11, color: "var(--text-3)", marginLeft: "auto" }}>
                   {DATABASES.find((d) => d.value === matrix.database)?.label ?? matrix.database} · ↑↓ vs previous period
                 </span>
+                <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "var(--text-3)" }}>
+                  <GeminiSpark size={10} /> AI Overview
+                </span>
               </div>
 
               {/* Scroll container — both axes, thead + first col frozen */}
@@ -502,6 +529,23 @@ export default function KeywordTrackerPage() {
                       </tr>
                     ))}
                   </tbody>
+                  <tfoot>
+                    <tr style={{ borderTop: "2px solid var(--border)" }}>
+                      <td style={{ padding: "10px 16px", fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase" as const, letterSpacing: "0.04em", borderRight: "1px solid var(--border)", position: "sticky" as const, left: 0, background: "var(--bg)", zIndex: 1 }}>Est. Traffic Total</td>
+                      <td style={{ padding: "10px 12px", borderRight: "1px solid var(--border)", position: "sticky" as const, left: 200, background: "var(--bg)", zIndex: 1 }} />
+                      {matrix.clients.map((c) => {
+                        const total = matrix.keywords.reduce((sum, kw) => {
+                          const cell = matrix.cells[kw]?.[c.domain];
+                          return sum + (cell?.estTraffic ?? 0);
+                        }, 0);
+                        return (
+                          <td key={c.domain} style={{ padding: "10px 14px", textAlign: "center", fontSize: 13, fontWeight: 700, color: total > 0 ? "var(--text)" : "var(--text-3)", borderRight: "1px solid var(--border)" }}>
+                            {total > 0 ? total.toFixed(1) : "–"}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
             </div>

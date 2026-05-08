@@ -33,6 +33,8 @@ interface CellData {
   delta: number | null;
   searchVolume: number;
   url: string;
+  estTraffic: number | null;
+  serpFeatures: string[];
 }
 
 /** Run `tasks` with at most `limit` in-flight at a time. */
@@ -78,7 +80,7 @@ export async function GET(request: NextRequest) {
   const prevMonth = prevMonthYYYYMM01();   // for domain_organic historical lookup
 
   // ── Step 1: Position Tracking for campaign clients (2 calls each: current + 30 days ago) ──
-  const campaignMaps = new Map<string, Map<string, { position: number | null; previousPosition: number | null; searchVolume: number; url: string }>>();
+  const campaignMaps = new Map<string, Map<string, { position: number | null; previousPosition: number | null; searchVolume: number; url: string; estTraffic: number | null; serpFeatures: string[] }>>();
 
   await pLimit(
     clients
@@ -104,11 +106,11 @@ export async function GET(request: NextRequest) {
             prevPositions.set(kw.keyword.toLowerCase().trim(), kw.position === 0 ? null : kw.position);
           }
 
-          const map = new Map<string, { position: number | null; previousPosition: number | null; searchVolume: number; url: string }>();
+          const map = new Map<string, { position: number | null; previousPosition: number | null; searchVolume: number; url: string; estTraffic: number | null; serpFeatures: string[] }>();
           for (const kw of currentKws) {
             const pos = kw.position === 0 ? null : kw.position;
             const prevPos = prevPositions.get(kw.keyword.toLowerCase().trim()) ?? null;
-            map.set(kw.keyword.toLowerCase().trim(), { position: pos, previousPosition: prevPos, searchVolume: kw.searchVolume, url: kw.url });
+            map.set(kw.keyword.toLowerCase().trim(), { position: pos, previousPosition: prevPos, searchVolume: kw.searchVolume, url: kw.url, estTraffic: kw.estTraffic, serpFeatures: kw.serpFeatures });
           }
           campaignMaps.set(client.domain, map);
         } catch { /* fall through to domain_organic */ }
@@ -159,6 +161,8 @@ export async function GET(request: NextRequest) {
             delta,
             searchVolume: current.searchVolume || previous.searchVolume,
             url: current.url,
+            estTraffic: null,
+            serpFeatures: [],
           };
         });
       }

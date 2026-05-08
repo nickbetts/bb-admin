@@ -377,6 +377,8 @@ export interface SemrushTrackedKeyword {
   searchVolume: number;
   url: string;
   landingPage: string;
+  estTraffic: number | null;
+  serpFeatures: string[];
 }
 
 // Position Tracking reports use a different base URL + campaign ID in path.
@@ -410,6 +412,8 @@ export async function getSemrushTrackedKeywords(
         Fi?: Record<string, number | string>;
         Be?: Record<string, number | string>;
         Lu?: Record<string, Record<string, string>>;
+        Tr?: Record<string, Record<string, number | string>>;
+        Sf?: Record<string, string[]>;
       }>;
     };
 
@@ -424,6 +428,23 @@ export async function getSemrushTrackedKeywords(
       // Lu = landing URL per date; use the first date's first domain value
       const luDates = kw.Lu ? Object.values(kw.Lu) : [];
       const landingUrl = luDates.length > 0 ? Object.values(luDates[0])[0] ?? "" : "";
+      const estTraffic = (() => {
+        if (!kw.Tr) return null;
+        const dates = Object.keys(kw.Tr).filter((k) => /^\d{8}$/.test(k)).sort();
+        const lastDate = dates[dates.length - 1];
+        if (!lastDate) return null;
+        const vals = Object.values(kw.Tr[lastDate] ?? {}).filter((v) => v !== "-");
+        if (vals.length === 0) return null;
+        const n = parseFloat(String(vals[0]));
+        return isNaN(n) ? null : n;
+      })();
+      const serpFeatures = (() => {
+        if (!kw.Sf) return [];
+        const dates = Object.keys(kw.Sf).filter((k) => /^\d{8}$/.test(k)).sort();
+        const lastDate = dates[dates.length - 1];
+        if (!lastDate) return [];
+        return Array.isArray(kw.Sf[lastDate]) ? kw.Sf[lastDate] : [];
+      })();
       return {
         keyword: kw.Ph ?? "",
         position: isNaN(pos) ? 0 : pos,
@@ -431,6 +452,8 @@ export async function getSemrushTrackedKeywords(
         searchVolume: parseInt(kw.Nq ?? "0") || 0,
         url: landingUrl,
         landingPage: landingUrl,
+        estTraffic,
+        serpFeatures,
       };
     });
   } catch (err) {
