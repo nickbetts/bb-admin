@@ -159,7 +159,7 @@ async function fetchPlatformMetrics(
       const tagDateBegin = start.replace(/-/g, "");
       const tagDateEnd = end.replace(/-/g, "");
       if (firstCampaignId) {
-        enrichCalls.push(getSemrushTrackedKeywords(firstCampaignId));
+        enrichCalls.push(getSemrushTrackedKeywords(firstCampaignId, undefined, client.semrushDomain ?? undefined));
         enrichCalls.push(getSemrushAIVisibility(firstCampaignId));
         enrichCalls.push(getSemrushTrackedKeywordsWithTags(firstCampaignId, tagDateBegin, tagDateEnd, undefined, client.semrushDomain ?? undefined));
       }

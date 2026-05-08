@@ -87,14 +87,14 @@ export async function GET(request: NextRequest) {
         try {
           const [currentKws, previousKws] = await Promise.all([
             withApiCache(
-              `kwtracker:tracked:${campaignId}:current`,
+              `kwtracker:tracked:${campaignId}:${client.domain}:current`,
               TRACKING_TTL,
-              () => getSemrushTrackedKeywords(campaignId)
+              () => getSemrushTrackedKeywords(campaignId, undefined, client.domain)
             ),
             withApiCache(
-              `kwtracker:tracked:${campaignId}:prev:${compareDate}`,
+              `kwtracker:tracked:${campaignId}:${client.domain}:prev:${compareDate}`,
               VOLUME_TTL,
-              () => getSemrushTrackedKeywords(campaignId, compareDate)
+              () => getSemrushTrackedKeywords(campaignId, compareDate, client.domain)
             ),
           ]);
 

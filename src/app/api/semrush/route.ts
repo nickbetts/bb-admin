@@ -110,8 +110,8 @@ export async function GET(request: NextRequest) {
         if (!campaignId) {
           return NextResponse.json([]);
         }
-        const kwCacheKey = `semrush:project-keywords:${campaignId}`;
-        return NextResponse.json(await withApiCache(kwCacheKey, SEMRUSH_TRACKING_TTL, () => getSemrushTrackedKeywords(campaignId)));
+        const kwCacheKey = `semrush:project-keywords:${campaignId}:${domain ?? ""}`;
+        return NextResponse.json(await withApiCache(kwCacheKey, SEMRUSH_TRACKING_TTL, () => getSemrushTrackedKeywords(campaignId, undefined, domain ?? undefined)));
       }
       case "keyword-difficulty": {
         const kwParam = searchParams.get("keywords") ?? "";

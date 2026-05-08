@@ -388,6 +388,7 @@ const SEMRUSH_TRACKING_BASE = "https://api.semrush.com/reports/v1/projects";
 export async function getSemrushTrackedKeywords(
   campaignId: string,
   date?: string, // YYYYMMDD — if provided, returns snapshot for that date; omit for latest
+  domain?: string, // tracked root domain — required to avoid SEMrush 400 "missing required parameter competitors[]"
 ): Promise<SemrushTrackedKeyword[]> {
   const apiKey = getApiKey();
   const qsParts = [
@@ -397,6 +398,13 @@ export async function getSemrushTrackedKeywords(
     `display_limit=200`,
   ];
   if (date) qsParts.push(`date=${date}`);
+  if (domain) {
+    const cleanDomain = domain
+      .replace(/^https?:\/\//, "")
+      .replace(/\/$/, "")
+      .replace(/^www\./, "");
+    qsParts.push(`url=${encodeURIComponent(`*.${cleanDomain}/*`)}`);
+  }
   const qs = qsParts.join("&");
 
   try {
