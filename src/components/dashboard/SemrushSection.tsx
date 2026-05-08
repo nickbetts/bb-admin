@@ -183,6 +183,7 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
     estTraffic: number | null;
     shareOfVoice: number | null;
     serpFeatures: string[];
+    ownedFeatures: string[];
     url: string;
   }
   const [taggedKeywords, setTaggedKeywords] = useState<TaggedKeyword[]>([]);
@@ -995,33 +996,59 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
                 {
                   key: "serpFeatures",
                   label: "SERP Features",
-                  render: (_v, row) => row.currentPosition !== null && row.serpFeatures.length > 0 ? (
-                    <div className="flex flex-wrap gap-1">
-                      {row.serpFeatures.map((f) => {
-                        if (f === "aio") {
+                  render: (_v, row) => {
+                    if (!row.currentPosition || row.serpFeatures.length === 0) {
+                      return <span className="text-[var(--text-3)] text-xs">—</span>;
+                    }
+                    return (
+                      <div className="flex flex-wrap gap-1">
+                        {row.serpFeatures.map((f) => {
+                          const owned = row.ownedFeatures.includes(f);
+                          const isAio = f === "aio";
+                          if (isAio) {
+                            return (
+                              <span
+                                key={f}
+                                title={owned ? "Client appears in AI Overview" : "AI Overview present on SERP"}
+                                className={`inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] font-semibold border transition-opacity ${
+                                  owned
+                                    ? "bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 text-purple-700 border-purple-300"
+                                    : "bg-transparent text-purple-400 border-purple-200/40 opacity-40"
+                                }`}
+                              >
+                                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                  <path d="M12 2C12 2 13.5 8.5 18 12C13.5 15.5 12 22 12 22C12 22 10.5 15.5 6 12C10.5 8.5 12 2 12 2Z" fill="url(#gemini-grad-sf)" />
+                                  <defs>
+                                    <linearGradient id="gemini-grad-sf" x1="6" y1="2" x2="18" y2="22" gradientUnits="userSpaceOnUse">
+                                      <stop stopColor="#4285F4" />
+                                      <stop offset="0.5" stopColor="#A855F7" />
+                                      <stop offset="1" stopColor="#EC4899" />
+                                    </linearGradient>
+                                  </defs>
+                                </svg>
+                                AIO
+                                {owned && <span className="ml-0.5 text-green-500">✓</span>}
+                              </span>
+                            );
+                          }
                           return (
-                            <span key={f} className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] font-semibold bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 text-purple-700 border border-purple-200/60">
-                              {/* Gemini spark icon */}
-                              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                                <path d="M12 2C12 2 13.5 8.5 18 12C13.5 15.5 12 22 12 22C12 22 10.5 15.5 6 12C10.5 8.5 12 2 12 2Z" fill="url(#gemini-grad)" />
-                                <defs>
-                                  <linearGradient id="gemini-grad" x1="6" y1="2" x2="18" y2="22" gradientUnits="userSpaceOnUse">
-                                    <stop stopColor="#4285F4" />
-                                    <stop offset="0.5" stopColor="#A855F7" />
-                                    <stop offset="1" stopColor="#EC4899" />
-                                  </linearGradient>
-                                </defs>
-                              </svg>
-                              AIO
+                            <span
+                              key={f}
+                              title={owned ? `Client appears in ${f.toUpperCase()}` : `${f.toUpperCase()} present on SERP`}
+                              className={`inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] font-medium uppercase transition-opacity ${
+                                owned
+                                  ? "bg-[var(--border-subtle)] text-[var(--text-1)]"
+                                  : "bg-transparent border border-[var(--border-subtle)] text-[var(--text-3)] opacity-50"
+                              }`}
+                            >
+                              {f}
+                              {owned && <span className="text-green-500">✓</span>}
                             </span>
                           );
-                        }
-                        return (
-                          <span key={f} className="inline-block px-1 py-0.5 rounded text-[9px] font-medium bg-[var(--border-subtle)] text-[var(--text-2)] uppercase">{f}</span>
-                        );
-                      })}
-                    </div>
-                  ) : <span className="text-[var(--text-3)] text-xs">—</span>,
+                        })}
+                      </div>
+                    );
+                  },
                 },
               ]}
             />

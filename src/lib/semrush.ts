@@ -490,8 +490,10 @@ export interface SemrushTaggedKeyword {
   estTraffic: number | null;
   /** Share of Voice % for the latest crawl date */
   shareOfVoice: number | null;
-  /** SERP feature codes for the latest crawl date (e.g. "org", "img", "vid", "aio") */
+  /** SERP feature codes present on the SERP for this keyword (from Sf field) */
   serpFeatures: string[];
+  /** SERP feature codes the tracked domain's URL actually appears in (from Lt field) */
+  ownedFeatures: string[];
   url: string;
 }
 
@@ -609,6 +611,7 @@ export async function getSemrushTrackedKeywordsWithTags(
         Tr?: Record<string, Record<string, number>>;
         Sov?: Record<string, Record<string, number>>;
         Sf?: Record<string, string[] | null>;
+        Lt?: Record<string, string[] | null>;
       }>;
     };
     if (!data?.data || data.total === 0) return [];
@@ -661,6 +664,13 @@ export async function getSemrushTrackedKeywordsWithTags(
           const dates = Object.keys(kw.Sf).filter(k => /^\d{8}$/.test(k)).sort();
           if (!dates.length) return [];
           const latest = kw.Sf[dates[dates.length - 1]];
+          return Array.isArray(latest) ? latest.filter(Boolean) : [];
+        })(),
+        ownedFeatures: (() => {
+          if (!kw.Lt) return [];
+          const dates = Object.keys(kw.Lt).filter(k => /^\d{8}$/.test(k)).sort();
+          if (!dates.length) return [];
+          const latest = kw.Lt[dates[dates.length - 1]];
           return Array.isArray(latest) ? latest.filter(Boolean) : [];
         })(),
         url: landingUrl,
