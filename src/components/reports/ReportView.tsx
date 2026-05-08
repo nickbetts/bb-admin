@@ -1067,11 +1067,14 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
             clientName: report.client.name,
             clientId: report.client.id,
             dateRange: report.period,
+            startDate,
+            endDate,
             tone: aiTone,
             length: aiLength,
             format: aiFormat,
             spin: aiSpin,
             previousCommentaries: generatedSoFar.length > 0 ? generatedSoFar : undefined,
+            additionalContext: aiNarrativeContext.trim() || undefined,
           }),
         });
         if (res.ok) {
@@ -1118,6 +1121,8 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
           clientName: report.client.name,
           clientId: report.client.id,
           dateRange: report.period,
+          startDate,
+          endDate,
           tone: aiTone,
           length: aiLength,
           format: aiFormat,
@@ -1213,11 +1218,14 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
               clientName: report.client.name,
               clientId: report.client.id,
               dateRange: report.period,
+              startDate,
+              endDate,
               tone: aiTone,
               length: aiLength,
               format: aiFormat,
               spin: aiSpin,
               previousCommentaries: generatedSoFar.length > 0 ? generatedSoFar : undefined,
+              additionalContext: aiNarrativeContext.trim() || undefined,
             }),
           });
           if (res.ok) {
@@ -2526,7 +2534,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
           </div>
 
           {/* Sidebar footer — Generate Narrative & Commentary + Save as Template */}
-          <div style={{ borderTop: "1px solid var(--border-subtle)", padding: "12px 16px", flexShrink: 0, display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ borderTop: "1px solid var(--border-subtle)", padding: "12px 16px", flexShrink: 0, display: "flex", flexDirection: "column", gap: 8, overflowY: "auto", maxHeight: "calc(100vh - 180px)" }}>
 
             {/* Generate Narrative & Commentary */}
             <div style={{ paddingBottom: 4 }}>

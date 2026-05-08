@@ -20,12 +20,14 @@ export async function POST(request: NextRequest) {
       clientId,
       sectionCommentaries,
       crossPlatformMetrics,
+      additionalContext,
       stream,
     } = body as {
       reportId: string;
       clientId: string;
       sectionCommentaries: Record<string, string>;
       crossPlatformMetrics?: Record<string, unknown>;
+      additionalContext?: string;
       stream?: boolean;
     };
 
@@ -104,7 +106,7 @@ You MUST respond with valid JSON matching this exact structure:
   "sectionEnhancements": { "section_key": "string — additional context sentence to append to that section's commentary" },
   "keyThemes": ["theme1", "theme2", "theme3"],
   "goalProgressNarrative": "string — how goal attainment ties into the report data (empty string if no goals)"
-}${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}`;
+}${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}${additionalContext ? `\n\nIMPORTANT CONTEXT FROM THE ACCOUNT MANAGER: The following context has been provided and must be factored into the narrative and all cross-channel stories:\n${additionalContext}` : ""}`;
 
     const userPrompt = `## Report ID
 ${reportId}

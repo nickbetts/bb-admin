@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/activity-logger";
 import { getSessionOrCronAuth } from "@/lib/auth";
 import { enforceAiRateLimit } from "@/lib/ai/rate-limit";
+import { withApiCache } from "@/lib/api-cache";
+import { getSemrushTrackedKeywordsWithTags } from "@/lib/semrush";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -110,7 +112,7 @@ export async function POST(req: NextRequest) {
     const rl = enforceAiRateLimit(session.user.id);
     if (!rl.ok) return rl.response!;
 
-    const { sectionType, metrics, previousMetrics, clientName, clientId, reportId, dateRange, length = "medium", tone = "professional", format = "prose", spin = "positive", previousCommentaries } =
+    const { sectionType, metrics, previousMetrics, clientName, clientId, reportId, dateRange, startDate, endDate, length = "medium", tone = "professional", format = "prose", spin = "positive", previousCommentaries, additionalContext } =
       await req.json() as {
         sectionType: string;
         metrics: Record<string, number>;
@@ -119,11 +121,14 @@ export async function POST(req: NextRequest) {
         clientId?: string;
         reportId?: string;
         dateRange?: string;
+        startDate?: string;
+        endDate?: string;
         length?: "short" | "medium" | "long";
         tone?: "professional" | "friendly" | "technical" | "executive" | "roadman" | "uwu_anime" | "patronising" | "toxic" | "gaslighty" | "cuck";
         format?: "prose" | "bullets" | "both";
         spin?: "positive" | "balanced" | "neutral";
         previousCommentaries?: { sectionType: string; text: string }[];
+        additionalContext?: string;
       };
 
     if (!sectionType || !metrics || typeof metrics !== "object") {
@@ -152,6 +157,92 @@ export async function POST(req: NextRequest) {
         approvalContext = `\n\nREPORT REVISION NOTES (reviewer requested changes):\n${report.approvalNotes}\n\nYou MUST address these notes in your commentary. Adjust tone, content, or emphasis accordingly.`;
       } else if (report?.approvalStatus === "approved" && report.approvalNotes) {
         approvalContext = `\n\nREPORT REVIEW NOTE (approved with comment by ${report.approvedBy ?? "reviewer"}):\n${report.approvalNotes}`;
+      }
+    }
+
+    // Fetch tagged keyword SERP data for SEO sections
+    let serpContext = "";
+    if (sectionType === "seo" && clientId && startDate && endDate) {
+      try {
+        const clientSeo = await prisma.client.findUnique({
+          where: { id: clientId },
+          select: { semrushCampaignIds: true, semrushDomain: true },
+        });
+        const campaignId = clientSeo?.semrushCampaignIds?.split(",")[0]?.trim();
+        const domain = clientSeo?.semrushDomain ?? undefined;
+        if (campaignId) {
+          const toSemrushDate = (iso: string) => iso.replace(/-/g, "");
+          const dateBegin = toSemrushDate(startDate);
+          const dateEnd = toSemrushDate(endDate);
+          const cacheKey = `semrush:tagged-positions:v10:${campaignId}:${domain ?? ""}:${dateBegin}:${dateEnd}:`;
+          const SEMRUSH_TRACKING_TTL = 4;
+          const tagged = await withApiCache(cacheKey, SEMRUSH_TRACKING_TTL, () =>
+            getSemrushTrackedKeywordsWithTags(campaignId, dateBegin, dateEnd, undefined, domain)
+          );
+          if (tagged.length > 0) {
+            const lines: string[] = [`\n\nCAMPAIGN KEYWORD TRACKING DATA (${tagged.length} tracked keywords):`];
+
+            // AIO-owned
+            const aioOwned = tagged.filter((k) => k.ownedFeatures.includes("aio"));
+            if (aioOwned.length > 0) {
+              lines.push(`\nAI Overview (AIO) citations — ${aioOwned.length} keyword(s):`);
+              aioOwned.slice(0, 8).forEach((k) => {
+                const pos = k.currentPosition != null ? `pos ${k.currentPosition}` : "unranked";
+                const d = k.delta != null ? (k.delta > 0 ? `+${k.delta}` : String(k.delta)) : "";
+                lines.push(`  • "${k.keyword}" — ${pos}${d ? ` (${d})` : ""}, vol ${k.searchVolume.toLocaleString()}`);
+              });
+            }
+
+            // Featured snippet owned
+            const fsnOwned = tagged.filter((k) => k.ownedFeatures.some((f) => f === "fsn" || f === "featured_snippet"));
+            if (fsnOwned.length > 0) {
+              lines.push(`\nFeatured Snippets owned — ${fsnOwned.length} keyword(s):`);
+              fsnOwned.slice(0, 5).forEach((k) => {
+                const pos = k.currentPosition != null ? `pos ${k.currentPosition}` : "unranked";
+                lines.push(`  • "${k.keyword}" — ${pos}, vol ${k.searchVolume.toLocaleString()}`);
+              });
+            }
+
+            // Top 10 by estimated traffic with owned features
+            const topByTraffic = [...tagged]
+              .filter((k) => k.estTraffic != null && k.estTraffic > 0)
+              .sort((a, b) => (b.estTraffic ?? 0) - (a.estTraffic ?? 0))
+              .slice(0, 10);
+            if (topByTraffic.length > 0) {
+              lines.push("\nTop keywords by estimated traffic:");
+              topByTraffic.forEach((k) => {
+                const pos = k.currentPosition != null ? `pos ${k.currentPosition}` : "unranked";
+                const d = k.delta != null ? (k.delta > 0 ? `+${k.delta}` : String(k.delta)) : "";
+                const owned = k.ownedFeatures.length > 0 ? ` [owns: ${k.ownedFeatures.join(", ")}]` : "";
+                lines.push(`  • "${k.keyword}" — ${pos}${d ? ` (${d})` : ""}, ~${k.estTraffic} visits${owned}`);
+              });
+            }
+
+            // Position drops ≥3
+            const drops = tagged.filter((k) => k.delta != null && k.delta >= 3);
+            if (drops.length > 0) {
+              lines.push(`\nNotable position drops (${drops.length} keyword(s)):`); 
+              drops.slice(0, 5).forEach((k) => {
+                const pos = k.currentPosition != null ? `pos ${k.currentPosition}` : "unranked";
+                lines.push(`  • "${k.keyword}" — ${pos} (dropped ${k.delta} places), vol ${k.searchVolume.toLocaleString()}`);
+              });
+            }
+
+            // Owned SERP feature summary
+            const featureCounts: Record<string, number> = {};
+            tagged.forEach((k) => k.ownedFeatures.forEach((f) => { featureCounts[f] = (featureCounts[f] ?? 0) + 1; }));
+            const featSummary = Object.entries(featureCounts)
+              .sort((a, b) => b[1] - a[1])
+              .map(([f, n]) => `${f.toUpperCase()}×${n}`)
+              .join(", ");
+            if (featSummary) lines.push(`\nOwned SERP features: ${featSummary}`);
+
+            serpContext = lines.join("\n");
+          }
+        }
+      } catch (err) {
+        // Non-fatal — continue without SERP context
+        console.warn("report-commentary: failed to fetch SEMrush keyword data:", err);
       }
     }
 
@@ -243,7 +334,7 @@ ${spinRule}
 - Do not start with "This section" or "In this section". Start with a substantive observation about the data.
 - When goals are provided, reference progress towards targets naturally (e.g. "The ROAS is now at 82% of the target").
 - Sound like a human account manager wrote it, not an AI.
-- Never use em dashes (—). Use commas, full stops, or semicolons instead.${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}${approvalContext}`;
+- Never use em dashes (—). Use commas, full stops, or semicolons instead.${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}${additionalContext ? `\n\nCONTEXT FROM THE ACCOUNT MANAGER — treat this as first-hand knowledge you have about this period. Work it naturally into the commentary where relevant, as if you already knew this:\n${additionalContext}` : ""}${approvalContext}`;
 
     // Build the previous-commentaries context block to prevent repetition
     let previousCommentariesContext = "";
@@ -276,7 +367,7 @@ Period: ${dateRange ?? "the reporting period"}
 
 Current period metrics:
 ${currentMetricsText}
-${previousMetricsText ? `\nPrevious period metrics:\n${previousMetricsText}\n` : ""}${goalsContext}${previousCommentariesContext}
+${previousMetricsText ? `\nPrevious period metrics:\n${previousMetricsText}\n` : ""}${goalsContext}${serpContext}${previousCommentariesContext}
 Address the client directly using "the" for campaigns/channels and "your" for the client's assets. Do not use first person ("we", "our"). Describe what the data shows, what is being worked on, and what is performing well. Only reference metrics that are present and non-zero. Do not mention anything that is absent.`;
 
     const response = await openai.chat.completions.create({
