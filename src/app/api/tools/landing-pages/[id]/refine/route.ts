@@ -25,9 +25,6 @@ export async function POST(
   });
 
   if (!landingPage) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (landingPage.userId !== session.user.id) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
 
   try {
     const body = await request.json() as {

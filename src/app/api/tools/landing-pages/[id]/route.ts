@@ -28,9 +28,6 @@ export async function GET(
   if (!landingPage) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
-  if (landingPage.userId !== session.user.id && session.user.role !== "admin") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
 
   return NextResponse.json({ landingPage });
 }
@@ -47,9 +44,6 @@ export async function PUT(
 
   const existing = await prisma.landingPage.findUnique({ where: { id } });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (existing.userId !== session.user.id && session.user.role !== "admin") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
 
   const body = await request.json() as {
     title?: string;
@@ -103,9 +97,6 @@ export async function DELETE(
 
   const existing = await prisma.landingPage.findUnique({ where: { id } });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (existing.userId !== session.user.id && session.user.role !== "admin") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
 
   await prisma.landingPage.delete({ where: { id } });
 

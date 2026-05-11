@@ -16,9 +16,6 @@ export async function GET(
 
   const landingPage = await prisma.landingPage.findUnique({ where: { id } });
   if (!landingPage) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (landingPage.userId !== session.user.id) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
 
   const versions = await prisma.landingPageVersion.findMany({
     where: { landingPageId: id },
@@ -46,9 +43,6 @@ export async function POST(
 
   const landingPage = await prisma.landingPage.findUnique({ where: { id } });
   if (!landingPage) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (landingPage.userId !== session.user.id) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
 
   const body = await request.json() as { versionNumber?: number; save?: boolean; description?: string };
 

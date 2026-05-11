@@ -16,9 +16,6 @@ export async function GET(
 
   const landingPage = await prisma.landingPage.findUnique({ where: { id } });
   if (!landingPage) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (landingPage.userId !== session.user.id) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
 
   const { searchParams } = new URL(request.url);
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
