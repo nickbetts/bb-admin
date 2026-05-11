@@ -174,6 +174,7 @@ export async function POST(
     } catch (err) {
       if (err instanceof SmtpNotConfiguredError) {
         // Resend not configured — lead is captured, treat as success
+        console.warn("[lead-notify] Resend not configured — lead captured but notification email not sent. Add resendApiKey in Settings → Email.");
       } else {
         console.error("[lead-notify] Email send failed:", err);
         const message = err instanceof Error ? err.message : "Email delivery failed";

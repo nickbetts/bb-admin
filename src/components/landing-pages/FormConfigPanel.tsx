@@ -72,7 +72,7 @@ function joinEmails(emails: string[] | undefined): string {
 }
 
 export function FormConfigPanel({ value, onChange, lpId }: Props) {
-  const emailsRaw = joinEmails(value.notifyEmails);
+  const [emailsRaw, setEmailsRaw] = useState(joinEmails(value.notifyEmails));
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -171,7 +171,8 @@ export function FormConfigPanel({ value, onChange, lpId }: Props) {
           <input
             type="text"
             value={emailsRaw}
-            onChange={(e) => onChange({ ...value, notifyEmails: parseEmails(e.target.value) })}
+            onChange={(e) => setEmailsRaw(e.target.value)}
+            onBlur={(e) => onChange({ ...value, notifyEmails: parseEmails(e.target.value) })}
             placeholder="client@example.com, team@agency.com"
             style={inputStyle}
           />
