@@ -63,14 +63,16 @@ interface HubSpotSectionProps {
   clientName: string;
   crossPlatformContext?: string;
   visibleBlocks?: string[];
+  hiddenCards?: Record<string, string[]>;
 }
 
 function formatCurrency(v: number) {
   return new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }).format(v);
 }
 
-export function HubSpotSection({ clientId, clientName, crossPlatformContext, visibleBlocks }: HubSpotSectionProps) {
+export function HubSpotSection({ clientId, clientName, crossPlatformContext, visibleBlocks, hiddenCards }: HubSpotSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
+  const showCard = (blockId: string, cardId: string) => !hiddenCards?.[blockId]?.includes(cardId);
   const isExplicit = (block: string) => Array.isArray(visibleBlocks) && visibleBlocks.includes(block);
   const [data, setData] = useState<HubSpotData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -109,10 +111,10 @@ export function HubSpotSection({ clientId, clientName, crossPlatformContext, vis
     <div>
       {summary && show("kpis") && (
         <MetricGrid cols={4} className="mb-5">
-          <MetricCard title="Total Contacts" value={summary.totalContacts} icon={<Users style={{ width: 14, height: 14 }} />} channel="hubspot" />
-          <MetricCard title="Open Deals" value={summary.openDeals} icon={<TrendingUp style={{ width: 14, height: 14 }} />} channel="hubspot" />
-          <MetricCard title="Pipeline Value" value={formatCurrency(summary.pipelineValue)} icon={<DollarSign style={{ width: 14, height: 14 }} />} channel="hubspot" />
-          <MetricCard title="Closed Won" value={formatCurrency(summary.closedWonValue)} icon={<DollarSign style={{ width: 14, height: 14 }} />} channel="hubspot" />
+          {showCard("kpis", "total_contacts") && <MetricCard title="Total Contacts" value={summary.totalContacts} icon={<Users style={{ width: 14, height: 14 }} />} channel="hubspot" />}
+          {showCard("kpis", "open_deals") && <MetricCard title="Open Deals" value={summary.openDeals} icon={<TrendingUp style={{ width: 14, height: 14 }} />} channel="hubspot" />}
+          {showCard("kpis", "pipeline_value") && <MetricCard title="Pipeline Value" value={formatCurrency(summary.pipelineValue)} icon={<DollarSign style={{ width: 14, height: 14 }} />} channel="hubspot" />}
+          {showCard("kpis", "closed_won") && <MetricCard title="Closed Won" value={formatCurrency(summary.closedWonValue)} icon={<DollarSign style={{ width: 14, height: 14 }} />} channel="hubspot" />}
         </MetricGrid>
       )}
 

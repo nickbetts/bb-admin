@@ -73,10 +73,12 @@ interface KlaviyoSectionProps {
   endDate: string;
   crossPlatformContext?: string;
   visibleBlocks?: string[];
+  hiddenCards?: Record<string, string[]>;
 }
 
-export function KlaviyoSection({ clientId, clientName, startDate: _startDate, endDate: _endDate, crossPlatformContext, visibleBlocks }: KlaviyoSectionProps) {
+export function KlaviyoSection({ clientId, clientName, startDate: _startDate, endDate: _endDate, crossPlatformContext, visibleBlocks, hiddenCards }: KlaviyoSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
+  const showCard = (blockId: string, cardId: string) => !hiddenCards?.[blockId]?.includes(cardId);
   const isExplicit = (block: string) => Array.isArray(visibleBlocks) && visibleBlocks.includes(block);
   const [loading, setLoading] = useState(true);
   const [overview, setOverview] = useState<KlaviyoOverview | null>(null);
@@ -128,10 +130,10 @@ export function KlaviyoSection({ clientId, clientName, startDate: _startDate, en
         <>
           {show("kpis") && (
             <MetricGrid cols={4}>
-              <MetricCard title="Total Sends" value={overview.sends.toLocaleString()} subtitle={`${overview.campaignCount} campaigns`} channel="klaviyo" />
-              <MetricCard title="Opens" value={overview.opens.toLocaleString()} subtitle={`${overview.openRate.toFixed(1)}% open rate`} channel="klaviyo" />
-              <MetricCard title="Clicks" value={overview.clicks.toLocaleString()} subtitle={`${overview.clickRate.toFixed(1)}% click rate`} channel="klaviyo" />
-              <MetricCard title="Revenue" value={`£${overview.revenue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`} channel="klaviyo" />
+              {showCard("kpis", "total_sends") && <MetricCard title="Total Sends" value={overview.sends.toLocaleString()} subtitle={`${overview.campaignCount} campaigns`} channel="klaviyo" />}
+              {showCard("kpis", "opens") && <MetricCard title="Opens" value={overview.opens.toLocaleString()} subtitle={`${overview.openRate.toFixed(1)}% open rate`} channel="klaviyo" />}
+              {showCard("kpis", "clicks") && <MetricCard title="Clicks" value={overview.clicks.toLocaleString()} subtitle={`${overview.clickRate.toFixed(1)}% click rate`} channel="klaviyo" />}
+              {showCard("kpis", "revenue") && <MetricCard title="Revenue" value={`£${overview.revenue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`} channel="klaviyo" />}
             </MetricGrid>
           )}
 

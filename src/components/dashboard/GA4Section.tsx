@@ -37,6 +37,7 @@ interface GA4SectionProps {
   compareEndDate?: string;
   crossPlatformContext?: string;
   visibleBlocks?: string[];
+  hiddenCards?: Record<string, string[]>;
   hideAlerts?: boolean;
   hideAi?: boolean;
   clientId?: string;
@@ -143,8 +144,9 @@ function diffStr(curr: number, prev: number | null | undefined, fmt: "count" | "
   return sign + (fmt === "currency" ? formatCurrency(Math.abs(d)) : formatNumber(Math.abs(d)));
 }
 
-export function GA4Section({ propertyId, startDate, endDate, compareStartDate, compareEndDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, clientId, clientName, onMetricsReady, onPreviousMetricsReady, afterHeader }: GA4SectionProps) {
+export function GA4Section({ propertyId, startDate, endDate, compareStartDate, compareEndDate, crossPlatformContext, visibleBlocks, hiddenCards, hideAlerts, hideAi, clientId, clientName, onMetricsReady, onPreviousMetricsReady, afterHeader }: GA4SectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
+  const showCard = (blockId: string, cardId: string) => !hiddenCards?.[blockId]?.includes(cardId);
   const isExplicit = (block: string) => Array.isArray(visibleBlocks) && visibleBlocks.includes(block);
   const [overview, setOverview] = useState<GA4Overview | null>(null);
   const [prevOverview, setPrevOverview] = useState<GA4Overview | null>(null);
@@ -498,7 +500,7 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
       {/* Overview metrics */}
       {show("kpis") && (
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
-        <MetricCard
+        {showCard("kpis", "sessions") && <MetricCard
           title="Sessions"
           value={formatNumber(overview.sessions)}
           subtitle="All sessions"
@@ -506,8 +508,8 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
           changeDiff={prevOverview ? diffStr(overview.sessions, prevOverview.sessions, "count") : undefined}
           icon={<Eye className="h-5 w-5" />}
           color="blue"
-        />
-        <MetricCard
+        />}
+        {showCard("kpis", "users") && <MetricCard
           title="Users"
           value={formatNumber(overview.users)}
           subtitle="Active users"
@@ -515,8 +517,8 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
           changeDiff={prevOverview ? diffStr(overview.users, prevOverview.users, "count") : undefined}
           icon={<Users className="h-5 w-5" />}
           color="purple"
-        />
-        <MetricCard
+        />}
+        {showCard("kpis", "new_users") && <MetricCard
           title="New Users"
           value={formatNumber(overview.newUsers)}
           subtitle="First-time visitors"
@@ -524,8 +526,8 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
           changeDiff={prevOverview ? diffStr(overview.newUsers, prevOverview.newUsers, "count") : undefined}
           icon={<UserPlus className="h-5 w-5" />}
           color="green"
-        />
-        <MetricCard
+        />}
+        {showCard("kpis", "pageviews") && <MetricCard
           title="Pageviews"
           value={formatNumber(overview.pageviews)}
           subtitle="Total page views"
@@ -533,29 +535,29 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
           changeDiff={prevOverview ? diffStr(overview.pageviews, prevOverview.pageviews, "count") : undefined}
           icon={<Eye className="h-5 w-5" />}
           color="blue"
-        />
-        <MetricCard
+        />}
+        {showCard("kpis", "bounce_rate") && <MetricCard
           title="Bounce Rate"
           value={formatPercent(overview.bounceRate)}
           subtitle="Lower is better"
           change={prevOverview ? pctChange(prevOverview.bounceRate, overview.bounceRate) : undefined}
           icon={<MousePointer className="h-5 w-5" />}
           color="orange"
-        />
-        <MetricCard
+        />}
+        {showCard("kpis", "avg_session") && <MetricCard
           title="Avg. Session"
           value={formatDuration(overview.avgSessionDuration)}
           subtitle="Time on site"
           icon={<Clock className="h-5 w-5" />}
           color="green"
-        />
-        <MetricCard
+        />}
+        {showCard("kpis", "conv_rate") && <MetricCard
           title="Conv. Rate"
           value={formatPercent(overview.conversionRate)}
           subtitle="Goal completions"
           icon={<TrendingUp className="h-5 w-5" />}
           color="purple"
-        />
+        />}
       </div>
       )}
 

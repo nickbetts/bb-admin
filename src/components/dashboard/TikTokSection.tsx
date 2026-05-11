@@ -23,6 +23,7 @@ interface TikTokSectionProps {
   endDate: string;
   crossPlatformContext?: string;
   visibleBlocks?: string[];
+  hiddenCards?: Record<string, string[]>;
 }
 
 interface TikTokOverview {
@@ -103,8 +104,9 @@ interface TikTokAdGroupRow {
   frequency: number;
 }
 
-export function TikTokSection({ clientId, clientName, startDate, endDate, crossPlatformContext, visibleBlocks }: TikTokSectionProps) {
+export function TikTokSection({ clientId, clientName, startDate, endDate, crossPlatformContext, visibleBlocks, hiddenCards }: TikTokSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
+  const showCard = (blockId: string, cardId: string) => !hiddenCards?.[blockId]?.includes(cardId);
   const isExplicit = (block: string) => Array.isArray(visibleBlocks) && visibleBlocks.includes(block);
   const [data, setData] = useState<{ overview: TikTokOverview; campaigns: TikTokCampaign[]; daily: TikTokDaily[]; adGroups?: TikTokAdGroupRow[]; demographics?: TikTokDemo[]; creatives?: TikTokCreative[] } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -151,17 +153,17 @@ export function TikTokSection({ clientId, clientName, startDate, endDate, crossP
       {/* Overview KPI Cards */}
       {show("kpis") && (
         <MetricGrid cols={4}>
-          <MetricCard title="Spend" value={formatCurrency(overview.spend)} channel="tiktok" />
-          <MetricCard title="Impressions" value={formatNumber(overview.impressions)} channel="tiktok" />
-          <MetricCard title="Clicks" value={formatNumber(overview.clicks)} channel="tiktok" />
-          <MetricCard title="CTR" value={`${overview.ctr.toFixed(2)}%`} channel="tiktok" />
-          <MetricCard title="CPC" value={formatCurrency(overview.cpc)} channel="tiktok" />
-          <MetricCard title="CPM" value={formatCurrency(overview.cpm)} channel="tiktok" />
-          <MetricCard title="Conversions" value={formatNumber(overview.conversions)} channel="tiktok" />
-          <MetricCard title="Cost/Conv" value={formatCurrency(overview.costPerConversion)} channel="tiktok" />
-          <MetricCard title="Video Views" value={formatNumber(overview.videoViews)} channel="tiktok" />
-          <MetricCard title="Reach" value={formatNumber(overview.reach)} channel="tiktok" />
-          <MetricCard title="Frequency" value={overview.frequency.toFixed(2)} channel="tiktok" />
+          {showCard("kpis", "spend") && <MetricCard title="Spend" value={formatCurrency(overview.spend)} channel="tiktok" />}
+          {showCard("kpis", "impressions") && <MetricCard title="Impressions" value={formatNumber(overview.impressions)} channel="tiktok" />}
+          {showCard("kpis", "clicks") && <MetricCard title="Clicks" value={formatNumber(overview.clicks)} channel="tiktok" />}
+          {showCard("kpis", "ctr") && <MetricCard title="CTR" value={`${overview.ctr.toFixed(2)}%`} channel="tiktok" />}
+          {showCard("kpis", "cpc") && <MetricCard title="CPC" value={formatCurrency(overview.cpc)} channel="tiktok" />}
+          {showCard("kpis", "cpm") && <MetricCard title="CPM" value={formatCurrency(overview.cpm)} channel="tiktok" />}
+          {showCard("kpis", "conversions") && <MetricCard title="Conversions" value={formatNumber(overview.conversions)} channel="tiktok" />}
+          {showCard("kpis", "cost_per_conv") && <MetricCard title="Cost/Conv" value={formatCurrency(overview.costPerConversion)} channel="tiktok" />}
+          {showCard("kpis", "video_views") && <MetricCard title="Video Views" value={formatNumber(overview.videoViews)} channel="tiktok" />}
+          {showCard("kpis", "reach") && <MetricCard title="Reach" value={formatNumber(overview.reach)} channel="tiktok" />}
+          {showCard("kpis", "frequency") && <MetricCard title="Frequency" value={overview.frequency.toFixed(2)} channel="tiktok" />}
         </MetricGrid>
       )}
 

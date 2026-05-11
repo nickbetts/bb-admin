@@ -28,6 +28,7 @@ interface CWVData {
 interface CoreWebVitalsSectionProps {
   url: string;
   visibleBlocks?: string[];
+  hiddenCards?: Record<string, string[]>;
 }
 
 const CATEGORY_CONFIG = {
@@ -96,8 +97,9 @@ function MetricCard({ name, data }: { name: string; data: MetricData | null }) {
   );
 }
 
-export function CoreWebVitalsSection({ url, visibleBlocks }: CoreWebVitalsSectionProps) {
+export function CoreWebVitalsSection({ url, visibleBlocks, hiddenCards }: CoreWebVitalsSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
+  const showCard = (blockId: string, cardId: string) => !hiddenCards?.[blockId]?.includes(cardId);
   const isExplicit = (block: string) => Array.isArray(visibleBlocks) && visibleBlocks.includes(block);
   const [data, setData] = useState<CWVData | null>(null);
   const [deviceData, setDeviceData] = useState<Record<string, CWVData> | null>(null);
@@ -187,12 +189,12 @@ export function CoreWebVitalsSection({ url, visibleBlocks }: CoreWebVitalsSectio
       {/* Core metrics grid */}
       {show("metrics") && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
-          <MetricCard name="lcp" data={data.lcp} />
-          <MetricCard name="cls" data={data.cls} />
-          <MetricCard name="inp" data={data.inp} />
-          <MetricCard name="ttfb" data={data.ttfb} />
-          <MetricCard name="fcp" data={data.fcp} />
-          {data.fid && <MetricCard name="fid" data={data.fid} />}
+          {showCard("metrics", "lcp") && <MetricCard name="lcp" data={data.lcp} />}
+          {showCard("metrics", "cls") && <MetricCard name="cls" data={data.cls} />}
+          {showCard("metrics", "inp") && <MetricCard name="inp" data={data.inp} />}
+          {showCard("metrics", "ttfb") && <MetricCard name="ttfb" data={data.ttfb} />}
+          {showCard("metrics", "fcp") && <MetricCard name="fcp" data={data.fcp} />}
+          {showCard("metrics", "fid") && data.fid && <MetricCard name="fid" data={data.fid} />}
         </div>
       )}
 

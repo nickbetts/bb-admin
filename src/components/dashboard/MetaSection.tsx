@@ -39,6 +39,7 @@ interface MetaSectionProps {
   compareEndDate?: string;
   crossPlatformContext?: string;
   visibleBlocks?: string[];
+  hiddenCards?: Record<string, string[]>;
   hideAlerts?: boolean;
   hideAi?: boolean;
   reportMode?: boolean;
@@ -242,8 +243,9 @@ interface MetaSavedAud { id: string; name: string; approximateCount: number; typ
 interface MetaSpendLimit { campaignId: string; campaignName: string; spendingLimit: number | null; dailyBudget: number | null; lifetimeBudget: number | null; amountSpent: number }
 interface MetaHourlyRow { hourOfDay: string; impressions: number; clicks: number; spend: number; conversions: number; conversionValue: number; cpc: number }
 
-export function MetaSection({ clientId, clientName, startDate, endDate, compareStartDate, compareEndDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, reportMode, clickFraudToken, signalConfig, onMetricsReady, onPreviousMetricsReady, afterHeader }: MetaSectionProps) {
+export function MetaSection({ clientId, clientName, startDate, endDate, compareStartDate, compareEndDate, crossPlatformContext, visibleBlocks, hiddenCards, hideAlerts, hideAi, reportMode, clickFraudToken, signalConfig, onMetricsReady, onPreviousMetricsReady, afterHeader }: MetaSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
+  const showCard = (blockId: string, cardId: string) => !hiddenCards?.[blockId]?.includes(cardId);
   const isExplicit = (block: string) => Array.isArray(visibleBlocks) && visibleBlocks.includes(block);
   const [overview, setOverview] = useState<MetaOverview | null>(null);
   const [prevOverview, setPrevOverview] = useState<MetaOverview | null>(null);
@@ -651,47 +653,47 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
       <div className="flex flex-col gap-6">
       {/* Primary overview metrics */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-5">
-        <MetricCard
+        {showCard("kpis", "spend") && <MetricCard
           title="Spend"
           value={formatCurrency(overview.totalSpend)}
           change={prevOverview ? pctChange(overview.totalSpend, prevOverview.totalSpend) : undefined}
           changeDiff={prevOverview ? diffStr(overview.totalSpend, prevOverview.totalSpend, "currency") : undefined}
-        />
-        <MetricCard
+        />}
+        {showCard("kpis", "impressions") && <MetricCard
           title="Impressions"
           value={formatNumber(overview.totalImpressions)}
           change={prevOverview ? pctChange(overview.totalImpressions, prevOverview.totalImpressions) : undefined}
           changeDiff={prevOverview ? diffStr(overview.totalImpressions, prevOverview.totalImpressions, "count") : undefined}
-        />
-        <MetricCard
+        />}
+        {showCard("kpis", "clicks") && <MetricCard
           title="Clicks"
           value={formatNumber(overview.totalClicks)}
           change={prevOverview ? pctChange(overview.totalClicks, prevOverview.totalClicks) : undefined}
           changeDiff={prevOverview ? diffStr(overview.totalClicks, prevOverview.totalClicks, "count") : undefined}
-        />
-        <MetricCard
+        />}
+        {showCard("kpis", "conversions") && <MetricCard
           title={overview.conversionLabel}
           value={formatNumber(overview.totalConversions)}
           change={prevOverview ? pctChange(overview.totalConversions, prevOverview.totalConversions) : undefined}
           changeDiff={prevOverview ? diffStr(overview.totalConversions, prevOverview.totalConversions, "count") : undefined}
-        />
-        <MetricCard
+        />}
+        {showCard("kpis", "roas") && <MetricCard
           title="ROAS"
           value={`${overview.avgRoas.toFixed(2)}x`}
           change={prevOverview ? pctChange(overview.avgRoas, prevOverview.avgRoas) : undefined}
-        />
-        <MetricCard
+        />}
+        {showCard("kpis", "cpc") && <MetricCard
           title="CPC"
           value={formatCurrency(overview.avgCpc)}
           change={prevOverview ? pctChange(prevOverview.avgCpc, overview.avgCpc) : undefined}
           changeDiff={prevOverview ? diffStr(overview.avgCpc, prevOverview.avgCpc, "currency") : undefined}
-        />
+        />}
       </div>
 
       {/* Secondary metrics */}
       {(overview.reach > 0 || overview.outboundClicks > 0 || overview.landingPageViews > 0 || overview.totalConversionValue > 0) && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-          {overview.totalConversionValue > 0 && (
+          {showCard("kpis", "conv_value") && overview.totalConversionValue > 0 && (
             <MetricCard
               title="Conv. Value"
               value={formatCurrency(overview.totalConversionValue)}
@@ -703,29 +705,29 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
                 : undefined}
             />
           )}
-          <MetricCard
+          {showCard("kpis", "reach") && <MetricCard
             title="Reach"
             value={formatNumber(overview.reach)}
             change={prevOverview ? pctChange(overview.reach, prevOverview.reach) : undefined}
             changeDiff={prevOverview ? diffStr(overview.reach, prevOverview.reach, "count") : undefined}
-          />
-          <MetricCard
+          />}
+          {showCard("kpis", "frequency") && <MetricCard
             title="Frequency"
             value={overview.frequency.toFixed(2)}
             change={prevOverview ? pctChange(overview.frequency, prevOverview.frequency) : undefined}
-          />
-          <MetricCard
+          />}
+          {showCard("kpis", "outbound_clicks") && <MetricCard
             title="Outbound Clicks"
             value={formatNumber(overview.outboundClicks)}
             change={prevOverview ? pctChange(overview.outboundClicks, prevOverview.outboundClicks) : undefined}
             changeDiff={prevOverview ? diffStr(overview.outboundClicks, prevOverview.outboundClicks, "count") : undefined}
-          />
-          <MetricCard
+          />}
+          {showCard("kpis", "landing_page_views") && <MetricCard
             title="Landing Page Views"
             value={formatNumber(overview.landingPageViews)}
             change={prevOverview ? pctChange(overview.landingPageViews, prevOverview.landingPageViews) : undefined}
             changeDiff={prevOverview ? diffStr(overview.landingPageViews, prevOverview.landingPageViews, "count") : undefined}
-          />
+          />}
         </div>
       )}
       </div>

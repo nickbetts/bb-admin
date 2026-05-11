@@ -67,10 +67,12 @@ interface CallRailSectionProps {
   clientName: string;
   crossPlatformContext?: string;
   visibleBlocks?: string[];
+  hiddenCards?: Record<string, string[]>;
 }
 
-export function CallRailSection({ clientId, clientName, crossPlatformContext, visibleBlocks }: CallRailSectionProps) {
+export function CallRailSection({ clientId, clientName, crossPlatformContext, visibleBlocks, hiddenCards }: CallRailSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
+  const showCard = (blockId: string, cardId: string) => !hiddenCards?.[blockId]?.includes(cardId);
   const isExplicit = (block: string) => Array.isArray(visibleBlocks) && visibleBlocks.includes(block);
   const [data, setData] = useState<CallRailData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -112,10 +114,10 @@ export function CallRailSection({ clientId, clientName, crossPlatformContext, vi
     <div>
       {show("kpis") && summary && (
         <MetricGrid cols={4} className="mb-5">
-          <MetricCard title="Total Calls" value={summary.totalCalls} icon={<Phone style={{ width: 14, height: 14 }} />} channel="callrail" />
-          <MetricCard title="Answered" value={`${answeredPct}%`} icon={<PhoneCall style={{ width: 14, height: 14 }} />} channel="callrail" />
-          <MetricCard title="Missed" value={summary.missedCalls} icon={<PhoneMissed style={{ width: 14, height: 14 }} />} channel="callrail" />
-          <MetricCard title="Avg Duration" value={summary.avgDuration} icon={<Phone style={{ width: 14, height: 14 }} />} channel="callrail" />
+          {showCard("kpis", "total_calls") && <MetricCard title="Total Calls" value={summary.totalCalls} icon={<Phone style={{ width: 14, height: 14 }} />} channel="callrail" />}
+          {showCard("kpis", "answered") && <MetricCard title="Answered" value={`${answeredPct}%`} icon={<PhoneCall style={{ width: 14, height: 14 }} />} channel="callrail" />}
+          {showCard("kpis", "missed") && <MetricCard title="Missed" value={summary.missedCalls} icon={<PhoneMissed style={{ width: 14, height: 14 }} />} channel="callrail" />}
+          {showCard("kpis", "avg_duration") && <MetricCard title="Avg Duration" value={summary.avgDuration} icon={<Phone style={{ width: 14, height: 14 }} />} channel="callrail" />}
         </MetricGrid>
       )}
 

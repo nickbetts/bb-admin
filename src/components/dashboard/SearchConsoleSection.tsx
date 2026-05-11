@@ -36,6 +36,7 @@ interface SearchConsoleSectionProps {
   googleAdsCustomerId?: string | null;
   crossPlatformContext?: string;
   visibleBlocks?: string[];
+  hiddenCards?: Record<string, string[]>;
   hideAlerts?: boolean;
   hideAi?: boolean;
   onMetricsReady?: (metrics: Record<string, number>) => void;
@@ -168,6 +169,7 @@ export function SearchConsoleSection({
   googleAdsCustomerId,
   crossPlatformContext,
   visibleBlocks,
+  hiddenCards,
   hideAlerts,
   hideAi,
   onMetricsReady,
@@ -175,6 +177,7 @@ export function SearchConsoleSection({
   afterHeader,
 }: SearchConsoleSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
+  const showCard = (blockId: string, cardId: string) => !hiddenCards?.[blockId]?.includes(cardId);
   const isExplicit = (block: string) => Array.isArray(visibleBlocks) && visibleBlocks.includes(block);
   const [overview, setOverview] = useState<GSCOverview | null>(null);
   const [prevOverview, setPrevOverview] = useState<GSCOverview | null>(null);
@@ -458,38 +461,38 @@ export function SearchConsoleSection({
       {/* Overview metrics */}
       {show("kpis") && (
       <div className="grid-4">
-        <MetricCard
+        {showCard("kpis", "total_clicks") && <MetricCard
           title="Total Clicks"
           value={formatNumber(overview?.clicks ?? 0)}
           change={hasPrevData ? pctChange(overview?.clicks ?? 0, prevOverview!.clicks) : undefined}
           changeLabel={hasPrevData ? "vs prev period" : undefined}
           icon={<MousePointer className="h-5 w-5" />}
           color="purple"
-        />
-        <MetricCard
+        />}
+        {showCard("kpis", "impressions") && <MetricCard
           title="Impressions"
           value={formatNumber(overview?.impressions ?? 0)}
           change={hasPrevData ? pctChange(overview?.impressions ?? 0, prevOverview!.impressions) : undefined}
           changeLabel={hasPrevData ? "vs prev period" : undefined}
           icon={<Eye className="h-5 w-5" />}
           color="blue"
-        />
-        <MetricCard
+        />}
+        {showCard("kpis", "avg_ctr") && <MetricCard
           title="Average CTR"
           value={`${((overview?.ctr ?? 0) * 100).toFixed(2)}%`}
           change={hasPrevData ? pctChange(overview?.ctr ?? 0, prevOverview!.ctr) : undefined}
           changeLabel={hasPrevData ? "vs prev period" : undefined}
           icon={<TrendingUp className="h-5 w-5" />}
           color="green"
-        />
-        <MetricCard
+        />}
+        {showCard("kpis", "avg_position") && <MetricCard
           title="Avg. Position"
           value={(overview?.position ?? 0).toFixed(1)}
           change={hasPrevData ? pctChange(prevOverview!.position, overview?.position ?? 0) : undefined}
           changeLabel={hasPrevData ? "vs prev period" : undefined}
           icon={<Search className="h-5 w-5" />}
           color="orange"
-        />
+        />}
       </div>
       )}
 

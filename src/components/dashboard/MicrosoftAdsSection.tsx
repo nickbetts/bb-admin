@@ -20,6 +20,7 @@ interface MicrosoftAdsSectionProps {
   endDate: string;
   crossPlatformContext?: string;
   visibleBlocks?: string[];
+  hiddenCards?: Record<string, string[]>;
 }
 
 interface MicrosoftAdsOverview {
@@ -80,8 +81,9 @@ interface MsGeoBreakdown {
   spend: number;
 }
 
-export function MicrosoftAdsSection({ clientId, clientName, startDate, endDate, crossPlatformContext, visibleBlocks }: MicrosoftAdsSectionProps) {
+export function MicrosoftAdsSection({ clientId, clientName, startDate, endDate, crossPlatformContext, visibleBlocks, hiddenCards }: MicrosoftAdsSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
+  const showCard = (blockId: string, cardId: string) => !hiddenCards?.[blockId]?.includes(cardId);
   const isExplicit = (block: string) => Array.isArray(visibleBlocks) && visibleBlocks.includes(block);
   const [data, setData] = useState<{ overview: MicrosoftAdsOverview; campaigns: MicrosoftAdsCampaign[]; keywords?: MsKeyword[]; searchTerms?: MsSearchTerm[]; deviceBreakdown?: MsDeviceBreakdown[]; geoBreakdown?: MsGeoBreakdown[] } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -128,15 +130,15 @@ export function MicrosoftAdsSection({ clientId, clientName, startDate, endDate, 
       {/* Overview KPI Cards */}
       {show("kpis") && (
         <MetricGrid cols={4}>
-          <MetricCard title="Spend" value={formatCurrency(overview.spend)} channel="microsoft_ads" />
-          <MetricCard title="Impressions" value={formatNumber(overview.impressions)} channel="microsoft_ads" />
-          <MetricCard title="Clicks" value={formatNumber(overview.clicks)} channel="microsoft_ads" />
-          <MetricCard title="CTR" value={`${overview.ctr.toFixed(2)}%`} channel="microsoft_ads" />
-          <MetricCard title="CPC" value={formatCurrency(overview.cpc)} channel="microsoft_ads" />
-          <MetricCard title="Conversions" value={formatNumber(overview.conversions)} channel="microsoft_ads" />
-          <MetricCard title="Revenue" value={formatCurrency(overview.revenue)} channel="microsoft_ads" />
-          <MetricCard title="ROAS" value={`${overview.roas.toFixed(2)}×`} channel="microsoft_ads" />
-          <MetricCard title="Cost/Conv" value={formatCurrency(overview.costPerConversion)} channel="microsoft_ads" />
+          {showCard("kpis", "spend") && <MetricCard title="Spend" value={formatCurrency(overview.spend)} channel="microsoft_ads" />}
+          {showCard("kpis", "impressions") && <MetricCard title="Impressions" value={formatNumber(overview.impressions)} channel="microsoft_ads" />}
+          {showCard("kpis", "clicks") && <MetricCard title="Clicks" value={formatNumber(overview.clicks)} channel="microsoft_ads" />}
+          {showCard("kpis", "ctr") && <MetricCard title="CTR" value={`${overview.ctr.toFixed(2)}%`} channel="microsoft_ads" />}
+          {showCard("kpis", "cpc") && <MetricCard title="CPC" value={formatCurrency(overview.cpc)} channel="microsoft_ads" />}
+          {showCard("kpis", "conversions") && <MetricCard title="Conversions" value={formatNumber(overview.conversions)} channel="microsoft_ads" />}
+          {showCard("kpis", "revenue") && <MetricCard title="Revenue" value={formatCurrency(overview.revenue)} channel="microsoft_ads" />}
+          {showCard("kpis", "roas") && <MetricCard title="ROAS" value={`${overview.roas.toFixed(2)}×`} channel="microsoft_ads" />}
+          {showCard("kpis", "cost_per_conv") && <MetricCard title="Cost/Conv" value={formatCurrency(overview.costPerConversion)} channel="microsoft_ads" />}
         </MetricGrid>
       )}
 

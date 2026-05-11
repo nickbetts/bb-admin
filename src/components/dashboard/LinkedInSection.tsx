@@ -65,10 +65,12 @@ interface LinkedInSectionProps {
   endDate: string;
   crossPlatformContext?: string;
   visibleBlocks?: string[];
+  hiddenCards?: Record<string, string[]>;
 }
 
-export function LinkedInSection({ clientId, clientName, accountId, accessToken, startDate, endDate, crossPlatformContext, visibleBlocks }: LinkedInSectionProps) {
+export function LinkedInSection({ clientId, clientName, accountId, accessToken, startDate, endDate, crossPlatformContext, visibleBlocks, hiddenCards }: LinkedInSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
+  const showCard = (blockId: string, cardId: string) => !hiddenCards?.[blockId]?.includes(cardId);
   const isExplicit = (block: string) => Array.isArray(visibleBlocks) && visibleBlocks.includes(block);
   const [loading, setLoading] = useState(false);
   const [overview, setOverview] = useState<LinkedInOverview | null>(null);
@@ -123,11 +125,11 @@ export function LinkedInSection({ clientId, clientName, accountId, accessToken, 
         <>
           {show("kpis") && (
             <MetricGrid cols={5}>
-              <MetricCard title="Impressions" value={overview.impressions.toLocaleString()} channel="linkedin" />
-              <MetricCard title="Clicks" value={overview.clicks.toLocaleString()} subtitle={`CTR: ${overview.ctr.toFixed(2)}%`} channel="linkedin" />
-              <MetricCard title="Spend" value={`£${overview.spend.toFixed(2)}`} subtitle={`CPC: £${overview.cpc.toFixed(2)}`} channel="linkedin" />
-              <MetricCard title="Conversions / Leads" value={overview.conversions.toLocaleString()} subtitle={overview.conversions > 0 ? `CPL: £${overview.cpl.toFixed(2)}` : undefined} channel="linkedin" />
-              <MetricCard title="Reach" value={overview.reach.toLocaleString()} channel="linkedin" />
+              {showCard("kpis", "impressions") && <MetricCard title="Impressions" value={overview.impressions.toLocaleString()} channel="linkedin" />}
+              {showCard("kpis", "clicks") && <MetricCard title="Clicks" value={overview.clicks.toLocaleString()} subtitle={`CTR: ${overview.ctr.toFixed(2)}%`} channel="linkedin" />}
+              {showCard("kpis", "spend") && <MetricCard title="Spend" value={`£${overview.spend.toFixed(2)}`} subtitle={`CPC: £${overview.cpc.toFixed(2)}`} channel="linkedin" />}
+              {showCard("kpis", "conversions") && <MetricCard title="Conversions / Leads" value={overview.conversions.toLocaleString()} subtitle={overview.conversions > 0 ? `CPL: £${overview.cpl.toFixed(2)}` : undefined} channel="linkedin" />}
+              {showCard("kpis", "reach") && <MetricCard title="Reach" value={overview.reach.toLocaleString()} channel="linkedin" />}
             </MetricGrid>
           )}
 

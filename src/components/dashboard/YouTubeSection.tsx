@@ -66,10 +66,12 @@ interface YouTubeSectionProps {
   clientName: string;
   crossPlatformContext?: string;
   visibleBlocks?: string[];
+  hiddenCards?: Record<string, string[]>;
 }
 
-export function YouTubeSection({ clientId, clientName, crossPlatformContext, visibleBlocks }: YouTubeSectionProps) {
+export function YouTubeSection({ clientId, clientName, crossPlatformContext, visibleBlocks, hiddenCards }: YouTubeSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
+  const showCard = (blockId: string, cardId: string) => !hiddenCards?.[blockId]?.includes(cardId);
   const isExplicit = (block: string) => Array.isArray(visibleBlocks) && visibleBlocks.includes(block);
   const [data, setData] = useState<YouTubeData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -119,11 +121,11 @@ export function YouTubeSection({ clientId, clientName, crossPlatformContext, vis
 
       {show("kpis") && analytics && (
         <MetricGrid cols={5} className="mb-5">
-          <MetricCard title="Views" value={analytics.views.toLocaleString()} icon={<Eye style={{ width: 13, height: 13 }} />} channel="youtube" />
-          <MetricCard title="Watch Time" value={`${analytics.watchTimeHours.toLocaleString()}h`} icon={<Clock style={{ width: 13, height: 13 }} />} channel="youtube" />
-          <MetricCard title="New Subs" value={`+${analytics.subscribers.toLocaleString()}`} icon={<Users style={{ width: 13, height: 13 }} />} channel="youtube" />
-          <MetricCard title="Avg Duration" value={analytics.avgViewDuration} icon={<Play style={{ width: 13, height: 13 }} />} channel="youtube" />
-          <MetricCard title="Click-Through Rate" value={`${analytics.ctr}%`} icon={<ThumbsUp style={{ width: 13, height: 13 }} />} channel="youtube" />
+          {showCard("kpis", "views") && <MetricCard title="Views" value={analytics.views.toLocaleString()} icon={<Eye style={{ width: 13, height: 13 }} />} channel="youtube" />}
+          {showCard("kpis", "watch_time") && <MetricCard title="Watch Time" value={`${analytics.watchTimeHours.toLocaleString()}h`} icon={<Clock style={{ width: 13, height: 13 }} />} channel="youtube" />}
+          {showCard("kpis", "new_subs") && <MetricCard title="New Subs" value={`+${analytics.subscribers.toLocaleString()}`} icon={<Users style={{ width: 13, height: 13 }} />} channel="youtube" />}
+          {showCard("kpis", "avg_duration") && <MetricCard title="Avg Duration" value={analytics.avgViewDuration} icon={<Play style={{ width: 13, height: 13 }} />} channel="youtube" />}
+          {showCard("kpis", "ctr") && <MetricCard title="Click-Through Rate" value={`${analytics.ctr}%`} icon={<ThumbsUp style={{ width: 13, height: 13 }} />} channel="youtube" />}
         </MetricGrid>
       )}
 

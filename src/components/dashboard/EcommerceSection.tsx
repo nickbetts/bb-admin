@@ -44,13 +44,15 @@ interface EcommerceSectionProps {
   startDate: string;
   endDate: string;
   visibleBlocks?: string[];
+  hiddenCards?: Record<string, string[]>;
   crossPlatformContext?: string;
 }
 
 const CHART_COLORS = ["#6366f1", "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"];
 
-export function EcommerceSection({ clientId, clientName, platform, startDate, endDate, visibleBlocks, crossPlatformContext }: EcommerceSectionProps) {
+export function EcommerceSection({ clientId, clientName, platform, startDate, endDate, visibleBlocks, hiddenCards, crossPlatformContext }: EcommerceSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
+  const showCard = (blockId: string, cardId: string) => !hiddenCards?.[blockId]?.includes(cardId);
   const isExplicit = (block: string) => Array.isArray(visibleBlocks) && visibleBlocks.includes(block);
   const [stats, setStats] = useState<EcStats | null>(null);
   const [customers, setCustomers] = useState<{ totalCustomers: number; newCustomers: number; returningCustomers: number; averageOrdersPerCustomer: number; topCustomers: Array<{ name: string; email: string; totalSpent: number; orderCount: number }> } | null>(null);
@@ -113,27 +115,27 @@ export function EcommerceSection({ clientId, clientName, platform, startDate, en
           {/* KPIs */}
           {show("kpis") && (
             <div className="grid grid-cols-3 gap-5">
-              <MetricCard
+              {showCard("kpis", "total_revenue") && <MetricCard
                 title="Total Revenue"
                 value={formatCurrency(stats.totalRevenue)}
                 subtitle="Paid orders in period"
                 icon={<TrendingUp className="h-5 w-5" />}
                 color="green"
-              />
-              <MetricCard
+              />}
+              {showCard("kpis", "total_orders") && <MetricCard
                 title="Total Orders"
                 value={formatNumber(stats.totalOrders)}
                 subtitle="Paid orders"
                 icon={<ShoppingCart className="h-5 w-5" />}
                 color="blue"
-              />
-              <MetricCard
+              />}
+              {showCard("kpis", "avg_order_value") && <MetricCard
                 title="Avg. Order Value"
                 value={formatCurrency(stats.averageOrderValue)}
                 subtitle="Per paid order"
                 icon={<Package className="h-5 w-5" />}
                 color="purple"
-              />
+              />}
             </div>
           )}
 

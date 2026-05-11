@@ -2380,17 +2380,17 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                 <div id={`section-${section.id}`} style={{ marginBottom: 56 }}>
                   {section.sectionType === "seo" && (
                     report.client.semrushDomain
-                      ? <SemrushSection domain={report.client.semrushDomain} projectId={report.client.semrushProjectId} campaignIds={semrushCampaignIds} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi afterHeader={sectionAfterHeader} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} />
+                      ? <SemrushSection domain={report.client.semrushDomain} projectId={report.client.semrushProjectId} campaignIds={semrushCampaignIds} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hiddenCards={getHiddenCards(section)} hideAlerts hideAi afterHeader={sectionAfterHeader} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} />
                       : <>{commentaryCard}{unconfiguredNotice("No SEMrush domain connected — configure it in client settings to enable SEO data.")}</>
                   )}
                   {section.sectionType === "web" && (
                     report.client.ga4PropertyId
-                      ? <GA4Section propertyId={report.client.ga4PropertyId} clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} compareStartDate={compareStartDate ?? undefined} compareEndDate={compareEndDate ?? undefined} visibleBlocks={visibleBlocks} hideAlerts hideAi afterHeader={sectionAfterHeader} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} onPreviousMetricsReady={(m) => setSectionPreviousMetrics((p) => ({ ...p, [section.id]: m }))} />
+                      ? <GA4Section propertyId={report.client.ga4PropertyId} clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} compareStartDate={compareStartDate ?? undefined} compareEndDate={compareEndDate ?? undefined} visibleBlocks={visibleBlocks} hiddenCards={getHiddenCards(section)} hideAlerts hideAi afterHeader={sectionAfterHeader} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} onPreviousMetricsReady={(m) => setSectionPreviousMetrics((p) => ({ ...p, [section.id]: m }))} />
                       : <>{commentaryCard}{unconfiguredNotice("No GA4 property connected — configure it in client settings to enable web analytics.")}</>
                   )}
                   {section.sectionType === "paid_social" && (
                     report.client.metaAccountId
-                      ? <MetaSection clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} compareStartDate={compareStartDate ?? undefined} compareEndDate={compareEndDate ?? undefined} visibleBlocks={visibleBlocks} hideAlerts hideAi reportMode afterHeader={sectionAfterHeader} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} onPreviousMetricsReady={(m) => setSectionPreviousMetrics((p) => ({ ...p, [section.id]: m }))} />
+                      ? <MetaSection clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} compareStartDate={compareStartDate ?? undefined} compareEndDate={compareEndDate ?? undefined} visibleBlocks={visibleBlocks} hiddenCards={getHiddenCards(section)} hideAlerts hideAi reportMode afterHeader={sectionAfterHeader} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} onPreviousMetricsReady={(m) => setSectionPreviousMetrics((p) => ({ ...p, [section.id]: m }))} />
                       : <>{commentaryCard}{unconfiguredNotice("No Meta ad account connected — configure it in client settings to enable paid social data.")}</>
                   )}
                   {section.sectionType === "googleads" && (
@@ -2400,32 +2400,32 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                   )}
                   {section.sectionType === "searchconsole" && (
                     report.client.searchConsoleSiteUrl
-                      ? <SearchConsoleSection siteUrl={report.client.searchConsoleSiteUrl} startDate={startDate} endDate={endDate} compareStartDate={compareStartDate ?? undefined} compareEndDate={compareEndDate ?? undefined} visibleBlocks={visibleBlocks} hideAlerts hideAi afterHeader={sectionAfterHeader} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} onPreviousMetricsReady={(m) => setSectionPreviousMetrics((p) => ({ ...p, [section.id]: m }))} />
+                      ? <SearchConsoleSection siteUrl={report.client.searchConsoleSiteUrl} startDate={startDate} endDate={endDate} compareStartDate={compareStartDate ?? undefined} compareEndDate={compareEndDate ?? undefined} visibleBlocks={visibleBlocks} hiddenCards={getHiddenCards(section)} hideAlerts hideAi afterHeader={sectionAfterHeader} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} onPreviousMetricsReady={(m) => setSectionPreviousMetrics((p) => ({ ...p, [section.id]: m }))} />
                       : <>{commentaryCard}{unconfiguredNotice("No Search Console property connected — configure it in client settings to enable search data.")}</>
                   )}
                   {section.sectionType === "ecommerce" && (
                     (report.client.woocommerceUrl || report.client.shopifyStoreDomain)
-                      ? <>{commentaryCard}<EcommerceSection clientId={report.client.id} platform={report.client.shopifyStoreDomain ? "shopify" : "woocommerce"} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} /></>
+                      ? <>{commentaryCard}<EcommerceSection clientId={report.client.id} platform={report.client.shopifyStoreDomain ? "shopify" : "woocommerce"} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hiddenCards={getHiddenCards(section)} /></>
                       : <>{commentaryCard}{unconfiguredNotice("No WooCommerce or Shopify store connected — configure it in client settings to enable e-commerce data.")}</>
                   )}
                   {section.sectionType === "tiktok" && (
                     report.client.tiktokAdvertiserId
-                      ? <>{commentaryCard}<TikTokSection clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} /></>
+                      ? <>{commentaryCard}<TikTokSection clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hiddenCards={getHiddenCards(section)} /></>
                       : <>{commentaryCard}{unconfiguredNotice("No TikTok advertiser account connected — configure it in client settings to enable TikTok Ads data.")}</>
                   )}
                   {section.sectionType === "microsoft_ads" && (
                     report.client.microsoftAdsAccountId
-                      ? <>{commentaryCard}<MicrosoftAdsSection clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} /></>
+                      ? <>{commentaryCard}<MicrosoftAdsSection clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hiddenCards={getHiddenCards(section)} /></>
                       : <>{commentaryCard}{unconfiguredNotice("No Microsoft Ads account connected — configure it in client settings to enable Microsoft Advertising data.")}</>
                   )}
                   {section.sectionType === "linkedin" && (
                     report.client.linkedinAccountId
-                      ? <>{commentaryCard}<LinkedInSection clientId={report.client.id} clientName={report.client.name} accountId={report.client.linkedinAccountId} accessToken={report.client.linkedinAccessToken} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} /></>
+                      ? <>{commentaryCard}<LinkedInSection clientId={report.client.id} clientName={report.client.name} accountId={report.client.linkedinAccountId} accessToken={report.client.linkedinAccessToken} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hiddenCards={getHiddenCards(section)} /></>
                       : <>{commentaryCard}{unconfiguredNotice("No LinkedIn ad account connected — configure it in client settings to enable LinkedIn Ads data.")}</>
                   )}
                   {section.sectionType === "klaviyo" && (
                     report.client.klaviyoApiKey
-                      ? <>{commentaryCard}<KlaviyoSection clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} /></>
+                      ? <>{commentaryCard}<KlaviyoSection clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hiddenCards={getHiddenCards(section)} /></>
                       : <>{commentaryCard}{unconfiguredNotice("No Klaviyo account connected — configure it in client settings to enable email marketing data.")}</>
                   )}
                   {section.sectionType === "goals" && (
@@ -2433,22 +2433,22 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                   )}
                   {section.sectionType === "youtube" && (
                     report.client.youtubeChannelId
-                      ? <>{commentaryCard}<YouTubeSection clientId={report.client.id} clientName={report.client.name} visibleBlocks={visibleBlocks} /></>
+                      ? <>{commentaryCard}<YouTubeSection clientId={report.client.id} clientName={report.client.name} visibleBlocks={visibleBlocks} hiddenCards={getHiddenCards(section)} /></>
                       : <>{commentaryCard}{unconfiguredNotice("No YouTube channel connected — configure it in client settings to enable YouTube analytics data.")}</>
                   )}
                   {section.sectionType === "hubspot" && (
                     report.client.hubspotPortalId
-                      ? <>{commentaryCard}<HubSpotSection clientId={report.client.id} clientName={report.client.name} visibleBlocks={visibleBlocks} /></>
+                      ? <>{commentaryCard}<HubSpotSection clientId={report.client.id} clientName={report.client.name} visibleBlocks={visibleBlocks} hiddenCards={getHiddenCards(section)} /></>
                       : <>{commentaryCard}{unconfiguredNotice("No HubSpot portal connected — configure it in client settings to enable CRM data.")}</>
                   )}
                   {section.sectionType === "callrail" && (
                     report.client.callrailAccountId
-                      ? <>{commentaryCard}<CallRailSection clientId={report.client.id} clientName={report.client.name} visibleBlocks={visibleBlocks} /></>
+                      ? <>{commentaryCard}<CallRailSection clientId={report.client.id} clientName={report.client.name} visibleBlocks={visibleBlocks} hiddenCards={getHiddenCards(section)} /></>
                       : <>{commentaryCard}{unconfiguredNotice("No CallRail account connected — configure it in client settings to enable call tracking data.")}</>
                   )}
                   {section.sectionType === "core_web_vitals" && (
                     report.client.website
-                      ? <>{commentaryCard}<CoreWebVitalsSection url={report.client.website} visibleBlocks={visibleBlocks} /></>
+                      ? <>{commentaryCard}<CoreWebVitalsSection url={report.client.website} visibleBlocks={visibleBlocks} hiddenCards={getHiddenCards(section)} /></>
                       : <>{commentaryCard}{unconfiguredNotice("No website URL set for this client — configure it in client settings to enable Core Web Vitals data.")}</>
                   )}
                   {section.sectionType === "competitor_intelligence" && (
