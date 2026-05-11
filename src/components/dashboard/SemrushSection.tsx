@@ -213,7 +213,7 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
       const params = new URLSearchParams(window.location.search);
       if (tag) params.set("semrush_tag", tag); else params.delete("semrush_tag");
       const qs = params.toString();
-      history.replaceState(null, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
+      window.history.replaceState(null, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
     }
   }
   // ──────────────────────────────────────────────────────────
