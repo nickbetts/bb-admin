@@ -1,4 +1,5 @@
-export type BlockDef = { id: string; label: string };
+export type CardDef = { id: string; label: string };
+export type BlockDef = { id: string; label: string; cards?: CardDef[] };
 
 // Text-only section types — no metric blocks
 export const TEXT_SECTION_TYPES = [
@@ -45,7 +46,13 @@ export function blockOrderIndex(visibleBlocks: string[] | undefined, blockId: st
 
 export const SECTION_BLOCKS: Record<string, BlockDef[]> = {
   overview: [
-    { id: "funnel", label: "Full-Funnel Board" },
+    { id: "funnel", label: "Full-Funnel Board", cards: [
+      { id: "reach", label: "Reach" },
+      { id: "clicks", label: "Clicks" },
+      { id: "sessions", label: "Sessions" },
+      { id: "conversions", label: "Conversions" },
+      { id: "revenue", label: "Revenue" },
+    ] },
     { id: "paid_kpis", label: "Paid Performance KPIs" },
     { id: "website_kpis", label: "Website & Organic KPIs" },
     { id: "engagement_kpis", label: "Engagement & Conversion KPIs" },
@@ -139,7 +146,18 @@ export const SECTION_BLOCKS: Record<string, BlockDef[]> = {
     { id: "hourly_breakdown", label: "Hourly Performance" },
   ],
   googleads: [
-    { id: "kpis", label: "Key Metrics" },
+    { id: "kpis", label: "Key Metrics", cards: [
+      { id: "clicks", label: "Clicks" },
+      { id: "cost", label: "Cost" },
+      { id: "conversions", label: "Conversions" },
+      { id: "conv_value", label: "Conv. Value" },
+      { id: "roas", label: "ROAS" },
+      { id: "cpa", label: "CPA" },
+      { id: "impressions", label: "Impressions" },
+      { id: "ctr", label: "CTR" },
+      { id: "avg_cpc", label: "Avg. CPC" },
+      { id: "search_imp_share", label: "Search Imp. Share" },
+    ]},
     { id: "chart", label: "Performance Trend" },
     { id: "campaigns", label: "Campaign Breakdown" },
     { id: "ad_groups", label: "Ad Groups" },

@@ -249,6 +249,8 @@ interface Props {
   compareEndDate?: string;
   crossPlatformContext?: string;
   visibleBlocks?: string[];
+  /** Per-block map of hidden card IDs, e.g. `{ kpis: ["roas", "conv_value"] }` */
+  hiddenCards?: Record<string, string[]>;
   hideAlerts?: boolean;
   hideAi?: boolean;
   reportMode?: boolean;
@@ -289,8 +291,9 @@ function diffStr(curr: number, prev: number | null | undefined, fmt: "count" | "
 
 type GAdsAlert = { severity: "high" | "medium"; label: string; level: string; detail: string; recommendation: string };
 
-export function GoogleAdsSection({ customerId, clientId, clientName, startDate, endDate, compareStartDate, compareEndDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, reportMode, clickFraudToken, signalConfig, onMetricsReady, onPreviousMetricsReady, afterHeader }: Props) {
+export function GoogleAdsSection({ customerId, clientId, clientName, startDate, endDate, compareStartDate, compareEndDate, crossPlatformContext, visibleBlocks, hiddenCards, hideAlerts, hideAi, reportMode, clickFraudToken, signalConfig, onMetricsReady, onPreviousMetricsReady, afterHeader }: Props) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
+  const showCard = (blockId: string, cardId: string) => !hiddenCards?.[blockId]?.includes(cardId);
   const isExplicit = (block: string) => Array.isArray(visibleBlocks) && visibleBlocks.includes(block);
   const [data, setData] = useState<GoogleAdsData | null>(null);
   const [prevData, setPrevData] = useState<GoogleAdsData | null>(null);
@@ -613,65 +616,65 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
           <div className="flex flex-col gap-6">
           {/* Overview metric cards */}
           <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-5">
-            <MetricCard
+            {showCard("kpis", "clicks") && <MetricCard
               title="Clicks"
               value={formatNumber(data.overview.clicks)}
               change={prevOverview ? pctChange(data.overview.clicks, prevOverview.clicks) : undefined}
               changeDiff={prevOverview ? diffStr(data.overview.clicks, prevOverview.clicks, "count") : undefined}
-            />
-            <MetricCard
+            />}
+            {showCard("kpis", "cost") && <MetricCard
               title="Cost"
               value={formatCurrency(micros(data.overview.costMicros))}
               change={prevOverview ? pctChange(micros(data.overview.costMicros), micros(prevOverview.costMicros)) : undefined}
               changeDiff={prevOverview ? diffStr(micros(data.overview.costMicros), micros(prevOverview.costMicros), "currency") : undefined}
-            />
-            <MetricCard
+            />}
+            {showCard("kpis", "conversions") && <MetricCard
               title="Conversions"
               value={formatNumber(data.overview.conversions)}
               change={prevOverview ? pctChange(data.overview.conversions, prevOverview.conversions) : undefined}
               changeDiff={prevOverview ? diffStr(data.overview.conversions, prevOverview.conversions, "count") : undefined}
-            />
-            <MetricCard
+            />}
+            {showCard("kpis", "conv_value") && <MetricCard
               title="Conv. Value"
               value={formatCurrency(data.overview.conversionsValue)}
               change={prevOverview ? pctChange(data.overview.conversionsValue, prevOverview.conversionsValue) : undefined}
               changeDiff={prevOverview ? diffStr(data.overview.conversionsValue, prevOverview.conversionsValue, "currency") : undefined}
-            />
-            <MetricCard
+            />}
+            {showCard("kpis", "roas") && <MetricCard
               title="ROAS"
               value={`${roas(data.overview.conversionsValue, data.overview.costMicros).toFixed(2)}x`}
               change={prevOverview ? pctChange(roas(data.overview.conversionsValue, data.overview.costMicros), roas(prevOverview.conversionsValue, prevOverview.costMicros)) : undefined}
-            />
-            <MetricCard
+            />}
+            {showCard("kpis", "cpa") && <MetricCard
               title="CPA"
               value={formatCurrency(cpa(data.overview.costMicros, data.overview.conversions))}
               change={prevOverview ? pctChange(cpa(prevOverview.costMicros, prevOverview.conversions), cpa(data.overview.costMicros, data.overview.conversions)) : undefined}
               changeDiff={prevOverview ? diffStr(cpa(data.overview.costMicros, data.overview.conversions), cpa(prevOverview.costMicros, prevOverview.conversions), "currency") : undefined}
-            />
+            />}
           </div>
 
           {/* Secondary metrics row */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
-            <MetricCard
+            {showCard("kpis", "impressions") && <MetricCard
               title="Impressions"
               value={formatNumber(data.overview.impressions)}
               change={prevOverview ? pctChange(data.overview.impressions, prevOverview.impressions) : undefined}
               changeDiff={prevOverview ? diffStr(data.overview.impressions, prevOverview.impressions, "count") : undefined}
-            />
-            <MetricCard
+            />}
+            {showCard("kpis", "ctr") && <MetricCard
               title="CTR"
               value={formatPercent(ctr(data.overview.clicks, data.overview.impressions))}
               change={prevOverview ? pctChange(ctr(data.overview.clicks, data.overview.impressions), ctr(prevOverview.clicks, prevOverview.impressions)) : undefined}
-            />
-            <MetricCard
+            />}
+            {showCard("kpis", "avg_cpc") && <MetricCard
               title="Avg. CPC"
               value={formatCurrency(
                 data.overview.clicks > 0
                   ? micros(data.overview.costMicros) / data.overview.clicks
                   : 0
               )}
-            />
-            {weightedIS != null && (
+            />}
+            {showCard("kpis", "search_imp_share") && weightedIS != null && (
               <MetricCard
                 title="Search Imp. Share"
                 value={formatPercent(weightedIS)}

@@ -59,6 +59,7 @@ interface Props {
   compareEndDate?: string;
   reportMode?: boolean;
   visibleBlocks?: string[];
+  hiddenCards?: Record<string, string[]>;
   afterHeader?: ReactNode;
 }
 
@@ -212,7 +213,7 @@ function ScoreRing({ score, size = 80 }: { score: number; size?: number }) {
 
 // ─── Component ─────────────────────────────────────────────────────────────────
 
-export function OverviewSection({ client, startDate, endDate, compareStartDate, compareEndDate, reportMode, visibleBlocks, afterHeader }: Props) {
+export function OverviewSection({ client, startDate, endDate, compareStartDate, compareEndDate, reportMode, visibleBlocks, hiddenCards, afterHeader }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [data, setData] = useState<PlatformData>({});
@@ -634,6 +635,13 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
 
   // ─── Channel efficiency rows ──────────────────────────────────────────
 
+  const visibleFunnelStages = useMemo(() => {
+    const hiddenCols = hiddenCards?.["funnel"] ?? [];
+    return hiddenCols.length > 0
+      ? funnelStages.filter(s => !hiddenCols.includes(s.label.toLowerCase()))
+      : funnelStages;
+  }, [funnelStages, hiddenCards]);
+
   const channelRows = useMemo(() => {
     const clamp = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
 
@@ -984,15 +992,15 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
         )}
 
         {/* Full-Funnel Board */}
-        {show("funnel") && funnelStages.some(s => s.value > 0) && (
+        {show("funnel") && visibleFunnelStages.some(s => s.value > 0) && (
           <SectionCard title="Full-Funnel Performance" subtitle="Combined reach-to-revenue across all channels">
             <div style={{ display: "flex", gap: 0, borderRadius: 8, overflow: "hidden", border: "1px solid var(--border)" }}>
-              {funnelStages.map((stage, i) => {
+              {visibleFunnelStages.map((stage, i) => {
                 const change = stage.prev > 0 ? pctChange(stage.value, stage.prev) : undefined;
-                const maxVal = Math.max(...funnelStages.map(s => s.value));
+                const maxVal = Math.max(...visibleFunnelStages.map(s => s.value));
                 const barHeight = maxVal > 0 ? Math.max(20, (stage.value / maxVal) * 100) : 20;
                 return (
-                  <div key={stage.label} style={{ flex: 1, display: "flex", flexDirection: "column", padding: "16px 12px 12px", background: i % 2 === 0 ? "var(--surface)" : "var(--bg)", borderRight: i < funnelStages.length - 1 ? "1px solid var(--border)" : "none", position: "relative" }}>
+                  <div key={stage.label} style={{ flex: 1, display: "flex", flexDirection: "column", padding: "16px 12px 12px", background: i % 2 === 0 ? "var(--surface)" : "var(--bg)", borderRight: i < visibleFunnelStages.length - 1 ? "1px solid var(--border)" : "none", position: "relative" }}>
                     <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.06em", color: "var(--text-3)", marginBottom: 8, textAlign: "center" as const }}>{stage.label}</p>
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, flex: 1, justifyContent: "flex-end" }}>
                       <div style={{ width: "70%", height: barHeight, borderRadius: 6, background: "linear-gradient(180deg, #6366f1 0%, #8b5cf6 100%)", opacity: 0.15 + (barHeight / 100) * 0.85 }} />
@@ -1021,7 +1029,7 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
               <MetricCard title="Total Conversions" value={formatNumber(totalConversions)} icon={<ShoppingCart className="h-5 w-5" />} color="green" change={hasPrevPaid ? pctChange(totalConversions, prevTotalConversions) : undefined} changeDiff={hasPrevPaid ? diffStr(totalConversions, prevTotalConversions, "count") : undefined} changeLabel="vs prev period" />
               <MetricCard title="Total Revenue" value={formatCurrency(totalRevenue)} icon={<TrendingUp className="h-5 w-5" />} color="green" change={hasPrevPaid ? pctChange(totalRevenue, prevTotalRevenue) : undefined} changeDiff={hasPrevPaid ? diffStr(totalRevenue, prevTotalRevenue, "currency") : undefined} changeLabel="vs prev period" />
               <MetricCard title="Blended ROAS" value={`${blendedRoas.toFixed(2)}x`} icon={<TrendingUp className="h-5 w-5" />} color="blue" change={hasPrevPaid && prevBlendedRoas > 0 ? pctChange(blendedRoas, prevBlendedRoas) : undefined} changeLabel="vs prev period" />
-              <MetricCard title="Blended CPA" value={formatCurrency(blendedCpa)} icon={<Wallet className="h-5 w-5" />} color="orange" change={hasPrevPaid && prevBlendedCpa > 0 ? pctChange(blendedCpa, prevBlendedCpa) : undefined} changeDiff={hasPrevPaid ? diffStr(blendedCpa, prevBlendedCpa, "currency") : undefined} changeLabel="vs prev period" />
+              <MetricCard title="Blended CPA" value={formatCurrency(blendedCpa)} icon={<Wallet className="h-5 w-5" />} color="orange" change={hasPrevPaid && prevBlendedCpa > 0 ? pctChange(prevBlendedCpa, blendedCpa) : undefined} changeDiff={hasPrevPaid ? diffStr(blendedCpa, prevBlendedCpa, "currency") : undefined} changeLabel="vs prev period" />
               <MetricCard title="Total Paid Clicks" value={formatNumber(totalPaidClicks)} icon={<MousePointer className="h-5 w-5" />} color="blue" change={hasPrevPaid ? pctChange(totalPaidClicks, prevTotalPaidClicks) : undefined} changeDiff={hasPrevPaid ? diffStr(totalPaidClicks, prevTotalPaidClicks, "count") : undefined} changeLabel="vs prev period" />
             </div>
           </SectionCard>
@@ -1031,7 +1039,7 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
         {show("blended_cpa") && hasPaidData && totalConversions > 0 && (
           <SectionCard title="Blended CPA" subtitle="Cost per conversion across all paid channels combined">
             <div className="grid-3" style={{ gap: 16 }}>
-              <MetricCard title="Blended CPA" value={formatCurrency(blendedCpa)} icon={<Wallet className="h-5 w-5" />} color="orange" change={hasPrevPaid && prevBlendedCpa > 0 ? pctChange(blendedCpa, prevBlendedCpa) : undefined} changeDiff={hasPrevPaid ? diffStr(blendedCpa, prevBlendedCpa, "currency") : undefined} changeLabel="vs prev period" />
+              <MetricCard title="Blended CPA" value={formatCurrency(blendedCpa)} icon={<Wallet className="h-5 w-5" />} color="orange" change={hasPrevPaid && prevBlendedCpa > 0 ? pctChange(prevBlendedCpa, blendedCpa) : undefined} changeDiff={hasPrevPaid ? diffStr(blendedCpa, prevBlendedCpa, "currency") : undefined} changeLabel="vs prev period" />
               <MetricCard title="Total Spend" value={formatCurrency(totalAdSpend)} icon={<DollarSign className="h-5 w-5" />} color="purple" />
               <MetricCard title="Total Conversions" value={formatNumber(totalConversions)} icon={<ShoppingCart className="h-5 w-5" />} color="green" />
             </div>
@@ -1097,7 +1105,7 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
         {show("engagement_kpis") && data.ga4 && (
           <SectionCard title="Engagement & Conversion">
             <div className="grid-3" style={{ gap: 16 }}>
-              <MetricCard title="Bounce Rate" value={formatPercent(data.ga4.bounceRate / 100)} icon={<Eye className="h-5 w-5" />} color="red" change={prevData.ga4 ? pctChange(data.ga4.bounceRate, prevData.ga4.bounceRate) : undefined} changeLabel="vs prev period" />
+              <MetricCard title="Bounce Rate" value={formatPercent(data.ga4.bounceRate / 100)} icon={<Eye className="h-5 w-5" />} color="red" change={prevData.ga4 ? pctChange(prevData.ga4.bounceRate, data.ga4.bounceRate) : undefined} changeLabel="vs prev period" />
               <MetricCard title="Engagement Rate" value={formatPercent(data.ga4.engagementRate / 100)} icon={<TrendingUp className="h-5 w-5" />} color="green" change={prevData.ga4 ? pctChange(data.ga4.engagementRate, prevData.ga4.engagementRate) : undefined} changeLabel="vs prev period" />
               <MetricCard title="Conversion Rate" value={formatPercent(data.ga4.conversionRate / 100)} icon={<ShoppingCart className="h-5 w-5" />} color="green" change={prevData.ga4 ? pctChange(data.ga4.conversionRate, prevData.ga4.conversionRate) : undefined} changeLabel="vs prev period" />
               <MetricCard title="Pageviews" value={formatNumber(data.ga4.pageviews)} icon={<Eye className="h-5 w-5" />} color="blue" change={prevData.ga4 ? pctChange(data.ga4.pageviews, prevData.ga4.pageviews) : undefined} changeDiff={prevData.ga4 ? diffStr(data.ga4.pageviews, prevData.ga4.pageviews, "count") : undefined} changeLabel="vs prev period" />
@@ -1275,18 +1283,18 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
       </div>
 
       {/* ── Full Funnel Board ───────────────────────────────────────────── */}
-      {funnelStages.some(s => s.value > 0) && (
+      {visibleFunnelStages.some(s => s.value > 0) && (
         <>
           <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-3)", marginBottom: -16 }}>
             Full-Funnel Performance
           </p>
           <div style={{ display: "flex", gap: 0, borderRadius: 12, overflow: "hidden", border: "1px solid var(--border)" }}>
-            {funnelStages.map((stage, i) => {
+            {visibleFunnelStages.map((stage, i) => {
               const change = stage.prev > 0 ? pctChange(stage.value, stage.prev) : undefined;
-              const maxVal = Math.max(...funnelStages.map(s => s.value));
+              const maxVal = Math.max(...visibleFunnelStages.map(s => s.value));
               const barHeight = maxVal > 0 ? Math.max(20, (stage.value / maxVal) * 100) : 20;
               return (
-                <div key={stage.label} style={{ flex: 1, display: "flex", flexDirection: "column", padding: "16px 12px 12px", background: i % 2 === 0 ? "var(--card-bg)" : "var(--bg-subtle)", borderRight: i < funnelStages.length - 1 ? "1px solid var(--border)" : "none", position: "relative" }}>
+                <div key={stage.label} style={{ flex: 1, display: "flex", flexDirection: "column", padding: "16px 12px 12px", background: i % 2 === 0 ? "var(--card-bg)" : "var(--bg-subtle)", borderRight: i < visibleFunnelStages.length - 1 ? "1px solid var(--border)" : "none", position: "relative" }}>
                   <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-3)", marginBottom: 8, textAlign: "center" }}>
                     {stage.label}
                   </p>
@@ -1505,7 +1513,7 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
               value={formatCurrency(blendedCpa)}
               icon={<Wallet className="h-5 w-5" />}
               color="orange"
-              change={hasPrevPaid && prevBlendedCpa > 0 ? pctChange(blendedCpa, prevBlendedCpa) : undefined}
+              change={hasPrevPaid && prevBlendedCpa > 0 ? pctChange(prevBlendedCpa, blendedCpa) : undefined}
               changeDiff={hasPrevPaid ? diffStr(blendedCpa, prevBlendedCpa, "currency") : undefined}
               changeLabel="vs prev period"
             />
@@ -1604,7 +1612,7 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
               value={formatPercent(data.ga4.bounceRate / 100)}
               icon={<Eye className="h-5 w-5" />}
               color="red"
-              change={prevData.ga4 ? pctChange(data.ga4.bounceRate, prevData.ga4.bounceRate) : undefined}
+              change={prevData.ga4 ? pctChange(prevData.ga4.bounceRate, data.ga4.bounceRate) : undefined}
               changeLabel="vs prev period"
             />
             <MetricCard

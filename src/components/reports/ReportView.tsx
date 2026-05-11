@@ -96,7 +96,7 @@ import { CompetitorIntelligenceSection } from "@/components/dashboard/Competitor
 import { TextSection } from "@/components/reports/TextSection";
 import { ScreenshotCaptionDialog } from "@/components/reports/ScreenshotCaptionDialog";
 import { parsePeriodToDateRange, formatDateDisplay, getPreviousPeriod } from "@/lib/utils";
-import { SECTION_BLOCKS, isTextSection, TEXT_SECTION_LABELS, type TextSectionType } from "@/lib/report-blocks";
+import { SECTION_BLOCKS, isTextSection, TEXT_SECTION_LABELS, type TextSectionType, type BlockDef } from "@/lib/report-blocks";
 
 interface Section {
   id: string;
@@ -169,12 +169,18 @@ function SortableBlockItem({
   block,
   isVisible,
   onToggle,
+  hiddenCards,
+  onToggleCard,
 }: {
-  block: { id: string; label: string };
+  block: BlockDef | { id: string; label: string };
   isVisible: boolean;
   onToggle: () => void;
+  hiddenCards?: string[];
+  onToggleCard?: (cardId: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
+  const [cardsExpanded, setCardsExpanded] = useState(false);
+  const hasCards = "cards" in block && Array.isArray(block.cards) && block.cards.length > 0;
 
   return (
     <div
@@ -183,41 +189,81 @@ function SortableBlockItem({
         transform: CSS.Transform.toString(transform),
         transition,
         opacity: isDragging ? 0.5 : 1,
-        display: "flex",
-        alignItems: "center",
-        gap: 4,
       }}
     >
-      <button
-        {...listeners}
-        {...attributes}
-        style={{
-          flexShrink: 0, background: "none", border: "none",
-          cursor: isDragging ? "grabbing" : "grab",
-          padding: "2px 3px", color: "var(--text-4)",
-          display: "flex", alignItems: "center",
-          touchAction: "none",
-          opacity: 0.5,
-        }}
-        aria-label="Drag to reorder block"
-      >
-        <GripVertical size={12} />
-      </button>
-      <button
-        onClick={onToggle}
-        style={{
-          flex: 1, display: "flex", alignItems: "center", gap: 8,
-          padding: "7px 10px", borderRadius: "var(--r-sm)",
-          background: isVisible ? "var(--accent-bg)" : "var(--border-subtle)",
-          color: isVisible ? "var(--accent-text)" : "var(--text-3)",
-          border: "none", cursor: "pointer", textAlign: "left",
-          fontSize: 12, fontWeight: isVisible ? 500 : 400,
-          transition: "all 0.15s",
-        }}
-      >
-        {isVisible ? <Eye size={12} style={{ flexShrink: 0 }} /> : <EyeOff size={12} style={{ flexShrink: 0 }} />}
-        {block.label}
-      </button>
+      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        <button
+          {...listeners}
+          {...attributes}
+          style={{
+            flexShrink: 0, background: "none", border: "none",
+            cursor: isDragging ? "grabbing" : "grab",
+            padding: "2px 3px", color: "var(--text-4)",
+            display: "flex", alignItems: "center",
+            touchAction: "none",
+            opacity: 0.5,
+          }}
+          aria-label="Drag to reorder block"
+        >
+          <GripVertical size={12} />
+        </button>
+        <button
+          onClick={onToggle}
+          style={{
+            flex: 1, display: "flex", alignItems: "center", gap: 8,
+            padding: "7px 10px", borderRadius: "var(--r-sm)",
+            background: isVisible ? "var(--accent-bg)" : "var(--border-subtle)",
+            color: isVisible ? "var(--accent-text)" : "var(--text-3)",
+            border: "none", cursor: "pointer", textAlign: "left",
+            fontSize: 12, fontWeight: isVisible ? 500 : 400,
+            transition: "all 0.15s",
+          }}
+        >
+          {isVisible ? <Eye size={12} style={{ flexShrink: 0 }} /> : <EyeOff size={12} style={{ flexShrink: 0 }} />}
+          {block.label}
+        </button>
+        {hasCards && isVisible && (
+          <button
+            onClick={() => setCardsExpanded((v) => !v)}
+            title={cardsExpanded ? "Collapse metric cards" : "Show individual metric card toggles"}
+            style={{
+              flexShrink: 0, background: "none", border: "none", cursor: "pointer",
+              padding: "4px 3px", color: "var(--text-3)",
+              display: "flex", alignItems: "center",
+              borderRadius: "var(--r-sm)",
+            }}
+          >
+            {cardsExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+          </button>
+        )}
+      </div>
+      {hasCards && isVisible && cardsExpanded && (
+        <div style={{ paddingLeft: 28, paddingTop: 4, display: "flex", flexDirection: "column", gap: 2 }}>
+          {"cards" in block && block.cards!.map((card) => {
+            const isCardVisible = !hiddenCards?.includes(card.id);
+            return (
+              <button
+                key={card.id}
+                onClick={() => onToggleCard?.(card.id)}
+                style={{
+                  display: "flex", alignItems: "center", gap: 7,
+                  padding: "5px 8px", borderRadius: "var(--r-sm)",
+                  background: isCardVisible ? "var(--surface-1)" : "var(--border-subtle)",
+                  color: isCardVisible ? "var(--text-2)" : "var(--text-3)",
+                  border: "1px solid var(--border-subtle)",
+                  cursor: "pointer", textAlign: "left",
+                  fontSize: 11, fontWeight: isCardVisible ? 500 : 400,
+                  transition: "all 0.15s",
+                  width: "100%",
+                }}
+              >
+                {isCardVisible ? <Eye size={10} style={{ flexShrink: 0 }} /> : <EyeOff size={10} style={{ flexShrink: 0 }} />}
+                {card.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -233,6 +279,7 @@ function SortableSectionItem({
   blockOrder,
   pageBreakBefore,
   subSections,
+  hiddenCards,
   onToggleEnabled,
   onToggleExpand,
   onToggleBlock,
@@ -242,17 +289,19 @@ function SortableSectionItem({
   hasCustomConfig,
   onToggleSubSection,
   onReorderSubSections,
+  onToggleCard,
   onScrollTo,
 }: {
   section: Section;
   isEnabled: boolean;
   isExpanded: boolean;
   meta: { icon: React.ReactNode; badge: string };
-  availableBlocks: { id: string; label: string }[];
+  availableBlocks: BlockDef[];
   visibleBlocks: string[] | undefined;
   blockOrder: string[] | null;
   pageBreakBefore: boolean;
   subSections?: Array<{ id: string; sectionType: string; title: string; enabled?: boolean | null | undefined }>;
+  hiddenCards?: Record<string, string[]>;
   onToggleEnabled: () => void;
   onToggleExpand: () => void;
   onToggleBlock: (blockId: string) => void;
@@ -262,6 +311,7 @@ function SortableSectionItem({
   hasCustomConfig: boolean;
   onToggleSubSection?: (id: string) => void;
   onReorderSubSections?: (newOrder: string[]) => void;
+  onToggleCard?: (blockId: string, cardId: string) => void;
   onScrollTo: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: section.id });
@@ -410,6 +460,8 @@ function SortableSectionItem({
                       block={block}
                       isVisible={isVisible}
                       onToggle={() => onToggleBlock(block.id)}
+                      hiddenCards={hiddenCards?.[block.id]}
+                      onToggleCard={(cardId) => onToggleCard?.(block.id, cardId)}
                     />
                   );
                 })}
@@ -846,6 +898,16 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
     }
   };
 
+  const getHiddenCards = (section: Section): Record<string, string[]> | undefined => {
+    if (!section.cardConfig) return undefined;
+    try {
+      const parsed = JSON.parse(section.cardConfig) as { hiddenCards?: Record<string, string[]> };
+      return parsed.hiddenCards && Object.keys(parsed.hiddenCards).length > 0 ? parsed.hiddenCards : undefined;
+    } catch {
+      return undefined;
+    }
+  };
+
   const handleToggleSectionEnabled = async (sectionId: string) => {
     const section = report.sections.find((s) => s.id === sectionId);
     if (!section) return;
@@ -912,6 +974,41 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
     // If turning off and the rest of the config is empty, store null to keep DB tidy.
     const updated = { ...existing, pageBreakBefore: next ? true : undefined };
     const isEmpty = !updated.pageBreakBefore && (!updated.visibleBlocks || updated.visibleBlocks.length === 0) && (!updated.blockOrder || updated.blockOrder.length === 0);
+    const newCardConfig = isEmpty ? null : JSON.stringify(updated);
+    setReport((prev) => ({
+      ...prev,
+      sections: prev.sections.map((s) => s.id === sectionId ? { ...s, cardConfig: newCardConfig } : s),
+    }));
+    await fetch(`/api/reports/${report.id}/sections`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sectionId, cardConfig: newCardConfig }),
+    });
+  }, [report.id, report.sections]);
+
+  const handleToggleCard = useCallback(async (sectionId: string, blockId: string, cardId: string) => {
+    const section = report.sections.find((s) => s.id === sectionId);
+    if (!section) return;
+    let existing: { visibleBlocks?: string[]; blockOrder?: string[]; pageBreakBefore?: boolean; hiddenCards?: Record<string, string[]> } = {};
+    try { if (section.cardConfig) existing = JSON.parse(section.cardConfig); } catch { /* ignore */ }
+    const currentHidden = existing.hiddenCards?.[blockId] ?? [];
+    const newHidden = currentHidden.includes(cardId)
+      ? currentHidden.filter((c) => c !== cardId)
+      : [...currentHidden, cardId];
+    const updatedHiddenCards: Record<string, string[]> = { ...existing.hiddenCards };
+    if (newHidden.length === 0) {
+      delete updatedHiddenCards[blockId];
+    } else {
+      updatedHiddenCards[blockId] = newHidden;
+    }
+    const updated = {
+      ...existing,
+      hiddenCards: Object.keys(updatedHiddenCards).length > 0 ? updatedHiddenCards : undefined,
+    };
+    const isEmpty = !updated.pageBreakBefore
+      && (!updated.visibleBlocks || updated.visibleBlocks.length === 0)
+      && (!updated.blockOrder || updated.blockOrder.length === 0)
+      && !updated.hiddenCards;
     const newCardConfig = isEmpty ? null : JSON.stringify(updated);
     setReport((prev) => ({
       ...prev,
@@ -2246,6 +2343,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                       compareEndDate={compareEndDate ?? undefined}
                       reportMode
                       visibleBlocks={visibleBlocks}
+                      hiddenCards={getHiddenCards(section)}
                       afterHeader={sectionAfterHeader}
                     />
                     {textSubSections.map((sub) => (
@@ -2297,7 +2395,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                   )}
                   {section.sectionType === "googleads" && (
                     report.client.googleAdsCustomerId
-                      ? <GoogleAdsSection customerId={report.client.googleAdsCustomerId} clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} compareStartDate={compareStartDate ?? undefined} compareEndDate={compareEndDate ?? undefined} visibleBlocks={visibleBlocks} hideAlerts hideAi reportMode afterHeader={sectionAfterHeader} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} onPreviousMetricsReady={(m) => setSectionPreviousMetrics((p) => ({ ...p, [section.id]: m }))} />
+                      ? <GoogleAdsSection customerId={report.client.googleAdsCustomerId} clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} compareStartDate={compareStartDate ?? undefined} compareEndDate={compareEndDate ?? undefined} visibleBlocks={visibleBlocks} hiddenCards={getHiddenCards(section)} hideAlerts hideAi reportMode afterHeader={sectionAfterHeader} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} onPreviousMetricsReady={(m) => setSectionPreviousMetrics((p) => ({ ...p, [section.id]: m }))} />
                       : <>{commentaryCard}{unconfiguredNotice("No Google Ads account connected — configure it in client settings to enable ads data.")}</>
                   )}
                   {section.sectionType === "searchconsole" && (
@@ -2527,6 +2625,8 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                         onTogglePageBreak={() => handleTogglePageBreak(section.id)}
                         onResetConfig={() => handleResetCardConfig(section.id)}
                         hasCustomConfig={Boolean(section.cardConfig)}
+                        hiddenCards={getHiddenCards(section)}
+                        onToggleCard={(blockId, cardId) => handleToggleCard(section.id, blockId, cardId)}
                         onToggleSubSection={(id) => handleToggleSectionEnabled(id)}
                         onReorderSubSections={handleReorderSubSections}
                         onScrollTo={() => {
