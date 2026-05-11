@@ -188,6 +188,34 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
   }
   const [taggedKeywords, setTaggedKeywords] = useState<TaggedKeyword[]>([]);
   const [taggedKwError, setTaggedKwError] = useState<string | null>(null);
+  // Tag filter — persisted to URL so PDF export mirrors the active filter
+  const [activeTagFilter, setActiveTagFilter] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return new URLSearchParams(window.location.search).get("semrush_tag");
+  });
+  const [showUnranked, setShowUnranked] = useState(false);
+
+  const allTags = useMemo(() => {
+    const s = new Set<string>();
+    taggedKeywords.forEach((kw) => kw.tags.forEach((t) => s.add(t)));
+    return Array.from(s).sort();
+  }, [taggedKeywords]);
+
+  const visibleTaggedKws = useMemo(() => {
+    let kws = showUnranked ? taggedKeywords : taggedKeywords.filter((kw) => kw.currentPosition != null);
+    if (activeTagFilter) kws = kws.filter((kw) => kw.tags.includes(activeTagFilter));
+    return kws;
+  }, [taggedKeywords, activeTagFilter, showUnranked]);
+
+  function setTagFilter(tag: string | null) {
+    setActiveTagFilter(tag);
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (tag) params.set("semrush_tag", tag); else params.delete("semrush_tag");
+      const qs = params.toString();
+      history.replaceState(null, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
+    }
+  }
   // ──────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -941,8 +969,53 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
                   </div>
                 </div>
               </details>
+              {/* Tag filters + unranked toggle — editor-only, hidden on shared/PDF */}
+              {!hideAlerts && (allTags.length > 1 || taggedKeywords.some((kw) => kw.currentPosition == null)) && (
+                <div className="flex flex-wrap items-center gap-2 mb-4">
+                  {allTags.length > 1 && (
+                    <>
+                      <span className="text-xs text-[var(--text-3)]">Tag:</span>
+                      <button
+                        onClick={() => setTagFilter(null)}
+                        className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                          activeTagFilter == null
+                            ? "bg-indigo-600 text-white border-indigo-600"
+                            : "bg-transparent text-[var(--text-2)] border-[var(--border)] hover:border-indigo-400 hover:text-indigo-600"
+                        }`}
+                      >
+                        All
+                      </button>
+                      {allTags.map((tag) => (
+                        <button
+                          key={tag}
+                          onClick={() => setTagFilter(activeTagFilter === tag ? null : tag)}
+                          className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                            activeTagFilter === tag
+                              ? "bg-indigo-600 text-white border-indigo-600"
+                              : "bg-transparent text-[var(--text-2)] border-[var(--border)] hover:border-indigo-400 hover:text-indigo-600"
+                          }`}
+                        >
+                          {tag}
+                        </button>
+                      ))}
+                    </>
+                  )}
+                  {taggedKeywords.some((kw) => kw.currentPosition == null) && (
+                    <button
+                      onClick={() => setShowUnranked((v) => !v)}
+                      className={`ml-auto px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                        showUnranked
+                          ? "bg-slate-600 text-white border-slate-600"
+                          : "bg-transparent text-[var(--text-3)] border-[var(--border)] hover:border-slate-400"
+                      }`}
+                    >
+                      {showUnranked ? "Hide unranked" : `Show unranked (${taggedKeywords.filter((kw) => kw.currentPosition == null).length})`}
+                    </button>
+                  )}
+                </div>
+              )}
               <DataTable<TaggedKeyword>
-                data={taggedKeywords}
+                data={visibleTaggedKws}
                 exportable
                 exportFilename="tagged-keyword-positions"
                 pageSize={0}
