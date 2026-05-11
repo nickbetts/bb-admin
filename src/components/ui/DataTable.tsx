@@ -33,6 +33,10 @@ interface DataTableProps<T> {
   loading?: boolean;
   /** Additional class name for the wrapper */
   className?: string;
+  /** Default sort column key applied on first render (URL param takes precedence) */
+  defaultSortKey?: string;
+  /** Default sort direction. Default: "asc" */
+  defaultSortDir?: "asc" | "desc";
 }
 
 function SortIcon({ direction }: { direction: SortDirection }) {
@@ -56,15 +60,18 @@ export function DataTable<T>({
   exportFilename = "export",
   loading = false,
   className,
+  defaultSortKey,
+  defaultSortDir = "asc",
 }: DataTableProps<T>) {
   // Stable ID derived from column keys — used to persist sort state in URL params
   // so PDF exports can restore the same sort order via ?sort_<id>=key:dir
   const urlParamKey = useRef(`sort_${columns.map((c) => c.key).join("_").slice(0, 40)}`).current;
 
-  const [sortKey, setSortKey] = useState<string | null>(null);
-  const [sortDir, setSortDir] = useState<SortDirection>(null);
+  const [sortKey, setSortKey] = useState<string | null>(defaultSortKey ?? null);
+  const [sortDir, setSortDir] = useState<SortDirection>(defaultSortKey ? defaultSortDir : null);
 
-  // On mount, restore sort state from URL params (enables PDF export to mirror preview sort)
+  // On mount, restore sort state from URL params (enables PDF export to mirror preview sort);
+  // URL param takes precedence over defaultSortKey.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const raw = new URLSearchParams(window.location.search).get(urlParamKey);

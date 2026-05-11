@@ -49,6 +49,7 @@ interface SemrushSectionProps {
   endDate: string;
   crossPlatformContext?: string;
   visibleBlocks?: string[];
+  hiddenCards?: Record<string, string[]>;
   hideAlerts?: boolean;
   hideAi?: boolean;
   onMetricsReady?: (metrics: Record<string, number>) => void;
@@ -137,11 +138,12 @@ function diffStr(curr: number, prev: number | null | undefined, fmt: "count" | "
   return sign + (fmt === "currency" ? formatCurrency(Math.abs(d)) : formatNumber(Math.abs(d)));
 }
 
-export function SemrushSection({ domain, projectId, campaignIds, startDate, endDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, onMetricsReady, afterHeader }: SemrushSectionProps) {
+export function SemrushSection({ domain, projectId, campaignIds, startDate, endDate, crossPlatformContext, visibleBlocks, hiddenCards, hideAlerts, hideAi, onMetricsReady, afterHeader }: SemrushSectionProps) {
   // Derive a stable primitive so the data-fetch effect doesn't re-fire when
   // the caller passes a new array *reference* on every render (e.g. inline IIFE).
   const campaignIdsKey = campaignIds?.join(",") ?? "";
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
+  const showCard = (blockId: string, cardId: string) => !hiddenCards?.[blockId]?.includes(cardId);
   const isExplicit = (block: string) => Array.isArray(visibleBlocks) && visibleBlocks.includes(block);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [keywords, setKeywords] = useState<Keyword[]>([]);
@@ -524,7 +526,7 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
       {/* Overview metrics */}
       {show("kpis") && (
       <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
-        <MetricCard
+        {showCard("kpis", "organic_traffic") && <MetricCard
           title="Organic Traffic"
           value={formatNumber(overview.organicTraffic)}
           subtitle="Monthly visits"
@@ -533,8 +535,8 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
           changeLabel="vs prev month"
           icon={<TrendingUp className="h-5 w-5" />}
           color="purple"
-        />
-        <MetricCard
+        />}
+        {showCard("kpis", "organic_keywords") && <MetricCard
           title="Organic Keywords"
           value={formatNumber(overview.organicKeywords)}
           subtitle="Ranking keywords"
@@ -543,44 +545,44 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
           changeLabel="vs prev month"
           icon={<Search className="h-5 w-5" />}
           color="blue"
-        />
-        <MetricCard
+        />}
+        {showCard("kpis", "traffic_value") && <MetricCard
           title="Traffic Value"
           value={formatCurrency(overview.organicCost)}
           subtitle="Equivalent PPC value"
           icon={<TrendingUp className="h-5 w-5" />}
           color="green"
-        />
+        />}
       </div>
       )}
 
       {/* Domain Authority (config-gated — only shows if Moz key is set) */}
       {show("kpis") && domainAuthority && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-          <MetricCard
+          {showCard("kpis", "domain_authority") && <MetricCard
             title="Domain Authority"
             value={domainAuthority.domainAuthority}
             subtitle="Moz DA score (0–100)"
             color="purple"
-          />
-          <MetricCard
+          />}
+          {showCard("kpis", "page_authority") && <MetricCard
             title="Page Authority"
             value={domainAuthority.pageAuthority}
             subtitle="Moz PA score (0–100)"
             color="blue"
-          />
-          <MetricCard
+          />}
+          {showCard("kpis", "linking_root_domains") && <MetricCard
             title="Linking Root Domains"
             value={formatNumber(domainAuthority.rootDomainsLinking)}
             subtitle="Unique domains linking"
             color="green"
-          />
-          <MetricCard
+          />}
+          {showCard("kpis", "spam_score") && <MetricCard
             title="Spam Score"
             value={`${domainAuthority.spamScore}%`}
             subtitle="Higher = riskier"
             color={domainAuthority.spamScore > 30 ? "red" : "orange"}
-          />
+          />}
         </div>
       )}
 
@@ -970,9 +972,9 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
                 </div>
               </details>
               {/* Tag filters + unranked toggle — editor-only, hidden on shared/PDF */}
-              {!hideAlerts && (allTags.length > 1 || taggedKeywords.some((kw) => kw.currentPosition == null)) && (
+              {!hideAlerts && (allTags.length >= 1 || taggedKeywords.some((kw) => kw.currentPosition == null)) && (
                 <div className="flex flex-wrap items-center gap-2 mb-4">
-                  {allTags.length > 1 && (
+                  {allTags.length >= 1 && (
                     <>
                       <span className="text-xs text-[var(--text-3)]">Tag:</span>
                       <button
@@ -1019,6 +1021,8 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
                 exportable
                 exportFilename="tagged-keyword-positions"
                 pageSize={0}
+                defaultSortKey="currentPosition"
+                defaultSortDir="asc"
                 columns={[
                 {
                   key: "keyword",
