@@ -152,7 +152,7 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
         Report Narrative
       </p>
       {narrativeResult.executiveSummary && (
-        <p style={{ fontSize: 14, color: "#1e293b", lineHeight: 1.7, marginBottom: narrativeResult.keyThemes ? 12 : 0 }}>
+        <p style={{ fontSize: 14, color: "#1e293b", lineHeight: 1.7, whiteSpace: "pre-wrap", marginBottom: narrativeResult.keyThemes ? 12 : 0 }}>
           {narrativeResult.executiveSummary}
         </p>
       )}
@@ -169,7 +169,7 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
           {narrativeResult.crossSectionStories.map((story, i) => (
             <div key={i} style={{ background: "rgba(255,255,255,0.6)", borderRadius: 6, padding: "8px 12px" }}>
               <p style={{ fontSize: 11, fontWeight: 600, color: "var(--accent-hover)", marginBottom: 3 }}>{story.sections.map(formatSectionLabel).join(" + ")}</p>
-              <p style={{ fontSize: 13, color: "#1e293b", lineHeight: 1.55 }}>{story.narrative}</p>
+              <p style={{ fontSize: 13, color: "#1e293b", lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{story.narrative}</p>
             </div>
           ))}
         </div>

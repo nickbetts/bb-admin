@@ -160,6 +160,15 @@ interface Report {
   screenshots: Screenshot[];
 }
 
+type NarrativeStory = { sections: string[]; narrative: string };
+
+type NarrativeResult = {
+  executiveSummary?: string;
+  crossSectionStories?: NarrativeStory[];
+  keyThemes?: string[];
+  goalProgressNarrative?: string;
+};
+
 interface ReportViewProps {
   report: Report;
 }
@@ -697,17 +706,17 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
 
   // ── Report narrative ────────────────────────────────────────────────────────
   const [generatingNarrative, setGeneratingNarrative] = useState(false);
-  const [narrativeResult, setNarrativeResult] = useState<{
-    executiveSummary?: string;
-    crossSectionStories?: { sections: string[]; narrative: string }[];
-    keyThemes?: string[];
-    goalProgressNarrative?: string;
-  } | null>(() => {
+  const [narrativeResult, setNarrativeResult] = useState<NarrativeResult | null>(() => {
     if (initialReport.narrativeData) {
       try { return JSON.parse(initialReport.narrativeData); } catch { /* ignore */ }
     }
     return null;
   });
+  const [narrativeDraft, setNarrativeDraft] = useState<{
+    executiveSummary: string;
+    keyThemesText: string;
+    crossSectionStories: { sectionsText: string; narrative: string }[];
+  } | null>(null);
 
   // ── DnD sensors ────────────────────────────────────────────────────────────
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
@@ -1044,6 +1053,17 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
   // ── Commentary ───────────────────────────────────────────────────────────────
   const handleEditSection = (section: Section) => {
     setEditingSection(section.id);
+    if (section.sectionType === "overview") {
+      setNarrativeDraft({
+        executiveSummary: narrativeResult?.executiveSummary ?? "",
+        keyThemesText: (narrativeResult?.keyThemes ?? []).join("\n"),
+        crossSectionStories: (narrativeResult?.crossSectionStories ?? []).map((story) => ({
+          sectionsText: story.sections.join(", "),
+          narrative: story.narrative,
+        })),
+      });
+      return;
+    }
     // Preserve any in-progress edits — only set from server value if no draft exists
     setCommentary((prev) => ({
       ...prev,
@@ -1054,6 +1074,54 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
   const handleSaveSection = async (sectionId: string) => {
     // Cancel any pending autosave so we don't double-save
     if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+
+    const section = report.sections.find((s) => s.id === sectionId);
+    if (section?.sectionType === "overview" && narrativeDraft) {
+      setSaving(sectionId);
+      try {
+        const normalisedNarrative: NarrativeResult = {
+          executiveSummary: narrativeDraft.executiveSummary.trim() || undefined,
+          keyThemes: narrativeDraft.keyThemesText
+            .split("\n")
+            .map((theme) => theme.trim())
+            .filter(Boolean),
+          crossSectionStories: narrativeDraft.crossSectionStories
+            .map((story) => ({
+              sections: story.sectionsText
+                .split(",")
+                .map((sectionKey) => sectionKey.trim())
+                .filter(Boolean),
+              narrative: story.narrative.trim(),
+            }))
+            .filter((story) => story.sections.length > 0 || story.narrative.length > 0),
+        };
+
+        if (!normalisedNarrative.keyThemes?.length) delete normalisedNarrative.keyThemes;
+        if (!normalisedNarrative.crossSectionStories?.length) delete normalisedNarrative.crossSectionStories;
+
+        const res = await fetch(`/api/reports/${report.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ narrativeData: JSON.stringify(normalisedNarrative) }),
+        });
+
+        if (res.ok) {
+          const updated = await res.json();
+          setNarrativeResult(normalisedNarrative);
+          setReport((prev) => ({
+            ...prev,
+            narrativeData: updated.narrativeData,
+          }));
+          setEditingSection(null);
+          setSavedSection(sectionId);
+          setTimeout(() => setSavedSection(null), 2500);
+        }
+      } finally {
+        setSaving(null);
+      }
+      return;
+    }
+
     setSaving(sectionId);
     try {
       const res = await fetch(`/api/reports/${report.id}/sections`, {
@@ -1108,13 +1176,15 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
   // Debounce autosave: 1.5s after the user stops typing
   useEffect(() => {
     if (!editingSection) return;
+    const activeSection = report.sections.find((s) => s.id === editingSection);
+    if (activeSection?.sectionType === "overview") return;
     if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
     autosaveTimerRef.current = setTimeout(() => {
       handleAutoSave(editingSection);
     }, 1500);
     return () => { if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [commentary, editingSection]);
+  }, [commentary, editingSection, report.sections]);
 
   // ── Screenshot caption update ──────────────────────────────────────────────
   const handleUpdateCaption = async (screenshotId: string, caption: string) => {
@@ -2027,14 +2097,128 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                       style={{ gap: 6 }}
                     >
                       <MessageSquare size={13} />
-                      {editingSection === section.id ? "Cancel" : "Commentary"}
+                      {editingSection === section.id ? "Cancel" : section.sectionType === "overview" ? "Narrative" : "Commentary"}
                     </button>
                   </div>
                 </div>
 
                 <div className="card-body" style={{ padding: "20px 28px" }}>
                   {editingSection === section.id ? (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                    section.sectionType === "overview" ? (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                          <p style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>Report narrative</p>
+                          <textarea
+                            value={narrativeDraft?.executiveSummary ?? ""}
+                            onChange={(e) => setNarrativeDraft((prev) => prev ? { ...prev, executiveSummary: e.target.value } : prev)}
+                            placeholder="Write the overview narrative. Use Enter for line breaks and start lines with - or * for bullet points."
+                            rows={6}
+                            style={{
+                              width: "100%", padding: "12px 16px",
+                              borderRadius: "var(--r)", border: "1px solid var(--border)",
+                              background: "var(--surface)", color: "var(--text)",
+                              fontSize: 14, lineHeight: 1.6, resize: "vertical",
+                              outline: "none", transition: "border-color 0.15s",
+                              fontFamily: "inherit",
+                            }}
+                            onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; }}
+                            onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
+                          />
+                        </div>
+
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                          <p style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>Theme pills (one per line)</p>
+                          <textarea
+                            value={narrativeDraft?.keyThemesText ?? ""}
+                            onChange={(e) => setNarrativeDraft((prev) => prev ? { ...prev, keyThemesText: e.target.value } : prev)}
+                            placeholder="Efficiency resilience during Ramadan volatility\nOrganic stability as a consistent demand foundation"
+                            rows={4}
+                            style={{
+                              width: "100%", padding: "12px 16px",
+                              borderRadius: "var(--r)", border: "1px solid var(--border)",
+                              background: "var(--surface)", color: "var(--text)",
+                              fontSize: 14, lineHeight: 1.6, resize: "vertical",
+                              outline: "none", transition: "border-color 0.15s",
+                              fontFamily: "inherit",
+                            }}
+                            onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; }}
+                            onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
+                          />
+                        </div>
+
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                            <p style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>Cross-channel stories</p>
+                            <button
+                              onClick={() => setNarrativeDraft((prev) => prev ? {
+                                ...prev,
+                                crossSectionStories: [...prev.crossSectionStories, { sectionsText: "", narrative: "" }],
+                              } : prev)}
+                              className="btn btn-secondary btn-sm"
+                            >
+                              Add Story
+                            </button>
+                          </div>
+
+                          {(narrativeDraft?.crossSectionStories ?? []).length === 0 && (
+                            <p style={{ fontSize: 12, color: "var(--text-4)", fontStyle: "italic" }}>
+                              No cross-channel stories yet. Click &quot;Add Story&quot; to create one.
+                            </p>
+                          )}
+
+                          {(narrativeDraft?.crossSectionStories ?? []).map((story, storyIndex) => (
+                            <div key={storyIndex} style={{ border: "1px solid var(--border)", borderRadius: "var(--r)", padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+                              <input
+                                value={story.sectionsText}
+                                onChange={(e) => setNarrativeDraft((prev) => {
+                                  if (!prev) return prev;
+                                  const updatedStories = [...prev.crossSectionStories];
+                                  updatedStories[storyIndex] = { ...updatedStories[storyIndex], sectionsText: e.target.value };
+                                  return { ...prev, crossSectionStories: updatedStories };
+                                })}
+                                placeholder="Sections (comma-separated), e.g. seo, web, googleads"
+                                style={{ width: "100%", padding: "10px 12px", borderRadius: "var(--r-sm)", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: 13, outline: "none" }}
+                              />
+                              <textarea
+                                value={story.narrative}
+                                onChange={(e) => setNarrativeDraft((prev) => {
+                                  if (!prev) return prev;
+                                  const updatedStories = [...prev.crossSectionStories];
+                                  updatedStories[storyIndex] = { ...updatedStories[storyIndex], narrative: e.target.value };
+                                  return { ...prev, crossSectionStories: updatedStories };
+                                })}
+                                placeholder="Story narrative. Use Enter for line breaks and - for bullet points."
+                                rows={4}
+                                style={{ width: "100%", padding: "12px 16px", borderRadius: "var(--r)", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: 14, lineHeight: 1.6, resize: "vertical", outline: "none", fontFamily: "inherit" }}
+                              />
+                              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                                <button
+                                  onClick={() => setNarrativeDraft((prev) => prev ? {
+                                    ...prev,
+                                    crossSectionStories: prev.crossSectionStories.filter((_, i) => i !== storyIndex),
+                                  } : prev)}
+                                  className="btn btn-secondary btn-sm"
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                          <button onClick={() => handleSaveSection(section.id)} disabled={saving === section.id} className="btn btn-primary btn-sm">
+                            <Check size={13} />
+                            {saving === section.id ? "Saving…" : "Save"}
+                          </button>
+                          <button onClick={() => setEditingSection(null)} className="btn btn-secondary btn-sm">
+                            <X size={13} />
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
                       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                         <select
@@ -2113,7 +2297,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                       <textarea
                         value={commentary[section.id] ?? ""}
                         onChange={(e) => setCommentary((prev) => ({ ...prev, [section.id]: e.target.value }))}
-                        placeholder="AI insights will appear here — you can edit before saving…"
+                        placeholder="AI insights will appear here — you can edit before saving. Use Enter for line breaks and start lines with - or * for bullet points."
                         rows={5}
                         style={{
                           width: "100%", padding: "12px 16px",
@@ -2137,6 +2321,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                         </button>
                       </div>
                     </div>
+                    )
                   ) : (() => {
                     const sectionScreenshots = report.screenshots.filter((s) => s.sectionId === section.id);
                     return (
@@ -2147,7 +2332,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                               Report Narrative
                             </p>
                             {narrativeResult.executiveSummary && (
-                              <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7 }}>{narrativeResult.executiveSummary}</p>
+                              <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{narrativeResult.executiveSummary}</p>
                             )}
                             {narrativeResult.keyThemes && narrativeResult.keyThemes.length > 0 && (
                               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -2162,7 +2347,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                                 {narrativeResult.crossSectionStories.map((story, i) => (
                                   <div key={i} style={{ background: "rgba(255,255,255,0.6)", borderRadius: "var(--r-sm)", padding: "8px 12px" }}>
                                     <p style={{ fontSize: 11, fontWeight: 600, color: "var(--accent-text)", marginBottom: 3 }}>{story.sections.map(formatSectionLabel).join(" + ")}</p>
-                                    <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.55 }}>{story.narrative}</p>
+                                    <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{story.narrative}</p>
                                   </div>
                                 ))}
                               </div>
@@ -2298,7 +2483,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                             <textarea
                               value={commentary[section.id] ?? ""}
                               onChange={(e) => setCommentary((prev) => ({ ...prev, [section.id]: e.target.value }))}
-                              placeholder="Executive summary will appear here after generation…"
+                              placeholder="Executive summary will appear here after generation. Use Enter for line breaks and start lines with - or * for bullet points."
                               rows={6}
                               style={{ width: "100%", padding: "12px 16px", borderRadius: "var(--r)", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: 14, lineHeight: 1.6, resize: "vertical", outline: "none", fontFamily: "inherit" }}
                               onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; }}
