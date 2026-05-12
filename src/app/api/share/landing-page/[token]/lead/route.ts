@@ -21,7 +21,18 @@ function isLikelyTeamsWebhook(url: string): boolean {
   }
 }
 
-function buildTeamsMessageCardPayload(input: {
+/**
+ * Builds a Power Automate-friendly webhook payload.
+ *
+ * Power Automate's PostCardToConversation action expects `body/messageBody`
+ * to be HTML, not raw JSON.  We include a pre-formatted `messageBody` HTML
+ * field so the flow can map it directly:
+ *
+ *   body/messageBody  →  @{triggerBody()?['messageBody']}
+ *
+ * All raw lead fields are also included so the flow can use them individually.
+ */
+function buildPowerAutomatePayload(input: {
   landingPageId: string;
   lpTitle: string;
   name: string;
@@ -32,39 +43,43 @@ function buildTeamsMessageCardPayload(input: {
   referrer: string | null;
   fields: Record<string, unknown>;
 }): Record<string, unknown> {
-  const facts: Array<{ name: string; value: string }> = [
-    { name: "Landing Page", value: input.lpTitle },
-    { name: "Lead Name", value: input.name || "(not provided)" },
-    { name: "Email", value: input.email },
-    { name: "Phone", value: input.phone || "(not provided)" },
-    { name: "Message", value: input.message || "(not provided)" },
-    { name: "Submitted", value: input.capturedAtIso },
-    { name: "Referrer", value: input.referrer || "(not provided)" },
-    { name: "Landing Page ID", value: input.landingPageId },
-  ];
-
-  // Include other form fields too, excluding ones already represented above.
   const taken = new Set(["name", "email", "phone", "message", "cf-turnstile-response"]);
-  for (const [k, v] of Object.entries(input.fields)) {
-    if (taken.has(k.toLowerCase())) continue;
-    const value = typeof v === "string" ? v : JSON.stringify(v);
-    if (!value) continue;
-    facts.push({ name: k, value: value.slice(0, 500) });
-  }
+
+  const extraRows = Object.entries(input.fields)
+    .filter(([k]) => !taken.has(k.toLowerCase()))
+    .map(([k, v]) => {
+      const val = typeof v === "string" ? v : JSON.stringify(v);
+      return val ? `<tr><td><strong>${k}</strong></td><td>${val.slice(0, 500)}</td></tr>` : "";
+    })
+    .filter(Boolean)
+    .join("");
+
+  const html = `
+<h3>New lead: ${input.name || input.email}</h3>
+<table>
+  <tr><td><strong>Landing Page</strong></td><td>${input.lpTitle}</td></tr>
+  <tr><td><strong>Name</strong></td><td>${input.name || "(not provided)"}</td></tr>
+  <tr><td><strong>Email</strong></td><td>${input.email}</td></tr>
+  <tr><td><strong>Phone</strong></td><td>${input.phone || "(not provided)"}</td></tr>
+  <tr><td><strong>Message</strong></td><td>${input.message || "(not provided)"}</td></tr>
+  ${extraRows}
+  <tr><td><strong>Submitted</strong></td><td>${input.capturedAtIso}</td></tr>
+  <tr><td><strong>Referrer</strong></td><td>${input.referrer || "(not provided)"}</td></tr>
+</table>`.trim();
 
   return {
-    "@type": "MessageCard",
-    "@context": "http://schema.org/extensions",
-    summary: `New lead from ${input.lpTitle}`,
-    themeColor: "0076D7",
-    title: `New lead: ${input.name || input.email}`,
-    sections: [
-      {
-        activityTitle: "Landing page lead captured",
-        facts,
-        markdown: true,
-      },
-    ],
+    // Pre-formatted HTML for PostCardToConversation body/messageBody
+    messageBody: html,
+    // Raw fields for any other flow actions
+    landingPageId: input.landingPageId,
+    lpTitle: input.lpTitle,
+    capturedAt: input.capturedAtIso,
+    name: input.name,
+    email: input.email,
+    phone: input.phone ?? "",
+    message: input.message ?? "",
+    referrer: input.referrer ?? "",
+    ...input.fields,
   };
 }
 
@@ -219,7 +234,7 @@ export async function POST(
     };
 
     const payload = isLikelyTeamsWebhook(formConfig.webhookUrl)
-      ? buildTeamsMessageCardPayload({
+      ? buildPowerAutomatePayload({
           landingPageId: landingPage.id,
           lpTitle: landingPage.title ?? "Landing Page",
           name,
