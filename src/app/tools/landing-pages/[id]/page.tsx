@@ -61,6 +61,7 @@ import { PortalPublishToggle } from "@/components/portal/PortalPublishToggle";
 import { parseCSSVariables, updateCSSVariable, type CSSVariable } from "@/lib/lp-css-parser";
 import { AnalyticsConfigForm } from "@/components/landing-pages/AnalyticsConfigForm";
 import { FormConfigPanel } from "@/components/landing-pages/FormConfigPanel";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 import type { LpAnalyticsConfig } from "@/lib/lp-analytics";
 import { parseLpFormConfig, type LpFormConfig } from "@/lib/lp-form-config";
 import { useToast } from "@/components/ui/Toast";
@@ -462,6 +463,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
   const { id } = use(params);
   const router = useRouter();
   const { toast } = useToast();
+  const confirm = useConfirm();
 
   const [lp, setLp] = useState<LandingPage | null>(null);
   const [previewHtml, setPreviewHtml] = useState("");
@@ -479,6 +481,10 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
   const [formConfig, setFormConfig] = useState<LpFormConfig>({});
   const [savingAnalytics, setSavingAnalytics] = useState(false);
   const [analyticsSaved, setAnalyticsSaved] = useState(false);
+  const [trackingBaseline, setTrackingBaseline] = useState<{ analytics: string; form: string }>({
+    analytics: "{}",
+    form: "{}",
+  });
 
   // Page settings modal state
   const [showPageSettings, setShowPageSettings] = useState(false);
@@ -751,7 +757,13 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
   }, [id]);
 
   const handleDeleteTranslation = useCallback(async (lang: string) => {
-    if (!confirm("Delete this translation?")) return;
+    const proceed = await confirm({
+      title: "Delete this translation?",
+      description: "This removes the translated version and cannot be undone.",
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (!proceed) return;
     try {
       await fetch(`/api/tools/landing-pages/${id}/translations/${lang}`, { method: "DELETE" });
       setTranslations((prev) => prev.filter((t) => t.language !== lang));
@@ -760,7 +772,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
         setPreviewHtml(lp?.currentHtml ?? "");
       }
     } catch {}
-  }, [id, previewLang, lp]);
+  }, [id, previewLang, lp, confirm]);
 
   const handlePreviewTranslation = useCallback(async (lang: string | null) => {
     if (!lang) {
@@ -1221,6 +1233,13 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
 
   const handleApplyAll = async () => {
     if (stagedChanges.length === 0 || refining || chatting) return;
+    const proceed = await confirm({
+      title: `Apply ${stagedChanges.length} staged changes?`,
+      description: "This will generate and apply all staged updates to the page in one pass.",
+      confirmLabel: "Apply all",
+      cancelLabel: "Cancel",
+    });
+    if (!proceed) return;
     const combined = stagedChanges
       .map((c, i) => `${i + 1}. ${c}`)
       .join("\n");
@@ -1229,6 +1248,15 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
   };
 
   const handleRevert = async (versionNumber: number) => {
+    const proceed = await confirm({
+      title: `Revert to version ${versionNumber}?`,
+      description: "Your current preview content will be replaced by this version.",
+      confirmLabel: "Revert",
+      cancelLabel: "Cancel",
+      danger: true,
+    });
+    if (!proceed) return;
+
     const res = await fetch(`/api/tools/landing-pages/${id}/versions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1336,12 +1364,50 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
 
   if (!lp) return null;
 
+  const trackingDirty = showTrackingSettings && (
+    JSON.stringify(analyticsConfig ?? {}) !== trackingBaseline.analytics
+    || JSON.stringify(formConfig ?? {}) !== trackingBaseline.form
+  );
+
+  const openTrackingSettings = () => {
+    setAnalyticsSaved(false);
+    setTrackingTab("tracking");
+    setTrackingBaseline({
+      analytics: JSON.stringify(analyticsConfig ?? {}),
+      form: JSON.stringify(formConfig ?? {}),
+    });
+    setShowTrackingSettings(true);
+  };
+
+  const closeTrackingSettings = async () => {
+    if (savingAnalytics) return;
+    if (trackingDirty) {
+      const proceed = await confirm({
+        title: "Discard unsaved changes?",
+        description: "You have unsaved Tracking/Form changes. Closing now will lose them.",
+        confirmLabel: "Discard changes",
+        cancelLabel: "Keep editing",
+        danger: true,
+      });
+      if (!proceed) return;
+    }
+    setShowTrackingSettings(false);
+    setAnalyticsSaved(false);
+  };
+
   const toolbarBtn: React.CSSProperties = {
     display: "inline-flex", alignItems: "center", gap: 4,
     padding: "6px 10px", fontSize: 12, fontWeight: 500,
     color: "var(--text-3)", background: "none", border: "none",
     borderRadius: "var(--r-sm)", cursor: "pointer",
     transition: "background 0.15s, color 0.15s",
+  };
+
+  const disabledToolbarBtn: React.CSSProperties = {
+    opacity: 0.45,
+    cursor: "not-allowed",
+    background: "var(--border-subtle)",
+    pointerEvents: "none",
   };
 
   return (
@@ -1432,11 +1498,13 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
           </button>
 
           {/* Undo/Redo */}
-          <button onClick={handleUndo} disabled={!canUndo} style={{ ...toolbarBtn, opacity: canUndo ? 1 : 0.3 }} title="Undo (⌘Z)">
+          <button onClick={handleUndo} disabled={!canUndo} style={{ ...toolbarBtn, ...(!canUndo ? disabledToolbarBtn : {}) }} title="Undo (⌘Z)">
             <Undo2 style={{ width: 14, height: 14 }} />
+            Undo
           </button>
-          <button onClick={handleRedo} disabled={!canRedo} style={{ ...toolbarBtn, opacity: canRedo ? 1 : 0.3 }} title="Redo (⌘⇧Z)">
+          <button onClick={handleRedo} disabled={!canRedo} style={{ ...toolbarBtn, ...(!canRedo ? disabledToolbarBtn : {}) }} title="Redo (⌘⇧Z)">
             <Redo2 style={{ width: 14, height: 14 }} />
+            Redo
           </button>
 
           {/* Divider */}
@@ -1464,14 +1532,16 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
 
           <button onClick={() => setShowSaveTemplate(true)} style={toolbarBtn} title="Save as template">
             <Sparkles style={{ width: 14, height: 14 }} />
+            Template
           </button>
 
           <button
-            onClick={() => { setAnalyticsSaved(false); setShowTrackingSettings(true); }}
+            onClick={openTrackingSettings}
             style={toolbarBtn}
             title="Tracking & conversions"
           >
             <Settings style={{ width: 14, height: 14 }} />
+            Tracking
           </button>
 
           {lp.shareToken && (
@@ -1483,11 +1553,13 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
               title="Open in test mode (simulates conversion firing without sending real events)"
             >
               <Bug style={{ width: 14, height: 14 }} />
+              Test
             </a>
           )}
 
           <button onClick={handleDownload} style={toolbarBtn} title="Download HTML">
             <Download style={{ width: 14, height: 14 }} />
+            Download
           </button>
 
           <button
@@ -1520,6 +1592,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
               })()}
             >
               <ExternalLink style={{ width: 14, height: 14 }} />
+              Open
             </a>
           )}
 
@@ -1588,7 +1661,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                   color: device === mode ? "var(--accent)" : "var(--text-4)",
                   transition: "all 0.15s",
                 }}
-                title={mode}
+                title={mode === "desktop" ? "Desktop preview (full width)" : mode === "tablet" ? "Tablet preview (768px)" : "Mobile preview (375px)"}
               >
                 <Icon style={{ width: 16, height: 16 }} />
               </button>
@@ -1628,15 +1701,16 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
               <button
                 key={tid}
                 onClick={() => setActiveTab(tid)}
+                title={label}
                 style={{
                   flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
-                  padding: "10px 0", fontSize: 11, fontWeight: 600, cursor: "pointer",
+                  padding: "10px 0", fontSize: 12, fontWeight: 600, cursor: "pointer",
                   background: "none", border: "none", borderBottom: activeTab === tid ? "2px solid var(--accent)" : "2px solid transparent",
                   color: activeTab === tid ? "var(--accent)" : "var(--text-4)",
                   transition: "all 0.15s",
                 }}
               >
-                <TabIcon style={{ width: 14, height: 14 }} />
+                <TabIcon style={{ width: 15, height: 15 }} />
                 {label}
               </button>
             ))}
@@ -1815,7 +1889,16 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                       Staged changes ({stagedChanges.length})
                     </span>
                     <button
-                      onClick={() => setStagedChanges([])}
+                      onClick={async () => {
+                        const proceed = await confirm({
+                          title: "Clear all staged changes?",
+                          description: "This will remove the staged list from chat and cannot be undone.",
+                          confirmLabel: "Clear",
+                          cancelLabel: "Cancel",
+                          danger: true,
+                        });
+                        if (proceed) setStagedChanges([]);
+                      }}
                       style={{ fontSize: 10, color: "var(--text-4)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
                     >
                       Clear all
@@ -2207,17 +2290,17 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                           <>
                             <button
                               onClick={() => handlePreviewTranslation(previewLang === t.language ? null : t.language)}
-                              title="Preview"
+                              title={previewLang === t.language ? "Stop preview" : "Preview in editor"}
                               style={{ fontSize: 10, padding: "2px 6px", borderRadius: "var(--r-sm)", border: "1px solid var(--border)", background: previewLang === t.language ? "var(--accent)" : "none", color: previewLang === t.language ? "#fff" : "var(--text-3)", cursor: "pointer" }}
                             >
-                              <Eye style={{ width: 11, height: 11 }} />
+                              {previewLang === t.language ? "Previewing" : "Preview"}
                             </button>
                             <button
                               onClick={() => handlePublishTranslation(t.language, t.status)}
                               title={t.status === "published" ? "Hide this language" : "Make live"}
                               style={{ fontSize: 10, padding: "2px 6px", borderRadius: "var(--r-sm)", border: "1px solid var(--border)", background: t.status === "published" ? "var(--success-bg)" : "none", color: t.status === "published" ? "var(--success-text)" : "var(--text-3)", cursor: "pointer" }}
                             >
-                              {t.status === "published" ? <Eye style={{ width: 11, height: 11 }} /> : <EyeOff style={{ width: 11, height: 11 }} />}
+                              {t.status === "published" ? "Live" : "Hidden"}
                             </button>
                             <button
                               onClick={() => handleTranslate([t.language])}
@@ -2397,7 +2480,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
             {/* Header */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 18px 0", flexShrink: 0 }}>
               <span style={{ fontWeight: 700, fontSize: 15, color: "var(--text)" }}>Tracking &amp; conversions</span>
-              <button onClick={() => setShowTrackingSettings(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-4)", padding: 2 }}>
+              <button onClick={closeTrackingSettings} title="Close" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-4)", padding: 2 }}>
                 <X style={{ width: 16, height: 16 }} />
               </button>
             </div>
@@ -2444,6 +2527,11 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
             </div>
             {/* Footer */}
             <div style={{ flexShrink: 0, borderTop: "1px solid var(--border)", padding: "10px 18px", display: "flex", gap: 8, justifyContent: "flex-end", alignItems: "center" }}>
+              {trackingDirty && (
+                <span style={{ fontSize: 12, color: "var(--warning-text)", marginRight: "auto" }}>
+                  Unsaved changes
+                </span>
+              )}
               {analyticsSaved && (
                 <span style={{ fontSize: 12, color: "var(--success-text)", display: "inline-flex", alignItems: "center", gap: 4, marginRight: "auto" }}>
                   <Check style={{ width: 13, height: 13 }} /> Saved
@@ -2451,7 +2539,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
               )}
               <button
                 className="btn btn-secondary"
-                onClick={() => setShowTrackingSettings(false)}
+                onClick={closeTrackingSettings}
                 style={{ fontSize: 13 }}
               >
                 Close
@@ -2472,6 +2560,10 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                     if (res.ok) {
                       const data = await res.json();
                       setLp((prev) => prev ? { ...prev, analyticsConfig: data.landingPage.analyticsConfig, formConfig: data.landingPage.formConfig } : prev);
+                      setTrackingBaseline({
+                        analytics: JSON.stringify(analyticsConfig ?? {}),
+                        form: JSON.stringify(formConfig ?? {}),
+                      });
                       setAnalyticsSaved(true);
                     }
                   } finally {

@@ -6,7 +6,7 @@
  * Controlled component — parent owns `value` and gets `onChange`.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AlertTriangle, Webhook, Mail, Code2, Eye, X } from "lucide-react";
 import type { LpFormConfig } from "@/lib/lp-form-config";
 
@@ -76,6 +76,10 @@ export function FormConfigPanel({ value, onChange, lpId }: Props) {
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setEmailsRaw(joinEmails(value.notifyEmails));
+  }, [value.notifyEmails]);
 
   async function handlePreview() {
     setPreviewLoading(true);
@@ -153,12 +157,13 @@ export function FormConfigPanel({ value, onChange, lpId }: Props) {
           <button
             onClick={handlePreview}
             disabled={previewLoading}
+            aria-busy={previewLoading}
             style={{
               display: "flex", alignItems: "center", gap: 5,
-              background: "none", border: "1px solid var(--border)",
+              background: previewLoading ? "var(--border-subtle)" : "none", border: "1px solid var(--border)",
               borderRadius: "var(--r)", padding: "3px 8px",
               fontSize: 11, fontWeight: 600, color: "var(--text-2)",
-              cursor: "pointer", opacity: previewLoading ? 0.6 : 1,
+              cursor: previewLoading ? "not-allowed" : "pointer", opacity: previewLoading ? 0.55 : 1,
             }}
           >
             <Eye size={11} />
@@ -171,8 +176,11 @@ export function FormConfigPanel({ value, onChange, lpId }: Props) {
           <input
             type="text"
             value={emailsRaw}
-            onChange={(e) => setEmailsRaw(e.target.value)}
-            onBlur={(e) => onChange({ ...value, notifyEmails: parseEmails(e.target.value) })}
+            onChange={(e) => {
+              const raw = e.target.value;
+              setEmailsRaw(raw);
+              onChange({ ...value, notifyEmails: parseEmails(raw) });
+            }}
             placeholder="client@example.com, team@agency.com"
             style={inputStyle}
           />
