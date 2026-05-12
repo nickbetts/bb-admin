@@ -6,6 +6,68 @@ import { verifyTurnstileToken } from "@/lib/turnstile";
 
 export const dynamic = "force-dynamic";
 
+function isLikelyTeamsWebhook(url: string): boolean {
+  try {
+    const { hostname } = new URL(url);
+    const h = hostname.toLowerCase();
+    return (
+      h.includes("office.com")
+      || h.includes("office365.com")
+      || h.includes("logic.azure.com")
+      || h.includes("powerautomate.com")
+    );
+  } catch {
+    return false;
+  }
+}
+
+function buildTeamsMessageCardPayload(input: {
+  landingPageId: string;
+  lpTitle: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  message: string | null;
+  capturedAtIso: string;
+  referrer: string | null;
+  fields: Record<string, unknown>;
+}): Record<string, unknown> {
+  const facts: Array<{ name: string; value: string }> = [
+    { name: "Landing Page", value: input.lpTitle },
+    { name: "Lead Name", value: input.name || "(not provided)" },
+    { name: "Email", value: input.email },
+    { name: "Phone", value: input.phone || "(not provided)" },
+    { name: "Message", value: input.message || "(not provided)" },
+    { name: "Submitted", value: input.capturedAtIso },
+    { name: "Referrer", value: input.referrer || "(not provided)" },
+    { name: "Landing Page ID", value: input.landingPageId },
+  ];
+
+  // Include other form fields too, excluding ones already represented above.
+  const taken = new Set(["name", "email", "phone", "message", "cf-turnstile-response"]);
+  for (const [k, v] of Object.entries(input.fields)) {
+    if (taken.has(k.toLowerCase())) continue;
+    const value = typeof v === "string" ? v : JSON.stringify(v);
+    if (!value) continue;
+    facts.push({ name: k, value: value.slice(0, 500) });
+  }
+
+  return {
+    "@type": "MessageCard",
+    "@context": "http://schema.org/extensions",
+    summary: `New lead from ${input.lpTitle}`,
+    themeColor: "0076D7",
+    title: `New lead: ${input.name || input.email}`,
+    sections: [
+      {
+        activityTitle: "Landing page lead captured",
+        facts,
+        markdown: true,
+      },
+    ],
+  };
+}
+
 // POST /api/share/landing-page/[token]/lead — capture form submission (public, no auth)
 export async function POST(
   request: NextRequest,
@@ -149,11 +211,26 @@ export async function POST(
       return;
     }
 
-    const payload = {
+    const capturedAtIso = new Date().toISOString();
+    const rawPayload = {
       landingPageId: landingPage.id,
-      capturedAt: new Date().toISOString(),
+      capturedAt: capturedAtIso,
       ...body,
     };
+
+    const payload = isLikelyTeamsWebhook(formConfig.webhookUrl)
+      ? buildTeamsMessageCardPayload({
+          landingPageId: landingPage.id,
+          lpTitle: landingPage.title ?? "Landing Page",
+          name,
+          email,
+          phone: phoneVal,
+          message,
+          capturedAtIso,
+          referrer,
+          fields: body,
+        })
+      : rawPayload;
 
     try {
       const response = await fetch(formConfig.webhookUrl, {
