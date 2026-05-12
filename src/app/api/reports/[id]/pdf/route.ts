@@ -170,33 +170,21 @@ export async function GET(
         return { fullHeight: scrollH, regions: rects };
       });
 
-      // Generate one giant single-page PDF at full scroll height (vector quality).
-      const pdfBuffer = await page.pdf({
-        width: "1200px",
-        height: `${fullHeight}px`,
-        margin: { top: "0", right: "0", bottom: "0", left: "0" },
-        printBackground: true,
-      });
-
-      // Post-process with pdf-lib: crop the single-page PDF into per-section pages,
-      // each page being exactly the height of its section content.
-      const sourceDoc = await PDFDocument.load(pdfBuffer);
-      const sourcePage = sourceDoc.getPage(0);
-      const { width: pdfWidth, height: pdfHeight } = sourcePage.getSize();
-
-      // Scale factor to convert CSS pixels → PDF points
-      const scale = pdfHeight / fullHeight;
-
-      // Padding (in CSS pixels) to add above and below each cropped section page.
-      // We cap each side to the actual gap between adjacent regions so we never
-      // bleed content from a neighbouring section onto this page.
+      // Take a JPEG screenshot of each section rather than generating a vector PDF.
+      // This flattens all SVG charts, animations, and compositor layers into compressed
+      // JPEG pixels — typically 150-300 KB per section vs several MB of vector/bitmap data.
+      // captureBeyondViewport: true (default in Puppeteer 22+) allows clip regions
+      // outside the 900px viewport without needing to resize the page.
+      const JPEG_QUALITY = 80;
       const DESIRED_PAD_PX = 64;
+      // Use 1 CSS px = 1 PDF pt — screen-format PDF, never physically printed.
+      const PAGE_WIDTH_PT = 1200;
 
       const outputDoc = await PDFDocument.create();
       const helvetica = await outputDoc.embedFont(StandardFonts.Helvetica);
       const FONT_SIZE = 9;
-      const H_MARGIN = 40 * scale; // horizontal margin in points
-      const V_MARGIN = 18;         // vertical clearance from page edge in points
+      const H_MARGIN = 40;  // points
+      const V_MARGIN = 18;  // points
       const LINE_COLOR = rgb(0.88, 0.88, 0.88);
       const TEXT_COLOR = rgb(0.58, 0.58, 0.58);
       const reportLabel = `${report.title}  ·  ${report.period}`;
@@ -209,28 +197,27 @@ export async function GET(
         const topPad = Math.min(DESIRED_PAD_PX, region.y - prevEnd);
         const bottomPad = Math.min(DESIRED_PAD_PX, nextStart - (region.y + region.height));
 
-        const paddedY = region.y - topPad;
-        const paddedHeight = region.height + topPad + bottomPad;
+        const clipY = Math.max(0, region.y - topPad);
+        const clipHeight = Math.min(region.height + topPad + bottomPad, fullHeight - clipY);
 
-        const regionHeightPt = paddedHeight * scale;
-        // PDF coordinate system: y=0 is bottom-left, so flip the y axis
-        const yBottomPt = pdfHeight - (paddedY + paddedHeight) * scale;
-        const yTopPt = yBottomPt + regionHeightPt;
+        const screenshotBuffer = await page.screenshot({
+          type: "jpeg",
+          quality: JPEG_QUALITY,
+          clip: { x: 0, y: clipY, width: 1200, height: clipHeight },
+          captureBeyondViewport: true,
+        });
 
-        const [embedded] = await outputDoc.embedPages([sourcePage], [
-          { left: 0, bottom: yBottomPt, right: pdfWidth, top: yTopPt },
-        ]);
-
-        const newPage = outputDoc.addPage([pdfWidth, regionHeightPt]);
-        newPage.drawPage(embedded, { x: 0, y: 0, width: pdfWidth, height: regionHeightPt });
+        const jpegImage = await outputDoc.embedJpg(screenshotBuffer);
+        const newPage = outputDoc.addPage([PAGE_WIDTH_PT, clipHeight]);
+        newPage.drawImage(jpegImage, { x: 0, y: 0, width: PAGE_WIDTH_PT, height: clipHeight });
 
         // Draw header and footer on every page except the cover (idx 0)
         if (idx > 0) {
           // ── Header (top of page) ──────────────────────────────────────────
-          const headerY = regionHeightPt - V_MARGIN - FONT_SIZE;
+          const headerY = clipHeight - V_MARGIN - FONT_SIZE;
           newPage.drawLine({
             start: { x: H_MARGIN, y: headerY - 6 },
-            end: { x: pdfWidth - H_MARGIN, y: headerY - 6 },
+            end: { x: PAGE_WIDTH_PT - H_MARGIN, y: headerY - 6 },
             thickness: 0.5,
             color: LINE_COLOR,
           });
@@ -243,7 +230,7 @@ export async function GET(
           });
           const labelWidth = helvetica.widthOfTextAtSize(reportLabel, FONT_SIZE);
           newPage.drawText(reportLabel, {
-            x: pdfWidth - H_MARGIN - labelWidth,
+            x: PAGE_WIDTH_PT - H_MARGIN - labelWidth,
             y: headerY,
             size: FONT_SIZE,
             font: helvetica,
@@ -254,7 +241,7 @@ export async function GET(
           const footerY = V_MARGIN;
           newPage.drawLine({
             start: { x: H_MARGIN, y: footerY + FONT_SIZE + 5 },
-            end: { x: pdfWidth - H_MARGIN, y: footerY + FONT_SIZE + 5 },
+            end: { x: PAGE_WIDTH_PT - H_MARGIN, y: footerY + FONT_SIZE + 5 },
             thickness: 0.5,
             color: LINE_COLOR,
           });
@@ -267,7 +254,7 @@ export async function GET(
           });
           const periodWidth = helvetica.widthOfTextAtSize(report.period, FONT_SIZE);
           newPage.drawText(report.period, {
-            x: pdfWidth - H_MARGIN - periodWidth,
+            x: PAGE_WIDTH_PT - H_MARGIN - periodWidth,
             y: footerY,
             size: FONT_SIZE,
             font: helvetica,
@@ -276,7 +263,9 @@ export async function GET(
         }
       }
 
-      const finalPdfBuffer = await outputDoc.save();
+      // useObjectStreams enables cross-reference stream compression for an additional
+      // ~10-20% size reduction on top of the JPEG content savings.
+      const finalPdfBuffer = await outputDoc.save({ useObjectStreams: true });
 
       const filename = `${report.client.name}-${report.period}-report.pdf`
         .toLowerCase()
