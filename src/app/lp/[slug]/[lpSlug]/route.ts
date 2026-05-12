@@ -7,6 +7,39 @@ import { getTurnstileSiteKey } from "@/lib/turnstile";
 
 export const dynamic = "force-dynamic";
 
+function toSubdomainLabel(input: string): string {
+  return input
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 63);
+}
+
+function deriveSubdomainFromUrl(rawUrl: string): string | null {
+  try {
+    const host = new URL(rawUrl).hostname.toLowerCase();
+    const noWww = host.startsWith("www.") ? host.slice(4) : host;
+    const root = noWww.split(".")[0] ?? "";
+    const label = toSubdomainLabel(root);
+    if (!label || label === "www") return null;
+    return label;
+  } catch {
+    return null;
+  }
+}
+
+function deriveSubdomainFromBriefJson(raw: string | null): string | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as { url?: unknown };
+    if (typeof parsed.url !== "string") return null;
+    return deriveSubdomainFromUrl(parsed.url);
+  } catch {
+    return null;
+  }
+}
+
 // GET /lp/[slug]/[lpSlug]
 //
 // Internal route hit by the middleware rewrite for {client}.clickr.marketing/{slug}.
@@ -40,6 +73,8 @@ export async function GET(
     shareToken: string | null;
     analyticsConfig: string;
     formConfig: string;
+    customSubdomain?: string | null;
+    briefJson?: string | null;
     clientDefaultAnalyticsConfig?: string | null;
   };
 
@@ -63,6 +98,8 @@ export async function GET(
         shareToken: true,
         analyticsConfig: true,
         formConfig: true,
+        customSubdomain: true,
+        briefJson: true,
         client: { select: { defaultAnalyticsConfig: true } },
       },
     });
@@ -70,6 +107,43 @@ export async function GET(
       const { client: rowClient, ...rest } = row;
       landingPage = rest;
       defaultAnalyticsConfig = rowClient?.defaultAnalyticsConfig ?? null;
+    } else {
+      // Legacy fallback: older standalone pages may be published without
+      // customSubdomain set. Resolve by slug + derived subdomain from brief URL.
+      const legacyRows = await prisma.landingPage.findMany({
+        where: {
+          clientId: null,
+          slug: lpSlug,
+          status: "published",
+          customSubdomain: null,
+        },
+        select: {
+          id: true,
+          currentHtml: true,
+          shareToken: true,
+          analyticsConfig: true,
+          formConfig: true,
+          customSubdomain: true,
+          briefJson: true,
+          client: { select: { defaultAnalyticsConfig: true } },
+        },
+        take: 50,
+      });
+
+      const matchedLegacy = legacyRows.find((r) => deriveSubdomainFromBriefJson(r.briefJson) === clientSlug);
+      if (matchedLegacy) {
+        const { client: rowClient, ...rest } = matchedLegacy;
+        landingPage = rest;
+        defaultAnalyticsConfig = rowClient?.defaultAnalyticsConfig ?? null;
+
+        // Auto-heal legacy rows so future lookups hit the indexed path.
+        prisma.landingPage
+          .update({
+            where: { id: matchedLegacy.id },
+            data: { customSubdomain: clientSlug },
+          })
+          .catch(() => {});
+      }
     }
   }
 
