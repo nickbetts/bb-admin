@@ -421,6 +421,10 @@ export function getFormCaptureScript(shareToken: string | null, turnstileSiteKey
     form.addEventListener('submit', function(e) {
       e.preventDefault();
       var btn = form.querySelector('button[type="submit"], input[type="submit"]');
+      var originalBtnText = '';
+      if (btn) {
+        originalBtnText = (btn.tagName === 'INPUT') ? (btn.value || 'Submit') : (btn.textContent || 'Submit');
+      }
 
       // Block submission if Turnstile widget hasn't been completed
       if (TURNSTILE_SITE_KEY) {
@@ -439,26 +443,63 @@ export function getFormCaptureScript(shareToken: string | null, turnstileSiteKey
         }
       }
 
-      if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
+      if (btn) {
+        btn.disabled = true;
+        if (btn.tagName === 'INPUT') btn.value = 'Sending...';
+        else btn.textContent = 'Sending...';
+      }
       var fd = new FormData(form);
       var data = {};
       fd.forEach(function(v, k) {
-        // Strip Turnstile token — one-time security token, not a lead field
-        if (k !== 'cf-turnstile-response') data[k] = v;
+        // Keep all fields (including Turnstile token) so the backend can verify
+        data[k] = v;
       });
 
-      // Show success and fire conversion event immediately — don't wait for
-      // the server round-trip. Lead capture is best-effort in the background.
-      form.innerHTML = '<div style="text-align:center;padding:32px 16px"><h3 style="color:inherit;margin-bottom:8px">Thank you!</h3><p style="opacity:.8">We\\'ll be in touch shortly.</p></div>';
-      if (typeof window.__lpFireLead === 'function') window.__lpFireLead();
+      var setError = function(message) {
+        var existing = form.querySelector('.lp-submit-error');
+        if (!existing) {
+          existing = document.createElement('p');
+          existing.className = 'lp-submit-error';
+          existing.style.cssText = 'color:#dc2626;font-size:13px;margin:8px 0 0';
+          form.appendChild(existing);
+        }
+        existing.textContent = message || 'Submission failed. Please try again.';
+      };
 
-      if (SHARE_TOKEN) {
-        fetch('/api/share/landing-page/' + SHARE_TOKEN + '/lead', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
-        }).catch(function() { /* best-effort — success already shown */ });
+      if (!SHARE_TOKEN) {
+        if (btn) {
+          btn.disabled = false;
+          if (btn.tagName === 'INPUT') btn.value = originalBtnText;
+          else btn.textContent = originalBtnText;
+        }
+        setError('Submission endpoint is not configured.');
+        return;
       }
+
+      fetch('/api/share/landing-page/' + SHARE_TOKEN + '/lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      }).then(function(r) {
+        if (!r.ok) {
+          return r.json().then(function(j) {
+            var msg = (j && j.error) ? j.error : 'Submission failed. Please try again.';
+            throw new Error(msg);
+          }).catch(function() {
+            throw new Error('Submission failed. Please try again.');
+          });
+        }
+
+        form.innerHTML = '<div style="text-align:center;padding:32px 16px"><h3 style="color:inherit;margin-bottom:8px">Thank you!</h3><p style="opacity:.8">We\\'ll be in touch shortly.</p></div>';
+        if (typeof window.__lpFireLead === 'function') window.__lpFireLead();
+      }).catch(function(err) {
+        if (btn) {
+          btn.disabled = false;
+          if (btn.tagName === 'INPUT') btn.value = originalBtnText;
+          else btn.textContent = originalBtnText;
+        }
+        setError(err && err.message ? err.message : 'Submission failed. Please try again.');
+      });
     });
   });
 })();
