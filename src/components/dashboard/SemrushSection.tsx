@@ -102,6 +102,7 @@ interface Competitor {
   organicTraffic: number;
   organicCost: number;
   adKeywords: number;
+  isClient?: boolean;
 }
 
 interface Backlink {
@@ -173,6 +174,26 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
   const [anchorText, setAnchorText] = useState<Array<{ anchor: string; domains: number; backlinks: number; firstSeen: string; lastSeen: string }>>([]);
   const [backlinkComparison, setBacklinkComparison] = useState<Array<{ domain: string; ascore: number; totalBacklinks: number; referringDomains: number; followLinks: number; nofollowLinks: number }>>([]);
   const [positionChanges, setPositionChanges] = useState<Array<{ keyword: string; previousPosition: number; currentPosition: number; change: number; searchVolume: number; url: string }>>([]);
+
+  const competitorRows = useMemo<Competitor[]>(() => {
+    const normaliseDomain = (value: string) => value.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*/, "");
+    const clientDomain = normaliseDomain(domain);
+    const competitorOnly = competitors.filter((c) => normaliseDomain(c.domain) !== clientDomain);
+
+    if (!overview) return competitorOnly;
+
+    const clientRow: Competitor = {
+      domain,
+      commonKeywords: 0,
+      organicKeywords: overview.organicKeywords,
+      organicTraffic: overview.organicTraffic,
+      organicCost: overview.organicCost,
+      adKeywords: overview.paidKeywords,
+      isClient: true,
+    };
+
+    return [clientRow, ...competitorOnly.map((c) => ({ ...c, isClient: false }))];
+  }, [competitors, domain, overview]);
 
   // ── Tagged keyword positions state ─────────────────────────
   interface TaggedKeyword {
@@ -1313,20 +1334,29 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
       )}
 
       {/* Competitor landscape */}
-      {show("competitors") && competitors.length > 0 && (
+      {show("competitors") && competitorRows.length > 0 && (
         <SectionCard title="Competitor Landscape" subtitle={`Top organic competitors for ${domain}`}>
           <DataTable<Competitor>
-            data={competitors}
+            data={competitorRows}
             pageSize={20}
             columns={[
               {
                 key: "domain",
                 label: "Domain",
                 render: (_v, row) => (
-                  <a href={`https://${row.domain}`} target="_blank" rel="noopener noreferrer"
-                    className="font-medium text-[var(--text)] hover:text-indigo-600 transition">
-                    {row.domain}
-                  </a>
+                  <div className="flex items-center gap-2">
+                    {row.isClient ? (
+                      <span className="inline-flex items-center rounded-full border border-emerald-300/70 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-200">Client</span>
+                    ) : null}
+                    <a
+                      href={`https://${row.domain}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={row.isClient ? "font-semibold text-emerald-200 hover:text-emerald-100 transition" : "font-medium text-[var(--text)] hover:text-indigo-600 transition"}
+                    >
+                      {row.domain}
+                    </a>
+                  </div>
                 ),
               },
               {
@@ -1335,9 +1365,13 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
                 align: "right",
                 sortable: true,
                 render: (_v, row) => (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700">
-                    {formatNumber(row.commonKeywords)}
-                  </span>
+                  row.isClient ? (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-200 border border-emerald-300/60">Self</span>
+                  ) : (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700">
+                      {formatNumber(row.commonKeywords)}
+                    </span>
+                  )
                 ),
               },
               {
@@ -1345,21 +1379,27 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
                 label: "Organic KW",
                 align: "right",
                 sortable: true,
-                render: (_v, row) => formatNumber(row.organicKeywords),
+                render: (_v, row) => (
+                  <span className={row.isClient ? "font-semibold text-emerald-200" : undefined}>{formatNumber(row.organicKeywords)}</span>
+                ),
               },
               {
                 key: "organicTraffic",
                 label: "Traffic",
                 align: "right",
                 sortable: true,
-                render: (_v, row) => formatNumber(row.organicTraffic),
+                render: (_v, row) => (
+                  <span className={row.isClient ? "font-semibold text-emerald-200" : undefined}>{formatNumber(row.organicTraffic)}</span>
+                ),
               },
               {
                 key: "organicCost",
                 label: "Traffic Value",
                 align: "right",
                 sortable: true,
-                render: (_v, row) => formatCurrency(row.organicCost),
+                render: (_v, row) => (
+                  <span className={row.isClient ? "font-semibold text-emerald-200" : undefined}>{formatCurrency(row.organicCost)}</span>
+                ),
               },
             ]}
           />
