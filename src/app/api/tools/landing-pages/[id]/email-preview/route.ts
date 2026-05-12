@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { buildLeadNotificationHtml } from "@/lib/email";
+import { parseLpFormConfig } from "@/lib/lp-form-config";
+import type { LpFormField } from "@/lib/lp-form-config";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -34,20 +36,30 @@ export async function POST(
       briefJson: true,
       currentHtml: true,
       clientId: true,
+      formConfig: true,
     },
   });
 
   if (!lp) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   let sampleFields: Record<string, string> | undefined;
+  let fieldDefs: LpFormField[] | undefined;
+
   try {
     const body = await request.json() as { sampleFields?: Record<string, string> };
     sampleFields = body.sampleFields;
   } catch { /* no body — use auto-extracted */ }
 
-  // If no sample fields provided, extract input names/labels from the LP HTML
-  // and pair them with plausible placeholder values
-  if (!sampleFields || Object.keys(sampleFields).length === 0) {
+  // Check whether formConfig has configured fields
+  const formConfig = parseLpFormConfig(lp.formConfig);
+  if (formConfig.fields && formConfig.fields.length > 0) {
+    // Use configured fields: build sample data from the field definitions
+    fieldDefs = formConfig.fields;
+    if (!sampleFields || Object.keys(sampleFields).length === 0) {
+      sampleFields = Object.fromEntries(fieldDefs.map((f) => [f.name, guessValue(f.name)]));
+    }
+  } else if (!sampleFields || Object.keys(sampleFields).length === 0) {
+    // No configured fields and no provided sample — extract from HTML
     sampleFields = extractSampleFields(lp.currentHtml);
   }
 
@@ -65,6 +77,7 @@ export async function POST(
     clientName,
     briefJson: lp.briefJson,
     fields: sampleFields,
+    fieldDefs,
     referrer: null,
     submittedAt: new Date(),
   });

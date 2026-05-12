@@ -16,6 +16,7 @@
 import { Resend } from "resend";
 import { prisma } from "@/lib/prisma";
 import { getOpenAiClient } from "@/lib/openai-client";
+import type { LpFormField } from "@/lib/lp-form-config";
 
 export class SmtpNotConfiguredError extends Error {
   constructor() {
@@ -69,6 +70,12 @@ export interface LeadEmailContext {
   clientName?: string;
   briefJson?: string; // raw JSON string from LandingPage.briefJson
   fields: Record<string, string>; // all submitted string fields
+  /**
+   * Optional ordered field definitions from LpFormConfig.fields.
+   * When provided, the email uses these labels (in this order) instead of
+   * AI-resolved labels, and only includes fields whose name appears here.
+   */
+  fieldDefs?: LpFormField[];
   referrer?: string | null;
   submittedAt?: Date;
 }
@@ -123,14 +130,29 @@ async function resolveFieldLabels(
 }
 
 export async function buildLeadNotificationHtml(ctx: LeadEmailContext): Promise<{ html: string; text: string }> {
-  const { lpTitle, clientName, fields, referrer, submittedAt } = ctx;
+  const { lpTitle, clientName, fields, fieldDefs, referrer, submittedAt } = ctx;
 
-  // ── AI-resolved field labels ─────────────────────────────────────────────
-  const keys = Object.keys(fields);
-  const labels = await resolveFieldLabels(keys, lpTitle, clientName);
+  // ── Determine ordered entries and labels ─────────────────────────────────
+  // When fieldDefs are configured, use their order and labels directly.
+  // Otherwise, fall back to AI-resolved labels for all submitted fields.
+  let orderedEntries: [string, string][];
+  let labels: Record<string, string>;
+
+  if (fieldDefs && fieldDefs.length > 0) {
+    // Only include fields defined in fieldDefs, in their configured order
+    orderedEntries = fieldDefs
+      .filter((def) => typeof fields[def.name] === "string" && (fields[def.name] as string).trim())
+      .map((def) => [def.name, fields[def.name]] as [string, string]);
+    labels = Object.fromEntries(fieldDefs.map((def) => [def.name, def.label]));
+  } else {
+    // Legacy: all submitted fields, AI-resolved labels
+    const keys = Object.keys(fields);
+    labels = await resolveFieldLabels(keys, lpTitle, clientName);
+    orderedEntries = Object.entries(fields);
+  }
 
   // ── Fields table ─────────────────────────────────────────────────────────
-  const fieldRows = Object.entries(fields)
+  const fieldRows = orderedEntries
     .map(([k, v]) => `<tr>
       <td style="padding:6px 12px;color:#6b7280;white-space:nowrap;border-bottom:1px solid #f3f4f6;font-size:13px">${escapeHtml(labels[k] ?? formatFieldLabel(k))}</td>
       <td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;font-size:13px;font-weight:500;color:#111">${escapeHtml(v)}</td>
@@ -165,7 +187,7 @@ export async function buildLeadNotificationHtml(ctx: LeadEmailContext): Promise<
 </body>
 </html>`;
 
-  const textLines = Object.entries(fields).map(([k, v]) => `${labels[k] ?? formatFieldLabel(k)}: ${v}`).join("\n");
+  const textLines = orderedEntries.map(([k, v]) => `${labels[k] ?? formatFieldLabel(k)}: ${v}`).join("\n");
   const text = `New lead from "${lpTitle}"\n\n${textLines}`;
 
   return { html, text };

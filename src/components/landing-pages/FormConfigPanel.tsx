@@ -6,9 +6,9 @@
  * Controlled component — parent owns `value` and gets `onChange`.
  */
 
-import { useState } from "react";
-import { AlertTriangle, Webhook, Mail, Code2, Eye, X } from "lucide-react";
-import type { LpFormConfig } from "@/lib/lp-form-config";
+import { useState, useCallback } from "react";
+import { AlertTriangle, Webhook, Mail, Code2, Eye, X, ListPlus, Loader2, ChevronUp, ChevronDown, Trash2, RefreshCw, GripVertical } from "lucide-react";
+import type { LpFormConfig, LpFormField, LpFormFieldType } from "@/lib/lp-form-config";
 
 interface Props {
   value: LpFormConfig;
@@ -69,8 +69,40 @@ export function FormConfigPanel({ value, onChange, lpId }: Props) {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
 
-  const notifyEmails = value.notifyEmails ?? [];
+  // ── Form fields editor state ──────────────────────────────────────────────
+  const [syncingFields, setSyncingFields] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [addingField, setAddingField] = useState(false);
+  const [newFieldName, setNewFieldName] = useState("");
+  const [newFieldLabel, setNewFieldLabel] = useState("");
+  const [newFieldType, setNewFieldType] = useState<LpFormFieldType>("text");
+  const [newFieldRequired, setNewFieldRequired] = useState(false);
+  const [newFieldError, setNewFieldError] = useState<string | null>(null);
 
+  const notifyEmails = value.notifyEmails ?? [];
+  const fields = value.fields ?? [];
+
+  // ── Email preview ─────────────────────────────────────────────────────────
+  async function handlePreview() {
+    setPreviewLoading(true);
+    setPreviewError(null);
+    try {
+      const res = await fetch(`/api/tools/landing-pages/${lpId}/email-preview`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) throw new Error("Preview failed");
+      const data = await res.json() as { html: string };
+      setPreviewHtml(data.html);
+    } catch {
+      setPreviewError("Could not generate preview. Make sure your OpenAI key is configured.");
+    } finally {
+      setPreviewLoading(false);
+    }
+  }
+
+  // ── Notification emails ────────────────────────────────────────────────────
   function addNotifyEmail() {
     const next = emailInput.trim();
     if (!next) return;
@@ -94,24 +126,109 @@ export function FormConfigPanel({ value, onChange, lpId }: Props) {
     });
   }
 
-  async function handlePreview() {
-    setPreviewLoading(true);
-    setPreviewError(null);
+  // ── Form fields operations ─────────────────────────────────────────────────
+  const handleSyncFields = useCallback(async () => {
+    setSyncingFields(true);
+    setSyncError(null);
     try {
-      const res = await fetch(`/api/tools/landing-pages/${lpId}/email-preview`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      });
-      if (!res.ok) throw new Error("Preview failed");
-      const data = await res.json() as { html: string };
-      setPreviewHtml(data.html);
-    } catch {
-      setPreviewError("Could not generate preview. Make sure your OpenAI key is configured.");
+      const res = await fetch(`/api/tools/landing-pages/${lpId}/form-fields`);
+      if (!res.ok) throw new Error("Could not extract fields from page.");
+      const data = await res.json() as { fields: LpFormField[] };
+      if (data.fields.length === 0) {
+        setSyncError("No named form fields found in the page HTML.");
+        return;
+      }
+      // Merge: keep existing field configs, add any new ones from HTML
+      const existingNames = new Set(fields.map((f) => f.name));
+      const merged = [
+        ...fields,
+        ...data.fields.filter((f) => !existingNames.has(f.name)),
+      ];
+      onChange({ ...value, fields: merged });
+    } catch (err) {
+      setSyncError(err instanceof Error ? err.message : "Sync failed");
     } finally {
-      setPreviewLoading(false);
+      setSyncingFields(false);
     }
+  }, [lpId, fields, value, onChange]);
+
+  function moveField(index: number, direction: -1 | 1) {
+    const next = [...fields];
+    const target = index + direction;
+    if (target < 0 || target >= next.length) return;
+    [next[index], next[target]] = [next[target], next[index]];
+    onChange({ ...value, fields: next });
   }
+
+  function removeField(id: string) {
+    onChange({ ...value, fields: fields.filter((f) => f.id !== id) });
+  }
+
+  function toggleRequired(id: string) {
+    onChange({
+      ...value,
+      fields: fields.map((f) => f.id === id ? { ...f, required: !f.required } : f),
+    });
+  }
+
+  function updateFieldLabel(id: string, label: string) {
+    onChange({
+      ...value,
+      fields: fields.map((f) => f.id === id ? { ...f, label } : f),
+    });
+  }
+
+  function autoLabel(name: string): string {
+    return name
+      .replace(/[_-]/g, " ")
+      .replace(/([a-z])([A-Z])/g, "$1 $2")
+      .replace(/\b\w/g, (c) => c.toUpperCase())
+      .trim();
+  }
+
+  function handleAddField() {
+    const name = newFieldName.trim();
+    const label = newFieldLabel.trim() || autoLabel(name);
+    if (!name) { setNewFieldError("Field name is required."); return; }
+    if (!/^[a-zA-Z][a-zA-Z0-9_-]*$/.test(name)) {
+      setNewFieldError("Name must start with a letter and contain only letters, numbers, underscores, or hyphens.");
+      return;
+    }
+    if (fields.some((f) => f.name === name)) {
+      setNewFieldError("A field with this name already exists.");
+      return;
+    }
+    onChange({
+      ...value,
+      fields: [...fields, { id: crypto.randomUUID(), name, label, type: newFieldType, required: newFieldRequired }],
+    });
+    setNewFieldName("");
+    setNewFieldLabel("");
+    setNewFieldType("text");
+    setNewFieldRequired(false);
+    setNewFieldError(null);
+    setAddingField(false);
+  }
+
+  function cancelAddField() {
+    setAddingField(false);
+    setNewFieldName("");
+    setNewFieldLabel("");
+    setNewFieldType("text");
+    setNewFieldRequired(false);
+    setNewFieldError(null);
+  }
+
+  const FIELD_TYPE_LABELS: Record<LpFormFieldType, string> = {
+    text: "Text",
+    email: "Email",
+    tel: "Phone",
+    textarea: "Textarea",
+    select: "Select",
+    date: "Date",
+    number: "Number",
+    url: "URL",
+  };
 
   return (
     <>
@@ -159,6 +276,224 @@ export function FormConfigPanel({ value, onChange, lpId }: Props) {
     )}
 
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+
+      {/* ── Form fields ───────────────────────────────────────────────────── */}
+      <div>
+        <div style={{ ...sectionTitleStyle, justifyContent: "space-between" }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <GripVertical style={{ width: 14, height: 14, color: "var(--accent)" }} />
+            Form fields
+          </span>
+          <button
+            onClick={handleSyncFields}
+            disabled={syncingFields}
+            title="Auto-detect fields from the page HTML and add any missing ones"
+            style={{
+              display: "flex", alignItems: "center", gap: 5,
+              background: "none", border: "1px solid var(--border)",
+              borderRadius: "var(--r)", padding: "3px 8px",
+              fontSize: 11, fontWeight: 600, color: "var(--text-2)",
+              cursor: syncingFields ? "not-allowed" : "pointer",
+              opacity: syncingFields ? 0.55 : 1,
+            }}
+          >
+            {syncingFields
+              ? <Loader2 size={11} style={{ animation: "spin 1s linear infinite" }} />
+              : <RefreshCw size={11} />}
+            {syncingFields ? "Syncing…" : "Sync from page"}
+          </button>
+        </div>
+
+        {syncError && (
+          <p style={{ ...hintStyle, color: "var(--danger)", marginBottom: 8 }}>{syncError}</p>
+        )}
+
+        {fields.length === 0 ? (
+          <p style={{ ...hintStyle, marginBottom: 10 }}>
+            No fields configured. Click <strong>Sync from page</strong> to auto-detect fields from your form, or add them manually below.
+            When fields are defined, notification emails will use these labels in this order.
+          </p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: 10 }}>
+            {fields.map((field, index) => (
+              <div
+                key={field.id}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "6px 8px",
+                  borderRadius: "var(--r-sm)",
+                  border: "1px solid var(--border)",
+                  background: "var(--surface)",
+                }}
+              >
+                {/* Order controls */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                  <button
+                    onClick={() => moveField(index, -1)}
+                    disabled={index === 0}
+                    title="Move up"
+                    style={{ background: "none", border: "none", cursor: index === 0 ? "default" : "pointer", color: index === 0 ? "var(--border)" : "var(--text-4)", padding: 0, display: "flex", alignItems: "center" }}
+                  >
+                    <ChevronUp size={12} />
+                  </button>
+                  <button
+                    onClick={() => moveField(index, 1)}
+                    disabled={index === fields.length - 1}
+                    title="Move down"
+                    style={{ background: "none", border: "none", cursor: index === fields.length - 1 ? "default" : "pointer", color: index === fields.length - 1 ? "var(--border)" : "var(--text-4)", padding: 0, display: "flex", alignItems: "center" }}
+                  >
+                    <ChevronDown size={12} />
+                  </button>
+                </div>
+
+                {/* Field info */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  {/* Editable label */}
+                  <input
+                    value={field.label}
+                    onChange={(e) => updateFieldLabel(field.id, e.target.value)}
+                    style={{
+                      background: "none", border: "none", outline: "none",
+                      fontSize: 12, fontWeight: 600, color: "var(--text)",
+                      width: "100%", fontFamily: "inherit", padding: 0,
+                    }}
+                    title="Click to edit label"
+                    placeholder="Label"
+                  />
+                  <span style={{ fontSize: 10, color: "var(--text-4)" }}>{field.name}</span>
+                </div>
+
+                {/* Type badge */}
+                <span style={{
+                  fontSize: 9, fontWeight: 600, padding: "1px 5px",
+                  borderRadius: 99, background: "var(--border-subtle)",
+                  color: "var(--text-3)", textTransform: "uppercase", letterSpacing: 0.4,
+                  flexShrink: 0,
+                }}>
+                  {FIELD_TYPE_LABELS[field.type]}
+                </span>
+
+                {/* Required toggle */}
+                <button
+                  onClick={() => toggleRequired(field.id)}
+                  title={field.required ? "Required — click to make optional" : "Optional — click to make required"}
+                  style={{
+                    fontSize: 9, fontWeight: 700, padding: "1px 5px",
+                    borderRadius: 99, border: "none", cursor: "pointer",
+                    background: field.required ? "var(--accent-bg)" : "var(--border-subtle)",
+                    color: field.required ? "var(--accent)" : "var(--text-4)",
+                    flexShrink: 0,
+                  }}
+                >
+                  {field.required ? "REQ" : "OPT"}
+                </button>
+
+                {/* Delete */}
+                <button
+                  onClick={() => removeField(field.id)}
+                  title="Remove field"
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-4)", padding: 2, display: "flex", alignItems: "center", flexShrink: 0 }}
+                >
+                  <Trash2 size={12} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Add field form */}
+        {addingField ? (
+          <div style={{ border: "1px solid var(--accent)", borderRadius: "var(--r-sm)", padding: "10px 12px", background: "var(--surface)", display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <div>
+                <label style={labelStyle}>Field name <span style={{ color: "var(--text-4)", fontWeight: 400 }}>(HTML name attr)</span></label>
+                <input
+                  autoFocus
+                  type="text"
+                  value={newFieldName}
+                  onChange={(e) => {
+                    setNewFieldName(e.target.value);
+                    if (!newFieldLabel || newFieldLabel === autoLabel(newFieldName)) {
+                      setNewFieldLabel(autoLabel(e.target.value));
+                    }
+                    setNewFieldError(null);
+                  }}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleAddField(); if (e.key === "Escape") cancelAddField(); }}
+                  placeholder="e.g. player_name"
+                  style={{ ...inputStyle, fontSize: 12, padding: "5px 8px" }}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>Label <span style={{ color: "var(--text-4)", fontWeight: 400 }}>(shown in email)</span></label>
+                <input
+                  type="text"
+                  value={newFieldLabel}
+                  onChange={(e) => setNewFieldLabel(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleAddField(); if (e.key === "Escape") cancelAddField(); }}
+                  placeholder="e.g. Player name"
+                  style={{ ...inputStyle, fontSize: 12, padding: "5px 8px" }}
+                />
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <div style={{ flex: 1 }}>
+                <label style={labelStyle}>Type</label>
+                <select
+                  value={newFieldType}
+                  onChange={(e) => setNewFieldType(e.target.value as LpFormFieldType)}
+                  style={{ ...inputStyle, fontSize: 12, padding: "5px 8px" }}
+                >
+                  {(Object.entries(FIELD_TYPE_LABELS) as [LpFormFieldType, string][]).map(([t, lbl]) => (
+                    <option key={t} value={t}>{lbl}</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ paddingTop: 18, display: "flex", alignItems: "center", gap: 6 }}>
+                <input
+                  id="new-field-required"
+                  type="checkbox"
+                  checked={newFieldRequired}
+                  onChange={(e) => setNewFieldRequired(e.target.checked)}
+                  style={{ cursor: "pointer" }}
+                />
+                <label htmlFor="new-field-required" style={{ ...labelStyle, marginBottom: 0, cursor: "pointer" }}>Required</label>
+              </div>
+            </div>
+            {newFieldError && <p style={{ ...hintStyle, color: "var(--danger)" }}>{newFieldError}</p>}
+            <div style={{ display: "flex", gap: 6 }}>
+              <button type="button" onClick={handleAddField} className="btn btn-primary btn-sm" style={{ fontSize: 11 }}>
+                <ListPlus size={12} /> Add field
+              </button>
+              <button type="button" onClick={cancelAddField} style={{ fontSize: 11, padding: "4px 10px", background: "none", border: "1px solid var(--border)", borderRadius: "var(--r-sm)", cursor: "pointer", color: "var(--text-3)", fontFamily: "inherit" }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setAddingField(true)}
+            style={{
+              width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+              padding: "6px 0", fontSize: 12, fontWeight: 500,
+              background: "none", border: "1px dashed var(--border)",
+              borderRadius: "var(--r-sm)", cursor: "pointer", color: "var(--accent)",
+              fontFamily: "inherit",
+            }}
+          >
+            <ListPlus size={13} /> Add field manually
+          </button>
+        )}
+
+        <p style={{ ...hintStyle, marginTop: 8 }}>
+          Fields defined here control how lead notification emails are formatted — using your labels in this order.
+          Unlisted fields from form submissions are omitted from emails.
+        </p>
+      </div>
+
+      <div style={dividerStyle} />
 
       {/* ── Notification emails ────────────────────────────────────────────── */}
       <div>

@@ -294,6 +294,7 @@ export async function POST(
         clientName,
         briefJson: landingPage.briefJson,
         fields: stringFields,
+        fieldDefs: formConfig.fields?.length ? formConfig.fields : undefined,
         referrer,
         submittedAt: new Date(),
       });

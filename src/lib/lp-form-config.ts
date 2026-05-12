@@ -6,7 +6,28 @@
  *   - an optional outbound webhook that receives every lead as a JSON POST
  *   - an optional embed code (iframe / script tag) that replaces the
  *     AI-generated built-in form entirely (e.g. a JotForm or Typeform embed)
+ *   - the ordered list of form fields for email formatting
  */
+
+export type LpFormFieldType = "text" | "email" | "tel" | "textarea" | "select" | "date" | "number" | "url";
+
+/**
+ * A single field definition for the landing page form.
+ * Used to control how lead notification emails are formatted —
+ * labels, ordering, and which fields to include.
+ */
+export interface LpFormField {
+  /** Unique client-generated ID (crypto.randomUUID) */
+  id: string;
+  /** Matches the HTML field's name attribute (e.g. "player_dob") */
+  name: string;
+  /** Human-readable label shown in notification emails (e.g. "Player date of birth") */
+  label: string;
+  /** HTML input type */
+  type: LpFormFieldType;
+  /** Whether the field is required in the form */
+  required: boolean;
+}
 
 export interface LpFormConfig {
   /** One or more email addresses to notify when a lead is captured */
@@ -25,6 +46,13 @@ export interface LpFormConfig {
    * form provider handles capture entirely.
    */
   embedCode?: string;
+  /**
+   * Ordered list of form field definitions.
+   * When set, lead notification emails use these labels and ordering instead
+   * of AI-resolved labels.  Only fields listed here appear in the email.
+   * Populated by the form field editor in the landing page editor sidebar.
+   */
+  fields?: LpFormField[];
 }
 
 export function parseLpFormConfig(raw: string | null | undefined): LpFormConfig {
