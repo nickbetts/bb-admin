@@ -1297,6 +1297,23 @@ model InternalLinkingPlan {
   @@index([clientId, createdAt])
 }
 
+// ─── AI Cost Tracking ───────────────────────────────────────────────────────
+// Logs every AI API call to track usage, tokens, and costs per tool/feature
+model AICostLog {
+  id            String   @id @default(cuid())
+  tool          String   // "content-strategy", "grand-plan", "summary", "chat", etc.
+  provider      String   // "anthropic" | "openai"
+  model         String   // "claude-opus-4-5", "gpt-4o-mini", etc.
+  inputTokens   Int
+  outputTokens  Int
+  costUSD       Float    // Calculated based on current model pricing
+  timestamp     DateTime @default(now())
+  
+  @@index([tool, timestamp])
+  @@index([provider, timestamp])
+  @@index([timestamp])
+}
+
 // ─── Clickr Public SaaS ──────────────────────────────────────────────────────
 
 model ClickrUser {

@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type Anthropic_ from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/prisma";
+import { logAICost } from "@/lib/ai-cost-logger";
 
 /**
  * Resolve the Anthropic API key — checks AppSetting DB first, falls back to env.
@@ -18,6 +19,30 @@ export async function getAnthropicKey(): Promise<string> {
 export async function getAnthropicClient(): Promise<Anthropic> {
   const apiKey = await getAnthropicKey();
   return new Anthropic({ apiKey });
+}
+
+/**
+ * Wrapper to log Anthropic API usage after a message is created.
+ * Call this in route handlers after receiving a response from anthropic.messages.create()
+ */
+export async function logAnthropicUsage(
+  tool: string,
+  message: Anthropic_.Messages.Message
+): Promise<void> {
+  try {
+    // Extract model name — remove provider prefix if present
+    const modelName = message.model.replace("claude-", "claude-");
+
+    await logAICost({
+      tool,
+      provider: "anthropic",
+      model: message.model,
+      inputTokens: message.usage.input_tokens,
+      outputTokens: message.usage.output_tokens,
+    });
+  } catch (error) {
+    console.error("[Anthropic Cost Logger] Failed to log usage:", error);
+  }
 }
 
 /**

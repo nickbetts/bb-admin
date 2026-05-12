@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import type { Response as OAIResponse } from "openai/resources/responses/responses";
 import { prisma } from "@/lib/prisma";
+import { logAICost } from "@/lib/ai-cost-logger";
 
 /**
  * Resolve the OpenAI API key — checks AppSetting DB first, falls back to env.
@@ -20,6 +21,32 @@ export async function getOpenAiKey(): Promise<string> {
 export async function getOpenAiClient(): Promise<OpenAI> {
   const apiKey = await getOpenAiKey();
   return new OpenAI({ apiKey });
+}
+
+/**
+ * Wrapper to log OpenAI API usage after a chat completion is received.
+ * Call this in route handlers after receiving a response from openai.chat.completions.create()
+ */
+export async function logOpenAiUsage(
+  tool: string,
+  response: OpenAI.Chat.ChatCompletion
+): Promise<void> {
+  try {
+    if (!response.usage) {
+      console.warn("[OpenAI Cost Logger] No usage data in response");
+      return;
+    }
+
+    await logAICost({
+      tool,
+      provider: "openai",
+      model: response.model,
+      inputTokens: response.usage.prompt_tokens,
+      outputTokens: response.usage.completion_tokens,
+    });
+  } catch (error) {
+    console.error("[OpenAI Cost Logger] Failed to log usage:", error);
+  }
 }
 
 // ─── Web search helpers ──────────────────────────────────────────────────────
