@@ -67,7 +67,9 @@ export async function GET(
 
       // Set viewport to match the PDF width exactly so section height
       // measurements taken at this viewport are valid for the crop step.
-      await page.setViewport({ width: 1200, height: 900, deviceScaleFactor: 1 });
+      // deviceScaleFactor: 2 renders at 2×DPI (2400px wide), screenshots are
+      // embedded at 1200pt — equivalent to a retina display, giving crisp text.
+      await page.setViewport({ width: 1200, height: 900, deviceScaleFactor: 2 });
 
       // Forward any sort_* params from the export request so the print page
       // DataTables render with the same sort order the user had in the preview.
@@ -175,7 +177,7 @@ export async function GET(
       // JPEG pixels — typically 150-300 KB per section vs several MB of vector/bitmap data.
       // captureBeyondViewport: true (default in Puppeteer 22+) allows clip regions
       // outside the 900px viewport without needing to resize the page.
-      const JPEG_QUALITY = 80;
+      const JPEG_QUALITY = 85;
       const DESIRED_PAD_PX = 64;
       // Use 1 CSS px = 1 PDF pt — screen-format PDF, never physically printed.
       const PAGE_WIDTH_PT = 1200;
