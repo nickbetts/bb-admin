@@ -65,8 +65,9 @@ export async function GET(
       // are viewed on-screen, never physically printed.
       await page.emulateMediaType("screen");
 
-      // Set viewport to a standard report width so layout is consistent.
-      await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
+      // Set viewport to match the PDF width exactly so section height
+      // measurements taken at this viewport are valid for the crop step.
+      await page.setViewport({ width: 1200, height: 900, deviceScaleFactor: 1 });
 
       // Forward any sort_* params from the export request so the print page
       // DataTables render with the same sort order the user had in the preview.
