@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOpenAiClient } from "@/lib/openai-client";
+import { getOpenAiClient, logOpenAiUsage } from "@/lib/openai-client";
 import { SuperSummarySchema, validateAiJson } from "@/lib/ai/schemas";
 import { prisma } from "@/lib/prisma";
 import { fetchPageSignals, type PageSignals } from "@/lib/landing-page-analyzer";
@@ -356,6 +356,9 @@ Be frank and specific. Reference actual campaign names, URLs, and figures.`;
       max_completion_tokens: 3000,
       temperature: 0.3,
     });
+
+    // Log usage for cost tracking
+    await logOpenAiUsage("super-summary", completion);
 
     const raw = completion.choices[0]?.message?.content ?? "{}";
     const validated = validateAiJson(SuperSummarySchema, raw);

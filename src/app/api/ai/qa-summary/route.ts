@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { enforceAiRateLimit } from "@/lib/ai/rate-limit";
 import { prisma } from "@/lib/prisma";
-import { getOpenAiClient } from "@/lib/openai-client";
+import { getOpenAiClient, logOpenAiUsage } from "@/lib/openai-client";
 
 export const dynamic = "force-dynamic";
 
@@ -63,6 +63,8 @@ Write a concise pre-launch QA sign-off summary (3–4 sentences). State the over
       temperature: 0.65,
       max_tokens: 600,
     });
+
+    await logOpenAiUsage("qa-summary", response);
 
     const summary = response.choices[0]?.message?.content?.trim() ?? "";
 

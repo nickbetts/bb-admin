@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getAnthropicClient } from "@/lib/anthropic-client";
+import { getAnthropicClient, logAnthropicUsage } from "@/lib/anthropic-client";
 import * as XLSX from "xlsx";
 import mammoth from "mammoth";
 import crypto from "crypto";
@@ -1644,6 +1644,8 @@ Return your response as valid JSON with the following keys:
           },
         ],
       });
+
+      await logAnthropicUsage("content-strategy", response);
 
       const textBlock = response.content.find(b => b.type === "text");
       if (textBlock && textBlock.type === "text") {

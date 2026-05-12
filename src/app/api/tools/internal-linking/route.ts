@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getAnthropicClient } from "@/lib/anthropic-client";
+import { getAnthropicClient, logAnthropicUsage } from "@/lib/anthropic-client";
 import { withApiCache } from "@/lib/api-cache";
 import {
   extractDraftFromDocx,
@@ -368,6 +368,8 @@ Please generate exactly ${budget.moneyPage} money-page link(s), ${budget.outboun
       system: systemPrompt,
       messages: [{ role: "user", content: userPrompt }],
     });
+
+    await logAnthropicUsage("internal-linking", aiResponse);
 
     const textBlock = aiResponse.content.find(b => b.type === "text");
     const rawContent = textBlock && textBlock.type === "text" ? textBlock.text.trim() : "{}";

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { enforceAiRateLimit } from "@/lib/ai/rate-limit";
 import { prisma } from "@/lib/prisma";
-import { getOpenAiClient } from "@/lib/openai-client";
+import { getOpenAiClient, logOpenAiUsage } from "@/lib/openai-client";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -127,6 +127,8 @@ Keep it concise and actionable. Note any limitations in the analysis.`;
       max_completion_tokens: 800,
       messages: [{ role: "user", content: prompt }],
     });
+
+    await logOpenAiUsage("attribution", completion);
 
     const narrative = completion.choices[0]?.message?.content ?? "";
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOpenAiClient } from "@/lib/openai-client";
-import { getAnthropicClient } from "@/lib/anthropic-client";
+import { getOpenAiClient, logOpenAiUsage } from "@/lib/openai-client";
+import { getAnthropicClient, logAnthropicUsage } from "@/lib/anthropic-client";
 import { prisma } from "@/lib/prisma";
 import { getSeasonalityContext } from "@/lib/seasonality";
 import { resolveConfig, type ResolvedSignalConfig } from "@/lib/signals/defaults";
@@ -1154,6 +1154,9 @@ Output the result as clean HTML only — no markdown, no code fences, no preambl
         messages: [{ role: "user", content: gamePlanPrompt }],
       });
 
+      // Log usage for cost tracking
+      await logAnthropicUsage("summary", opusResponse);
+
       // Anthropic returns content blocks; collect text-type blocks.
       const gamePlan = opusResponse.content
         .filter((b) => b.type === "text")
@@ -1393,6 +1396,9 @@ Respond in JSON format:
       max_completion_tokens: 3000,
       temperature: 0.35,
     });
+
+    // Log usage for cost tracking
+    await logOpenAiUsage("summary", completion);
 
     const content = completion.choices[0]?.message?.content ?? "{}";
     let parsed: { summary?: string; insights?: string[]; recommendations?: string[] } = {};

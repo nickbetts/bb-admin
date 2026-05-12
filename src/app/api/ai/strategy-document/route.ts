@@ -3,7 +3,7 @@ import { getSession } from "@/lib/auth";
 import { enforceAiRateLimit } from "@/lib/ai/rate-limit";
 import { StrategyDocumentSchema, validateAiJson } from "@/lib/ai/schemas";
 import { prisma } from "@/lib/prisma";
-import { getOpenAiClient, createWithWebSearch, streamWithWebSearch } from "@/lib/openai-client";
+import { getOpenAiClient, logOpenAiUsage, createWithWebSearch, streamWithWebSearch } from "@/lib/openai-client";
 import { logActivity } from "@/lib/activity-logger";
 
 export const dynamic = "force-dynamic";
@@ -218,6 +218,9 @@ Return only valid JSON.`;
       max_completion_tokens: 6000,
       messages: [{ role: "user", content: prompt }],
     });
+
+    // Log usage for cost tracking
+    await logOpenAiUsage("strategy-document", completion);
 
     const raw = completion.choices[0]?.message?.content ?? "{}";
     let content;

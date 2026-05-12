@@ -3,7 +3,7 @@ import { getSession } from "@/lib/auth";
 import { enforceAiRateLimit } from "@/lib/ai/rate-limit";
 import { MeetingBriefingSchema, validateAiJson } from "@/lib/ai/schemas";
 import { prisma } from "@/lib/prisma";
-import { getOpenAiClient } from "@/lib/openai-client";
+import { getOpenAiClient, logOpenAiUsage } from "@/lib/openai-client";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -214,6 +214,8 @@ Generate the meeting briefing JSON now.`;
       ],
       response_format: { type: "json_object" },
     });
+
+    await logOpenAiUsage("meeting-briefing", completion);
 
     const raw = completion.choices[0]?.message?.content ?? "{}";
     const validated = validateAiJson(MeetingBriefingSchema, raw);

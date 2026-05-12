@@ -3,7 +3,7 @@ import { getSession } from "@/lib/auth";
 import { enforceAiRateLimit } from "@/lib/ai/rate-limit";
 import { BudgetAdvisorSchema, validateAiJson } from "@/lib/ai/schemas";
 import { prisma } from "@/lib/prisma";
-import { getOpenAiClient } from "@/lib/openai-client";
+import { getOpenAiClient, logOpenAiUsage } from "@/lib/openai-client";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -123,6 +123,8 @@ Respond with JSON only — no markdown, no code fences:
         { role: "user", content: prompt },
       ],
     });
+
+      await logOpenAiUsage("budget-advisor", completion);
 
     const raw = completion.choices[0]?.message?.content ?? "{}";
     const validated = validateAiJson(BudgetAdvisorSchema, raw);

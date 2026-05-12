@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
-import { getOpenAiClient } from "@/lib/openai-client";
+import { getOpenAiClient, logOpenAiUsage } from "@/lib/openai-client";
 import { prisma } from "@/lib/prisma";
 import { fetchPageSignals, type PageSignals } from "@/lib/landing-page-analyzer";
 import { getCoreWebVitals } from "@/lib/core-web-vitals";
@@ -168,6 +168,8 @@ ${RESULT_SCHEMA_INSTRUCTIONS}`;
     max_completion_tokens: 2500,
     temperature: 0.25,
   });
+
+  await logOpenAiUsage("landing-page-analysis", completion);
 
   const raw = completion.choices[0]?.message?.content ?? "{}";
   return parseAnalysisResponse(raw, pages);

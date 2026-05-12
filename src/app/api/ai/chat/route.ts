@@ -3,8 +3,8 @@ import { getSession } from "@/lib/auth";
 import { enforceAiRateLimit } from "@/lib/ai/rate-limit";
 import { prisma } from "@/lib/prisma";
 import OpenAI from "openai";
-import { getOpenAiClient } from "@/lib/openai-client";
-import { getAnthropicClient } from "@/lib/anthropic-client";
+import { getOpenAiClient, logOpenAiUsage } from "@/lib/openai-client";
+import { getAnthropicClient, logAnthropicUsage } from "@/lib/anthropic-client";
 import { logActivity } from "@/lib/activity-logger";
 
 export const dynamic = "force-dynamic";
@@ -205,6 +205,7 @@ Instructions:
           { role: "user", content: message },
         ],
       });
+      await logAnthropicUsage("chat", completion);
       reply = completion.content
         .map((block) => (block.type === "text" ? block.text : ""))
         .filter(Boolean)
@@ -223,6 +224,7 @@ Instructions:
         temperature: 0.3,
         max_completion_tokens: 2000,
       });
+      await logOpenAiUsage("chat", completion);
       reply = completion.choices[0]?.message?.content ?? "I couldn't generate a response. Please try again.";
     }
 

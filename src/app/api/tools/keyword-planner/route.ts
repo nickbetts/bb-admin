@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { getKeywordVolumeMetrics } from "@/lib/semrush";
 import { crawlSiteForKeywordContext } from "@/lib/landing-page-analyzer";
-import { getOpenAiClient } from "@/lib/openai-client";
+import { getOpenAiClient, logOpenAiUsage } from "@/lib/openai-client";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -134,6 +134,8 @@ Return ONLY this JSON (no markdown, no explanation):
         ],
       });
 
+      await logOpenAiUsage("keyword-planner", completion);
+
       const raw = completion.choices[0]?.message?.content ?? "{}";
       let parsed: { adGroups?: AdGroupSeed[]; rationale?: string; briefScope?: string; briefAnalysis?: string };
       try {
@@ -258,6 +260,8 @@ Example: { "conversionRate": 4.5, "reasoning": "Local plumbing services convert 
           },
         ],
       });
+
+      await logOpenAiUsage("keyword-planner", completion);
 
       const raw = completion.choices[0]?.message?.content ?? "{}";
       let result: { conversionRate?: number; reasoning?: string } = {};

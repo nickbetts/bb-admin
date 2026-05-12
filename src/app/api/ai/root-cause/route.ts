@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { enforceAiRateLimit } from "@/lib/ai/rate-limit";
 import { prisma } from "@/lib/prisma";
-import { getOpenAiClient, createWithWebSearch, streamWithWebSearch } from "@/lib/openai-client";
+import { getOpenAiClient, logOpenAiUsage, createWithWebSearch, streamWithWebSearch } from "@/lib/openai-client";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -208,6 +208,8 @@ Be analytical and data-driven. Reference specific numbers where available. If da
       temperature: 0.2,
       max_completion_tokens: 4000,
     });
+
+    await logOpenAiUsage("root-cause", completion);
 
     const analysis = completion.choices[0]?.message?.content ?? "Unable to generate root cause analysis.";
 

@@ -3,7 +3,7 @@ import { getSession } from "@/lib/auth";
 import { enforceAiRateLimit } from "@/lib/ai/rate-limit";
 import { CreativeIntelligenceSchema, validateAiJson } from "@/lib/ai/schemas";
 import { prisma } from "@/lib/prisma";
-import { getOpenAiClient } from "@/lib/openai-client";
+import { getOpenAiClient, logOpenAiUsage } from "@/lib/openai-client";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -99,6 +99,8 @@ Write in British English. Return only valid JSON.`,
         { role: "user", content: prompt },
       ],
     });
+
+    await logOpenAiUsage("creative-intelligence", completion);
 
     const raw = completion.choices[0]?.message?.content ?? "{}";
     const validated = validateAiJson(CreativeIntelligenceSchema, raw);

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOpenAiClient } from "@/lib/openai-client";
+import { getOpenAiClient, logOpenAiUsage } from "@/lib/openai-client";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { enforceAiRateLimit } from "@/lib/ai/rate-limit";
@@ -104,6 +104,8 @@ Write ${bulletRange} impactful bullet points (each starting with '• ') that su
       temperature: 0.65,
       max_completion_tokens: 700,
     });
+
+    await logOpenAiUsage("executive-summary", response);
 
     const commentary = response.choices[0]?.message?.content?.trim() ?? "";
     return NextResponse.json({ commentary });

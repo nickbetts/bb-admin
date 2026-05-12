@@ -3,7 +3,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { crawlSiteForKeywordContext } from "@/lib/landing-page-analyzer";
 import OpenAI from "openai";
-import { getOpenAiClient } from "@/lib/openai-client";
+import { getOpenAiClient, logOpenAiUsage } from "@/lib/openai-client";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 180;
@@ -403,6 +403,8 @@ Output the complete filled-in llm.txt followed by the ## DATA GAPS block. No pre
         { role: "user", content: prompt },
       ],
     });
+
+    await logOpenAiUsage("llm-generator", completion);
 
     let output = completion.choices[0].message.content ?? "";
 

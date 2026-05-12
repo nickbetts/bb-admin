@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOpenAiClient, createWithWebSearch, streamWithWebSearch } from "@/lib/openai-client";
+import { getOpenAiClient, logOpenAiUsage, createWithWebSearch, streamWithWebSearch } from "@/lib/openai-client";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/activity-logger";
 import { getSession } from "@/lib/auth";
@@ -678,6 +678,8 @@ Be frank and specific. Reference actual numbers and percentages.`;
       max_completion_tokens: 3500,
       temperature: 0.3,
     });
+
+    await logOpenAiUsage("overview-narrative", completion);
 
     const raw = completion.choices[0]?.message?.content ?? "{}";
     let parsed: Partial<OverviewNarrativeResponse> = {};

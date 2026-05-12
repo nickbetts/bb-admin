@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { getDomainOverview, getTopOrganicKeywords } from "@/lib/semrush";
 import { fetchPageSignals } from "@/lib/landing-page-analyzer";
-import { getOpenAiClient } from "@/lib/openai-client";
+import { getOpenAiClient, logOpenAiUsage } from "@/lib/openai-client";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -128,6 +128,8 @@ Return a JSON object with this exact structure:
       temperature: 0.3,
       max_completion_tokens: 1500,
     });
+
+    await logOpenAiUsage("page-analyser", completion);
 
     const raw = completion.choices[0]?.message?.content?.trim() ?? "{}";
     let analysis: Record<string, unknown>;

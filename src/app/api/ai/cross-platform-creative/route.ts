@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { enforceAiRateLimit } from "@/lib/ai/rate-limit";
 import { prisma } from "@/lib/prisma";
-import { getOpenAiClient } from "@/lib/openai-client";
+import { getOpenAiClient, logOpenAiUsage } from "@/lib/openai-client";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -119,6 +119,8 @@ Return JSON:
       max_completion_tokens: 2000,
       temperature: 0.3,
     });
+
+    await logOpenAiUsage("cross-platform-creative", completion);
 
     const raw = completion.choices[0]?.message?.content ?? "{}";
     let parsed: Record<string, unknown> = {};

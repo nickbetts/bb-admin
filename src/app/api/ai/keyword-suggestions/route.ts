@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { enforceAiRateLimit } from "@/lib/ai/rate-limit";
 import { prisma } from "@/lib/prisma";
-import { getOpenAiClient } from "@/lib/openai-client";
+import { getOpenAiClient, logOpenAiUsage } from "@/lib/openai-client";
 import { getSeasonalityContext } from "@/lib/seasonality";
 
 export const dynamic = "force-dynamic";
@@ -140,6 +140,8 @@ Produce a keyword strategy report as JSON:
       max_completion_tokens: 2500,
       temperature: 0.3,
     });
+
+    await logOpenAiUsage("keyword-suggestions", completion);
 
     const raw = completion.choices[0]?.message?.content ?? "{}";
     let parsed: Record<string, unknown> = {};

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOpenAiClient } from "@/lib/openai-client";
+import { getOpenAiClient, logOpenAiUsage } from "@/lib/openai-client";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/activity-logger";
 import { getSessionOrCronAuth } from "@/lib/auth";
@@ -304,6 +304,7 @@ Go.`;
         temperature: 0.95,
         max_completion_tokens: 600,
       });
+      await logOpenAiUsage("report-commentary", chaosResponse);
       const commentary = chaosResponse.choices[0]?.message?.content?.trim() ?? "";
       return NextResponse.json({ commentary });
     }
@@ -379,6 +380,8 @@ Address the client directly using "the" for campaigns/channels and "your" for th
       temperature: 0.7,
       max_completion_tokens: length === "short" ? 200 : length === "medium" ? 400 : 700,
     });
+
+    await logOpenAiUsage("report-commentary", response);
 
     const commentary = response.choices[0]?.message?.content?.trim() ?? "";
     logActivity({
