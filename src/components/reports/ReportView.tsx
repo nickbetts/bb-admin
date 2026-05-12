@@ -1224,6 +1224,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
           length: aiLength,
           format: aiFormat,
           spin: aiSpin,
+          additionalContext: aiNarrativeContext.trim() || undefined,
         }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -1283,6 +1284,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
   // ── Combined: generate all commentary then narrative ────────────────────────
   const handleGenerateCombined = async () => {
     setGenerateDialogOpen(false);
+    const MIN_NARRATIVE_COMMENTARY_LENGTH = 120;
 
     // Step 1: generate section commentary, collecting results locally
     const eligible = report.sections.filter(
@@ -1322,7 +1324,6 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
               format: aiFormat,
               spin: aiSpin,
               previousCommentaries: generatedSoFar.length > 0 ? generatedSoFar : undefined,
-              additionalContext: aiNarrativeContext.trim() || undefined,
             }),
           });
           if (res.ok) {
@@ -1349,9 +1350,10 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
     // (avoids reading from potentially stale React state)
     const narrativeCommentaries: Record<string, string> = {};
     for (const s of report.sections) {
-      if (s.enabled !== false) {
-        const text = allCommentaries[s.sectionType] ?? (s.commentary?.trim() ? s.commentary : undefined);
-        if (text) narrativeCommentaries[s.sectionType] = text;
+      if (s.enabled === false || s.sectionType === "overview") continue;
+      const text = allCommentaries[s.sectionType] ?? (s.commentary?.trim() ? s.commentary : undefined);
+      if (text && text.trim().length >= MIN_NARRATIVE_COMMENTARY_LENGTH) {
+        narrativeCommentaries[s.sectionType] = text.trim();
       }
     }
 

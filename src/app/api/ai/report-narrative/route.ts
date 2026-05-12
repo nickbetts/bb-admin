@@ -7,6 +7,46 @@ import { getOpenAiClient } from "@/lib/openai-client";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
+const MIN_SECTION_COMMENTARY_LENGTH = 120;
+
+type CrossSectionStory = { sections: string[]; narrative: string };
+
+function sanitiseCrossSectionStories(value: unknown): CrossSectionStory[] {
+  if (!Array.isArray(value)) return [];
+
+  const seen = new Set<string>();
+  const stories: CrossSectionStory[] = [];
+
+  for (const item of value) {
+    if (!item || typeof item !== "object") continue;
+
+    const rawSections = (item as { sections?: unknown }).sections;
+    const rawNarrative = (item as { narrative?: unknown }).narrative;
+
+    if (!Array.isArray(rawSections) || typeof rawNarrative !== "string") continue;
+
+    const narrative = rawNarrative.trim();
+    if (!narrative) continue;
+
+    const sections = Array.from(new Set(
+      rawSections
+        .filter((s): s is string => typeof s === "string")
+        .map((s) => s.trim().toLowerCase())
+        .filter((s) => s && s !== "overview")
+    ));
+
+    if (sections.length < 2) continue;
+
+    const dedupeKey = `${[...sections].sort().join("|")}::${narrative.toLowerCase().replace(/\s+/g, " ")}`;
+    if (seen.has(dedupeKey)) continue;
+    seen.add(dedupeKey);
+
+    stories.push({ sections, narrative });
+  }
+
+  return stories;
+}
+
 // POST /api/ai/report-narrative — P3.4 Intelligent Report Narrative Stitching
 export async function POST(request: NextRequest) {
   try {
@@ -77,9 +117,26 @@ export async function POST(request: NextRequest) {
 
     const openai = await getOpenAiClient();
 
-    // Build formatted section commentaries
-    const sectionEntries = Object.entries(sectionCommentaries)
-      .filter(([, text]) => text?.trim())
+    // Narrative stitching uses only substantial non-overview sections.
+    const narrativeSections = Object.entries(sectionCommentaries)
+      .filter(([section, text]) =>
+        section !== "overview" &&
+        typeof text === "string" &&
+        text.trim().length >= MIN_SECTION_COMMENTARY_LENGTH
+      )
+      .map(([section, text]) => [section, text.trim()] as const);
+
+    if (narrativeSections.length < 2) {
+      return NextResponse.json({
+        executiveSummary: "",
+        crossSectionStories: [],
+        sectionEnhancements: {},
+        keyThemes: [],
+        goalProgressNarrative: "",
+      });
+    }
+
+    const sectionEntries = narrativeSections
       .map(([section, text]) => `### ${section}\n${text}`)
       .join("\n\n");
 
@@ -97,6 +154,12 @@ Your task is to:
 5. Extract 3-5 overarching themes across the report.
 6. If goal data is provided, explain how the report data ties into goal attainment.
 
+Cross-section story rules:
+- Only include a story when there is clear evidence across at least two non-overview sections.
+- Do not include "overview" in any story section key.
+- If there are no strong cross-channel links, return an empty "crossSectionStories" array.
+- Use the account manager context only where directly relevant, never force it into every story.
+
 You MUST respond with valid JSON matching this exact structure:
 {
   "executiveSummary": "string — 4-6 sentence comprehensive summary tying all channels together",
@@ -106,7 +169,7 @@ You MUST respond with valid JSON matching this exact structure:
   "sectionEnhancements": { "section_key": "string — additional context sentence to append to that section's commentary" },
   "keyThemes": ["theme1", "theme2", "theme3"],
   "goalProgressNarrative": "string — how goal attainment ties into the report data (empty string if no goals)"
-}${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}${additionalContext ? `\n\nIMPORTANT CONTEXT FROM THE ACCOUNT MANAGER: The following context has been provided and must be factored into the narrative and all cross-channel stories:\n${additionalContext}` : ""}`;
+}${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}${additionalContext ? `\n\nIMPORTANT CONTEXT FROM THE ACCOUNT MANAGER: The following context has been provided and should be used only where directly relevant to the narrative and cross-channel stories:\n${additionalContext}` : ""}`;
 
     const userPrompt = `## Report ID
 ${reportId}
@@ -115,7 +178,7 @@ ${reportId}
 ${sectionEntries}
 
 ${crossPlatformMetrics ? `## Cross-Platform Aggregated Metrics\n${JSON.stringify(crossPlatformMetrics, null, 2)}\n` : ""}${goalsContext ? `## Active Client Goals\n${goalsContext}\n` : ""}
-Analyse all sections together. Identify cross-section stories, write connection sentences for each section, produce the executive summary, extract key themes, and tie in goal progress. Return valid JSON only.`;
+Analyse all sections together. Identify cross-section stories only where there is clear evidence across at least two non-overview sections, write connection sentences for each section, produce the executive summary, extract key themes, and tie in goal progress. Return valid JSON only.`;
 
     // ── Streaming path ─────────────────────────────────────────────────────
     if (stream) {
@@ -182,6 +245,8 @@ Analyse all sections together. Identify cross-section stories, write connection 
     } catch {
       return NextResponse.json({ error: "AI returned invalid JSON", raw }, { status: 502 });
     }
+
+    parsed.crossSectionStories = sanitiseCrossSectionStories(parsed.crossSectionStories);
 
     return NextResponse.json(parsed);
   } catch (error) {
