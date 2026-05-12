@@ -1375,7 +1375,18 @@ h1, h2, h3, h4, .page-title, .section-title, .card-title {
 .pdf-print-view .card,
 .pdf-print-view .metric-card,
 .pdf-print-view .stat-card {
-  box-shadow: none !important;
+  box-shadow: 0 0 0 1px #e2e8f0 !important;
+}
+
+/* backdrop-filter forces Chromium to rasterise every card as a full-width
+   bitmap — disabling it is the single biggest remaining PDF size reduction.
+   Replace the glass background with a plain white fill so layout is unchanged. */
+.pdf-print-view .card,
+.pdf-print-view .metric-card,
+.pdf-print-view .stat-card {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background: #ffffff !important;
 }
 
 .pdf-print-view .app-shell {
