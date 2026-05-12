@@ -54,6 +54,7 @@ export async function PUT(
     html?: string;       // Direct HTML update (text editing, code editor, etc.)
     publicSlug?: string;
     customSubdomain?: string | null;
+    clientId?: string;
   };
 
   const data: Record<string, unknown> = {};
@@ -72,11 +73,14 @@ export async function PUT(
       ? body.customSubdomain.toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/-+/g, "-").replace(/^-+|-+$/g, "").slice(0, 63) || null
       : null;
   }
+  if (body.clientId !== undefined) {
+    data.clientId = body.clientId || null;
+  }
 
   const updated = await prisma.landingPage.update({
     where: { id },
     data,
-    include: { client: { select: { id: true, name: true } } },
+    include: { client: { select: { id: true, name: true, slug: true } } },
   });
 
   return NextResponse.json({ landingPage: updated });

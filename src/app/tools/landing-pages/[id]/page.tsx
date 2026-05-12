@@ -109,6 +109,7 @@ interface LandingPage {
   shareToken: string | null;
   publicSlug: string | null;
   customSubdomain: string | null;
+  clientId: string | null;
   portalPublishedAt: string | null;
   viewCount: number;
   briefJson: string;
@@ -491,7 +492,9 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
   const [settingsTitle, setSettingsTitle] = useState("");
   const [settingsSubdomain, setSettingsSubdomain] = useState("");
   const [settingsSlug, setSettingsSlug] = useState("");
+  const [settingsClientId, setSettingsClientId] = useState<string | null>(null);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
 
   // Chat state
   const [prompt, setPrompt] = useState("");
@@ -554,6 +557,14 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
   const [translationsLoaded, setTranslationsLoaded] = useState(false);
   const [previewLang, setPreviewLang] = useState<string | null>(null);
 
+  // Fetch available clients for the settings modal
+  useEffect(() => {
+    fetch("/api/clients")
+      .then((r) => r.json())
+      .then((data) => setClients(Array.isArray(data) ? data : data.clients ?? []))
+      .catch(() => {});
+  }, []);
+
   const fetchLP = useCallback(async () => {
     try {
       const res = await fetch(`/api/tools/landing-pages/${id}`);
@@ -564,6 +575,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
       const data = await res.json();
       setLp(data.landingPage);
       setPreviewHtml(data.landingPage.currentHtml);
+      setSettingsClientId(data.landingPage.clientId ?? null);
 
       // Hydrate analytics config from the saved JSON
       try {
@@ -1427,6 +1439,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
               setSettingsTitle(lp.title);
               setSettingsSubdomain(lp.customSubdomain ?? lp.client?.slug ?? "");
               setSettingsSlug(lp.slug);
+              setSettingsClientId(lp.clientId ?? null);
               setShowPageSettings(true);
             }}
             style={{ background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left", display: "block", maxWidth: "100%" }}
@@ -2602,6 +2615,26 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
               </div>
               <div>
                 <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>
+                  Assign to Client <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span>
+                </label>
+                <select
+                  value={settingsClientId ?? ""}
+                  onChange={(e) => setSettingsClientId(e.target.value || null)}
+                  style={inputStyle}
+                >
+                  <option value="">None (use custom subdomain)</option>
+                  {clients.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 4 }}>
+                  Assigning to a client will use their subdomain for routing. Leave empty to use a custom subdomain.
+                </p>
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>
                   Subdomain <span style={{ fontWeight: 400, color: "var(--text-4)" }}>— the part before .{LP_DOMAIN}</span>
                 </label>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -2610,13 +2643,13 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                     onChange={(e) => setSettingsSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))}
                     style={{ ...inputStyle, flex: 1 }}
                     placeholder="e.g. inspired-gaming-lounge"
-                    disabled={!!lp.client}
+                    disabled={!!settingsClientId}
                   />
                   <span style={{ fontSize: 12, color: "var(--text-4)", whiteSpace: "nowrap" }}>.{LP_DOMAIN}</span>
                 </div>
-                {lp.client && (
+                {settingsClientId && (
                   <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 4 }}>
-                    Subdomain is set by the assigned client ({toSubLabel(lp.client.slug)}). Remove the client to use a custom subdomain.
+                    Subdomain is set by the assigned client. Unassign the client to use a custom subdomain.
                   </p>
                 )}
               </div>
@@ -2652,7 +2685,12 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                       title: settingsTitle,
                       slug: settingsSlug,
                     };
-                    if (!lp.client) body.customSubdomain = settingsSubdomain || null;
+                    if (settingsClientId) {
+                      body.clientId = settingsClientId;
+                    }
+                    if (!settingsClientId) {
+                      body.customSubdomain = settingsSubdomain || null;
+                    }
                     const res = await fetch(`/api/tools/landing-pages/${lp.id}`, {
                       method: "PUT",
                       headers: { "Content-Type": "application/json" },
@@ -2665,6 +2703,8 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                         title: data.landingPage.title,
                         slug: data.landingPage.slug,
                         customSubdomain: data.landingPage.customSubdomain ?? prev.customSubdomain,
+                        clientId: data.landingPage.clientId ?? prev.clientId,
+                        client: data.landingPage.client ?? prev.client,
                       } : prev);
                       setShowPageSettings(false);
                     }
