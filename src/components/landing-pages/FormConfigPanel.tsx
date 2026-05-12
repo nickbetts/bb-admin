@@ -6,7 +6,7 @@
  * Controlled component — parent owns `value` and gets `onChange`.
  */
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { AlertTriangle, Webhook, Mail, Code2, Eye, X } from "lucide-react";
 import type { LpFormConfig } from "@/lib/lp-form-config";
 
@@ -58,28 +58,41 @@ const dividerStyle: React.CSSProperties = {
   margin: "18px 0",
 };
 
-/** Parse a comma/newline-separated email string into an array */
-function parseEmails(raw: string): string[] {
-  return raw
-    .split(/[\s,]+/)
-    .map((e) => e.trim())
-    .filter(Boolean);
-}
-
-/** Join email array back into a display string */
-function joinEmails(emails: string[] | undefined): string {
-  return (emails ?? []).join(", ");
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
 export function FormConfigPanel({ value, onChange, lpId }: Props) {
-  const [emailsRaw, setEmailsRaw] = useState(joinEmails(value.notifyEmails));
+  const [emailInput, setEmailInput] = useState("");
+  const [emailError, setEmailError] = useState<string | null>(null);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
 
-  useEffect(() => {
-    setEmailsRaw(joinEmails(value.notifyEmails));
-  }, [value.notifyEmails]);
+  const notifyEmails = value.notifyEmails ?? [];
+
+  function addNotifyEmail() {
+    const next = emailInput.trim();
+    if (!next) return;
+    if (!isValidEmail(next)) {
+      setEmailError("Please enter a valid email address.");
+      return;
+    }
+    if (notifyEmails.some((e) => e.toLowerCase() === next.toLowerCase())) {
+      setEmailError("This email is already in the list.");
+      return;
+    }
+    onChange({ ...value, notifyEmails: [...notifyEmails, next] });
+    setEmailInput("");
+    setEmailError(null);
+  }
+
+  function removeNotifyEmail(target: string) {
+    onChange({
+      ...value,
+      notifyEmails: notifyEmails.filter((e) => e !== target),
+    });
+  }
 
   async function handlePreview() {
     setPreviewLoading(true);
@@ -173,19 +186,73 @@ export function FormConfigPanel({ value, onChange, lpId }: Props) {
         {previewError && <p style={{ ...hintStyle, color: "var(--danger)", marginBottom: 6 }}>{previewError}</p>}
         <div>
           <label style={labelStyle}>Send lead alerts to</label>
-          <input
-            type="text"
-            value={emailsRaw}
-            onChange={(e) => {
-              const raw = e.target.value;
-              setEmailsRaw(raw);
-              onChange({ ...value, notifyEmails: parseEmails(raw) });
-            }}
-            placeholder="client@example.com, team@agency.com"
-            style={inputStyle}
-          />
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <input
+              type="email"
+              value={emailInput}
+              onChange={(e) => {
+                setEmailInput(e.target.value);
+                if (emailError) setEmailError(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  addNotifyEmail();
+                }
+              }}
+              placeholder="client@example.com"
+              style={inputStyle}
+            />
+            <button
+              type="button"
+              onClick={addNotifyEmail}
+              className="btn btn-secondary btn-sm"
+              style={{ flexShrink: 0 }}
+            >
+              Add
+            </button>
+          </div>
+          {emailError && <p style={{ ...hintStyle, color: "var(--danger)", marginTop: 6 }}>{emailError}</p>}
+          {notifyEmails.length > 0 && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+              {notifyEmails.map((email) => (
+                <span
+                  key={email}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "3px 8px",
+                    borderRadius: 99,
+                    background: "var(--accent-bg)",
+                    color: "var(--accent)",
+                    fontSize: 11,
+                    fontWeight: 600,
+                  }}
+                >
+                  {email}
+                  <button
+                    type="button"
+                    onClick={() => removeNotifyEmail(email)}
+                    title={`Remove ${email}`}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "inherit",
+                      cursor: "pointer",
+                      padding: 0,
+                      display: "inline-flex",
+                      alignItems: "center",
+                    }}
+                  >
+                    <X size={12} />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
           <p style={hintStyle}>
-            Comma-separated. An email is sent for every new form submission. Requires Resend to be configured in Settings &rarr; Email.
+            Add one email at a time. Each address receives every new form submission. Requires Resend to be configured in Settings &rarr; Email.
           </p>
         </div>
       </div>
