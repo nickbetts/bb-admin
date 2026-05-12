@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: "desc" },
       include: {
         client: { select: { id: true, name: true, slug: true } },
+        createdBy: { select: { name: true, email: true } },
         _count: { select: { sections: true, screenshots: true } },
       },
     });
@@ -88,6 +89,7 @@ export async function POST(request: NextRequest) {
         title,
         period,
         status: "draft",
+        createdByUserId: session.user.id,
         sections: {
           create: sectionsToCreate,
         },

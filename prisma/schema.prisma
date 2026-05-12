@@ -42,6 +42,7 @@ model User {
   taskTimeLogs        TaskTimeLog[]
   taskAttachments     TaskAttachment[]
   uploadedClientFiles ClientFile[]
+  createdReports      Report[]       @relation("ReportCreatedBy")
 }
 
 model Session {
@@ -221,9 +222,11 @@ model Report {
   // Client-portal publish flag — only items with portalPublishedAt set are visible in the client portal
   portalPublishedAt DateTime?
   portalPublishedBy String?
+  createdByUserId   String?
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
   client            Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  createdBy         User?           @relation("ReportCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
   sections          ReportSection[]
   screenshots       Screenshot[]
   comments          ReportComment[]
