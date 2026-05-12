@@ -136,6 +136,46 @@ export async function POST(
   // ── Post-capture side-effects ─────────────────────────────────────────────
   const formConfig = parseLpFormConfig(landingPage.formConfig);
 
+  // Start webhook delivery attempt immediately after lead capture so it is not
+  // skipped by later email/send failures. We await this task before any return
+  // to maximise delivery reliability while keeping webhook failures non-fatal.
+  const webhookTask = (async () => {
+    if (!formConfig.webhookUrl) {
+      return;
+    }
+
+    if (!isWebhookUrlSafe(formConfig.webhookUrl)) {
+      console.warn("[lead-webhook] Skipped unsafe webhook URL:", formConfig.webhookUrl);
+      return;
+    }
+
+    const payload = {
+      landingPageId: landingPage.id,
+      capturedAt: new Date().toISOString(),
+      ...body,
+    };
+
+    try {
+      const response = await fetch(formConfig.webhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(10_000),
+      });
+
+      if (!response.ok) {
+        const raw = await response.text().catch(() => "");
+        console.error("[lead-webhook] Non-2xx response:", {
+          status: response.status,
+          statusText: response.statusText,
+          body: raw.slice(0, 500),
+        });
+      }
+    } catch (err) {
+      console.error("[lead-webhook] POST failed:", err);
+    }
+  })();
+
   // Notification email — awaited so the conversion event only fires once
   // delivery is confirmed. SmtpNotConfiguredError (Resend not set up) is
   // treated as success so the form still completes; any other send failure
@@ -176,6 +216,7 @@ export async function POST(
         // Resend not configured — lead is captured, treat as success
         console.warn("[lead-notify] Resend not configured — lead captured but notification email not sent. Add resendApiKey in Settings → Email.");
       } else {
+        await webhookTask;
         console.error("[lead-notify] Email send failed:", err);
         const message = err instanceof Error ? err.message : "Email delivery failed";
         return NextResponse.json({ error: message }, { status: 500 });
@@ -183,23 +224,7 @@ export async function POST(
     }
   }
 
-  // Outbound webhook — fire-and-forget (non-blocking)
-  if (formConfig.webhookUrl && isWebhookUrlSafe(formConfig.webhookUrl)) {
-    const payload = {
-      landingPageId: landingPage.id,
-      capturedAt: new Date().toISOString(),
-      ...body,
-    };
-
-    fetch(formConfig.webhookUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(10_000),
-    }).catch((err) => {
-      console.error("[lead-webhook] POST failed:", err);
-    });
-  }
+  await webhookTask;
 
   void lead; // suppress unused var warning
   return NextResponse.json({ success: true });
