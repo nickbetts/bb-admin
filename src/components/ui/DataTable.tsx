@@ -220,7 +220,7 @@ export function DataTable<T>({
             </div>
           )}
           {exportable && (
-            <div style={{ display: "flex", gap: 6 }}>
+            <div className="data-table-export" style={{ display: "flex", gap: 6 }}>
               <button
                 onClick={copyToClipboard}
                 className="btn btn-ghost btn-sm"

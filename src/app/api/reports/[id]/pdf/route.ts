@@ -196,8 +196,13 @@ export async function GET(
         const prevEnd = idx > 0 ? regions[idx - 1].y + regions[idx - 1].height : 0;
         const nextStart = idx < regions.length - 1 ? regions[idx + 1].y : fullHeight;
 
-        const topPad = Math.min(DESIRED_PAD_PX, region.y - prevEnd);
-        const bottomPad = Math.min(DESIRED_PAD_PX, nextStart - (region.y + region.height));
+        // Cap each side's padding to half the inter-section gap so that
+        // adjacent pages only reach to the midpoint of the whitespace between
+        // sections — never into the neighbouring section's actual content.
+        const topGap = region.y - prevEnd;
+        const bottomGap = nextStart - (region.y + region.height);
+        const topPad = Math.min(DESIRED_PAD_PX, Math.floor(topGap / 2));
+        const bottomPad = Math.min(DESIRED_PAD_PX, Math.floor(bottomGap / 2));
 
         const clipY = Math.max(0, region.y - topPad);
         const clipHeight = Math.min(region.height + topPad + bottomPad, fullHeight - clipY);

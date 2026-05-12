@@ -1371,6 +1371,12 @@ h1, h2, h3, h4, .page-title, .section-title, .card-title {
   display: none !important;
 }
 
+/* Hide interactive-only elements that have no place in a PDF export. */
+.pdf-print-view .data-table-export,
+.pdf-print-view details {
+  display: none !important;
+}
+
 /* Drop-shadows are blurred bitmap layers in PDF — strip them to save space. */
 .pdf-print-view .card,
 .pdf-print-view .metric-card,
