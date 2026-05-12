@@ -349,7 +349,7 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
                   <img
                     src={ss.url}
                     alt={ss.caption ?? ss.filename}
-                    style={{ width: "100%", display: "block", objectFit: "cover" }}
+                    style={{ width: "100%", display: "block", objectFit: "cover", maxHeight: 400 }}
                   />
                   {ss.caption && (
                     <p
