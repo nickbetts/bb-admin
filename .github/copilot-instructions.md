@@ -169,6 +169,26 @@ npm run db:push      # prisma db push (no migration file)
 npm run db:reset     # prisma migrate reset
 ```
 
+## Preferred CLI tooling
+
+When working in this repository, prefer these CLI tools when task-appropriate:
+
+- `fd` for fast file discovery (instead of `find`)
+- `fzf` for interactive fuzzy selection
+- `bat` for readable file previews
+- `jq` for JSON parsing and filtering
+- `ast-grep` (`sg`) for TypeScript/TSX structural code search
+- `delta` for improved git diff output
+- `hyperfine` for quick command benchmarking
+- `watchexec` and `entr` for file-watch workflows
+- `httpie` (`http`) and `xh` for API request testing
+- `semgrep` for static analysis/security scans
+
+Notes:
+
+- Continue to use `rg`/`ripgrep` as the primary text search tool.
+- Fall back to standard alternatives only when a preferred tool is unavailable.
+
 ## CI expectations
 
 Every PR must pass:
