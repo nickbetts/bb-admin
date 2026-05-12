@@ -1346,13 +1346,13 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
                 render: (_v, row) => (
                   <div className="flex items-center gap-2">
                     {row.isClient ? (
-                      <span className="inline-flex items-center rounded-full border border-emerald-300/70 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-200">Client</span>
+                      <span className="inline-flex items-center rounded-full border border-emerald-300 bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-800">Client</span>
                     ) : null}
                     <a
                       href={`https://${row.domain}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className={row.isClient ? "font-semibold text-emerald-200 hover:text-emerald-100 transition" : "font-medium text-[var(--text)] hover:text-indigo-600 transition"}
+                      className={row.isClient ? "font-semibold text-[var(--text)] underline decoration-emerald-500 decoration-2 underline-offset-4 hover:text-emerald-700 transition" : "font-medium text-[var(--text)] hover:text-indigo-600 transition"}
                     >
                       {row.domain}
                     </a>
@@ -1366,7 +1366,7 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
                 sortable: true,
                 render: (_v, row) => (
                   row.isClient ? (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-200 border border-emerald-300/60">Self</span>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">Self</span>
                   ) : (
                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700">
                       {formatNumber(row.commonKeywords)}
@@ -1380,7 +1380,7 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
                 align: "right",
                 sortable: true,
                 render: (_v, row) => (
-                  <span className={row.isClient ? "font-semibold text-emerald-200" : undefined}>{formatNumber(row.organicKeywords)}</span>
+                  <span className={row.isClient ? "font-bold text-[var(--text)]" : undefined}>{formatNumber(row.organicKeywords)}</span>
                 ),
               },
               {
@@ -1389,7 +1389,7 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
                 align: "right",
                 sortable: true,
                 render: (_v, row) => (
-                  <span className={row.isClient ? "font-semibold text-emerald-200" : undefined}>{formatNumber(row.organicTraffic)}</span>
+                  <span className={row.isClient ? "font-bold text-[var(--text)]" : undefined}>{formatNumber(row.organicTraffic)}</span>
                 ),
               },
               {
@@ -1398,7 +1398,7 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
                 align: "right",
                 sortable: true,
                 render: (_v, row) => (
-                  <span className={row.isClient ? "font-semibold text-emerald-200" : undefined}>{formatCurrency(row.organicCost)}</span>
+                  <span className={row.isClient ? "font-bold text-[var(--text)]" : undefined}>{formatCurrency(row.organicCost)}</span>
                 ),
               },
             ]}

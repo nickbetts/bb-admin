@@ -46,6 +46,27 @@ function getApiKey(): string {
   return key;
 }
 
+function parseSemrushNumber(value: string | undefined): number {
+  if (!value) return 0;
+  const trimmed = value.trim();
+  if (!trimmed) return 0;
+
+  // SEMrush values can include commas and short suffixes (e.g. 1,320 or 3.5K).
+  const normalised = trimmed.replace(/,/g, "").replace(/\s+/g, "");
+  const match = normalised.match(/^(-?\d*\.?\d+)([KMB])?$/i);
+  if (!match) {
+    const fallback = Number(normalised);
+    return Number.isFinite(fallback) ? fallback : 0;
+  }
+
+  const base = Number(match[1]);
+  if (!Number.isFinite(base)) return 0;
+
+  const suffix = (match[2] || "").toUpperCase();
+  const multiplier = suffix === "K" ? 1_000 : suffix === "M" ? 1_000_000 : suffix === "B" ? 1_000_000_000 : 1;
+  return base * multiplier;
+}
+
 export async function getDomainOverview(
   domain: string,
   database: string = "uk"
@@ -288,11 +309,11 @@ export async function getCompetitors(
       line.split(";");
     return {
       domain: competitorDomain || "",
-      commonKeywords: parseInt(commonKeywords) || 0,
-      organicKeywords: parseInt(organicKeywords) || 0,
-      organicTraffic: parseInt(organicTraffic) || 0,
-      organicCost: parseFloat(organicCost) || 0,
-      adKeywords: parseInt(adKeywords) || 0,
+      commonKeywords: parseSemrushNumber(commonKeywords),
+      organicKeywords: parseSemrushNumber(organicKeywords),
+      organicTraffic: parseSemrushNumber(organicTraffic),
+      organicCost: parseSemrushNumber(organicCost),
+      adKeywords: parseSemrushNumber(adKeywords),
     };
   });
 }
