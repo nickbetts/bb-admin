@@ -73,6 +73,7 @@ export default function NewLandingPage() {
   const [campaignType, setCampaignType] = useState("lead-gen");
   const [targetOffering, setTargetOffering] = useState("");
   const [targetAudience, setTargetAudience] = useState("");
+  const [customSubdomain, setCustomSubdomain] = useState("");
   const [templateId, setTemplateId] = useState("");
   const [suggestedAudiences, setSuggestedAudiences] = useState<{ name: string; description: string }[]>([]);
   const [suggestingAudiences, setSuggestingAudiences] = useState(false);
@@ -250,6 +251,7 @@ export default function NewLandingPage() {
           campaignType,
           targetOffering: targetOffering || undefined,
           targetAudience: targetAudience || undefined,
+          customSubdomain: customSubdomain.trim() || undefined,
           requestedComponentIds: requestedComponentIds.length > 0 ? requestedComponentIds : undefined,
           templateId: templateId || undefined,
           analyticsConfig: Object.keys(analyticsConfig).length > 0 ? analyticsConfig : undefined,
@@ -596,6 +598,25 @@ export default function NewLandingPage() {
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
               <label style={{ ...labelStyle, marginBottom: 0 }}>
                 Target Audience <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span>
+
+                        {/* Subdomain (standalone pages only) */}
+                        {!clientId && (
+                          <div>
+                            <label style={labelStyle}>
+                              Subdomain <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={customSubdomain}
+                              onChange={(e) => setCustomSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))}
+                              placeholder="e.g. international-football-academy"
+                              style={inputStyle}
+                            />
+                            <p style={{ fontSize: 12, color: "var(--text-4)", marginTop: 4 }}>
+                              If empty, we auto-generate this from the website URL.
+                            </p>
+                          </div>
+                        )}
               </label>
               <button
                 type="button"

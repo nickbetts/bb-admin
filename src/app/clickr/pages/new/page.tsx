@@ -23,6 +23,7 @@ export default function ClickrNewPagePage() {
   const [brief, setBrief] = useState("");
   const [campaignType, setCampaignType] = useState("lead_generation");
   const [targetAudience, setTargetAudience] = useState("");
+  const [customSubdomain, setCustomSubdomain] = useState("");
 
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -48,7 +49,14 @@ export default function ClickrNewPagePage() {
       const res = await fetch("/api/tools/landing-pages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, url, brief, campaignType, targetAudience }),
+        body: JSON.stringify({
+          title,
+          url,
+          brief,
+          campaignType,
+          targetAudience,
+          customSubdomain: customSubdomain.trim() || undefined,
+        }),
       });
 
       if (res.status === 402) {
@@ -196,6 +204,18 @@ export default function ClickrNewPagePage() {
               disabled={generating}
               style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, padding: "10px 14px", color: "#fff", fontSize: 14, outline: "none", boxSizing: "border-box" }}
             />
+          </div>
+
+          <div>
+            <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "rgba(255,255,255,0.7)", marginBottom: 6 }}>Subdomain <span style={{ color: "rgba(255,255,255,0.3)", fontWeight: 400 }}>(optional)</span></label>
+            <input
+              value={customSubdomain}
+              onChange={e => setCustomSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))}
+              placeholder="e.g. international-football-academy"
+              disabled={generating}
+              style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, padding: "10px 14px", color: "#fff", fontSize: 14, outline: "none", boxSizing: "border-box" }}
+            />
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", marginTop: 4 }}>If empty, we auto-generate this from your website domain.</div>
           </div>
 
           <button

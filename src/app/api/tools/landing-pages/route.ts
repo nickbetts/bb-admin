@@ -11,6 +11,28 @@ import { logActivity } from "@/lib/activity-logger";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300; // AI generation: up to ~60 s + brand extraction
 
+function toSubdomainLabel(input: string): string {
+  return input
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 63);
+}
+
+function deriveSubdomainFromUrl(rawUrl: string): string | null {
+  try {
+    const host = new URL(rawUrl).hostname.toLowerCase();
+    const noWww = host.startsWith("www.") ? host.slice(4) : host;
+    const root = noWww.split(".")[0] ?? "";
+    const label = toSubdomainLabel(root);
+    if (!label || label === "www") return null;
+    return label;
+  } catch {
+    return null;
+  }
+}
+
 // GET /api/tools/landing-pages — list all LPs for current user
 export async function GET(request: NextRequest) {
   const session = await getSession();
@@ -92,6 +114,7 @@ export async function POST(request: NextRequest) {
     templateId?: string;
     formConfig?: Record<string, unknown>;
     analyticsConfig?: Record<string, unknown>;
+    customSubdomain?: string;
     additionalImageUrls?: string[];
     additionalUrls?: string[]; // Extra pages to scrape for richer brand/content context
   };
@@ -102,7 +125,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { clientId, title, url, brief, campaignType, targetAudience, targetOffering, requestedComponentIds, templateId, formConfig, analyticsConfig, additionalImageUrls, additionalUrls } = body;
+  const {
+    clientId,
+    title,
+    url,
+    brief,
+    campaignType,
+    targetAudience,
+    targetOffering,
+    requestedComponentIds,
+    templateId,
+    formConfig,
+    analyticsConfig,
+    customSubdomain,
+    additionalImageUrls,
+    additionalUrls,
+  } = body;
 
   if (!title || !url || !brief || !campaignType) {
     return NextResponse.json({ error: "title, url, brief, and campaignType are required" }, { status: 400 });
@@ -167,6 +205,13 @@ export async function POST(request: NextRequest) {
 
         const html = injectLucide(rawHtml);
         const slug = generateSlug(title);
+        const resolvedCustomSubdomain = clientId
+          ? null
+          : (() => {
+              const fromBody = customSubdomain ? toSubdomainLabel(customSubdomain) : "";
+              if (fromBody) return fromBody;
+              return deriveSubdomainFromUrl(url);
+            })();
 
         const landingPage = await prisma.landingPage.create({
           data: {
@@ -175,6 +220,7 @@ export async function POST(request: NextRequest) {
             clickrUserId: clickrSession ? clickrSession.user.id : null,
             title,
             slug,
+            customSubdomain: resolvedCustomSubdomain,
             currentHtml: html,
             briefJson: JSON.stringify({ url, additionalUrls: additionalUrls?.length ? additionalUrls : undefined, brief, campaignType, targetAudience, targetOffering, requestedComponentIds: requestedComponentIds?.length ? requestedComponentIds : undefined }),
             brandContextJson: JSON.stringify(brandContext),
