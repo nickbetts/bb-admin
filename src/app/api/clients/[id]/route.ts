@@ -2,6 +2,59 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession, hasPermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/activity-logger";
+import type { PlatformKey } from "@/lib/snapshot-backfill";
+
+function isFilled(value: unknown): boolean {
+  return typeof value === "string" ? value.trim().length > 0 : Boolean(value);
+}
+
+function getNewlyAddedChannels(before: {
+  ga4PropertyId: string | null;
+  googleAdsCustomerId: string | null;
+  metaAccountId: string | null;
+  searchConsoleSiteUrl: string | null;
+  semrushDomain: string | null;
+  tiktokAdvertiserId: string | null;
+  tiktokAccessToken: string | null;
+  microsoftAdsAccountId: string | null;
+  woocommerceUrl: string | null;
+  shopifyStoreDomain: string | null;
+  cwvUrl: string | null;
+}, data: Record<string, unknown>): PlatformKey[] {
+  const after = {
+    ga4PropertyId: data.ga4PropertyId,
+    googleAdsCustomerId: data.googleAdsCustomerId,
+    metaAccountId: data.metaAccountId,
+    searchConsoleSiteUrl: data.searchConsoleSiteUrl,
+    semrushDomain: data.semrushDomain,
+    tiktokAdvertiserId: data.tiktokAdvertiserId,
+    tiktokAccessToken: data.tiktokAccessToken,
+    microsoftAdsAccountId: data.microsoftAdsAccountId,
+    woocommerceUrl: data.woocommerceUrl,
+    shopifyStoreDomain: data.shopifyStoreDomain,
+    cwvUrl: data.cwvUrl,
+  };
+
+  const newlyAdded: PlatformKey[] = [];
+
+  if (data.ga4PropertyId !== undefined && !isFilled(before.ga4PropertyId) && isFilled(after.ga4PropertyId)) newlyAdded.push("ga4");
+  if (data.googleAdsCustomerId !== undefined && !isFilled(before.googleAdsCustomerId) && isFilled(after.googleAdsCustomerId)) newlyAdded.push("googleads");
+  if (data.metaAccountId !== undefined && !isFilled(before.metaAccountId) && isFilled(after.metaAccountId)) newlyAdded.push("meta");
+  if (data.searchConsoleSiteUrl !== undefined && !isFilled(before.searchConsoleSiteUrl) && isFilled(after.searchConsoleSiteUrl)) newlyAdded.push("searchconsole");
+  if (data.semrushDomain !== undefined && !isFilled(before.semrushDomain) && isFilled(after.semrushDomain)) newlyAdded.push("seo");
+  if (
+    (data.tiktokAdvertiserId !== undefined || data.tiktokAccessToken !== undefined)
+    && (!isFilled(before.tiktokAdvertiserId) || !isFilled(before.tiktokAccessToken))
+    && isFilled(after.tiktokAdvertiserId)
+    && isFilled(after.tiktokAccessToken)
+  ) newlyAdded.push("tiktok");
+  if (data.microsoftAdsAccountId !== undefined && !isFilled(before.microsoftAdsAccountId) && isFilled(after.microsoftAdsAccountId)) newlyAdded.push("microsoftads");
+  if (data.woocommerceUrl !== undefined && !isFilled(before.woocommerceUrl) && isFilled(after.woocommerceUrl)) newlyAdded.push("woocommerce");
+  if (data.shopifyStoreDomain !== undefined && !isFilled(before.shopifyStoreDomain) && isFilled(after.shopifyStoreDomain)) newlyAdded.push("shopify");
+  if (data.cwvUrl !== undefined && !isFilled(before.cwvUrl) && isFilled(after.cwvUrl)) newlyAdded.push("cwv");
+
+  return Array.from(new Set(newlyAdded));
+}
 
 export async function GET(
   request: NextRequest,
@@ -47,6 +100,29 @@ export async function PATCH(
 
     const { id } = await params;
     const data = await request.json();
+
+    const existingClient = await prisma.client.findUnique({
+      where: { id },
+      select: {
+        ga4PropertyId: true,
+        googleAdsCustomerId: true,
+        metaAccountId: true,
+        searchConsoleSiteUrl: true,
+        semrushDomain: true,
+        tiktokAdvertiserId: true,
+        tiktokAccessToken: true,
+        microsoftAdsAccountId: true,
+        woocommerceUrl: true,
+        shopifyStoreDomain: true,
+        cwvUrl: true,
+      },
+    });
+
+    if (!existingClient) {
+      return NextResponse.json({ error: "Client not found" }, { status: 404 });
+    }
+
+    const newlyAddedChannels = getNewlyAddedChannels(existingClient, data as Record<string, unknown>);
 
     const client = await prisma.client.update({
       where: { id },
@@ -110,7 +186,7 @@ export async function PATCH(
       description: `Updated client "${client.name}"`,
     });
 
-    return NextResponse.json(client);
+    return NextResponse.json({ client, newlyAddedChannels });
   } catch (error) {
     console.error("Update client error:", error);
     return NextResponse.json({ error: "Failed to update client" }, { status: 500 });

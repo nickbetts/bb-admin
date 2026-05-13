@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Save, Loader2 } from "lucide-react";
+import { SnapshotBackfillModal } from "@/components/clients/SnapshotBackfillModal";
 
 interface GA4Property {
   id: string;
@@ -37,6 +38,8 @@ interface GSCSite {
 export default function NewClientPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [backfilling, setBackfilling] = useState(false);
+  const [backfillElapsed, setBackfillElapsed] = useState(0);
   const [error, setError] = useState("");
 
   const [ga4Properties, setGa4Properties] = useState<GA4Property[]>([]);
@@ -112,6 +115,17 @@ export default function NewClientPage() {
       .catch(() => setGa4ServiceAccountEmailError(true));
   }, []);
 
+  useEffect(() => {
+    if (!backfilling) {
+      setBackfillElapsed(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      setBackfillElapsed((prev) => prev + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [backfilling]);
+
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) {
@@ -132,6 +146,24 @@ export default function NewClientPage() {
 
       if (res.ok) {
         const client = await res.json();
+        setBackfilling(true);
+        const backfillRes = await fetch(`/api/clients/${client.id}/snapshot-backfill`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        });
+        setBackfilling(false);
+
+        if (!backfillRes.ok) {
+          const backfillData = await backfillRes.json().catch(() => ({})) as { error?: string };
+          setError(`Client created, but historical snapshot backfill failed: ${backfillData.error ?? "Unknown error"}`);
+          return;
+        }
+
+        const backfillData = await backfillRes.json().catch(() => ({})) as { totalErrors?: number };
+        if ((backfillData.totalErrors ?? 0) > 0) {
+          setError("Client created and backfill finished with some channel errors. You can rerun snapshots in Settings.");
+        }
         router.push(`/clients/${client.slug}`);
       } else {
         const data = await res.json();
@@ -139,6 +171,7 @@ export default function NewClientPage() {
       }
     } catch {
       setError("Network error. Please try again.");
+      setBackfilling(false);
     } finally {
       setLoading(false);
     }
@@ -536,18 +569,25 @@ export default function NewClientPage() {
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || backfilling}
             className="btn btn-primary"
             style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
           >
             <Save className="h-4 w-4" />
-            {loading ? "Creating…" : "Create Client"}
+            {loading || backfilling ? "Creating…" : "Create Client"}
           </button>
           <Link href="/clients" className="btn btn-secondary">
             Cancel
           </Link>
         </div>
       </form>
+
+      <SnapshotBackfillModal
+        open={backfilling}
+        elapsedSeconds={backfillElapsed}
+        title="Creating client snapshots"
+        message="We are automatically backfilling up to 5 years of data for this new client."
+      />
     </div>
   );
 }

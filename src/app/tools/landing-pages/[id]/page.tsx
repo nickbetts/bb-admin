@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, use, type ReactNode } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo, use, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -64,6 +64,7 @@ import { FormConfigPanel } from "@/components/landing-pages/FormConfigPanel";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import type { LpAnalyticsConfig } from "@/lib/lp-analytics";
 import { parseLpFormConfig, type LpFormConfig } from "@/lib/lp-form-config";
+import { applyConfiguredFormFields } from "@/lib/lp-form-fields-html";
 import { useToast } from "@/components/ui/Toast";
 
 // Public hosting domain for landing pages. Set via NEXT_PUBLIC_LP_DOMAIN at
@@ -712,8 +713,16 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
     return () => window.removeEventListener("message", handler);
   }, [previewHtml, updateHtml]);
 
+  // Keep iframe preview aligned with form settings (placeholder/required/type)
+  const previewHtmlWithFormConfig = useMemo(
+    () => applyConfiguredFormFields(previewHtml, formConfig.fields ?? []),
+    [previewHtml, formConfig.fields],
+  );
+
   // ── NEW: Edit mode — inject/remove editor overlay ─────────────────────────
-  const iframeHtml = editMode ? injectEditorScript(previewHtml) : removeEditorScript(previewHtml);
+  const iframeHtml = editMode
+    ? injectEditorScript(previewHtmlWithFormConfig)
+    : removeEditorScript(previewHtmlWithFormConfig);
 
   // ── NEW: Parse sections when previewHtml changes (sections tab) ───────────
   useEffect(() => {

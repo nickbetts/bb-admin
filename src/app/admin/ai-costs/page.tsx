@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { TrendingUp } from "lucide-react";
 
 interface CostRow {
   tool?: string;
@@ -30,12 +31,15 @@ const PERIODS = [
   { value: 90, label: "Last 90 days" },
 ];
 
+const USD_TO_GBP = 0.79; // Approximate conversion rate
+
 export default function AICostsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<CostResponse | null>(null);
   const [groupBy, setGroupBy] = useState<"tool" | "provider" | "total">("tool");
   const [period, setPeriod] = useState(30);
+  const [currency, setCurrency] = useState<"USD" | "GBP">("GBP");
 
   useEffect(() => {
     async function fetchData() {
@@ -67,109 +71,208 @@ export default function AICostsPage() {
   const totalInput = data?.data.reduce((sum, r) => sum + r.inputTokens, 0) ?? 0;
   const totalOutput = data?.data.reduce((sum, r) => sum + r.outputTokens, 0) ?? 0;
 
+  const convertCost = (usd: number) => currency === "GBP" ? usd * USD_TO_GBP : usd;
+  const currencySymbol = currency === "GBP" ? "£" : "$";
+
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-6xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">AI Cost Tracking</h1>
-          <p className="text-gray-600 mt-2">Monitor usage and costs across tools and providers</p>
+    <div>
+      {/* Controls */}
+      <div style={{ display: "flex", gap: 16, marginBottom: 20, flexWrap: "wrap", alignItems: "flex-end" }}>
+        <div>
+          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            Group by
+          </label>
+          <select
+            value={groupBy}
+            onChange={e => setGroupBy(e.target.value as "tool" | "provider" | "total")}
+            style={{
+              padding: "8px 12px",
+              fontSize: 13,
+              border: "1px solid var(--border)",
+              borderRadius: 6,
+              background: "var(--bg)",
+              color: "var(--text)",
+              cursor: "pointer",
+              fontFamily: "inherit",
+            }}
+          >
+            {GROUPS.map(g => (
+              <option key={g.value} value={g.value}>{g.label}</option>
+            ))}
+          </select>
         </div>
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <div className="flex gap-4 flex-wrap">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Group by:</label>
-              <select
-                value={groupBy}
-                onChange={e => setGroupBy(e.target.value as "tool" | "provider" | "total")}
-                className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+        <div>
+          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            Time period
+          </label>
+          <select
+            value={period}
+            onChange={e => setPeriod(Number(e.target.value))}
+            style={{
+              padding: "8px 12px",
+              fontSize: 13,
+              border: "1px solid var(--border)",
+              borderRadius: 6,
+              background: "var(--bg)",
+              color: "var(--text)",
+              cursor: "pointer",
+              fontFamily: "inherit",
+            }}
+          >
+            {PERIODS.map(p => (
+              <option key={p.value} value={p.value}>{p.label}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            Currency
+          </label>
+          <div style={{ display: "flex", gap: 6 }}>
+            {["USD", "GBP"].map(c => (
+              <button
+                key={c}
+                onClick={() => setCurrency(c as "USD" | "GBP")}
+                style={{
+                  padding: "8px 12px",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  border: `1px solid ${currency === c ? "var(--primary, #6366f1)" : "var(--border)"}`,
+                  borderRadius: 6,
+                  background: currency === c ? "var(--primary-bg, rgba(99, 102, 241, 0.1))" : "var(--bg)",
+                  color: currency === c ? "var(--primary, #6366f1)" : "var(--text)",
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  transition: "all 0.15s",
+                }}
               >
-                {GROUPS.map(g => (
-                  <option key={g.value} value={g.value}>{g.label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Time period:</label>
-              <select
-                value={period}
-                onChange={e => setPeriod(Number(e.target.value))}
-                className="px-3 py-2 border border-gray-300 rounded-md text-sm"
-              >
-                {PERIODS.map(p => (
-                  <option key={p.value} value={p.value}>{p.label}</option>
-                ))}
-              </select>
-            </div>
+                {c}
+              </button>
+            ))}
           </div>
         </div>
-        {data && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <div className="bg-white rounded-lg shadow p-6">
-              <p className="text-gray-600 text-sm font-medium">Total Cost</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">${totalCost.toFixed(2)}</p>
-            </div>
-            <div className="bg-white rounded-lg shadow p-6">
-              <p className="text-gray-600 text-sm font-medium">Total Calls</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">{totalCalls.toLocaleString()}</p>
-            </div>
-            <div className="bg-white rounded-lg shadow p-6">
-              <p className="text-gray-600 text-sm font-medium">Input Tokens</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">{(totalInput/1e3).toFixed(1)}K</p>
-            </div>
-            <div className="bg-white rounded-lg shadow p-6">
-              <p className="text-gray-600 text-sm font-medium">Output Tokens</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">{(totalOutput/1e3).toFixed(1)}K</p>
-            </div>
-          </div>
-        )}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          {loading ? (
-            <div className="p-8 text-center">
-              <p className="text-gray-600">Loading...</p>
-            </div>
-          ) : error ? (
-            <div className="p-8 text-center">
-              <p className="text-red-600">Error: {error}</p>
-            </div>
-          ) : data && data.data.length > 0 ? (
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b">
-                <tr>
-                  {groupBy === "tool" && <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">Tool</th>}
-                  {groupBy === "provider" && <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">Provider</th>}
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">Calls</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">Input Tokens</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">Output Tokens</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">Cost (USD)</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {data.data.map((row, i) => (
-                  <tr key={i} className="hover:bg-gray-50">
-                    {groupBy === "tool" && <td className="px-6 py-4 text-sm font-medium text-gray-900">{row.tool}</td>}
-                    {groupBy === "provider" && <td className="px-6 py-4 text-sm font-medium text-gray-900">{row.provider}</td>}
-                    <td className="px-6 py-4 text-sm text-gray-600">{row.callCount}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{(row.inputTokens/1e3).toFixed(1)}K</td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{(row.outputTokens/1e3).toFixed(1)}K</td>
-                    <td className="px-6 py-4 text-sm font-semibold text-gray-900">${row.totalCost.toFixed(4)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <div className="p-8 text-center">
-              <p className="text-gray-600">No data available for the selected period</p>
-            </div>
-          )}
-        </div>
-        {data && (
-          <div className="mt-4 text-sm text-gray-600">
-            <p>
-              Showing data from <strong>{new Date(data.startDate).toLocaleDateString()}</strong> to <strong>{new Date(data.endDate).toLocaleDateString()}</strong>
-            </p>
-          </div>
-        )}
       </div>
+
+      {/* Error */}
+      {error && (
+        <div style={{ padding: "12px 16px", borderRadius: 8, background: "var(--danger-bg)", border: "1px solid var(--danger-border)", marginBottom: 16 }}>
+          <p style={{ fontSize: 13, color: "var(--danger-text)", margin: 0 }}>Error: {error}</p>
+        </div>
+      )}
+
+      {/* Stats cards */}
+      {data && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, marginBottom: 20 }}>
+          <div className="card" style={{ padding: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div>
+                <p style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 600, margin: 0, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.05em" }}>Total Cost</p>
+                <p style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", margin: 0 }}>{currencySymbol}{convertCost(totalCost).toFixed(2)}</p>
+              </div>
+              <TrendingUp size={20} style={{ color: "var(--text-3)" }} />
+            </div>
+          </div>
+          <div className="card" style={{ padding: 16 }}>
+            <div>
+              <p style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 600, margin: 0, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.05em" }}>Total Calls</p>
+              <p style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", margin: 0 }}>{totalCalls.toLocaleString()}</p>
+            </div>
+          </div>
+          <div className="card" style={{ padding: 16 }}>
+            <div>
+              <p style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 600, margin: 0, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.05em" }}>Input Tokens</p>
+              <p style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", margin: 0 }}>{(totalInput/1e3).toFixed(1)}K</p>
+            </div>
+          </div>
+          <div className="card" style={{ padding: 16 }}>
+            <div>
+              <p style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 600, margin: 0, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.05em" }}>Output Tokens</p>
+              <p style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", margin: 0 }}>{(totalOutput/1e3).toFixed(1)}K</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Table */}
+      {loading ? (
+        <div className="card" style={{ padding: "32px 24px", textAlign: "center" }}>
+          <p style={{ fontSize: 14, color: "var(--text-3)", margin: 0 }}>Loading…</p>
+        </div>
+      ) : data && data.data.length === 0 ? (
+        <div className="card" style={{ padding: "32px 24px", textAlign: "center" }}>
+          <p style={{ fontSize: 14, color: "var(--text-3)", margin: 0 }}>No data available for the selected period</p>
+        </div>
+      ) : data && data.data.length > 0 ? (
+        <div className="card" style={{ overflow: "hidden" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                {groupBy === "tool" && (
+                  <th style={{ padding: "10px 16px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "var(--text-3)", letterSpacing: "0.05em", textTransform: "uppercase", whiteSpace: "nowrap" }}>
+                    Tool
+                  </th>
+                )}
+                {groupBy === "provider" && (
+                  <th style={{ padding: "10px 16px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "var(--text-3)", letterSpacing: "0.05em", textTransform: "uppercase", whiteSpace: "nowrap" }}>
+                    Provider
+                  </th>
+                )}
+                {groupBy === "total" && (
+                  <th style={{ padding: "10px 16px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "var(--text-3)", letterSpacing: "0.05em", textTransform: "uppercase", whiteSpace: "nowrap" }}>
+                    Period
+                  </th>
+                )}
+                <th style={{ padding: "10px 16px", textAlign: "right", fontSize: 11, fontWeight: 700, color: "var(--text-3)", letterSpacing: "0.05em", textTransform: "uppercase", whiteSpace: "nowrap" }}>
+                  Calls
+                </th>
+                <th style={{ padding: "10px 16px", textAlign: "right", fontSize: 11, fontWeight: 700, color: "var(--text-3)", letterSpacing: "0.05em", textTransform: "uppercase", whiteSpace: "nowrap" }}>
+                  Input Tokens
+                </th>
+                <th style={{ padding: "10px 16px", textAlign: "right", fontSize: 11, fontWeight: 700, color: "var(--text-3)", letterSpacing: "0.05em", textTransform: "uppercase", whiteSpace: "nowrap" }}>
+                  Output Tokens
+                </th>
+                <th style={{ padding: "10px 16px", textAlign: "right", fontSize: 11, fontWeight: 700, color: "var(--text-3)", letterSpacing: "0.05em", textTransform: "uppercase", whiteSpace: "nowrap" }}>
+                  Cost {currency}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.data.map((row, i) => (
+                <tr
+                  key={i}
+                  style={{
+                    borderBottom: i < data.data.length - 1 ? "1px solid var(--border)" : "none",
+                    background: i % 2 === 0 ? "transparent" : "var(--bg-2, rgba(0,0,0,0.015))",
+                  }}
+                >
+                  {groupBy === "tool" && (
+                    <td style={{ padding: "10px 16px", verticalAlign: "top", fontSize: 13, color: "var(--text-2)", fontWeight: 500 }}>{row.tool}</td>
+                  )}
+                  {groupBy === "provider" && (
+                    <td style={{ padding: "10px 16px", verticalAlign: "top", fontSize: 13, color: "var(--text-2)", fontWeight: 500 }}>{row.provider}</td>
+                  )}
+                  {groupBy === "total" && (
+                    <td style={{ padding: "10px 16px", verticalAlign: "top", fontSize: 13, color: "var(--text-2)", fontWeight: 500 }}>
+                      {new Date(data.startDate).toLocaleDateString()} – {new Date(data.endDate).toLocaleDateString()}
+                    </td>
+                  )}
+                  <td style={{ padding: "10px 16px", verticalAlign: "top", fontSize: 13, color: "var(--text-3)", textAlign: "right" }}>{row.callCount.toLocaleString()}</td>
+                  <td style={{ padding: "10px 16px", verticalAlign: "top", fontSize: 13, color: "var(--text-3)", textAlign: "right" }}>{(row.inputTokens/1e3).toFixed(1)}K</td>
+                  <td style={{ padding: "10px 16px", verticalAlign: "top", fontSize: 13, color: "var(--text-3)", textAlign: "right" }}>{(row.outputTokens/1e3).toFixed(1)}K</td>
+                  <td style={{ padding: "10px 16px", verticalAlign: "top", fontSize: 13, color: "var(--text)", fontWeight: 600, textAlign: "right" }}>{currencySymbol}{convertCost(row.totalCost).toFixed(4)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+
+      {/* Footer */}
+      {data && (
+        <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 12 }}>
+          Showing data from <strong>{new Date(data.startDate).toLocaleDateString()}</strong> to <strong>{new Date(data.endDate).toLocaleDateString()}</strong>
+        </p>
+      )}
     </div>
   );
 }

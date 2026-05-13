@@ -7,8 +7,10 @@ import Image from "next/image";
 import { getAppUrl, buildClickProtectionSnippet } from "@/lib/utils";
 import { SignalConfigEditor } from "./SignalConfigEditor";
 import { AnalyticsConfigForm } from "@/components/landing-pages/AnalyticsConfigForm";
+import { SnapshotBackfillModal } from "@/components/clients/SnapshotBackfillModal";
 import type { LpAnalyticsConfig } from "@/lib/lp-analytics";
 import type { SignalConfig } from "@/lib/signals/types";
+import type { PlatformKey } from "@/lib/snapshot-backfill";
 
 interface Client {
   id: string;
@@ -118,6 +120,8 @@ export function ClientSettingsForm({ client, permissions = [], isAdmin = false }
     return !hasSettingsRestrictions || settingsPerms.includes(key);
   }
   const [saving, setSaving] = useState(false);
+  const [backfilling, setBackfilling] = useState(false);
+  const [backfillElapsed, setBackfillElapsed] = useState(0);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
   const [logoUrl, setLogoUrl] = useState<string | null>(client.logoUrl ?? null);
@@ -311,6 +315,17 @@ export function ClientSettingsForm({ client, permissions = [], isAdmin = false }
       .finally(() => setGscLoading(false));
   }, []);
 
+  useEffect(() => {
+    if (!backfilling) {
+      setBackfillElapsed(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      setBackfillElapsed((prev) => prev + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [backfilling]);
+
   async function fetchCampaignsForProject(projectId: number) {
     setCampaignsLoading(true);
     setCampaignsFetchError("");
@@ -367,6 +382,30 @@ export function ClientSettingsForm({ client, permissions = [], isAdmin = false }
       });
 
       if (res.ok) {
+        const updated = await res.json() as { client: Client; newlyAddedChannels?: PlatformKey[] };
+        const newlyAddedChannels = updated.newlyAddedChannels ?? [];
+
+        if (newlyAddedChannels.length > 0) {
+          setBackfilling(true);
+          const backfillRes = await fetch(`/api/clients/${client.id}/snapshot-backfill`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ channels: newlyAddedChannels }),
+          });
+          setBackfilling(false);
+
+          if (!backfillRes.ok) {
+            const backfillData = await backfillRes.json().catch(() => ({})) as { error?: string };
+            setError(`Settings saved, but historical snapshot backfill failed: ${backfillData.error ?? "Unknown error"}`);
+            return;
+          }
+
+          const backfillData = await backfillRes.json().catch(() => ({})) as { totalErrors?: number };
+          if ((backfillData.totalErrors ?? 0) > 0) {
+            setError("Settings saved and backfill finished with some channel errors. You can rerun snapshots in Settings.");
+          }
+        }
+
         setSuccess(true);
         setTimeout(() => {
           router.push(`/clients/${client.slug}`);
@@ -378,6 +417,7 @@ export function ClientSettingsForm({ client, permissions = [], isAdmin = false }
       }
     } catch {
       setError("Network error. Please try again.");
+      setBackfilling(false);
     } finally {
       setSaving(false);
     }
@@ -1442,14 +1482,21 @@ export function ClientSettingsForm({ client, permissions = [], isAdmin = false }
       <div>
         <button
           type="submit"
-          disabled={saving}
+          disabled={saving || backfilling}
           className="btn btn-primary"
           style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
         >
           <Save className="h-4 w-4" />
-          {saving ? "Saving…" : "Save Settings"}
+          {saving || backfilling ? "Saving…" : "Save Settings"}
         </button>
       </div>
+
+      <SnapshotBackfillModal
+        open={backfilling}
+        elapsedSeconds={backfillElapsed}
+        title="Backfilling new channel data"
+        message="We are automatically backfilling up to 5 years of snapshots for the newly added channel(s)."
+      />
     </form>
   );
 }
