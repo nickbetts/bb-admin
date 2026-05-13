@@ -559,6 +559,8 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
     analytics: "{}",
     form: "{}",
   });
+  const trackingSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const trackingSaveRequestRef = useRef(0);
 
   // Leads viewer modal
   const [showLeadsModal, setShowLeadsModal] = useState(false);
@@ -688,6 +690,12 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatHistory]);
+
+  useEffect(() => {
+    return () => {
+      if (trackingSaveTimerRef.current) clearTimeout(trackingSaveTimerRef.current);
+    };
+  }, []);
 
   // ── NEW: Initialise history with first HTML ────────────────────────────────
   useEffect(() => {
@@ -1505,43 +1513,118 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
     }
   };
 
-  if (loading) {
-    return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
-        <Loader2 style={{ width: 32, height: 32, animation: "spin 1s linear infinite", color: "var(--accent)" }} />
-      </div>
-    );
-  }
-
-  if (!lp) return null;
+  const serialisedAnalyticsConfig = JSON.stringify(analyticsConfig ?? {});
+  const serialisedFormConfig = JSON.stringify(formConfig ?? {});
 
   const trackingDirty = showTrackingSettings && (
-    JSON.stringify(analyticsConfig ?? {}) !== trackingBaseline.analytics
-    || JSON.stringify(formConfig ?? {}) !== trackingBaseline.form
+    serialisedAnalyticsConfig !== trackingBaseline.analytics
+    || serialisedFormConfig !== trackingBaseline.form
   );
+
+  const saveTrackingSettings = useCallback(async (opts?: { showSaved?: boolean; silent?: boolean }) => {
+    if (!lp) return false;
+
+    const { showSaved = true, silent = true } = opts ?? {};
+    const requestId = ++trackingSaveRequestRef.current;
+    setSavingAnalytics(true);
+    if (showSaved) setAnalyticsSaved(false);
+
+    const htmlWithFormConfig = applyConfiguredFormFields(previewHtml, formConfig.fields ?? []);
+
+    try {
+      const res = await fetch(`/api/tools/landing-pages/${lp.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          analyticsConfig,
+          formConfig,
+          html: htmlWithFormConfig,
+        }),
+      });
+
+      if (!res.ok) {
+        if (!silent) {
+          toast("Could not save Tracking/Form changes.", "error");
+        }
+        return false;
+      }
+
+      const data = await res.json();
+
+      // Ignore stale responses from older in-flight requests.
+      if (requestId !== trackingSaveRequestRef.current) {
+        return true;
+      }
+
+      if (htmlWithFormConfig !== previewHtml) {
+        setPreviewHtml(htmlWithFormConfig);
+      }
+
+      setLp((prev) => prev ? {
+        ...prev,
+        currentHtml: data.landingPage.currentHtml,
+        analyticsConfig: data.landingPage.analyticsConfig,
+        formConfig: data.landingPage.formConfig,
+      } : prev);
+
+      setTrackingBaseline({
+        analytics: JSON.stringify(analyticsConfig ?? {}),
+        form: JSON.stringify(formConfig ?? {}),
+      });
+
+      if (showSaved) {
+        setAnalyticsSaved(true);
+      }
+
+      return true;
+    } catch {
+      if (!silent) {
+        toast("Could not save Tracking/Form changes.", "error");
+      }
+      return false;
+    } finally {
+      if (requestId === trackingSaveRequestRef.current) {
+        setSavingAnalytics(false);
+      }
+    }
+  }, [lp, previewHtml, formConfig, analyticsConfig, toast]);
+
+  useEffect(() => {
+    if (!showTrackingSettings || !trackingDirty) return;
+
+    if (trackingSaveTimerRef.current) clearTimeout(trackingSaveTimerRef.current);
+    trackingSaveTimerRef.current = setTimeout(() => {
+      void saveTrackingSettings({ showSaved: false, silent: true });
+    }, 800);
+
+    return () => {
+      if (trackingSaveTimerRef.current) clearTimeout(trackingSaveTimerRef.current);
+    };
+  }, [showTrackingSettings, trackingDirty, saveTrackingSettings]);
 
   const openTrackingSettings = () => {
     setAnalyticsSaved(false);
     setTrackingTab("tracking");
     setTrackingBaseline({
-      analytics: JSON.stringify(analyticsConfig ?? {}),
-      form: JSON.stringify(formConfig ?? {}),
+      analytics: serialisedAnalyticsConfig,
+      form: serialisedFormConfig,
     });
     setShowTrackingSettings(true);
   };
 
   const closeTrackingSettings = async () => {
     if (savingAnalytics) return;
-    if (trackingDirty) {
-      const proceed = await confirm({
-        title: "Discard unsaved changes?",
-        description: "You have unsaved Tracking/Form changes. Closing now will lose them.",
-        confirmLabel: "Discard changes",
-        cancelLabel: "Keep editing",
-        danger: true,
-      });
-      if (!proceed) return;
+
+    if (trackingSaveTimerRef.current) {
+      clearTimeout(trackingSaveTimerRef.current);
+      trackingSaveTimerRef.current = null;
     }
+
+    if (trackingDirty) {
+      const saved = await saveTrackingSettings({ showSaved: false, silent: false });
+      if (!saved) return;
+    }
+
     setShowTrackingSettings(false);
     setAnalyticsSaved(false);
   };
@@ -1560,6 +1643,16 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
     background: "var(--border-subtle)",
     pointerEvents: "none",
   };
+
+  if (loading) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
+        <Loader2 style={{ width: 32, height: 32, animation: "spin 1s linear infinite", color: "var(--accent)" }} />
+      </div>
+    );
+  }
+
+  if (!lp) return null;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 56px)" }}>
@@ -2730,43 +2823,12 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                 className="btn btn-primary"
                 disabled={savingAnalytics}
                 onClick={async () => {
-                  if (!lp) return;
-                  setSavingAnalytics(true);
-                  setAnalyticsSaved(false);
-                  const htmlWithFormConfig = applyConfiguredFormFields(previewHtml, formConfig.fields ?? []);
-                  try {
-                    const res = await fetch(`/api/tools/landing-pages/${lp.id}`, {
-                      method: "PATCH",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        analyticsConfig,
-                        formConfig,
-                        html: htmlWithFormConfig,
-                      }),
-                    });
-                    if (res.ok) {
-                      const data = await res.json();
-                      setPreviewHtml(htmlWithFormConfig);
-                      setLp((prev) => prev ? {
-                        ...prev,
-                        currentHtml: data.landingPage.currentHtml,
-                        analyticsConfig: data.landingPage.analyticsConfig,
-                        formConfig: data.landingPage.formConfig,
-                      } : prev);
-                      setTrackingBaseline({
-                        analytics: JSON.stringify(analyticsConfig ?? {}),
-                        form: JSON.stringify(formConfig ?? {}),
-                      });
-                      setAnalyticsSaved(true);
-                    }
-                  } finally {
-                    setSavingAnalytics(false);
-                  }
+                  await saveTrackingSettings({ showSaved: true, silent: false });
                 }}
                 style={{ fontSize: 13 }}
               >
                 {savingAnalytics ? <Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }} /> : <Save style={{ width: 14, height: 14 }} />}
-                Save
+                {savingAnalytics ? "Saving…" : "Save now"}
               </button>
             </div>
           </div>
