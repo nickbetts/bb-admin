@@ -211,11 +211,13 @@ function SortableSectionRow({
   onDuplicate: () => void;
   onDelete: () => void;
   onAnimationChange: (anim: string | null) => void;
-  onRefine: (prompt: string) => void;
+  onRefine: (input: { prompt: string; images: File[]; crawlUrls: string[] }) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: section.id });
   const [aiOpen, setAiOpen] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
+  const [images, setImages] = useState<File[]>([]);
+  const [crawlUrls, setCrawlUrls] = useState<string[]>([""]);
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -229,8 +231,17 @@ function SortableSectionRow({
   const handleSubmit = () => {
     const p = aiPrompt.trim();
     if (!p) return;
-    onRefine(p);
+    onRefine({ prompt: p, images, crawlUrls: crawlUrls.filter((u) => u.trim()) });
     setAiPrompt("");
+    setImages([]);
+    setCrawlUrls([""]);
+    setAiOpen(false);
+  };
+
+  const handleClose = () => {
+    setAiPrompt("");
+    setImages([]);
+    setCrawlUrls([""]);
     setAiOpen(false);
   };
 
@@ -270,23 +281,82 @@ function SortableSectionRow({
         </button>
       </div>
       {aiOpen && (
-        <div style={{ padding: "0 10px 10px", display: "flex", gap: 6 }}>
-          <input
+        <div style={{ padding: "0 10px 10px", display: "flex", flexDirection: "column", gap: 8 }}>
+          <textarea
             autoFocus
-            type="text"
             value={aiPrompt}
             onChange={(e) => setAiPrompt(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); if (e.key === "Escape") setAiOpen(false); }}
+            onKeyDown={(e) => {
+              if ((e.metaKey || e.ctrlKey) && e.key === "Enter") handleSubmit();
+              if (e.key === "Escape") handleClose();
+            }}
+            rows={3}
             placeholder={`Edit "${section.label}"…`}
-            style={{ flex: 1, fontSize: 12, padding: "5px 8px", border: "1px solid var(--border)", borderRadius: "var(--r-sm)", background: "var(--bg)", color: "var(--text)", outline: "none", fontFamily: "inherit" }}
+            style={{ width: "100%", fontSize: 12, padding: "6px 8px", border: "1px solid var(--border)", borderRadius: "var(--r-sm)", background: "var(--bg)", color: "var(--text)", outline: "none", fontFamily: "inherit", boxSizing: "border-box", resize: "vertical", minHeight: 74, lineHeight: 1.45 }}
           />
-          <button
-            onClick={handleSubmit}
-            disabled={!aiPrompt.trim()}
-            style={{ fontSize: 11, padding: "5px 10px", background: "var(--accent)", color: "#fff", border: "none", borderRadius: "var(--r-sm)", cursor: aiPrompt.trim() ? "pointer" : "default", opacity: aiPrompt.trim() ? 1 : 0.5, fontFamily: "inherit", fontWeight: 600 }}
-          >
-            Apply
-          </button>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)" }}>Reference images <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span></label>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--accent)", cursor: "pointer", padding: "2px 0" }}>
+              <ImagePlus style={{ width: 12, height: 12, flexShrink: 0 }} />
+              {images.length === 0 ? "Upload images…" : `${images.length} image${images.length > 1 ? "s" : ""} selected`}
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                multiple
+                style={{ display: "none" }}
+                onChange={(e) => setImages(Array.from(e.target.files ?? []))}
+              />
+            </label>
+            {images.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                {images.map((file, index) => (
+                  <span key={index} style={{ fontSize: 10, padding: "2px 6px", background: "var(--accent-bg)", color: "var(--accent)", borderRadius: "var(--r-sm)", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{file.name}</span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)" }}>URLs for context <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span></label>
+            {crawlUrls.map((url, index) => (
+              <div key={index} style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                <input
+                  type="url"
+                  value={url}
+                  onChange={(e) => setCrawlUrls((prev) => {
+                    const next = [...prev];
+                    next[index] = e.target.value;
+                    return next;
+                  })}
+                  placeholder="https://example.com/reference"
+                  style={{ flex: 1, fontSize: 12, padding: "5px 8px", border: "1px solid var(--border)", borderRadius: "var(--r-sm)", background: "var(--bg)", color: "var(--text)", outline: "none", fontFamily: "inherit" }}
+                />
+                {crawlUrls.length > 1 && (
+                  <button onClick={() => setCrawlUrls((prev) => prev.filter((_, i) => i !== index))} style={{ padding: "3px 6px", background: "none", border: "none", cursor: "pointer", color: "var(--text-4)", fontSize: 14, lineHeight: 1 }}>×</button>
+                )}
+              </div>
+            ))}
+            {crawlUrls.length < 3 && (
+              <button onClick={() => setCrawlUrls((prev) => [...prev, ""])} style={{ alignSelf: "flex-start", fontSize: 11, padding: "2px 0", background: "none", border: "none", cursor: "pointer", color: "var(--accent)", fontFamily: "inherit" }}>+ Add URL</button>
+            )}
+          </div>
+
+          <div style={{ display: "flex", gap: 6 }}>
+            <button
+              onClick={handleSubmit}
+              disabled={!aiPrompt.trim()}
+              style={{ flex: 1, fontSize: 11, padding: "5px 10px", background: "var(--accent)", color: "#fff", border: "none", borderRadius: "var(--r-sm)", cursor: aiPrompt.trim() ? "pointer" : "default", opacity: aiPrompt.trim() ? 1 : 0.5, fontFamily: "inherit", fontWeight: 600 }}
+            >
+              Apply
+            </button>
+            <button
+              onClick={handleClose}
+              style={{ fontSize: 11, padding: "5px 10px", background: "none", border: "1px solid var(--border)", borderRadius: "var(--r-sm)", cursor: "pointer", color: "var(--text-3)", fontFamily: "inherit" }}
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -992,17 +1062,42 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
   }, []);
 
   const handleSectionRefine = useCallback(
-    async (section: LPSection, prompt: string) => {
+    async (section: LPSection, input: { prompt: string; images: File[]; crawlUrls: string[] }) => {
       if (refiningSectionId) return;
       setRefiningSectionId(section.id);
 
       const pageContext = buildPageContext(previewHtml);
 
       try {
+        let imageUrls: string[] = [];
+        if (input.images.length > 0) {
+          const uploads = await Promise.all(
+            input.images.map(async (file) => {
+              const fd = new FormData();
+              fd.append("file", file);
+              const res = await fetch(`/api/tools/landing-pages/upload-image`, { method: "POST", body: fd });
+              if (!res.ok) return null;
+              const data = await res.json() as { url?: string };
+              return data.url ?? null;
+            }),
+          );
+          imageUrls = uploads.filter((url): url is string => url !== null);
+        }
+
+        const validCrawlUrls = input.crawlUrls.filter((url) => {
+          try { new URL(url); return true; } catch { return false; }
+        }).slice(0, 3);
+
         const res = await fetch(`/api/tools/landing-pages/${id}/refine-section`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sectionHtml: section.outerHtml, prompt, pageContext }),
+          body: JSON.stringify({
+            sectionHtml: section.outerHtml,
+            prompt: input.prompt,
+            pageContext,
+            imageUrls: imageUrls.length ? imageUrls : undefined,
+            crawlUrls: validCrawlUrls.length ? validCrawlUrls : undefined,
+          }),
         });
 
         if (!res.ok) {
@@ -2184,7 +2279,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                               onDuplicate={() => handleDuplicateSection(section)}
                               onDelete={() => handleDeleteSection(section)}
                               onAnimationChange={(anim) => handleSectionAnimationChange(section, anim)}
-                              onRefine={(prompt) => handleSectionRefine(section, prompt)}
+                              onRefine={(input) => handleSectionRefine(section, input)}
                             />
                           </div>
                         ))}

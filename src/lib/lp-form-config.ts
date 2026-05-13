@@ -108,6 +108,7 @@ export function isWebhookUrlSafe(url: string): boolean {
 export function extractFormFieldsFromHtml(html: string): LpFormField[] {
   const fields: LpFormField[] = [];
   const seen = new Set<string>();
+  const labelByName = extractFormLabels(html);
 
   // Match all input/select/textarea elements, capturing name and type attributes
   const elementRe = /<(input|select|textarea)([^>]*)>/gi;
@@ -142,12 +143,15 @@ export function extractFormFieldsFromHtml(html: string): LpFormField[] {
     // Auto-detect required
     const required = /\brequired\b/i.test(attrs);
     const placeholderMatch = attrs.match(/\bplaceholder=("([^"]*)"|'([^']*)')/i);
-    const placeholder = (placeholderMatch?.[2] ?? placeholderMatch?.[3] ?? "").trim() || undefined;
+    const placeholder = (
+      (placeholderMatch?.[2] ?? placeholderMatch?.[3] ?? "").trim()
+      || (tagName === "select" ? extractSelectPlaceholder(html, name) : "")
+    ) || undefined;
 
     fields.push({
       id: crypto.randomUUID(),
       name,
-      label: formatFieldLabel(name),
+      label: labelByName.get(name) ?? formatFieldLabel(name),
       placeholder,
       type,
       required,
@@ -192,12 +196,13 @@ export function reconcileFormFields(
     // Find the corresponding field in HTML
     const htmlField = fieldsInHtml.find((f) => f.name === currentField.name);
     if (htmlField) {
-      // Preserve custom label and placeholder, update type/required from HTML
+      // Keep manual IDs/order but let the live HTML remain the source of truth
+      // for visible field copy and constraints.
       reconciled.push({
         id: currentField.id,
         name: currentField.name,
-        label: currentField.label,
-        placeholder: currentField.placeholder,
+        label: htmlField.label,
+        placeholder: htmlField.placeholder,
         type: htmlField.type,
         required: htmlField.required,
       });
@@ -220,4 +225,66 @@ function formatFieldLabel(key: string): string {
     .replace(/([a-z])([A-Z])/g, "$1 $2")
     .replace(/\b\w/g, (c) => c.toUpperCase())
     .trim();
+}
+
+function extractFormLabels(html: string): Map<string, string> {
+  const labels = new Map<string, string>();
+
+  const groupedLabelRe = /<div[^>]*class=("|')[^"']*form-group[^"']*\1[^>]*>[\s\S]*?<label[^>]*>([\s\S]*?)<\/label>[\s\S]*?<(input|textarea|select)([^>]*\bname=("|')([^"']+)\5[^>]*)/gi;
+  let groupedMatch: RegExpExecArray | null;
+  while ((groupedMatch = groupedLabelRe.exec(html)) !== null) {
+    const name = groupedMatch[6];
+    const label = cleanLabelText(groupedMatch[2]);
+    if (name && label && !labels.has(name)) labels.set(name, label);
+  }
+
+  const controlIdToName = new Map<string, string>();
+  const controlWithIdRe = /<(input|textarea|select)([^>]*\bname=("|')([^"']+)\3[^>]*\bid=("|')([^"']+)\5[^>]*)>/gi;
+  let controlMatch: RegExpExecArray | null;
+  while ((controlMatch = controlWithIdRe.exec(html)) !== null) {
+    controlIdToName.set(controlMatch[6], controlMatch[4]);
+  }
+
+  const labelForRe = /<label[^>]*\bfor=("|')([^"']+)\1[^>]*>([\s\S]*?)<\/label>/gi;
+  let labelMatch: RegExpExecArray | null;
+  while ((labelMatch = labelForRe.exec(html)) !== null) {
+    const name = controlIdToName.get(labelMatch[2]);
+    const label = cleanLabelText(labelMatch[3]);
+    if (name && label && !labels.has(name)) labels.set(name, label);
+  }
+
+  return labels;
+}
+
+function extractSelectPlaceholder(html: string, fieldName: string): string | undefined {
+  const name = escapeRegex(fieldName);
+  const selectRe = new RegExp(`<select[^>]*\\bname=("|')${name}\\1[^>]*>([\\s\\S]*?)<\\/select>`, "i");
+  const selectMatch = html.match(selectRe);
+  if (!selectMatch) return undefined;
+
+  const optionRe = /<option([^>]*)>([\s\S]*?)<\/option>/gi;
+  let optionMatch: RegExpExecArray | null;
+  while ((optionMatch = optionRe.exec(selectMatch[2])) !== null) {
+    const attrs = optionMatch[1] ?? "";
+    const valueMatch = attrs.match(/\bvalue=("([^"]*)"|'([^']*)')/i);
+    const value = (valueMatch?.[2] ?? valueMatch?.[3] ?? "").trim();
+    if (value !== "") continue;
+    const text = cleanLabelText(optionMatch[2]);
+    if (text) return text;
+  }
+
+  return undefined;
+}
+
+function cleanLabelText(value: string): string {
+  return value
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/\s+/g, " ")
+    .replace(/\s*\*\s*$/, "")
+    .trim();
+}
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
