@@ -100,3 +100,124 @@ export function isWebhookUrlSafe(url: string): boolean {
 
   return true;
 }
+
+/**
+ * Extract form field definitions from HTML.
+ * Mirrors the logic in /api/tools/landing-pages/[id]/form-fields/route.ts
+ */
+export function extractFormFieldsFromHtml(html: string): LpFormField[] {
+  const fields: LpFormField[] = [];
+  const seen = new Set<string>();
+
+  // Match all input/select/textarea elements, capturing name and type attributes
+  const elementRe = /<(input|select|textarea)([^>]*)>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = elementRe.exec(html)) !== null) {
+    const tagName = m[1].toLowerCase();
+    const attrs = m[2];
+
+    const nameMatch = attrs.match(/\bname="([^"]+)"/i);
+    if (!nameMatch) continue;
+    const name = nameMatch[1];
+    if (seen.has(name)) continue;
+    seen.add(name);
+
+    // Determine type
+    let type: LpFormFieldType = "text";
+    if (tagName === "textarea") {
+      type = "textarea";
+    } else if (tagName === "select") {
+      type = "select";
+    } else {
+      const typeMatch = attrs.match(/\btype="([^"]+)"/i);
+      const rawType = typeMatch ? typeMatch[1].toLowerCase() : "text";
+      if (rawType === "email") type = "email";
+      else if (rawType === "tel") type = "tel";
+      else if (rawType === "date") type = "date";
+      else if (rawType === "number") type = "number";
+      else if (rawType === "url") type = "url";
+      else if (rawType === "hidden") continue; // skip hidden fields
+    }
+
+    // Auto-detect required
+    const required = /\brequired\b/i.test(attrs);
+    const placeholderMatch = attrs.match(/\bplaceholder=("([^"]*)"|'([^']*)')/i);
+    const placeholder = (placeholderMatch?.[2] ?? placeholderMatch?.[3] ?? "").trim() || undefined;
+
+    fields.push({
+      id: crypto.randomUUID(),
+      name,
+      label: formatFieldLabel(name),
+      placeholder,
+      type,
+      required,
+    });
+  }
+
+  return fields;
+}
+
+/**
+ * Reconcile form field configuration against live form HTML.
+ * - Detects new fields in the HTML and adds them
+ * - Preserves custom labels and placeholders for existing fields (by name)
+ * - Removes fields that are no longer in the HTML
+ * - Preserves the order of existing matched fields
+ *
+ * This enables automatic bidirectional sync:
+ * when form HTML changes, custom field metadata is preserved.
+ */
+export function reconcileFormFields(
+  html: string,
+  currentFields: LpFormField[] | undefined
+): LpFormField[] {
+  if (!html || !currentFields || currentFields.length === 0) {
+    return extractFormFieldsFromHtml(html);
+  }
+
+  const fieldsInHtml = extractFormFieldsFromHtml(html);
+  const currentByName = new Map(currentFields.map((f) => [f.name, f]));
+  const htmlFieldNames = new Set(fieldsInHtml.map((f) => f.name));
+
+  // Reconcile: preserve order of existing fields, add new ones
+  const reconciled: LpFormField[] = [];
+
+  // First pass: keep existing fields that are still in HTML, preserving custom metadata
+  for (const currentField of currentFields) {
+    if (!htmlFieldNames.has(currentField.name)) {
+      // Field no longer exists in HTML, skip it
+      continue;
+    }
+
+    // Find the corresponding field in HTML
+    const htmlField = fieldsInHtml.find((f) => f.name === currentField.name);
+    if (htmlField) {
+      // Preserve custom label and placeholder, update type/required from HTML
+      reconciled.push({
+        id: currentField.id,
+        name: currentField.name,
+        label: currentField.label,
+        placeholder: currentField.placeholder,
+        type: htmlField.type,
+        required: htmlField.required,
+      });
+    }
+  }
+
+  // Second pass: add new fields detected in HTML
+  for (const htmlField of fieldsInHtml) {
+    if (!currentByName.has(htmlField.name)) {
+      reconciled.push(htmlField);
+    }
+  }
+
+  return reconciled;
+}
+
+function formatFieldLabel(key: string): string {
+  return key
+    .replace(/[_-]/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .trim();
+}

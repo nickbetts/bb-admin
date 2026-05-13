@@ -63,7 +63,7 @@ import { AnalyticsConfigForm } from "@/components/landing-pages/AnalyticsConfigF
 import { FormConfigPanel } from "@/components/landing-pages/FormConfigPanel";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import type { LpAnalyticsConfig } from "@/lib/lp-analytics";
-import { parseLpFormConfig, type LpFormConfig } from "@/lib/lp-form-config";
+import { parseLpFormConfig, reconcileFormFields, type LpFormConfig } from "@/lib/lp-form-config";
 import { applyConfiguredFormFields } from "@/lib/lp-form-fields-html";
 import { useToast } from "@/components/ui/Toast";
 
@@ -691,6 +691,35 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
     },
     [id, pushHistory],
   );
+
+  // ── NEW: Debounced form field reconciliation ──────────────────────────────
+  // Auto-reconcile form fields against live form HTML whenever it changes.
+  // Preserves custom labels/placeholders, detects new fields, removes deleted ones.
+  const formFieldReconcileTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    // Debounce to avoid excessive reconciliation during rapid edits (e.g., code editor)
+    if (formFieldReconcileTimerRef.current) clearTimeout(formFieldReconcileTimerRef.current);
+
+    formFieldReconcileTimerRef.current = setTimeout(() => {
+      const reconciled = reconcileFormFields(previewHtml, formConfig.fields);
+      
+      // Only update if fields actually changed (prevents unnecessary re-renders)
+      const fieldsChanged =
+        reconciled.length !== (formConfig.fields?.length ?? 0) ||
+        reconciled.some((f, i) => {
+          const prev = formConfig.fields?.[i];
+          return !prev || prev.name !== f.name || prev.label !== f.label || prev.placeholder !== f.placeholder || prev.type !== f.type || prev.required !== f.required;
+        });
+
+      if (fieldsChanged) {
+        setFormConfig((prev) => ({ ...prev, fields: reconciled }));
+      }
+    }, 2000); // 2 second debounce to avoid thrashing during edits
+
+    return () => {
+      if (formFieldReconcileTimerRef.current) clearTimeout(formFieldReconcileTimerRef.current);
+    };
+  }, [previewHtml, formConfig.fields]);
 
   // ── NEW: Listen for text-edit / delete messages from iframe ─────────────
   useEffect(() => {
