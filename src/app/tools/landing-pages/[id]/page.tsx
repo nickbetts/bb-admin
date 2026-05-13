@@ -2797,7 +2797,22 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
       )}
 
       {/* Leads Viewer Modal */}
-      <LeadsViewerModal lpId={id} isOpen={showLeadsModal} onClose={() => setShowLeadsModal(false)} />
+      <LeadsViewerModal
+        lpId={id}
+        isOpen={showLeadsModal}
+        onClose={() => setShowLeadsModal(false)}
+        onLeadDeleted={() => {
+          setLp((prev) => prev
+            ? {
+                ...prev,
+                _count: {
+                  ...prev._count,
+                  leads: Math.max(0, prev._count.leads - 1),
+                },
+              }
+            : prev);
+        }}
+      />
     </div>
   );
 }

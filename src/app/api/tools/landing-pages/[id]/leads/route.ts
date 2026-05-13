@@ -33,3 +33,33 @@ export async function GET(
 
   return NextResponse.json({ leads, total, page, limit });
 }
+
+// DELETE /api/tools/landing-pages/[id]/leads?leadId=... — delete one captured lead
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { id } = await params;
+  const { searchParams } = new URL(request.url);
+  const leadId = searchParams.get("leadId")?.trim();
+
+  if (!leadId) {
+    return NextResponse.json({ error: "leadId is required" }, { status: 400 });
+  }
+
+  const landingPage = await prisma.landingPage.findUnique({ where: { id } });
+  if (!landingPage) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const lead = await prisma.landingPageLead.findUnique({ where: { id: leadId } });
+  if (!lead || lead.landingPageId !== id) {
+    return NextResponse.json({ error: "Lead not found" }, { status: 404 });
+  }
+
+  await prisma.landingPageLead.delete({ where: { id: leadId } });
+  const total = await prisma.landingPageLead.count({ where: { landingPageId: id } });
+
+  return NextResponse.json({ success: true, deletedId: leadId, total });
+}

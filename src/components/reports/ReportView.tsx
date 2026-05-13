@@ -169,6 +169,14 @@ type NarrativeResult = {
   goalProgressNarrative?: string;
 };
 
+type GenerationMode = "manual" | "preflight";
+
+type PreflightQuestion = {
+  id: string;
+  question: string;
+  hint?: string;
+};
+
 interface ReportViewProps {
   report: Report;
 }
@@ -670,6 +678,11 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
   const [aiFormat, setAiFormat] = useState<"prose" | "bullets" | "both">("prose");
   const [aiSpin, setAiSpin] = useState<"positive" | "balanced" | "neutral">("positive");
   const [aiNarrativeContext, setAiNarrativeContext] = useState("");
+  const [generationMode, setGenerationMode] = useState<GenerationMode>("manual");
+  const [preflightStep, setPreflightStep] = useState<"config" | "questions">("config");
+  const [preflightLoading, setPreflightLoading] = useState(false);
+  const [preflightQuestions, setPreflightQuestions] = useState<PreflightQuestion[]>([]);
+  const [preflightAnswers, setPreflightAnswers] = useState<Record<string, string>>({});
 
   // Chaos tones are for internal preview only — disable export & sharing when active
   const CHAOS_TONES = ["roadman", "uwu_anime", "patronising", "toxic", "gaslighty", "cuck"] as const;
@@ -1351,10 +1364,93 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
     }
   };
 
+  const buildMergedGenerationContext = useCallback((questions: PreflightQuestion[], answers: Record<string, string>) => {
+    const contextParts: string[] = [];
+    const manualContext = aiNarrativeContext.trim();
+    if (manualContext) contextParts.push(manualContext);
+
+    const clarified = questions
+      .map((q) => ({ q, answer: (answers[q.id] ?? "").trim() }))
+      .filter((item) => item.answer.length > 0);
+
+    if (clarified.length > 0) {
+      contextParts.push(
+        `Preflight clarification notes:\n${clarified
+          .map((item) => `Q: ${item.q.question}\nA: ${item.answer}`)
+          .join("\n\n")}`,
+      );
+    }
+
+    const merged = contextParts.join("\n\n").trim();
+    return merged || undefined;
+  }, [aiNarrativeContext]);
+
+  const handleStartPreflightQuestions = async () => {
+    setPreflightLoading(true);
+    try {
+      const sectionsForPreflight = report.sections
+        .filter((s) => s.enabled !== false && s.sectionType !== "overview")
+        .map((s) => ({
+          sectionType: s.sectionType,
+          title: s.title,
+          commentary: s.commentary ?? undefined,
+          metrics: sectionMetrics[s.id] ?? undefined,
+          previousMetrics: sectionPreviousMetrics[s.id] ?? undefined,
+        }));
+
+      const res = await fetch("/api/ai/report-preflight-questions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reportId: report.id,
+          clientId: report.client.id,
+          period: report.period,
+          sections: sectionsForPreflight,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+
+      const data = await res.json() as { questions?: PreflightQuestion[] };
+      const questions = Array.isArray(data.questions) ? data.questions : [];
+
+      if (questions.length === 0) {
+        toast("No preflight clarifications needed, generating directly", "success");
+        void handleGenerateCombined(aiNarrativeContext);
+        return;
+      }
+
+      setPreflightQuestions(questions);
+      setPreflightAnswers(Object.fromEntries(questions.map((q) => [q.id, ""])));
+      setPreflightStep("questions");
+    } catch (err) {
+      toast(`Preflight check failed: ${err instanceof Error ? err.message : "unknown error"}`, "error");
+    } finally {
+      setPreflightLoading(false);
+    }
+  };
+
+  const handleGenerateFromPreflight = (skipAnswers: boolean) => {
+    const mergedContext = skipAnswers
+      ? (aiNarrativeContext.trim() || undefined)
+      : buildMergedGenerationContext(preflightQuestions, preflightAnswers);
+
+    setPreflightStep("config");
+    setPreflightQuestions([]);
+    setPreflightAnswers({});
+    void handleGenerateCombined(mergedContext);
+  };
+
   // ── Combined: generate all commentary then narrative ────────────────────────
-  const handleGenerateCombined = async () => {
+  const handleGenerateCombined = async (contextOverride?: string) => {
     setGenerateDialogOpen(false);
+    setPreflightStep("config");
+    setPreflightQuestions([]);
+    setPreflightAnswers({});
     const MIN_NARRATIVE_COMMENTARY_LENGTH = 120;
+    const mergedContext = contextOverride?.trim() || aiNarrativeContext.trim() || undefined;
 
     // Step 1: generate section commentary, collecting results locally
     const eligible = report.sections.filter(
@@ -1394,6 +1490,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
               format: aiFormat,
               spin: aiSpin,
               previousCommentaries: generatedSoFar.length > 0 ? generatedSoFar : undefined,
+              additionalContext: mergedContext,
             }),
           });
           if (res.ok) {
@@ -1437,7 +1534,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
             reportId: report.id,
             clientId: report.client.id,
             sectionCommentaries: narrativeCommentaries,
-            additionalContext: aiNarrativeContext.trim() || undefined,
+            additionalContext: mergedContext,
           }),
         });
         if (res.ok) {
@@ -2837,7 +2934,12 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
               {!generateDialogOpen ? (
                 <>
                   <button
-                    onClick={() => setGenerateDialogOpen(true)}
+                    onClick={() => {
+                      setGenerateDialogOpen(true);
+                      setPreflightStep("config");
+                      setPreflightQuestions([]);
+                      setPreflightAnswers({});
+                    }}
                     disabled={generatingAll || generatingNarrative}
                     className="btn btn-secondary btn-sm"
                     style={{ width: "100%", justifyContent: "center", gap: 6, marginBottom: (generatingAll || generatingNarrative) ? 6 : 0 }}
@@ -2866,6 +2968,64 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                 </>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10, background: "var(--surface-2)", borderRadius: "var(--r)", padding: "12px 10px", border: "1px solid var(--border-subtle)" }}>
+                  {preflightStep === "questions" ? (
+                    <>
+                      <div>
+                        <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--text-4)", marginBottom: 5 }}>Preflight Questions</p>
+                        <p style={{ fontSize: 11, color: "var(--text-3)", lineHeight: 1.45 }}>
+                          Add any context that explains unusual data so the final narrative can be more accurate.
+                        </p>
+                      </div>
+
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 280, overflowY: "auto" }}>
+                        {preflightQuestions.map((q) => (
+                          <div key={q.id} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                            <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", lineHeight: 1.4 }}>{q.question}</label>
+                            {q.hint && <p style={{ fontSize: 10, color: "var(--text-4)", margin: 0 }}>{q.hint}</p>}
+                            <textarea
+                              value={preflightAnswers[q.id] ?? ""}
+                              onChange={(e) => setPreflightAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
+                              rows={2}
+                              placeholder="Optional clarification"
+                              style={{
+                                width: "100%", padding: "7px 10px", fontSize: 11,
+                                borderRadius: "var(--r-sm)", border: "1px solid var(--border)",
+                                background: "var(--surface)", color: "var(--text)",
+                                resize: "vertical", outline: "none", boxSizing: "border-box",
+                                lineHeight: 1.45, fontFamily: "inherit",
+                              }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button
+                          onClick={() => handleGenerateFromPreflight(false)}
+                          className="btn btn-primary btn-sm"
+                          style={{ flex: 1, justifyContent: "center", gap: 5 }}
+                        >
+                          <Sparkles size={12} />
+                          Generate with Answers
+                        </button>
+                        <button
+                          onClick={() => handleGenerateFromPreflight(true)}
+                          className="btn btn-secondary btn-sm"
+                          style={{ flex: 1, justifyContent: "center", gap: 5 }}
+                        >
+                          Skip & Generate
+                        </button>
+                        <button
+                          onClick={() => setPreflightStep("config")}
+                          className="btn btn-secondary btn-sm"
+                          style={{ gap: 5 }}
+                        >
+                          <X size={13} />
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
                   {/* Framing (spin) */}
                   <div>
                     <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--text-4)", marginBottom: 5 }}>Framing</p>
@@ -2896,6 +3056,53 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                         : aiSpin === "balanced"
                           ? "Honest and fair — admits challenges, shows action taken"
                           : "Factual and transparent — no spin on declining metrics"}
+                    </p>
+                  </div>
+
+                  {/* Generation mode */}
+                  <div>
+                    <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--text-4)", marginBottom: 5 }}>Generation Mode</p>
+                    <div style={{ display: "flex", gap: 4 }}>
+                      <button
+                        onClick={() => {
+                          setGenerationMode("manual");
+                          setPreflightStep("config");
+                        }}
+                        style={{
+                          flex: 1, justifyContent: "center", fontSize: 11,
+                          background: generationMode === "manual" ? "var(--accent)" : "var(--surface)",
+                          color: generationMode === "manual" ? "#fff" : "var(--text-3)",
+                          border: `1px solid ${generationMode === "manual" ? "var(--accent)" : "var(--border)"}`,
+                          borderRadius: "var(--r-sm)",
+                          padding: "5px 2px",
+                          fontWeight: generationMode === "manual" ? 700 : 500,
+                          cursor: "pointer",
+                          transition: "all 0.15s",
+                        }}
+                      >
+                        Manual Context
+                      </button>
+                      <button
+                        onClick={() => setGenerationMode("preflight")}
+                        style={{
+                          flex: 1, justifyContent: "center", fontSize: 11,
+                          background: generationMode === "preflight" ? "var(--accent)" : "var(--surface)",
+                          color: generationMode === "preflight" ? "#fff" : "var(--text-3)",
+                          border: `1px solid ${generationMode === "preflight" ? "var(--accent)" : "var(--border)"}`,
+                          borderRadius: "var(--r-sm)",
+                          padding: "5px 2px",
+                          fontWeight: generationMode === "preflight" ? 700 : 500,
+                          cursor: "pointer",
+                          transition: "all 0.15s",
+                        }}
+                      >
+                        Preflight Questions
+                      </button>
+                    </div>
+                    <p style={{ fontSize: 10, color: "var(--text-4)", marginTop: 4, lineHeight: 1.4 }}>
+                      {generationMode === "manual"
+                        ? "Use your own context directly, then generate as normal."
+                        : "Run a quick discrepancy check and answer clarifying questions before generation."}
                     </p>
                   </div>
 
@@ -2951,21 +3158,35 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                   {/* Action buttons */}
                   <div style={{ display: "flex", gap: 6 }}>
                     <button
-                      onClick={() => void handleGenerateCombined()}
+                      onClick={() => {
+                        if (generationMode === "preflight") {
+                          void handleStartPreflightQuestions();
+                        } else {
+                          void handleGenerateCombined(aiNarrativeContext);
+                        }
+                      }}
+                      disabled={preflightLoading}
                       className="btn btn-primary btn-sm"
                       style={{ flex: 1, justifyContent: "center", gap: 5 }}
                     >
                       <Sparkles size={12} />
-                      Generate
+                      {preflightLoading ? "Checking Data…" : generationMode === "preflight" ? "Run Preflight" : "Generate"}
                     </button>
                     <button
-                      onClick={() => setGenerateDialogOpen(false)}
+                      onClick={() => {
+                        setGenerateDialogOpen(false);
+                        setPreflightStep("config");
+                        setPreflightQuestions([]);
+                        setPreflightAnswers({});
+                      }}
                       className="btn btn-secondary btn-sm"
                       style={{ gap: 5 }}
                     >
                       <X size={13} />
                     </button>
                   </div>
+                    </>
+                  )}
                 </div>
               )}
             </div>

@@ -214,15 +214,18 @@ export function FormConfigPanel({ value, onChange, lpId }: Props) {
       setNewFieldError("A field with this name already exists.");
       return;
     }
+    const newField = {
+      id: crypto.randomUUID(),
+      name,
+      label,
+      placeholder: placeholder || undefined,
+      type: newFieldType,
+      required: newFieldRequired,
+    };
     onChange({
       ...value,
       fields: [...fields, {
-        id: crypto.randomUUID(),
-        name,
-        label,
-        placeholder: placeholder || undefined,
-        type: newFieldType,
-        required: newFieldRequired,
+        ...newField,
       }],
     });
     setNewFieldName("");
