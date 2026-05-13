@@ -61,6 +61,7 @@ import { PortalPublishToggle } from "@/components/portal/PortalPublishToggle";
 import { parseCSSVariables, updateCSSVariable, type CSSVariable } from "@/lib/lp-css-parser";
 import { AnalyticsConfigForm } from "@/components/landing-pages/AnalyticsConfigForm";
 import { FormConfigPanel } from "@/components/landing-pages/FormConfigPanel";
+import { LeadsViewerModal } from "@/components/landing-pages/LeadsViewerModal";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import type { LpAnalyticsConfig } from "@/lib/lp-analytics";
 import { parseLpFormConfig, reconcileFormFields, type LpFormConfig } from "@/lib/lp-form-config";
@@ -489,6 +490,9 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
     analytics: "{}",
     form: "{}",
   });
+
+  // Leads viewer modal
+  const [showLeadsModal, setShowLeadsModal] = useState(false);
 
   // Page settings modal state
   const [showPageSettings, setShowPageSettings] = useState(false);
@@ -1531,7 +1535,32 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
         {/* Stats */}
         <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 12, color: "var(--text-4)" }}>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }} title="Views"><Eye style={{ width: 13, height: 13 }} /> {lp.viewCount}</span>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }} title="Leads"><Users style={{ width: 13, height: 13 }} /> {lp._count.leads}</span>
+          <button
+            onClick={() => setShowLeadsModal(true)}
+            disabled={lp._count.leads === 0}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 3,
+              background: "none",
+              border: "none",
+              cursor: lp._count.leads > 0 ? "pointer" : "default",
+              color: lp._count.leads > 0 ? "var(--accent)" : "var(--text-4)",
+              fontSize: 12,
+              fontFamily: "inherit",
+              padding: 0,
+              transition: "color 0.2s",
+            }}
+            title={lp._count.leads > 0 ? "Click to view leads" : "No leads yet"}
+            onMouseEnter={(e) => {
+              if (lp._count.leads > 0) (e.currentTarget as HTMLButtonElement).style.color = "var(--accent-hover, var(--accent))";
+            }}
+            onMouseLeave={(e) => {
+              if (lp._count.leads > 0) (e.currentTarget as HTMLButtonElement).style.color = "var(--accent)";
+            }}
+          >
+            <Users style={{ width: 13, height: 13 }} /> {lp._count.leads}
+          </button>
         </div>
 
         {/* Actions */}
@@ -2766,6 +2795,9 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
           </div>
         </div>
       )}
+
+      {/* Leads Viewer Modal */}
+      <LeadsViewerModal lpId={id} isOpen={showLeadsModal} onClose={() => setShowLeadsModal(false)} />
     </div>
   );
 }
