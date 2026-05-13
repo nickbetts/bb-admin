@@ -1,7 +1,19 @@
 import type { LpFormField } from "@/lib/lp-form-config";
 
-export function applyConfiguredFormFields(html: string, fields: LpFormField[]): string {
-  let nextHtml = html;
+export interface LpFieldStyleTemplate {
+  wrapperClass?: string;
+  labelClass?: string;
+  inputClass?: string;
+  textareaClass?: string;
+  selectClass?: string;
+}
+
+export function applyConfiguredFormFields(
+  html: string,
+  fields: LpFormField[],
+  styleTemplateOverride?: Partial<LpFieldStyleTemplate>,
+): string {
+  let nextHtml = removeFieldsNotInConfig(html, fields);
   const matchedNames = new Set<string>();
 
   for (const field of fields) {
@@ -49,14 +61,21 @@ export function applyConfiguredFormFields(html: string, fields: LpFormField[]): 
 
   const missingFields = fields.filter((field) => field.name && !matchedNames.has(field.name));
   if (missingFields.length > 0) {
-    nextHtml = injectMissingFields(nextHtml, missingFields);
+    nextHtml = injectMissingFields(nextHtml, missingFields, styleTemplateOverride);
   }
 
   return nextHtml;
 }
 
-function injectMissingFields(html: string, fields: LpFormField[]): string {
-  const template = extractFieldStyleTemplate(html);
+function injectMissingFields(
+  html: string,
+  fields: LpFormField[],
+  styleTemplateOverride?: Partial<LpFieldStyleTemplate>,
+): string {
+  const template = {
+    ...extractFieldStyleTemplate(html),
+    ...(styleTemplateOverride ?? {}),
+  };
   const missingMarkup = fields.map((field) => renderMissingField(field, template)).join("\n");
 
   // Prefer inserting directly after the last existing form-group so new
@@ -75,15 +94,7 @@ function injectMissingFields(html: string, fields: LpFormField[]): string {
   return html.replace(/(<\/form>)/i, `${missingMarkup}\n$1`);
 }
 
-interface FieldStyleTemplate {
-  wrapperClass?: string;
-  labelClass?: string;
-  inputClass?: string;
-  textareaClass?: string;
-  selectClass?: string;
-}
-
-function renderMissingField(field: LpFormField, template: FieldStyleTemplate): string {
+function renderMissingField(field: LpFormField, template: LpFieldStyleTemplate): string {
   const requiredAttr = field.required ? " required" : "";
   const label = `${escapeHtmlText(field.label)}${field.required ? " *" : ""}`;
   const placeholder = field.placeholder?.trim() || defaultPlaceholder(field);
@@ -129,8 +140,8 @@ function replaceFirstControl(fragment: string, rebuiltControl: string): string {
   return fragment.replace(/<(input|textarea|select)([^>]*)(?:>[\s\S]*?<\/\1>|\s*\/?>)/i, rebuiltControl);
 }
 
-function extractFieldStyleTemplate(html: string): FieldStyleTemplate {
-  const template: FieldStyleTemplate = {};
+function extractFieldStyleTemplate(html: string): LpFieldStyleTemplate {
+  const template: LpFieldStyleTemplate = {};
 
   const groupMatch = html.match(/<div[^>]*class=("|')([^"']*form-group[^"']*)\1[^>]*>[\s\S]*?<label([^>]*)>[\s\S]*?<\/(?:label)>[\s\S]*?<(input|textarea|select)([^>]*)/i);
   if (groupMatch) {
@@ -162,6 +173,50 @@ function extractFieldStyleTemplate(html: string): FieldStyleTemplate {
   }
 
   return template;
+}
+
+function removeFieldsNotInConfig(html: string, fields: LpFormField[]): string {
+  const allowedNames = new Set(fields.map((field) => field.name).filter(Boolean));
+  const namesInHtml = new Set<string>();
+  const controlsRe = /<(input|textarea|select)([^>]*\bname=("|')([^"']+)\3[^>]*)(?:>[\s\S]*?<\/\1>|\s*\/?>)/gi;
+  let controlMatch: RegExpExecArray | null;
+
+  while ((controlMatch = controlsRe.exec(html)) !== null) {
+    const tagName = controlMatch[1].toLowerCase();
+    const attrs = controlMatch[2] ?? "";
+    const name = controlMatch[4] ?? "";
+    if (!name) continue;
+    if (tagName === "input" && /\btype=("|')hidden\1/i.test(attrs)) continue;
+    namesInHtml.add(name);
+  }
+
+  const namesToRemove = Array.from(namesInHtml).filter((name) => !allowedNames.has(name));
+  if (namesToRemove.length === 0) return html;
+
+  let nextHtml = html;
+  for (const name of namesToRemove) {
+    const escapedName = escapeRegex(name);
+
+    const groupedFieldRe = new RegExp(
+      `<div[^>]*class=("|')[^"']*form-group[^"']*\\1[^>]*>[\\s\\S]*?<(input|textarea|select)[^>]*\\bname=("|')${escapedName}\\3[^>]*(?:>[\\s\\S]*?<\\/\\2>|\\s*\\/?>)[\\s\\S]*?<\\/div>`,
+      "gi",
+    );
+    nextHtml = nextHtml.replace(groupedFieldRe, "");
+
+    const labelAndControlRe = new RegExp(
+      `<label[^>]*>[\\s\\S]*?<\\/label>\\s*<(input|textarea|select)[^>]*\\bname=("|')${escapedName}\\2[^>]*(?:>[\\s\\S]*?<\\/\\1>|\\s*\\/?>)`,
+      "gi",
+    );
+    nextHtml = nextHtml.replace(labelAndControlRe, "");
+
+    const controlRe = new RegExp(
+      `<(input|textarea|select)([^>]*\\bname=("|')${escapedName}\\3[^>]*)(?:>[\\s\\S]*?<\\/\\1>|\\s*\\/?>)`,
+      "gi",
+    );
+    nextHtml = nextHtml.replace(controlRe, "");
+  }
+
+  return nextHtml;
 }
 
 function extractClassAttribute(attrs: string): string | undefined {

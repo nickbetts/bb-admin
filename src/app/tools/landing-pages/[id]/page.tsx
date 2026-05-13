@@ -64,7 +64,7 @@ import { LeadsViewerModal } from "@/components/landing-pages/LeadsViewerModal";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import type { LpAnalyticsConfig } from "@/lib/lp-analytics";
 import { parseLpFormConfig, reconcileFormFields, type LpFormConfig } from "@/lib/lp-form-config";
-import { applyConfiguredFormFields } from "@/lib/lp-form-fields-html";
+import { applyConfiguredFormFields, type LpFieldStyleTemplate } from "@/lib/lp-form-fields-html";
 import { useToast } from "@/components/ui/Toast";
 
 // Public hosting domain for landing pages. Set via NEXT_PUBLIC_LP_DOMAIN at
@@ -561,6 +561,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
   });
   const trackingSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const trackingSaveRequestRef = useRef(0);
+  const aiFormStyleTemplateRef = useRef<LpFieldStyleTemplate | null>(null);
 
   // Leads viewer modal
   const [showLeadsModal, setShowLeadsModal] = useState(false);
@@ -669,6 +670,8 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
       } catch {
         setFormConfig({});
       }
+
+      aiFormStyleTemplateRef.current = null;
 
       // Build initial chat history from versions
       const versions = data.landingPage.versions as Version[];
@@ -825,8 +828,30 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
   }, [previewHtml, updateHtml]);
 
   // Keep iframe preview aligned with form settings (placeholder/required/type)
+  const resolveAiFormStyleTemplate = useCallback(async (): Promise<LpFieldStyleTemplate | undefined> => {
+    if (!showTrackingSettings) return undefined;
+    if (aiFormStyleTemplateRef.current) return aiFormStyleTemplateRef.current;
+
+    try {
+      const res = await fetch("/api/tools/landing-pages/form-style-template", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ html: previewHtml }),
+      });
+
+      if (!res.ok) return undefined;
+
+      const data = await res.json() as { template?: LpFieldStyleTemplate };
+      const template = data.template ?? {};
+      aiFormStyleTemplateRef.current = template;
+      return template;
+    } catch {
+      return undefined;
+    }
+  }, [showTrackingSettings, previewHtml]);
+
   const previewHtmlWithFormConfig = useMemo(
-    () => applyConfiguredFormFields(previewHtml, formConfig.fields ?? []),
+    () => applyConfiguredFormFields(previewHtml, formConfig.fields ?? [], aiFormStyleTemplateRef.current ?? undefined),
     [previewHtml, formConfig.fields],
   );
 
@@ -1529,7 +1554,8 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
     setSavingAnalytics(true);
     if (showSaved) setAnalyticsSaved(false);
 
-    const htmlWithFormConfig = applyConfiguredFormFields(previewHtml, formConfig.fields ?? []);
+    const aiTemplate = await resolveAiFormStyleTemplate();
+    const htmlWithFormConfig = applyConfiguredFormFields(previewHtml, formConfig.fields ?? [], aiTemplate);
 
     try {
       const res = await fetch(`/api/tools/landing-pages/${lp.id}`, {
@@ -1587,7 +1613,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
         setSavingAnalytics(false);
       }
     }
-  }, [lp, previewHtml, formConfig, analyticsConfig, toast]);
+  }, [lp, previewHtml, formConfig, analyticsConfig, toast, resolveAiFormStyleTemplate]);
 
   useEffect(() => {
     if (!showTrackingSettings || !trackingDirty) return;
@@ -1605,6 +1631,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
   const openTrackingSettings = () => {
     setAnalyticsSaved(false);
     setTrackingTab("tracking");
+    aiFormStyleTemplateRef.current = null;
     setTrackingBaseline({
       analytics: serialisedAnalyticsConfig,
       form: serialisedFormConfig,
