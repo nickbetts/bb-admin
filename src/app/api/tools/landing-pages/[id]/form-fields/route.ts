@@ -68,11 +68,14 @@ function extractFieldDefs(html: string): LpFormField[] {
 
     // Auto-detect required
     const required = /\brequired\b/i.test(attrs);
+    const placeholderMatch = attrs.match(/\bplaceholder=("([^"]*)"|'([^']*)')/i);
+    const placeholder = (placeholderMatch?.[2] ?? placeholderMatch?.[3] ?? "").trim() || undefined;
 
     fields.push({
       id: crypto.randomUUID(),
       name,
       label: formatFieldLabel(name),
+      placeholder,
       type,
       required,
     });

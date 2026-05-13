@@ -55,15 +55,20 @@ See [docs/deployment.md](docs/deployment.md) for full environment variable refer
 
 ## Documentation
 
-| Document | Description |
+Canonical docs for active development:
+
+| Document | Purpose |
 |---|---|
-| [docs/features.md](docs/features.md) | Full feature walkthrough, data flows, and AI architecture |
-| [docs/architecture.md](docs/architecture.md) | System architecture, database schema, project structure |
-| [docs/deployment.md](docs/deployment.md) | Setup, environment variables, API integrations, Vercel deployment |
-| [docs/ai-audit.md](docs/ai-audit.md) | AI endpoint inventory, data availability matrix, improvement roadmap |
-| [docs/data-audit.md](docs/data-audit.md) | Per-platform API capability audit across all 15 channels |
-| [VISION.md](VISION.md) | Platform vision, AI intelligence roadmap, agency operations ambition |
-| [ROADMAP.md](ROADMAP.md) | Product roadmap and upcoming features |
+| [docs/deployment.md](docs/deployment.md) | Local setup, environment variables, integration credentials, Vercel deployment |
+| [docs/architecture.md](docs/architecture.md) | System architecture, schema overview, and project structure |
+| [docs/features.md](docs/features.md) | Feature behaviour, data flows, and UX walkthrough |
+| [docs/ai-audit.md](docs/ai-audit.md) | AI endpoint inventory and AI improvement status |
+| [docs/data-audit.md](docs/data-audit.md) | Per-channel API capability audit and implementation status |
+| [docs/ai-cost-tracking.md](docs/ai-cost-tracking.md) | AI usage logging and cost reporting integration guide |
+| [VISION.md](VISION.md) | Long-term product direction |
+| [ROADMAP.md](ROADMAP.md) | Prioritised future delivery plan |
+
+Note: legacy one-off build-plan docs are removed once implemented to avoid drift with live code paths.
 
 ---
 

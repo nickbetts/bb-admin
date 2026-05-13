@@ -128,6 +128,8 @@ interface Version {
   versionNumber: number;
   html: string;
   prompt: string;
+  createdByUserId?: string | null;
+  createdByEmail?: string | null;
   createdAt: string;
 }
 
@@ -1635,7 +1637,12 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                 <span style={{ flexShrink: 0, width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--accent-bg)", color: "var(--accent)", borderRadius: "50%", fontWeight: 600, fontSize: 11 }}>
                   {v.versionNumber}
                 </span>
-                <span style={{ flex: 1, color: "var(--text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.prompt}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ color: "var(--text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.prompt}</div>
+                  <div style={{ color: "var(--text-4)", fontSize: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    By {v.createdByEmail ?? "Unknown user"}
+                  </div>
+                </div>
                 <span style={{ flexShrink: 0, color: "var(--text-4)", fontSize: 11 }}>
                   {new Date(v.createdAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
                 </span>

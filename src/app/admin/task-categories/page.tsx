@@ -17,7 +17,7 @@ export default async function AdminTaskCategoriesPage() {
           Manage the global list of kanban categories. Each client picks which to display in their settings.
         </p>
       </div>
-      <AdminNav active="task-categories" permissions={session.user.permissions} isAdmin={session.user.role === "admin"} />
+      <AdminNav active="task-categories" />
       <TaskCategoryManager />
     </div>
   );

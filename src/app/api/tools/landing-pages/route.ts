@@ -234,6 +234,8 @@ export async function POST(request: NextRequest) {
                 versionNumber: 1,
                 html,
                 prompt: `Initial generation: ${brief}`,
+                createdByUserId: session ? session.user.id : clickrSession ? clickrSession.user.id : null,
+                createdByEmail: session ? session.user.email : clickrSession ? clickrSession.user.email : null,
               },
             },
           },

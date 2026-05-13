@@ -19,7 +19,7 @@ export default async function CronPage() {
           Monitor the nightly data pipeline, view per-client snapshot coverage, and trigger manual runs.
         </p>
       </div>
-      <AdminNav active="cron" permissions={session.user.permissions} isAdmin={session.user.role === "admin"} />
+      <AdminNav active="cron" />
       <CronDashboard />
     </div>
   );

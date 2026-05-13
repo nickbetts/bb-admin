@@ -87,6 +87,8 @@ export async function POST(
               versionNumber: latestVersionNumber + 1,
               html,
               prompt: "Automatic post-generation audit (CRO, Design, Copy)",
+              createdByUserId: session.user.id,
+              createdByEmail: session.user.email,
             },
           }),
           prisma.landingPage.update({

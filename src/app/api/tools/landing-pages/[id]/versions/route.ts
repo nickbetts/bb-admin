@@ -24,6 +24,8 @@ export async function GET(
       id: true,
       versionNumber: true,
       prompt: true,
+      createdByUserId: true,
+      createdByEmail: true,
       createdAt: true,
     },
   });
@@ -59,6 +61,8 @@ export async function POST(
         versionNumber: nextNumber,
         html: landingPage.currentHtml,
         prompt: body.description || "Manual save",
+        createdByUserId: session.user.id,
+        createdByEmail: session.user.email,
       },
     });
     return NextResponse.json({ success: true, version });

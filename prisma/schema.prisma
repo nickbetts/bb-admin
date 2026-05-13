@@ -850,6 +850,8 @@ model LandingPageVersion {
   versionNumber Int // Sequential per landing page (1, 2, 3…)
   html          String // Full HTML at this version
   prompt        String // The user prompt that produced this version
+  createdByUserId String?
+  createdByEmail  String?
   createdAt     DateTime    @default(now())
   landingPage   LandingPage @relation(fields: [landingPageId], references: [id], onDelete: Cascade)
 

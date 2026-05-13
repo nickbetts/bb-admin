@@ -23,6 +23,8 @@ export interface LpFormField {
   name: string;
   /** Human-readable label shown in notification emails (e.g. "Player date of birth") */
   label: string;
+  /** Optional placeholder text for input/textarea form controls */
+  placeholder?: string;
   /** HTML input type */
   type: LpFormFieldType;
   /** Whether the field is required in the form */

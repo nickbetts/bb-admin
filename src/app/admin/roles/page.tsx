@@ -17,7 +17,7 @@ export default async function RolesPage() {
           Create roles and configure what each role can access
         </p>
       </div>
-      <AdminNav active="roles" permissions={session.user.permissions} isAdmin={session.user.role === "admin"} />
+      <AdminNav active="roles" />
       <RolesManager />
     </div>
   );

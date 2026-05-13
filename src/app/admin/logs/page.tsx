@@ -19,7 +19,7 @@ export default async function LogsPage() {
           Live console errors and warnings captured from API routes — no need to check the Vercel dashboard.
         </p>
       </div>
-      <AdminNav active="logs" permissions={session.user.permissions} isAdmin={session.user.role === "admin"} />
+      <AdminNav active="logs" />
       <LogsDashboard />
     </div>
   );

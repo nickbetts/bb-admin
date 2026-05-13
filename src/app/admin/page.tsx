@@ -16,7 +16,7 @@ export default async function AdminPage() {
           Create, edit or delete user accounts
         </p>
       </div>
-      <AdminNav active="users" permissions={session.user.permissions} isAdmin={session.user.role === "admin"} />
+      <AdminNav active="users" />
       <UsersManager currentUserId={session.user.id} />
     </div>
   );

@@ -2,28 +2,12 @@
 
 import Link from "next/link";
 
+
 interface AdminNavProps {
-  active: "users" | "roles" | "cron" | "settings" | "api-status" | "logs" | "activity" | "task-categories";
-  permissions: string[];
-  isAdmin: boolean;
+  active: "users" | "roles" | "cron" | "settings" | "api-status" | "logs" | "activity" | "task-categories" | "ai-costs";
 }
 
-const TABS = [
-  { href: "/admin", key: "users", label: "Users", permission: "users" },
-  { href: "/admin/roles", key: "roles", label: "Roles & Permissions", permission: "admin.roles" },
-  { href: "/admin/task-categories", key: "task-categories", label: "Task Categories", permission: "admin.task_categories" },
-  { href: "/admin/cron", key: "cron", label: "Cron & Snapshots", permission: "admin.cron" },
-  { href: "/admin/api-status", key: "api-status", label: "API Status", permission: "admin.api_status" },
-  { href: "/admin/activity", key: "activity", label: "Activity Log", permission: "admin.activity" },
-  { href: "/admin/logs", key: "logs", label: "Logs", permission: "admin.logs" },
-  { href: "/admin/settings", key: "settings", label: "Settings", permission: "admin.settings" },
-] as const;
-
-export function AdminNav({ active, permissions }: Omit<AdminNavProps, "isAdmin"> & { isAdmin?: boolean }) {
-  const visibleTabs = TABS.filter(
-    (tab) => permissions.includes(tab.permission)
-  );
-
+export function AdminNav({ active }: AdminNavProps) {
   return (
     <div
       style={{
@@ -34,7 +18,17 @@ export function AdminNav({ active, permissions }: Omit<AdminNavProps, "isAdmin">
         paddingBottom: 0,
       }}
     >
-      {visibleTabs.map((tab) => (
+      {[
+        { href: "/admin", key: "users", label: "Users" },
+        { href: "/admin/roles", key: "roles", label: "Roles & Permissions" },
+        { href: "/admin/task-categories", key: "task-categories", label: "Task Categories" },
+        { href: "/admin/cron", key: "cron", label: "Cron & Snapshots" },
+        { href: "/admin/api-status", key: "api-status", label: "API Status" },
+        { href: "/admin/ai-costs", key: "ai-costs", label: "AI Costs" },
+        { href: "/admin/activity", key: "activity", label: "Activity Log" },
+        { href: "/admin/logs", key: "logs", label: "Logs" },
+        { href: "/admin/settings", key: "settings", label: "Settings" },
+      ].map((tab) => (
         <Link
           key={tab.key}
           href={tab.href}

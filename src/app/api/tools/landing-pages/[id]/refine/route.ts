@@ -67,6 +67,8 @@ export async function POST(
           versionNumber: nextVersionNumber,
           html,
           prompt: body.prompt,
+          createdByUserId: session.user.id,
+          createdByEmail: session.user.email,
         },
       }),
       prisma.landingPage.update({

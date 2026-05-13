@@ -19,7 +19,7 @@ export default async function AdminSettingsPage() {
           Manage global integrations, API keys, and system configuration
         </p>
       </div>
-      <AdminNav active="settings" permissions={session.user.permissions} isAdmin={session.user.role === "admin"} />
+      <AdminNav active="settings" />
       <SettingsPanel />
     </div>
   );

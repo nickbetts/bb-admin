@@ -2,22 +2,7 @@
 
 i3media Report is the central nervous system of a modern digital marketing agency — an intelligence engine that aggregates data from 15 marketing channels, generates AI-powered insights, automates reporting workflows, and manages the full client lifecycle. The platform already covers data integration, AI analysis, report automation, proposals, client portal, and agency operations. This document outlines what comes next.
 
-## What's Built
-
-| Capability Area | Highlights |
-|---|---|
-| **Data integrations** | 15 channels: GA4, Google Ads, Meta, TikTok, Microsoft Ads, LinkedIn, Klaviyo, SemRush, GSC, Moz, WooCommerce, Shopify, YouTube, HubSpot, CallRail |
-| **AI intelligence** | 24+ endpoints: anomaly detection, root cause analysis, forecasting, budget advice, creative intelligence, conversational chat, strategy documents, attribution, audience suggestions, cross-platform creative, keyword suggestions, QA summary, content strategy |
-| **Report builder** | Drag-and-drop sections, AI commentary, collaboration comments, approval workflow, PDF export, share links, automated monthly generation |
-| **Agency tools** | Keyword planner, PPC proposals with pipeline CRM, landing page analyser, media plan builder, content strategy generator, LLM.txt generator |
-| **Client management** | Full CRUD, integration badges, contracted hours, AI instructions, action tracking, communication hub |
-| **Client portal** | Magic-link login, goals & tracking, reports view, communications |
-| **Notifications** | Email (Resend) + Slack delivery, per-user preferences, quiet hours, digest frequency |
-| **Portfolio health** | Cross-client health dashboard, churn risk scoring, anomaly counts |
-| **Historical data** | Nightly automated snapshots across all channels, powering forecasting and seasonality |
-| **Competitor intelligence** | SemRush-backed monitoring, share of voice, AI-generated competitive insights |
-
----
+Current-state coverage lives in [README.md](README.md), [VISION.md](VISION.md), and [docs/features.md](docs/features.md). This document is intentionally forward-looking to avoid duplicating status snapshots.
 
 ## Phase 4 — Next Priorities
 

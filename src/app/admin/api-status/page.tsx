@@ -19,7 +19,7 @@ export default async function ApiStatusPage() {
           Live integration health, API unit balances, rate limits, and billing links across all connected platforms.
         </p>
       </div>
-      <AdminNav active="api-status" permissions={session.user.permissions} isAdmin={session.user.role === "admin"} />
+      <AdminNav active="api-status" />
       <ApiStatusDashboard />
     </div>
   );

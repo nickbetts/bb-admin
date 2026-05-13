@@ -75,6 +75,7 @@ export function FormConfigPanel({ value, onChange, lpId }: Props) {
   const [addingField, setAddingField] = useState(false);
   const [newFieldName, setNewFieldName] = useState("");
   const [newFieldLabel, setNewFieldLabel] = useState("");
+  const [newFieldPlaceholder, setNewFieldPlaceholder] = useState("");
   const [newFieldType, setNewFieldType] = useState<LpFormFieldType>("text");
   const [newFieldRequired, setNewFieldRequired] = useState(false);
   const [newFieldError, setNewFieldError] = useState<string | null>(null);
@@ -178,6 +179,20 @@ export function FormConfigPanel({ value, onChange, lpId }: Props) {
     });
   }
 
+  function updateFieldPlaceholder(id: string, placeholder: string) {
+    onChange({
+      ...value,
+      fields: fields.map((f) => f.id === id ? { ...f, placeholder: placeholder || undefined } : f),
+    });
+  }
+
+  function updateFieldType(id: string, type: LpFormFieldType) {
+    onChange({
+      ...value,
+      fields: fields.map((f) => f.id === id ? { ...f, type } : f),
+    });
+  }
+
   function autoLabel(name: string): string {
     return name
       .replace(/[_-]/g, " ")
@@ -189,6 +204,7 @@ export function FormConfigPanel({ value, onChange, lpId }: Props) {
   function handleAddField() {
     const name = newFieldName.trim();
     const label = newFieldLabel.trim() || autoLabel(name);
+    const placeholder = newFieldPlaceholder.trim();
     if (!name) { setNewFieldError("Field name is required."); return; }
     if (!/^[a-zA-Z][a-zA-Z0-9_-]*$/.test(name)) {
       setNewFieldError("Name must start with a letter and contain only letters, numbers, underscores, or hyphens.");
@@ -200,10 +216,18 @@ export function FormConfigPanel({ value, onChange, lpId }: Props) {
     }
     onChange({
       ...value,
-      fields: [...fields, { id: crypto.randomUUID(), name, label, type: newFieldType, required: newFieldRequired }],
+      fields: [...fields, {
+        id: crypto.randomUUID(),
+        name,
+        label,
+        placeholder: placeholder || undefined,
+        type: newFieldType,
+        required: newFieldRequired,
+      }],
     });
     setNewFieldName("");
     setNewFieldLabel("");
+    setNewFieldPlaceholder("");
     setNewFieldType("text");
     setNewFieldRequired(false);
     setNewFieldError(null);
@@ -214,6 +238,7 @@ export function FormConfigPanel({ value, onChange, lpId }: Props) {
     setAddingField(false);
     setNewFieldName("");
     setNewFieldLabel("");
+    setNewFieldPlaceholder("");
     setNewFieldType("text");
     setNewFieldRequired(false);
     setNewFieldError(null);
@@ -350,7 +375,6 @@ export function FormConfigPanel({ value, onChange, lpId }: Props) {
 
                 {/* Field info */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  {/* Editable label */}
                   <input
                     value={field.label}
                     onChange={(e) => updateFieldLabel(field.id, e.target.value)}
@@ -362,18 +386,48 @@ export function FormConfigPanel({ value, onChange, lpId }: Props) {
                     title="Click to edit label"
                     placeholder="Label"
                   />
-                  <span style={{ fontSize: 10, color: "var(--text-4)" }}>{field.name}</span>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 2 }}>
+                    <span style={{ fontSize: 10, color: "var(--text-4)", whiteSpace: "nowrap" }}>{field.name}</span>
+                    <input
+                      value={field.placeholder ?? ""}
+                      onChange={(e) => updateFieldPlaceholder(field.id, e.target.value)}
+                      style={{
+                        flex: 1,
+                        minWidth: 0,
+                        border: "none",
+                        outline: "none",
+                        background: "none",
+                        fontSize: 10,
+                        color: "var(--text-4)",
+                        fontFamily: "inherit",
+                        padding: 0,
+                      }}
+                      title="Placeholder text"
+                      placeholder="Placeholder text"
+                    />
+                  </div>
                 </div>
 
-                {/* Type badge */}
-                <span style={{
-                  fontSize: 9, fontWeight: 600, padding: "1px 5px",
-                  borderRadius: 99, background: "var(--border-subtle)",
-                  color: "var(--text-3)", textTransform: "uppercase", letterSpacing: 0.4,
-                  flexShrink: 0,
-                }}>
-                  {FIELD_TYPE_LABELS[field.type]}
-                </span>
+                <select
+                  value={field.type}
+                  onChange={(e) => updateFieldType(field.id, e.target.value as LpFormFieldType)}
+                  title="Field type"
+                  style={{
+                    border: "1px solid var(--border)",
+                    borderRadius: 6,
+                    background: "var(--surface)",
+                    color: "var(--text-3)",
+                    fontSize: 10,
+                    fontWeight: 600,
+                    padding: "2px 5px",
+                    fontFamily: "inherit",
+                    flexShrink: 0,
+                  }}
+                >
+                  {(Object.entries(FIELD_TYPE_LABELS) as [LpFormFieldType, string][]).map(([t, lbl]) => (
+                    <option key={t} value={t}>{lbl}</option>
+                  ))}
+                </select>
 
                 {/* Required toggle */}
                 <button
@@ -436,6 +490,17 @@ export function FormConfigPanel({ value, onChange, lpId }: Props) {
                   style={{ ...inputStyle, fontSize: 12, padding: "5px 8px" }}
                 />
               </div>
+            </div>
+            <div>
+              <label style={labelStyle}>Placeholder <span style={{ color: "var(--text-4)", fontWeight: 400 }}>(shown in the form input)</span></label>
+              <input
+                type="text"
+                value={newFieldPlaceholder}
+                onChange={(e) => setNewFieldPlaceholder(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleAddField(); if (e.key === "Escape") cancelAddField(); }}
+                placeholder="e.g. Jane Smith"
+                style={{ ...inputStyle, fontSize: 12, padding: "5px 8px" }}
+              />
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <div style={{ flex: 1 }}>
