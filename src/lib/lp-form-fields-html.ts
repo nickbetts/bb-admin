@@ -67,6 +67,10 @@ export function applyConfiguredFormFields(
   return nextHtml;
 }
 
+export function replaceBuiltInForm(html: string, rebuiltFormHtml: string): string {
+  return html.replace(/<form[^>]*data-lp-form=("|')true\1[^>]*>[\s\S]*?<\/form>/i, rebuiltFormHtml);
+}
+
 function injectMissingFields(
   html: string,
   fields: LpFormField[],
