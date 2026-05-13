@@ -1393,7 +1393,6 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
         .map((s) => ({
           sectionType: s.sectionType,
           title: s.title,
-          commentary: s.commentary ?? undefined,
           metrics: sectionMetrics[s.id] ?? undefined,
           previousMetrics: sectionPreviousMetrics[s.id] ?? undefined,
         }));
@@ -1405,6 +1404,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
           reportId: report.id,
           clientId: report.client.id,
           period: report.period,
+          additionalContext: aiNarrativeContext.trim() || undefined,
           sections: sectionsForPreflight,
         }),
       });

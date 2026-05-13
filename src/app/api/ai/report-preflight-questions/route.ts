@@ -10,7 +10,6 @@ export const maxDuration = 60;
 type InputSection = {
   sectionType: string;
   title: string;
-  commentary?: string;
   metrics?: Record<string, number>;
   previousMetrics?: Record<string, number>;
 };
@@ -45,10 +44,6 @@ function buildNotableSignals(sections: InputSection[]): string[] {
       signals.push(
         `${section.sectionType}: ${formatMetricKey(metricKey)} changed ${deltaPct.toFixed(1)}% (${previousValue.toFixed(2)} -> ${value.toFixed(2)})`,
       );
-    }
-
-    if (section.commentary?.trim()) {
-      signals.push(`${section.sectionType} commentary excerpt: ${section.commentary.trim().slice(0, 280)}`);
     }
   }
 
@@ -99,10 +94,11 @@ export async function POST(req: NextRequest) {
       reportId: string;
       clientId: string;
       period?: string;
+      additionalContext?: string;
       sections?: InputSection[];
     };
 
-    const { reportId, clientId, period, sections = [] } = body;
+    const { reportId, clientId, period, additionalContext, sections = [] } = body;
 
     if (!reportId || !clientId) {
       return NextResponse.json({ error: "reportId and clientId are required" }, { status: 400 });
@@ -129,7 +125,6 @@ export async function POST(req: NextRequest) {
       .map((s) => ({
         sectionType: s.sectionType,
         title: s.title,
-        commentary: s.commentary?.trim() || "",
         metrics: s.metrics ?? {},
         previousMetrics: s.previousMetrics ?? {},
       }));
@@ -141,6 +136,7 @@ Goal:
 - Ask only high-value questions a CMO would ask when data appears unusual, contradictory, or lacks key context.
 - Ask nothing if the data is straightforward.
 - Questions should be answerable quickly by an account manager.
+- Use only the metric data and user-provided context below. Do not rely on, reference, or infer from existing commentary text.
 
 Rules:
 - Return 0 to 8 questions.
@@ -157,6 +153,9 @@ Rules:
     const userPrompt = `Client: ${client.name}
 Report ID: ${reportId}
 Period: ${period ?? "Current reporting period"}
+
+User-provided context:
+${additionalContext?.trim() ? additionalContext.trim() : "No user context provided."}
 
 Notable computed signals:
 ${notableSignals.length > 0 ? notableSignals.map((s) => `- ${s}`).join("\n") : "- No major computed discrepancies detected."}
