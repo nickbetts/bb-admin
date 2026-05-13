@@ -76,7 +76,7 @@ function renderMissingField(field: LpFormField): string {
   }
 
   if (field.type === "select") {
-    return `<div class="form-group"><label>${label}</label><select name="${escapeHtmlAttr(field.name)}"${requiredAttr}><option value="">${escapeHtmlText(placeholder)}</option></select></div>`;
+    return `<div class="form-group"><label>${label}</label><select name="${escapeHtmlAttr(field.name)}"${requiredAttr}>${buildSelectOptions(field, placeholder)}</select></div>`;
   }
 
   return `<div class="form-group"><label>${label}</label><input type="${escapeHtmlAttr(field.type)}" name="${escapeHtmlAttr(field.name)}" placeholder="${escapeHtmlAttr(placeholder)}"${requiredAttr}></div>`;
@@ -86,10 +86,21 @@ function rebuildControl(tagName: string, attrs: string, field: LpFormField): str
   const lower = tagName.toLowerCase();
   if (lower === "textarea") return `<textarea${attrs}></textarea>`;
   if (lower === "select") {
-    const optionText = escapeHtmlText(field.placeholder?.trim() || defaultPlaceholder(field));
-    return `<select${attrs}><option value="">${optionText}</option></select>`;
+    const placeholder = field.placeholder?.trim() || defaultPlaceholder(field);
+    return `<select${attrs}>${buildSelectOptions(field, placeholder)}</select>`;
   }
   return `<input${attrs}>`;
+}
+
+function buildSelectOptions(field: LpFormField, placeholder: string): string {
+  const options = field.options ?? [];
+  const placeholderOption = `<option value="">${escapeHtmlText(placeholder)}</option>`;
+  if (options.length === 0) return placeholderOption;
+
+  return [
+    placeholderOption,
+    ...options.map((option) => `<option value="${escapeHtmlAttr(option.value)}">${escapeHtmlText(option.label)}</option>`),
+  ].join("");
 }
 
 function replaceFirstControl(fragment: string, rebuiltControl: string): string {

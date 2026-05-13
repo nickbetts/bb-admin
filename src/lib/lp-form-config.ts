@@ -11,6 +11,13 @@
 
 export type LpFormFieldType = "text" | "email" | "tel" | "textarea" | "select" | "date" | "number" | "url";
 
+export interface LpFormFieldOption {
+  /** Display text shown to the visitor */
+  label: string;
+  /** Submitted form value */
+  value: string;
+}
+
 /**
  * A single field definition for the landing page form.
  * Used to control how lead notification emails are formatted —
@@ -27,6 +34,8 @@ export interface LpFormField {
   placeholder?: string;
   /** HTML input type */
   type: LpFormFieldType;
+  /** Select dropdown options, when this field is a <select> */
+  options?: LpFormFieldOption[];
   /** Whether the field is required in the form */
   required: boolean;
 }
@@ -143,9 +152,10 @@ export function extractFormFieldsFromHtml(html: string): LpFormField[] {
     // Auto-detect required
     const required = /\brequired\b/i.test(attrs);
     const placeholderMatch = attrs.match(/\bplaceholder=("([^"]*)"|'([^']*)')/i);
+    const selectDetails = tagName === "select" ? extractSelectDetails(html, name) : null;
     const placeholder = (
       (placeholderMatch?.[2] ?? placeholderMatch?.[3] ?? "").trim()
-      || (tagName === "select" ? extractSelectPlaceholder(html, name) : "")
+      || selectDetails?.placeholder
     ) || undefined;
 
     fields.push({
@@ -154,6 +164,7 @@ export function extractFormFieldsFromHtml(html: string): LpFormField[] {
       label: labelByName.get(name) ?? formatFieldLabel(name),
       placeholder,
       type,
+      options: selectDetails?.options?.length ? selectDetails.options : undefined,
       required,
     });
   }
@@ -204,6 +215,7 @@ export function reconcileFormFields(
         label: htmlField.label,
         placeholder: htmlField.placeholder,
         type: htmlField.type,
+        options: htmlField.options,
         required: htmlField.required,
       });
     }
@@ -256,24 +268,30 @@ function extractFormLabels(html: string): Map<string, string> {
   return labels;
 }
 
-function extractSelectPlaceholder(html: string, fieldName: string): string | undefined {
+function extractSelectDetails(html: string, fieldName: string): { placeholder?: string; options: LpFormFieldOption[] } | null {
   const name = escapeRegex(fieldName);
   const selectRe = new RegExp(`<select[^>]*\\bname=("|')${name}\\1[^>]*>([\\s\\S]*?)<\\/select>`, "i");
   const selectMatch = html.match(selectRe);
-  if (!selectMatch) return undefined;
+  if (!selectMatch) return null;
 
   const optionRe = /<option([^>]*)>([\s\S]*?)<\/option>/gi;
   let optionMatch: RegExpExecArray | null;
+  let placeholder: string | undefined;
+  const options: LpFormFieldOption[] = [];
   while ((optionMatch = optionRe.exec(selectMatch[2])) !== null) {
     const attrs = optionMatch[1] ?? "";
     const valueMatch = attrs.match(/\bvalue=("([^"]*)"|'([^']*)')/i);
     const value = (valueMatch?.[2] ?? valueMatch?.[3] ?? "").trim();
-    if (value !== "") continue;
     const text = cleanLabelText(optionMatch[2]);
-    if (text) return text;
+    if (!text && value === "") continue;
+    if (value === "") {
+      if (text) placeholder = text;
+      continue;
+    }
+    options.push({ label: text || value, value });
   }
 
-  return undefined;
+  return { placeholder, options };
 }
 
 function cleanLabelText(value: string): string {
