@@ -2847,7 +2847,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
           }}
         />
         <aside className={`print:hidden report-builder-sidebar${mobileDrawerOpen ? " is-open" : ""}`} style={{
-          width: 264, flexShrink: 0,
+          width: 300, flexShrink: 0,
           position: "sticky", top: 60, height: "calc(100vh - 60px)",
           alignSelf: "flex-start",
           background: "var(--surface)", borderLeft: "1px solid var(--border)",
@@ -2967,211 +2967,49 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                   )}
                 </>
               ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 10, background: "var(--surface-2)", borderRadius: "var(--r)", padding: "12px 10px", border: "1px solid var(--border-subtle)" }}>
-                  {preflightStep === "questions" ? (
-                    <>
-                      <div>
-                        <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--text-4)", marginBottom: 5 }}>Preflight Questions</p>
-                        <p style={{ fontSize: 11, color: "var(--text-3)", lineHeight: 1.45 }}>
-                          Add any context that explains unusual data so the final narrative can be more accurate.
-                        </p>
-                      </div>
-
-                      <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 280, overflowY: "auto" }}>
-                        {preflightQuestions.map((q) => (
-                          <div key={q.id} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                            <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", lineHeight: 1.4 }}>{q.question}</label>
-                            {q.hint && <p style={{ fontSize: 10, color: "var(--text-4)", margin: 0 }}>{q.hint}</p>}
-                            <textarea
-                              value={preflightAnswers[q.id] ?? ""}
-                              onChange={(e) => setPreflightAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
-                              rows={2}
-                              placeholder="Optional clarification"
-                              style={{
-                                width: "100%", padding: "7px 10px", fontSize: 11,
-                                borderRadius: "var(--r-sm)", border: "1px solid var(--border)",
-                                background: "var(--surface)", color: "var(--text)",
-                                resize: "vertical", outline: "none", boxSizing: "border-box",
-                                lineHeight: 1.45, fontFamily: "inherit",
-                              }}
-                            />
-                          </div>
-                        ))}
-                      </div>
-
-                      <div style={{ display: "flex", gap: 6 }}>
-                        <button
-                          onClick={() => handleGenerateFromPreflight(false)}
-                          className="btn btn-primary btn-sm"
-                          style={{ flex: 1, justifyContent: "center", gap: 5 }}
-                        >
-                          <Sparkles size={12} />
-                          Generate with Answers
-                        </button>
-                        <button
-                          onClick={() => handleGenerateFromPreflight(true)}
-                          className="btn btn-secondary btn-sm"
-                          style={{ flex: 1, justifyContent: "center", gap: 5 }}
-                        >
-                          Skip & Generate
-                        </button>
-                        <button
-                          onClick={() => setPreflightStep("config")}
-                          className="btn btn-secondary btn-sm"
-                          style={{ gap: 5 }}
-                        >
-                          <X size={13} />
-                        </button>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                  {/* Framing (spin) */}
-                  <div>
-                    <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--text-4)", marginBottom: 5 }}>Framing</p>
-                    <div style={{ display: "flex", gap: 4 }}>
-                      {(["positive", "balanced", "neutral"] as const).map((s) => (
-                        <button
-                          key={s}
-                          onClick={() => setAiSpin(s)}
-                          style={{
-                            flex: 1, justifyContent: "center", fontSize: 11,
-                            background: aiSpin === s ? "var(--accent)" : "var(--surface)",
-                            color: aiSpin === s ? "#fff" : "var(--text-3)",
-                            border: `1px solid ${aiSpin === s ? "var(--accent)" : "var(--border)"}`,
-                            borderRadius: "var(--r-sm)",
-                            padding: "5px 2px",
-                            fontWeight: aiSpin === s ? 700 : 500,
-                            cursor: "pointer",
-                            transition: "all 0.15s",
-                          }}
-                        >
-                          {s === "positive" ? "Positive" : s === "balanced" ? "Balanced" : "Neutral"}
-                        </button>
-                      ))}
+                <>
+                <div
+                  onClick={() => {
+                    setGenerateDialogOpen(false);
+                    setPreflightStep("config");
+                    setPreflightQuestions([]);
+                    setPreflightAnswers({});
+                  }}
+                  style={{
+                    position: "fixed",
+                    inset: 0,
+                    zIndex: 395,
+                    background: "rgba(11, 15, 28, 0.46)",
+                    backdropFilter: "blur(3px)",
+                  }}
+                />
+                <div style={{
+                  position: "fixed",
+                  zIndex: 396,
+                  top: 84,
+                  right: 24,
+                  width: "min(720px, calc(100vw - 32px))",
+                  maxHeight: "calc(100vh - 110px)",
+                  display: "flex",
+                  flexDirection: "column",
+                  background: "var(--surface-2)",
+                  borderRadius: "var(--r)",
+                  border: "1px solid var(--border-subtle)",
+                  boxShadow: "0 24px 56px rgba(0, 0, 0, 0.35)",
+                }}>
+                <div style={{ display: "flex", flexDirection: "column", minHeight: 0, height: "100%" }}>
+                  <div style={{ padding: "18px 18px 14px", borderBottom: "1px solid var(--border-subtle)", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-4)", marginBottom: 6 }}>AI Commentary</p>
+                      <h3 style={{ margin: 0, fontSize: 16, lineHeight: 1.2, color: "var(--text)", fontWeight: 700 }}>
+                        {preflightStep === "questions" ? "Preflight Questions" : "Configure generation"}
+                      </h3>
+                      <p style={{ margin: "6px 0 0", fontSize: 12, lineHeight: 1.5, color: "var(--text-3)", maxWidth: 560 }}>
+                        {preflightStep === "questions"
+                          ? "Answer anything the AI needs to know before it writes the narrative. Use skip if the report already tells the full story."
+                          : "Choose how the AI should write the commentary and whether it should ask you for clarification before drafting."}
+                      </p>
                     </div>
-                    <p style={{ fontSize: 10, color: "var(--text-4)", marginTop: 4, lineHeight: 1.4 }}>
-                      {aiSpin === "positive"
-                        ? "Results framed optimistically, dips given reassuring context"
-                        : aiSpin === "balanced"
-                          ? "Honest and fair — admits challenges, shows action taken"
-                          : "Factual and transparent — no spin on declining metrics"}
-                    </p>
-                  </div>
-
-                  {/* Generation mode */}
-                  <div>
-                    <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--text-4)", marginBottom: 5 }}>Generation Mode</p>
-                    <div style={{ display: "flex", gap: 4 }}>
-                      <button
-                        onClick={() => {
-                          setGenerationMode("manual");
-                          setPreflightStep("config");
-                        }}
-                        style={{
-                          flex: 1, justifyContent: "center", fontSize: 11,
-                          background: generationMode === "manual" ? "var(--accent)" : "var(--surface)",
-                          color: generationMode === "manual" ? "#fff" : "var(--text-3)",
-                          border: `1px solid ${generationMode === "manual" ? "var(--accent)" : "var(--border)"}`,
-                          borderRadius: "var(--r-sm)",
-                          padding: "5px 2px",
-                          fontWeight: generationMode === "manual" ? 700 : 500,
-                          cursor: "pointer",
-                          transition: "all 0.15s",
-                        }}
-                      >
-                        Manual Context
-                      </button>
-                      <button
-                        onClick={() => setGenerationMode("preflight")}
-                        style={{
-                          flex: 1, justifyContent: "center", fontSize: 11,
-                          background: generationMode === "preflight" ? "var(--accent)" : "var(--surface)",
-                          color: generationMode === "preflight" ? "#fff" : "var(--text-3)",
-                          border: `1px solid ${generationMode === "preflight" ? "var(--accent)" : "var(--border)"}`,
-                          borderRadius: "var(--r-sm)",
-                          padding: "5px 2px",
-                          fontWeight: generationMode === "preflight" ? 700 : 500,
-                          cursor: "pointer",
-                          transition: "all 0.15s",
-                        }}
-                      >
-                        Preflight Questions
-                      </button>
-                    </div>
-                    <p style={{ fontSize: 10, color: "var(--text-4)", marginTop: 4, lineHeight: 1.4 }}>
-                      {generationMode === "manual"
-                        ? "Use your own context directly, then generate as normal."
-                        : "Run a quick discrepancy check and answer clarifying questions before generation."}
-                    </p>
-                  </div>
-
-                  {/* Style, Length, Format */}
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <div style={{ display: "flex", gap: 5 }}>
-                      <select value={aiTone} onChange={(e) => setAiTone(e.target.value as typeof aiTone)} className="btn btn-secondary btn-sm" style={{ flex: 1, cursor: "pointer", paddingRight: 4, fontSize: 11 }}>
-                        <option value="professional">Professional</option>
-                        <option value="friendly">Friendly</option>
-                        <option value="technical">Technical</option>
-                        <option value="executive">Executive</option>
-                        <option disabled>── Eyes only ──</option>
-                        <option value="roadman">Roadman 🎤</option>
-                        <option value="uwu_anime">UwU Anime Simp 🌸</option>
-                        <option value="patronising">Mad Patronising 🙄</option>
-                        <option value="toxic">Toxic Manager ☠️</option>
-                        <option value="gaslighty">Gaslighter 🕯️</option>
-                        <option value="cuck">Absolute Cuck 🥄</option>
-                      </select>
-                      <select value={aiLength} onChange={(e) => setAiLength(e.target.value as typeof aiLength)} className="btn btn-secondary btn-sm" style={{ flex: 1, cursor: "pointer", paddingRight: 4, fontSize: 11 }}>
-                        <option value="short">Short</option>
-                        <option value="medium">Medium</option>
-                        <option value="long">Long</option>
-                      </select>
-                    </div>
-                    <select value={aiFormat} onChange={(e) => setAiFormat(e.target.value as typeof aiFormat)} className="btn btn-secondary btn-sm" style={{ width: "100%", cursor: "pointer", paddingRight: 4, fontSize: 11 }}>
-                      <option value="prose">Prose</option>
-                      <option value="bullets">Bullet Points</option>
-                      <option value="both">Both</option>
-                    </select>
-                  </div>
-
-                  {/* Additional context for narrative */}
-                  <div>
-                    <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--text-4)", marginBottom: 5 }}>Context for AI</p>
-                    <textarea
-                      value={aiNarrativeContext}
-                      onChange={(e) => setAiNarrativeContext(e.target.value)}
-                      placeholder="Optional: add context the AI should factor in, e.g. 'stats are down because it was Ramadan in March'"
-                      rows={3}
-                      style={{
-                        width: "100%", padding: "7px 10px", fontSize: 11,
-                        borderRadius: "var(--r-sm)", border: "1px solid var(--border)",
-                        background: "var(--surface)", color: "var(--text)",
-                        resize: "vertical", outline: "none", boxSizing: "border-box",
-                        lineHeight: 1.45, fontFamily: "inherit",
-                      }}
-                      onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; }}
-                      onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
-                    />
-                  </div>
-
-                  {/* Action buttons */}
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <button
-                      onClick={() => {
-                        if (generationMode === "preflight") {
-                          void handleStartPreflightQuestions();
-                        } else {
-                          void handleGenerateCombined(aiNarrativeContext);
-                        }
-                      }}
-                      disabled={preflightLoading}
-                      className="btn btn-primary btn-sm"
-                      style={{ flex: 1, justifyContent: "center", gap: 5 }}
-                    >
-                      <Sparkles size={12} />
-                      {preflightLoading ? "Checking Data…" : generationMode === "preflight" ? "Run Preflight" : "Generate"}
-                    </button>
                     <button
                       onClick={() => {
                         setGenerateDialogOpen(false);
@@ -3180,14 +3018,246 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                         setPreflightAnswers({});
                       }}
                       className="btn btn-secondary btn-sm"
-                      style={{ gap: 5 }}
+                      style={{ gap: 5, flexShrink: 0 }}
                     >
                       <X size={13} />
                     </button>
                   </div>
-                    </>
-                  )}
+
+                  <div style={{ padding: 18, overflowY: "auto", minHeight: 0, display: "flex", flexDirection: "column", gap: 14 }}>
+                    {preflightStep === "questions" ? (
+                      <>
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                          <span className="badge badge-indigo">{preflightQuestions.length} question{preflightQuestions.length === 1 ? "" : "s"}</span>
+                          <span className="badge badge-slate">Optional clarifications</span>
+                        </div>
+
+                        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                          {preflightQuestions.map((q, index) => (
+                            <div key={q.id} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r)", padding: 14 }}>
+                              <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                                <div style={{ width: 28, height: 28, borderRadius: 999, background: "var(--accent-bg)", color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
+                                  {index + 1}
+                                </div>
+                                <div style={{ minWidth: 0, flex: 1 }}>
+                                  <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "var(--text)", lineHeight: 1.4, marginBottom: 4 }}>{q.question}</label>
+                                  {q.hint && <p style={{ fontSize: 11, color: "var(--text-4)", margin: 0, lineHeight: 1.45 }}>{q.hint}</p>}
+                                </div>
+                              </div>
+                              <textarea
+                                value={preflightAnswers[q.id] ?? ""}
+                                onChange={(e) => setPreflightAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
+                                rows={3}
+                                placeholder="Optional clarification"
+                                style={{
+                                  width: "100%", marginTop: 12, padding: "12px 14px", fontSize: 13,
+                                  borderRadius: "var(--r)", border: "1px solid var(--border)",
+                                  background: "var(--surface-2)", color: "var(--text)",
+                                  resize: "vertical", outline: "none", boxSizing: "border-box",
+                                  lineHeight: 1.5, fontFamily: "inherit", minHeight: 92,
+                                }}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
+                          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r)", padding: 14 }}>
+                            <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-4)", marginBottom: 10 }}>Generation Mode</p>
+                            <div style={{ display: "flex", gap: 8 }}>
+                              <button
+                                onClick={() => {
+                                  setGenerationMode("manual");
+                                  setPreflightStep("config");
+                                }}
+                                style={{
+                                  flex: 1, justifyContent: "center", fontSize: 12,
+                                  background: generationMode === "manual" ? "var(--accent)" : "var(--surface-2)",
+                                  color: generationMode === "manual" ? "#fff" : "var(--text-2)",
+                                  border: `1px solid ${generationMode === "manual" ? "var(--accent)" : "var(--border)"}`,
+                                  borderRadius: "var(--r-sm)",
+                                  padding: "9px 10px",
+                                  fontWeight: generationMode === "manual" ? 700 : 600,
+                                  cursor: "pointer",
+                                  transition: "all 0.15s",
+                                }}
+                              >
+                                Manual
+                              </button>
+                              <button
+                                onClick={() => setGenerationMode("preflight")}
+                                style={{
+                                  flex: 1, justifyContent: "center", fontSize: 12,
+                                  background: generationMode === "preflight" ? "var(--accent)" : "var(--surface-2)",
+                                  color: generationMode === "preflight" ? "#fff" : "var(--text-2)",
+                                  border: `1px solid ${generationMode === "preflight" ? "var(--accent)" : "var(--border)"}`,
+                                  borderRadius: "var(--r-sm)",
+                                  padding: "9px 10px",
+                                  fontWeight: generationMode === "preflight" ? 700 : 600,
+                                  cursor: "pointer",
+                                  transition: "all 0.15s",
+                                }}
+                              >
+                                Preflight
+                              </button>
+                            </div>
+                            <p style={{ fontSize: 11, color: "var(--text-4)", margin: "10px 0 0", lineHeight: 1.5 }}>
+                              {generationMode === "manual"
+                                ? "Use the context box and generate straight away."
+                                : "Ask the AI to spot gaps or anomalies before it drafts the report."}
+                            </p>
+                          </div>
+
+                          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r)", padding: 14 }}>
+                            <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-4)", marginBottom: 10 }}>Output controls</p>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                              <select value={aiTone} onChange={(e) => setAiTone(e.target.value as typeof aiTone)} className="btn btn-secondary btn-sm" style={{ width: "100%", cursor: "pointer", paddingRight: 4, fontSize: 12 }}>
+                                <option value="professional">Professional</option>
+                                <option value="friendly">Friendly</option>
+                                <option value="technical">Technical</option>
+                                <option value="executive">Executive</option>
+                                <option disabled>── Eyes only ──</option>
+                                <option value="roadman">Roadman 🎤</option>
+                                <option value="uwu_anime">UwU Anime Simp 🌸</option>
+                                <option value="patronising">Mad Patronising 🙄</option>
+                                <option value="toxic">Toxic Manager ☠️</option>
+                                <option value="gaslighty">Gaslighter 🕯️</option>
+                                <option value="cuck">Absolute Cuck 🥄</option>
+                              </select>
+                              <select value={aiLength} onChange={(e) => setAiLength(e.target.value as typeof aiLength)} className="btn btn-secondary btn-sm" style={{ width: "100%", cursor: "pointer", paddingRight: 4, fontSize: 12 }}>
+                                <option value="short">Short</option>
+                                <option value="medium">Medium</option>
+                                <option value="long">Long</option>
+                              </select>
+                              <select value={aiFormat} onChange={(e) => setAiFormat(e.target.value as typeof aiFormat)} className="btn btn-secondary btn-sm" style={{ gridColumn: "1 / -1", width: "100%", cursor: "pointer", paddingRight: 4, fontSize: 12 }}>
+                                <option value="prose">Prose</option>
+                                <option value="bullets">Bullet Points</option>
+                                <option value="both">Both</option>
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
+                          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r)", padding: 14 }}>
+                            <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-4)", marginBottom: 10 }}>Framing</p>
+                            <div style={{ display: "flex", gap: 8 }}>
+                              {(["positive", "balanced", "neutral"] as const).map((s) => (
+                                <button
+                                  key={s}
+                                  onClick={() => setAiSpin(s)}
+                                  style={{
+                                    flex: 1, justifyContent: "center", fontSize: 12,
+                                    background: aiSpin === s ? "var(--accent)" : "var(--surface-2)",
+                                    color: aiSpin === s ? "#fff" : "var(--text-2)",
+                                    border: `1px solid ${aiSpin === s ? "var(--accent)" : "var(--border)"}`,
+                                    borderRadius: "var(--r-sm)",
+                                    padding: "9px 8px",
+                                    fontWeight: aiSpin === s ? 700 : 600,
+                                    cursor: "pointer",
+                                    transition: "all 0.15s",
+                                  }}
+                                >
+                                  {s === "positive" ? "Positive" : s === "balanced" ? "Balanced" : "Neutral"}
+                                </button>
+                              ))}
+                            </div>
+                            <p style={{ fontSize: 11, color: "var(--text-4)", margin: "10px 0 0", lineHeight: 1.5 }}>
+                              {aiSpin === "positive"
+                                ? "Optimistic and reassuring."
+                                : aiSpin === "balanced"
+                                  ? "Clear, honest, and constructive."
+                                  : "Factual and transparent."}
+                            </p>
+                          </div>
+
+                          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r)", padding: 14 }}>
+                            <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-4)", marginBottom: 10 }}>Context for AI</p>
+                            <textarea
+                              value={aiNarrativeContext}
+                              onChange={(e) => setAiNarrativeContext(e.target.value)}
+                              placeholder="Optional: add context the AI should factor in, e.g. 'stats are down because it was Ramadan in March'"
+                              rows={5}
+                              style={{
+                                width: "100%", padding: "12px 14px", fontSize: 13,
+                                borderRadius: "var(--r)", border: "1px solid var(--border)",
+                                background: "var(--surface-2)", color: "var(--text)",
+                                resize: "vertical", outline: "none", boxSizing: "border-box",
+                                lineHeight: 1.55, fontFamily: "inherit",
+                                minHeight: 160,
+                              }}
+                              onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; }}
+                              onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
+                            />
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  <div style={{ borderTop: "1px solid var(--border-subtle)", padding: "14px 18px 16px", display: "flex", gap: 8, justifyContent: "flex-end", background: "linear-gradient(to top, var(--surface-2), rgba(0,0,0,0))", position: "sticky", bottom: 0 }}>
+                    {preflightStep === "questions" ? (
+                      <>
+                        <button
+                          onClick={() => handleGenerateFromPreflight(false)}
+                          className="btn btn-primary btn-sm"
+                          style={{ gap: 6 }}
+                        >
+                          <Sparkles size={12} />
+                          Generate with Answers
+                        </button>
+                        <button
+                          onClick={() => handleGenerateFromPreflight(true)}
+                          className="btn btn-secondary btn-sm"
+                          style={{ gap: 6 }}
+                        >
+                          Skip & Generate
+                        </button>
+                        <button
+                          onClick={() => setPreflightStep("config")}
+                          className="btn btn-secondary btn-sm"
+                          style={{ gap: 6 }}
+                        >
+                          Back
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => {
+                            if (generationMode === "preflight") {
+                              void handleStartPreflightQuestions();
+                            } else {
+                              void handleGenerateCombined(aiNarrativeContext);
+                            }
+                          }}
+                          disabled={preflightLoading}
+                          className="btn btn-primary btn-sm"
+                          style={{ gap: 6 }}
+                        >
+                          <Sparkles size={12} />
+                          {preflightLoading ? "Checking Data…" : generationMode === "preflight" ? "Run Preflight" : "Generate"}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setGenerateDialogOpen(false);
+                            setPreflightStep("config");
+                            setPreflightQuestions([]);
+                            setPreflightAnswers({});
+                          }}
+                          className="btn btn-secondary btn-sm"
+                          style={{ gap: 6 }}
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
+              </div>
+                </>
               )}
             </div>
 

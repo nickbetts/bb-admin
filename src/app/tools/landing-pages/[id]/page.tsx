@@ -705,25 +705,26 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
     if (formFieldReconcileTimerRef.current) clearTimeout(formFieldReconcileTimerRef.current);
 
     formFieldReconcileTimerRef.current = setTimeout(() => {
-      const reconciled = reconcileFormFields(previewHtml, formConfig.fields);
-      
-      // Only update if fields actually changed (prevents unnecessary re-renders)
-      const fieldsChanged =
-        reconciled.length !== (formConfig.fields?.length ?? 0) ||
-        reconciled.some((f, i) => {
-          const prev = formConfig.fields?.[i];
-          return !prev || prev.name !== f.name || prev.label !== f.label || prev.placeholder !== f.placeholder || prev.type !== f.type || prev.required !== f.required;
-        });
+      setFormConfig((prev) => {
+        const reconciled = reconcileFormFields(previewHtml, prev.fields);
 
-      if (fieldsChanged) {
-        setFormConfig((prev) => ({ ...prev, fields: reconciled }));
-      }
+        // Only update if fields actually changed (prevents unnecessary re-renders)
+        const fieldsChanged =
+          reconciled.length !== (prev.fields?.length ?? 0) ||
+          reconciled.some((f, i) => {
+            const prior = prev.fields?.[i];
+            return !prior || prior.name !== f.name || prior.label !== f.label || prior.placeholder !== f.placeholder || prior.type !== f.type || prior.required !== f.required;
+          });
+
+        if (!fieldsChanged) return prev;
+        return { ...prev, fields: reconciled };
+      });
     }, 2000); // 2 second debounce to avoid thrashing during edits
 
     return () => {
       if (formFieldReconcileTimerRef.current) clearTimeout(formFieldReconcileTimerRef.current);
     };
-  }, [previewHtml, formConfig.fields]);
+  }, [previewHtml]);
 
   // ── NEW: Listen for text-edit / delete messages from iframe ─────────────
   useEffect(() => {
