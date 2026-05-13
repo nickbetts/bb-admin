@@ -56,8 +56,17 @@ export function applyConfiguredFormFields(html: string, fields: LpFormField[]): 
 }
 
 function injectMissingFields(html: string, fields: LpFormField[]): string {
+  const template = extractFieldStyleTemplate(html);
+  const missingMarkup = fields.map((field) => renderMissingField(field, template)).join("\n");
+
+  // Prefer inserting directly after the last existing form-group so new
+  // fields inherit the same grid/container styling as neighbouring fields.
+  const lastFormGroupRe = /(<div[^>]*class=("|')[^"']*form-group[^"']*\2[^>]*>[\s\S]*?<\/div>)(?![\s\S]*<div[^>]*class=("|')[^"']*form-group[^"']*\3[^>]*>)/i;
+  if (lastFormGroupRe.test(html)) {
+    return html.replace(lastFormGroupRe, `$1\n${missingMarkup}`);
+  }
+
   const formRe = /<form[^>]*data-lp-form=("|')true\1[^>]*>[\s\S]*?<button[^>]*type=("|')submit\2[^>]*>[\s\S]*?<\/button>/i;
-  const missingMarkup = fields.map(renderMissingField).join("\n");
 
   if (formRe.test(html)) {
     return html.replace(/(<button[^>]*type=("|')submit\2[^>]*>[\s\S]*?<\/button>)/i, `${missingMarkup}\n$1`);
@@ -66,20 +75,33 @@ function injectMissingFields(html: string, fields: LpFormField[]): string {
   return html.replace(/(<\/form>)/i, `${missingMarkup}\n$1`);
 }
 
-function renderMissingField(field: LpFormField): string {
+interface FieldStyleTemplate {
+  wrapperClass?: string;
+  labelClass?: string;
+  inputClass?: string;
+  textareaClass?: string;
+  selectClass?: string;
+}
+
+function renderMissingField(field: LpFormField, template: FieldStyleTemplate): string {
   const requiredAttr = field.required ? " required" : "";
   const label = `${escapeHtmlText(field.label)}${field.required ? " *" : ""}`;
   const placeholder = field.placeholder?.trim() || defaultPlaceholder(field);
+  const wrapperClass = template.wrapperClass || "form-group";
+  const labelClassAttr = template.labelClass ? ` class="${escapeHtmlAttr(template.labelClass)}"` : "";
 
   if (field.type === "textarea") {
-    return `<div class="form-group"><label>${label}</label><textarea name="${escapeHtmlAttr(field.name)}" placeholder="${escapeHtmlAttr(placeholder)}"${requiredAttr}></textarea></div>`;
+    const classAttr = template.textareaClass ? ` class="${escapeHtmlAttr(template.textareaClass)}"` : "";
+    return `<div class="${escapeHtmlAttr(wrapperClass)}"><label${labelClassAttr}>${label}</label><textarea${classAttr} name="${escapeHtmlAttr(field.name)}" placeholder="${escapeHtmlAttr(placeholder)}"${requiredAttr}></textarea></div>`;
   }
 
   if (field.type === "select") {
-    return `<div class="form-group"><label>${label}</label><select name="${escapeHtmlAttr(field.name)}"${requiredAttr}>${buildSelectOptions(field, placeholder)}</select></div>`;
+    const classAttr = template.selectClass ? ` class="${escapeHtmlAttr(template.selectClass)}"` : "";
+    return `<div class="${escapeHtmlAttr(wrapperClass)}"><label${labelClassAttr}>${label}</label><select${classAttr} name="${escapeHtmlAttr(field.name)}"${requiredAttr}>${buildSelectOptions(field, placeholder)}</select></div>`;
   }
 
-  return `<div class="form-group"><label>${label}</label><input type="${escapeHtmlAttr(field.type)}" name="${escapeHtmlAttr(field.name)}" placeholder="${escapeHtmlAttr(placeholder)}"${requiredAttr}></div>`;
+  const classAttr = template.inputClass ? ` class="${escapeHtmlAttr(template.inputClass)}"` : "";
+  return `<div class="${escapeHtmlAttr(wrapperClass)}"><label${labelClassAttr}>${label}</label><input${classAttr} type="${escapeHtmlAttr(field.type)}" name="${escapeHtmlAttr(field.name)}" placeholder="${escapeHtmlAttr(placeholder)}"${requiredAttr}></div>`;
 }
 
 function rebuildControl(tagName: string, attrs: string, field: LpFormField): string {
@@ -105,6 +127,47 @@ function buildSelectOptions(field: LpFormField, placeholder: string): string {
 
 function replaceFirstControl(fragment: string, rebuiltControl: string): string {
   return fragment.replace(/<(input|textarea|select)([^>]*)(?:>[\s\S]*?<\/\1>|\s*\/?>)/i, rebuiltControl);
+}
+
+function extractFieldStyleTemplate(html: string): FieldStyleTemplate {
+  const template: FieldStyleTemplate = {};
+
+  const groupMatch = html.match(/<div[^>]*class=("|')([^"']*form-group[^"']*)\1[^>]*>[\s\S]*?<label([^>]*)>[\s\S]*?<\/(?:label)>[\s\S]*?<(input|textarea|select)([^>]*)/i);
+  if (groupMatch) {
+    template.wrapperClass = groupMatch[2]?.trim() || undefined;
+
+    const labelClass = extractClassAttribute(groupMatch[3] || "");
+    if (labelClass) template.labelClass = labelClass;
+
+    const controlTag = (groupMatch[4] || "").toLowerCase();
+    const controlClass = extractClassAttribute(groupMatch[5] || "");
+    if (controlClass) {
+      if (controlTag === "textarea") template.textareaClass = controlClass;
+      else if (controlTag === "select") template.selectClass = controlClass;
+      else template.inputClass = controlClass;
+    }
+  }
+
+  if (!template.inputClass) {
+    const inputMatch = html.match(/<input([^>]*)>/i);
+    template.inputClass = inputMatch ? extractClassAttribute(inputMatch[1]) : undefined;
+  }
+  if (!template.textareaClass) {
+    const textareaMatch = html.match(/<textarea([^>]*)>/i);
+    template.textareaClass = textareaMatch ? extractClassAttribute(textareaMatch[1]) : undefined;
+  }
+  if (!template.selectClass) {
+    const selectMatch = html.match(/<select([^>]*)>/i);
+    template.selectClass = selectMatch ? extractClassAttribute(selectMatch[1]) : undefined;
+  }
+
+  return template;
+}
+
+function extractClassAttribute(attrs: string): string | undefined {
+  const classMatch = attrs.match(/\bclass=("([^"]*)"|'([^']*)')/i);
+  const value = (classMatch?.[2] ?? classMatch?.[3] ?? "").trim();
+  return value || undefined;
 }
 
 function defaultPlaceholder(field: LpFormField): string {
