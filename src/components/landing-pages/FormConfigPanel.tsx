@@ -6,8 +6,8 @@
  * Controlled component — parent owns `value` and gets `onChange`.
  */
 
-import { useState, useCallback } from "react";
-import { AlertTriangle, Webhook, Mail, Code2, Eye, X, ListPlus, Loader2, ChevronUp, ChevronDown, Trash2, RefreshCw, GripVertical } from "lucide-react";
+import { useState, useCallback, useMemo } from "react";
+import { AlertTriangle, Webhook, Mail, Code2, Eye, X, Loader2, ChevronUp, ChevronDown, Trash2, RefreshCw, GripVertical, Sparkles } from "lucide-react";
 import type { LpFormConfig, LpFormField, LpFormFieldOption, LpFormFieldType } from "@/lib/lp-form-config";
 
 type SelectOptionSource = "native" | "dom" | "ai" | "none";
@@ -81,17 +81,12 @@ export function FormConfigPanel({ value, onChange, lpId }: Props) {
   const [syncingFields, setSyncingFields] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [syncDiagnostics, setSyncDiagnostics] = useState<FormFieldSyncDiagnostics | null>(null);
-  const [addingField, setAddingField] = useState(false);
-  const [newFieldName, setNewFieldName] = useState("");
-  const [newFieldLabel, setNewFieldLabel] = useState("");
-  const [newFieldPlaceholder, setNewFieldPlaceholder] = useState("");
-  const [newFieldType, setNewFieldType] = useState<LpFormFieldType>("text");
-  const [newFieldRequired, setNewFieldRequired] = useState(false);
-  const [newFieldOptions, setNewFieldOptions] = useState<LpFormFieldOption[]>([]);
-  const [newFieldError, setNewFieldError] = useState<string | null>(null);
+  const [aiFieldPrompt, setAiFieldPrompt] = useState("");
+  const [aiFieldLoading, setAiFieldLoading] = useState(false);
+  const [aiFieldError, setAiFieldError] = useState<string | null>(null);
 
   const notifyEmails = value.notifyEmails ?? [];
-  const fields = value.fields ?? [];
+  const fields = useMemo(() => value.fields ?? [], [value.fields]);
 
   // ── Email preview ─────────────────────────────────────────────────────────
   async function handlePreview() {
@@ -233,80 +228,6 @@ export function FormConfigPanel({ value, onChange, lpId }: Props) {
     updateFieldOptions(id, (field?.options ?? []).filter((_, i) => i !== index));
   }
 
-  function autoLabel(name: string): string {
-    return name
-      .replace(/[_-]/g, " ")
-      .replace(/([a-z])([A-Z])/g, "$1 $2")
-      .replace(/\b\w/g, (c) => c.toUpperCase())
-      .trim();
-  }
-
-  function handleAddField() {
-    const name = newFieldName.trim();
-    const label = newFieldLabel.trim() || autoLabel(name);
-    const placeholder = newFieldPlaceholder.trim();
-    if (!name) { setNewFieldError("Field name is required."); return; }
-    if (!/^[a-zA-Z][a-zA-Z0-9_-]*$/.test(name)) {
-      setNewFieldError("Name must start with a letter and contain only letters, numbers, underscores, or hyphens.");
-      return;
-    }
-    if (fields.some((f) => f.name === name)) {
-      setNewFieldError("A field with this name already exists.");
-      return;
-    }
-    const newField = {
-      id: crypto.randomUUID(),
-      name,
-      label,
-      placeholder: placeholder || undefined,
-      type: newFieldType,
-      options: newFieldType === "select" ? sanitiseOptions(newFieldOptions) : undefined,
-      required: newFieldRequired,
-    };
-    onChange({
-      ...value,
-      fields: [...fields, {
-        ...newField,
-      }],
-    });
-    setNewFieldName("");
-    setNewFieldLabel("");
-    setNewFieldPlaceholder("");
-    setNewFieldType("text");
-    setNewFieldRequired(false);
-    setNewFieldOptions([]);
-    setNewFieldError(null);
-    setAddingField(false);
-  }
-
-  function cancelAddField() {
-    setAddingField(false);
-    setNewFieldName("");
-    setNewFieldLabel("");
-    setNewFieldPlaceholder("");
-    setNewFieldType("text");
-    setNewFieldRequired(false);
-    setNewFieldOptions([]);
-    setNewFieldError(null);
-  }
-
-  function updateNewFieldOption(index: number, key: keyof LpFormFieldOption, nextValue: string) {
-    setNewFieldOptions((prev) => {
-      const next = [...prev];
-      if (!next[index]) return prev;
-      next[index] = { ...next[index], [key]: nextValue };
-      return next;
-    });
-  }
-
-  function addNewFieldOption() {
-    setNewFieldOptions((prev) => [...prev, { label: "", value: "" }]);
-  }
-
-  function removeNewFieldOption(index: number) {
-    setNewFieldOptions((prev) => prev.filter((_, i) => i !== index));
-  }
-
   const FIELD_TYPE_LABELS: Record<LpFormFieldType, string> = {
     text: "Text",
     email: "Email",
@@ -317,6 +238,37 @@ export function FormConfigPanel({ value, onChange, lpId }: Props) {
     number: "Number",
     url: "URL",
   };
+
+  const handleAiFieldChange = useCallback(async () => {
+    const prompt = aiFieldPrompt.trim();
+    if (!prompt) return;
+
+    setAiFieldLoading(true);
+    setAiFieldError(null);
+    try {
+      const res = await fetch(`/api/tools/landing-pages/${lpId}/ai-fields`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt,
+          currentFields: fields,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: "AI field update failed" })) as { error?: string };
+        throw new Error(data.error ?? "AI field update failed");
+      }
+
+      const data = await res.json() as { fields: LpFormField[] };
+      onChange({ ...value, fields: data.fields });
+      setAiFieldPrompt("");
+    } catch (err) {
+      setAiFieldError(err instanceof Error ? err.message : "AI field update failed");
+    } finally {
+      setAiFieldLoading(false);
+    }
+  }, [aiFieldPrompt, lpId, fields, onChange, value]);
 
   return (
     <>
@@ -606,135 +558,44 @@ export function FormConfigPanel({ value, onChange, lpId }: Props) {
           </div>
         )}
 
-        {/* Add field form */}
-        {addingField ? (
-          <div style={{ border: "1px solid var(--accent)", borderRadius: "var(--r-sm)", padding: "10px 12px", background: "var(--surface)", display: "flex", flexDirection: "column", gap: 8 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-              <div>
-                <label style={labelStyle}>Field name <span style={{ color: "var(--text-4)", fontWeight: 400 }}>(HTML name attr)</span></label>
-                <input
-                  autoFocus
-                  type="text"
-                  value={newFieldName}
-                  onChange={(e) => {
-                    setNewFieldName(e.target.value);
-                    if (!newFieldLabel || newFieldLabel === autoLabel(newFieldName)) {
-                      setNewFieldLabel(autoLabel(e.target.value));
-                    }
-                    setNewFieldError(null);
-                  }}
-                  onKeyDown={(e) => { if (e.key === "Enter") handleAddField(); if (e.key === "Escape") cancelAddField(); }}
-                  placeholder="e.g. player_name"
-                  style={{ ...inputStyle, fontSize: 12, padding: "5px 8px" }}
-                />
-              </div>
-              <div>
-                <label style={labelStyle}>Label <span style={{ color: "var(--text-4)", fontWeight: 400 }}>(shown in email)</span></label>
-                <input
-                  type="text"
-                  value={newFieldLabel}
-                  onChange={(e) => setNewFieldLabel(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") handleAddField(); if (e.key === "Escape") cancelAddField(); }}
-                  placeholder="e.g. Player name"
-                  style={{ ...inputStyle, fontSize: 12, padding: "5px 8px" }}
-                />
-              </div>
-            </div>
-            <div>
-              <label style={labelStyle}>{newFieldType === "select" ? "Placeholder / default option" : "Placeholder"} <span style={{ color: "var(--text-4)", fontWeight: 400 }}>(shown in the form input)</span></label>
-              <input
-                type="text"
-                value={newFieldPlaceholder}
-                onChange={(e) => setNewFieldPlaceholder(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") handleAddField(); if (e.key === "Escape") cancelAddField(); }}
-                placeholder="e.g. Jane Smith"
-                style={{ ...inputStyle, fontSize: 12, padding: "5px 8px" }}
-              />
-            </div>
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <div style={{ flex: 1 }}>
-                <label style={labelStyle}>Type</label>
-                <select
-                  value={newFieldType}
-                  onChange={(e) => setNewFieldType(e.target.value as LpFormFieldType)}
-                  style={{ ...inputStyle, fontSize: 12, padding: "5px 8px" }}
-                >
-                  {(Object.entries(FIELD_TYPE_LABELS) as [LpFormFieldType, string][]).map(([t, lbl]) => (
-                    <option key={t} value={t}>{lbl}</option>
-                  ))}
-                </select>
-              </div>
-              <div style={{ paddingTop: 18, display: "flex", alignItems: "center", gap: 6 }}>
-                <input
-                  id="new-field-required"
-                  type="checkbox"
-                  checked={newFieldRequired}
-                  onChange={(e) => setNewFieldRequired(e.target.checked)}
-                  style={{ cursor: "pointer" }}
-                />
-                <label htmlFor="new-field-required" style={{ ...labelStyle, marginBottom: 0, cursor: "pointer" }}>Required</label>
-              </div>
-            </div>
-            {newFieldType === "select" && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <label style={{ ...labelStyle, marginBottom: 0 }}>Dropdown options</label>
-                  <button type="button" onClick={addNewFieldOption} style={{ fontSize: 11, padding: 0, background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>+ Add option</button>
-                </div>
-                {newFieldOptions.length === 0 ? (
-                  <p style={{ ...hintStyle, marginTop: 0 }}>Add at least one selectable value for this dropdown.</p>
-                ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                    {newFieldOptions.map((option, index) => (
-                      <div key={index} style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 6, alignItems: "center" }}>
-                        <input
-                          type="text"
-                          value={option.label}
-                          onChange={(e) => updateNewFieldOption(index, "label", e.target.value)}
-                          placeholder="Option label"
-                          style={{ ...inputStyle, fontSize: 12, padding: "5px 8px" }}
-                        />
-                        <input
-                          type="text"
-                          value={option.value}
-                          onChange={(e) => updateNewFieldOption(index, "value", e.target.value)}
-                          placeholder="Submitted value"
-                          style={{ ...inputStyle, fontSize: 12, padding: "5px 8px" }}
-                        />
-                        <button type="button" onClick={() => removeNewFieldOption(index)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-4)", padding: 2, display: "flex", alignItems: "center", justifyContent: "center" }} title="Remove option">
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-            {newFieldError && <p style={{ ...hintStyle, color: "var(--danger)" }}>{newFieldError}</p>}
-            <div style={{ display: "flex", gap: 6 }}>
-              <button type="button" onClick={handleAddField} className="btn btn-primary btn-sm" style={{ fontSize: 11 }}>
-                <ListPlus size={12} /> Add field
-              </button>
-              <button type="button" onClick={cancelAddField} style={{ fontSize: 11, padding: "4px 10px", background: "none", border: "1px solid var(--border)", borderRadius: "var(--r-sm)", cursor: "pointer", color: "var(--text-3)", fontFamily: "inherit" }}>
-                Cancel
-              </button>
-            </div>
+        <div style={{ border: "1px solid var(--border)", borderRadius: "var(--r-sm)", padding: "10px 12px", background: "var(--surface)", display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700, color: "var(--text)" }}>
+            <Sparkles size={13} style={{ color: "var(--accent)" }} />
+            Edit fields with AI
           </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setAddingField(true)}
-            style={{
-              width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-              padding: "6px 0", fontSize: 12, fontWeight: 500,
-              background: "none", border: "1px dashed var(--border)",
-              borderRadius: "var(--r-sm)", cursor: "pointer", color: "var(--accent)",
-              fontFamily: "inherit",
+          <textarea
+            value={aiFieldPrompt}
+            onChange={(e) => {
+              setAiFieldPrompt(e.target.value);
+              if (aiFieldError) setAiFieldError(null);
             }}
-          >
-            <ListPlus size={13} /> Add field manually
-          </button>
-        )}
+            onKeyDown={(e) => {
+              if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                e.preventDefault();
+                void handleAiFieldChange();
+              }
+            }}
+            rows={3}
+            placeholder="e.g. Add a required Country of participant field below Message. Or change Player Age to a dropdown with options 5-18."
+            style={{ ...inputStyle, resize: "vertical", minHeight: 78, lineHeight: 1.45 }}
+          />
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+            <p style={{ ...hintStyle, marginTop: 0, marginBottom: 0 }}>
+              Ask AI to add, remove, reorder, rename, or change field types/options. Press Cmd/Ctrl+Enter to apply.
+            </p>
+            <button
+              type="button"
+              onClick={() => void handleAiFieldChange()}
+              disabled={aiFieldLoading || !aiFieldPrompt.trim()}
+              className="btn btn-primary btn-sm"
+              style={{ fontSize: 11, flexShrink: 0 }}
+            >
+              {aiFieldLoading ? <Loader2 size={12} style={{ animation: "spin 1s linear infinite" }} /> : <Sparkles size={12} />}
+              {aiFieldLoading ? "Updating…" : "Apply with AI"}
+            </button>
+          </div>
+          {aiFieldError && <p style={{ ...hintStyle, color: "var(--danger)", marginTop: 0 }}>{aiFieldError}</p>}
+        </div>
 
         <p style={{ ...hintStyle, marginTop: 8 }}>
           Fields defined here control how lead notification emails are formatted — using your labels in this order.
