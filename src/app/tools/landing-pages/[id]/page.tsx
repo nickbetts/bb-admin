@@ -13,7 +13,6 @@ import {
   Download,
   Check,
   Eye,
-  EyeOff,
   Users,
   ExternalLink,
   RotateCcw,
@@ -2734,15 +2733,26 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                   if (!lp) return;
                   setSavingAnalytics(true);
                   setAnalyticsSaved(false);
+                  const htmlWithFormConfig = applyConfiguredFormFields(previewHtml, formConfig.fields ?? []);
                   try {
                     const res = await fetch(`/api/tools/landing-pages/${lp.id}`, {
                       method: "PATCH",
                       headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ analyticsConfig, formConfig }),
+                      body: JSON.stringify({
+                        analyticsConfig,
+                        formConfig,
+                        html: htmlWithFormConfig,
+                      }),
                     });
                     if (res.ok) {
                       const data = await res.json();
-                      setLp((prev) => prev ? { ...prev, analyticsConfig: data.landingPage.analyticsConfig, formConfig: data.landingPage.formConfig } : prev);
+                      setPreviewHtml(htmlWithFormConfig);
+                      setLp((prev) => prev ? {
+                        ...prev,
+                        currentHtml: data.landingPage.currentHtml,
+                        analyticsConfig: data.landingPage.analyticsConfig,
+                        formConfig: data.landingPage.formConfig,
+                      } : prev);
                       setTrackingBaseline({
                         analytics: JSON.stringify(analyticsConfig ?? {}),
                         form: JSON.stringify(formConfig ?? {}),

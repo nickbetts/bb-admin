@@ -125,10 +125,10 @@ export function extractFormFieldsFromHtml(html: string): LpFormField[] {
   while ((m = elementRe.exec(html)) !== null) {
     const tagName = m[1].toLowerCase();
     const attrs = m[2];
+    const attrMap = parseAttributes(attrs);
 
-    const nameMatch = attrs.match(/\bname="([^"]+)"/i);
-    if (!nameMatch) continue;
-    const name = nameMatch[1];
+    const name = attrMap.get("name")?.trim() ?? "";
+    if (!name) continue;
     if (seen.has(name)) continue;
     seen.add(name);
 
@@ -139,8 +139,7 @@ export function extractFormFieldsFromHtml(html: string): LpFormField[] {
     } else if (tagName === "select") {
       type = "select";
     } else {
-      const typeMatch = attrs.match(/\btype="([^"]+)"/i);
-      const rawType = typeMatch ? typeMatch[1].toLowerCase() : "text";
+      const rawType = (attrMap.get("type") ?? "text").toLowerCase();
       if (rawType === "email") type = "email";
       else if (rawType === "tel") type = "tel";
       else if (rawType === "date") type = "date";
@@ -150,11 +149,11 @@ export function extractFormFieldsFromHtml(html: string): LpFormField[] {
     }
 
     // Auto-detect required
-    const required = /\brequired\b/i.test(attrs);
-    const placeholderMatch = attrs.match(/\bplaceholder=("([^"]*)"|'([^']*)')/i);
+    const required = /\brequired\b/i.test(attrs) || attrMap.has("required");
+    const placeholderAttr = attrMap.get("placeholder")?.trim();
     const selectDetails = tagName === "select" ? extractSelectDetails(html, name) : null;
     const placeholder = (
-      (placeholderMatch?.[2] ?? placeholderMatch?.[3] ?? "").trim()
+      (placeholderAttr ?? "")
       || selectDetails?.placeholder
     ) || undefined;
 
@@ -269,29 +268,56 @@ function extractFormLabels(html: string): Map<string, string> {
 }
 
 function extractSelectDetails(html: string, fieldName: string): { placeholder?: string; options: LpFormFieldOption[] } | null {
-  const name = escapeRegex(fieldName);
-  const selectRe = new RegExp(`<select[^>]*\\bname=("|')${name}\\1[^>]*>([\\s\\S]*?)<\\/select>`, "i");
-  const selectMatch = html.match(selectRe);
-  if (!selectMatch) return null;
+  const selectRe = /<select\b([^>]*)>([\s\S]*?)<\/select>/gi;
+  let selectMatch: RegExpExecArray | null;
+  while ((selectMatch = selectRe.exec(html)) !== null) {
+    const selectAttrs = selectMatch[1] ?? "";
+    const selectAttrMap = parseAttributes(selectAttrs);
+    const selectName = selectAttrMap.get("name")?.trim();
+    if (!selectName || selectName !== fieldName) continue;
 
-  const optionRe = /<option([^>]*)>([\s\S]*?)<\/option>/gi;
-  let optionMatch: RegExpExecArray | null;
-  let placeholder: string | undefined;
-  const options: LpFormFieldOption[] = [];
-  while ((optionMatch = optionRe.exec(selectMatch[2])) !== null) {
-    const attrs = optionMatch[1] ?? "";
-    const valueMatch = attrs.match(/\bvalue=("([^"]*)"|'([^']*)')/i);
-    const value = (valueMatch?.[2] ?? valueMatch?.[3] ?? "").trim();
-    const text = cleanLabelText(optionMatch[2]);
-    if (!text && value === "") continue;
-    if (value === "") {
-      if (text) placeholder = text;
-      continue;
+    const placeholderAttr = selectAttrMap.get("placeholder")?.trim()
+      || selectAttrMap.get("data-placeholder")?.trim();
+
+    const optionRe = /<option\b([^>]*)>([\s\S]*?)<\/option>/gi;
+    let optionMatch: RegExpExecArray | null;
+    let placeholder: string | undefined = placeholderAttr || undefined;
+    const options: LpFormFieldOption[] = [];
+    let optionIndex = 0;
+
+    while ((optionMatch = optionRe.exec(selectMatch[2])) !== null) {
+      const optionAttrs = optionMatch[1] ?? "";
+      const optionAttrMap = parseAttributes(optionAttrs);
+      const text = cleanLabelText(optionMatch[2]);
+      const explicitValue = optionAttrMap.get("value");
+      const disabled = optionAttrMap.has("disabled");
+      const selected = optionAttrMap.has("selected");
+
+      // HTML default when value is omitted is text content; mirror browser behaviour.
+      const value = (explicitValue ?? text).trim();
+      const isLikelyPlaceholder =
+        (optionIndex === 0 && (explicitValue === "" || disabled || selected))
+        || (explicitValue === "" && !!text);
+
+      if (isLikelyPlaceholder) {
+        if (!placeholder && text) placeholder = text;
+        optionIndex += 1;
+        continue;
+      }
+
+      if (!text && !value) {
+        optionIndex += 1;
+        continue;
+      }
+
+      options.push({ label: text || value, value: value || text });
+      optionIndex += 1;
     }
-    options.push({ label: text || value, value });
+
+    return { placeholder, options };
   }
 
-  return { placeholder, options };
+  return null;
 }
 
 function cleanLabelText(value: string): string {
@@ -303,6 +329,27 @@ function cleanLabelText(value: string): string {
     .trim();
 }
 
-function escapeRegex(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function parseAttributes(raw: string): Map<string, string> {
+  const attrs = new Map<string, string>();
+  const attrRe = /([:\w-]+)(?:\s*=\s*("([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = attrRe.exec(raw)) !== null) {
+    const name = match[1]?.toLowerCase();
+    if (!name) continue;
+    const value = match[3] ?? match[4] ?? match[5] ?? "";
+    attrs.set(name, decodeHtmlEntities(value));
+  }
+
+  return attrs;
+}
+
+function decodeHtmlEntities(value: string): string {
+  return value
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">");
 }
