@@ -56,7 +56,7 @@ export async function POST(
     // Use configured fields: build sample data from the field definitions
     fieldDefs = formConfig.fields;
     if (!sampleFields || Object.keys(sampleFields).length === 0) {
-      sampleFields = Object.fromEntries(fieldDefs.map((f) => [f.name, guessValue(f.name)]));
+      sampleFields = Object.fromEntries(fieldDefs.map((f) => [f.name, guessValueForField(f)]));
     }
   } else if (!sampleFields || Object.keys(sampleFields).length === 0) {
     // No configured fields and no provided sample — extract from HTML
@@ -138,4 +138,43 @@ function guessValue(name: string): string {
   if (n.includes("address")) return "12 High Street, London";
   if (n.includes("city") || n.includes("town")) return "London";
   return "Sample value";
+}
+
+function guessValueForField(field: LpFormField): string {
+  const n = field.name.toLowerCase();
+  const label = field.label.toLowerCase();
+
+  if (field.type === "email") return "sarah.johnson@example.com";
+  if (field.type === "tel") return "+44 7700 900123";
+  if (field.type === "date") return "2026-07-26";
+  if (field.type === "number") {
+    if (n.includes("age") || label.includes("age")) return "9";
+    return "2";
+  }
+  if (field.type === "textarea") {
+    return "I would love to find out more. Please get in touch.";
+  }
+  if (field.type === "select") {
+    const options = field.options ?? [];
+    if (options.length > 0) {
+      // Prefer the first non-placeholder option when possible.
+      const firstReal = options.find((option) => option.value.trim() && option.label.trim());
+      if (firstReal) return firstReal.label;
+      return options[0].label || options[0].value;
+    }
+    if (n.includes("country") || label.includes("country")) return "United Kingdom";
+    if (n.includes("duration") || label.includes("duration")) return "2 weeks";
+    if (n.includes("camp") || label.includes("camp")) return "Camp 3 · 26 Jul – 8 Aug";
+    if (n.includes("yes") || label.includes("yes") || label.includes("english language")) return "Yes";
+  }
+
+  const byName = guessValue(field.name);
+  if (byName !== "Sample value") return byName;
+
+  if (label.includes("country")) return "United Kingdom";
+  if (label.includes("duration")) return "2 weeks";
+  if (label.includes("camp")) return "Camp 3 · 26 Jul – 8 Aug";
+  if (label.includes("age")) return "9";
+  if (label.includes("message") || label.includes("enquiry")) return "I would love to find out more. Please get in touch.";
+  return "Example response";
 }

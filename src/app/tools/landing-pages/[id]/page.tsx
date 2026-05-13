@@ -1528,6 +1528,28 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
     setSavingAnalytics(true);
     if (showSaved) setAnalyticsSaved(false);
 
+    let nextFormConfig: LpFormConfig = formConfig;
+    if ((formConfig.fields?.length ?? 0) > 0) {
+      try {
+        const sanityRes = await fetch(`/api/tools/landing-pages/${lp.id}/ai-email-field-sanity`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fields: formConfig.fields }),
+        });
+        if (sanityRes.ok) {
+          const sanityData = await sanityRes.json() as { fields?: LpFormConfig["fields"] };
+          if (Array.isArray(sanityData.fields) && sanityData.fields.length > 0) {
+            nextFormConfig = {
+              ...formConfig,
+              fields: sanityData.fields,
+            };
+          }
+        }
+      } catch {
+        // Non-blocking: continue save with current form config.
+      }
+    }
+
     let htmlWithFormConfig = previewHtml;
 
     try {
@@ -1536,7 +1558,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           html: previewHtml,
-          fields: formConfig.fields ?? [],
+          fields: nextFormConfig.fields ?? [],
         }),
       });
 
@@ -1550,7 +1572,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
       // Fall back to deterministic rewriting below.
     }
 
-    htmlWithFormConfig = applyConfiguredFormFields(htmlWithFormConfig, formConfig.fields ?? []);
+    htmlWithFormConfig = applyConfiguredFormFields(htmlWithFormConfig, nextFormConfig.fields ?? []);
 
     try {
       const res = await fetch(`/api/tools/landing-pages/${lp.id}`, {
@@ -1558,7 +1580,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           analyticsConfig,
-          formConfig,
+          formConfig: nextFormConfig,
           html: htmlWithFormConfig,
         }),
       });
@@ -1581,6 +1603,10 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
         setPreviewHtml(htmlWithFormConfig);
       }
 
+      if (nextFormConfig !== formConfig) {
+        setFormConfig(nextFormConfig);
+      }
+
       setLp((prev) => prev ? {
         ...prev,
         currentHtml: data.landingPage.currentHtml,
@@ -1590,7 +1616,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
 
       setTrackingBaseline({
         analytics: JSON.stringify(analyticsConfig ?? {}),
-        form: JSON.stringify(formConfig ?? {}),
+        form: JSON.stringify(nextFormConfig ?? {}),
       });
 
       if (showSaved) {
