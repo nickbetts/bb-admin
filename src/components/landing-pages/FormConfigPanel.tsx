@@ -10,6 +10,14 @@ import { useState, useCallback } from "react";
 import { AlertTriangle, Webhook, Mail, Code2, Eye, X, ListPlus, Loader2, ChevronUp, ChevronDown, Trash2, RefreshCw, GripVertical } from "lucide-react";
 import type { LpFormConfig, LpFormField, LpFormFieldOption, LpFormFieldType } from "@/lib/lp-form-config";
 
+type SelectOptionSource = "native" | "dom" | "ai" | "none";
+
+interface FormFieldSyncDiagnostics {
+  selectOptionSources: Record<string, SelectOptionSource>;
+  domEnhancedCount: number;
+  aiEnhancedCount: number;
+}
+
 interface Props {
   value: LpFormConfig;
   onChange: (next: LpFormConfig) => void;
@@ -72,6 +80,7 @@ export function FormConfigPanel({ value, onChange, lpId }: Props) {
   // ── Form fields editor state ──────────────────────────────────────────────
   const [syncingFields, setSyncingFields] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [syncDiagnostics, setSyncDiagnostics] = useState<FormFieldSyncDiagnostics | null>(null);
   const [addingField, setAddingField] = useState(false);
   const [newFieldName, setNewFieldName] = useState("");
   const [newFieldLabel, setNewFieldLabel] = useState("");
@@ -132,13 +141,17 @@ export function FormConfigPanel({ value, onChange, lpId }: Props) {
   const handleSyncFields = useCallback(async () => {
     setSyncingFields(true);
     setSyncError(null);
+    setSyncDiagnostics(null);
     try {
       const res = await fetch(`/api/tools/landing-pages/${lpId}/form-fields`);
       if (!res.ok) throw new Error("Could not extract fields from page.");
-      const data = await res.json() as { fields: LpFormField[] };
+      const data = await res.json() as { fields: LpFormField[]; diagnostics?: FormFieldSyncDiagnostics };
       if (data.fields.length === 0) {
         setSyncError("No named form fields found in the page HTML.");
         return;
+      }
+      if (data.diagnostics) {
+        setSyncDiagnostics(data.diagnostics);
       }
       onChange({ ...value, fields: data.fields });
     } catch (err) {
@@ -383,6 +396,14 @@ export function FormConfigPanel({ value, onChange, lpId }: Props) {
           <p style={{ ...hintStyle, color: "var(--danger)", marginBottom: 8 }}>{syncError}</p>
         )}
 
+        {syncDiagnostics && (
+          <p style={{ ...hintStyle, marginBottom: 8 }}>
+            Sync diagnostics: {syncDiagnostics.domEnhancedCount > 0 ? `${syncDiagnostics.domEnhancedCount} dropdown${syncDiagnostics.domEnhancedCount === 1 ? "" : "s"} recovered via DOM parser.` : "No DOM fallback needed."}
+            {" "}
+            {syncDiagnostics.aiEnhancedCount > 0 ? `${syncDiagnostics.aiEnhancedCount} dropdown${syncDiagnostics.aiEnhancedCount === 1 ? "" : "s"} AI-verified.` : "No AI fallback needed."}
+          </p>
+        )}
+
         {fields.length === 0 ? (
           <p style={{ ...hintStyle, marginBottom: 10 }}>
             No fields configured. Click <strong>Sync from page</strong> to auto-detect fields from your form, or add them manually below.
@@ -479,6 +500,48 @@ export function FormConfigPanel({ value, onChange, lpId }: Props) {
                       <option key={t} value={t}>{lbl}</option>
                     ))}
                   </select>
+
+                  {field.type === "select" && syncDiagnostics && (
+                    <span
+                      title={
+                        syncDiagnostics.selectOptionSources[field.name] === "ai"
+                          ? "Dropdown options were AI-verified during sync"
+                          : syncDiagnostics.selectOptionSources[field.name] === "dom"
+                            ? "Dropdown options were recovered with DOM parsing during sync"
+                            : syncDiagnostics.selectOptionSources[field.name] === "native"
+                              ? "Dropdown options were extracted natively from HTML"
+                              : "No dropdown options were detected"
+                      }
+                      style={{
+                        fontSize: 9,
+                        fontWeight: 700,
+                        padding: "1px 5px",
+                        borderRadius: 99,
+                        border: "none",
+                        background:
+                          syncDiagnostics.selectOptionSources[field.name] === "ai"
+                            ? "var(--success-bg)"
+                            : syncDiagnostics.selectOptionSources[field.name] === "dom"
+                              ? "var(--warning-bg)"
+                              : "var(--border-subtle)",
+                        color:
+                          syncDiagnostics.selectOptionSources[field.name] === "ai"
+                            ? "var(--success-text)"
+                            : syncDiagnostics.selectOptionSources[field.name] === "dom"
+                              ? "var(--warning-text)"
+                              : "var(--text-4)",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {syncDiagnostics.selectOptionSources[field.name] === "ai"
+                        ? "AI"
+                        : syncDiagnostics.selectOptionSources[field.name] === "dom"
+                          ? "DOM"
+                          : syncDiagnostics.selectOptionSources[field.name] === "native"
+                            ? "HTML"
+                            : "NONE"}
+                    </span>
+                  )}
 
                   {/* Required toggle */}
                   <button
