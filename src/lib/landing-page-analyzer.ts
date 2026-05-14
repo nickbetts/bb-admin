@@ -245,6 +245,64 @@ function stripTags(str: string): string {
   return str.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
 }
 
+// ── Reference URL content fetcher ────────────────────────────────────────────
+
+export interface ReferenceContent {
+  url: string;
+  title?: string;
+  text: string;
+  fetchError?: string;
+}
+
+/**
+ * Fetch a reference URL and return its full readable text content.
+ * Strips scripts, styles, SVG, and tags — preserving the actual copy.
+ * Used to give the AI rich context from competitor/reference pages.
+ * Never throws — always returns a ReferenceContent object with fetchError set on failure.
+ */
+export async function fetchReferenceContent(url: string, maxChars = 10_000): Promise<ReferenceContent> {
+  if (!url || (!url.startsWith("http://") && !url.startsWith("https://"))) {
+    return { url, text: "", fetchError: "Invalid URL (must start with http:// or https://)" };
+  }
+
+  let html: string;
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-GB,en;q=0.9",
+        "Cache-Control": "max-age=0",
+      },
+      redirect: "follow",
+    });
+    clearTimeout(timer);
+    if (!res.ok) return { url, text: "", fetchError: `HTTP ${res.status}` };
+    html = await res.text();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { url, text: "", fetchError: msg.includes("aborted") ? "Fetch timed out" : msg };
+  }
+
+  // Strip <script>, <style>, <noscript>, <svg>, <head> blocks wholesale
+  const stripped = html
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
+    .replace(/<svg[\s\S]*?<\/svg>/gi, " ")
+    .replace(/<head[\s\S]*?<\/head>/gi, " ");
+
+  const titleMatch = stripped.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  const title = titleMatch ? stripTags(titleMatch[1]).trim() : undefined;
+
+  const text = stripTags(stripped).replace(/\s{2,}/g, " ").trim().slice(0, maxChars);
+
+  return { url, title, text };
+}
+
 // ── Multi-page site crawler for keyword context ───────────────────────────────
 
 /**

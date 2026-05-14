@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { refineLandingPage, HtmlValidationError } from "@/lib/lp-generator";
-import { fetchPageSignals } from "@/lib/landing-page-analyzer";
+import { fetchReferenceContent } from "@/lib/landing-page-analyzer";
 import type { BrandContext } from "@/lib/brand-extractor";
 import { logActivity } from "@/lib/activity-logger";
 
@@ -55,27 +55,21 @@ export async function POST(
       .slice(0, 3);
 
     if (crawlUrls.length > 0) {
-      const results = await Promise.allSettled(crawlUrls.map((u) => fetchPageSignals(u)));
+      const results = await Promise.allSettled(crawlUrls.map((u) => fetchReferenceContent(u)));
       const chunks: string[] = [];
       for (const r of results) {
         if (r.status === "fulfilled") {
           if (r.value.fetchError) {
             crawlWarnings.push(`Could not scrape ${r.value.url}: ${r.value.fetchError}`);
           } else {
-            const s = r.value;
-            const parts: string[] = [];
-            if (s.title) parts.push(`Title: ${s.title}`);
-            if (s.metaDescription) parts.push(`Description: ${s.metaDescription}`);
-            if (s.h1Tags.length) parts.push(`H1: ${s.h1Tags.join(" | ")}`);
-            if (s.h2Texts.length) parts.push(`Headings: ${s.h2Texts.join(" | ")}`);
-            if (s.bodySnippets.length) parts.push(s.bodySnippets.join(" "));
-            if (parts.length) chunks.push(`[${s.url}]\n${parts.join("\n")}`);
+            const label = r.value.title ? `[${r.value.url} — ${r.value.title}]` : `[${r.value.url}]`;
+            chunks.push(`${label}\n${r.value.text}`);
           }
         } else {
           crawlWarnings.push(`Failed to scrape a reference URL`);
         }
       }
-      if (chunks.length) additionalContext = chunks.join("\n\n").slice(0, 4000);
+      if (chunks.length) additionalContext = chunks.join("\n\n---\n\n").slice(0, 12000);
     }
 
     // Call AI to refine the LP

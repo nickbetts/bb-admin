@@ -1218,7 +1218,7 @@ export async function refineLandingPage(opts: RefineLPOptions): Promise<string> 
   }
 
   if (opts.additionalContext) {
-    userContent += `\n\n## Additional context from reference URLs provided by the user:\n${opts.additionalContext}`;
+    userContent += `\n\n## Full text content scraped from reference URLs provided by the user\nUse this to understand the competitor/reference page's copy, services, features, and structure. Apply relevant insights to the landing page changes requested:\n${opts.additionalContext}`;
   }
 
   if (opts.imageUrls?.length) {
@@ -1303,7 +1303,7 @@ export async function chatAboutLandingPage(opts: ChatLPOptions): Promise<ChatLPR
   }
 
   if (opts.additionalContext) {
-    userContent += `\n\n## Additional context from reference URLs provided by the user:\n${opts.additionalContext}`;
+    userContent += `\n\n## Full text content scraped from reference URLs provided by the user\nUse this to understand the competitor/reference page's copy, services, features, and messaging. Reference it when answering questions or making recommendations:\n${opts.additionalContext}`;
   }
 
   if (opts.imageUrls?.length) {
