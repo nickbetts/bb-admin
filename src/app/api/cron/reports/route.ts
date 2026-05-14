@@ -143,6 +143,16 @@ export async function POST(request: NextRequest) {
             .map((s, i) => ({ sectionType: s.type, title: s.title, orderIndex: i }));
         }
 
+        // Deduplicate data sections by sectionType, keeping first occurrence.
+        // Text sections (text_*) are exempt as multiple content blocks are valid.
+        const seenSectionTypes = new Set<string>();
+        sections = sections.filter((s) => {
+          if (s.sectionType.startsWith("text_")) return true;
+          if (seenSectionTypes.has(s.sectionType)) return false;
+          seenSectionTypes.add(s.sectionType);
+          return true;
+        });
+
         // Create the report
         const report = await prisma.report.create({
           data: {

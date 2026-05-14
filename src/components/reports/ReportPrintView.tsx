@@ -120,7 +120,19 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
   const compareStartDate = report.compareStartDate || null;
   const compareEndDate = report.compareEndDate || null;
 
-  const enabledSections = report.sections.filter((s) => s.enabled !== false);
+  const enabledSections = (() => {
+    const seenDataTypes = new Set<string>();
+    return report.sections
+      .filter((s) => s.enabled !== false)
+      .filter((s) => {
+        // Text sections may legitimately appear more than once (different content each time)
+        if (isTextSection(s.sectionType)) return true;
+        // Data sections must be unique — deduplicate by sectionType, keeping first occurrence
+        if (seenDataTypes.has(s.sectionType)) return false;
+        seenDataTypes.add(s.sectionType);
+        return true;
+      });
+  })();
 
   // Stable parsed array — keeps the reference identity steady across renders.
   const semrushCampaignIds = useMemo<string[]>(() => {

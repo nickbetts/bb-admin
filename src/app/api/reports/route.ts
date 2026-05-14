@@ -83,6 +83,16 @@ export async function POST(request: NextRequest) {
       ];
     }
 
+    // Deduplicate data sections by sectionType, keeping first occurrence.
+    // Text sections (text_*) are exempt as multiple content blocks are valid.
+    const seenTypes = new Set<string>();
+    sectionsToCreate = sectionsToCreate.filter((s) => {
+      if (s.sectionType.startsWith("text_")) return true;
+      if (seenTypes.has(s.sectionType)) return false;
+      seenTypes.add(s.sectionType);
+      return true;
+    });
+
     const report = await prisma.report.create({
       data: {
         clientId,
