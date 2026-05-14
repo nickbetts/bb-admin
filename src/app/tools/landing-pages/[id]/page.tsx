@@ -575,7 +575,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
 
   // Chat state
   const [prompt, setPrompt] = useState("");
-  const [chatHistory, setChatHistory] = useState<{ role: "user" | "assistant"; content: string; version?: number; type?: "chat" | "refine"; refinementPrompt?: string; attachedImageUrls?: string[]; attachedUrls?: string[] }[]>([]);
+  const [chatHistory, setChatHistory] = useState<{ role: "user" | "assistant"; content: string; version?: number; type?: "chat" | "refine"; refinementPrompt?: string; attachedImageUrls?: string[]; attachedUrls?: string[]; crawlWarnings?: string[] }[]>([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [chatting, setChatting] = useState(false);
@@ -1262,6 +1262,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
           content: `Applied changes → version ${data.version.versionNumber}`,
           version: data.version.versionNumber,
           type: "refine" as const,
+          crawlWarnings: data.crawlWarnings,
         },
       ]);
 
@@ -1321,6 +1322,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
           content: data.message,
           type: "chat" as const,
           refinementPrompt: data.refinementPrompt,
+          crawlWarnings: data.crawlWarnings,
         },
       ]);
       // Accumulate any STACK_CHANGE items into the staged list
@@ -2120,6 +2122,16 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                           </button>
                         </div>
                       )}
+                      {msg.role === "assistant" && msg.crawlWarnings && msg.crawlWarnings.length > 0 && (
+                        <div style={{ marginTop: 6, paddingTop: 6, borderTop: "1px solid rgba(128,128,128,0.15)", display: "flex", flexDirection: "column", gap: 3 }}>
+                          {msg.crawlWarnings.map((w, wi) => (
+                            <div key={wi} style={{ display: "flex", alignItems: "flex-start", gap: 5, fontSize: 10, color: "var(--warning-text, #b45309)", background: "var(--warning-bg, rgba(251,191,36,0.12))", borderRadius: 6, padding: "4px 7px" }}>
+                              <span style={{ flexShrink: 0 }}>⚠️</span>
+                              <span>{w} — changes applied without this reference.</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                       {msg.role === "assistant" && msg.type === "chat" && msg.refinementPrompt && (
                         <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid rgba(128,128,128,0.15)" }}>
                           <button
@@ -2137,6 +2149,12 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                             <Wand2 style={{ width: 11, height: 11 }} />
                             Apply this change
                           </button>
+                        </div>
+                      )}
+                      {msg.role === "assistant" && msg.type === "chat" && !msg.refinementPrompt && (
+                        <div style={{ marginTop: 6, paddingTop: 6, borderTop: "1px solid rgba(128,128,128,0.15)", fontSize: 10, color: "var(--text-4)", display: "flex", alignItems: "center", gap: 4 }}>
+                          <span>💬</span>
+                          <span>Advice only — no changes saved. Use <strong>Apply</strong> or <strong>⌘+Enter</strong> to update the page.</span>
                         </div>
                       )}
                     </div>

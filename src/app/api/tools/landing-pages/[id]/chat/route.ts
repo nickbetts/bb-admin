@@ -45,8 +45,9 @@ export async function POST(
       brandContext = { colors: [], fonts: [], imageryUrls: [], socialLinks: [], contactInfo: {} };
     }
 
-    // Scrape user-supplied reference URLs for additional context (failures silently dropped)
+    // Scrape user-supplied reference URLs for additional context
     let additionalContext: string | undefined;
+    const crawlWarnings: string[] = [];
     const crawlUrls = (body.crawlUrls ?? [])
       .filter((u) => { try { new URL(u); return true; } catch { return false; } })
       .slice(0, 3);
@@ -55,15 +56,21 @@ export async function POST(
       const results = await Promise.allSettled(crawlUrls.map((u) => fetchPageSignals(u)));
       const chunks: string[] = [];
       for (const r of results) {
-        if (r.status === "fulfilled" && !r.value.fetchError) {
-          const s = r.value;
-          const parts: string[] = [];
-          if (s.title) parts.push(`Title: ${s.title}`);
-          if (s.metaDescription) parts.push(`Description: ${s.metaDescription}`);
-          if (s.h1Tags.length) parts.push(`H1: ${s.h1Tags.join(" | ")}`);
-          if (s.h2Texts.length) parts.push(`Headings: ${s.h2Texts.join(" | ")}`);
-          if (s.bodySnippets.length) parts.push(s.bodySnippets.join(" "));
-          if (parts.length) chunks.push(`[${s.url}]\n${parts.join("\n")}`);
+        if (r.status === "fulfilled") {
+          if (r.value.fetchError) {
+            crawlWarnings.push(`Could not scrape ${r.value.url}: ${r.value.fetchError}`);
+          } else {
+            const s = r.value;
+            const parts: string[] = [];
+            if (s.title) parts.push(`Title: ${s.title}`);
+            if (s.metaDescription) parts.push(`Description: ${s.metaDescription}`);
+            if (s.h1Tags.length) parts.push(`H1: ${s.h1Tags.join(" | ")}`);
+            if (s.h2Texts.length) parts.push(`Headings: ${s.h2Texts.join(" | ")}`);
+            if (s.bodySnippets.length) parts.push(s.bodySnippets.join(" "));
+            if (parts.length) chunks.push(`[${s.url}]\n${parts.join("\n")}`);
+          }
+        } else {
+          crawlWarnings.push(`Failed to scrape a reference URL`);
         }
       }
       if (chunks.length) additionalContext = chunks.join("\n\n").slice(0, 4000);
@@ -79,7 +86,7 @@ export async function POST(
       additionalContext,
     });
 
-    return NextResponse.json(result);
+    return NextResponse.json({ ...result, crawlWarnings: crawlWarnings.length > 0 ? crawlWarnings : undefined });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("LP chat error:", error);
