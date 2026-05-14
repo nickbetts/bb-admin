@@ -26,5 +26,16 @@ export default async function ReportPrintPage({ params, searchParams }: Props) {
 
   if (!report) notFound();
 
-  return <ReportPrintView report={report} showDescriptions={showDescriptions !== "0"} />;
+  // Deduplicate sections server-side before passing to the render component.
+  // Data sections must be unique by sectionType; text_* sections are exempt.
+  const seenTypes = new Set<string>();
+  const dedupedSections = report.sections.filter((s) => {
+    if (s.sectionType.startsWith("text_")) return true;
+    if (seenTypes.has(s.sectionType)) return false;
+    seenTypes.add(s.sectionType);
+    return true;
+  });
+  const dedupedReport = { ...report, sections: dedupedSections };
+
+  return <ReportPrintView report={dedupedReport} showDescriptions={showDescriptions !== "0"} />;
 }
