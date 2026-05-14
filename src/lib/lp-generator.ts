@@ -15,10 +15,10 @@ import { buildCopyAuditBlock } from "@/lib/lp-copy-elements";
 
 const MODEL = "claude-opus-4-7";
 // Opus 4.7 supports up to 32K output tokens. A fully-populated landing
-// page (hero + social proof + 3-4 benefits + how-it-works + testimonials
-// + offer + FAQ + final CTA + footer) routinely exceeds 16K. 32K gives
-// comfortable headroom so the page never truncates after the hero.
-const MAX_TOKENS = 32000;
+// LP HTML for a fully populated page can reach 70-80k chars. At ~2 chars/token
+// for attribute-heavy HTML, that's ~35-40k output tokens. Set to 64k to give
+// headroom for both the base page and any additions.
+const MAX_TOKENS = 64000;
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
