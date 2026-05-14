@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { chatAboutLandingPage } from "@/lib/lp-generator";
-import { fetchReferenceContent } from "@/lib/landing-page-analyzer";
+import { extractPageContentFromUrl } from "@/lib/brand-extractor";
 import type { BrandContext } from "@/lib/brand-extractor";
 
 export const dynamic = "force-dynamic";
@@ -45,7 +45,7 @@ export async function POST(
       brandContext = { colors: [], fonts: [], imageryUrls: [], socialLinks: [], contactInfo: {} };
     }
 
-    // Scrape user-supplied reference URLs for additional context
+    // Scrape user-supplied reference URLs using the same full pipeline as LP generation
     let additionalContext: string | undefined;
     const crawlWarnings: string[] = [];
     const crawlUrls = (body.crawlUrls ?? [])
@@ -53,21 +53,29 @@ export async function POST(
       .slice(0, 3);
 
     if (crawlUrls.length > 0) {
-      const results = await Promise.allSettled(crawlUrls.map((u) => fetchReferenceContent(u)));
+      const results = await Promise.allSettled(crawlUrls.map((u) => extractPageContentFromUrl(u)));
       const chunks: string[] = [];
-      for (const r of results) {
-        if (r.status === "fulfilled") {
-          if (r.value.fetchError) {
-            crawlWarnings.push(`Could not scrape ${r.value.url}: ${r.value.fetchError}`);
-          } else {
-            const label = r.value.title ? `[${r.value.url} — ${r.value.title}]` : `[${r.value.url}]`;
-            chunks.push(`${label}\n${r.value.text}`);
-          }
+      for (let i = 0; i < results.length; i++) {
+        const r = results[i];
+        const url = crawlUrls[i];
+        if (r.status === "fulfilled" && r.value) {
+          const pc = r.value;
+          const parts: string[] = [`### ${pc.sourceUrl}`];
+          if (pc.metaTitle) parts.push(`Title: ${pc.metaTitle}`);
+          if (pc.h1) parts.push(`H1: ${pc.h1}`);
+          if (pc.headings.length) parts.push(`Headings: ${pc.headings.slice(0, 12).join(" | ")}`);
+          if (pc.ctaTexts.length) parts.push(`CTAs: ${pc.ctaTexts.join(" | ")}`);
+          if (pc.listItems?.length) parts.push(`Services / features:\n${pc.listItems.slice(0, 20).map((item) => `  • ${item}`).join("\n")}`);
+          if (pc.numericStats?.length) parts.push(`Stats: ${pc.numericStats.slice(0, 10).join(" | ")}`);
+          if (pc.bodyCopy.length) parts.push(`Body copy:\n${pc.bodyCopy.slice(0, 8).map((p) => `  "${p}"`).join("\n")}`);
+          if (pc.allBodyText) parts.push(`Full page text:\n${pc.allBodyText.slice(0, 3000)}`);
+          if (pc.imageryUrls.length) parts.push(`Images: ${pc.imageryUrls.slice(0, 10).join(", ")}`);
+          chunks.push(parts.join("\n"));
         } else {
-          crawlWarnings.push(`Failed to scrape a reference URL`);
+          crawlWarnings.push(`Could not scrape ${url}`);
         }
       }
-      if (chunks.length) additionalContext = chunks.join("\n\n---\n\n").slice(0, 12000);
+      if (chunks.length) additionalContext = chunks.join("\n\n---\n\n");
     }
 
     const result = await chatAboutLandingPage({

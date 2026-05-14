@@ -1218,7 +1218,7 @@ export async function refineLandingPage(opts: RefineLPOptions): Promise<string> 
   }
 
   if (opts.additionalContext) {
-    userContent += `\n\n## Full text content scraped from reference URLs provided by the user\nUse this to understand the competitor/reference page's copy, services, features, and structure. Apply relevant insights to the landing page changes requested:\n${opts.additionalContext}`;
+    userContent += `\n\n## Reference page content (scraped from user-supplied URLs)\nUse this to extract services, features, copy, stats, and imagery from the reference pages. Apply relevant content directly — use the real copy, embed images using their URLs as <img src="...">, and match the structure where appropriate:\n${opts.additionalContext}`;
   }
 
   if (opts.imageUrls?.length) {
