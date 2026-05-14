@@ -572,7 +572,7 @@ export async function generateLandingPage(opts: GenerateLPOptions): Promise<stri
   if (opts.additionalInstructions) userPrompt += `\nAdditional instructions: ${opts.additionalInstructions}\n`;
 
   if (opts.templateHtml) {
-    userPrompt += `\n## Template HTML\n\nUse this as a structural starting point — adapt the layout and style while replacing all placeholder content with real, campaign-specific content:\n\n${opts.templateHtml.slice(0, 30000)}`;
+    userPrompt += `\n## Reference Template (inspiration only)\n\nThe following is a saved template provided as creative reference. Do NOT copy it. Instead, study it to understand the design aesthetic, layout patterns, section ordering, and visual style the user likes — then apply those principles to create a completely new page tailored to this brand and campaign. All content, copy, imagery, colours, and specific design choices must come from the scraped website and brief above, not from this template:\n\n${opts.templateHtml.slice(0, 30000)}`;
   }
 
   // Build vision blocks so Claude can actually see the scraped/uploaded images
