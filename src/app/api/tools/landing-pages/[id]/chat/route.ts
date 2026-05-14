@@ -6,7 +6,7 @@ import { extractPageContentFromUrl } from "@/lib/brand-extractor";
 import type { BrandContext } from "@/lib/brand-extractor";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 // POST /api/tools/landing-pages/[id]/chat — conversational discussion (no HTML generation)
 export async function POST(
