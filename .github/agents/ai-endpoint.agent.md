@@ -2,6 +2,7 @@
 description: "Use when: adding a new AI insight, AI recommendation, AI analysis endpoint, AI summary, AI commentary, AI forecast, AI chat feature, or any new route under src/app/api/ai/. Also use when modifying OpenAI prompt logic or channel persona patterns."
 name: "ai-endpoint"
 tools: [read, edit, search, execute, todo, web]
+user-invocable: true
 ---
 
 # Agent: AI Endpoint Expert

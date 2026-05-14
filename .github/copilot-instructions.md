@@ -2,15 +2,15 @@
 
 ## Project overview
 
-i3media Report is an internal agency platform built with **Next.js 16 (App Router) + React 19 + TypeScript + Prisma + Tailwind CSS v4**, deployed on **Vercel**. It aggregates data from 15 marketing channels (GA4, Google Ads, Meta, TikTok, Microsoft Ads, LinkedIn, Klaviyo, YouTube, HubSpot, CallRail, SemRush, Search Console, Moz, WooCommerce, Shopify) and surfaces AI-powered insights via **OpenAI** (GPT-4o / GPT-4o-mini).
+i3media Report is an internal agency platform built with **Next.js 16 (App Router) + React 19 + TypeScript + Prisma + Tailwind CSS v4**, deployed on **Vercel**. It aggregates data from 16 marketing channels (GA4, Google Ads, Meta, TikTok, Microsoft Ads, LinkedIn, Klaviyo, YouTube, HubSpot, CallRail, SemRush, Search Console, Moz, WooCommerce, Shopify, Core Web Vitals) and surfaces AI-powered insights via **OpenAI** (GPT-4o / GPT-4o-mini).
 
 > **Coding agents available:** Specialised sub-agent instructions live in `.github/agents/`:
 > - `orchestrator.agent.md` — routing tasks and orchestrating multi-step workflows across agents (@Orchestrator in chat)
-> - `channel-integration.md` — adding new marketing channel data integrations
-> - `ai-endpoint.md` — creating AI analysis API endpoints
-> - `report-component.md` — building dashboard/report section components
-> - `database.md` — Prisma schema changes and migrations
-> - `data-fetching.md` — data-fetching efficiency, caching, TTLs, and cron snapshot architecture
+> - `channel-integration.agent.md` — adding new marketing channel data integrations (@Channel Integration in chat)
+> - `ai-endpoint.agent.md` — creating AI analysis API endpoints (@AI Endpoint Expert in chat)
+> - `report-component.agent.md` — building dashboard/report section components (@Report Component in chat)
+> - `database.agent.md` — Prisma schema changes and migrations (@Database Expert in chat)
+> - `data-fetching.agent.md` — data-fetching efficiency, caching, TTLs, and cron snapshot architecture (@Data Fetching in chat)
 > - `ui-ux.agent.md` — dashboard design system, shared UI primitives, and UX consistency (@UI/UX Expert in chat)
 > - `landing-page.agent.md` — marketing landing page, login page copy and animations (@Landing Page in chat)
 > - `agency-tools.agent.md` — keyword planner, proposals, content strategy, media plan, and all agency tools (@Agency Tools in chat)
@@ -64,9 +64,9 @@ src/
     report-blocks.ts    # SECTION_BLOCKS registry — block visibility config per section type
     ga4.ts / meta.ts / google-ads.ts / etc.   # Per-channel API helpers
 prisma/
-  schema.prisma         # Database schema (SQLite locally, Turso libSQL in prod)
+  schema.prisma         # Database schema (Postgres/Neon across all environments)
   seed.ts               # Seed script
-prisma.config.ts        # Prisma CLI config — reads DATABASE_URL, falls back to file:./dev.db
+prisma.config.ts        # Prisma CLI config — reads DIRECT_URL (preferred) then DATABASE_URL
 ```
 
 ## Key conventions
