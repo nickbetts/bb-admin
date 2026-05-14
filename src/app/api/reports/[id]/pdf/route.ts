@@ -48,6 +48,16 @@ export async function GET(
     const browser = await getBrowser();
     const page = await browser.newPage();
 
+    // Forward browser console messages to server logs so we can diagnose
+    // PDF rendering issues (e.g. duplicate-section dedup warnings) from
+    // Vercel deployment logs.
+    page.on("console", (msg) => {
+      const text = msg.text();
+      if (text.startsWith("[pdf-")) {
+        console.log(`[pdf-route:browser] ${text}`);
+      }
+    });
+
     try {
       // Set the session cookie so the headless browser is authenticated
       const domain = new URL(baseUrl).hostname;
@@ -118,31 +128,57 @@ export async function GET(
           "text_ppc_update",
         ];
 
+        const sectionEls = Array.from(
+          document.querySelectorAll<HTMLElement>("[id^='section-']")
+        );
+
+        // Final-line-of-defence deduplication: if the DOM somehow contains
+        // multiple elements for the same data section type (e.g. due to a
+        // legacy duplicate row in the DB that bypassed all upstream guards,
+        // or React hydration anomalies), PHYSICALLY REMOVE the duplicates
+        // from the DOM. Skipping them from the regions[] list isn't enough —
+        // they still occupy vertical space and bleed into adjacent screenshot
+        // chunks via padding. Text sections are exempt because multiple text
+        // blocks of the same type are legitimate.
+        const seenSectionTypes = new Set<string>();
+        const removedDupes: string[] = [];
+        for (const el of sectionEls) {
+          const sectionType = el.getAttribute("data-section-type") ?? "";
+          const isText = TEXT_SECTION_TYPES.includes(sectionType);
+          if (isText || !sectionType) continue;
+          if (seenSectionTypes.has(sectionType)) {
+            removedDupes.push(`${el.id}(${sectionType})`);
+            el.remove();
+          } else {
+            seenSectionTypes.add(sectionType);
+          }
+        }
+        if (removedDupes.length > 0) {
+          // eslint-disable-next-line no-console
+          console.warn(
+            `[pdf-dedup] Removed ${removedDupes.length} duplicate section element(s) from DOM: ${removedDupes.join(", ")}`
+          );
+        }
+
+        // Force layout recalculation, then read scrollHeight AFTER removals so
+        // the document height reflects the post-cleanup layout.
+        void document.body.offsetHeight;
         const scrollH = document.documentElement.scrollHeight;
 
-        const sectionEls = Array.from(
+        // Re-query AFTER removals so subsequent measurements reflect the
+        // post-cleanup layout (heights and Y positions shift upward).
+        const cleanedSectionEls = Array.from(
           document.querySelectorAll<HTMLElement>("[id^='section-']")
         );
 
         const raw: { id: string; y: number; height: number; isText: boolean }[] = [];
 
-        // Final-line-of-defence deduplication: if the DOM somehow contains
-        // multiple elements for the same data section type (e.g. due to a
-        // legacy duplicate row in the DB that bypassed all upstream guards),
-        // only render the FIRST instance. Text sections are exempt because
-        // multiple text blocks of the same type are legitimate.
-        const seenSectionTypes = new Set<string>();
-
         // Each section block (cover is merged into the first section below)
-        for (const el of sectionEls) {
+        for (const el of cleanedSectionEls) {
           const rect = el.getBoundingClientRect();
           const y = rect.top + window.scrollY;
           const sectionType = el.getAttribute("data-section-type") ?? "";
           const isText = TEXT_SECTION_TYPES.includes(sectionType);
-          if (!isText && sectionType) {
-            if (seenSectionTypes.has(sectionType)) continue;
-            seenSectionTypes.add(sectionType);
-          }
           if (rect.height > 10) {
             raw.push({ id: el.id, y, height: rect.height, isText });
           }
