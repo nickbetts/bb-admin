@@ -131,39 +131,38 @@ export async function getClickUpLists(
 
 /**
  * Returns all members of every team the token has access to, deduplicated by user id.
- * Uses the dedicated /team/{id}/member endpoint for reliability.
+ * Tries GET /team/{id}/member first; falls back to the inline members on /team.
  */
 export async function getClickUpMembers(): Promise<
   Array<{ id: number; username: string; email: string; profilePicture: string | null }>
 > {
   const token = await getClickUpToken();
-  const { teams } = await clickupFetch<{ teams: Array<{ id: string }> }>("/team", token);
+
+  // ClickUp v2: GET /team returns teams with members inline
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const raw = await clickupFetch<any>("/team", token);
+  console.log("ClickUp /team raw keys:", JSON.stringify(Object.keys(raw)));
+  const teams: Array<{ id: string; members?: ClickUpMember[] }> = raw.teams ?? [];
 
   const seen = new Set<number>();
   const members: Array<{ id: number; username: string; email: string; profilePicture: string | null }> = [];
 
   for (const team of teams) {
-    try {
-      const { members: teamMembers } = await clickupFetch<{ members: ClickUpMember[] }>(
-        `/team/${team.id}/member`,
-        token,
-      );
-      for (const m of teamMembers ?? []) {
-        if (!seen.has(m.user.id)) {
-          seen.add(m.user.id);
-          members.push({
-            id: m.user.id,
-            username: m.user.username,
-            email: m.user.email,
-            profilePicture: m.user.profilePicture,
-          });
-        }
+    console.log(`ClickUp team ${team.id}: ${team.members?.length ?? 0} inline members`);
+    for (const m of team.members ?? []) {
+      if (m?.user && !seen.has(m.user.id)) {
+        seen.add(m.user.id);
+        members.push({
+          id: m.user.id,
+          username: m.user.username ?? m.user.email ?? String(m.user.id),
+          email: m.user.email ?? "",
+          profilePicture: m.user.profilePicture ?? null,
+        });
       }
-    } catch {
-      // Skip teams we can't read members from
     }
   }
 
+  console.log(`ClickUp members resolved: ${members.length}`);
   return members.sort((a, b) => a.username.localeCompare(b.username));
 }
 
