@@ -20,6 +20,7 @@ import {
   Zap,
 } from "lucide-react";
 import { AnalyticsConfigForm } from "@/components/landing-pages/AnalyticsConfigForm";
+import { ClickUpTaskModal } from "@/components/landing-pages/ClickUpTaskModal";
 import type { LpAnalyticsConfig } from "@/lib/lp-analytics";
 import { CRO_ELEMENTS, CRO_CATEGORY_LABELS, type CroCategory } from "@/lib/lp-cro-elements";
 
@@ -63,6 +64,11 @@ export default function NewLandingPage() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // ClickUp post-generation modal
+  const [showClickUpModal, setShowClickUpModal] = useState(false);
+  const [generatedLpId, setGeneratedLpId] = useState<string | null>(null);
+  const [generatedLpClientName, setGeneratedLpClientName] = useState<string | undefined>(undefined);
 
   // Form state
   const [clientId, setClientId] = useState("");
@@ -339,7 +345,10 @@ export default function NewLandingPage() {
         // ── Job 3: audit pass 2 — reads the pass-1 result from DB, own 300 s budget ──
         await runAuditPass(landingPageId, "Optimising (pass 2)");
 
-        router.push(`/tools/landing-pages/${landingPageId}`);
+        setGeneratedLpId(landingPageId);
+        setGeneratedLpClientName(clientId ? clients.find((c) => c.id === clientId)?.name : undefined);
+        setShowClickUpModal(true);
+        setLoading(false);
       } else {
         setError("Generation completed but no page ID was returned.");
         setLoading(false);
@@ -359,6 +368,19 @@ export default function NewLandingPage() {
         messages={progressMessages}
         title={title}
         onChaosToggle={() => setFunMode((v) => !v)}
+      />
+    )}
+
+    {/* ── ClickUp go-live checklist modal ─────────────────────────────────── */}
+    {showClickUpModal && generatedLpId && (
+      <ClickUpTaskModal
+        lpTitle={title}
+        lpId={generatedLpId}
+        clientName={generatedLpClientName}
+        onClose={() => {
+          setShowClickUpModal(false);
+          router.push(`/tools/landing-pages/${generatedLpId}`);
+        }}
       />
     )}
 

@@ -72,6 +72,12 @@ function SettingsPanelInner() {
   const [anthropicKeySaved, setAnthropicKeySaved] = useState(false);
   const [anthropicKeyError, setAnthropicKeyError] = useState<string | null>(null);
 
+  const [clickupApiToken, setClickupApiToken] = useState("");
+  const [clickupApiTokenInput, setClickupApiTokenInput] = useState("");
+  const [clickupTokenSaving, setClickupTokenSaving] = useState(false);
+  const [clickupTokenSaved, setClickupTokenSaved] = useState(false);
+  const [clickupTokenError, setClickupTokenError] = useState<string | null>(null);
+
   // Resend email settings
   const [resendApiKey, setResendApiKey] = useState("");
   const [resendFrom, setResendFrom] = useState("");
@@ -185,6 +191,9 @@ function SettingsPanelInner() {
       const storedAnthropicKey = settings.anthropicApiKey ?? "";
       setAnthropicKey(storedAnthropicKey);
       setAnthropicKeyInput(storedAnthropicKey ? "sk-ant-…redacted" : "");
+      const storedClickupToken = settings.clickupApiToken ?? "";
+      setClickupApiToken(storedClickupToken);
+      setClickupApiTokenInput(storedClickupToken ? "pk_…redacted" : "");
       if (settings.taskBenchmarks) {
         try {
           const stored = JSON.parse(settings.taskBenchmarks) as Array<{ task: string; hours: number }>;
@@ -249,6 +258,29 @@ function SettingsPanelInner() {
       setMccError(err instanceof Error ? err.message : "Failed to save");
     } finally {
       setMccSaving(false);
+    }
+  }
+
+  async function handleClickupTokenSave() {
+    setClickupTokenSaving(true);
+    setClickupTokenSaved(false);
+    setClickupTokenError(null);
+    try {
+      const tokenToSave = clickupApiTokenInput.startsWith("pk_…") ? clickupApiToken : clickupApiTokenInput;
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clickupApiToken: tokenToSave }),
+      });
+      if (!res.ok) throw new Error("Failed to save");
+      setClickupApiToken(tokenToSave);
+      setClickupApiTokenInput(tokenToSave ? "pk_…redacted" : "");
+      setClickupTokenSaved(true);
+      setTimeout(() => setClickupTokenSaved(false), 3000);
+    } catch (err) {
+      setClickupTokenError(err instanceof Error ? err.message : "Failed to save");
+    } finally {
+      setClickupTokenSaving(false);
     }
   }
 
@@ -706,6 +738,38 @@ function SettingsPanelInner() {
             </button>
           </div>
           {anthropicKey && <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 8 }}>✓ Anthropic API key configured. Content Strategy Creator is ready to use.</p>}
+        </div>
+      </div>
+
+      {/* ClickUp Integration */}
+      <div className="card" style={{ marginBottom: 24 }}>
+        <div className="card-header">
+          <div>
+            <h2 className="card-title">ClickUp Integration</h2>
+            <p className="card-subtitle">Used to automatically create go-live checklists in ClickUp when landing pages are generated. Get your personal API token from <a href="https://app.clickup.com/settings/apps" target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)" }}>ClickUp Settings → Apps</a>.</p>
+          </div>
+        </div>
+        <div className="card-body">
+          {clickupTokenError && <p style={{ fontSize: 13, color: "var(--danger)", marginBottom: 12 }}>{clickupTokenError}</p>}
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            <input
+              type="password"
+              className="form-input"
+              style={{ flex: 1, fontFamily: "monospace", fontSize: 13 }}
+              placeholder="pk_…"
+              value={clickupApiTokenInput}
+              onChange={(e) => setClickupApiTokenInput(e.target.value)}
+              onFocus={() => { if (clickupApiTokenInput === "pk_…redacted") setClickupApiTokenInput(""); }}
+            />
+            <button
+              onClick={handleClickupTokenSave}
+              disabled={clickupTokenSaving || !clickupApiTokenInput || clickupApiTokenInput === "pk_…redacted"}
+              className="btn btn-primary"
+            >
+              {clickupTokenSaving ? "Saving…" : clickupTokenSaved ? "Saved ✓" : "Save"}
+            </button>
+          </div>
+          {clickupApiToken && <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 8 }}>✓ ClickUp token configured. Go-live checklists will be created automatically when landing pages are generated.</p>}
         </div>
       </div>
 

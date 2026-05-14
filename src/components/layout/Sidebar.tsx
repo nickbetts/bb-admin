@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -43,7 +43,10 @@ import {
   PencilLine,
   Zap,
   Crosshair,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
+import { SidebarClickUpPanel } from "@/components/layout/SidebarClickUpPanel";
 import { CommandPalette } from "@/components/ui/CommandPalette";
 import { KeyboardShortcutsHelp } from "@/components/ui/KeyboardShortcutsHelp";
 import { BackToTop } from "@/components/ui/BackToTop";
@@ -364,6 +367,13 @@ export function Sidebar({ user, permissions, isAdmin = false, previewRoleId = nu
   const [isMobile, setIsMobile] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [clickupPanelOpen, setClickupPanelOpen] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    if (typeof window === "undefined") return 260;
+    const stored = localStorage.getItem("sidebar-width");
+    return stored ? Math.max(200, Math.min(500, parseInt(stored, 10))) : 260;
+  });
+  const sidebarWidthRef = useRef(sidebarWidth);
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window === "undefined") return false;
     const stored = localStorage.getItem("theme");
@@ -382,6 +392,24 @@ export function Sidebar({ user, permissions, isAdmin = false, previewRoleId = nu
     const next = !darkMode;
     setDarkMode(next);
     localStorage.setItem("theme", next ? "dark" : "light");
+  }
+
+  function onResizeStart(e: React.MouseEvent) {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = sidebarWidth;
+    function onMove(ev: MouseEvent) {
+      const newWidth = Math.max(200, Math.min(500, startWidth + ev.clientX - startX));
+      sidebarWidthRef.current = newWidth;
+      setSidebarWidth(newWidth);
+    }
+    function onUp() {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      localStorage.setItem("sidebar-width", String(sidebarWidthRef.current));
+    }
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
   }
 
   // Cmd+K / Ctrl+K to open command palette, ? for shortcuts, G+key for navigation
@@ -711,7 +739,29 @@ export function Sidebar({ user, permissions, isAdmin = false, previewRoleId = nu
 
   // Desktop sidebar
   return (
-    <aside className={cn("sidebar", collapsed && "collapsed")} aria-label="Main navigation">
+    <aside
+      className={cn("sidebar", collapsed && "collapsed")}
+      aria-label="Main navigation"
+      style={collapsed ? undefined : { width: sidebarWidth }}
+    >
+      {/* Resize handle — drag right edge to adjust width */}
+      {!collapsed && (
+        <div
+          onMouseDown={onResizeStart}
+          style={{
+            position: "absolute",
+            right: 0,
+            top: 0,
+            bottom: 0,
+            width: 6,
+            cursor: "col-resize",
+            zIndex: 20,
+            borderRadius: "0 3px 3px 0",
+          }}
+          title="Drag to resize sidebar"
+          aria-hidden="true"
+        />
+      )}
       <div className="sidebar-logo">
         <div className="sidebar-logo-inner">
           {collapsed ? (
@@ -748,6 +798,40 @@ export function Sidebar({ user, permissions, isAdmin = false, previewRoleId = nu
       {renderNavLinks()}
 
       {!collapsed && <DaChecker />}
+
+      {/* ClickUp Panel */}
+      <div style={{ flexShrink: 0, borderTop: "1px solid var(--border-subtle)", marginTop: 4 }}>
+        <button
+          onClick={() => {
+            if (collapsed) { setCollapsed(false); setClickupPanelOpen(true); }
+            else setClickupPanelOpen((o) => !o);
+          }}
+          title={collapsed ? "ClickUp Tasks" : undefined}
+          className="nav-item"
+          style={{
+            width: "100%",
+            justifyContent: collapsed ? "center" : "space-between",
+            padding: collapsed ? undefined : "8px 16px",
+          }}
+          aria-expanded={clickupPanelOpen}
+        >
+          <span style={{ display: "flex", alignItems: "center", gap: collapsed ? 0 : 8 }}>
+            <span className="nav-item-icon" style={{ display: "flex", width: 20, height: 20, alignItems: "center", justifyContent: "center" }}>
+              <ClipboardCheck style={{ width: 16, height: 16 }} />
+            </span>
+            {!collapsed && <span style={{ fontSize: 13, fontWeight: 500 }}>ClickUp Tasks</span>}
+          </span>
+          {!collapsed && (clickupPanelOpen
+            ? <ChevronUp style={{ width: 14, height: 14, color: "var(--text-3)" }} />
+            : <ChevronDown style={{ width: 14, height: 14, color: "var(--text-3)" }} />
+          )}
+        </button>
+        {!collapsed && clickupPanelOpen && (
+          <div style={{ borderTop: "1px solid var(--border-subtle)", overflowY: "auto", maxHeight: 480 }}>
+            <SidebarClickUpPanel />
+          </div>
+        )}
+      </div>
 
       <div className="sidebar-footer">
         {!collapsed && (
