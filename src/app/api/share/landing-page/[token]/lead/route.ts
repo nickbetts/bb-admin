@@ -129,13 +129,22 @@ export async function POST(
   // rather than assuming fixed keys.
 
   const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  // Lenient check: key is literally "email" — just requires an @ sign.
+  // This handles autocomplete quirks, zero-width chars, or non-ASCII that
+  // would fail the strict regex even though the address is structurally valid.
+  const HAS_AT = (s: string) => s.includes("@");
 
   // Find the email: prefer keys containing "email", else scan all string values
   let email = "";
   for (const [k, v] of Object.entries(body)) {
     if (typeof v === "string" && k.toLowerCase().includes("email")) {
-      const candidate = v.trim();
-      if (EMAIL_RE.test(candidate)) { email = candidate; break; }
+      // Normalise: strip non-printable/non-ASCII control chars that browsers
+      // sometimes inject via autocomplete (zero-width spaces, RTL marks, etc.)
+      const candidate = v.replace(/[^\x20-\x7E]/g, "").trim();
+      const kExact = k.toLowerCase() === "email";
+      if (EMAIL_RE.test(candidate) || (kExact && HAS_AT(candidate))) {
+        email = candidate; break;
+      }
     }
   }
   if (!email) {
@@ -149,7 +158,7 @@ export async function POST(
   email = email.slice(0, 200);
 
   if (!email) {
-    console.error("[lead] No email found in submission. Keys:", Object.keys(body));
+    console.error("[lead] No email found in submission. Keys:", Object.keys(body), "Values:", Object.fromEntries(Object.entries(body).map(([k, v]) => [k, typeof v])));
     return NextResponse.json({ error: "A valid email address is required" }, { status: 400 });
   }
 
