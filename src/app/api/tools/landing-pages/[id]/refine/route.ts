@@ -70,7 +70,7 @@ export async function POST(
           if (pc.listItems?.length) parts.push(`List items:\n${pc.listItems.slice(0, 300).map((item) => `  • ${item}`).join("\n")}`);
           if (pc.numericStats?.length) parts.push(`Stats: ${pc.numericStats.slice(0, 60).join(" | ")}`);
           if (pc.bodyCopy.length) parts.push(`Body copy:\n${pc.bodyCopy.slice(0, 40).map((p) => `  "${p}"`).join("\n")}`);
-          if (pc.allBodyText) parts.push(`Full page text:\n${pc.allBodyText.slice(0, 15000)}`);
+          if (pc.allBodyText) parts.push(`Full page text:\n${pc.allBodyText.slice(0, 80000)}`);
           if (pc.imageryUrls.length) parts.push(`Images: ${pc.imageryUrls.slice(0, 30).join(", ")}`);
           chunks.push(parts.join("\n"));
         } else {
