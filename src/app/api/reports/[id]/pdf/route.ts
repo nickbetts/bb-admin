@@ -173,12 +173,25 @@ export async function GET(
 
         const raw: { id: string; y: number; height: number; isText: boolean }[] = [];
 
+        // Defense-in-depth: even if the print view accidentally renders two
+        // elements with the same data-section-type (e.g. duplicate DB rows
+        // for the same channel), only screenshot the first occurrence of each
+        // non-text section type. Text sections may legitimately repeat.
+        const seenDataTypes = new Set<string>();
+
         // Each section block (cover is merged into the first section below)
         for (const el of cleanedSectionEls) {
           const rect = el.getBoundingClientRect();
           const y = rect.top + window.scrollY;
           const sectionType = el.getAttribute("data-section-type") ?? "";
           const isText = TEXT_SECTION_TYPES.includes(sectionType);
+          if (!isText && sectionType) {
+            if (seenDataTypes.has(sectionType)) {
+              // Skip duplicate data section — already captured above.
+              continue;
+            }
+            seenDataTypes.add(sectionType);
+          }
           if (rect.height > 10) {
             raw.push({ id: el.id, y, height: rect.height, isText });
           }
