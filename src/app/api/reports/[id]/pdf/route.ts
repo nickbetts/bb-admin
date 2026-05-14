@@ -132,6 +132,28 @@ export async function GET(
           document.querySelectorAll<HTMLElement>("[id^='section-']")
         );
 
+        // Diagnostic: log all section elements found before any dedup so
+        // we can see the exact DOM state in Vercel logs if duplicates appear.
+        // eslint-disable-next-line no-console
+        console.log(
+          `[pdf-sections] Found ${sectionEls.length} section element(s): ` +
+          sectionEls.map(el => `${el.id}(${el.getAttribute("data-section-type") ?? "?"})`).join(", ")
+        );
+
+        // Also check for any data-section-type elements outside the id^='section-' scope
+        // (rogue renders that would escape our dedup).
+        const allDataSectionEls = Array.from(
+          document.querySelectorAll<HTMLElement>("[data-section-type]")
+        );
+        const rogues = allDataSectionEls.filter(el => !el.id.startsWith("section-"));
+        if (rogues.length > 0) {
+          // eslint-disable-next-line no-console
+          console.warn(
+            `[pdf-sections] ${rogues.length} rogue data-section-type element(s) outside id^='section-': ` +
+            rogues.map(el => `${el.id || "(no-id)"}(${el.getAttribute("data-section-type") ?? "?"})`).join(", ")
+          );
+        }
+
         // Final-line-of-defence deduplication: if the DOM somehow contains
         // multiple elements for the same data section type (e.g. due to a
         // legacy duplicate row in the DB that bypassed all upstream guards,
