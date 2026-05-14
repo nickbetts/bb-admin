@@ -96,7 +96,10 @@ export async function POST(
 
   const landingPage = await prisma.landingPage.findUnique({
     where: { shareToken: token },
-    select: { id: true, title: true, formConfig: true, briefJson: true, clientId: true },
+    select: {
+      id: true, title: true, formConfig: true, briefJson: true, clientId: true,
+      client: { select: { contactEmails: true } },
+    },
   });
 
   if (!landingPage) {
@@ -282,7 +285,20 @@ export async function POST(
   // treated as success so the form still completes; any other send failure
   // returns a 500 which keeps the button as "Try Again" and suppresses the
   // conversion event.
-  if (formConfig.notifyEmails && formConfig.notifyEmails.length > 0) {
+
+  // Resolve notify emails: form config takes priority; fall back to the
+  // client's contactEmails so legacy LPs without explicit notifyEmails
+  // configured still deliver lead notifications.
+  let clientContactEmails: string[] = [];
+  try {
+    const raw = landingPage.client?.contactEmails;
+    if (raw) clientContactEmails = JSON.parse(raw) as string[];
+  } catch { /* ignore malformed JSON */ }
+  const resolvedNotifyEmails = (formConfig.notifyEmails && formConfig.notifyEmails.length > 0)
+    ? formConfig.notifyEmails
+    : clientContactEmails;
+
+  if (resolvedNotifyEmails.length > 0) {
     const lpTitle = landingPage.title ?? "Landing Page";
     const stringFields = Object.fromEntries(
       Object.entries(body).filter(([, v]) => typeof v === "string" && (v as string).trim()) as [string, string][]
@@ -308,7 +324,7 @@ export async function POST(
         submittedAt: new Date(),
       });
       await sendEmail({
-        to: formConfig.notifyEmails,
+        to: resolvedNotifyEmails,
         subject: `New lead: ${name || email} — ${lpTitle}`,
         html,
         text,
