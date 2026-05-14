@@ -28,7 +28,7 @@ interface ClickUpList {
 interface ClickUpMember {
   user: {
     id: number;
-    username: string;
+    username: string | null;
     email: string;
     profilePicture: string | null;
   };
@@ -131,24 +131,21 @@ export async function getClickUpLists(
 
 /**
  * Returns all members of every team the token has access to, deduplicated by user id.
- * Tries GET /team/{id}/member first; falls back to the inline members on /team.
+ * Members are returned inline in the GET /team response (ClickUp v2).
  */
 export async function getClickUpMembers(): Promise<
   Array<{ id: number; username: string; email: string; profilePicture: string | null }>
 > {
   const token = await getClickUpToken();
 
-  // ClickUp v2: GET /team returns teams with members inline
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const raw = await clickupFetch<any>("/team", token);
-  console.log("ClickUp /team raw keys:", JSON.stringify(Object.keys(raw)));
-  const teams: Array<{ id: string; members?: ClickUpMember[] }> = raw.teams ?? [];
+  const { teams } = await clickupFetch<{
+    teams: Array<{ id: string; members?: ClickUpMember[] }>;
+  }>("/team", token);
 
   const seen = new Set<number>();
   const members: Array<{ id: number; username: string; email: string; profilePicture: string | null }> = [];
 
-  for (const team of teams) {
-    console.log(`ClickUp team ${team.id}: ${team.members?.length ?? 0} inline members`);
+  for (const team of teams ?? []) {
     for (const m of team.members ?? []) {
       if (m?.user && !seen.has(m.user.id)) {
         seen.add(m.user.id);
@@ -162,7 +159,6 @@ export async function getClickUpMembers(): Promise<
     }
   }
 
-  console.log(`ClickUp members resolved: ${members.length}`);
   return members.sort((a, b) => a.username.localeCompare(b.username));
 }
 

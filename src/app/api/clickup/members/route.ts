@@ -10,7 +10,6 @@ export async function GET() {
 
   try {
     const members = await getClickUpMembers();
-    console.log(`ClickUp members: found ${members.length}`);
     return NextResponse.json({ members });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
