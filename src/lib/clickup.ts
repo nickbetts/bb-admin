@@ -131,27 +131,36 @@ export async function getClickUpLists(
 
 /**
  * Returns all members of every team the token has access to, deduplicated by user id.
+ * Uses the dedicated /team/{id}/member endpoint for reliability.
  */
 export async function getClickUpMembers(): Promise<
   Array<{ id: number; username: string; email: string; profilePicture: string | null }>
 > {
   const token = await getClickUpToken();
-  const { teams } = await clickupFetch<{ teams: Array<{ id: string; members: ClickUpMember[] }> }>("/team", token);
+  const { teams } = await clickupFetch<{ teams: Array<{ id: string }> }>("/team", token);
 
   const seen = new Set<number>();
   const members: Array<{ id: number; username: string; email: string; profilePicture: string | null }> = [];
 
   for (const team of teams) {
-    for (const m of team.members ?? []) {
-      if (!seen.has(m.user.id)) {
-        seen.add(m.user.id);
-        members.push({
-          id: m.user.id,
-          username: m.user.username,
-          email: m.user.email,
-          profilePicture: m.user.profilePicture,
-        });
+    try {
+      const { members: teamMembers } = await clickupFetch<{ members: ClickUpMember[] }>(
+        `/team/${team.id}/member`,
+        token,
+      );
+      for (const m of teamMembers ?? []) {
+        if (!seen.has(m.user.id)) {
+          seen.add(m.user.id);
+          members.push({
+            id: m.user.id,
+            username: m.user.username,
+            email: m.user.email,
+            profilePicture: m.user.profilePicture,
+          });
+        }
       }
+    } catch {
+      // Skip teams we can't read members from
     }
   }
 

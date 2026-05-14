@@ -74,6 +74,7 @@ export function SidebarClickUpPanel() {
   const [loadingFolders, setLoadingFolders] = useState(true);
   const [foldersError, setFoldersError] = useState<string | null>(null);
   const [loadingLists, setLoadingLists] = useState(false);
+  const [loadingMembers, setLoadingMembers] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [taskUrl, setTaskUrl] = useState<string | null>(null);
@@ -81,20 +82,11 @@ export function SidebarClickUpPanel() {
   function loadFolders() {
     setLoadingFolders(true);
     setFoldersError(null);
-    Promise.all([
-      fetch("/api/clickup").then(async (res) => {
+    fetch("/api/clickup")
+      .then(async (res) => {
         const data = await res.json() as { folders?: ClickUpFolder[]; error?: string };
         if (!res.ok) throw new Error(data.error ?? "Failed to load folders");
-        return data.folders ?? [];
-      }),
-      fetch("/api/clickup/members").then(async (res) => {
-        const data = await res.json() as { members?: ClickUpMember[] };
-        return res.ok ? (data.members ?? []) : [];
-      }),
-    ])
-      .then(([folders, fetchedMembers]) => {
-        setFolders(folders);
-        setMembers(fetchedMembers);
+        setFolders(data.folders ?? []);
       })
       .catch((err: unknown) => {
         setFoldersError(err instanceof Error ? err.message : "Failed to load folders");
@@ -102,7 +94,18 @@ export function SidebarClickUpPanel() {
       .finally(() => setLoadingFolders(false));
   }
 
-  useEffect(() => { loadFolders(); }, []);
+  function loadMembers() {
+    setLoadingMembers(true);
+    fetch("/api/clickup/members")
+      .then(async (res) => {
+        const data = await res.json() as { members?: ClickUpMember[] };
+        setMembers(res.ok ? (data.members ?? []) : []);
+      })
+      .catch(() => setMembers([]))
+      .finally(() => setLoadingMembers(false));
+  }
+
+  useEffect(() => { loadFolders(); loadMembers(); }, []);
 
   useEffect(() => {
     if (!selectedFolderId) { setLists([]); setSelectedListId(""); return; }
@@ -266,16 +269,22 @@ export function SidebarClickUpPanel() {
       </div>
 
       {/* Assignees */}
-      {members.length > 0 && (
-        <div>
-          <label style={labelSt}>
-            Assign To
-            {selectedAssignees.length > 0 && (
-              <span style={{ fontWeight: 400, textTransform: "none", marginLeft: 4 }}>
-                ({selectedAssignees.length} selected)
-              </span>
-            )}
-          </label>
+      <div>
+        <label style={labelSt}>
+          Assign To
+          {selectedAssignees.length > 0 && (
+            <span style={{ fontWeight: 400, textTransform: "none", marginLeft: 4 }}>
+              ({selectedAssignees.length} selected)
+            </span>
+          )}
+        </label>
+        {loadingMembers ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--text-3)", fontSize: 11, height: 28 }}>
+            <Loader2 style={{ width: 11, height: 11, animation: "spin 1s linear infinite" }} /> Loading…
+          </div>
+        ) : members.length === 0 ? (
+          <p style={{ fontSize: 11, color: "var(--text-4)", margin: 0, fontStyle: "italic" }}>No members found</p>
+        ) : (
           <div style={{ border: "1px solid var(--border)", borderRadius: 6, overflow: "hidden", maxHeight: 140, overflowY: "auto" }}>
             {members.map((m, idx) => (
               <label
@@ -303,8 +312,8 @@ export function SidebarClickUpPanel() {
               </label>
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Due date */}
       <div>

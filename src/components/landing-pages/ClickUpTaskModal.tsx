@@ -122,6 +122,7 @@ export function ClickUpTaskModal({ lpTitle, onClose }: ClickUpTaskModalProps) {
   const [foldersError, setFoldersError] = useState<string | null>(null);
   const [loadingLists, setLoadingLists] = useState(false);
   const [listsError, setListsError] = useState<string | null>(null);
+  const [loadingMembers, setLoadingMembers] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -132,25 +133,28 @@ export function ClickUpTaskModal({ lpTitle, onClose }: ClickUpTaskModalProps) {
   useEffect(() => {
     setLoadingFolders(true);
     setFoldersError(null);
-    Promise.all([
-      fetch("/api/clickup").then(async (res) => {
+    fetch("/api/clickup")
+      .then(async (res) => {
         const data = await res.json() as { folders?: ClickUpFolder[]; error?: string };
         if (!res.ok) throw new Error(data.error ?? "Failed to load folders");
-        return data.folders ?? [];
-      }),
-      fetch("/api/clickup/members").then(async (res) => {
-        const data = await res.json() as { members?: ClickUpMember[] };
-        return res.ok ? (data.members ?? []) : [];
-      }),
-    ])
-      .then(([fetchedFolders, fetchedMembers]) => {
-        setFolders(fetchedFolders);
-        setMembers(fetchedMembers);
+        setFolders(data.folders ?? []);
       })
       .catch((err: unknown) => {
         setFoldersError(err instanceof Error ? err.message : "Failed to load folders");
       })
       .finally(() => setLoadingFolders(false));
+  }, []);
+
+  // ── Load members independently ────────────────────────────────────────────
+  useEffect(() => {
+    setLoadingMembers(true);
+    fetch("/api/clickup/members")
+      .then(async (res) => {
+        const data = await res.json() as { members?: ClickUpMember[] };
+        setMembers(res.ok ? (data.members ?? []) : []);
+      })
+      .catch(() => setMembers([]))
+      .finally(() => setLoadingMembers(false));
   }, []);
 
   // ── Load lists when folder changes ────────────────────────────────────────
@@ -422,16 +426,23 @@ export function ClickUpTaskModal({ lpTitle, onClose }: ClickUpTaskModalProps) {
             </div>
 
             {/* Assignees */}
-            {members.length > 0 && (
-              <div>
-                <label style={labelStyle}>
-                  Assign To
-                  {selectedAssignees.length > 0 && (
-                    <span style={{ fontWeight: 400, color: "var(--text-4)", marginLeft: 6 }}>
-                      ({selectedAssignees.length} selected)
-                    </span>
-                  )}
-                </label>
+            <div>
+              <label style={labelStyle}>
+                Assign To
+                {selectedAssignees.length > 0 && (
+                  <span style={{ fontWeight: 400, color: "var(--text-4)", marginLeft: 6 }}>
+                    ({selectedAssignees.length} selected)
+                  </span>
+                )}
+              </label>
+              {loadingMembers ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-3)", fontSize: 13, height: 38 }}>
+                  <Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }} />
+                  Loading members…
+                </div>
+              ) : members.length === 0 ? (
+                <p style={{ fontSize: 12, color: "var(--text-4)", margin: 0, fontStyle: "italic" }}>No workspace members found</p>
+              ) : (
                 <div style={{ border: "1px solid var(--border)", borderRadius: "var(--r-sm, var(--r))", overflow: "hidden", maxHeight: 160, overflowY: "auto" }}>
                   {members.map((m, idx) => (
                     <label
@@ -460,8 +471,8 @@ export function ClickUpTaskModal({ lpTitle, onClose }: ClickUpTaskModalProps) {
                     </label>
                   ))}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
             {/* Due date */}
             <div>
