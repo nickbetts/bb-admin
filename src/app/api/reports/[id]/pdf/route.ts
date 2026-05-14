@@ -181,6 +181,10 @@ export async function GET(
       const DESIRED_PAD_PX = 64;
       // Use 1 CSS px = 1 PDF pt — screen-format PDF, never physically printed.
       const PAGE_WIDTH_PT = 1200;
+      // At deviceScaleFactor:2, Chromium's GPU texture limit is ~8192 CSS px.
+      // Cap each screenshot chunk below that to prevent silent truncation of
+      // tall sections (e.g. SEO with a large keywords-by-tag table).
+      const MAX_CHUNK_CSS_PX = 7500;
 
       const outputDoc = await PDFDocument.create();
       const helvetica = await outputDoc.embedFont(StandardFonts.Helvetica);
@@ -190,6 +194,56 @@ export async function GET(
       const LINE_COLOR = rgb(0.88, 0.88, 0.88);
       const TEXT_COLOR = rgb(0.58, 0.58, 0.58);
       const reportLabel = `${report.title}  ·  ${report.period}`;
+
+      const drawHeaderFooter = (pdfPage: ReturnType<typeof outputDoc.addPage>, pageH: number) => {
+        // ── Header (top of page) ──────────────────────────────────────────
+        const headerY = pageH - V_MARGIN - FONT_SIZE;
+        pdfPage.drawLine({
+          start: { x: H_MARGIN, y: headerY - 6 },
+          end: { x: PAGE_WIDTH_PT - H_MARGIN, y: headerY - 6 },
+          thickness: 0.5,
+          color: LINE_COLOR,
+        });
+        pdfPage.drawText("i3media", {
+          x: H_MARGIN,
+          y: headerY,
+          size: FONT_SIZE,
+          font: helvetica,
+          color: TEXT_COLOR,
+        });
+        const labelWidth = helvetica.widthOfTextAtSize(reportLabel, FONT_SIZE);
+        pdfPage.drawText(reportLabel, {
+          x: PAGE_WIDTH_PT - H_MARGIN - labelWidth,
+          y: headerY,
+          size: FONT_SIZE,
+          font: helvetica,
+          color: TEXT_COLOR,
+        });
+
+        // ── Footer (bottom of page) ───────────────────────────────────────
+        const footerY = V_MARGIN;
+        pdfPage.drawLine({
+          start: { x: H_MARGIN, y: footerY + FONT_SIZE + 5 },
+          end: { x: PAGE_WIDTH_PT - H_MARGIN, y: footerY + FONT_SIZE + 5 },
+          thickness: 0.5,
+          color: LINE_COLOR,
+        });
+        pdfPage.drawText("i3media", {
+          x: H_MARGIN,
+          y: footerY,
+          size: FONT_SIZE,
+          font: helvetica,
+          color: TEXT_COLOR,
+        });
+        const periodWidth = helvetica.widthOfTextAtSize(report.period, FONT_SIZE);
+        pdfPage.drawText(report.period, {
+          x: PAGE_WIDTH_PT - H_MARGIN - periodWidth,
+          y: footerY,
+          size: FONT_SIZE,
+          font: helvetica,
+          color: TEXT_COLOR,
+        });
+      };
 
       for (let idx = 0; idx < regions.length; idx++) {
         const region = regions[idx];
@@ -207,66 +261,30 @@ export async function GET(
         const clipY = Math.max(0, region.y - topPad);
         const clipHeight = Math.min(region.height + topPad + bottomPad, fullHeight - clipY);
 
-        const screenshotBuffer = await page.screenshot({
-          type: "jpeg",
-          quality: JPEG_QUALITY,
-          clip: { x: 0, y: clipY, width: 1200, height: clipHeight },
-          captureBeyondViewport: true,
-        });
+        // Tall sections (e.g. SEO with many tracked keywords) can exceed the
+        // Chromium GPU texture size limit, causing the screenshot to be silently
+        // truncated. Split into vertical chunks so each screenshot stays within
+        // the safe limit, producing one PDF page per chunk.
+        const totalChunks = Math.ceil(clipHeight / MAX_CHUNK_CSS_PX);
+        for (let chunk = 0; chunk < totalChunks; chunk++) {
+          const chunkStartY = clipY + chunk * MAX_CHUNK_CSS_PX;
+          const chunkH = Math.min(MAX_CHUNK_CSS_PX, clipY + clipHeight - chunkStartY);
 
-        const jpegImage = await outputDoc.embedJpg(screenshotBuffer);
-        const newPage = outputDoc.addPage([PAGE_WIDTH_PT, clipHeight]);
-        newPage.drawImage(jpegImage, { x: 0, y: 0, width: PAGE_WIDTH_PT, height: clipHeight });
-
-        // Draw header and footer on every page except the cover (idx 0)
-        if (idx > 0) {
-          // ── Header (top of page) ──────────────────────────────────────────
-          const headerY = clipHeight - V_MARGIN - FONT_SIZE;
-          newPage.drawLine({
-            start: { x: H_MARGIN, y: headerY - 6 },
-            end: { x: PAGE_WIDTH_PT - H_MARGIN, y: headerY - 6 },
-            thickness: 0.5,
-            color: LINE_COLOR,
-          });
-          newPage.drawText("i3media", {
-            x: H_MARGIN,
-            y: headerY,
-            size: FONT_SIZE,
-            font: helvetica,
-            color: TEXT_COLOR,
-          });
-          const labelWidth = helvetica.widthOfTextAtSize(reportLabel, FONT_SIZE);
-          newPage.drawText(reportLabel, {
-            x: PAGE_WIDTH_PT - H_MARGIN - labelWidth,
-            y: headerY,
-            size: FONT_SIZE,
-            font: helvetica,
-            color: TEXT_COLOR,
+          const screenshotBuffer = await page.screenshot({
+            type: "jpeg",
+            quality: JPEG_QUALITY,
+            clip: { x: 0, y: chunkStartY, width: 1200, height: chunkH },
+            captureBeyondViewport: true,
           });
 
-          // ── Footer (bottom of page) ───────────────────────────────────────
-          const footerY = V_MARGIN;
-          newPage.drawLine({
-            start: { x: H_MARGIN, y: footerY + FONT_SIZE + 5 },
-            end: { x: PAGE_WIDTH_PT - H_MARGIN, y: footerY + FONT_SIZE + 5 },
-            thickness: 0.5,
-            color: LINE_COLOR,
-          });
-          newPage.drawText("i3media", {
-            x: H_MARGIN,
-            y: footerY,
-            size: FONT_SIZE,
-            font: helvetica,
-            color: TEXT_COLOR,
-          });
-          const periodWidth = helvetica.widthOfTextAtSize(report.period, FONT_SIZE);
-          newPage.drawText(report.period, {
-            x: PAGE_WIDTH_PT - H_MARGIN - periodWidth,
-            y: footerY,
-            size: FONT_SIZE,
-            font: helvetica,
-            color: TEXT_COLOR,
-          });
+          const jpegImage = await outputDoc.embedJpg(screenshotBuffer);
+          const newPage = outputDoc.addPage([PAGE_WIDTH_PT, chunkH]);
+          newPage.drawImage(jpegImage, { x: 0, y: 0, width: PAGE_WIDTH_PT, height: chunkH });
+
+          // Draw header and footer on every page except the cover (idx 0)
+          if (idx > 0) {
+            drawHeaderFooter(newPage, chunkH);
+          }
         }
       }
 

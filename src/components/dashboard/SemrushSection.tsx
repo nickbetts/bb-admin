@@ -1405,8 +1405,6 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
           />
         </SectionCard>
       )}
-        </>
-      )}
 
       {/* Super Summary */}
       {!hideAi && !loading && !error && overview && (
@@ -2058,6 +2056,8 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
             ]}
           />
         </SectionCard>
+      )}
+        </>
       )}
 
       {/* Share of Voice and Seasonality */}
