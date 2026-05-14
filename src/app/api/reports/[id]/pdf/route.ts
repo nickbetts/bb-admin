@@ -132,25 +132,30 @@ export async function GET(
           document.querySelectorAll<HTMLElement>("[id^='section-']")
         );
 
-        // Diagnostic: log all section elements found before any dedup so
-        // we can see the exact DOM state in Vercel logs if duplicates appear.
+        // Diagnostic: log all section elements with their bounding rects so we
+        // can spot region overlaps or unexpected heights in Vercel logs.
+        const scrollH_diag = document.documentElement.scrollHeight;
         // eslint-disable-next-line no-console
         console.log(
-          `[pdf-sections] Found ${sectionEls.length} section element(s): ` +
-          sectionEls.map(el => `${el.id}(${el.getAttribute("data-section-type") ?? "?"})`).join(", ")
+          `[pdf-sections] scrollH=${scrollH_diag} Found ${sectionEls.length} element(s): ` +
+          sectionEls.map(el => {
+            const r = el.getBoundingClientRect();
+            const y = Math.round(r.top + window.scrollY);
+            const h = Math.round(r.height);
+            return `${el.id}(${el.getAttribute("data-section-type") ?? "?"}) y=${y} h=${h} bottom=${y+h}`;
+          }).join(" | ")
         );
 
-        // Also check for any data-section-type elements outside the id^='section-' scope
-        // (rogue renders that would escape our dedup).
-        const allDataSectionEls = Array.from(
-          document.querySelectorAll<HTMLElement>("[data-section-type]")
-        );
-        const rogues = allDataSectionEls.filter(el => !el.id.startsWith("section-"));
-        if (rogues.length > 0) {
+        // Log last-child text content of seo section to diagnose what renders
+        // at the very bottom of the section (source of the phantom second header).
+        const seoEl = document.querySelector<HTMLElement>("[data-section-type='seo']");
+        if (seoEl) {
+          const seoRect = seoEl.getBoundingClientRect();
+          const fullText = (seoEl.textContent ?? "").replace(/\s+/g, " ").trim();
           // eslint-disable-next-line no-console
-          console.warn(
-            `[pdf-sections] ${rogues.length} rogue data-section-type element(s) outside id^='section-': ` +
-            rogues.map(el => `${el.id || "(no-id)"}(${el.getAttribute("data-section-type") ?? "?"})`).join(", ")
+          console.log(
+            `[pdf-seo-bottom] seo h=${Math.round(seoRect.height)} ` +
+            `lastText="${fullText.slice(-200)}"`
           );
         }
 
