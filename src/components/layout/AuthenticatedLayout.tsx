@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getEffectiveSession } from "@/lib/auth";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { ConnectionStatusBanner } from "@/components/layout/ConnectionStatusBanner";
 
 interface AuthenticatedLayoutProps {
   children: React.ReactNode;
@@ -34,7 +35,10 @@ export async function AuthenticatedLayout({
         previewRoleId={previewRoleId}
         previewRoleName={previewRoleName}
       />
-      <main id="main-content" className="app-main">{children}</main>
+      <div className="flex flex-col flex-1 min-w-0">
+        <ConnectionStatusBanner />
+        <main id="main-content" className="app-main">{children}</main>
+      </div>
     </div>
   );
 }

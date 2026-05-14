@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { withApiCache } from "@/lib/api-cache";
 
 export const dynamic = "force-dynamic";
 
@@ -38,12 +39,15 @@ export async function GET() {
     orderBy: { createdAt: "asc" },
   });
 
+  // Cache verification results for 2 hours to avoid hammering Google's OAuth endpoint
   const results = await Promise.all(
-    connections.map(async (conn) => ({
-      id: conn.id,
-      email: conn.email,
-      status: await testRefreshToken(conn.refreshToken),
-    }))
+    connections.map((conn) =>
+      withApiCache(`google-connection-status:${conn.id}`, 2, async () => ({
+        id: conn.id,
+        email: conn.email,
+        status: await testRefreshToken(conn.refreshToken),
+      }))
+    )
   );
 
   return NextResponse.json(results);
