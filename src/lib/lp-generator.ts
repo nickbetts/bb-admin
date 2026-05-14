@@ -14,6 +14,7 @@ import { buildDesignAuditBlock } from "@/lib/lp-design-elements";
 import { buildCopyAuditBlock } from "@/lib/lp-copy-elements";
 
 const MODEL = "claude-opus-4-7";
+const REFINE_MODEL = "claude-sonnet-4-5"; // Faster for refinements — avoids 300s Vercel timeout on large pages
 // Opus 4.7 supports up to 32K output tokens. A fully-populated landing
 // LP HTML for a fully populated page can reach 70-80k chars. At ~2 chars/token
 // for attribute-heavy HTML, that's ~35-40k output tokens. Set to 64k to give
@@ -1200,9 +1201,9 @@ export async function refineLandingPage(opts: RefineLPOptions): Promise<string> 
   let userContent = `Here is the current landing page HTML:\n\n${opts.currentHtml}\n\nBrand colours: ${colourSummary}`;
 
   if (opts.brandContext.rawHtml) {
-    // Raw HTML of the original scraped website — kept for brand/copy reference.
-    // Capped at 40 KB to capture more of the site without overwhelming context.
-    userContent += `\n\n## Original scraped website HTML (brand and copy reference):\n${opts.brandContext.rawHtml.slice(0, 40000)}`;
+    // Raw HTML of the original scraped website — brand/copy reference only.
+    // Capped at 8k during refinement to avoid excessive input context.
+    userContent += `\n\n## Original scraped website HTML (brand and copy reference):\n${opts.brandContext.rawHtml.slice(0, 8000)}`;
   }
 
   if (opts.brandContext.pageContent?.allBodyText) {
@@ -1234,7 +1235,7 @@ export async function refineLandingPage(opts: RefineLPOptions): Promise<string> 
   }
 
   const stream = anthropic.messages.stream({
-    model: MODEL,
+    model: REFINE_MODEL,
     max_tokens: MAX_TOKENS,
     system: REFINE_SYSTEM_PROMPT,
     messages: messages as Parameters<typeof anthropic.messages.stream>[0]["messages"],
