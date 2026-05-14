@@ -40,8 +40,9 @@ export interface RefineLPOptions {
   prompt: string;
   brandContext: BrandContext;
   conversationHistory?: { role: "user" | "assistant"; content: string }[];
-  referenceHtml?: string; // Uploaded inspiration page from the user
-  imageUrls?: string[];   // Images attached by the user in the chat input
+  referenceHtml?: string;      // Uploaded inspiration page from the user
+  imageUrls?: string[];        // Images attached by the user in the chat input
+  additionalContext?: string;  // Scraped content from user-supplied reference URLs
 }
 
 export interface ChatLPOptions {
@@ -50,7 +51,8 @@ export interface ChatLPOptions {
   brandContext: BrandContext;
   conversationHistory?: { role: "user" | "assistant"; content: string }[];
   referenceHtml?: string;
-  imageUrls?: string[];   // Images attached by the user in the chat input
+  imageUrls?: string[];        // Images attached by the user in the chat input
+  additionalContext?: string;  // Scraped content from user-supplied reference URLs
 }
 
 export interface ChatLPResponse {
@@ -1215,6 +1217,10 @@ export async function refineLandingPage(opts: RefineLPOptions): Promise<string> 
     userContent += `\n\n## Reference page for inspiration\nThe user has uploaded an HTML page they like. Use it for structural and feature inspiration only — preserve the current page's brand identity, colours, and all existing copy:\n\n${opts.referenceHtml}`;
   }
 
+  if (opts.additionalContext) {
+    userContent += `\n\n## Additional context from reference URLs provided by the user:\n${opts.additionalContext}`;
+  }
+
   if (opts.imageUrls?.length) {
     const imageBlocks = await buildImageBlocks(opts.imageUrls, undefined, 6);
     const urlList = opts.imageUrls.map((u, i) => `${i + 1}. ${u}`).join("\n");
@@ -1292,6 +1298,10 @@ export async function chatAboutLandingPage(opts: ChatLPOptions): Promise<ChatLPR
 
   if (opts.referenceHtml) {
     userContent += `\n\n## Reference page the user uploaded\n${opts.referenceHtml}`;
+  }
+
+  if (opts.additionalContext) {
+    userContent += `\n\n## Additional context from reference URLs provided by the user:\n${opts.additionalContext}`;
   }
 
   if (opts.imageUrls?.length) {

@@ -21,7 +21,6 @@ import {
   Save,
   MessageSquare,
   Wand2,
-  FileCode,
   Code,
   Layers,
   Palette,
@@ -576,15 +575,14 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
 
   // Chat state
   const [prompt, setPrompt] = useState("");
-  const [chatHistory, setChatHistory] = useState<{ role: "user" | "assistant"; content: string; version?: number; type?: "chat" | "refine"; refinementPrompt?: string; attachedImageUrls?: string[] }[]>([]);
+  const [chatHistory, setChatHistory] = useState<{ role: "user" | "assistant"; content: string; version?: number; type?: "chat" | "refine"; refinementPrompt?: string; attachedImageUrls?: string[]; attachedUrls?: string[] }[]>([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [chatting, setChatting] = useState(false);
 
-  // Reference HTML upload state
-  const [referenceHtml, setReferenceHtml] = useState<string | null>(null);
-  const [referenceFileName, setReferenceFileName] = useState<string | null>(null);
-  const referenceInputRef = useRef<HTMLInputElement>(null);
+  // Chat URL references (scraped on send for additional context)
+  const [chatUrls, setChatUrls] = useState<string[]>([]);
+  const [showUrlPanel, setShowUrlPanel] = useState(false);
 
   // Chat image attachments
   const [chatImages, setChatImages] = useState<{ id: string; previewUrl: string; status: "uploading" | "done" | "error"; blobUrl?: string; errorMsg?: string }[]>([]);
@@ -1210,7 +1208,8 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
 
     const successfulImageUrls = chatImages.filter((img) => img.status === "done" && img.blobUrl).map((img) => img.blobUrl as string);
 
-    setChatHistory((prev) => [...prev, { role: "user", content: userPrompt, type: "refine" as const, attachedImageUrls: successfulImageUrls.length ? successfulImageUrls : undefined }]);
+    const validCrawlUrls = chatUrls.filter((u) => { try { new URL(u); return true; } catch { return false; } });
+    setChatHistory((prev) => [...prev, { role: "user", content: userPrompt, type: "refine" as const, attachedImageUrls: successfulImageUrls.length ? successfulImageUrls : undefined, attachedUrls: validCrawlUrls.length ? validCrawlUrls : undefined }]);
 
     try {
       const aiHistory = chatHistory
@@ -1224,8 +1223,8 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
         body: JSON.stringify({
           prompt: userPrompt,
           conversationHistory: aiHistory,
-          referenceHtml: referenceHtml ?? undefined,
           imageUrls: successfulImageUrls.length ? successfulImageUrls : undefined,
+          crawlUrls: validCrawlUrls.length ? validCrawlUrls : undefined,
         }),
       });
 
@@ -1287,8 +1286,9 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
     setChatting(true);
 
     const successfulImageUrls = chatImages.filter((img) => img.status === "done" && img.blobUrl).map((img) => img.blobUrl as string);
+    const validCrawlUrls = chatUrls.filter((u) => { try { new URL(u); return true; } catch { return false; } });
 
-    setChatHistory((prev) => [...prev, { role: "user", content: userMessage, type: "chat" as const, attachedImageUrls: successfulImageUrls.length ? successfulImageUrls : undefined }]);
+    setChatHistory((prev) => [...prev, { role: "user", content: userMessage, type: "chat" as const, attachedImageUrls: successfulImageUrls.length ? successfulImageUrls : undefined, attachedUrls: validCrawlUrls.length ? validCrawlUrls : undefined }]);
 
     try {
       const aiHistory = chatHistory
@@ -1302,8 +1302,8 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
         body: JSON.stringify({
           message: userMessage,
           conversationHistory: aiHistory,
-          referenceHtml: referenceHtml ?? undefined,
           imageUrls: successfulImageUrls.length ? successfulImageUrls : undefined,
+          crawlUrls: validCrawlUrls.length ? validCrawlUrls : undefined,
         }),
       });
 
@@ -1333,19 +1333,6 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
       setChatting(false);
       setChatImages((prev) => { prev.forEach((img) => URL.revokeObjectURL(img.previewUrl)); return []; });
     }
-  };
-
-  const handleReferenceUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      setReferenceHtml(ev.target?.result as string);
-      setReferenceFileName(file.name);
-    };
-    reader.readAsText(file);
-    // Reset input so same file can be re-uploaded
-    e.target.value = "";
   };
 
   const handleChatImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -2043,47 +2030,10 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
             <>
               {/* Chat header */}
               <div style={{ flexShrink: 0, padding: "12px 16px", borderBottom: "1px solid var(--border)" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <div>
-                    <h2 style={{ fontSize: 14, fontWeight: 650, color: "var(--text)" }}>Refine with AI</h2>
-                    <p style={{ fontSize: 12, color: "var(--text-4)", marginTop: 2 }}>Chat to discuss · ⌘+Enter to apply directly</p>
-                  </div>
-                  <input
-                    ref={referenceInputRef}
-                    type="file"
-                    accept=".html"
-                    onChange={handleReferenceUpload}
-                    style={{ display: "none" }}
-                  />
-                  <button
-                    onClick={() => referenceInputRef.current?.click()}
-                    title="Upload a reference HTML page for inspiration"
-                    style={{
-                      display: "inline-flex", alignItems: "center", gap: 4,
-                      padding: "5px 8px", fontSize: 11, fontWeight: 500,
-                      color: referenceHtml ? "var(--accent)" : "var(--text-3)",
-                      background: referenceHtml ? "var(--accent-bg)" : "var(--border-subtle)",
-                      border: "none", borderRadius: "var(--r-sm)", cursor: "pointer",
-                      transition: "all 0.15s",
-                    }}
-                  >
-                    <FileCode style={{ width: 13, height: 13 }} />
-                    {referenceHtml ? "Ref loaded" : "Upload ref"}
-                  </button>
+                <div>
+                  <h2 style={{ fontSize: 14, fontWeight: 650, color: "var(--text)" }}>Refine with AI</h2>
+                  <p style={{ fontSize: 12, color: "var(--text-4)", marginTop: 2 }}>Chat to discuss · ⌘+Enter to apply directly</p>
                 </div>
-                {referenceHtml && referenceFileName && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8, padding: "4px 8px", background: "var(--accent-bg)", borderRadius: "var(--r-sm)" }}>
-                    <FileCode style={{ width: 12, height: 12, color: "var(--accent)", flexShrink: 0 }} />
-                    <span style={{ fontSize: 11, color: "var(--accent)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{referenceFileName}</span>
-                    <button
-                      onClick={() => { setReferenceHtml(null); setReferenceFileName(null); }}
-                      style={{ background: "none", border: "none", cursor: "pointer", color: "var(--accent)", padding: 0, display: "flex", alignItems: "center" }}
-                      title="Remove reference"
-                    >
-                      <X style={{ width: 12, height: 12 }} />
-                    </button>
-                  </div>
-                )}
               </div>
 
               {/* Chat messages */}
@@ -2135,6 +2085,16 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                           {msg.attachedImageUrls.map((url) => (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img key={url} src={url} alt="" style={{ width: 48, height: 48, objectFit: "cover", borderRadius: 4, border: "1px solid rgba(255,255,255,0.25)" }} />
+                          ))}
+                        </div>
+                      )}
+                      {msg.role === "user" && msg.attachedUrls?.length && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 3, marginTop: 6 }}>
+                          {msg.attachedUrls.map((url) => (
+                            <div key={url} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, color: "rgba(255,255,255,0.8)" }}>
+                              <Globe style={{ width: 9, height: 9, flexShrink: 0 }} />
+                              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{url}</span>
+                            </div>
                           ))}
                         </div>
                       )}
@@ -2295,6 +2255,44 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                   </div>
                 )}
 
+                {showUrlPanel && (
+                  <div style={{ marginBottom: 8, padding: "8px 10px", background: "var(--border-subtle)", borderRadius: "var(--r-sm)", border: "1px solid var(--border)" }}>
+                    <p style={{ fontSize: 10, color: "var(--text-4)", marginBottom: 6 }}>Reference URLs — Claude will scrape these for context</p>
+                    {chatUrls.map((url, i) => (
+                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: i < chatUrls.length - 1 ? 4 : 0 }}>
+                        <Globe style={{ width: 12, height: 12, color: "var(--text-4)", flexShrink: 0 }} />
+                        <input
+                          type="url"
+                          value={url}
+                          onChange={(e) => {
+                            const next = [...chatUrls];
+                            next[i] = e.target.value;
+                            setChatUrls(next);
+                          }}
+                          placeholder="https://example.com/page"
+                          style={{ ...inputStyle, flex: 1, fontSize: 11, padding: "4px 6px" }}
+                        />
+                        {chatUrls.length > 1 && (
+                          <button
+                            onClick={() => setChatUrls((prev) => prev.filter((_, idx) => idx !== i))}
+                            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-4)", padding: 0, display: "flex", alignItems: "center", flexShrink: 0 }}
+                          >
+                            <X style={{ width: 12, height: 12 }} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    {chatUrls.length < 3 && (
+                      <button
+                        onClick={() => setChatUrls((prev) => [...prev, ""])}
+                        style={{ marginTop: 5, fontSize: 10, color: "var(--accent)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                      >
+                        + Add another URL
+                      </button>
+                    )}
+                  </div>
+                )}
+
                 <textarea
                   ref={textareaRef}
                   value={prompt}
@@ -2311,6 +2309,26 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                   }}
                 />
                 <div style={{ display: "flex", gap: 6 }}>
+                  {/* URL reference toggle */}
+                  <button
+                    onClick={() => {
+                      const next = !showUrlPanel;
+                      setShowUrlPanel(next);
+                      if (next && chatUrls.length === 0) setChatUrls([""]);
+                    }}
+                    disabled={refining || chatting}
+                    title={showUrlPanel ? "Hide URL panel" : "Add reference URLs for context"}
+                    style={{
+                      display: "inline-flex", alignItems: "center", justifyContent: "center",
+                      padding: "7px 8px", flexShrink: 0,
+                      background: (showUrlPanel || chatUrls.some((u) => u.trim())) ? "var(--accent-bg)" : "var(--border-subtle)",
+                      color: (showUrlPanel || chatUrls.some((u) => u.trim())) ? "var(--accent)" : "var(--text-3)",
+                      border: "1px solid var(--border)", borderRadius: "var(--r-sm)", cursor: "pointer",
+                      opacity: (refining || chatting) ? 0.45 : 1, transition: "all 0.15s",
+                    }}
+                  >
+                    <Globe style={{ width: 14, height: 14 }} />
+                  </button>
                   {/* Image attach button */}
                   <button
                     onClick={() => chatImageInputRef.current?.click()}

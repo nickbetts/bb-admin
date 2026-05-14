@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { refineLandingPage, HtmlValidationError } from "@/lib/lp-generator";
+import { fetchPageSignals } from "@/lib/landing-page-analyzer";
 import type { BrandContext } from "@/lib/brand-extractor";
 import { logActivity } from "@/lib/activity-logger";
 
@@ -32,6 +33,7 @@ export async function POST(
       conversationHistory?: { role: "user" | "assistant"; content: string }[];
       referenceHtml?: string;
       imageUrls?: string[];
+      crawlUrls?: string[];
     };
 
     if (!body.prompt) {
@@ -45,6 +47,30 @@ export async function POST(
       brandContext = { colors: [], fonts: [], imageryUrls: [], socialLinks: [], contactInfo: {} };
     }
 
+    // Scrape user-supplied reference URLs for additional context (failures silently dropped)
+    let additionalContext: string | undefined;
+    const crawlUrls = (body.crawlUrls ?? [])
+      .filter((u) => { try { new URL(u); return true; } catch { return false; } })
+      .slice(0, 3);
+
+    if (crawlUrls.length > 0) {
+      const results = await Promise.allSettled(crawlUrls.map((u) => fetchPageSignals(u)));
+      const chunks: string[] = [];
+      for (const r of results) {
+        if (r.status === "fulfilled" && !r.value.fetchError) {
+          const s = r.value;
+          const parts: string[] = [];
+          if (s.title) parts.push(`Title: ${s.title}`);
+          if (s.metaDescription) parts.push(`Description: ${s.metaDescription}`);
+          if (s.h1Tags.length) parts.push(`H1: ${s.h1Tags.join(" | ")}`);
+          if (s.h2Texts.length) parts.push(`Headings: ${s.h2Texts.join(" | ")}`);
+          if (s.bodySnippets.length) parts.push(s.bodySnippets.join(" "));
+          if (parts.length) chunks.push(`[${s.url}]\n${parts.join("\n")}`);
+        }
+      }
+      if (chunks.length) additionalContext = chunks.join("\n\n").slice(0, 4000);
+    }
+
     // Call AI to refine the LP
     const html = await refineLandingPage({
       currentHtml: landingPage.currentHtml,
@@ -53,6 +79,7 @@ export async function POST(
       conversationHistory: body.conversationHistory,
       referenceHtml: body.referenceHtml,
       imageUrls: body.imageUrls,
+      additionalContext,
     });
 
     // Determine next version number
