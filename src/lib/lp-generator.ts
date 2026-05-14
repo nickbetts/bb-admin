@@ -416,6 +416,7 @@ export function getFormCaptureScript(shareToken: string | null, turnstileSiteKey
       var wrap = document.createElement('div');
       wrap.className = 'cf-turnstile';
       wrap.setAttribute('data-sitekey', TURNSTILE_SITE_KEY);
+      wrap.setAttribute('data-refresh-expired', 'auto');
       wrap.style.margin = '12px 0';
       if (btn) { form.insertBefore(wrap, btn); } else { form.appendChild(wrap); }
     });
@@ -490,12 +491,19 @@ export function getFormCaptureScript(shareToken: string | null, turnstileSiteKey
         body: JSON.stringify(data)
       }).then(function(r) {
         if (!r.ok) {
-          return r.json().then(function(j) {
-            var msg = (j && j.error) ? j.error : 'Submission failed. Please try again.';
-            throw new Error(msg);
+          // Parse and show the actual server error message; restore button on failure.
+          r.json().then(function(j) {
+            setError((j && j.error) ? j.error : 'Submission failed. Please try again.');
           }).catch(function() {
-            throw new Error('Submission failed. Please try again.');
+            setError('Submission failed. Please try again.');
+          }).then(function() {
+            if (btn) {
+              btn.disabled = false;
+              if (btn.tagName === 'INPUT') btn.value = originalBtnText;
+              else btn.textContent = originalBtnText;
+            }
           });
+          return;
         }
 
         form.innerHTML = '<div style="text-align:center;padding:32px 16px"><h3 style="color:inherit;margin-bottom:8px">Thank you!</h3><p style="opacity:.8">We\\'ll be in touch shortly.</p></div>';
