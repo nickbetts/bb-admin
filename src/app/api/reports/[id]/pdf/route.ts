@@ -146,15 +146,16 @@ export async function GET(
           }).join(" | ")
         );
 
-        // Log last-child text content of seo section to diagnose what renders
-        // at the very bottom of the section (source of the phantom second header).
+        // Log first + last text in the seo section to detect phantom duplicate
+        // renders at the bottom (source of the duplicate SEO Performance header).
         const seoEl = document.querySelector<HTMLElement>("[data-section-type='seo']");
         if (seoEl) {
           const seoRect = seoEl.getBoundingClientRect();
           const fullText = (seoEl.textContent ?? "").replace(/\s+/g, " ").trim();
           // eslint-disable-next-line no-console
           console.log(
-            `[pdf-seo-bottom] seo h=${Math.round(seoRect.height)} ` +
+            `[pdf-seo-text] seo h=${Math.round(seoRect.height)} ` +
+            `firstText="${fullText.slice(0, 120)}" ` +
             `lastText="${fullText.slice(-200)}"`
           );
         }
