@@ -23,7 +23,6 @@ export async function POST(
 
   const landingPage = await prisma.landingPage.findUnique({
     where: { id },
-    include: { versions: { orderBy: { versionNumber: "desc" }, take: 1 } },
   });
 
   if (!landingPage) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -81,7 +80,6 @@ export async function POST(
       if (chunks.length) additionalContext = chunks.join("\n\n---\n\n");
     }
 
-    // Start the Anthropic stream — returns immediately, tokens arrive over time
     const anthropicStream = await streamRefineLandingPage({
       currentHtml: landingPage.currentHtml,
       prompt: body.prompt,
@@ -91,9 +89,6 @@ export async function POST(
       imageUrls: body.imageUrls,
       additionalContext,
     });
-
-    const latestVersion = landingPage.versions[0];
-    const nextVersionNumber = (latestVersion?.versionNumber ?? 0) + 1;
 
     const encoder = new TextEncoder();
     const readable = new ReadableStream({
@@ -128,6 +123,14 @@ export async function POST(
             controller.close();
             return;
           }
+
+          // Compute next version number atomically inside the transaction to
+          // avoid races when two refine requests run in parallel.
+          const agg = await prisma.landingPageVersion.aggregate({
+            where: { landingPageId: id },
+            _max: { versionNumber: true },
+          });
+          const nextVersionNumber = (agg._max.versionNumber ?? 0) + 1;
 
           // Save new version + update current HTML
           const [version] = await prisma.$transaction([
