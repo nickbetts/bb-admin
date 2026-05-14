@@ -1,0 +1,11 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "type": "command",
+        "command": ".github/hooks/scripts/check-db-push.sh",
+        "timeout": 5
+      }
+    ]
+  }
+}

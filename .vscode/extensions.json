@@ -5,9 +5,12 @@
     "dbaeumer.vscode-eslint",
     "GitHub.copilot",
     "GitHub.copilot-chat",
+    "GitHub.vscode-pull-request-github",
     "ms-vscode.vscode-typescript-next",
     "eamodio.gitlens",
     "christian-kohler.path-intellisense",
-    "ms-vscode.vscode-json"
+    "ms-vscode.vscode-json",
+    "yoavbls.pretty-ts-errors",
+    "usernamehw.errorlens"
   ]
 }

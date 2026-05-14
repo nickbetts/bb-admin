@@ -2,6 +2,7 @@
 description: "Use when: adding database models, adding fields to existing models, creating indexes, updating relations, running Prisma migrations, schema changes, db migrate, db push, Prisma schema, Postgres, Vercel Postgres, Neon, or any change to prisma/schema.prisma."
 name: "database"
 tools: [read, edit, search, execute, todo]
+user-invocable: true
 ---
 
 # Agent: Database & Prisma Expert

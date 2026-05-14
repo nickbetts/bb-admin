@@ -20,11 +20,9 @@ Before creating any new file, check whether the right place already exists:
 | `docs/architecture.md` | System architecture, database schema, project structure | Architecture changes |
 | `docs/deployment.md` | Setup, environment variables, API integrations, Vercel deployment | New env vars, deployment process changes |
 | `docs/ai-audit.md` | AI endpoint inventory, data availability matrix, improvements | New AI endpoints added |
-| `docs/data-audit.md` | Per-platform API capability audit across all 15 channels | New channel integrated or new API endpoints utilised |
+| `docs/data-audit.md` | Per-platform API capability audit across all 16 channels | New channel integrated or new API endpoints utilised |
 | `.github/copilot-instructions.md` | Project conventions for Copilot | New agents added, new coding conventions established |
-| `.github/agents/*.md` | Specialist agent instructions | Agent scope changes or new agents created |
-| `.github/copilot-instructions.md` | Project conventions for Copilot | New agents added, new coding conventions established |
-| `.github/agents/*.md` | Specialist agent instructions | Agent scope changes or new agents created |
+| `.github/agents/*.agent.md` | Specialist agent instructions | Agent scope changes or new agents created |
 
 **Rule: always update an existing file before creating a new one.** Only create a new file in `docs/` if no existing file is appropriate.
 
@@ -53,17 +51,17 @@ If a new `.agent.md` or specialist agent `.md` file has been created, **always u
 Current registered agents (as of April 2026):
 
 ```
-channel-integration.md    — adding new marketing channel data integrations
-ai-endpoint.md            — creating AI analysis API endpoints
-report-component.md       — building dashboard/report section components
-database.md               — Prisma schema changes and migrations
-data-fetching.md          — data-fetching efficiency, caching, TTLs, cron snapshots
-orchestrator.agent.md     — routing tasks and orchestrating multi-step workflows across agents
-ui-ux.agent.md            — dashboard design system, shared UI primitives, and UX consistency
-landing-page.agent.md     — marketing landing page, login page copy and animations
-agency-tools.agent.md     — keyword planner, proposals, content strategy, media plan, and all agency tools
-client-portal.agent.md    — client-facing portal, magic-link auth, portal dashboard and permissions
-developer-docs.agent.md   — creating and maintaining developer documentation
+channel-integration.agent.md  — adding new marketing channel data integrations
+ai-endpoint.agent.md           — creating AI analysis API endpoints
+report-component.agent.md      — building dashboard/report section components
+database.agent.md              — Prisma schema changes and migrations
+data-fetching.agent.md         — data-fetching efficiency, caching, TTLs, cron snapshots
+orchestrator.agent.md          — routing tasks and orchestrating multi-step workflows across agents
+ui-ux.agent.md                 — dashboard design system, shared UI primitives, and UX consistency
+landing-page.agent.md          — marketing landing page, login page copy and animations
+agency-tools.agent.md          — keyword planner, proposals, content strategy, media plan, and all agency tools
+client-portal.agent.md         — client-facing portal, magic-link auth, portal dashboard and permissions
+developer-docs.agent.md        — creating and maintaining developer documentation
 ```
 
 ## Step 4 — Generating API endpoint reference docs

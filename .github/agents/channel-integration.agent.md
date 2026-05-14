@@ -2,6 +2,7 @@
 description: "Use when: adding a new marketing channel integration, connecting a new data platform, adding a new API route for a third-party service, adding channel credentials to the Client model, adding a new dashboard section for a new platform, or implementing a new channel API helper in src/lib/."
 name: "channel-integration"
 tools: [read, edit, search, execute, todo, web]
+user-invocable: true
 ---
 
 # Agent: Channel Integration Expert

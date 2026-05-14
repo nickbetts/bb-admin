@@ -84,10 +84,9 @@ For each step in the sequence, invoke the appropriate specialist agent with a pr
 ## Step 6 — Git
 
 After all delegated work is confirmed complete, run the git commit and push yourself:
-1. Load `run_in_terminal` via `tool_search_tool_regex`
-2. `git add -A`
-3. `git commit -m "feat/fix/chore: <summary of changes"`
-4. `git push origin main`
+1. `git add -A`
+2. `git commit -m "feat/fix/chore: <summary of changes"`
+3. `git push origin main`
 
 Report the push result to the user.
 
@@ -105,11 +104,11 @@ Both must pass with zero errors before the work is considered done. TypeScript e
 
 | Agent | File | Scope |
 |---|---|---|
-| Channel Integration Expert | `channel-integration.md` | Schema fields, lib helper, API route, report-blocks, dashboard component |
-| Data Fetching & Caching | `data-fetching.md` | Three-layer cache, cron snapshots, TTLs, anomaly lists |
-| AI Endpoint Expert | `ai-endpoint.md` | `src/app/api/ai/` routes, OpenAI prompts, structured output |
-| Report & Dashboard Component | `report-component.md` | React 19 section components, block visibility, ReportView integration |
-| Database & Prisma Expert | `database.md` | Schema, migrations, Prisma patterns, Vercel Postgres (Neon) |
+| Channel Integration Expert | `channel-integration.agent.md` | Schema fields, lib helper, API route, report-blocks, dashboard component |
+| Data Fetching & Caching | `data-fetching.agent.md` | Three-layer cache, cron snapshots, TTLs, anomaly lists |
+| AI Endpoint Expert | `ai-endpoint.agent.md` | `src/app/api/ai/` routes, OpenAI prompts, structured output |
+| Report & Dashboard Component | `report-component.agent.md` | React 19 section components, block visibility, ReportView integration |
+| Database & Prisma Expert | `database.agent.md` | Schema, migrations, Prisma patterns, Vercel Postgres (Neon) |
 | UI/UX Expert | `ui-ux.agent.md` | Design tokens, shared primitives, Tailwind conventions, dashboard UX |
 | Landing Page | `landing-page.agent.md` | Marketing landing page, login page, copy, animations, channel list sync |
 | Agency Tools | `agency-tools.agent.md` | Keyword planner, proposals, content strategy, media plan, page analyser, LLM generator |
