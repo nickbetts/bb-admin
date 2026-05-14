@@ -7,8 +7,8 @@
  */
 
 import { useState, useCallback, useMemo } from "react";
-import { AlertTriangle, Webhook, Mail, Code2, Eye, X, Loader2, ChevronUp, ChevronDown, Trash2, RefreshCw, GripVertical, Sparkles } from "lucide-react";
-import type { LpFormConfig, LpFormField, LpFormFieldOption, LpFormFieldType } from "@/lib/lp-form-config";
+import { AlertTriangle, Webhook, Mail, Code2, Eye, X, Loader2, ChevronUp, ChevronDown, RefreshCw, GripVertical, Sparkles } from "lucide-react";
+import type { LpFormConfig, LpFormField, LpFormFieldType } from "@/lib/lp-form-config";
 
 type SelectOptionSource = "native" | "dom" | "ai" | "none";
 
@@ -162,70 +162,6 @@ export function FormConfigPanel({ value, onChange, lpId }: Props) {
     if (target < 0 || target >= next.length) return;
     [next[index], next[target]] = [next[target], next[index]];
     onChange({ ...value, fields: next });
-  }
-
-  function removeField(id: string) {
-    onChange({ ...value, fields: fields.filter((f) => f.id !== id) });
-  }
-
-  function toggleRequired(id: string) {
-    onChange({
-      ...value,
-      fields: fields.map((f) => f.id === id ? { ...f, required: !f.required } : f),
-    });
-  }
-
-  function updateFieldLabel(id: string, label: string) {
-    onChange({
-      ...value,
-      fields: fields.map((f) => f.id === id ? { ...f, label } : f),
-    });
-  }
-
-  function updateFieldPlaceholder(id: string, placeholder: string) {
-    onChange({
-      ...value,
-      fields: fields.map((f) => f.id === id ? { ...f, placeholder: placeholder || undefined } : f),
-    });
-  }
-
-  function updateFieldType(id: string, type: LpFormFieldType) {
-    onChange({
-      ...value,
-      fields: fields.map((f) => {
-        if (f.id !== id) return f;
-        return {
-          ...f,
-          type,
-          options: type === "select" ? (f.options ?? []) : undefined,
-        };
-      }),
-    });
-  }
-
-  function updateFieldOptions(id: string, options: LpFormFieldOption[]) {
-    onChange({
-      ...value,
-      fields: fields.map((f) => f.id === id ? { ...f, options: sanitiseOptions(options) } : f),
-    });
-  }
-
-  function updateFieldOption(id: string, index: number, key: keyof LpFormFieldOption, nextValue: string) {
-    const field = fields.find((item) => item.id === id);
-    const nextOptions = [...(field?.options ?? [])];
-    if (!nextOptions[index]) return;
-    nextOptions[index] = { ...nextOptions[index], [key]: nextValue };
-    updateFieldOptions(id, nextOptions);
-  }
-
-  function addFieldOption(id: string) {
-    const field = fields.find((item) => item.id === id);
-    updateFieldOptions(id, [...(field?.options ?? []), { label: "", value: "" }]);
-  }
-
-  function removeFieldOption(id: string, index: number) {
-    const field = fields.find((item) => item.id === id);
-    updateFieldOptions(id, (field?.options ?? []).filter((_, i) => i !== index));
   }
 
   const FIELD_TYPE_LABELS: Record<LpFormFieldType, string> = {
@@ -397,61 +333,26 @@ export function FormConfigPanel({ value, onChange, lpId }: Props) {
                     </button>
                   </div>
 
-                  {/* Field info */}
+                  {/* Field info — read-only; use AI prompt below to edit */}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <input
-                      value={field.label}
-                      onChange={(e) => updateFieldLabel(field.id, e.target.value)}
-                      style={{
-                        background: "none", border: "none", outline: "none",
-                        fontSize: 12, fontWeight: 600, color: "var(--text)",
-                        width: "100%", fontFamily: "inherit", padding: 0,
-                      }}
-                      title="Click to edit label"
-                      placeholder="Label"
-                    />
+                    <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>{field.label}</span>
                     <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 2 }}>
                       <span style={{ fontSize: 10, color: "var(--text-4)", whiteSpace: "nowrap" }}>{field.name}</span>
-                      <input
-                        value={field.placeholder ?? ""}
-                        onChange={(e) => updateFieldPlaceholder(field.id, e.target.value)}
-                        style={{
-                          flex: 1,
-                          minWidth: 0,
-                          border: "none",
-                          outline: "none",
-                          background: "none",
-                          fontSize: 10,
-                          color: "var(--text-4)",
-                          fontFamily: "inherit",
-                          padding: 0,
-                        }}
-                        title="Placeholder text"
-                        placeholder={field.type === "select" ? "Placeholder / default option" : "Placeholder text"}
-                      />
+                      {field.placeholder && (
+                        <span style={{ fontSize: 10, color: "var(--text-4)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{field.placeholder}</span>
+                      )}
                     </div>
                   </div>
 
-                  <select
-                    value={field.type}
-                    onChange={(e) => updateFieldType(field.id, e.target.value as LpFormFieldType)}
-                    title="Field type"
-                    style={{
-                      border: "1px solid var(--border)",
-                      borderRadius: 6,
-                      background: "var(--surface)",
-                      color: "var(--text-3)",
-                      fontSize: 10,
-                      fontWeight: 600,
-                      padding: "2px 5px",
-                      fontFamily: "inherit",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {(Object.entries(FIELD_TYPE_LABELS) as [LpFormFieldType, string][]).map(([t, lbl]) => (
-                      <option key={t} value={t}>{lbl}</option>
-                    ))}
-                  </select>
+                  {/* Type badge — read-only */}
+                  <span style={{
+                    fontSize: 10, fontWeight: 600, padding: "2px 6px",
+                    borderRadius: 6, border: "1px solid var(--border)",
+                    background: "var(--surface)", color: "var(--text-3)",
+                    flexShrink: 0, whiteSpace: "nowrap",
+                  }}>
+                    {FIELD_TYPE_LABELS[field.type] ?? field.type}
+                  </span>
 
                   {field.type === "select" && syncDiagnostics && (
                     <span
@@ -495,59 +396,36 @@ export function FormConfigPanel({ value, onChange, lpId }: Props) {
                     </span>
                   )}
 
-                  {/* Required toggle */}
-                  <button
-                    onClick={() => toggleRequired(field.id)}
-                    title={field.required ? "Required — click to make optional" : "Optional — click to make required"}
-                    style={{
-                      fontSize: 9, fontWeight: 700, padding: "1px 5px",
-                      borderRadius: 99, border: "none", cursor: "pointer",
-                      background: field.required ? "var(--accent-bg)" : "var(--border-subtle)",
-                      color: field.required ? "var(--accent)" : "var(--text-4)",
-                      flexShrink: 0,
-                    }}
-                  >
+                  {/* Required badge — read-only */}
+                  <span style={{
+                    fontSize: 9, fontWeight: 700, padding: "1px 5px",
+                    borderRadius: 99, border: "none",
+                    background: field.required ? "var(--accent-bg)" : "var(--border-subtle)",
+                    color: field.required ? "var(--accent)" : "var(--text-4)",
+                    flexShrink: 0,
+                  }}>
                     {field.required ? "REQ" : "OPT"}
-                  </button>
-
-                  {/* Delete */}
-                  <button
-                    onClick={() => removeField(field.id)}
-                    title="Remove field"
-                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-4)", padding: 2, display: "flex", alignItems: "center", flexShrink: 0 }}
-                  >
-                    <Trash2 size={12} />
-                  </button>
+                  </span>
                 </div>
 
                 {field.type === "select" && (
                   <div style={{ width: "100%", paddingLeft: 20, display: "flex", flexDirection: "column", gap: 6 }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Dropdown options</span>
-                      <button type="button" onClick={() => addFieldOption(field.id)} style={{ fontSize: 10, padding: 0, background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>+ Add option</button>
-                    </div>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Dropdown options</span>
                     {(field.options ?? []).length === 0 ? (
-                      <p style={{ ...hintStyle, marginTop: 0 }}>No options configured yet. Add at least one selectable value.</p>
+                      <p style={{ ...hintStyle, marginTop: 0 }}>No options yet — use the AI prompt below to add options.</p>
                     ) : (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                         {(field.options ?? []).map((option, optionIndex) => (
-                          <div key={`${field.id}-${optionIndex}`} style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 6, alignItems: "center" }}>
-                            <input
-                              value={option.label}
-                              onChange={(e) => updateFieldOption(field.id, optionIndex, "label", e.target.value)}
-                              placeholder="Option label"
-                              style={{ ...inputStyle, fontSize: 11, padding: "4px 7px" }}
-                            />
-                            <input
-                              value={option.value}
-                              onChange={(e) => updateFieldOption(field.id, optionIndex, "value", e.target.value)}
-                              placeholder="Submitted value"
-                              style={{ ...inputStyle, fontSize: 11, padding: "4px 7px" }}
-                            />
-                            <button type="button" onClick={() => removeFieldOption(field.id, optionIndex)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-4)", padding: 2, display: "flex", alignItems: "center", justifyContent: "center" }} title="Remove option">
-                              <Trash2 size={11} />
-                            </button>
-                          </div>
+                          <span
+                            key={`${field.id}-${optionIndex}`}
+                            style={{
+                              fontSize: 11, padding: "2px 8px",
+                              borderRadius: 99, border: "1px solid var(--border)",
+                              background: "var(--border-subtle)", color: "var(--text-2)",
+                            }}
+                          >
+                            {option.label}
+                          </span>
                         ))}
                       </div>
                     )}
@@ -770,17 +648,4 @@ export function FormConfigPanel({ value, onChange, lpId }: Props) {
     </div>
   </>
   );
-}
-
-function sanitiseOptions(options: LpFormFieldOption[]): LpFormFieldOption[] {
-  return options
-    .map((option) => ({
-      label: option.label.trim(),
-      value: option.value.trim(),
-    }))
-    .filter((option) => option.label || option.value)
-    .map((option) => ({
-      label: option.label || option.value,
-      value: option.value || option.label,
-    }));
 }
