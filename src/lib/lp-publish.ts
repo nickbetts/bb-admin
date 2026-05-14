@@ -61,7 +61,9 @@ export function assemblePublicHtml(rawHtml: string, opts: AssembleOpts): string 
   if (!embedCode && opts.formConfig?.fields?.length) {
     html = applyConfiguredFormFields(html, opts.formConfig.fields);
   }
-  const hasBuiltInForm = !embedCode && html.includes('data-lp-form="true"');
+  // Detect built-in forms: prefer data-lp-form="true" (new), fall back to any
+  // <form> tag for LPs generated before the attribute was required.
+  const hasBuiltInForm = !embedCode && (html.includes('data-lp-form="true"') || /<form[\s>]/i.test(html));
   const turnstileSiteKey = opts.turnstileSiteKey || null;
   if (hasBuiltInForm) {
     // Inject Turnstile loader when a site key is configured

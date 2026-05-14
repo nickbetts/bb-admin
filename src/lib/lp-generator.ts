@@ -409,7 +409,9 @@ export function getFormCaptureScript(shareToken: string | null, turnstileSiteKey
 
   // Inject Turnstile widget before the submit button of each LP form
   if (TURNSTILE_SITE_KEY) {
-    document.querySelectorAll('[data-lp-form="true"]').forEach(function(form) {
+    var tsTarget = document.querySelectorAll('[data-lp-form="true"]');
+    if (!tsTarget.length) tsTarget = document.querySelectorAll('form');
+    tsTarget.forEach(function(form) {
       var btn = form.querySelector('button[type="submit"], input[type="submit"]');
       var wrap = document.createElement('div');
       wrap.className = 'cf-turnstile';
@@ -419,7 +421,10 @@ export function getFormCaptureScript(shareToken: string | null, turnstileSiteKey
     });
   }
 
+  // Target data-lp-form="true" (new LPs) or fall back to all <form> elements
+  // so older LPs without the attribute still have their submissions captured.
   var forms = document.querySelectorAll('[data-lp-form="true"]');
+  if (!forms.length) forms = document.querySelectorAll('form');
   forms.forEach(function(form) {
     form.addEventListener('submit', function(e) {
       e.preventDefault();
