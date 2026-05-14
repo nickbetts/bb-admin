@@ -9,6 +9,12 @@ interface ClickUpTeam {
   name: string;
 }
 
+interface ClickUpGroup {
+  id: string;
+  name: string;
+  members: ClickUpMember[];
+}
+
 interface ClickUpSpace {
   id: string;
   name: string;
@@ -160,6 +166,39 @@ export async function getClickUpMembers(): Promise<
   }
 
   return members.sort((a, b) => a.username.localeCompare(b.username));
+}
+
+/**
+ * Returns all user groups (teams) in the workspace, with their member IDs.
+ * Uses GET /group?team_id={id} (ClickUp v2).
+ */
+export async function getClickUpGroups(): Promise<
+  Array<{ id: string; name: string; memberIds: number[] }>
+> {
+  const token = await getClickUpToken();
+  const { teams } = await clickupFetch<{ teams: Array<{ id: string }> }>("/team", token);
+
+  const groups: Array<{ id: string; name: string; memberIds: number[] }> = [];
+
+  for (const team of teams ?? []) {
+    try {
+      const { groups: teamGroups } = await clickupFetch<{ groups: ClickUpGroup[] }>(
+        `/group?team_id=${team.id}`,
+        token,
+      );
+      for (const g of teamGroups ?? []) {
+        groups.push({
+          id: g.id,
+          name: g.name,
+          memberIds: (g.members ?? []).map((m) => m.user.id),
+        });
+      }
+    } catch {
+      // Workspace may have no groups configured
+    }
+  }
+
+  return groups.sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /**

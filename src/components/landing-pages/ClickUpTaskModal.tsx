@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Loader2, Check, ExternalLink, X } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { Loader2, Check, ExternalLink, X, Search, Users } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -21,6 +21,12 @@ interface ClickUpMember {
   username: string;
   email: string;
   profilePicture: string | null;
+}
+
+interface ClickUpGroup {
+  id: string;
+  name: string;
+  memberIds: number[];
 }
 
 interface ClickUpTaskModalProps {
@@ -104,6 +110,7 @@ export function ClickUpTaskModal({ lpTitle, onClose }: ClickUpTaskModalProps) {
   const [folders, setFolders] = useState<ClickUpFolder[]>([]);
   const [lists, setLists] = useState<ClickUpList[]>([]);
   const [members, setMembers] = useState<ClickUpMember[]>([]);
+  const [groups, setGroups] = useState<ClickUpGroup[]>([]);
 
   // Selections
   const [selectedFolderId, setSelectedFolderId] = useState("");
@@ -111,6 +118,7 @@ export function ClickUpTaskModal({ lpTitle, onClose }: ClickUpTaskModalProps) {
   const [taskName, setTaskName] = useState(`LP: ${lpTitle}`);
   const [selectedAssignees, setSelectedAssignees] = useState<number[]>([]);
   const [dueDate, setDueDate] = useState("");
+  const [memberSearch, setMemberSearch] = useState("");
 
   // Checklist toggles — all on by default
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>(
@@ -145,15 +153,18 @@ export function ClickUpTaskModal({ lpTitle, onClose }: ClickUpTaskModalProps) {
       .finally(() => setLoadingFolders(false));
   }, []);
 
-  // ── Load members independently ────────────────────────────────────────────
+  // ── Load members + groups independently ──────────────────────────────────
   useEffect(() => {
     setLoadingMembers(true);
-    fetch("/api/clickup/members")
-      .then(async (res) => {
-        const data = await res.json() as { members?: ClickUpMember[] };
-        setMembers(res.ok ? (data.members ?? []) : []);
+    Promise.all([
+      fetch("/api/clickup/members").then((r) => r.json() as Promise<{ members?: ClickUpMember[] }>),
+      fetch("/api/clickup/groups").then((r) => r.json() as Promise<{ groups?: ClickUpGroup[] }>),
+    ])
+      .then(([membersData, groupsData]) => {
+        setMembers(membersData.members ?? []);
+        setGroups(groupsData.groups ?? []);
       })
-      .catch(() => setMembers([]))
+      .catch(() => { setMembers([]); setGroups([]); })
       .finally(() => setLoadingMembers(false));
   }, []);
 
@@ -189,6 +200,23 @@ export function ClickUpTaskModal({ lpTitle, onClose }: ClickUpTaskModalProps) {
       prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id],
     );
   }
+
+  function toggleGroup(group: ClickUpGroup) {
+    const allSelected = group.memberIds.length > 0 && group.memberIds.every((id) => selectedAssignees.includes(id));
+    if (allSelected) {
+      setSelectedAssignees((prev) => prev.filter((id) => !group.memberIds.includes(id)));
+    } else {
+      setSelectedAssignees((prev) => [...new Set([...prev, ...group.memberIds])]);
+    }
+  }
+
+  const filteredMembers = useMemo(() => {
+    const q = memberSearch.trim().toLowerCase();
+    if (!q) return members;
+    return members.filter(
+      (m) => m.username.toLowerCase().includes(q) || m.email.toLowerCase().includes(q),
+    );
+  }, [members, memberSearch]);
 
   // ── Submit ─────────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
@@ -443,33 +471,83 @@ export function ClickUpTaskModal({ lpTitle, onClose }: ClickUpTaskModalProps) {
               ) : members.length === 0 ? (
                 <p style={{ fontSize: 12, color: "var(--text-4)", margin: 0, fontStyle: "italic" }}>No workspace members found</p>
               ) : (
-                <div style={{ border: "1px solid var(--border)", borderRadius: "var(--r-sm, var(--r))", overflow: "hidden", maxHeight: 160, overflowY: "auto" }}>
-                  {members.map((m, idx) => (
-                    <label
-                      key={m.id}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 10,
-                        padding: "8px 12px",
-                        cursor: "pointer",
-                        borderBottom: idx < members.length - 1 ? "1px solid var(--border)" : "none",
-                        background: selectedAssignees.includes(m.id) ? "var(--accent-bg, var(--surface))" : "var(--surface)",
-                        transition: "background 0.1s",
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedAssignees.includes(m.id)}
-                        onChange={() => toggleAssignee(m.id)}
-                        style={{ accentColor: "var(--accent)", width: 14, height: 14, flexShrink: 0 }}
-                      />
-                      <span style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.3 }}>
-                        <span style={{ fontWeight: selectedAssignees.includes(m.id) ? 600 : 400 }}>{m.username}</span>
-                        <span style={{ color: "var(--text-4)", marginLeft: 6, fontSize: 12 }}>{m.email}</span>
-                      </span>
-                    </label>
-                  ))}
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {/* Team groups */}
+                  {groups.length > 0 && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                      {groups.map((g) => {
+                        const allSelected = g.memberIds.length > 0 && g.memberIds.every((id) => selectedAssignees.includes(id));
+                        return (
+                          <button
+                            key={g.id}
+                            onClick={() => toggleGroup(g)}
+                            title={`${g.memberIds.length} member${g.memberIds.length !== 1 ? "s" : ""}`}
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 5,
+                              padding: "4px 10px",
+                              borderRadius: 20,
+                              fontSize: 12,
+                              fontWeight: 600,
+                              fontFamily: "inherit",
+                              cursor: "pointer",
+                              border: "1px solid",
+                              borderColor: allSelected ? "var(--accent)" : "var(--border)",
+                              background: allSelected ? "var(--accent)" : "var(--surface)",
+                              color: allSelected ? "#fff" : "var(--text-3)",
+                              transition: "all 0.15s",
+                            }}
+                          >
+                            <Users style={{ width: 11, height: 11 }} />
+                            {g.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {/* Search */}
+                  <div style={{ position: "relative" }}>
+                    <Search style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", width: 13, height: 13, color: "var(--text-4)", pointerEvents: "none" }} />
+                    <input
+                      type="text"
+                      value={memberSearch}
+                      onChange={(e) => setMemberSearch(e.target.value)}
+                      placeholder="Search members…"
+                      style={{ ...inputStyle, paddingLeft: 30, fontSize: 12 }}
+                    />
+                  </div>
+                  {/* Members list */}
+                  <div style={{ border: "1px solid var(--border)", borderRadius: "var(--r-sm, var(--r))", overflow: "hidden", maxHeight: 160, overflowY: "auto" }}>
+                    {filteredMembers.length === 0 ? (
+                      <p style={{ fontSize: 12, color: "var(--text-4)", margin: 0, padding: "10px 12px", fontStyle: "italic" }}>No members match</p>
+                    ) : filteredMembers.map((m, idx) => (
+                      <label
+                        key={m.id}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                          padding: "8px 12px",
+                          cursor: "pointer",
+                          borderBottom: idx < filteredMembers.length - 1 ? "1px solid var(--border)" : "none",
+                          background: selectedAssignees.includes(m.id) ? "var(--accent-bg, var(--surface))" : "var(--surface)",
+                          transition: "background 0.1s",
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedAssignees.includes(m.id)}
+                          onChange={() => toggleAssignee(m.id)}
+                          style={{ accentColor: "var(--accent)", width: 14, height: 14, flexShrink: 0 }}
+                        />
+                        <span style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.3 }}>
+                          <span style={{ fontWeight: selectedAssignees.includes(m.id) ? 600 : 400 }}>{m.username}</span>
+                          <span style={{ color: "var(--text-4)", marginLeft: 6, fontSize: 12 }}>{m.email}</span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
