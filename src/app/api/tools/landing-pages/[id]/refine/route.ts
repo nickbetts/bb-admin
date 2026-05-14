@@ -65,13 +65,13 @@ export async function POST(
           const parts: string[] = [`### ${pc.sourceUrl}`];
           if (pc.metaTitle) parts.push(`Title: ${pc.metaTitle}`);
           if (pc.h1) parts.push(`H1: ${pc.h1}`);
-          if (pc.headings.length) parts.push(`Headings: ${pc.headings.slice(0, 12).join(" | ")}`);
+          if (pc.headings.length) parts.push(`Headings: ${pc.headings.slice(0, 60).join(" | ")}`);
           if (pc.ctaTexts.length) parts.push(`CTAs: ${pc.ctaTexts.join(" | ")}`);
-          if (pc.listItems?.length) parts.push(`Services / features:\n${pc.listItems.slice(0, 20).map((item) => `  • ${item}`).join("\n")}`);
-          if (pc.numericStats?.length) parts.push(`Stats: ${pc.numericStats.slice(0, 10).join(" | ")}`);
-          if (pc.bodyCopy.length) parts.push(`Body copy:\n${pc.bodyCopy.slice(0, 8).map((p) => `  "${p}"`).join("\n")}`);
-          if (pc.allBodyText) parts.push(`Full page text:\n${pc.allBodyText.slice(0, 3000)}`);
-          if (pc.imageryUrls.length) parts.push(`Images: ${pc.imageryUrls.slice(0, 10).join(", ")}`);
+          if (pc.listItems?.length) parts.push(`List items:\n${pc.listItems.slice(0, 300).map((item) => `  • ${item}`).join("\n")}`);
+          if (pc.numericStats?.length) parts.push(`Stats: ${pc.numericStats.slice(0, 60).join(" | ")}`);
+          if (pc.bodyCopy.length) parts.push(`Body copy:\n${pc.bodyCopy.slice(0, 40).map((p) => `  "${p}"`).join("\n")}`);
+          if (pc.allBodyText) parts.push(`Full page text:\n${pc.allBodyText.slice(0, 40000)}`);
+          if (pc.imageryUrls.length) parts.push(`Images: ${pc.imageryUrls.slice(0, 30).join(", ")}`);
           chunks.push(parts.join("\n"));
         } else {
           crawlWarnings.push(`Could not scrape ${url} — changes applied without this reference`);
