@@ -1253,26 +1253,63 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
         return;
       }
 
-      const data = await res.json();
-      setPreviewHtml(data.html);
-      setLp((prev) => prev ? { ...prev, currentHtml: data.html } : prev);
-      pushHistory(data.html);
+      // The route now streams SSE — read chunks and wait for the done event.
+      const reader = res.body!.getReader();
+      const decoder = new TextDecoder();
+      let sseBuffer = "";
 
-      setChatHistory((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: `Applied changes → version ${data.version.versionNumber}`,
-          version: data.version.versionNumber,
-          type: "refine" as const,
-          crawlWarnings: data.crawlWarnings,
-        },
-      ]);
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-      const refreshRes = await fetch(`/api/tools/landing-pages/${id}`);
-      if (refreshRes.ok) {
-        const refreshData = await refreshRes.json();
-        setLp(refreshData.landingPage);
+        sseBuffer += decoder.decode(value, { stream: true });
+        const parts = sseBuffer.split("\n\n");
+        sseBuffer = parts.pop() ?? "";
+
+        for (const part of parts) {
+          if (!part.startsWith("data: ")) continue;
+          const payload = JSON.parse(part.slice(6)) as {
+            content?: string;
+            done?: boolean;
+            html?: string;
+            version?: { id: string; versionNumber: number; prompt: string; createdAt: string };
+            crawlWarnings?: string[];
+            error?: string;
+            status?: number;
+          };
+
+          if (payload.error) {
+            if (payload.status === 422) {
+              toast(payload.error, "error");
+            } else {
+              setChatHistory((prev) => [...prev, { role: "assistant", content: `Error: ${payload.error}`, type: "refine" as const }]);
+            }
+            return;
+          }
+
+          if (payload.done && payload.html && payload.version) {
+            setPreviewHtml(payload.html);
+            setLp((prev) => prev ? { ...prev, currentHtml: payload.html! } : prev);
+            pushHistory(payload.html);
+
+            setChatHistory((prev) => [
+              ...prev,
+              {
+                role: "assistant",
+                content: `Applied changes → version ${payload.version!.versionNumber}`,
+                version: payload.version!.versionNumber,
+                type: "refine" as const,
+                crawlWarnings: payload.crawlWarnings,
+              },
+            ]);
+
+            const refreshRes = await fetch(`/api/tools/landing-pages/${id}`);
+            if (refreshRes.ok) {
+              const refreshData = await refreshRes.json();
+              setLp(refreshData.landingPage);
+            }
+          }
+        }
       }
     } catch (err) {
       setChatHistory((prev) => [...prev, { role: "assistant", content: `Error: ${err instanceof Error ? err.message : "Unknown error"}`, type: "refine" as const }]);

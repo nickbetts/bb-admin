@@ -1082,7 +1082,7 @@ export class HtmlValidationError extends Error {
   }
 }
 
-function extractAndValidateHtml(raw: string): string {
+export function extractAndValidateHtml(raw: string): string {
   let text = stripMarkdownFences(raw);
 
   // Handle Claude prefixing the HTML with explanatory text
@@ -1250,6 +1250,68 @@ export async function refineLandingPage(opts: RefineLPOptions): Promise<string> 
   const block = response.content?.[0];
   const raw = block?.type === "text" ? block.text.trim() : "";
   return extractAndValidateHtml(raw);
+}
+
+/**
+ * Streaming variant of refineLandingPage — returns the raw Anthropic MessageStream
+ * so the caller can pipe tokens directly to an SSE response, avoiding Vercel's
+ * 300 s function timeout on large pages.
+ */
+export async function streamRefineLandingPage(opts: RefineLPOptions) {
+  const anthropic = await getAnthropicClient();
+
+  const colourSummary = opts.brandContext.colors
+    .filter((c) => c.role !== "unknown")
+    .slice(0, 4)
+    .map((c) => `${c.role}: ${c.hex}`)
+    .join(", ");
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const messages: { role: "user" | "assistant"; content: any }[] = [];
+
+  if (opts.conversationHistory?.length) {
+    const recent = opts.conversationHistory.slice(-6);
+    messages.push(...recent);
+  }
+
+  let userContent = `Here is the current landing page HTML:\n\n${opts.currentHtml}\n\nBrand colours: ${colourSummary}`;
+
+  if (opts.brandContext.rawHtml) {
+    userContent += `\n\n## Original scraped website HTML (brand and copy reference):\n${opts.brandContext.rawHtml.slice(0, 8000)}`;
+  }
+
+  if (opts.brandContext.pageContent?.allBodyText) {
+    userContent += `\n\n## Scraped website copy (use this for accurate brand wording when adding new sections):\n${opts.brandContext.pageContent.allBodyText.slice(0, 15000)}`;
+  }
+
+  userContent += `\n\nPlease make the following changes:\n${opts.prompt}`;
+
+  if (opts.referenceHtml) {
+    userContent += `\n\n## Reference page for inspiration\nThe user has uploaded an HTML page they like. Use it for structural and feature inspiration only — preserve the current page's brand identity, colours, and all existing copy:\n\n${opts.referenceHtml}`;
+  }
+
+  if (opts.additionalContext) {
+    userContent += `\n\n## Reference page content (scraped from user-supplied URLs)\nUse this to extract services, features, copy, stats, and imagery from the reference pages. Apply relevant content directly — use the real copy, embed images using their URLs as <img src="...">, and match the structure where appropriate:\n${opts.additionalContext}`;
+  }
+
+  if (opts.imageUrls?.length) {
+    const imageBlocks = await buildImageBlocks(opts.imageUrls, undefined, 6);
+    const urlList = opts.imageUrls.map((u, i) => `${i + 1}. ${u}`).join("\n");
+    const augmentedText = `${userContent}\n\nThe following images are attached by the user. Embed them in the new section using their original URLs as <img src="..."> values — do not use placeholder or data-URI src values.\n\n${urlList}`;
+    messages.push({
+      role: "user",
+      content: [...imageBlocks, { type: "text" as const, text: augmentedText }],
+    });
+  } else {
+    messages.push({ role: "user", content: userContent });
+  }
+
+  return anthropic.messages.stream({
+    model: REFINE_MODEL,
+    max_tokens: MAX_TOKENS,
+    system: REFINE_SYSTEM_PROMPT,
+    messages: messages as Parameters<typeof anthropic.messages.stream>[0]["messages"],
+  });
 }
 
 // ── Chat about landing page ─────────────────────────────────────────────────

@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { mergeAnalyticsConfig, parseAnalyticsConfig } from "@/lib/lp-analytics";
@@ -69,6 +70,8 @@ export async function GET(
 
   type LpResult = {
     id: string;
+    slug: string;
+    publicSlug: string | null;
     currentHtml: string;
     shareToken: string | null;
     analyticsConfig: string;
@@ -85,7 +88,7 @@ export async function GET(
     defaultAnalyticsConfig = client.defaultAnalyticsConfig;
     const row = await prisma.landingPage.findFirst({
       where: { clientId: client.id, slug: lpSlug, status: "published" },
-      select: { id: true, currentHtml: true, shareToken: true, analyticsConfig: true, formConfig: true },
+      select: { id: true, slug: true, publicSlug: true, currentHtml: true, shareToken: true, analyticsConfig: true, formConfig: true },
     });
     landingPage = row;
   } else {
@@ -94,6 +97,8 @@ export async function GET(
       where: { customSubdomain: clientSlug, slug: lpSlug, status: "published" },
       select: {
         id: true,
+        slug: true,
+        publicSlug: true,
         currentHtml: true,
         shareToken: true,
         analyticsConfig: true,
@@ -119,6 +124,8 @@ export async function GET(
         },
         select: {
           id: true,
+          slug: true,
+          publicSlug: true,
           currentHtml: true,
           shareToken: true,
           analyticsConfig: true,
@@ -160,6 +167,23 @@ export async function GET(
       .catch(() => {});
   }
 
+  // Auto-generate a shareToken for legacy LPs that were published without one.
+  // Fire-and-forget so it never blocks the response.
+  let effectiveShareToken = landingPage.shareToken;
+  if (!effectiveShareToken) {
+    const newToken = crypto.randomBytes(32).toString("hex");
+    effectiveShareToken = newToken;
+    prisma.landingPage
+      .update({
+        where: { id: landingPage.id },
+        data: {
+          shareToken: newToken,
+          ...(landingPage.publicSlug ? {} : { publicSlug: landingPage.slug + "-" + newToken.slice(0, 8) }),
+        },
+      })
+      .catch(() => {});
+  }
+
   // Resolve HTML: use a published translation if ?lang= is present
   let htmlToServe = landingPage.currentHtml;
   if (langParam) {
@@ -180,7 +204,7 @@ export async function GET(
   );
 
   const html = assemblePublicHtml(htmlToServe, {
-    shareToken: landingPage.shareToken,
+    shareToken: effectiveShareToken,
     analytics,
     testMode,
     formConfig: parseLpFormConfig(landingPage.formConfig),

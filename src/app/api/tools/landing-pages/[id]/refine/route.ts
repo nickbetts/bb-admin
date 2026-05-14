@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { refineLandingPage, HtmlValidationError } from "@/lib/lp-generator";
+import { streamRefineLandingPage, extractAndValidateHtml, HtmlValidationError } from "@/lib/lp-generator";
 import { extractPageContentFromUrl } from "@/lib/brand-extractor";
 import type { BrandContext } from "@/lib/brand-extractor";
 import { logActivity } from "@/lib/activity-logger";
 
 export const dynamic = "force-dynamic";
-// Vercel Pro caps function duration at 800 s; fall back to 300 s on Hobby.
-export const maxDuration = 300;
+// Streaming SSE response keeps the connection alive while the model generates.
+// Vercel Pro allows up to 800 s; set to 800 to accommodate very large pages.
+export const maxDuration = 800;
 
 // POST /api/tools/landing-pages/[id]/refine — iterative AI refinement
 export async function POST(
@@ -80,8 +81,8 @@ export async function POST(
       if (chunks.length) additionalContext = chunks.join("\n\n---\n\n");
     }
 
-    // Call AI to refine the LP
-    const html = await refineLandingPage({
+    // Start the Anthropic stream — returns immediately, tokens arrive over time
+    const anthropicStream = await streamRefineLandingPage({
       currentHtml: landingPage.currentHtml,
       prompt: body.prompt,
       brandContext,
@@ -91,52 +92,105 @@ export async function POST(
       additionalContext,
     });
 
-    // Determine next version number
     const latestVersion = landingPage.versions[0];
     const nextVersionNumber = (latestVersion?.versionNumber ?? 0) + 1;
 
-    // Save new version + update current HTML
-    const [version] = await prisma.$transaction([
-      prisma.landingPageVersion.create({
-        data: {
-          landingPageId: id,
-          versionNumber: nextVersionNumber,
-          html,
-          prompt: body.prompt,
-          createdByUserId: session.user.id,
-          createdByEmail: session.user.email,
-        },
-      }),
-      prisma.landingPage.update({
-        where: { id },
-        data: { currentHtml: html },
-      }),
-    ]);
+    const encoder = new TextEncoder();
+    const readable = new ReadableStream({
+      async start(controller) {
+        let fullText = "";
+        try {
+          for await (const event of anthropicStream) {
+            if (
+              event.type === "content_block_delta" &&
+              event.delta.type === "text_delta"
+            ) {
+              const chunk = event.delta.text;
+              fullText += chunk;
+              controller.enqueue(
+                encoder.encode(`data: ${JSON.stringify({ content: chunk })}\n\n`),
+              );
+            }
+          }
 
-    logActivity({
-      userId: session.user.id,
-      userEmail: session.user.email,
-      action: "landing_page_refined",
-      resourceType: "LandingPage",
-      resourceId: id,
-      description: `Refined landing page v${version.versionNumber}: ${body.prompt.slice(0, 100)}`,
+          // Validate the assembled HTML
+          let html: string;
+          try {
+            html = extractAndValidateHtml(fullText);
+          } catch (err) {
+            const msg = err instanceof HtmlValidationError
+              ? err.message
+              : "The model returned an incomplete response. Please try again.";
+            console.warn("LP refine validation:", msg);
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({ error: msg, status: 422 })}\n\n`),
+            );
+            controller.close();
+            return;
+          }
+
+          // Save new version + update current HTML
+          const [version] = await prisma.$transaction([
+            prisma.landingPageVersion.create({
+              data: {
+                landingPageId: id,
+                versionNumber: nextVersionNumber,
+                html,
+                prompt: body.prompt,
+                createdByUserId: session.user.id,
+                createdByEmail: session.user.email,
+              },
+            }),
+            prisma.landingPage.update({
+              where: { id },
+              data: { currentHtml: html },
+            }),
+          ]);
+
+          logActivity({
+            userId: session.user.id,
+            userEmail: session.user.email,
+            action: "landing_page_refined",
+            resourceType: "LandingPage",
+            resourceId: id,
+            description: `Refined landing page v${version.versionNumber}: ${body.prompt.slice(0, 100)}`,
+          });
+
+          controller.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({
+                done: true,
+                html,
+                version: {
+                  id: version.id,
+                  versionNumber: version.versionNumber,
+                  prompt: version.prompt,
+                  createdAt: version.createdAt,
+                },
+                crawlWarnings: crawlWarnings.length > 0 ? crawlWarnings : undefined,
+              })}\n\n`,
+            ),
+          );
+          controller.close();
+        } catch (err) {
+          const message = err instanceof Error ? err.message : "Unknown error";
+          console.error("LP refine streaming error:", err);
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ error: message })}\n\n`),
+          );
+          controller.close();
+        }
+      },
     });
 
-    return NextResponse.json({
-      version: {
-        id: version.id,
-        versionNumber: version.versionNumber,
-        prompt: version.prompt,
-        createdAt: version.createdAt,
+    return new Response(readable, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
       },
-      html,
-      crawlWarnings: crawlWarnings.length > 0 ? crawlWarnings : undefined,
     });
   } catch (error) {
-    if (error instanceof HtmlValidationError) {
-      console.warn("LP refine validation:", error.message);
-      return NextResponse.json({ error: error.message }, { status: 422 });
-    }
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("LP refine error:", error);
     return NextResponse.json({ error: message }, { status: 500 });
