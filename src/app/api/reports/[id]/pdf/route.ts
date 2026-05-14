@@ -126,13 +126,25 @@ export async function GET(
 
         const raw: { id: string; y: number; height: number; isText: boolean }[] = [];
 
+        // Final-line-of-defence deduplication: if the DOM somehow contains
+        // multiple elements for the same data section type (e.g. due to a
+        // legacy duplicate row in the DB that bypassed all upstream guards),
+        // only render the FIRST instance. Text sections are exempt because
+        // multiple text blocks of the same type are legitimate.
+        const seenSectionTypes = new Set<string>();
+
         // Each section block (cover is merged into the first section below)
         for (const el of sectionEls) {
           const rect = el.getBoundingClientRect();
           const y = rect.top + window.scrollY;
           const sectionType = el.getAttribute("data-section-type") ?? "";
+          const isText = TEXT_SECTION_TYPES.includes(sectionType);
+          if (!isText && sectionType) {
+            if (seenSectionTypes.has(sectionType)) continue;
+            seenSectionTypes.add(sectionType);
+          }
           if (rect.height > 10) {
-            raw.push({ id: el.id, y, height: rect.height, isText: TEXT_SECTION_TYPES.includes(sectionType) });
+            raw.push({ id: el.id, y, height: rect.height, isText });
           }
         }
 
