@@ -9,7 +9,11 @@ import sharp from "sharp";
 import { getAnthropicClient } from "@/lib/anthropic-client";
 import type { BrandContext, PageContent } from "@/lib/brand-extractor";
 import { screenshotHtml } from "@/lib/puppeteer";
-import { buildPlannerCroBlock, buildAuditCroBlock, buildUserRequestedCroBlock } from "@/lib/lp-cro-elements";
+import {
+  buildPlannerCroBlock,
+  buildAuditCroBlock,
+  buildUserRequestedCroBlock,
+} from "@/lib/lp-cro-elements";
 import { buildDesignAuditBlock } from "@/lib/lp-design-elements";
 import { buildCopyAuditBlock } from "@/lib/lp-copy-elements";
 
@@ -41,9 +45,9 @@ export interface RefineLPOptions {
   prompt: string;
   brandContext: BrandContext;
   conversationHistory?: { role: "user" | "assistant"; content: string }[];
-  referenceHtml?: string;      // Uploaded inspiration page from the user
-  imageUrls?: string[];        // Images attached by the user in the chat input
-  additionalContext?: string;  // Scraped content from user-supplied reference URLs
+  referenceHtml?: string; // Uploaded inspiration page from the user
+  imageUrls?: string[]; // Images attached by the user in the chat input
+  additionalContext?: string; // Scraped content from user-supplied reference URLs
 }
 
 export interface ChatLPOptions {
@@ -52,8 +56,8 @@ export interface ChatLPOptions {
   brandContext: BrandContext;
   conversationHistory?: { role: "user" | "assistant"; content: string }[];
   referenceHtml?: string;
-  imageUrls?: string[];        // Images attached by the user in the chat input
-  additionalContext?: string;  // Scraped content from user-supplied reference URLs
+  imageUrls?: string[]; // Images attached by the user in the chat input
+  additionalContext?: string; // Scraped content from user-supplied reference URLs
 }
 
 export interface ChatLPResponse {
@@ -81,7 +85,10 @@ type AnthropicMediaType = "image/jpeg" | "image/png" | "image/gif" | "image/webp
  */
 async function fetchImageBlock(
   url: string,
-): Promise<{ type: "image"; source: { type: "base64"; media_type: AnthropicMediaType; data: string } } | null> {
+): Promise<{
+  type: "image";
+  source: { type: "base64"; media_type: AnthropicMediaType; data: string };
+} | null> {
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), IMAGE_FETCH_TIMEOUT_MS);
@@ -109,7 +116,9 @@ async function fetchImageBlock(
     const RAW_CAP_BYTES = 10 * 1024 * 1024;
     const rawBuffer = await response.arrayBuffer();
     if (rawBuffer.byteLength > RAW_CAP_BYTES) {
-      console.warn(`[lp-generator] Skipping image — raw download exceeds 10 MB (${rawBuffer.byteLength} bytes): ${url}`);
+      console.warn(
+        `[lp-generator] Skipping image — raw download exceeds 10 MB (${rawBuffer.byteLength} bytes): ${url}`,
+      );
       return null;
     }
 
@@ -118,9 +127,7 @@ async function fetchImageBlock(
     let imageBuffer: Buffer;
     let usedRawFallback = false;
     try {
-      imageBuffer = await sharp(Buffer.from(rawBuffer))
-        .webp({ quality: 80 })
-        .toBuffer();
+      imageBuffer = await sharp(Buffer.from(rawBuffer)).webp({ quality: 80 }).toBuffer();
     } catch {
       // Corrupt or unsupported format — fall back to the raw bytes.
       imageBuffer = Buffer.from(rawBuffer);
@@ -159,7 +166,11 @@ async function fetchImageBlock(
  */
 function isAnthropicDownloadError(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err);
-  return msg.includes("Unable to download the file") || msg.includes("url_not_accessible") || msg.includes("url_not_allowed");
+  return (
+    msg.includes("Unable to download the file") ||
+    msg.includes("url_not_accessible") ||
+    msg.includes("url_not_allowed")
+  );
 }
 
 /**
@@ -173,16 +184,12 @@ async function buildImageBlocks(
   imageryUrls: string[],
   uploadedUrls: string[] | undefined,
   maxImages: number,
-): Promise<Array<{ type: "image"; source: { type: "base64"; media_type: AnthropicMediaType; data: string } }>> {
-  const combined = [
-    ...(uploadedUrls ?? []),
-    ...imageryUrls,
-  ].filter(
-    (u) =>
-      /^https?:\/\//i.test(u) &&
-      !/\.svg(\?|$)/i.test(u) &&
-      !/^data:/i.test(u),
-  ).slice(0, maxImages);
+): Promise<
+  Array<{ type: "image"; source: { type: "base64"; media_type: AnthropicMediaType; data: string } }>
+> {
+  const combined = [...(uploadedUrls ?? []), ...imageryUrls]
+    .filter((u) => /^https?:\/\//i.test(u) && !/\.svg(\?|$)/i.test(u) && !/^data:/i.test(u))
+    .slice(0, maxImages);
 
   if (!combined.length) return [];
 
@@ -196,12 +203,9 @@ function labelledImageUrls(
   uploadedUrls: string[] | undefined,
   maxImages: number,
 ): string {
-  const combined = [
-    ...(uploadedUrls ?? []),
-    ...imageryUrls,
-  ].filter(
-    (u) => /^https?:\/\//i.test(u) && !/\.svg(\?|$)/i.test(u),
-  ).slice(0, maxImages);
+  const combined = [...(uploadedUrls ?? []), ...imageryUrls]
+    .filter((u) => /^https?:\/\//i.test(u) && !/\.svg(\?|$)/i.test(u))
+    .slice(0, maxImages);
 
   if (!combined.length) return "";
   return combined.map((u, i) => `  Image ${i + 1}: ${u}`).join("\n");
@@ -209,7 +213,10 @@ function labelledImageUrls(
 
 // ── System prompts ───────────────────────────────────────────────────────────
 
-function buildGenerateSystemPrompt(brandContext: BrandContext, uploadedImageUrls?: string[]): string {
+function buildGenerateSystemPrompt(
+  brandContext: BrandContext,
+  uploadedImageUrls?: string[],
+): string {
   const colourBlock = brandContext.colors
     .filter((c) => c.role !== "unknown")
     .slice(0, 6)
@@ -228,12 +235,29 @@ function buildGenerateSystemPrompt(brandContext: BrandContext, uploadedImageUrls
     if (pc.metaTitle) parts.push(`Page title: ${pc.metaTitle}`);
     if (pc.metaDescription) parts.push(`Meta description: ${pc.metaDescription}`);
     if (pc.h1) parts.push(`H1: ${pc.h1}`);
-    if (pc.headings.length) parts.push(`Section headings:\n${pc.headings.map((h) => `  - ${h}`).join("\n")}`);
+    if (pc.headings.length)
+      parts.push(`Section headings:\n${pc.headings.map((h) => `  - ${h}`).join("\n")}`);
     if (pc.ctaTexts.length) parts.push(`CTA button text: ${pc.ctaTexts.join(" | ")}`);
-    if (pc.bodyCopy.length) parts.push(`Body copy samples:\n${pc.bodyCopy.map((p) => `  "${p}"`).join("\n")}`);
-    if (pc.listItems?.length) parts.push(`List items / bullet points from site (services, features, benefits):\n${pc.listItems.slice(0, 30).map((i) => `  • ${i}`).join("\n")}`);
-    if (pc.numericStats?.length) parts.push(`Stats and numbers found on site:\n${pc.numericStats.slice(0, 15).map((s) => `  ${s}`).join("\n")}`);
-    if (pc.allBodyText) parts.push(`Full page body text (mine for testimonials, team info, offers, services, FAQs):\n${pc.allBodyText}`);
+    if (pc.bodyCopy.length)
+      parts.push(`Body copy samples:\n${pc.bodyCopy.map((p) => `  "${p}"`).join("\n")}`);
+    if (pc.listItems?.length)
+      parts.push(
+        `List items / bullet points from site (services, features, benefits):\n${pc.listItems
+          .slice(0, 30)
+          .map((i) => `  • ${i}`)
+          .join("\n")}`,
+      );
+    if (pc.numericStats?.length)
+      parts.push(
+        `Stats and numbers found on site:\n${pc.numericStats
+          .slice(0, 15)
+          .map((s) => `  ${s}`)
+          .join("\n")}`,
+      );
+    if (pc.allBodyText)
+      parts.push(
+        `Full page body text (mine for testimonials, team info, offers, services, FAQs):\n${pc.allBodyText}`,
+      );
     if (parts.length > 0) {
       pageCopyBlock = `\n## Existing website copy — USE ALL OF THIS real content to populate the generated page\n\n${parts.join("\n\n")}\n`;
     }
@@ -265,7 +289,12 @@ ${brandContext.contactInfo.email ? `Email: ${brandContext.contactInfo.email}` : 
 Social links: ${brandContext.socialLinks.slice(0, 4).join(", ") || "None provided"}
 ${pageCopyBlock}${rawHtmlBlock}
 ## Available imagery
-${(() => { const labelled = labelledImageUrls(brandContext.imageryUrls, uploadedImageUrls, 8); return labelled ? `The images are attached above for visual analysis. Study each one: identify people, products, locations, brand style, and real content. Use these exact URLs in <img src> tags in the generated page — pick the most suitable image for each placement.\n\n${uploadedImageUrls?.length ? `User-uploaded reference images (prioritise these):\n${uploadedImageUrls.map((u, i) => `  Image ${i + 1}: ${u}`).join("\n")}\n\n` : ""}Scraped website images:\n${labelledImageUrls(brandContext.imageryUrls, undefined, 8)}` : "No images available — use CSS gradients, patterns and bold typography for visual interest. Do NOT use emoji as illustrations."; })()}
+${(() => {
+  const labelled = labelledImageUrls(brandContext.imageryUrls, uploadedImageUrls, 8);
+  return labelled
+    ? `The images are attached above for visual analysis. Study each one: identify people, products, locations, brand style, and real content. Use these exact URLs in <img src> tags in the generated page — pick the most suitable image for each placement.\n\n${uploadedImageUrls?.length ? `User-uploaded reference images (prioritise these):\n${uploadedImageUrls.map((u, i) => `  Image ${i + 1}: ${u}`).join("\n")}\n\n` : ""}Scraped website images:\n${labelledImageUrls(brandContext.imageryUrls, undefined, 8)}`
+    : "No images available — use CSS gradients, patterns and bold typography for visual interest. Do NOT use emoji as illustrations.";
+})()}
 
 ## Iconography — strict rule
 
@@ -526,7 +555,11 @@ export function getFormCaptureScript(shareToken: string | null, turnstileSiteKey
 
 // ── Inject form script into HTML ─────────────────────────────────────────────
 
-export function injectFormScript(html: string, shareToken: string | null, turnstileSiteKey?: string): string {
+export function injectFormScript(
+  html: string,
+  shareToken: string | null,
+  turnstileSiteKey?: string,
+): string {
   const script = getFormCaptureScript(shareToken, turnstileSiteKey);
   // Insert before </body> if present, otherwise append
   if (html.includes("</body>")) {
@@ -584,27 +617,41 @@ export async function generateLandingPage(opts: GenerateLPOptions): Promise<stri
 
   let userPrompt = `Generate a complete, high-converting post-click landing page for a paid advertising campaign. This page is the destination someone lands on after clicking a Google/Meta/LinkedIn ad. It must message-match the ad, have ONE conversion goal, no escape routes, and look like it was designed by a premium creative agency.\n\nStudy every piece of scraped website content in the system prompt and use ALL of it — real services, real stats, real testimonials, real process steps. Every section must be fully populated with real, specific content. Do not leave any section sparse.\n\nBe bold and creative with the design. Make it visually stunning.\n\n`;
   userPrompt += `Campaign type: ${opts.campaignType}\n`;
-  if (opts.targetOffering) userPrompt += `Target offering (the ONE thing this page sells): ${opts.targetOffering}\n`;
+  if (opts.targetOffering)
+    userPrompt += `Target offering (the ONE thing this page sells): ${opts.targetOffering}\n`;
   userPrompt += `Brief: ${opts.brief}\n`;
   if (opts.targetAudience) userPrompt += `Target audience: ${opts.targetAudience}\n`;
-  if (opts.additionalInstructions) userPrompt += `\nAdditional instructions: ${opts.additionalInstructions}\n`;
+  if (opts.additionalInstructions)
+    userPrompt += `\nAdditional instructions: ${opts.additionalInstructions}\n`;
 
   if (opts.templateHtml) {
     userPrompt += `\n## Reference Template (inspiration only)\n\nThe following is a saved template provided as creative reference. Do NOT copy it. Instead, study it to understand the design aesthetic, layout patterns, section ordering, and visual style the user likes — then apply those principles to create a completely new page tailored to this brand and campaign. All content, copy, imagery, colours, and specific design choices must come from the scraped website and brief above, not from this template:\n\n${opts.templateHtml.slice(0, 30000)}`;
   }
 
   // Build vision blocks so Claude can actually see the scraped/uploaded images
-  const imageBlocks = await buildImageBlocks(opts.brandContext.imageryUrls, opts.uploadedImageUrls, 8);
+  const imageBlocks = await buildImageBlocks(
+    opts.brandContext.imageryUrls,
+    opts.uploadedImageUrls,
+    8,
+  );
 
   async function callGenerate(withImages: boolean) {
-    const userContent = withImages && imageBlocks.length
-      ? ([...imageBlocks, { type: "text" as const, text: userPrompt }] as const)
-      : userPrompt;
+    const userContent =
+      withImages && imageBlocks.length
+        ? ([...imageBlocks, { type: "text" as const, text: userPrompt }] as const)
+        : userPrompt;
     const stream = anthropic.messages.stream({
       model: MODEL,
       max_tokens: MAX_TOKENS,
       system: systemPrompt,
-      messages: [{ role: "user", content: userContent as Parameters<typeof anthropic.messages.stream>[0]["messages"][0]["content"] }],
+      messages: [
+        {
+          role: "user",
+          content: userContent as Parameters<
+            typeof anthropic.messages.stream
+          >[0]["messages"][0]["content"],
+        },
+      ],
     });
     return stream.finalMessage();
   }
@@ -614,7 +661,9 @@ export async function generateLandingPage(opts: GenerateLPOptions): Promise<stri
     response = await callGenerate(true);
   } catch (err) {
     if (isAnthropicDownloadError(err)) {
-      console.warn("[lp-generator] generateLandingPage: image download error — retrying without vision blocks");
+      console.warn(
+        "[lp-generator] generateLandingPage: image download error — retrying without vision blocks",
+      );
       response = await callGenerate(false);
     } else {
       throw err;
@@ -801,10 +850,9 @@ export async function auditDesignAndSector(opts: {
     .join("\n");
 
   // Build numbered image list so the prompt can reference images by number
-  const allImageUrls = [
-    ...(opts.uploadedImageUrls ?? []),
-    ...opts.brandContext.imageryUrls,
-  ].filter((u) => /^https?:\/\//i.test(u) && !/\.svg(\?|$)/i.test(u)).slice(0, 8);
+  const allImageUrls = [...(opts.uploadedImageUrls ?? []), ...opts.brandContext.imageryUrls]
+    .filter((u) => /^https?:\/\//i.test(u) && !/\.svg(\?|$)/i.test(u))
+    .slice(0, 8);
 
   const numberedImageList = allImageUrls.length
     ? allImageUrls.map((u, i) => `  Image ${i + 1}: ${u}`).join("\n")
@@ -844,18 +892,24 @@ ${designAuditHtml}
 Identify sector-relevance, design quality, and image usage issues as a JSON array.`;
 
   // Fetch images as vision blocks so Claude can see what each image depicts
-  const imageBlocks = await buildImageBlocks(opts.brandContext.imageryUrls, opts.uploadedImageUrls, 8);
+  const imageBlocks = await buildImageBlocks(
+    opts.brandContext.imageryUrls,
+    opts.uploadedImageUrls,
+    8,
+  );
 
   // Prepend the rendered-page screenshot (if available) as the first block
   const screenshotBlock = opts.pageScreenshot
-    ? [{
-        type: "image" as const,
-        source: {
-          type: "base64" as const,
-          media_type: "image/jpeg" as const,
-          data: opts.pageScreenshot.toString("base64"),
+    ? [
+        {
+          type: "image" as const,
+          source: {
+            type: "base64" as const,
+            media_type: "image/jpeg" as const,
+            data: opts.pageScreenshot.toString("base64"),
+          },
         },
-      }]
+      ]
     : [];
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -863,9 +917,10 @@ Identify sector-relevance, design quality, and image usage issues as a JSON arra
 
   async function callDesignAudit(withImages: boolean) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const userContent: any = withImages && allBlocks.length
-      ? [...allBlocks, { type: "text", text: userPrompt }]
-      : userPrompt;
+    const userContent: any =
+      withImages && allBlocks.length
+        ? [...allBlocks, { type: "text", text: userPrompt }]
+        : userPrompt;
     return anthropic.messages.create({
       model: MODEL,
       max_tokens: 4000,
@@ -879,7 +934,9 @@ Identify sector-relevance, design quality, and image usage issues as a JSON arra
     response = await callDesignAudit(true);
   } catch (err) {
     if (isAnthropicDownloadError(err)) {
-      console.warn("[lp-generator] auditDesignAndSector: image download error — retrying without vision blocks");
+      console.warn(
+        "[lp-generator] auditDesignAndSector: image download error — retrying without vision blocks",
+      );
       response = await callDesignAudit(false);
     } else {
       throw err;
@@ -1048,9 +1105,7 @@ export async function generateLandingPageWithCritique(
   // Sort highest severity first so the most impactful fixes land in the
   // earliest passes — if anything fails we still get the big wins.
   const severityRank = { high: 0, medium: 1, low: 2 } as const;
-  const sorted = [...critique].sort(
-    (a, b) => severityRank[a.severity] - severityRank[b.severity],
-  );
+  const sorted = [...critique].sort((a, b) => severityRank[a.severity] - severityRank[b.severity]);
 
   let passes = 0;
   for (let i = 0; i < refinementPasses; i++) {
@@ -1075,7 +1130,10 @@ export async function generateLandingPageWithCritique(
       });
       passes++;
     } catch (err) {
-      console.warn(`[lp-generator] Refinement pass ${i + 1} failed (keeping previous version):`, err);
+      console.warn(
+        `[lp-generator] Refinement pass ${i + 1} failed (keeping previous version):`,
+        err,
+      );
       break;
     }
   }
@@ -1097,7 +1155,7 @@ export function extractAndValidateHtml(raw: string): string {
 
   // Handle Claude prefixing the HTML with explanatory text
   const start = text.indexOf("<!DOCTYPE");
-  const end   = text.lastIndexOf("</html>");
+  const end = text.lastIndexOf("</html>");
   if (start !== -1 && end !== -1 && end > start) {
     text = text.slice(start, end + "</html>".length).trim();
   }
@@ -1105,7 +1163,7 @@ export function extractAndValidateHtml(raw: string): string {
   const lower = text.toLowerCase();
   if (!lower.includes("<html") || !lower.includes("</html>") || text.length < 500) {
     throw new HtmlValidationError(
-      `The model returned an incomplete response instead of HTML (${text.length} chars). Please try again — if the problem persists, simplify the prompt.`
+      `The model returned an incomplete response instead of HTML (${text.length} chars). Please try again — if the problem persists, simplify the prompt.`,
     );
   }
   return text;
@@ -1126,11 +1184,12 @@ export interface RefineSectionOptions {
 export async function refineSectionHtml(opts: RefineSectionOptions): Promise<string> {
   const anthropic = await getAnthropicClient();
 
-  const colourSummary = opts.brandContext?.colors
-    .filter((c) => c.role !== "unknown")
-    .slice(0, 4)
-    .map((c) => `${c.role}: ${c.hex}`)
-    .join(", ") ?? "";
+  const colourSummary =
+    opts.brandContext?.colors
+      .filter((c) => c.role !== "unknown")
+      .slice(0, 4)
+      .map((c) => `${c.role}: ${c.hex}`)
+      .join(", ") ?? "";
 
   const system = `You are an expert landing page designer editing a single section of an existing page.
 Return ONLY the updated section HTML — no full page wrapper, no <html>/<head>/<body> tags, no markdown fences, no explanation.
@@ -1139,24 +1198,52 @@ Match the colours, fonts, and tone described in the page context.
 Use the scraped website copy for accurate brand wording — real service names, real stats, real team names, real testimonials.
 For FAQ or accordion sections, always use native <details>/<summary> elements — they require zero JavaScript and work everywhere. If the design calls for custom styling, add a self-contained <style> block; never rely on external libraries.`;
 
+  const SECTION_INPUT_BUDGET_TOKENS = 120_000;
+  const SECTION_OUTPUT_MAX_TOKENS = 7000;
+  const CHARS_PER_TOKEN_ESTIMATE = 4;
+  const sectionInputCharBudget = SECTION_INPUT_BUDGET_TOKENS * CHARS_PER_TOKEN_ESTIMATE;
+
   let userContent = `SECTION TO EDIT:
 ${opts.sectionHtml}
 
 PAGE CONTEXT (style, structure, and tone reference — do not include in output):
-${opts.pageContext}${colourSummary ? `\nBrand colours: ${colourSummary}` : ""}`;
+${opts.pageContext}${colourSummary ? `\nBrand colours: ${colourSummary}` : ""}
+
+USER REQUEST: ${opts.prompt}`;
+
+  let usedChars = userContent.length;
+  const appendWithinBudget = (heading: string, text: string | undefined) => {
+    if (!text || !text.trim()) return;
+
+    const remaining = sectionInputCharBudget - usedChars;
+    if (remaining <= 0) return;
+
+    const blockPrefix = `\n\n${heading}\n`;
+    const availableForText = remaining - blockPrefix.length;
+    if (availableForText <= 0) return;
+
+    const trimmed = text.length > availableForText ? `${text.slice(0, availableForText)}...` : text;
+
+    userContent += `${blockPrefix}${trimmed}`;
+    usedChars += blockPrefix.length + trimmed.length;
+  };
 
   // Include scraped copy so Claude can use real brand wording in the section
   if (opts.brandContext?.pageContent?.allBodyText) {
-    userContent += `\n\n## Scraped website copy (use this for accurate brand wording):\n${opts.brandContext.pageContent.allBodyText.slice(0, 8000)}`;
+    appendWithinBudget(
+      "## Scraped website copy (use this for accurate brand wording):",
+      opts.brandContext.pageContent.allBodyText,
+    );
   } else if (opts.brandContext?.rawHtml) {
-    userContent += `\n\n## Original scraped website HTML (brand and copy reference):\n${opts.brandContext.rawHtml.slice(0, 20000)}`;
+    appendWithinBudget(
+      "## Original scraped website HTML (brand and copy reference):",
+      opts.brandContext.rawHtml,
+    );
   }
 
   if (opts.additionalContext) {
-    userContent += `\n\n## Additional context from provided URLs:\n${opts.additionalContext}`;
+    appendWithinBudget("## Additional context from provided URLs:", opts.additionalContext);
   }
-
-  userContent += `\n\nUSER REQUEST: ${opts.prompt}`;
 
   const imageBlocks = opts.imageUrls?.length
     ? await buildImageBlocks(opts.imageUrls, undefined, 4)
@@ -1168,8 +1255,8 @@ ${opts.pageContext}${colourSummary ? `\nBrand colours: ${colourSummary}` : ""}`;
     : userContent;
 
   const response = await anthropic.messages.create({
-    model: MODEL,
-    max_tokens: 8192,
+    model: REFINE_MODEL,
+    max_tokens: SECTION_OUTPUT_MAX_TOKENS,
     system,
     messages: [{ role: "user", content: messageContent }],
   });
@@ -1183,12 +1270,15 @@ ${opts.pageContext}${colourSummary ? `\nBrand colours: ${colourSummary}` : ""}`;
   // so only the section markup is returned.
   const htmlStart = stripped.indexOf("<");
   const htmlEnd = stripped.lastIndexOf(">");
-  const html = (htmlStart !== -1 && htmlEnd > htmlStart)
-    ? stripped.slice(htmlStart, htmlEnd + 1).trim()
-    : stripped.trim();
+  const html =
+    htmlStart !== -1 && htmlEnd > htmlStart
+      ? stripped.slice(htmlStart, htmlEnd + 1).trim()
+      : stripped.trim();
 
   if (!html || html.length < 10) {
-    throw new HtmlValidationError("The model returned an empty response for this section. Please try again.");
+    throw new HtmlValidationError(
+      "The model returned an empty response for this section. Please try again.",
+    );
   }
   return html;
 }
@@ -1352,7 +1442,9 @@ export function extractReferencedAssetUrlsFromHtml(html: string): string[] {
   }
 
   // CSS background-image / background: url(...)
-  for (const match of html.matchAll(/background(?:-image)?\s*:\s*url\((?:["'])?([^"')]+)(?:["'])?\)/gi)) {
+  for (const match of html.matchAll(
+    /background(?:-image)?\s*:\s*url\((?:["'])?([^"')]+)(?:["'])?\)/gi,
+  )) {
     const url = match[1]?.trim();
     if (url) urls.add(url);
   }
@@ -1434,9 +1526,17 @@ Return up to ${maxFindings} items.`;
   const block = response.content[0];
   const raw = block.type === "text" ? block.text.trim() : "";
   const cleaned = stripMarkdownFences(raw).trim();
+  const normalised = cleaned.replace(/^json\s*/i, "").trim();
+
+  const arrayStart = normalised.indexOf("[");
+  const arrayEnd = normalised.lastIndexOf("]");
+  const parseCandidate =
+    arrayStart !== -1 && arrayEnd > arrayStart
+      ? normalised.slice(arrayStart, arrayEnd + 1)
+      : normalised;
 
   try {
-    const parsed = JSON.parse(cleaned) as unknown;
+    const parsed = JSON.parse(parseCandidate) as unknown;
     if (!Array.isArray(parsed)) return [];
 
     return parsed
@@ -1482,9 +1582,10 @@ export function buildSecondPassRefinePrompt(opts: {
     instructions.push(`[${finding.area}] ${finding.fix}`);
   }
 
-  const instructionBlock = instructions.length > 0
-    ? instructions.map((line, index) => `${index + 1}. ${line}`).join("\n")
-    : "1. Re-check the page against the original request and ensure all requested updates are fully applied without removing working content.";
+  const instructionBlock =
+    instructions.length > 0
+      ? instructions.map((line, index) => `${index + 1}. ${line}`).join("\n")
+      : "1. Re-check the page against the original request and ensure all requested updates are fully applied without removing working content.";
 
   return `This is pass 2 of a verified refinement workflow.
 
@@ -1757,13 +1858,22 @@ function buildLPPlanUserPrompt(opts: GenerateLPOptions): string {
     if (pc.headings.length) contentParts.push(`Headings: ${pc.headings.slice(0, 12).join(" | ")}`);
     if (pc.ctaTexts.length) contentParts.push(`CTAs: ${pc.ctaTexts.join(" | ")}`);
     if (pc.listItems?.length)
-      contentParts.push(`Services / features:\n${pc.listItems.slice(0, 30).map((i) => `  • ${i}`).join("\n")}`);
+      contentParts.push(
+        `Services / features:\n${pc.listItems
+          .slice(0, 30)
+          .map((i) => `  • ${i}`)
+          .join("\n")}`,
+      );
     if (pc.numericStats?.length)
       contentParts.push(`Stats: ${pc.numericStats.slice(0, 12).join(" | ")}`);
     if (pc.bodyCopy.length)
-      contentParts.push(`Body copy:\n${pc.bodyCopy.slice(0, 10).map((p) => `  "${p}"`).join("\n")}`);
-    if (pc.allBodyText)
-      contentParts.push(`Full site text:\n${pc.allBodyText.slice(0, 10000)}`);
+      contentParts.push(
+        `Body copy:\n${pc.bodyCopy
+          .slice(0, 10)
+          .map((p) => `  "${p}"`)
+          .join("\n")}`,
+      );
+    if (pc.allBodyText) contentParts.push(`Full site text:\n${pc.allBodyText.slice(0, 10000)}`);
   }
 
   return `Plan a high-converting post-click landing page for this campaign.
@@ -1799,11 +1909,21 @@ ${
           if (pc2.headings.length) parts.push(`Headings: ${pc2.headings.slice(0, 12).join(" | ")}`);
           if (pc2.ctaTexts.length) parts.push(`CTAs: ${pc2.ctaTexts.join(" | ")}`);
           if (pc2.listItems?.length)
-            parts.push(`Services / features:\n${pc2.listItems.slice(0, 20).map((i) => `  • ${i}`).join("\n")}`);
+            parts.push(
+              `Services / features:\n${pc2.listItems
+                .slice(0, 20)
+                .map((i) => `  • ${i}`)
+                .join("\n")}`,
+            );
           if (pc2.numericStats?.length)
             parts.push(`Stats: ${pc2.numericStats.slice(0, 10).join(" | ")}`);
           if (pc2.bodyCopy.length)
-            parts.push(`Body copy:\n${pc2.bodyCopy.slice(0, 8).map((p) => `  "${p}"`).join("\n")}`);
+            parts.push(
+              `Body copy:\n${pc2.bodyCopy
+                .slice(0, 8)
+                .map((p) => `  "${p}"`)
+                .join("\n")}`,
+            );
           if (pc2.allBodyText)
             // Additional pages are supplementary — 2 KB is enough for the
             // planner to extract services/stats without burying the brief.
@@ -1821,16 +1941,14 @@ Available imagery — images are visually attached for analysis. Study each one:
 Assign each image to the section(s) where it creates the most visual impact. Include the exact URLs in each section's "imageUrls" array in the SECTIONS output. Spread the images across different sections — do NOT assign the same image URL to multiple sections unless it truly fits nowhere else.
 
 Numbered image list (reference these exact URLs in imageUrls arrays):
-${
-  (() => {
-    const combined = [
-      ...(opts.uploadedImageUrls ?? []),
-      ...opts.brandContext.imageryUrls,
-    ].filter((u) => /^https?:\/\//i.test(u) && !/\.svg(\?|$)/i.test(u)).slice(0, 12);
-    if (!combined.length) return "  None available — sections should use CSS gradients and bold typography.";
-    return combined.map((u, i) => `  Image ${i + 1}: ${u}`).join("\n");
-  })()
-}
+${(() => {
+  const combined = [...(opts.uploadedImageUrls ?? []), ...opts.brandContext.imageryUrls]
+    .filter((u) => /^https?:\/\//i.test(u) && !/\.svg(\?|$)/i.test(u))
+    .slice(0, 12);
+  if (!combined.length)
+    return "  None available — sections should use CSS gradients and bold typography.";
+  return combined.map((u, i) => `  Image ${i + 1}: ${u}`).join("\n");
+})()}
 
 Now output the plan using the tagged format specified in your instructions.`;
 }
@@ -1862,22 +1980,31 @@ function buildSectionUserPrompt(params: {
   targetAudience?: string;
   targetOffering?: string;
 }): string {
-  const { plan, section, previousSectionsHtml, brandContext, uploadedImageUrls, brief, campaignType, targetAudience, targetOffering } = params;
+  const {
+    plan,
+    section,
+    previousSectionsHtml,
+    brandContext,
+    uploadedImageUrls,
+    brief,
+    campaignType,
+    targetAudience,
+    targetOffering,
+  } = params;
 
   // Use section-assigned images if the plan provided them; fall back to the
   // general brand pool. This ensures each section gets the right images rather
   // than every section competing for the same generic pool.
-  const sectionImageUrls = section.imageUrls?.length
-    ? section.imageUrls
-    : brandContext.imageryUrls;
+  const sectionImageUrls = section.imageUrls?.length ? section.imageUrls : brandContext.imageryUrls;
   const labelled = labelledImageUrls(sectionImageUrls, uploadedImageUrls, 4);
   const imagery = labelled
     ? `Images are visually attached for analysis. These images have been specifically selected for this section — use them as <img src="URL"> in the HTML. Every image in this list should appear somewhere in this section's markup:\n${labelled}\n\nIMPORTANT: Do NOT use a CSS gradient as a background when a real photo is available above. Use the photo.`
     : "No images available for this section — use CSS gradients, bold typography, and brand colours for visual impact.";
 
-  const prevHtml = previousSectionsHtml.length > 3000
-    ? "...(earlier sections)...\n" + previousSectionsHtml.slice(-3000)
-    : previousSectionsHtml;
+  const prevHtml =
+    previousSectionsHtml.length > 3000
+      ? "...(earlier sections)...\n" + previousSectionsHtml.slice(-3000)
+      : previousSectionsHtml;
 
   return `## CSS Design System (shared across all sections — use freely, do not redefine)
 
@@ -1910,13 +2037,18 @@ Generate the ${section.name} section now. Write copy that speaks directly to the
 async function planLandingPage(opts: GenerateLPOptions): Promise<LPPagePlan> {
   const anthropic = await getAnthropicClient();
 
-  const imageBlocks = await buildImageBlocks(opts.brandContext.imageryUrls, opts.uploadedImageUrls, 12);
+  const imageBlocks = await buildImageBlocks(
+    opts.brandContext.imageryUrls,
+    opts.uploadedImageUrls,
+    12,
+  );
   const planPrompt = buildLPPlanUserPrompt(opts);
 
   async function callPlan(withImages: boolean) {
-    const userContent = withImages && imageBlocks.length
-      ? [...imageBlocks, { type: "text" as const, text: planPrompt }]
-      : planPrompt;
+    const userContent =
+      withImages && imageBlocks.length
+        ? [...imageBlocks, { type: "text" as const, text: planPrompt }]
+        : planPrompt;
     return anthropic.messages.create({
       model: MODEL,
       max_tokens: PLAN_MAX_TOKENS,
@@ -1931,7 +2063,9 @@ async function planLandingPage(opts: GenerateLPOptions): Promise<LPPagePlan> {
     response = await callPlan(true);
   } catch (err) {
     if (isAnthropicDownloadError(err)) {
-      console.warn("[lp-generator] planLandingPage: image download error — retrying without vision blocks");
+      console.warn(
+        "[lp-generator] planLandingPage: image download error — retrying without vision blocks",
+      );
       response = await callPlan(false);
     } else {
       throw err;
@@ -1988,9 +2122,10 @@ async function generateSectionHtml(params: {
   const sectionPrompt = buildSectionUserPrompt(params);
 
   async function callSection(withImages: boolean) {
-    const userContent = withImages && imageBlocks.length
-      ? [...imageBlocks, { type: "text" as const, text: sectionPrompt }]
-      : sectionPrompt;
+    const userContent =
+      withImages && imageBlocks.length
+        ? [...imageBlocks, { type: "text" as const, text: sectionPrompt }]
+        : sectionPrompt;
     return anthropic.messages.create({
       model: MODEL,
       max_tokens: SECTION_MAX_TOKENS,
@@ -2005,7 +2140,9 @@ async function generateSectionHtml(params: {
     response = await callSection(true);
   } catch (err) {
     if (isAnthropicDownloadError(err)) {
-      console.warn(`[lp-generator] generateSectionHtml(${params.section.name}): image download error — retrying without vision blocks`);
+      console.warn(
+        `[lp-generator] generateSectionHtml(${params.section.name}): image download error — retrying without vision blocks`,
+      );
       response = await callSection(false);
     } else {
       throw err;
@@ -2019,7 +2156,11 @@ async function generateSectionHtml(params: {
 // ── Assemble final page ───────────────────────────────────────────────────────
 
 function escapeAttr(str: string): string {
-  return str.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
 
 function assemblePageFromSections(plan: LPPagePlan, sectionHtmls: string[]): string {
@@ -2153,7 +2294,10 @@ export async function generateLandingPageSectionBySection(
     if (result.status === "fulfilled") {
       sectionHtmls.push(result.value);
     } else {
-      console.warn(`[lp-generator] Section "${plan.sections[i].name}" failed, skipping:`, result.reason);
+      console.warn(
+        `[lp-generator] Section "${plan.sections[i].name}" failed, skipping:`,
+        result.reason,
+      );
     }
   }
 
@@ -2198,22 +2342,53 @@ export interface AuditAndRefineOptions {
  *   Total: ~90-120 s
  */
 export async function auditAndRefineLandingPage(opts: AuditAndRefineOptions): Promise<string> {
-  const { html: inputHtml, brief, campaignType, brandContext, targetAudience, targetOffering, uploadedImageUrls, onProgress } = opts;
+  const {
+    html: inputHtml,
+    brief,
+    campaignType,
+    brandContext,
+    targetAudience,
+    targetOffering,
+    uploadedImageUrls,
+    onProgress,
+  } = opts;
 
   // Step 1 — CRO audit + Copy audit + screenshot in parallel
   if (onProgress) await onProgress("Running quality audits...");
   const [croIssues, copyIssues, pageScreenshot] = await Promise.all([
-    critiqueLandingPage({ html: inputHtml, brief, campaignType, brandContext, targetAudience, targetOffering })
-      .catch((err) => { console.warn("[lp-generator] CRO audit failed:", err); return [] as LPCritiqueItem[]; }),
-    auditCopyQuality({ html: inputHtml, brief, campaignType, brandContext, targetAudience, targetOffering })
-      .catch((err) => { console.warn("[lp-generator] Copy audit failed:", err); return [] as LPCritiqueItem[]; }),
+    critiqueLandingPage({
+      html: inputHtml,
+      brief,
+      campaignType,
+      brandContext,
+      targetAudience,
+      targetOffering,
+    }).catch((err) => {
+      console.warn("[lp-generator] CRO audit failed:", err);
+      return [] as LPCritiqueItem[];
+    }),
+    auditCopyQuality({
+      html: inputHtml,
+      brief,
+      campaignType,
+      brandContext,
+      targetAudience,
+      targetOffering,
+    }).catch((err) => {
+      console.warn("[lp-generator] Copy audit failed:", err);
+      return [] as LPCritiqueItem[];
+    }),
     screenshotHtml(inputHtml).catch(() => null),
   ]);
 
   if (pageScreenshot) {
-    console.log(`[lp-generator] Page screenshot captured (${(pageScreenshot.length / 1024).toFixed(0)} KB)`);
+    console.log(
+      `[lp-generator] Page screenshot captured (${(pageScreenshot.length / 1024).toFixed(0)} KB)`,
+    );
   } else {
-    console.warn("[lp-generator] Page screenshot failed — design audit will run without rendered preview.");
+    console.warn(
+      "[lp-generator] Page screenshot failed — design audit will run without rendered preview.",
+    );
   }
 
   // Step 2 — Design & Sector audit (sequential so it receives the screenshot)
@@ -2227,7 +2402,10 @@ export async function auditAndRefineLandingPage(opts: AuditAndRefineOptions): Pr
     targetOffering,
     uploadedImageUrls,
     pageScreenshot,
-  }).catch((err) => { console.warn("[lp-generator] Design audit failed:", err); return [] as LPCritiqueItem[]; });
+  }).catch((err) => {
+    console.warn("[lp-generator] Design audit failed:", err);
+    return [] as LPCritiqueItem[];
+  });
 
   // Step 3 — Single combined refinement: apply ALL high/medium issues
   const severityRank = { high: 0, medium: 1, low: 2 } as const;
@@ -2285,7 +2463,10 @@ export async function auditAndRefineLandingPage(opts: AuditAndRefineOptions): Pr
       });
       console.log(`[lp-generator] Audit refinement batch ${batch + 1}/${totalBatches} complete.`);
     } catch (err) {
-      console.warn(`[lp-generator] Audit refinement batch ${batch + 1}/${totalBatches} failed (keeping version from previous batch):`, err);
+      console.warn(
+        `[lp-generator] Audit refinement batch ${batch + 1}/${totalBatches} failed (keeping version from previous batch):`,
+        err,
+      );
       break;
     }
   }
@@ -2337,28 +2518,28 @@ function stripMarkdownFences(text: string): string {
  * nativeName: displayed alongside the English name in the picker.
  */
 export const LP_SUPPORTED_LANGUAGES = [
-  { language: "fr",    name: "French",                  nativeName: "Français" },
-  { language: "es",    name: "Spanish",                 nativeName: "Español" },
-  { language: "de",    name: "German",                  nativeName: "Deutsch" },
-  { language: "it",    name: "Italian",                 nativeName: "Italiano" },
-  { language: "pt-BR", name: "Portuguese (Brazil)",     nativeName: "Português (Brasil)" },
-  { language: "nl",    name: "Dutch",                   nativeName: "Nederlands" },
-  { language: "pl",    name: "Polish",                  nativeName: "Polski" },
-  { language: "ro",    name: "Romanian",                nativeName: "Română" },
-  { language: "sv",    name: "Swedish",                 nativeName: "Svenska" },
-  { language: "no",    name: "Norwegian",               nativeName: "Norsk" },
-  { language: "da",    name: "Danish",                  nativeName: "Dansk" },
-  { language: "tr",    name: "Turkish",                 nativeName: "Türkçe" },
-  { language: "ru",    name: "Russian",                 nativeName: "Русский" },
-  { language: "uk",    name: "Ukrainian",               nativeName: "Українська" },
-  { language: "ar",    name: "Arabic",                  nativeName: "العربية" },
-  { language: "hi",    name: "Hindi",                   nativeName: "हिन्दी" },
-  { language: "ja",    name: "Japanese",                nativeName: "日本語" },
-  { language: "zh-CN", name: "Chinese (Simplified)",   nativeName: "中文（简体）" },
-  { language: "ko",    name: "Korean",                  nativeName: "한국어" },
+  { language: "fr", name: "French", nativeName: "Français" },
+  { language: "es", name: "Spanish", nativeName: "Español" },
+  { language: "de", name: "German", nativeName: "Deutsch" },
+  { language: "it", name: "Italian", nativeName: "Italiano" },
+  { language: "pt-BR", name: "Portuguese (Brazil)", nativeName: "Português (Brasil)" },
+  { language: "nl", name: "Dutch", nativeName: "Nederlands" },
+  { language: "pl", name: "Polish", nativeName: "Polski" },
+  { language: "ro", name: "Romanian", nativeName: "Română" },
+  { language: "sv", name: "Swedish", nativeName: "Svenska" },
+  { language: "no", name: "Norwegian", nativeName: "Norsk" },
+  { language: "da", name: "Danish", nativeName: "Dansk" },
+  { language: "tr", name: "Turkish", nativeName: "Türkçe" },
+  { language: "ru", name: "Russian", nativeName: "Русский" },
+  { language: "uk", name: "Ukrainian", nativeName: "Українська" },
+  { language: "ar", name: "Arabic", nativeName: "العربية" },
+  { language: "hi", name: "Hindi", nativeName: "हिन्दी" },
+  { language: "ja", name: "Japanese", nativeName: "日本語" },
+  { language: "zh-CN", name: "Chinese (Simplified)", nativeName: "中文（简体）" },
+  { language: "ko", name: "Korean", nativeName: "한국어" },
 ] as const;
 
-export type LPSupportedLanguageCode = typeof LP_SUPPORTED_LANGUAGES[number]["language"];
+export type LPSupportedLanguageCode = (typeof LP_SUPPORTED_LANGUAGES)[number]["language"];
 
 /**
  * Translate a landing page HTML into the target language using Claude Haiku.
@@ -2375,9 +2556,9 @@ export type LPSupportedLanguageCode = typeof LP_SUPPORTED_LANGUAGES[number]["lan
  */
 export async function translateLandingPage(
   html: string,
-  targetLanguage: string,   // BCP-47 e.g. "fr", "es"
+  targetLanguage: string, // BCP-47 e.g. "fr", "es"
   targetLanguageName: string, // Human label e.g. "French", "Spanish"
-  dialCode?: string | null,   // International dial code e.g. "+44", "+1" — for phone number formatting
+  dialCode?: string | null, // International dial code e.g. "+44", "+1" — for phone number formatting
 ): Promise<string> {
   const anthropic = await getAnthropicClient();
 

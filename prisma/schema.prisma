@@ -834,6 +834,7 @@ model LandingPage {
   versions          LandingPageVersion[]
   leads             LandingPageLead[]
   translations      LandingPageTranslation[]
+  refineJobs        LandingPageRefineJob[]
 
   @@unique([clientId, slug])
   @@unique([customSubdomain, slug])
@@ -841,6 +842,31 @@ model LandingPage {
   @@index([clientId, createdAt])
   @@index([userId, createdAt])
   @@index([clickrUserId, createdAt])
+}
+
+// Background refinement jobs for landing pages. Jobs are processed in short
+// batched runs to stay within serverless request limits.
+model LandingPageRefineJob {
+  id              String      @id @default(cuid())
+  landingPageId   String
+  userId          String
+  status          String      @default("pending") // pending | running | complete | failed
+  refinementMode  String      @default("single-pass") // single-pass | double-pass
+  prompt          String
+  payloadJson     String // JSON payload from the client request
+  stateJson       String      @default("{}") // JSON state-machine snapshot
+  progressMessage String?
+  progressPercent Int         @default(0)
+  errorMessage    String?
+  finalHtml       String?
+  resultVersionId String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  landingPage     LandingPage @relation(fields: [landingPageId], references: [id], onDelete: Cascade)
+
+  @@index([landingPageId, createdAt])
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
 }
 
 // Version history: every AI refinement creates a new version

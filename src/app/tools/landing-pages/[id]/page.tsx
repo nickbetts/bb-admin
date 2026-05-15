@@ -54,8 +54,21 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { injectEditorScript, removeEditorScript, applyTextEdit, deleteElementByCssSelector } from "@/lib/lp-editor-inject";
-import { parseSections, reorderSections, duplicateSection, deleteSection, replaceSection, setSectionAnimation, type LPSection } from "@/lib/lp-section-parser";
+import {
+  injectEditorScript,
+  removeEditorScript,
+  applyTextEdit,
+  deleteElementByCssSelector,
+} from "@/lib/lp-editor-inject";
+import {
+  parseSections,
+  reorderSections,
+  duplicateSection,
+  deleteSection,
+  replaceSection,
+  setSectionAnimation,
+  type LPSection,
+} from "@/lib/lp-section-parser";
 import { ANIMATION_PRESETS, injectAnimations } from "@/lib/lp-animations";
 import { PortalPublishToggle } from "@/components/portal/PortalPublishToggle";
 import { parseCSSVariables, updateCSSVariable, type CSSVariable } from "@/lib/lp-css-parser";
@@ -64,7 +77,13 @@ import { FormConfigPanel } from "@/components/landing-pages/FormConfigPanel";
 import { LeadsViewerModal } from "@/components/landing-pages/LeadsViewerModal";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import type { LpAnalyticsConfig } from "@/lib/lp-analytics";
-import { extractFormFieldsFromHtml, parseLpFormConfig, reconcileFormFields, type LpFormConfig, type LpFormField } from "@/lib/lp-form-config";
+import {
+  extractFormFieldsFromHtml,
+  parseLpFormConfig,
+  reconcileFormFields,
+  type LpFormConfig,
+  type LpFormField,
+} from "@/lib/lp-form-config";
 import { applyConfiguredFormFields, replaceBuiltInForm } from "@/lib/lp-form-fields-html";
 import { useToast } from "@/components/ui/Toast";
 
@@ -73,12 +92,14 @@ import { useToast } from "@/components/ui/Toast";
 const LP_DOMAIN = process.env.NEXT_PUBLIC_LP_DOMAIN || "clickr.marketing";
 
 function toSubLabel(input: string | null | undefined): string {
-  return (input || "demo")
-    .toLowerCase()
-    .replace(/[^a-z0-9-]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 63) || "demo";
+  return (
+    (input || "demo")
+      .toLowerCase()
+      .replace(/[^a-z0-9-]+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 63) || "demo"
+  );
 }
 
 /** Best public URL for a landing page — prefers the clickr.marketing host. */
@@ -92,7 +113,7 @@ function buildLpUrl(opts: {
 }): string {
   const qs = opts.testMode ? "?test=1" : "";
   // Prefer clientSlug, then customSubdomain for the subdomain
-  const subdomain = opts.clientSlug ? toSubLabel(opts.clientSlug) : (opts.customSubdomain || null);
+  const subdomain = opts.clientSlug ? toSubLabel(opts.clientSlug) : opts.customSubdomain || null;
   if (opts.lpSlug && subdomain) {
     return `https://${subdomain}.${LP_DOMAIN}/${opts.lpSlug}${qs}`;
   }
@@ -145,10 +166,15 @@ const DEVICE_WIDTHS: Record<DeviceMode, string> = {
 };
 
 const inputStyle: React.CSSProperties = {
-  width: "100%", padding: "8px 12px",
-  border: "1px solid var(--border)", borderRadius: "var(--r)",
-  fontSize: 13, color: "var(--text)", background: "var(--surface)",
-  outline: "none", fontFamily: "inherit",
+  width: "100%",
+  padding: "8px 12px",
+  border: "1px solid var(--border)",
+  borderRadius: "var(--r)",
+  fontSize: 13,
+  color: "var(--text)",
+  background: "var(--surface)",
+  outline: "none",
+  fontFamily: "inherit",
 };
 
 const STATUS_STYLES: Record<string, React.CSSProperties> = {
@@ -167,25 +193,25 @@ const SIDEBAR_TABS: { id: SidebarTab; icon: typeof MessageSquare; label: string 
 
 // ── LP_SUPPORTED_LANGUAGES (mirrored client-side) ──
 const LP_SUPPORTED_LANGUAGES_UI = [
-  { language: "fr",    name: "French",                nativeName: "Français" },
-  { language: "es",    name: "Spanish",               nativeName: "Español" },
-  { language: "de",    name: "German",                nativeName: "Deutsch" },
-  { language: "it",    name: "Italian",               nativeName: "Italiano" },
-  { language: "pt-BR", name: "Portuguese (Brazil)",   nativeName: "Português (Brasil)" },
-  { language: "nl",    name: "Dutch",                 nativeName: "Nederlands" },
-  { language: "pl",    name: "Polish",                nativeName: "Polski" },
-  { language: "ro",    name: "Romanian",              nativeName: "Română" },
-  { language: "sv",    name: "Swedish",               nativeName: "Svenska" },
-  { language: "no",    name: "Norwegian",             nativeName: "Norsk" },
-  { language: "da",    name: "Danish",                nativeName: "Dansk" },
-  { language: "tr",    name: "Turkish",               nativeName: "Türkçe" },
-  { language: "ru",    name: "Russian",               nativeName: "Русский" },
-  { language: "uk",    name: "Ukrainian",             nativeName: "Українська" },
-  { language: "ar",    name: "Arabic",               nativeName: "العربية" },
-  { language: "hi",    name: "Hindi",                nativeName: "हिन्दी" },
-  { language: "ja",    name: "Japanese",             nativeName: "日本語" },
+  { language: "fr", name: "French", nativeName: "Français" },
+  { language: "es", name: "Spanish", nativeName: "Español" },
+  { language: "de", name: "German", nativeName: "Deutsch" },
+  { language: "it", name: "Italian", nativeName: "Italiano" },
+  { language: "pt-BR", name: "Portuguese (Brazil)", nativeName: "Português (Brasil)" },
+  { language: "nl", name: "Dutch", nativeName: "Nederlands" },
+  { language: "pl", name: "Polish", nativeName: "Polski" },
+  { language: "ro", name: "Romanian", nativeName: "Română" },
+  { language: "sv", name: "Swedish", nativeName: "Svenska" },
+  { language: "no", name: "Norwegian", nativeName: "Norsk" },
+  { language: "da", name: "Danish", nativeName: "Dansk" },
+  { language: "tr", name: "Turkish", nativeName: "Türkçe" },
+  { language: "ru", name: "Russian", nativeName: "Русский" },
+  { language: "uk", name: "Ukrainian", nativeName: "Українська" },
+  { language: "ar", name: "Arabic", nativeName: "العربية" },
+  { language: "hi", name: "Hindi", nativeName: "हिन्दी" },
+  { language: "ja", name: "Japanese", nativeName: "日本語" },
   { language: "zh-CN", name: "Chinese (Simplified)", nativeName: "中文（简体）" },
-  { language: "ko",    name: "Korean",               nativeName: "한국어" },
+  { language: "ko", name: "Korean", nativeName: "한국어" },
 ] as const;
 
 type LpTranslation = {
@@ -217,7 +243,9 @@ function isValidEmailAddress(email: string): boolean {
 }
 
 function serialiseFieldSignature(field: LpFormField): string {
-  const options = (field.options ?? []).map((option) => `${option.label}:${option.value}`).join("|");
+  const options = (field.options ?? [])
+    .map((option) => `${option.label}:${option.value}`)
+    .join("|");
   return [field.name, field.label, field.type, String(field.required), options].join("::");
 }
 
@@ -236,7 +264,9 @@ function SortableSectionRow({
   onAnimationChange: (anim: string | null) => void;
   onRefine: (input: { prompt: string; images: File[]; crawlUrls: string[] }) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: section.id });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: section.id,
+  });
   const [aiOpen, setAiOpen] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
   const [images, setImages] = useState<File[]>([]);
@@ -271,35 +301,97 @@ function SortableSectionRow({
   return (
     <div ref={setNodeRef} style={style}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px" }}>
-        <button {...attributes} {...listeners} style={{ cursor: "grab", color: "var(--text-4)", background: "none", border: "none", padding: 0, display: "flex" }}>
+        <button
+          {...attributes}
+          {...listeners}
+          style={{
+            cursor: "grab",
+            color: "var(--text-4)",
+            background: "none",
+            border: "none",
+            padding: 0,
+            display: "flex",
+          }}
+        >
           <GripVertical style={{ width: 14, height: 14 }} />
         </button>
-        <span style={{ flex: 1, fontSize: 12, fontWeight: 500, color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          <span style={{ fontSize: 10, color: "var(--text-4)", marginRight: 4 }}>{section.tagName}</span>
+        <span
+          style={{
+            flex: 1,
+            fontSize: 12,
+            fontWeight: 500,
+            color: "var(--text-2)",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          <span style={{ fontSize: 10, color: "var(--text-4)", marginRight: 4 }}>
+            {section.tagName}
+          </span>
           {section.label}
         </span>
         <select
           value={section.animation ?? ""}
           onChange={(e) => onAnimationChange(e.target.value || null)}
-          style={{ fontSize: 10, padding: "2px 4px", border: "1px solid var(--border)", borderRadius: "var(--r-sm)", background: "var(--surface)", color: "var(--text-3)", cursor: "pointer" }}
+          style={{
+            fontSize: 10,
+            padding: "2px 4px",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--r-sm)",
+            background: "var(--surface)",
+            color: "var(--text-3)",
+            cursor: "pointer",
+          }}
           title="Animation"
         >
           <option value="">No animation</option>
           {ANIMATION_PRESETS.map((p) => (
-            <option key={p.id} value={p.id}>{p.label}</option>
+            <option key={p.id} value={p.id}>
+              {p.label}
+            </option>
           ))}
         </select>
         <button
           onClick={() => setAiOpen((v) => !v)}
-          style={{ background: "none", border: "none", cursor: "pointer", color: aiOpen ? "var(--accent)" : "var(--text-4)", padding: 2, display: "flex" }}
+          style={{
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            color: aiOpen ? "var(--accent)" : "var(--text-4)",
+            padding: 2,
+            display: "flex",
+          }}
           title="Refine this section with AI"
         >
           <Sparkles style={{ width: 12, height: 12 }} />
         </button>
-        <button onClick={onDuplicate} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-4)", padding: 2, display: "flex" }} title="Duplicate section">
+        <button
+          onClick={onDuplicate}
+          style={{
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            color: "var(--text-4)",
+            padding: 2,
+            display: "flex",
+          }}
+          title="Duplicate section"
+        >
           <Copy style={{ width: 12, height: 12 }} />
         </button>
-        <button onClick={onDelete} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--error-text)", padding: 2, display: "flex" }} title="Delete section">
+        <button
+          onClick={onDelete}
+          style={{
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            color: "var(--error-text)",
+            padding: 2,
+            display: "flex",
+          }}
+          title="Delete section"
+        >
           <Trash2 style={{ width: 12, height: 12 }} />
         </button>
       </div>
@@ -315,14 +407,43 @@ function SortableSectionRow({
             }}
             rows={3}
             placeholder={`Edit "${section.label}"…`}
-            style={{ width: "100%", fontSize: 12, padding: "6px 8px", border: "1px solid var(--border)", borderRadius: "var(--r-sm)", background: "var(--bg)", color: "var(--text)", outline: "none", fontFamily: "inherit", boxSizing: "border-box", resize: "vertical", minHeight: 74, lineHeight: 1.45 }}
+            style={{
+              width: "100%",
+              fontSize: 12,
+              padding: "6px 8px",
+              border: "1px solid var(--border)",
+              borderRadius: "var(--r-sm)",
+              background: "var(--bg)",
+              color: "var(--text)",
+              outline: "none",
+              fontFamily: "inherit",
+              boxSizing: "border-box",
+              resize: "vertical",
+              minHeight: 74,
+              lineHeight: 1.45,
+            }}
           />
 
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)" }}>Reference images <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span></label>
-            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--accent)", cursor: "pointer", padding: "2px 0" }}>
+            <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)" }}>
+              Reference images{" "}
+              <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span>
+            </label>
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                fontSize: 11,
+                color: "var(--accent)",
+                cursor: "pointer",
+                padding: "2px 0",
+              }}
+            >
               <ImagePlus style={{ width: 12, height: 12, flexShrink: 0 }} />
-              {images.length === 0 ? "Upload images…" : `${images.length} image${images.length > 1 ? "s" : ""} selected`}
+              {images.length === 0
+                ? "Upload images…"
+                : `${images.length} image${images.length > 1 ? "s" : ""} selected`}
               <input
                 type="file"
                 accept="image/jpeg,image/png,image/gif,image/webp"
@@ -334,34 +455,91 @@ function SortableSectionRow({
             {images.length > 0 && (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                 {images.map((file, index) => (
-                  <span key={index} style={{ fontSize: 10, padding: "2px 6px", background: "var(--accent-bg)", color: "var(--accent)", borderRadius: "var(--r-sm)", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{file.name}</span>
+                  <span
+                    key={index}
+                    style={{
+                      fontSize: 10,
+                      padding: "2px 6px",
+                      background: "var(--accent-bg)",
+                      color: "var(--accent)",
+                      borderRadius: "var(--r-sm)",
+                      maxWidth: 120,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {file.name}
+                  </span>
                 ))}
               </div>
             )}
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)" }}>URLs for context <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span></label>
+            <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)" }}>
+              URLs for context{" "}
+              <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span>
+            </label>
             {crawlUrls.map((url, index) => (
               <div key={index} style={{ display: "flex", gap: 4, alignItems: "center" }}>
                 <input
                   type="url"
                   value={url}
-                  onChange={(e) => setCrawlUrls((prev) => {
-                    const next = [...prev];
-                    next[index] = e.target.value;
-                    return next;
-                  })}
+                  onChange={(e) =>
+                    setCrawlUrls((prev) => {
+                      const next = [...prev];
+                      next[index] = e.target.value;
+                      return next;
+                    })
+                  }
                   placeholder="https://example.com/reference"
-                  style={{ flex: 1, fontSize: 12, padding: "5px 8px", border: "1px solid var(--border)", borderRadius: "var(--r-sm)", background: "var(--bg)", color: "var(--text)", outline: "none", fontFamily: "inherit" }}
+                  style={{
+                    flex: 1,
+                    fontSize: 12,
+                    padding: "5px 8px",
+                    border: "1px solid var(--border)",
+                    borderRadius: "var(--r-sm)",
+                    background: "var(--bg)",
+                    color: "var(--text)",
+                    outline: "none",
+                    fontFamily: "inherit",
+                  }}
                 />
                 {crawlUrls.length > 1 && (
-                  <button onClick={() => setCrawlUrls((prev) => prev.filter((_, i) => i !== index))} style={{ padding: "3px 6px", background: "none", border: "none", cursor: "pointer", color: "var(--text-4)", fontSize: 14, lineHeight: 1 }}>×</button>
+                  <button
+                    onClick={() => setCrawlUrls((prev) => prev.filter((_, i) => i !== index))}
+                    style={{
+                      padding: "3px 6px",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      color: "var(--text-4)",
+                      fontSize: 14,
+                      lineHeight: 1,
+                    }}
+                  >
+                    ×
+                  </button>
                 )}
               </div>
             ))}
             {crawlUrls.length < 3 && (
-              <button onClick={() => setCrawlUrls((prev) => [...prev, ""])} style={{ alignSelf: "flex-start", fontSize: 11, padding: "2px 0", background: "none", border: "none", cursor: "pointer", color: "var(--accent)", fontFamily: "inherit" }}>+ Add URL</button>
+              <button
+                onClick={() => setCrawlUrls((prev) => [...prev, ""])}
+                style={{
+                  alignSelf: "flex-start",
+                  fontSize: 11,
+                  padding: "2px 0",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "var(--accent)",
+                  fontFamily: "inherit",
+                }}
+              >
+                + Add URL
+              </button>
             )}
           </div>
 
@@ -369,13 +547,34 @@ function SortableSectionRow({
             <button
               onClick={handleSubmit}
               disabled={!aiPrompt.trim()}
-              style={{ flex: 1, fontSize: 11, padding: "5px 10px", background: "var(--accent)", color: "#fff", border: "none", borderRadius: "var(--r-sm)", cursor: aiPrompt.trim() ? "pointer" : "default", opacity: aiPrompt.trim() ? 1 : 0.5, fontFamily: "inherit", fontWeight: 600 }}
+              style={{
+                flex: 1,
+                fontSize: 11,
+                padding: "5px 10px",
+                background: "var(--accent)",
+                color: "#fff",
+                border: "none",
+                borderRadius: "var(--r-sm)",
+                cursor: aiPrompt.trim() ? "pointer" : "default",
+                opacity: aiPrompt.trim() ? 1 : 0.5,
+                fontFamily: "inherit",
+                fontWeight: 600,
+              }}
             >
               Apply
             </button>
             <button
               onClick={handleClose}
-              style={{ fontSize: 11, padding: "5px 10px", background: "none", border: "1px solid var(--border)", borderRadius: "var(--r-sm)", cursor: "pointer", color: "var(--text-3)", fontFamily: "inherit" }}
+              style={{
+                fontSize: 11,
+                padding: "5px 10px",
+                background: "none",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--r-sm)",
+                cursor: "pointer",
+                color: "var(--text-3)",
+                fontFamily: "inherit",
+              }}
             >
               Cancel
             </button>
@@ -386,7 +585,13 @@ function SortableSectionRow({
   );
 }
 
-function AddSectionRow({ loading, onAdd }: { loading: boolean; onAdd: (desc: string, images: File[], crawlUrls: string[]) => void }) {
+function AddSectionRow({
+  loading,
+  onAdd,
+}: {
+  loading: boolean;
+  onAdd: (desc: string, images: File[], crawlUrls: string[]) => void;
+}) {
   const [open, setOpen] = useState(false);
   const [desc, setDesc] = useState("");
   const [images, setImages] = useState<File[]>([]);
@@ -402,44 +607,107 @@ function AddSectionRow({ loading, onAdd }: { loading: boolean; onAdd: (desc: str
   const handleSubmit = () => {
     const d = desc.trim();
     if (!d || loading) return;
-    onAdd(d, images, crawlUrls.filter((u) => u.trim()));
+    onAdd(
+      d,
+      images,
+      crawlUrls.filter((u) => u.trim()),
+    );
     handleClose();
   };
 
-  const inputStyle: React.CSSProperties = { fontSize: 12, padding: "5px 8px", border: "1px solid var(--border)", borderRadius: "var(--r-sm)", background: "var(--bg)", color: "var(--text)", outline: "none", fontFamily: "inherit", width: "100%", boxSizing: "border-box" };
+  const inputStyle: React.CSSProperties = {
+    fontSize: 12,
+    padding: "5px 8px",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--r-sm)",
+    background: "var(--bg)",
+    color: "var(--text)",
+    outline: "none",
+    fontFamily: "inherit",
+    width: "100%",
+    boxSizing: "border-box",
+  };
   const labelStyle: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: "var(--text-3)" };
 
   return (
-    <div style={{ marginTop: 10, borderRadius: "var(--r-sm)", border: open ? "1px solid var(--accent)" : "1px dashed var(--border)", background: "var(--surface)" }}>
+    <div
+      style={{
+        marginTop: 10,
+        borderRadius: "var(--r-sm)",
+        border: open ? "1px solid var(--accent)" : "1px dashed var(--border)",
+        background: "var(--surface)",
+      }}
+    >
       {!open ? (
         <button
           onClick={() => setOpen(true)}
           disabled={loading}
-          style={{ width: "100%", padding: "8px 10px", background: "none", border: "none", cursor: loading ? "default" : "pointer", color: loading ? "var(--text-4)" : "var(--accent)", fontSize: 12, fontWeight: 600, fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6, opacity: loading ? 0.6 : 1 }}
+          style={{
+            width: "100%",
+            padding: "8px 10px",
+            background: "none",
+            border: "none",
+            cursor: loading ? "default" : "pointer",
+            color: loading ? "var(--text-4)" : "var(--accent)",
+            fontSize: 12,
+            fontWeight: 600,
+            fontFamily: "inherit",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            opacity: loading ? 0.6 : 1,
+          }}
         >
-          {loading
-            ? <><Loader2 style={{ width: 12, height: 12, animation: "spin 1s linear infinite" }} /> Generating section…</>
-            : <><Sparkles style={{ width: 12, height: 12 }} /> Add new section with AI</>}
+          {loading ? (
+            <>
+              <Loader2 style={{ width: 12, height: 12, animation: "spin 1s linear infinite" }} />{" "}
+              Generating section…
+            </>
+          ) : (
+            <>
+              <Sparkles style={{ width: 12, height: 12 }} /> Add new section with AI
+            </>
+          )}
         </button>
       ) : (
         <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", gap: 8 }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: "var(--accent)" }}>Describe the new section</span>
+          <span style={{ fontSize: 11, fontWeight: 600, color: "var(--accent)" }}>
+            Describe the new section
+          </span>
           <input
             autoFocus
             type="text"
             value={desc}
             onChange={(e) => setDesc(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); if (e.key === "Escape") handleClose(); }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSubmit();
+              if (e.key === "Escape") handleClose();
+            }}
             placeholder="e.g. testimonials with 3 cards, or a pricing table…"
             style={inputStyle}
           />
 
           {/* Reference images */}
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <label style={labelStyle}>Reference images <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span></label>
-            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--accent)", cursor: "pointer", padding: "4px 0" }}>
+            <label style={labelStyle}>
+              Reference images{" "}
+              <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span>
+            </label>
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                fontSize: 11,
+                color: "var(--accent)",
+                cursor: "pointer",
+                padding: "4px 0",
+              }}
+            >
               <ImagePlus style={{ width: 12, height: 12, flexShrink: 0 }} />
-              {images.length === 0 ? "Upload images…" : `${images.length} image${images.length > 1 ? "s" : ""} selected`}
+              {images.length === 0
+                ? "Upload images…"
+                : `${images.length} image${images.length > 1 ? "s" : ""} selected`}
               <input
                 type="file"
                 accept="image/jpeg,image/png,image/gif,image/webp"
@@ -451,7 +719,22 @@ function AddSectionRow({ loading, onAdd }: { loading: boolean; onAdd: (desc: str
             {images.length > 0 && (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                 {images.map((f, i) => (
-                  <span key={i} style={{ fontSize: 10, padding: "2px 6px", background: "var(--accent-bg)", color: "var(--accent)", borderRadius: "var(--r-sm)", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
+                  <span
+                    key={i}
+                    style={{
+                      fontSize: 10,
+                      padding: "2px 6px",
+                      background: "var(--accent-bg)",
+                      color: "var(--accent)",
+                      borderRadius: "var(--r-sm)",
+                      maxWidth: 120,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {f.name}
+                  </span>
                 ))}
               </div>
             )}
@@ -459,23 +742,59 @@ function AddSectionRow({ loading, onAdd }: { loading: boolean; onAdd: (desc: str
 
           {/* Crawl URLs */}
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <label style={labelStyle}>Crawl URLs for context <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span></label>
+            <label style={labelStyle}>
+              Crawl URLs for context{" "}
+              <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span>
+            </label>
             {crawlUrls.map((url, i) => (
               <div key={i} style={{ display: "flex", gap: 4, alignItems: "center" }}>
                 <input
                   type="url"
                   value={url}
-                  onChange={(e) => setCrawlUrls((prev) => { const next = [...prev]; next[i] = e.target.value; return next; })}
+                  onChange={(e) =>
+                    setCrawlUrls((prev) => {
+                      const next = [...prev];
+                      next[i] = e.target.value;
+                      return next;
+                    })
+                  }
                   placeholder="https://example.com/about"
                   style={{ ...inputStyle, flex: 1 }}
                 />
                 {crawlUrls.length > 1 && (
-                  <button onClick={() => setCrawlUrls((prev) => prev.filter((_, j) => j !== i))} style={{ padding: "3px 6px", background: "none", border: "none", cursor: "pointer", color: "var(--text-4)", fontSize: 14, lineHeight: 1 }}>×</button>
+                  <button
+                    onClick={() => setCrawlUrls((prev) => prev.filter((_, j) => j !== i))}
+                    style={{
+                      padding: "3px 6px",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      color: "var(--text-4)",
+                      fontSize: 14,
+                      lineHeight: 1,
+                    }}
+                  >
+                    ×
+                  </button>
                 )}
               </div>
             ))}
             {crawlUrls.length < 3 && (
-              <button onClick={() => setCrawlUrls((prev) => [...prev, ""])} style={{ alignSelf: "flex-start", fontSize: 11, padding: "3px 0", background: "none", border: "none", cursor: "pointer", color: "var(--accent)", fontFamily: "inherit" }}>+ Add another URL</button>
+              <button
+                onClick={() => setCrawlUrls((prev) => [...prev, ""])}
+                style={{
+                  alignSelf: "flex-start",
+                  fontSize: 11,
+                  padding: "3px 0",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "var(--accent)",
+                  fontFamily: "inherit",
+                }}
+              >
+                + Add another URL
+              </button>
             )}
           </div>
 
@@ -483,13 +802,34 @@ function AddSectionRow({ loading, onAdd }: { loading: boolean; onAdd: (desc: str
             <button
               onClick={handleSubmit}
               disabled={!desc.trim()}
-              style={{ flex: 1, fontSize: 11, padding: "5px 0", background: "var(--accent)", color: "#fff", border: "none", borderRadius: "var(--r-sm)", cursor: desc.trim() ? "pointer" : "default", opacity: desc.trim() ? 1 : 0.5, fontFamily: "inherit", fontWeight: 600 }}
+              style={{
+                flex: 1,
+                fontSize: 11,
+                padding: "5px 0",
+                background: "var(--accent)",
+                color: "#fff",
+                border: "none",
+                borderRadius: "var(--r-sm)",
+                cursor: desc.trim() ? "pointer" : "default",
+                opacity: desc.trim() ? 1 : 0.5,
+                fontFamily: "inherit",
+                fontWeight: 600,
+              }}
             >
               Generate
             </button>
             <button
               onClick={handleClose}
-              style={{ fontSize: 11, padding: "5px 10px", background: "none", border: "1px solid var(--border)", borderRadius: "var(--r-sm)", cursor: "pointer", color: "var(--text-3)", fontFamily: "inherit" }}
+              style={{
+                fontSize: 11,
+                padding: "5px 10px",
+                background: "none",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--r-sm)",
+                cursor: "pointer",
+                color: "var(--text-3)",
+                fontFamily: "inherit",
+              }}
             >
               Cancel
             </button>
@@ -512,7 +852,21 @@ function renderInline(text: string): ReactNode[] {
     if (match.index > lastIndex) parts.push(text.slice(lastIndex, match.index));
     if (match[2]) parts.push(<strong key={key++}>{match[2]}</strong>);
     else if (match[3]) parts.push(<em key={key++}>{match[3]}</em>);
-    else if (match[4]) parts.push(<code key={key++} style={{ background: "rgba(0,0,0,0.12)", padding: "1px 4px", borderRadius: 3, fontSize: "0.88em", fontFamily: "monospace" }}>{match[4]}</code>);
+    else if (match[4])
+      parts.push(
+        <code
+          key={key++}
+          style={{
+            background: "rgba(0,0,0,0.12)",
+            padding: "1px 4px",
+            borderRadius: 3,
+            fontSize: "0.88em",
+            fontFamily: "monospace",
+          }}
+        >
+          {match[4]}
+        </code>,
+      );
     lastIndex = regex.lastIndex;
   }
   if (lastIndex < text.length) parts.push(text.slice(lastIndex));
@@ -528,8 +882,12 @@ function renderMarkdown(text: string): ReactNode {
     if (bulletBuffer.length > 0) {
       elements.push(
         <ul key={k++} style={{ margin: "4px 0", paddingLeft: 18, listStyleType: "disc" }}>
-          {bulletBuffer.map((b, j) => <li key={j} style={{ margin: "2px 0" }}>{renderInline(b)}</li>)}
-        </ul>
+          {bulletBuffer.map((b, j) => (
+            <li key={j} style={{ margin: "2px 0" }}>
+              {renderInline(b)}
+            </li>
+          ))}
+        </ul>,
       );
       bulletBuffer = [];
     }
@@ -543,13 +901,29 @@ function renderMarkdown(text: string): ReactNode {
       if (stripped === "") {
         // skip blank lines
       } else if (/^###\s+/.test(stripped)) {
-        elements.push(<h4 key={k++} style={{ margin: "6px 0 2px", fontSize: "0.88em", fontWeight: 700 }}>{renderInline(stripped.replace(/^###\s+/, ""))}</h4>);
+        elements.push(
+          <h4 key={k++} style={{ margin: "6px 0 2px", fontSize: "0.88em", fontWeight: 700 }}>
+            {renderInline(stripped.replace(/^###\s+/, ""))}
+          </h4>,
+        );
       } else if (/^##\s+/.test(stripped)) {
-        elements.push(<h3 key={k++} style={{ margin: "6px 0 3px", fontSize: "0.92em", fontWeight: 700 }}>{renderInline(stripped.replace(/^##\s+/, ""))}</h3>);
+        elements.push(
+          <h3 key={k++} style={{ margin: "6px 0 3px", fontSize: "0.92em", fontWeight: 700 }}>
+            {renderInline(stripped.replace(/^##\s+/, ""))}
+          </h3>,
+        );
       } else if (/^#\s+/.test(stripped)) {
-        elements.push(<h2 key={k++} style={{ margin: "5px 0 4px", fontSize: "0.95em", fontWeight: 700 }}>{renderInline(stripped.replace(/^#\s+/, ""))}</h2>);
+        elements.push(
+          <h2 key={k++} style={{ margin: "5px 0 4px", fontSize: "0.95em", fontWeight: 700 }}>
+            {renderInline(stripped.replace(/^#\s+/, ""))}
+          </h2>,
+        );
       } else {
-        elements.push(<p key={k++} style={{ margin: "2px 0" }}>{renderInline(line)}</p>);
+        elements.push(
+          <p key={k++} style={{ margin: "2px 0" }}>
+            {renderInline(line)}
+          </p>,
+        );
       }
     }
   }
@@ -606,7 +980,18 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
 
   // Chat state
   const [prompt, setPrompt] = useState("");
-  const [chatHistory, setChatHistory] = useState<{ role: "user" | "assistant"; content: string; version?: number; type?: "chat" | "refine"; refinementPrompt?: string; attachedImageUrls?: string[]; attachedUrls?: string[]; crawlWarnings?: string[] }[]>([]);
+  const [chatHistory, setChatHistory] = useState<
+    {
+      role: "user" | "assistant";
+      content: string;
+      version?: number;
+      type?: "chat" | "refine";
+      refinementPrompt?: string;
+      attachedImageUrls?: string[];
+      attachedUrls?: string[];
+      crawlWarnings?: string[];
+    }[]
+  >([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [chatting, setChatting] = useState(false);
@@ -618,7 +1003,15 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
   const [showUrlPanel, setShowUrlPanel] = useState(false);
 
   // Chat image attachments
-  const [chatImages, setChatImages] = useState<{ id: string; previewUrl: string; status: "uploading" | "done" | "error"; blobUrl?: string; errorMsg?: string }[]>([]);
+  const [chatImages, setChatImages] = useState<
+    {
+      id: string;
+      previewUrl: string;
+      status: "uploading" | "done" | "error";
+      blobUrl?: string;
+      errorMsg?: string;
+    }[]
+  >([]);
   const chatImageInputRef = useRef<HTMLInputElement>(null);
 
   // Staged changes (accumulated via STACK_CHANGE tags)
@@ -670,7 +1063,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
   useEffect(() => {
     fetch("/api/clients")
       .then((r) => r.json())
-      .then((data) => setClients(Array.isArray(data) ? data : data.clients ?? []))
+      .then((data) => setClients(Array.isArray(data) ? data : (data.clients ?? [])))
       .catch(() => {});
   }, []);
 
@@ -688,7 +1081,9 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
 
       // Hydrate analytics config from the saved JSON
       try {
-        const parsed = data.landingPage.analyticsConfig ? JSON.parse(data.landingPage.analyticsConfig) : {};
+        const parsed = data.landingPage.analyticsConfig
+          ? JSON.parse(data.landingPage.analyticsConfig)
+          : {};
         setAnalyticsConfig(parsed && typeof parsed === "object" ? parsed : {});
       } catch {
         setAnalyticsConfig({});
@@ -706,7 +1101,11 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
       const history: { role: "user" | "assistant"; content: string; version?: number }[] = [];
       for (const v of [...versions].reverse()) {
         history.push({ role: "user", content: v.prompt, version: v.versionNumber });
-        history.push({ role: "assistant", content: `Generated version ${v.versionNumber}`, version: v.versionNumber });
+        history.push({
+          role: "assistant",
+          content: `Generated version ${v.versionNumber}`,
+          version: v.versionNumber,
+        });
       }
       setChatHistory(history);
     } catch {
@@ -716,7 +1115,9 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
     }
   }, [id, router]);
 
-  useEffect(() => { fetchLP(); }, [fetchLP]);
+  useEffect(() => {
+    fetchLP();
+  }, [fetchLP]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -739,7 +1140,10 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
   // ── NEW: Push to undo history helper ──────────────────────────────────────
   const pushHistory = useCallback(
     (html: string) => {
-      if (skipHistoryRef.current) { skipHistoryRef.current = false; return; }
+      if (skipHistoryRef.current) {
+        skipHistoryRef.current = false;
+        return;
+      }
       setHtmlHistory((prev) => {
         const truncated = prev.slice(0, historyIndex + 1);
         const next = [...truncated, html];
@@ -762,7 +1166,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
     skipHistoryRef.current = true;
     setHistoryIndex(newIdx);
     setPreviewHtml(htmlHistory[newIdx]);
-    setLp((prev) => prev ? { ...prev, currentHtml: htmlHistory[newIdx] } : prev);
+    setLp((prev) => (prev ? { ...prev, currentHtml: htmlHistory[newIdx] } : prev));
   }, [canUndo, historyIndex, htmlHistory]);
 
   const handleRedo = useCallback(() => {
@@ -771,15 +1175,21 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
     skipHistoryRef.current = true;
     setHistoryIndex(newIdx);
     setPreviewHtml(htmlHistory[newIdx]);
-    setLp((prev) => prev ? { ...prev, currentHtml: htmlHistory[newIdx] } : prev);
+    setLp((prev) => (prev ? { ...prev, currentHtml: htmlHistory[newIdx] } : prev));
   }, [canRedo, historyIndex, htmlHistory]);
 
   // ── NEW: Keyboard shortcuts for undo/redo ─────────────────────────────────
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (!(e.metaKey || e.ctrlKey)) return;
-      if (e.key === "z" && !e.shiftKey) { e.preventDefault(); handleUndo(); }
-      if ((e.key === "z" && e.shiftKey) || e.key === "y") { e.preventDefault(); handleRedo(); }
+      if (e.key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        handleUndo();
+      }
+      if ((e.key === "z" && e.shiftKey) || e.key === "y") {
+        e.preventDefault();
+        handleRedo();
+      }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
@@ -789,7 +1199,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
   const updateHtml = useCallback(
     (html: string) => {
       setPreviewHtml(html);
-      setLp((prev) => prev ? { ...prev, currentHtml: html } : prev);
+      setLp((prev) => (prev ? { ...prev, currentHtml: html } : prev));
       pushHistory(html);
       // Debounced auto-save to DB (no version creation)
       if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
@@ -821,7 +1231,14 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
           reconciled.length !== (prev.fields?.length ?? 0) ||
           reconciled.some((f, i) => {
             const prior = prev.fields?.[i];
-            return !prior || prior.name !== f.name || prior.label !== f.label || prior.placeholder !== f.placeholder || prior.type !== f.type || prior.required !== f.required;
+            return (
+              !prior ||
+              prior.name !== f.name ||
+              prior.label !== f.label ||
+              prior.placeholder !== f.placeholder ||
+              prior.type !== f.type ||
+              prior.required !== f.required
+            );
           });
 
         if (!fieldsChanged) return prev;
@@ -880,7 +1297,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
     try {
       const res = await fetch(`/api/tools/landing-pages/${id}/translations`);
       if (res.ok) {
-        const data = await res.json() as { translations: LpTranslation[] };
+        const data = (await res.json()) as { translations: LpTranslation[] };
         setTranslations(data.translations);
       }
     } catch {}
@@ -891,68 +1308,83 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
     if (activeTab === "languages" && !translationsLoaded) fetchTranslations();
   }, [activeTab, translationsLoaded, fetchTranslations]);
 
-  const handleTranslate = useCallback(async (langs: string[]) => {
-    if (!langs.length) return;
-    setShowLangPicker(false);
-    setSelectedLangs([]);
-    setTranslatingLangs(langs);
-    try {
-      const res = await fetch(`/api/tools/landing-pages/${id}/translations`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ languages: langs }),
-      });
-      if (res.ok) await fetchTranslations();
-    } catch {} finally {
-      setTranslatingLangs([]);
-    }
-  }, [id, fetchTranslations]);
+  const handleTranslate = useCallback(
+    async (langs: string[]) => {
+      if (!langs.length) return;
+      setShowLangPicker(false);
+      setSelectedLangs([]);
+      setTranslatingLangs(langs);
+      try {
+        const res = await fetch(`/api/tools/landing-pages/${id}/translations`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ languages: langs }),
+        });
+        if (res.ok) await fetchTranslations();
+      } catch {
+      } finally {
+        setTranslatingLangs([]);
+      }
+    },
+    [id, fetchTranslations],
+  );
 
-  const handlePublishTranslation = useCallback(async (lang: string, currentStatus: string) => {
-    const newStatus = currentStatus === "published" ? "draft" : "published";
-    try {
-      await fetch(`/api/tools/landing-pages/${id}/translations/${lang}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
-      });
-      setTranslations((prev) => prev.map((t) => t.language === lang ? { ...t, status: newStatus } : t));
-    } catch {}
-  }, [id]);
+  const handlePublishTranslation = useCallback(
+    async (lang: string, currentStatus: string) => {
+      const newStatus = currentStatus === "published" ? "draft" : "published";
+      try {
+        await fetch(`/api/tools/landing-pages/${id}/translations/${lang}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: newStatus }),
+        });
+        setTranslations((prev) =>
+          prev.map((t) => (t.language === lang ? { ...t, status: newStatus } : t)),
+        );
+      } catch {}
+    },
+    [id],
+  );
 
-  const handleDeleteTranslation = useCallback(async (lang: string) => {
-    const proceed = await confirm({
-      title: "Delete this translation?",
-      description: "This removes the translated version and cannot be undone.",
-      confirmLabel: "Delete",
-      danger: true,
-    });
-    if (!proceed) return;
-    try {
-      await fetch(`/api/tools/landing-pages/${id}/translations/${lang}`, { method: "DELETE" });
-      setTranslations((prev) => prev.filter((t) => t.language !== lang));
-      if (previewLang === lang) {
+  const handleDeleteTranslation = useCallback(
+    async (lang: string) => {
+      const proceed = await confirm({
+        title: "Delete this translation?",
+        description: "This removes the translated version and cannot be undone.",
+        confirmLabel: "Delete",
+        danger: true,
+      });
+      if (!proceed) return;
+      try {
+        await fetch(`/api/tools/landing-pages/${id}/translations/${lang}`, { method: "DELETE" });
+        setTranslations((prev) => prev.filter((t) => t.language !== lang));
+        if (previewLang === lang) {
+          setPreviewLang(null);
+          setPreviewHtml(lp?.currentHtml ?? "");
+        }
+      } catch {}
+    },
+    [id, previewLang, lp, confirm],
+  );
+
+  const handlePreviewTranslation = useCallback(
+    async (lang: string | null) => {
+      if (!lang) {
         setPreviewLang(null);
         setPreviewHtml(lp?.currentHtml ?? "");
+        return;
       }
-    } catch {}
-  }, [id, previewLang, lp, confirm]);
-
-  const handlePreviewTranslation = useCallback(async (lang: string | null) => {
-    if (!lang) {
-      setPreviewLang(null);
-      setPreviewHtml(lp?.currentHtml ?? "");
-      return;
-    }
-    try {
-      const res = await fetch(`/api/tools/landing-pages/${id}/translations/${lang}`);
-      if (res.ok) {
-        const data = await res.json() as { translation: { html: string } };
-        setPreviewLang(lang);
-        setPreviewHtml(data.translation.html);
-      }
-    } catch {}
-  }, [id, lp]);
+      try {
+        const res = await fetch(`/api/tools/landing-pages/${id}/translations/${lang}`);
+        if (res.ok) {
+          const data = (await res.json()) as { translation: { html: string } };
+          setPreviewLang(lang);
+          setPreviewHtml(data.translation.html);
+        }
+      } catch {}
+    },
+    [id, lp],
+  );
 
   // ── NEW: CodeMirror initialisation ────────────────────────────────────────
   useEffect(() => {
@@ -960,26 +1392,39 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
     let destroyed = false;
 
     (async () => {
-      const { EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter } = await import("@codemirror/view");
+      const { EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter } =
+        await import("@codemirror/view");
       const { EditorState } = await import("@codemirror/state");
       const { html } = await import("@codemirror/lang-html");
       const { defaultKeymap, indentWithTab } = await import("@codemirror/commands");
-      const { syntaxHighlighting, defaultHighlightStyle, bracketMatching } = await import("@codemirror/language");
+      const { syntaxHighlighting, defaultHighlightStyle, bracketMatching } =
+        await import("@codemirror/language");
 
       if (destroyed || !codeEditorRef.current) return;
 
       // Destroy previous instance
-      if (editorViewRef.current) { editorViewRef.current.destroy(); editorViewRef.current = null; }
+      if (editorViewRef.current) {
+        editorViewRef.current.destroy();
+        editorViewRef.current = null;
+      }
 
-      const darkTheme = EditorView.theme({
-        "&": { height: "100%", fontSize: "12px", background: "#1e1e2e", color: "#cdd6f4" },
-        ".cm-content": { fontFamily: "'JetBrains Mono', 'Fira Code', monospace", caretColor: "#f5e0dc" },
-        ".cm-cursor": { borderLeftColor: "#f5e0dc" },
-        ".cm-activeLine": { backgroundColor: "#313244" },
-        ".cm-gutters": { backgroundColor: "#181825", color: "#6c7086", border: "none" },
-        ".cm-activeLineGutter": { backgroundColor: "#313244" },
-        "&.cm-focused .cm-selectionBackground, .cm-selectionBackground": { backgroundColor: "#45475a !important" },
-      }, { dark: true });
+      const darkTheme = EditorView.theme(
+        {
+          "&": { height: "100%", fontSize: "12px", background: "#1e1e2e", color: "#cdd6f4" },
+          ".cm-content": {
+            fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+            caretColor: "#f5e0dc",
+          },
+          ".cm-cursor": { borderLeftColor: "#f5e0dc" },
+          ".cm-activeLine": { backgroundColor: "#313244" },
+          ".cm-gutters": { backgroundColor: "#181825", color: "#6c7086", border: "none" },
+          ".cm-activeLineGutter": { backgroundColor: "#313244" },
+          "&.cm-focused .cm-selectionBackground, .cm-selectionBackground": {
+            backgroundColor: "#45475a !important",
+          },
+        },
+        { dark: true },
+      );
 
       const view = new EditorView({
         state: EditorState.create({
@@ -1003,7 +1448,10 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
 
     return () => {
       destroyed = true;
-      if (editorViewRef.current) { editorViewRef.current.destroy(); editorViewRef.current = null; }
+      if (editorViewRef.current) {
+        editorViewRef.current.destroy();
+        editorViewRef.current = null;
+      }
     };
     // Only re-init when switching TO code tab, not on every previewHtml change
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1031,7 +1479,8 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
         const data = await res.json();
         setLp(data.landingPage);
       }
-    } catch {} finally {
+    } catch {
+    } finally {
       setSavingVersion(false);
     }
   }, [id]);
@@ -1046,7 +1495,11 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
       if (oldIndex === -1 || newIndex === -1) return;
       const newOrder = arrayMove(sections, oldIndex, newIndex);
       setSections(newOrder);
-      const html = reorderSections(previewHtml, sections, newOrder.map((s) => s.id));
+      const html = reorderSections(
+        previewHtml,
+        sections,
+        newOrder.map((s) => s.id),
+      );
       updateHtml(html);
     },
     [sections, previewHtml, updateHtml],
@@ -1095,7 +1548,9 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
       h1Match ? `Main heading: ${h1Match[1].replace(/<[^>]+>/g, "").trim()}` : "",
       cssVarMatch ? `CSS variables: ${cssVarMatch[1].trim().slice(0, 400)}` : "",
       pageText ? `Existing page content (for context):\n${pageText}` : "",
-    ].filter(Boolean).join("\n");
+    ]
+      .filter(Boolean)
+      .join("\n");
   }, []);
 
   const handleSectionRefine = useCallback(
@@ -1112,18 +1567,28 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
             input.images.map(async (file) => {
               const fd = new FormData();
               fd.append("file", file);
-              const res = await fetch(`/api/tools/landing-pages/upload-image`, { method: "POST", body: fd });
+              const res = await fetch(`/api/tools/landing-pages/upload-image`, {
+                method: "POST",
+                body: fd,
+              });
               if (!res.ok) return null;
-              const data = await res.json() as { url?: string };
+              const data = (await res.json()) as { url?: string };
               return data.url ?? null;
             }),
           );
           imageUrls = uploads.filter((url): url is string => url !== null);
         }
 
-        const validCrawlUrls = input.crawlUrls.filter((url) => {
-          try { new URL(url); return true; } catch { return false; }
-        }).slice(0, 3);
+        const validCrawlUrls = input.crawlUrls
+          .filter((url) => {
+            try {
+              new URL(url);
+              return true;
+            } catch {
+              return false;
+            }
+          })
+          .slice(0, 3);
 
         const res = await fetch(`/api/tools/landing-pages/${id}/refine-section`, {
           method: "POST",
@@ -1140,12 +1605,16 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
         if (!res.ok) {
           const raw = await res.text();
           let msg = `Section refine failed (${res.status})`;
-          try { msg = (JSON.parse(raw) as { error?: string }).error ?? msg; } catch { /* ignore */ }
+          try {
+            msg = (JSON.parse(raw) as { error?: string }).error ?? msg;
+          } catch {
+            /* ignore */
+          }
           toast(msg, "error");
           return;
         }
 
-        const data = await res.json() as { html: string };
+        const data = (await res.json()) as { html: string };
         const updated = replaceSection(previewHtml, section, data.html);
         updateHtml(updated);
       } catch (err) {
@@ -1175,18 +1644,28 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
             images.map(async (file) => {
               const fd = new FormData();
               fd.append("file", file);
-              const res = await fetch(`/api/tools/landing-pages/upload-image`, { method: "POST", body: fd });
+              const res = await fetch(`/api/tools/landing-pages/upload-image`, {
+                method: "POST",
+                body: fd,
+              });
               if (!res.ok) return null;
-              const data = await res.json() as { url?: string };
+              const data = (await res.json()) as { url?: string };
               return data.url ?? null;
             }),
           );
           imageUrls = uploads.filter((u): u is string => u !== null);
         }
 
-        const validCrawlUrls = crawlUrls.filter((u) => {
-          try { new URL(u); return true; } catch { return false; }
-        }).slice(0, 3);
+        const validCrawlUrls = crawlUrls
+          .filter((u) => {
+            try {
+              new URL(u);
+              return true;
+            } catch {
+              return false;
+            }
+          })
+          .slice(0, 3);
 
         const res = await fetch(`/api/tools/landing-pages/${id}/refine-section`, {
           method: "POST",
@@ -1203,12 +1682,16 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
         if (!res.ok) {
           const raw = await res.text();
           let msg = `Failed to add section (${res.status})`;
-          try { msg = (JSON.parse(raw) as { error?: string }).error ?? msg; } catch { /* ignore */ }
+          try {
+            msg = (JSON.parse(raw) as { error?: string }).error ?? msg;
+          } catch {
+            /* ignore */
+          }
           toast(msg, "error");
           return;
         }
 
-        const data = await res.json() as { html: string };
+        const data = (await res.json()) as { html: string };
         // Append new section before </body>
         const updated = previewHtml.includes("</body>")
           ? previewHtml.replace("</body>", `\n${data.html}\n</body>`)
@@ -1238,21 +1721,48 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
 
     if (!overridePrompt) setPrompt("");
     setRefining(true);
-    setRefineProgressMessage(doublePassRefine ? "Double-pass refinement enabled." : "Applying refinement...");
+    setRefineProgressMessage(
+      doublePassRefine ? "Double-pass refinement enabled." : "Applying refinement...",
+    );
 
-    const successfulImageUrls = chatImages.filter((img) => img.status === "done" && img.blobUrl).map((img) => img.blobUrl as string);
+    const successfulImageUrls = chatImages
+      .filter((img) => img.status === "done" && img.blobUrl)
+      .map((img) => img.blobUrl as string);
 
     const maxRefineUrls = doublePassRefine ? 10 : 3;
-    const validCrawlUrls = chatUrls.filter((u) => { try { new URL(u); return true; } catch { return false; } }).slice(0, maxRefineUrls);
-    setChatHistory((prev) => [...prev, { role: "user", content: userPrompt, type: "refine" as const, attachedImageUrls: successfulImageUrls.length ? successfulImageUrls : undefined, attachedUrls: validCrawlUrls.length ? validCrawlUrls : undefined }]);
+    const validCrawlUrls = chatUrls
+      .filter((u) => {
+        try {
+          new URL(u);
+          return true;
+        } catch {
+          return false;
+        }
+      })
+      .slice(0, maxRefineUrls);
+    setChatHistory((prev) => [
+      ...prev,
+      {
+        role: "user",
+        content: userPrompt,
+        type: "refine" as const,
+        attachedImageUrls: successfulImageUrls.length ? successfulImageUrls : undefined,
+        attachedUrls: validCrawlUrls.length ? validCrawlUrls : undefined,
+      },
+    ]);
 
     try {
       const aiHistory = chatHistory
-        .filter((m) => !m.content.startsWith("Applied changes →") && !m.content.startsWith("Reverted to") && !m.content.startsWith("Generated version"))
+        .filter(
+          (m) =>
+            !m.content.startsWith("Applied changes →") &&
+            !m.content.startsWith("Reverted to") &&
+            !m.content.startsWith("Generated version"),
+        )
         .slice(-10)
         .map((m) => ({ role: m.role, content: m.content }));
 
-      const res = await fetch(`/api/tools/landing-pages/${id}/refine`, {
+      const createRes = await fetch(`/api/tools/landing-pages/${id}/refine/jobs`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1264,98 +1774,165 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
         }),
       });
 
-      if (!res.ok) {
-        // The Vercel runtime returns a non-JSON HTML page when a function times
-        // out (504 / "An error occurred"). Read as text first so we never crash
-        // on `JSON.parse` and surface a useful message either way.
-        const raw = await res.text();
+      if (!createRes.ok) {
+        const raw = await createRes.text();
         let errorMessage: string;
         try {
           errorMessage = (JSON.parse(raw) as { error?: string }).error ?? "Refinement failed";
         } catch {
-          errorMessage = res.status === 504
-            ? "The model took too long to respond. Try a smaller change or split the prompt into a few separate refinements."
-            : `Refinement failed (HTTP ${res.status}). Please try again.`;
+          errorMessage =
+            createRes.status === 504
+              ? "The refinement job request timed out. Please try again."
+              : `Refinement failed (HTTP ${createRes.status}). Please try again.`;
         }
-        if (res.status === 422) {
+        if (createRes.status === 422) {
           toast(errorMessage, "error");
         } else {
-          setChatHistory((prev) => [...prev, { role: "assistant", content: `Error: ${errorMessage}`, type: "refine" as const }]);
+          setChatHistory((prev) => [
+            ...prev,
+            { role: "assistant", content: `Error: ${errorMessage}`, type: "refine" as const },
+          ]);
         }
         setRefining(false);
         return;
       }
 
-      // The route now streams SSE — read chunks and wait for the done event.
-      const reader = res.body!.getReader();
-      const decoder = new TextDecoder();
-      let sseBuffer = "";
+      const createData = (await createRes.json()) as {
+        job?: {
+          id: string;
+          progressMessage?: string;
+        };
+      };
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      const jobId = createData.job?.id;
+      if (!jobId) {
+        setChatHistory((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: "Error: Could not start refinement job.",
+            type: "refine" as const,
+          },
+        ]);
+        return;
+      }
 
-        sseBuffer += decoder.decode(value, { stream: true });
-        const parts = sseBuffer.split("\n\n");
-        sseBuffer = parts.pop() ?? "";
+      if (createData.job?.progressMessage) {
+        setRefineProgressMessage(createData.job.progressMessage);
+      }
 
-        for (const part of parts) {
-          if (!part.startsWith("data: ")) continue;
-          const payload = JSON.parse(part.slice(6)) as {
-            content?: string;
-            progress?: string;
-            done?: boolean;
-            html?: string;
-            version?: { id: string; versionNumber: number; prompt: string; createdAt: string };
-            crawlWarnings?: string[];
-            error?: string;
-            status?: number;
-          };
+      let safety = 0;
+      while (safety < 240) {
+        safety += 1;
 
-          if (payload.progress) {
-            setRefineProgressMessage(payload.progress);
-            continue;
+        const runRes = await fetch(`/api/tools/landing-pages/${id}/refine/jobs/${jobId}/run`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        });
+
+        if (!runRes.ok) {
+          const raw = await runRes.text();
+          let message = `Refinement failed (HTTP ${runRes.status}). Please try again.`;
+          try {
+            message = (JSON.parse(raw) as { error?: string }).error ?? message;
+          } catch {
+            // Ignore malformed error payloads
           }
 
-          if (payload.error) {
-            if (payload.status === 422) {
-              toast(payload.error, "error");
-            } else {
-              setChatHistory((prev) => [...prev, { role: "assistant", content: `Error: ${payload.error}`, type: "refine" as const }]);
-            }
-            return;
-          }
-
-          if (payload.done && payload.html && payload.version) {
-            setPreviewHtml(payload.html);
-            setLp((prev) => prev ? { ...prev, currentHtml: payload.html! } : prev);
-            pushHistory(payload.html);
-
+          if (runRes.status === 422) {
+            toast(message, "error");
+          } else {
             setChatHistory((prev) => [
               ...prev,
-              {
-                role: "assistant",
-                content: `Applied changes → version ${payload.version!.versionNumber}`,
-                version: payload.version!.versionNumber,
-                type: "refine" as const,
-                crawlWarnings: payload.crawlWarnings,
-              },
+              { role: "assistant", content: `Error: ${message}`, type: "refine" as const },
             ]);
-
-            const refreshRes = await fetch(`/api/tools/landing-pages/${id}`);
-            if (refreshRes.ok) {
-              const refreshData = await refreshRes.json();
-              setLp(refreshData.landingPage);
-            }
           }
+          return;
         }
+
+        const runData = (await runRes.json()) as {
+          job: {
+            status: "pending" | "running" | "complete" | "failed";
+            progressMessage?: string;
+            errorMessage?: string;
+            html?: string;
+            version?: {
+              id: string;
+              versionNumber: number;
+              prompt: string;
+              createdAt: string;
+            } | null;
+            crawlWarnings?: string[];
+          };
+        };
+
+        const runJob = runData.job;
+        if (runJob.progressMessage) {
+          setRefineProgressMessage(runJob.progressMessage);
+        }
+
+        if (runJob.status === "failed") {
+          const msg = runJob.errorMessage ?? "Refinement failed";
+          setChatHistory((prev) => [
+            ...prev,
+            { role: "assistant", content: `Error: ${msg}`, type: "refine" as const },
+          ]);
+          return;
+        }
+
+        const completedVersion = runJob.version;
+        if (runJob.status === "complete" && runJob.html && completedVersion) {
+          setPreviewHtml(runJob.html);
+          setLp((prev) => (prev ? { ...prev, currentHtml: runJob.html! } : prev));
+          pushHistory(runJob.html);
+
+          setChatHistory((prev) => [
+            ...prev,
+            {
+              role: "assistant",
+              content: `Applied changes → version ${completedVersion.versionNumber}`,
+              version: completedVersion.versionNumber,
+              type: "refine" as const,
+              crawlWarnings: runJob.crawlWarnings,
+            },
+          ]);
+
+          const refreshRes = await fetch(`/api/tools/landing-pages/${id}`);
+          if (refreshRes.ok) {
+            const refreshData = await refreshRes.json();
+            setLp(refreshData.landingPage);
+          }
+
+          return;
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 200));
       }
+
+      setChatHistory((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: "Error: Refinement job exceeded safety limit. Please retry.",
+          type: "refine" as const,
+        },
+      ]);
     } catch (err) {
-      setChatHistory((prev) => [...prev, { role: "assistant", content: `Error: ${err instanceof Error ? err.message : "Unknown error"}`, type: "refine" as const }]);
+      setChatHistory((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: `Error: ${err instanceof Error ? err.message : "Unknown error"}`,
+          type: "refine" as const,
+        },
+      ]);
     } finally {
       setRefining(false);
       setRefineProgressMessage(null);
-      setChatImages((prev) => { prev.forEach((img) => URL.revokeObjectURL(img.previewUrl)); return []; });
+      setChatImages((prev) => {
+        prev.forEach((img) => URL.revokeObjectURL(img.previewUrl));
+        return [];
+      });
     }
   };
 
@@ -1366,14 +1943,37 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
     setPrompt("");
     setChatting(true);
 
-    const successfulImageUrls = chatImages.filter((img) => img.status === "done" && img.blobUrl).map((img) => img.blobUrl as string);
-    const validCrawlUrls = chatUrls.filter((u) => { try { new URL(u); return true; } catch { return false; } });
+    const successfulImageUrls = chatImages
+      .filter((img) => img.status === "done" && img.blobUrl)
+      .map((img) => img.blobUrl as string);
+    const validCrawlUrls = chatUrls.filter((u) => {
+      try {
+        new URL(u);
+        return true;
+      } catch {
+        return false;
+      }
+    });
 
-    setChatHistory((prev) => [...prev, { role: "user", content: userMessage, type: "chat" as const, attachedImageUrls: successfulImageUrls.length ? successfulImageUrls : undefined, attachedUrls: validCrawlUrls.length ? validCrawlUrls : undefined }]);
+    setChatHistory((prev) => [
+      ...prev,
+      {
+        role: "user",
+        content: userMessage,
+        type: "chat" as const,
+        attachedImageUrls: successfulImageUrls.length ? successfulImageUrls : undefined,
+        attachedUrls: validCrawlUrls.length ? validCrawlUrls : undefined,
+      },
+    ]);
 
     try {
       const aiHistory = chatHistory
-        .filter((m) => !m.content.startsWith("Applied changes →") && !m.content.startsWith("Reverted to") && !m.content.startsWith("Generated version"))
+        .filter(
+          (m) =>
+            !m.content.startsWith("Applied changes →") &&
+            !m.content.startsWith("Reverted to") &&
+            !m.content.startsWith("Generated version"),
+        )
         .slice(-12)
         .map((m) => ({ role: m.role, content: m.content }));
 
@@ -1390,7 +1990,14 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
 
       if (!res.ok) {
         const data = await res.json();
-        setChatHistory((prev) => [...prev, { role: "assistant", content: `Error: ${data.error ?? "Chat failed"}`, type: "chat" as const }]);
+        setChatHistory((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: `Error: ${data.error ?? "Chat failed"}`,
+            type: "chat" as const,
+          },
+        ]);
         return;
       }
 
@@ -1410,10 +2017,20 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
         setStagedChanges((prev) => [...prev, ...data.stackedChanges]);
       }
     } catch (err) {
-      setChatHistory((prev) => [...prev, { role: "assistant", content: `Error: ${err instanceof Error ? err.message : "Unknown error"}`, type: "chat" as const }]);
+      setChatHistory((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: `Error: ${err instanceof Error ? err.message : "Unknown error"}`,
+          type: "chat" as const,
+        },
+      ]);
     } finally {
       setChatting(false);
-      setChatImages((prev) => { prev.forEach((img) => URL.revokeObjectURL(img.previewUrl)); return []; });
+      setChatImages((prev) => {
+        prev.forEach((img) => URL.revokeObjectURL(img.previewUrl));
+        return [];
+      });
     }
   };
 
@@ -1435,18 +2052,45 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
         const formData = new FormData();
         formData.append("file", files[i]);
         try {
-          const res = await fetch("/api/tools/landing-pages/upload-image", { method: "POST", body: formData });
+          const res = await fetch("/api/tools/landing-pages/upload-image", {
+            method: "POST",
+            body: formData,
+          });
           if (!res.ok) {
             const data = await res.json().catch(() => ({ error: "Upload failed" }));
-            setChatImages((prev) => prev.map((img) => img.id === item.id ? { ...img, status: "error" as const, errorMsg: (data as { error?: string }).error ?? "Upload failed" } : img));
+            setChatImages((prev) =>
+              prev.map((img) =>
+                img.id === item.id
+                  ? {
+                      ...img,
+                      status: "error" as const,
+                      errorMsg: (data as { error?: string }).error ?? "Upload failed",
+                    }
+                  : img,
+              ),
+            );
           } else {
-            const data = await res.json() as { url: string };
-            setChatImages((prev) => prev.map((img) => img.id === item.id ? { ...img, status: "done" as const, blobUrl: data.url } : img));
+            const data = (await res.json()) as { url: string };
+            setChatImages((prev) =>
+              prev.map((img) =>
+                img.id === item.id ? { ...img, status: "done" as const, blobUrl: data.url } : img,
+              ),
+            );
           }
         } catch (err) {
-          setChatImages((prev) => prev.map((img) => img.id === item.id ? { ...img, status: "error" as const, errorMsg: err instanceof Error ? err.message : "Upload failed" } : img));
+          setChatImages((prev) =>
+            prev.map((img) =>
+              img.id === item.id
+                ? {
+                    ...img,
+                    status: "error" as const,
+                    errorMsg: err instanceof Error ? err.message : "Upload failed",
+                  }
+                : img,
+            ),
+          );
         }
-      })
+      }),
     );
   };
 
@@ -1469,9 +2113,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
       cancelLabel: "Cancel",
     });
     if (!proceed) return;
-    const combined = stagedChanges
-      .map((c, i) => `${i + 1}. ${c}`)
-      .join("\n");
+    const combined = stagedChanges.map((c, i) => `${i + 1}. ${c}`).join("\n");
     setStagedChanges([]);
     await handleRefine(`Apply all of the following changes:\n${combined}`);
   };
@@ -1494,11 +2136,15 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
     if (res.ok) {
       const data = await res.json();
       setPreviewHtml(data.html);
-      setLp((prev) => prev ? { ...prev, currentHtml: data.html } : prev);
+      setLp((prev) => (prev ? { ...prev, currentHtml: data.html } : prev));
       pushHistory(data.html);
       setChatHistory((prev) => [
         ...prev,
-        { role: "assistant", content: `Reverted to version ${versionNumber}`, version: versionNumber },
+        {
+          role: "assistant",
+          content: `Reverted to version ${versionNumber}`,
+          version: versionNumber,
+        },
       ]);
     }
   };
@@ -1522,7 +2168,15 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
       await navigator.clipboard.writeText(url);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-      setLp((prev) => prev ? { ...prev, shareToken: data.shareToken, publicSlug: data.publicSlug ?? prev?.publicSlug ?? null } : prev);
+      setLp((prev) =>
+        prev
+          ? {
+              ...prev,
+              shareToken: data.shareToken,
+              publicSlug: data.publicSlug ?? prev?.publicSlug ?? null,
+            }
+          : prev,
+      );
     }
   };
 
@@ -1544,7 +2198,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
       body: JSON.stringify({ status: newStatus }),
     });
     if (res.ok) {
-      setLp((prev) => prev ? { ...prev, status: newStatus } : prev);
+      setLp((prev) => (prev ? { ...prev, status: newStatus } : prev));
     }
   };
 
@@ -1567,7 +2221,8 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
         setTemplateName("");
         setTemplateDesc("");
       }
-    } catch {} finally {
+    } catch {
+    } finally {
       setSavingTemplate(false);
     }
   };
@@ -1586,142 +2241,155 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
   const serialisedAnalyticsConfig = JSON.stringify(analyticsConfig ?? {});
   const serialisedFormConfig = JSON.stringify(formConfig ?? {});
 
-  const trackingDirty = showTrackingSettings && (
-    serialisedAnalyticsConfig !== trackingBaseline.analytics
-    || serialisedFormConfig !== trackingBaseline.form
-  );
+  const trackingDirty =
+    showTrackingSettings &&
+    (serialisedAnalyticsConfig !== trackingBaseline.analytics ||
+      serialisedFormConfig !== trackingBaseline.form);
 
-  const saveTrackingSettings = useCallback(async (opts?: { showSaved?: boolean; silent?: boolean }) => {
-    if (!lp) return false;
+  const saveTrackingSettings = useCallback(
+    async (opts?: { showSaved?: boolean; silent?: boolean }) => {
+      if (!lp) return false;
 
-    if (trackingSavePromiseRef.current) {
-      return trackingSavePromiseRef.current;
-    }
+      if (trackingSavePromiseRef.current) {
+        return trackingSavePromiseRef.current;
+      }
 
-    const savePromise = (async () => {
-      const { showSaved = true, silent = true } = opts ?? {};
-      const requestId = ++trackingSaveRequestRef.current;
-      setSavingAnalytics(true);
-      if (showSaved) setAnalyticsSaved(false);
+      const savePromise = (async () => {
+        const { showSaved = true, silent = true } = opts ?? {};
+        const requestId = ++trackingSaveRequestRef.current;
+        setSavingAnalytics(true);
+        if (showSaved) setAnalyticsSaved(false);
 
-      let nextFormConfig: LpFormConfig = formConfig;
-      if ((formConfig.fields?.length ?? 0) > 0) {
+        let nextFormConfig: LpFormConfig = formConfig;
+        if ((formConfig.fields?.length ?? 0) > 0) {
+          try {
+            const sanityRes = await fetch(
+              `/api/tools/landing-pages/${lp.id}/ai-email-field-sanity`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ fields: formConfig.fields }),
+              },
+            );
+            if (sanityRes.ok) {
+              const sanityData = (await sanityRes.json()) as { fields?: LpFormConfig["fields"] };
+              if (Array.isArray(sanityData.fields) && sanityData.fields.length > 0) {
+                nextFormConfig = {
+                  ...formConfig,
+                  fields: sanityData.fields,
+                };
+              }
+            }
+          } catch {
+            // Non-blocking: continue save with current form config.
+          }
+        }
+
+        let htmlWithFormConfig = previewHtml;
+
         try {
-          const sanityRes = await fetch(`/api/tools/landing-pages/${lp.id}/ai-email-field-sanity`, {
+          const aiRes = await fetch("/api/tools/landing-pages/rebuild-form", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ fields: formConfig.fields }),
+            body: JSON.stringify({
+              html: previewHtml,
+              fields: nextFormConfig.fields ?? [],
+            }),
           });
-          if (sanityRes.ok) {
-            const sanityData = await sanityRes.json() as { fields?: LpFormConfig["fields"] };
-            if (Array.isArray(sanityData.fields) && sanityData.fields.length > 0) {
-              nextFormConfig = {
-                ...formConfig,
-                fields: sanityData.fields,
-              };
+
+          if (aiRes.ok) {
+            const aiData = (await aiRes.json()) as { formHtml?: string };
+            if (aiData.formHtml?.trim()) {
+              htmlWithFormConfig = replaceBuiltInForm(previewHtml, aiData.formHtml);
             }
           }
         } catch {
-          // Non-blocking: continue save with current form config.
+          // Fall back to deterministic rewriting below.
         }
-      }
 
-      let htmlWithFormConfig = previewHtml;
+        htmlWithFormConfig = applyConfiguredFormFields(
+          htmlWithFormConfig,
+          nextFormConfig.fields ?? [],
+        );
 
-      try {
-        const aiRes = await fetch("/api/tools/landing-pages/rebuild-form", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            html: previewHtml,
-            fields: nextFormConfig.fields ?? [],
-          }),
-        });
+        try {
+          const res = await fetch(`/api/tools/landing-pages/${lp.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              analyticsConfig,
+              formConfig: nextFormConfig,
+              html: htmlWithFormConfig,
+            }),
+          });
 
-        if (aiRes.ok) {
-          const aiData = await aiRes.json() as { formHtml?: string };
-          if (aiData.formHtml?.trim()) {
-            htmlWithFormConfig = replaceBuiltInForm(previewHtml, aiData.formHtml);
+          if (!res.ok) {
+            if (!silent) {
+              toast("Could not save Tracking/Form changes.", "error");
+            }
+            return false;
           }
-        }
-      } catch {
-        // Fall back to deterministic rewriting below.
-      }
 
-      htmlWithFormConfig = applyConfiguredFormFields(htmlWithFormConfig, nextFormConfig.fields ?? []);
+          const data = await res.json();
 
-      try {
-        const res = await fetch(`/api/tools/landing-pages/${lp.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            analyticsConfig,
-            formConfig: nextFormConfig,
-            html: htmlWithFormConfig,
-          }),
-        });
+          // Ignore stale responses from older in-flight requests.
+          if (requestId !== trackingSaveRequestRef.current) {
+            return true;
+          }
 
-        if (!res.ok) {
+          if (htmlWithFormConfig !== previewHtml) {
+            setPreviewHtml(htmlWithFormConfig);
+          }
+
+          if (nextFormConfig !== formConfig) {
+            setFormConfig(nextFormConfig);
+          }
+
+          setLp((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  currentHtml: data.landingPage.currentHtml,
+                  analyticsConfig: data.landingPage.analyticsConfig,
+                  formConfig: data.landingPage.formConfig,
+                }
+              : prev,
+          );
+
+          setTrackingBaseline({
+            analytics: JSON.stringify(analyticsConfig ?? {}),
+            form: JSON.stringify(nextFormConfig ?? {}),
+          });
+
+          if (showSaved) {
+            setAnalyticsSaved(true);
+          }
+
+          return true;
+        } catch {
           if (!silent) {
             toast("Could not save Tracking/Form changes.", "error");
           }
           return false;
+        } finally {
+          if (requestId === trackingSaveRequestRef.current) {
+            setSavingAnalytics(false);
+          }
         }
+      })();
 
-        const data = await res.json();
+      trackingSavePromiseRef.current = savePromise;
 
-        // Ignore stale responses from older in-flight requests.
-        if (requestId !== trackingSaveRequestRef.current) {
-          return true;
-        }
-
-        if (htmlWithFormConfig !== previewHtml) {
-          setPreviewHtml(htmlWithFormConfig);
-        }
-
-        if (nextFormConfig !== formConfig) {
-          setFormConfig(nextFormConfig);
-        }
-
-        setLp((prev) => prev ? {
-          ...prev,
-          currentHtml: data.landingPage.currentHtml,
-          analyticsConfig: data.landingPage.analyticsConfig,
-          formConfig: data.landingPage.formConfig,
-        } : prev);
-
-        setTrackingBaseline({
-          analytics: JSON.stringify(analyticsConfig ?? {}),
-          form: JSON.stringify(nextFormConfig ?? {}),
-        });
-
-        if (showSaved) {
-          setAnalyticsSaved(true);
-        }
-
-        return true;
-      } catch {
-        if (!silent) {
-          toast("Could not save Tracking/Form changes.", "error");
-        }
-        return false;
+      try {
+        return await savePromise;
       } finally {
-        if (requestId === trackingSaveRequestRef.current) {
-          setSavingAnalytics(false);
+        if (trackingSavePromiseRef.current === savePromise) {
+          trackingSavePromiseRef.current = null;
         }
       }
-    })();
-
-    trackingSavePromiseRef.current = savePromise;
-
-    try {
-      return await savePromise;
-    } finally {
-      if (trackingSavePromiseRef.current === savePromise) {
-        trackingSavePromiseRef.current = null;
-      }
-    }
-  }, [lp, previewHtml, formConfig, analyticsConfig, toast]);
+    },
+    [lp, previewHtml, formConfig, analyticsConfig, toast],
+  );
 
   const saveTrackingSettingsRef = useRef(saveTrackingSettings);
 
@@ -1740,7 +2408,9 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
     };
 
     const embedCode = formConfig.embedCode?.trim() ?? "";
-    const notifyEmails = (formConfig.notifyEmails ?? []).map((email) => email.trim()).filter(Boolean);
+    const notifyEmails = (formConfig.notifyEmails ?? [])
+      .map((email) => email.trim())
+      .filter(Boolean);
     const webhookUrl = formConfig.webhookUrl?.trim() ?? "";
 
     const invalidNotifyEmails = notifyEmails.filter((email) => !isValidEmailAddress(email));
@@ -1775,11 +2445,16 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
       }
     }
 
-    const hasAnyLeadRouting = Boolean(embedCode) || notifyEmails.length > 0 || webhookUrl.length > 0;
+    const hasAnyLeadRouting =
+      Boolean(embedCode) || notifyEmails.length > 0 || webhookUrl.length > 0;
     if (hasAnyLeadRouting) {
       addCheck("Lead routing", "pass", "At least one lead delivery channel is configured.");
     } else {
-      addCheck("Lead routing", "fail", "Configure recipients, webhook, or embed code so leads can be routed.");
+      addCheck(
+        "Lead routing",
+        "fail",
+        "Configure recipients, webhook, or embed code so leads can be routed.",
+      );
     }
 
     if (embedCode) {
@@ -1791,34 +2466,62 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
     } else {
       const htmlFields = extractFormFieldsFromHtml(previewHtml);
       if (htmlFields.length === 0) {
-        addCheck("Page form fields", "fail", "No named form fields were detected in the current page HTML.");
+        addCheck(
+          "Page form fields",
+          "fail",
+          "No named form fields were detected in the current page HTML.",
+        );
       } else {
-        addCheck("Page form fields", "pass", `${htmlFields.length} named field${htmlFields.length === 1 ? "" : "s"} detected in page HTML.`);
+        addCheck(
+          "Page form fields",
+          "pass",
+          `${htmlFields.length} named field${htmlFields.length === 1 ? "" : "s"} detected in page HTML.`,
+        );
       }
 
-      const hasEmailField = htmlFields.some((field) => field.type === "email" || field.name.toLowerCase().includes("email"));
+      const hasEmailField = htmlFields.some(
+        (field) => field.type === "email" || field.name.toLowerCase().includes("email"),
+      );
       if (hasEmailField) {
         addCheck("Email capture field", "pass", "A valid email field is present in the page form.");
       } else {
-        addCheck("Email capture field", "fail", "No email field was detected. Add a field named like email or with type=email.");
+        addCheck(
+          "Email capture field",
+          "fail",
+          "No email field was detected. Add a field named like email or with type=email.",
+        );
       }
 
       const configuredFields = formConfig.fields ?? [];
       if (configuredFields.length === 0) {
-        addCheck("Configured field map", "warn", "No configured fields found. Sync fields from page to keep email templates aligned.");
+        addCheck(
+          "Configured field map",
+          "warn",
+          "No configured fields found. Sync fields from page to keep email templates aligned.",
+        );
       } else {
         const htmlFieldNames = new Set(htmlFields.map((field) => field.name));
         const configuredFieldNames = new Set(configuredFields.map((field) => field.name));
 
-        const missingInConfig = htmlFields.filter((field) => !configuredFieldNames.has(field.name)).map((field) => field.name);
-        const staleInConfig = configuredFields.filter((field) => !htmlFieldNames.has(field.name)).map((field) => field.name);
+        const missingInConfig = htmlFields
+          .filter((field) => !configuredFieldNames.has(field.name))
+          .map((field) => field.name);
+        const staleInConfig = configuredFields
+          .filter((field) => !htmlFieldNames.has(field.name))
+          .map((field) => field.name);
 
         if (missingInConfig.length === 0 && staleInConfig.length === 0) {
-          addCheck("Configured field map", "pass", "Configured fields are in sync with the current page HTML.");
+          addCheck(
+            "Configured field map",
+            "pass",
+            "Configured fields are in sync with the current page HTML.",
+          );
         } else {
           const mismatchDetails: string[] = [];
-          if (missingInConfig.length > 0) mismatchDetails.push(`Missing from config: ${missingInConfig.join(", ")}`);
-          if (staleInConfig.length > 0) mismatchDetails.push(`Not in HTML: ${staleInConfig.join(", ")}`);
+          if (missingInConfig.length > 0)
+            mismatchDetails.push(`Missing from config: ${missingInConfig.join(", ")}`);
+          if (staleInConfig.length > 0)
+            mismatchDetails.push(`Not in HTML: ${staleInConfig.join(", ")}`);
           addCheck("Configured field map", "fail", mismatchDetails.join(". "));
         }
       }
@@ -1834,7 +2537,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
           if (!sanityRes.ok) {
             addCheck("AI field sanity", "warn", "AI field sanity endpoint could not be reached.");
           } else {
-            const sanityData = await sanityRes.json() as { fields?: LpFormField[] };
+            const sanityData = (await sanityRes.json()) as { fields?: LpFormField[] };
             if (!Array.isArray(sanityData.fields) || sanityData.fields.length === 0) {
               addCheck("AI field sanity", "warn", "AI sanity check returned no field result.");
             } else {
@@ -1847,9 +2550,17 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
               }
 
               if (diffCount === 0) {
-                addCheck("AI field sanity", "pass", "AI sanity check reports no field metadata issues.");
+                addCheck(
+                  "AI field sanity",
+                  "pass",
+                  "AI sanity check reports no field metadata issues.",
+                );
               } else {
-                addCheck("AI field sanity", "fail", `AI sanity check suggests ${diffCount} field update${diffCount === 1 ? "" : "s"}. Save form settings to apply the corrections.`);
+                addCheck(
+                  "AI field sanity",
+                  "fail",
+                  `AI sanity check suggests ${diffCount} field update${diffCount === 1 ? "" : "s"}. Save form settings to apply the corrections.`,
+                );
               }
             }
           }
@@ -1857,7 +2568,11 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
           addCheck("AI field sanity", "warn", "AI field sanity check failed to run.");
         }
       } else {
-        addCheck("AI field sanity", "warn", "AI sanity check skipped because no form fields are configured yet.");
+        addCheck(
+          "AI field sanity",
+          "warn",
+          "AI sanity check skipped because no form fields are configured yet.",
+        );
       }
     }
 
@@ -1869,9 +2584,17 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
       });
 
       if (previewRes.ok) {
-        addCheck("Email template preview", "pass", "Notification email preview rendered successfully.");
+        addCheck(
+          "Email template preview",
+          "pass",
+          "Notification email preview rendered successfully.",
+        );
       } else {
-        addCheck("Email template preview", "warn", "Email preview could not be generated. Check OpenAI/email template settings.");
+        addCheck(
+          "Email template preview",
+          "warn",
+          "Email preview could not be generated. Check OpenAI/email template settings.",
+        );
       }
     } catch {
       addCheck("Email template preview", "warn", "Email preview check failed to run.");
@@ -1939,10 +2662,17 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
   };
 
   const toolbarBtn: React.CSSProperties = {
-    display: "inline-flex", alignItems: "center", gap: 4,
-    padding: "6px 10px", fontSize: 12, fontWeight: 500,
-    color: "var(--text-3)", background: "none", border: "none",
-    borderRadius: "var(--r-sm)", cursor: "pointer",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 4,
+    padding: "6px 10px",
+    fontSize: 12,
+    fontWeight: 500,
+    color: "var(--text-3)",
+    background: "none",
+    border: "none",
+    borderRadius: "var(--r-sm)",
+    cursor: "pointer",
     transition: "background 0.15s, color 0.15s",
   };
 
@@ -1955,8 +2685,22 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
 
   if (loading) {
     return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
-        <Loader2 style={{ width: 32, height: 32, animation: "spin 1s linear infinite", color: "var(--accent)" }} />
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "100vh",
+        }}
+      >
+        <Loader2
+          style={{
+            width: 32,
+            height: 32,
+            animation: "spin 1s linear infinite",
+            color: "var(--accent)",
+          }}
+        />
       </div>
     );
   }
@@ -1966,7 +2710,17 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 56px)" }}>
       {/* Top bar */}
-      <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 12, padding: "8px 16px", borderBottom: "1px solid var(--border)", background: "var(--surface)" }}>
+      <div
+        style={{
+          flexShrink: 0,
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          padding: "8px 16px",
+          borderBottom: "1px solid var(--border)",
+          background: "var(--surface)",
+        }}
+      >
         <Link
           href="/tools/landing-pages"
           style={{ display: "flex", color: "var(--text-4)", textDecoration: "none" }}
@@ -1983,19 +2737,56 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
               setSettingsClientId(lp.clientId ?? null);
               setShowPageSettings(true);
             }}
-            style={{ background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left", display: "block", maxWidth: "100%" }}
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: 0,
+              textAlign: "left",
+              display: "block",
+              maxWidth: "100%",
+            }}
             title="Page settings"
           >
-            <h1 style={{ fontSize: 14, fontWeight: 650, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lp.title}</h1>
+            <h1
+              style={{
+                fontSize: 14,
+                fontWeight: 650,
+                color: "var(--text)",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {lp.title}
+            </h1>
           </button>
           {(() => {
             const subdomain = lp.client?.slug ? toSubLabel(lp.client.slug) : lp.customSubdomain;
-            const liveUrl = lp.status === "published" && subdomain
-              ? buildLpUrl({ clientSlug: lp.client?.slug, customSubdomain: lp.customSubdomain, lpSlug: lp.slug })
-              : null;
+            const liveUrl =
+              lp.status === "published" && subdomain
+                ? buildLpUrl({
+                    clientSlug: lp.client?.slug,
+                    customSubdomain: lp.customSubdomain,
+                    lpSlug: lp.slug,
+                  })
+                : null;
             return liveUrl ? (
-              <p style={{ fontSize: 12, color: "var(--text-4)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {lp.client?.name && <>{lp.client.name}{" · "}</>}
+              <p
+                style={{
+                  fontSize: 12,
+                  color: "var(--text-4)",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {lp.client?.name && (
+                  <>
+                    {lp.client.name}
+                    {" · "}
+                  </>
+                )}
                 <a
                   href={liveUrl}
                   target="_blank"
@@ -2008,7 +2799,11 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
               </p>
             ) : (
               <p style={{ fontSize: 12, color: "var(--text-4)" }}>
-                {lp.client?.name ?? <span style={{ color: "var(--warning-text)" }}>No subdomain set — click title to configure</span>}
+                {lp.client?.name ?? (
+                  <span style={{ color: "var(--warning-text)" }}>
+                    No subdomain set — click title to configure
+                  </span>
+                )}
               </p>
             );
           })()}
@@ -2019,8 +2814,12 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
           value={lp.status}
           onChange={(e) => handleStatusChange(e.target.value)}
           style={{
-            fontSize: 11, fontWeight: 600, padding: "3px 8px",
-            borderRadius: 99, border: "none", cursor: "pointer",
+            fontSize: 11,
+            fontWeight: 600,
+            padding: "3px 8px",
+            borderRadius: 99,
+            border: "none",
+            cursor: "pointer",
             ...(STATUS_STYLES[lp.status] ?? STATUS_STYLES.draft),
           }}
         >
@@ -2030,8 +2829,18 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
         </select>
 
         {/* Stats */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 12, color: "var(--text-4)" }}>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }} title="Views"><Eye style={{ width: 13, height: 13 }} /> {lp.viewCount}</span>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            fontSize: 12,
+            color: "var(--text-4)",
+          }}
+        >
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }} title="Views">
+            <Eye style={{ width: 13, height: 13 }} /> {lp.viewCount}
+          </span>
           <button
             onClick={() => setShowLeadsModal(true)}
             disabled={lp._count.leads === 0}
@@ -2050,10 +2859,13 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
             }}
             title={lp._count.leads > 0 ? "Click to view leads" : "No leads yet"}
             onMouseEnter={(e) => {
-              if (lp._count.leads > 0) (e.currentTarget as HTMLButtonElement).style.color = "var(--accent-hover, var(--accent))";
+              if (lp._count.leads > 0)
+                (e.currentTarget as HTMLButtonElement).style.color =
+                  "var(--accent-hover, var(--accent))";
             }}
             onMouseLeave={(e) => {
-              if (lp._count.leads > 0) (e.currentTarget as HTMLButtonElement).style.color = "var(--accent)";
+              if (lp._count.leads > 0)
+                (e.currentTarget as HTMLButtonElement).style.color = "var(--accent)";
             }}
           >
             <Users style={{ width: 13, height: 13 }} /> {lp._count.leads}
@@ -2077,11 +2889,21 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
           </button>
 
           {/* Undo/Redo */}
-          <button onClick={handleUndo} disabled={!canUndo} style={{ ...toolbarBtn, ...(!canUndo ? disabledToolbarBtn : {}) }} title="Undo (⌘Z)">
+          <button
+            onClick={handleUndo}
+            disabled={!canUndo}
+            style={{ ...toolbarBtn, ...(!canUndo ? disabledToolbarBtn : {}) }}
+            title="Undo (⌘Z)"
+          >
             <Undo2 style={{ width: 14, height: 14 }} />
             Undo
           </button>
-          <button onClick={handleRedo} disabled={!canRedo} style={{ ...toolbarBtn, ...(!canRedo ? disabledToolbarBtn : {}) }} title="Redo (⌘⇧Z)">
+          <button
+            onClick={handleRedo}
+            disabled={!canRedo}
+            style={{ ...toolbarBtn, ...(!canRedo ? disabledToolbarBtn : {}) }}
+            title="Redo (⌘⇧Z)"
+          >
             <Redo2 style={{ width: 14, height: 14 }} />
             Redo
           </button>
@@ -2096,7 +2918,11 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
             style={toolbarBtn}
             title="Save snapshot version"
           >
-            {savingVersion ? <Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }} /> : <Save style={{ width: 14, height: 14 }} />}
+            {savingVersion ? (
+              <Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }} />
+            ) : (
+              <Save style={{ width: 14, height: 14 }} />
+            )}
             Save
           </button>
 
@@ -2105,20 +2931,19 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
             style={toolbarBtn}
             title="Version history"
           >
-            <History style={{ width: 14, height: 14 }} />
-            v{lp.versions.length}
+            <History style={{ width: 14, height: 14 }} />v{lp.versions.length}
           </button>
 
-          <button onClick={() => setShowSaveTemplate(true)} style={toolbarBtn} title="Save as template">
+          <button
+            onClick={() => setShowSaveTemplate(true)}
+            style={toolbarBtn}
+            title="Save as template"
+          >
             <Sparkles style={{ width: 14, height: 14 }} />
             Template
           </button>
 
-          <button
-            onClick={openTrackingSettings}
-            style={toolbarBtn}
-            title="Tracking & conversions"
-          >
+          <button onClick={openTrackingSettings} style={toolbarBtn} title="Tracking & conversions">
             <Settings style={{ width: 14, height: 14 }} />
             Tracking
           </button>
@@ -2156,7 +2981,11 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
             style={{ fontSize: 12, padding: "6px 12px" }}
             title="Generate share link"
           >
-            {copied ? <Check style={{ width: 14, height: 14 }} /> : <Share2 style={{ width: 14, height: 14 }} />}
+            {copied ? (
+              <Check style={{ width: 14, height: 14 }} />
+            ) : (
+              <Share2 style={{ width: 14, height: 14 }} />
+            )}
             {copied ? "Copied!" : "Share"}
           </button>
 
@@ -2197,37 +3026,120 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
 
       {/* Version history panel (slide-down) */}
       {showVersions && (
-        <div style={{ flexShrink: 0, borderBottom: "1px solid var(--border)", background: "var(--surface)", padding: "12px 16px", maxHeight: 200, overflowY: "auto" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>Version History</span>
-            <button onClick={() => setShowVersions(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-4)", padding: 2 }}>
+        <div
+          style={{
+            flexShrink: 0,
+            borderBottom: "1px solid var(--border)",
+            background: "var(--surface)",
+            padding: "12px 16px",
+            maxHeight: 200,
+            overflowY: "auto",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: 8,
+            }}
+          >
+            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>
+              Version History
+            </span>
+            <button
+              onClick={() => setShowVersions(false)}
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                color: "var(--text-4)",
+                padding: 2,
+              }}
+            >
               <X style={{ width: 14, height: 14 }} />
             </button>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             {lp.versions.map((v) => (
-              <div key={v.id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
-                <span style={{ flexShrink: 0, width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--accent-bg)", color: "var(--accent)", borderRadius: "50%", fontWeight: 600, fontSize: 11 }}>
+              <div
+                key={v.id}
+                style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}
+              >
+                <span
+                  style={{
+                    flexShrink: 0,
+                    width: 24,
+                    height: 24,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: "var(--accent-bg)",
+                    color: "var(--accent)",
+                    borderRadius: "50%",
+                    fontWeight: 600,
+                    fontSize: 11,
+                  }}
+                >
                   {v.versionNumber}
                 </span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ color: "var(--text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.prompt}</div>
-                  <div style={{ color: "var(--text-4)", fontSize: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <div
+                    style={{
+                      color: "var(--text-3)",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {v.prompt}
+                  </div>
+                  <div
+                    style={{
+                      color: "var(--text-4)",
+                      fontSize: 10,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
                     By {v.createdByEmail ?? "Unknown user"}
                   </div>
                 </div>
                 <span style={{ flexShrink: 0, color: "var(--text-4)", fontSize: 11 }}>
-                  {new Date(v.createdAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+                  {new Date(v.createdAt).toLocaleTimeString("en-GB", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
                 </span>
                 <button
                   onClick={() => handlePreviewVersion(v)}
-                  style={{ flexShrink: 0, background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "var(--accent)", padding: "2px 6px", borderRadius: "var(--r-sm)" }}
+                  style={{
+                    flexShrink: 0,
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    fontSize: 11,
+                    color: "var(--accent)",
+                    padding: "2px 6px",
+                    borderRadius: "var(--r-sm)",
+                  }}
                 >
                   Preview
                 </button>
                 <button
                   onClick={() => handleRevert(v.versionNumber)}
-                  style={{ flexShrink: 0, background: "none", border: "none", cursor: "pointer", color: "var(--text-4)", padding: "2px 6px", borderRadius: "var(--r-sm)", display: "flex", alignItems: "center" }}
+                  style={{
+                    flexShrink: 0,
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    color: "var(--text-4)",
+                    padding: "2px 6px",
+                    borderRadius: "var(--r-sm)",
+                    display: "flex",
+                    alignItems: "center",
+                  }}
                   title="Revert to this version"
                 >
                   <RotateCcw style={{ width: 12, height: 12 }} />
@@ -2241,38 +3153,98 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
       {/* Main content — split view */}
       <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
         {/* Preview panel */}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", background: "var(--border-subtle)", minWidth: 0 }}>
+        <div
+          style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            background: "var(--border-subtle)",
+            minWidth: 0,
+          }}
+        >
           {/* Device toggle bar */}
-          <div style={{ flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, padding: "8px 0", background: "var(--surface)", borderBottom: "1px solid var(--border)" }}>
-            {([["desktop", Monitor], ["tablet", Tablet], ["mobile", Smartphone]] as const).map(([mode, Icon]) => (
+          <div
+            style={{
+              flexShrink: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 4,
+              padding: "8px 0",
+              background: "var(--surface)",
+              borderBottom: "1px solid var(--border)",
+            }}
+          >
+            {(
+              [
+                ["desktop", Monitor],
+                ["tablet", Tablet],
+                ["mobile", Smartphone],
+              ] as const
+            ).map(([mode, Icon]) => (
               <button
                 key={mode}
                 onClick={() => setDevice(mode)}
                 style={{
-                  padding: 6, borderRadius: "var(--r-sm)", border: "none", cursor: "pointer",
+                  padding: 6,
+                  borderRadius: "var(--r-sm)",
+                  border: "none",
+                  cursor: "pointer",
                   background: device === mode ? "var(--accent-bg)" : "transparent",
                   color: device === mode ? "var(--accent)" : "var(--text-4)",
                   transition: "all 0.15s",
                 }}
-                title={mode === "desktop" ? "Desktop preview (full width)" : mode === "tablet" ? "Tablet preview (768px)" : "Mobile preview (375px)"}
+                title={
+                  mode === "desktop"
+                    ? "Desktop preview (full width)"
+                    : mode === "tablet"
+                      ? "Tablet preview (768px)"
+                      : "Mobile preview (375px)"
+                }
               >
                 <Icon style={{ width: 16, height: 16 }} />
               </button>
             ))}
             {editMode && (
-              <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 600, color: "var(--accent)", background: "var(--accent-bg)", padding: "2px 8px", borderRadius: 99 }}>
+              <span
+                style={{
+                  marginLeft: 8,
+                  fontSize: 10,
+                  fontWeight: 600,
+                  color: "var(--accent)",
+                  background: "var(--accent-bg)",
+                  padding: "2px 8px",
+                  borderRadius: 99,
+                }}
+              >
                 EDIT MODE — Click text to edit
               </span>
             )}
           </div>
 
           {/* iframe preview */}
-          <div style={{ flex: 1, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: 16, overflow: "auto" }}>
+          <div
+            style={{
+              flex: 1,
+              display: "flex",
+              alignItems: "flex-start",
+              justifyContent: "center",
+              padding: 16,
+              overflow: "auto",
+            }}
+          >
             <div
               style={{
-                width: DEVICE_WIDTHS[device], maxWidth: "100%", height: "100%",
-                background: "#fff", borderRadius: "var(--r)", boxShadow: editMode ? "0 0 0 2px var(--accent), 0 4px 24px rgba(0,0,0,0.12)" : "0 4px 24px rgba(0,0,0,0.12)",
-                overflow: "hidden", transition: "width 0.3s ease",
+                width: DEVICE_WIDTHS[device],
+                maxWidth: "100%",
+                height: "100%",
+                background: "#fff",
+                borderRadius: "var(--r)",
+                boxShadow: editMode
+                  ? "0 0 0 2px var(--accent), 0 4px 24px rgba(0,0,0,0.12)"
+                  : "0 4px 24px rgba(0,0,0,0.12)",
+                overflow: "hidden",
+                transition: "width 0.3s ease",
               }}
             >
               <iframe
@@ -2287,7 +3259,16 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
         </div>
 
         {/* ── Tabbed sidebar ─────────────────────────────────────────────── */}
-        <div style={{ width: 380, flexShrink: 0, display: "flex", flexDirection: "column", borderLeft: "1px solid var(--border)", background: "var(--surface)" }}>
+        <div
+          style={{
+            width: 380,
+            flexShrink: 0,
+            display: "flex",
+            flexDirection: "column",
+            borderLeft: "1px solid var(--border)",
+            background: "var(--surface)",
+          }}
+        >
           {/* Tab bar */}
           <div style={{ flexShrink: 0, display: "flex", borderBottom: "1px solid var(--border)" }}>
             {SIDEBAR_TABS.map(({ id: tid, icon: TabIcon, label }) => (
@@ -2296,9 +3277,19 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                 onClick={() => setActiveTab(tid)}
                 title={label}
                 style={{
-                  flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
-                  padding: "10px 0", fontSize: 12, fontWeight: 600, cursor: "pointer",
-                  background: "none", border: "none", borderBottom: activeTab === tid ? "2px solid var(--accent)" : "2px solid transparent",
+                  flex: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 5,
+                  padding: "10px 0",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  background: "none",
+                  border: "none",
+                  borderBottom:
+                    activeTab === tid ? "2px solid var(--accent)" : "2px solid transparent",
                   color: activeTab === tid ? "var(--accent)" : "var(--text-4)",
                   transition: "all 0.15s",
                 }}
@@ -2313,28 +3304,61 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
           {activeTab === "chat" && (
             <>
               {/* Chat header */}
-              <div style={{ flexShrink: 0, padding: "12px 16px", borderBottom: "1px solid var(--border)" }}>
+              <div
+                style={{
+                  flexShrink: 0,
+                  padding: "12px 16px",
+                  borderBottom: "1px solid var(--border)",
+                }}
+              >
                 <div>
-                  <h2 style={{ fontSize: 14, fontWeight: 650, color: "var(--text)" }}>Refine with AI</h2>
-                  <p style={{ fontSize: 12, color: "var(--text-4)", marginTop: 2 }}>Chat to discuss · ⌘+Enter to apply directly</p>
+                  <h2 style={{ fontSize: 14, fontWeight: 650, color: "var(--text)" }}>
+                    Refine with AI
+                  </h2>
+                  <p style={{ fontSize: 12, color: "var(--text-4)", marginTop: 2 }}>
+                    Chat to discuss · ⌘+Enter to apply directly
+                  </p>
                 </div>
               </div>
 
               {/* Chat messages */}
-              <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
+              <div
+                style={{
+                  flex: 1,
+                  overflowY: "auto",
+                  padding: "12px 16px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 10,
+                }}
+              >
                 {chatHistory.length === 0 && (
                   <div style={{ textAlign: "center", paddingTop: 32 }}>
-                    <p style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 12 }}>Your landing page is ready!</p>
+                    <p style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 12 }}>
+                      Your landing page is ready!
+                    </p>
                     <p style={{ fontSize: 12, color: "var(--text-4)" }}>Try asking:</p>
                     <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
-                      {["What would make this page convert better?", "What's the weakest section?", "Change the CTA colour to green", "Add more social proof and testimonials"].map((suggestion) => (
+                      {[
+                        "What would make this page convert better?",
+                        "What's the weakest section?",
+                        "Change the CTA colour to green",
+                        "Add more social proof and testimonials",
+                      ].map((suggestion) => (
                         <button
                           key={suggestion}
                           onClick={() => setPrompt(suggestion)}
                           style={{
-                            display: "block", width: "100%", textAlign: "left", fontSize: 12,
-                            padding: "8px 12px", borderRadius: "var(--r)", border: "none",
-                            background: "var(--border-subtle)", color: "var(--text-3)", cursor: "pointer",
+                            display: "block",
+                            width: "100%",
+                            textAlign: "left",
+                            fontSize: 12,
+                            padding: "8px 12px",
+                            borderRadius: "var(--r)",
+                            border: "none",
+                            background: "var(--border-subtle)",
+                            color: "var(--text-3)",
+                            cursor: "pointer",
                             transition: "background 0.15s, color 0.15s",
                           }}
                         >
@@ -2348,15 +3372,21 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                 {chatHistory.map((msg, i) => (
                   <div
                     key={i}
-                    style={{ display: "flex", justifyContent: msg.role === "user" ? "flex-end" : "flex-start" }}
+                    style={{
+                      display: "flex",
+                      justifyContent: msg.role === "user" ? "flex-end" : "flex-start",
+                    }}
                   >
                     <div
                       style={{
-                        maxWidth: "85%", borderRadius: 12, padding: "8px 12px", fontSize: 12, lineHeight: 1.5,
+                        maxWidth: "85%",
+                        borderRadius: 12,
+                        padding: "8px 12px",
+                        fontSize: 12,
+                        lineHeight: 1.5,
                         ...(msg.role === "user"
                           ? { background: "var(--gradient-accent)", color: "#fff" }
-                          : { background: "var(--border-subtle)", color: "var(--text-2)" }
-                        ),
+                          : { background: "var(--border-subtle)", color: "var(--text-2)" }),
                       }}
                     >
                       <p style={{ margin: 0, whiteSpace: "pre-wrap" }}>
@@ -2368,63 +3398,166 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                         <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 6 }}>
                           {msg.attachedImageUrls.map((url) => (
                             // eslint-disable-next-line @next/next/no-img-element
-                            <img key={url} src={url} alt="" style={{ width: 48, height: 48, objectFit: "cover", borderRadius: 4, border: "1px solid rgba(255,255,255,0.25)" }} />
+                            <img
+                              key={url}
+                              src={url}
+                              alt=""
+                              style={{
+                                width: 48,
+                                height: 48,
+                                objectFit: "cover",
+                                borderRadius: 4,
+                                border: "1px solid rgba(255,255,255,0.25)",
+                              }}
+                            />
                           ))}
                         </div>
                       )}
                       {msg.role === "user" && msg.attachedUrls?.length && (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 3, marginTop: 6 }}>
+                        <div
+                          style={{ display: "flex", flexDirection: "column", gap: 3, marginTop: 6 }}
+                        >
                           {msg.attachedUrls.map((url) => (
-                            <div key={url} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, color: "rgba(255,255,255,0.8)" }}>
+                            <div
+                              key={url}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 4,
+                                fontSize: 10,
+                                color: "rgba(255,255,255,0.8)",
+                              }}
+                            >
                               <Globe style={{ width: 9, height: 9, flexShrink: 0 }} />
-                              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{url}</span>
+                              <span
+                                style={{
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                {url}
+                              </span>
                             </div>
                           ))}
                         </div>
                       )}
                       {msg.role === "assistant" && msg.version && (
-                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, paddingTop: 6, borderTop: "1px solid rgba(128,128,128,0.15)" }}>
-                          <span style={{ fontSize: 10, padding: "1px 6px", background: "var(--accent-bg)", color: "var(--accent)", borderRadius: 99, fontWeight: 600 }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                            marginTop: 6,
+                            paddingTop: 6,
+                            borderTop: "1px solid rgba(128,128,128,0.15)",
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontSize: 10,
+                              padding: "1px 6px",
+                              background: "var(--accent-bg)",
+                              color: "var(--accent)",
+                              borderRadius: 99,
+                              fontWeight: 600,
+                            }}
+                          >
                             v{msg.version}
                           </span>
                           <button
                             onClick={() => {
-                              const v = lp?.versions.find((ver) => ver.versionNumber === msg.version);
+                              const v = lp?.versions.find(
+                                (ver) => ver.versionNumber === msg.version,
+                              );
                               if (v) handlePreviewVersion(v);
                             }}
-                            style={{ fontSize: 10, color: "var(--accent)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                            style={{
+                              fontSize: 10,
+                              color: "var(--accent)",
+                              background: "none",
+                              border: "none",
+                              cursor: "pointer",
+                              padding: 0,
+                            }}
                           >
                             Preview
                           </button>
                           <button
                             onClick={() => handleRevert(msg.version!)}
-                            style={{ fontSize: 10, color: "var(--text-4)", background: "none", border: "none", cursor: "pointer", padding: 0, display: "inline-flex", alignItems: "center", gap: 2 }}
+                            style={{
+                              fontSize: 10,
+                              color: "var(--text-4)",
+                              background: "none",
+                              border: "none",
+                              cursor: "pointer",
+                              padding: 0,
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 2,
+                            }}
                           >
                             <RotateCcw style={{ width: 10, height: 10 }} /> Revert
                           </button>
                         </div>
                       )}
-                      {msg.role === "assistant" && msg.crawlWarnings && msg.crawlWarnings.length > 0 && (
-                        <div style={{ marginTop: 6, paddingTop: 6, borderTop: "1px solid rgba(128,128,128,0.15)", display: "flex", flexDirection: "column", gap: 3 }}>
-                          {msg.crawlWarnings.map((w, wi) => (
-                            <div key={wi} style={{ display: "flex", alignItems: "flex-start", gap: 5, fontSize: 10, color: "var(--warning-text, #b45309)", background: "var(--warning-bg, rgba(251,191,36,0.12))", borderRadius: 6, padding: "4px 7px" }}>
-                              <span style={{ flexShrink: 0 }}>⚠️</span>
-                              <span>{w} — changes applied without this reference.</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                      {msg.role === "assistant" &&
+                        msg.crawlWarnings &&
+                        msg.crawlWarnings.length > 0 && (
+                          <div
+                            style={{
+                              marginTop: 6,
+                              paddingTop: 6,
+                              borderTop: "1px solid rgba(128,128,128,0.15)",
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: 3,
+                            }}
+                          >
+                            {msg.crawlWarnings.map((w, wi) => (
+                              <div
+                                key={wi}
+                                style={{
+                                  display: "flex",
+                                  alignItems: "flex-start",
+                                  gap: 5,
+                                  fontSize: 10,
+                                  color: "var(--warning-text, #b45309)",
+                                  background: "var(--warning-bg, rgba(251,191,36,0.12))",
+                                  borderRadius: 6,
+                                  padding: "4px 7px",
+                                }}
+                              >
+                                <span style={{ flexShrink: 0 }}>⚠️</span>
+                                <span>{w} — changes applied without this reference.</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       {msg.role === "assistant" && msg.type === "chat" && msg.refinementPrompt && (
-                        <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid rgba(128,128,128,0.15)" }}>
+                        <div
+                          style={{
+                            marginTop: 8,
+                            paddingTop: 8,
+                            borderTop: "1px solid rgba(128,128,128,0.15)",
+                          }}
+                        >
                           <button
                             onClick={() => handleRefine(msg.refinementPrompt)}
                             disabled={refining || chatting}
                             style={{
-                              display: "inline-flex", alignItems: "center", gap: 5,
-                              fontSize: 11, fontWeight: 600, padding: "5px 10px",
-                              background: "var(--success-bg)", color: "var(--success-text)",
-                              border: "none", borderRadius: 99, cursor: "pointer",
-                              opacity: (refining || chatting) ? 0.5 : 1,
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 5,
+                              fontSize: 11,
+                              fontWeight: 600,
+                              padding: "5px 10px",
+                              background: "var(--success-bg)",
+                              color: "var(--success-text)",
+                              border: "none",
+                              borderRadius: 99,
+                              cursor: "pointer",
+                              opacity: refining || chatting ? 0.5 : 1,
                               transition: "opacity 0.15s",
                             }}
                           >
@@ -2434,9 +3567,23 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                         </div>
                       )}
                       {msg.role === "assistant" && msg.type === "chat" && !msg.refinementPrompt && (
-                        <div style={{ marginTop: 6, paddingTop: 6, borderTop: "1px solid rgba(128,128,128,0.15)", fontSize: 10, color: "var(--text-4)", display: "flex", alignItems: "center", gap: 4 }}>
+                        <div
+                          style={{
+                            marginTop: 6,
+                            paddingTop: 6,
+                            borderTop: "1px solid rgba(128,128,128,0.15)",
+                            fontSize: 10,
+                            color: "var(--text-4)",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 4,
+                          }}
+                        >
                           <span>💬</span>
-                          <span>Advice only — no changes saved. Use <strong>Apply</strong> or <strong>⌘+Enter</strong> to update the page.</span>
+                          <span>
+                            Advice only — no changes saved. Use <strong>Apply</strong> or{" "}
+                            <strong>⌘+Enter</strong> to update the page.
+                          </span>
                         </div>
                       )}
                     </div>
@@ -2445,16 +3592,42 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
 
                 {chatting && (
                   <div style={{ display: "flex", justifyContent: "flex-start" }}>
-                    <div style={{ background: "var(--border-subtle)", borderRadius: 12, padding: "8px 12px", fontSize: 12, color: "var(--text-3)", display: "flex", alignItems: "center", gap: 8 }}>
-                      <Loader2 style={{ width: 12, height: 12, animation: "spin 1s linear infinite" }} />
+                    <div
+                      style={{
+                        background: "var(--border-subtle)",
+                        borderRadius: 12,
+                        padding: "8px 12px",
+                        fontSize: 12,
+                        color: "var(--text-3)",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                      }}
+                    >
+                      <Loader2
+                        style={{ width: 12, height: 12, animation: "spin 1s linear infinite" }}
+                      />
                       Thinking...
                     </div>
                   </div>
                 )}
                 {refining && (
                   <div style={{ display: "flex", justifyContent: "flex-start" }}>
-                    <div style={{ background: "var(--border-subtle)", borderRadius: 12, padding: "8px 12px", fontSize: 12, color: "var(--text-3)", display: "flex", alignItems: "center", gap: 8 }}>
-                      <Loader2 style={{ width: 12, height: 12, animation: "spin 1s linear infinite" }} />
+                    <div
+                      style={{
+                        background: "var(--border-subtle)",
+                        borderRadius: 12,
+                        padding: "8px 12px",
+                        fontSize: 12,
+                        color: "var(--text-3)",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                      }}
+                    >
+                      <Loader2
+                        style={{ width: 12, height: 12, animation: "spin 1s linear infinite" }}
+                      />
                       {refineProgressMessage ?? "Generating changes..."}
                     </div>
                   </div>
@@ -2464,9 +3637,32 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
 
               {/* Staged changes tray */}
               {stagedChanges.length > 0 && (
-                <div style={{ flexShrink: 0, borderTop: "1px solid var(--border)", padding: "10px 12px", background: "var(--success-bg)" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: "var(--success-text)", display: "flex", alignItems: "center", gap: 5 }}>
+                <div
+                  style={{
+                    flexShrink: 0,
+                    borderTop: "1px solid var(--border)",
+                    padding: "10px 12px",
+                    background: "var(--success-bg)",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      marginBottom: 6,
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 600,
+                        color: "var(--success-text)",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 5,
+                      }}
+                    >
                       <Wand2 style={{ width: 11, height: 11 }} />
                       Staged changes ({stagedChanges.length})
                     </span>
@@ -2474,26 +3670,83 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                       onClick={async () => {
                         const proceed = await confirm({
                           title: "Clear all staged changes?",
-                          description: "This will remove the staged list from chat and cannot be undone.",
+                          description:
+                            "This will remove the staged list from chat and cannot be undone.",
                           confirmLabel: "Clear",
                           cancelLabel: "Cancel",
                           danger: true,
                         });
                         if (proceed) setStagedChanges([]);
                       }}
-                      style={{ fontSize: 10, color: "var(--text-4)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                      style={{
+                        fontSize: 10,
+                        color: "var(--text-4)",
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        padding: 0,
+                      }}
                     >
                       Clear all
                     </button>
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 8, maxHeight: 120, overflowY: "auto" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 4,
+                      marginBottom: 8,
+                      maxHeight: 120,
+                      overflowY: "auto",
+                    }}
+                  >
                     {stagedChanges.map((change, i) => (
-                      <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 6, fontSize: 11, background: "rgba(255,255,255,0.5)", borderRadius: 6, padding: "4px 8px" }}>
-                        <span style={{ flexShrink: 0, width: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--success-text)", color: "#fff", borderRadius: "50%", fontSize: 9, fontWeight: 700 }}>{i + 1}</span>
-                        <span style={{ flex: 1, color: "var(--text-2)", lineHeight: 1.4 }}>{change}</span>
+                      <div
+                        key={i}
+                        style={{
+                          display: "flex",
+                          alignItems: "flex-start",
+                          gap: 6,
+                          fontSize: 11,
+                          background: "rgba(255,255,255,0.5)",
+                          borderRadius: 6,
+                          padding: "4px 8px",
+                        }}
+                      >
+                        <span
+                          style={{
+                            flexShrink: 0,
+                            width: 16,
+                            height: 16,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            background: "var(--success-text)",
+                            color: "#fff",
+                            borderRadius: "50%",
+                            fontSize: 9,
+                            fontWeight: 700,
+                          }}
+                        >
+                          {i + 1}
+                        </span>
+                        <span style={{ flex: 1, color: "var(--text-2)", lineHeight: 1.4 }}>
+                          {change}
+                        </span>
                         <button
-                          onClick={() => setStagedChanges((prev) => prev.filter((_, idx) => idx !== i))}
-                          style={{ flexShrink: 0, background: "none", border: "none", cursor: "pointer", color: "var(--text-4)", padding: 0, display: "flex", alignItems: "center" }}
+                          onClick={() =>
+                            setStagedChanges((prev) => prev.filter((_, idx) => idx !== i))
+                          }
+                          style={{
+                            flexShrink: 0,
+                            background: "none",
+                            border: "none",
+                            cursor: "pointer",
+                            color: "var(--text-4)",
+                            padding: 0,
+                            display: "flex",
+                            alignItems: "center",
+                          }}
                         >
                           <X style={{ width: 11, height: 11 }} />
                         </button>
@@ -2507,9 +3760,17 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                     style={{ width: "100%", justifyContent: "center", fontSize: 12 }}
                   >
                     {refining ? (
-                      <><Loader2 style={{ width: 12, height: 12, animation: "spin 1s linear infinite" }} /> Applying...</>
+                      <>
+                        <Loader2
+                          style={{ width: 12, height: 12, animation: "spin 1s linear infinite" }}
+                        />{" "}
+                        Applying...
+                      </>
                     ) : (
-                      <><Wand2 style={{ width: 12, height: 12 }} /> Apply all {stagedChanges.length} changes</>
+                      <>
+                        <Wand2 style={{ width: 12, height: 12 }} /> Apply all {stagedChanges.length}{" "}
+                        changes
+                      </>
                     )}
                   </button>
                 </div>
@@ -2531,22 +3792,78 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                 {chatImages.length > 0 && (
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
                     {chatImages.map((img) => (
-                      <div key={img.id} style={{ position: "relative", width: 52, height: 52, flexShrink: 0, borderRadius: 6, overflow: "hidden", border: "1px solid var(--border)", background: "var(--border-subtle)" }}>
+                      <div
+                        key={img.id}
+                        style={{
+                          position: "relative",
+                          width: 52,
+                          height: 52,
+                          flexShrink: 0,
+                          borderRadius: 6,
+                          overflow: "hidden",
+                          border: "1px solid var(--border)",
+                          background: "var(--border-subtle)",
+                        }}
+                      >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={img.previewUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        <img
+                          src={img.previewUrl}
+                          alt=""
+                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                        />
                         {img.status === "uploading" && (
-                          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            <Loader2 style={{ width: 16, height: 16, color: "#fff", animation: "spin 1s linear infinite" }} />
+                          <div
+                            style={{
+                              position: "absolute",
+                              inset: 0,
+                              background: "rgba(0,0,0,0.45)",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            <Loader2
+                              style={{
+                                width: 16,
+                                height: 16,
+                                color: "#fff",
+                                animation: "spin 1s linear infinite",
+                              }}
+                            />
                           </div>
                         )}
                         {img.status === "error" && (
-                          <div style={{ position: "absolute", inset: 0, background: "rgba(220,38,38,0.65)", display: "flex", alignItems: "center", justifyContent: "center" }} title={img.errorMsg ?? "Upload failed"}>
+                          <div
+                            style={{
+                              position: "absolute",
+                              inset: 0,
+                              background: "rgba(220,38,38,0.65)",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                            title={img.errorMsg ?? "Upload failed"}
+                          >
                             <AlertCircle style={{ width: 16, height: 16, color: "#fff" }} />
                           </div>
                         )}
                         <button
                           onClick={() => removeChatImage(img.id)}
-                          style={{ position: "absolute", top: 2, right: 2, width: 16, height: 16, borderRadius: "50%", background: "rgba(0,0,0,0.55)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
+                          style={{
+                            position: "absolute",
+                            top: 2,
+                            right: 2,
+                            width: 16,
+                            height: 16,
+                            borderRadius: "50%",
+                            background: "rgba(0,0,0,0.55)",
+                            border: "none",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            padding: 0,
+                          }}
                         >
                           <X style={{ width: 10, height: 10, color: "#fff" }} />
                         </button>
@@ -2556,11 +3873,31 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                 )}
 
                 {showUrlPanel && (
-                  <div style={{ marginBottom: 8, padding: "8px 10px", background: "var(--border-subtle)", borderRadius: "var(--r-sm)", border: "1px solid var(--border)" }}>
-                    <p style={{ fontSize: 10, color: "var(--text-4)", marginBottom: 6 }}>Reference URLs — Claude will scrape these for context</p>
+                  <div
+                    style={{
+                      marginBottom: 8,
+                      padding: "8px 10px",
+                      background: "var(--border-subtle)",
+                      borderRadius: "var(--r-sm)",
+                      border: "1px solid var(--border)",
+                    }}
+                  >
+                    <p style={{ fontSize: 10, color: "var(--text-4)", marginBottom: 6 }}>
+                      Reference URLs — Claude will scrape these for context
+                    </p>
                     {chatUrls.map((url, i) => (
-                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: i < chatUrls.length - 1 ? 4 : 0 }}>
-                        <Globe style={{ width: 12, height: 12, color: "var(--text-4)", flexShrink: 0 }} />
+                      <div
+                        key={i}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 4,
+                          marginBottom: i < chatUrls.length - 1 ? 4 : 0,
+                        }}
+                      >
+                        <Globe
+                          style={{ width: 12, height: 12, color: "var(--text-4)", flexShrink: 0 }}
+                        />
                         <input
                           type="url"
                           value={url}
@@ -2574,8 +3911,19 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                         />
                         {chatUrls.length > 1 && (
                           <button
-                            onClick={() => setChatUrls((prev) => prev.filter((_, idx) => idx !== i))}
-                            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-4)", padding: 0, display: "flex", alignItems: "center", flexShrink: 0 }}
+                            onClick={() =>
+                              setChatUrls((prev) => prev.filter((_, idx) => idx !== i))
+                            }
+                            style={{
+                              background: "none",
+                              border: "none",
+                              cursor: "pointer",
+                              color: "var(--text-4)",
+                              padding: 0,
+                              display: "flex",
+                              alignItems: "center",
+                              flexShrink: 0,
+                            }}
                           >
                             <X style={{ width: 12, height: 12 }} />
                           </button>
@@ -2585,7 +3933,15 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                     {chatUrls.length < (doublePassRefine ? 10 : 3) && (
                       <button
                         onClick={() => setChatUrls((prev) => [...prev, ""])}
-                        style={{ marginTop: 5, fontSize: 10, color: "var(--accent)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                        style={{
+                          marginTop: 5,
+                          fontSize: 10,
+                          color: "var(--accent)",
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
+                          padding: 0,
+                        }}
                       >
                         + Add another URL
                       </button>
@@ -2611,7 +3967,8 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                     disabled={refining || chatting}
                     onChange={(e) => setDoublePassRefine(e.target.checked)}
                   />
-                  Double-pass refinement: run pass 1, audit, then pass 2. Allows up to {doublePassRefine ? 10 : 3} reference URLs.
+                  Double-pass refinement: run pass 1, audit, then pass 2. Allows up to{" "}
+                  {doublePassRefine ? 10 : 3} reference URLs.
                 </label>
 
                 <textarea
@@ -2623,9 +3980,11 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                   rows={2}
                   disabled={refining || chatting}
                   style={{
-                    ...inputStyle, width: "100%", fontSize: 12,
+                    ...inputStyle,
+                    width: "100%",
+                    fontSize: 12,
                     resize: "none" as const,
-                    opacity: (refining || chatting) ? 0.5 : 1,
+                    opacity: refining || chatting ? 0.5 : 1,
                     marginBottom: 8,
                   }}
                 />
@@ -2640,12 +3999,24 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                     disabled={refining || chatting}
                     title={showUrlPanel ? "Hide URL panel" : "Add reference URLs for context"}
                     style={{
-                      display: "inline-flex", alignItems: "center", justifyContent: "center",
-                      padding: "7px 8px", flexShrink: 0,
-                      background: (showUrlPanel || chatUrls.some((u) => u.trim())) ? "var(--accent-bg)" : "var(--border-subtle)",
-                      color: (showUrlPanel || chatUrls.some((u) => u.trim())) ? "var(--accent)" : "var(--text-3)",
-                      border: "1px solid var(--border)", borderRadius: "var(--r-sm)", cursor: "pointer",
-                      opacity: (refining || chatting) ? 0.45 : 1, transition: "all 0.15s",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: "7px 8px",
+                      flexShrink: 0,
+                      background:
+                        showUrlPanel || chatUrls.some((u) => u.trim())
+                          ? "var(--accent-bg)"
+                          : "var(--border-subtle)",
+                      color:
+                        showUrlPanel || chatUrls.some((u) => u.trim())
+                          ? "var(--accent)"
+                          : "var(--text-3)",
+                      border: "1px solid var(--border)",
+                      borderRadius: "var(--r-sm)",
+                      cursor: "pointer",
+                      opacity: refining || chatting ? 0.45 : 1,
+                      transition: "all 0.15s",
                     }}
                   >
                     <Globe style={{ width: 14, height: 14 }} />
@@ -2656,26 +4027,53 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                     disabled={refining || chatting}
                     title="Attach images"
                     style={{
-                      display: "inline-flex", alignItems: "center", justifyContent: "center",
-                      padding: "7px 8px", flexShrink: 0,
-                      background: chatImages.length > 0 ? "var(--accent-bg)" : "var(--border-subtle)",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: "7px 8px",
+                      flexShrink: 0,
+                      background:
+                        chatImages.length > 0 ? "var(--accent-bg)" : "var(--border-subtle)",
                       color: chatImages.length > 0 ? "var(--accent)" : "var(--text-3)",
-                      border: "1px solid var(--border)", borderRadius: "var(--r-sm)", cursor: "pointer",
-                      opacity: (refining || chatting) ? 0.45 : 1, transition: "all 0.15s",
+                      border: "1px solid var(--border)",
+                      borderRadius: "var(--r-sm)",
+                      cursor: "pointer",
+                      opacity: refining || chatting ? 0.45 : 1,
+                      transition: "all 0.15s",
                     }}
                   >
                     <ImagePlus style={{ width: 14, height: 14 }} />
                   </button>
                   <button
                     onClick={handleChat}
-                    disabled={refining || chatting || !prompt.trim() || chatImages.some((img) => img.status === "uploading")}
+                    disabled={
+                      refining ||
+                      chatting ||
+                      !prompt.trim() ||
+                      chatImages.some((img) => img.status === "uploading")
+                    }
                     title="Chat — discuss and get advice (Enter)"
                     style={{
-                      flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5,
-                      padding: "7px 10px", fontSize: 12, fontWeight: 500,
-                      background: "var(--border-subtle)", color: "var(--text-2)",
-                      border: "1px solid var(--border)", borderRadius: "var(--r-sm)", cursor: "pointer",
-                      opacity: (refining || chatting || !prompt.trim() || chatImages.some((img) => img.status === "uploading")) ? 0.45 : 1,
+                      flex: 1,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 5,
+                      padding: "7px 10px",
+                      fontSize: 12,
+                      fontWeight: 500,
+                      background: "var(--border-subtle)",
+                      color: "var(--text-2)",
+                      border: "1px solid var(--border)",
+                      borderRadius: "var(--r-sm)",
+                      cursor: "pointer",
+                      opacity:
+                        refining ||
+                        chatting ||
+                        !prompt.trim() ||
+                        chatImages.some((img) => img.status === "uploading")
+                          ? 0.45
+                          : 1,
                       transition: "opacity 0.15s, background 0.15s",
                     }}
                   >
@@ -2684,11 +4082,20 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                   </button>
                   <button
                     onClick={() => handleRefine()}
-                    disabled={refining || chatting || !prompt.trim() || chatImages.some((img) => img.status === "uploading")}
+                    disabled={
+                      refining ||
+                      chatting ||
+                      !prompt.trim() ||
+                      chatImages.some((img) => img.status === "uploading")
+                    }
                     title="Apply — generate updated HTML (⌘+Enter)"
                     className="btn btn-primary btn-sm"
                     style={{
-                      flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5,
+                      flex: 1,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 5,
                       fontSize: 12,
                     }}
                   >
@@ -2696,7 +4103,9 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                     Apply
                   </button>
                 </div>
-                <p style={{ fontSize: 10, color: "var(--text-4)", marginTop: 6 }}>Enter to chat · ⌘+Enter to apply · Shift+Enter new line</p>
+                <p style={{ fontSize: 10, color: "var(--text-4)", marginTop: 6 }}>
+                  Enter to chat · ⌘+Enter to apply · Shift+Enter new line
+                </p>
               </div>
             </>
           )}
@@ -2704,8 +4113,19 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
           {/* ── CODE TAB ──────────────────────────────────────────────────── */}
           {activeTab === "code" && (
             <>
-              <div style={{ flexShrink: 0, padding: "10px 16px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <h2 style={{ fontSize: 14, fontWeight: 650, color: "var(--text)" }}>HTML / CSS Editor</h2>
+              <div
+                style={{
+                  flexShrink: 0,
+                  padding: "10px 16px",
+                  borderBottom: "1px solid var(--border)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <h2 style={{ fontSize: 14, fontWeight: 650, color: "var(--text)" }}>
+                  HTML / CSS Editor
+                </h2>
                 <button
                   onClick={handleApplyCode}
                   className="btn btn-primary btn-sm"
@@ -2731,32 +4151,78 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
           {/* ── SECTIONS TAB ──────────────────────────────────────────────── */}
           {activeTab === "sections" && (
             <>
-              <div style={{ flexShrink: 0, padding: "10px 16px", borderBottom: "1px solid var(--border)" }}>
-                <h2 style={{ fontSize: 14, fontWeight: 650, color: "var(--text)" }}>Section Organiser</h2>
-                <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 2 }}>Drag to reorder · ✦ AI refine · Set animations per section</p>
+              <div
+                style={{
+                  flexShrink: 0,
+                  padding: "10px 16px",
+                  borderBottom: "1px solid var(--border)",
+                }}
+              >
+                <h2 style={{ fontSize: 14, fontWeight: 650, color: "var(--text)" }}>
+                  Section Organiser
+                </h2>
+                <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 2 }}>
+                  Drag to reorder · ✦ AI refine · Set animations per section
+                </p>
               </div>
               <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px" }}>
                 {sections.length === 0 ? (
-                  <p style={{ fontSize: 12, color: "var(--text-4)", textAlign: "center", paddingTop: 32 }}>
-                    No semantic sections detected.<br />
+                  <p
+                    style={{
+                      fontSize: 12,
+                      color: "var(--text-4)",
+                      textAlign: "center",
+                      paddingTop: 32,
+                    }}
+                  >
+                    No semantic sections detected.
+                    <br />
                     Ensure your LP uses &lt;section&gt;, &lt;header&gt;, &lt;footer&gt; etc.
                   </p>
                 ) : (
-                  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleSectionDragEnd}>
-                    <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleSectionDragEnd}
+                  >
+                    <SortableContext
+                      items={sections.map((s) => s.id)}
+                      strategy={verticalListSortingStrategy}
+                    >
                       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                         {sections.map((section) => (
                           <div key={section.id} style={{ position: "relative" }}>
                             {refiningSectionId === section.id && (
-                              <div style={{ position: "absolute", inset: 0, background: "rgba(var(--accent-rgb, 20,184,166),.08)", borderRadius: "var(--r-sm)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10, pointerEvents: "none" }}>
-                                <Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite", color: "var(--accent)" }} />
+                              <div
+                                style={{
+                                  position: "absolute",
+                                  inset: 0,
+                                  background: "rgba(var(--accent-rgb, 20,184,166),.08)",
+                                  borderRadius: "var(--r-sm)",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  zIndex: 10,
+                                  pointerEvents: "none",
+                                }}
+                              >
+                                <Loader2
+                                  style={{
+                                    width: 14,
+                                    height: 14,
+                                    animation: "spin 1s linear infinite",
+                                    color: "var(--accent)",
+                                  }}
+                                />
                               </div>
                             )}
                             <SortableSectionRow
                               section={section}
                               onDuplicate={() => handleDuplicateSection(section)}
                               onDelete={() => handleDeleteSection(section)}
-                              onAnimationChange={(anim) => handleSectionAnimationChange(section, anim)}
+                              onAnimationChange={(anim) =>
+                                handleSectionAnimationChange(section, anim)
+                              }
                               onRefine={(input) => handleSectionRefine(section, input)}
                             />
                           </div>
@@ -2765,10 +4231,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                     </SortableContext>
                   </DndContext>
                 )}
-                <AddSectionRow
-                  loading={refiningSectionId === "__new__"}
-                  onAdd={handleAddSection}
-                />
+                <AddSectionRow loading={refiningSectionId === "__new__"} onAdd={handleAddSection} />
               </div>
             </>
           )}
@@ -2776,14 +4239,32 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
           {/* ── DESIGN TAB ────────────────────────────────────────────────── */}
           {activeTab === "design" && (
             <>
-              <div style={{ flexShrink: 0, padding: "10px 16px", borderBottom: "1px solid var(--border)" }}>
-                <h2 style={{ fontSize: 14, fontWeight: 650, color: "var(--text)" }}>Global Design</h2>
-                <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 2 }}>Edit CSS custom properties from :root</p>
+              <div
+                style={{
+                  flexShrink: 0,
+                  padding: "10px 16px",
+                  borderBottom: "1px solid var(--border)",
+                }}
+              >
+                <h2 style={{ fontSize: 14, fontWeight: 650, color: "var(--text)" }}>
+                  Global Design
+                </h2>
+                <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 2 }}>
+                  Edit CSS custom properties from :root
+                </p>
               </div>
               <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px" }}>
                 {cssVars.length === 0 ? (
-                  <p style={{ fontSize: 12, color: "var(--text-4)", textAlign: "center", paddingTop: 32 }}>
-                    No CSS custom properties found.<br />
+                  <p
+                    style={{
+                      fontSize: 12,
+                      color: "var(--text-4)",
+                      textAlign: "center",
+                      paddingTop: 32,
+                    }}
+                  >
+                    No CSS custom properties found.
+                    <br />
                     Add :root variables to your LP&apos;s &lt;style&gt; block.
                   </p>
                 ) : (
@@ -2791,27 +4272,67 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                     {/* Colours */}
                     {cssVars.filter((v) => v.category === "colour").length > 0 && (
                       <div style={{ marginBottom: 16 }}>
-                        <h3 style={{ fontSize: 11, fontWeight: 700, color: "var(--text-4)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Colours</h3>
+                        <h3
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 700,
+                            color: "var(--text-4)",
+                            textTransform: "uppercase",
+                            letterSpacing: 0.5,
+                            marginBottom: 8,
+                          }}
+                        >
+                          Colours
+                        </h3>
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                          {cssVars.filter((v) => v.category === "colour").map((v) => (
-                            <div key={v.name} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                              <input
-                                type="color"
-                                value={v.value.startsWith("#") ? v.value : "#000000"}
-                                onChange={(e) => handleCssVarChange(v.name, e.target.value)}
-                                style={{ width: 28, height: 28, border: "1px solid var(--border)", borderRadius: "var(--r-sm)", cursor: "pointer", padding: 0 }}
-                              />
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <span style={{ fontSize: 11, fontWeight: 500, color: "var(--text-2)", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.name}</span>
+                          {cssVars
+                            .filter((v) => v.category === "colour")
+                            .map((v) => (
+                              <div
+                                key={v.name}
+                                style={{ display: "flex", alignItems: "center", gap: 8 }}
+                              >
                                 <input
-                                  type="text"
-                                  value={v.value}
+                                  type="color"
+                                  value={v.value.startsWith("#") ? v.value : "#000000"}
                                   onChange={(e) => handleCssVarChange(v.name, e.target.value)}
-                                  style={{ ...inputStyle, fontSize: 11, padding: "3px 6px", marginTop: 2 }}
+                                  style={{
+                                    width: 28,
+                                    height: 28,
+                                    border: "1px solid var(--border)",
+                                    borderRadius: "var(--r-sm)",
+                                    cursor: "pointer",
+                                    padding: 0,
+                                  }}
                                 />
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <span
+                                    style={{
+                                      fontSize: 11,
+                                      fontWeight: 500,
+                                      color: "var(--text-2)",
+                                      display: "block",
+                                      overflow: "hidden",
+                                      textOverflow: "ellipsis",
+                                      whiteSpace: "nowrap",
+                                    }}
+                                  >
+                                    {v.name}
+                                  </span>
+                                  <input
+                                    type="text"
+                                    value={v.value}
+                                    onChange={(e) => handleCssVarChange(v.name, e.target.value)}
+                                    style={{
+                                      ...inputStyle,
+                                      fontSize: 11,
+                                      padding: "3px 6px",
+                                      marginTop: 2,
+                                    }}
+                                  />
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            ))}
                         </div>
                       </div>
                     )}
@@ -2819,19 +4340,42 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                     {/* Fonts */}
                     {cssVars.filter((v) => v.category === "font").length > 0 && (
                       <div style={{ marginBottom: 16 }}>
-                        <h3 style={{ fontSize: 11, fontWeight: 700, color: "var(--text-4)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Fonts</h3>
+                        <h3
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 700,
+                            color: "var(--text-4)",
+                            textTransform: "uppercase",
+                            letterSpacing: 0.5,
+                            marginBottom: 8,
+                          }}
+                        >
+                          Fonts
+                        </h3>
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                          {cssVars.filter((v) => v.category === "font").map((v) => (
-                            <div key={v.name}>
-                              <label style={{ fontSize: 11, fontWeight: 500, color: "var(--text-2)", display: "block", marginBottom: 2 }}>{v.name}</label>
-                              <input
-                                type="text"
-                                value={v.value}
-                                onChange={(e) => handleCssVarChange(v.name, e.target.value)}
-                                style={{ ...inputStyle, fontSize: 11, padding: "4px 8px" }}
-                              />
-                            </div>
-                          ))}
+                          {cssVars
+                            .filter((v) => v.category === "font")
+                            .map((v) => (
+                              <div key={v.name}>
+                                <label
+                                  style={{
+                                    fontSize: 11,
+                                    fontWeight: 500,
+                                    color: "var(--text-2)",
+                                    display: "block",
+                                    marginBottom: 2,
+                                  }}
+                                >
+                                  {v.name}
+                                </label>
+                                <input
+                                  type="text"
+                                  value={v.value}
+                                  onChange={(e) => handleCssVarChange(v.name, e.target.value)}
+                                  style={{ ...inputStyle, fontSize: 11, padding: "4px 8px" }}
+                                />
+                              </div>
+                            ))}
                         </div>
                       </div>
                     )}
@@ -2839,22 +4383,56 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                     {/* Sizes */}
                     {cssVars.filter((v) => v.category === "size").length > 0 && (
                       <div style={{ marginBottom: 16 }}>
-                        <h3 style={{ fontSize: 11, fontWeight: 700, color: "var(--text-4)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Sizes</h3>
+                        <h3
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 700,
+                            color: "var(--text-4)",
+                            textTransform: "uppercase",
+                            letterSpacing: 0.5,
+                            marginBottom: 8,
+                          }}
+                        >
+                          Sizes
+                        </h3>
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                          {cssVars.filter((v) => v.category === "size").map((v) => (
-                            <div key={v.name}>
-                              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                                <label style={{ fontSize: 11, fontWeight: 500, color: "var(--text-2)" }}>{v.name}</label>
-                                <span style={{ fontSize: 10, color: "var(--text-4)" }}>{v.value}</span>
+                          {cssVars
+                            .filter((v) => v.category === "size")
+                            .map((v) => (
+                              <div key={v.name}>
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "space-between",
+                                  }}
+                                >
+                                  <label
+                                    style={{
+                                      fontSize: 11,
+                                      fontWeight: 500,
+                                      color: "var(--text-2)",
+                                    }}
+                                  >
+                                    {v.name}
+                                  </label>
+                                  <span style={{ fontSize: 10, color: "var(--text-4)" }}>
+                                    {v.value}
+                                  </span>
+                                </div>
+                                <input
+                                  type="text"
+                                  value={v.value}
+                                  onChange={(e) => handleCssVarChange(v.name, e.target.value)}
+                                  style={{
+                                    ...inputStyle,
+                                    fontSize: 11,
+                                    padding: "4px 8px",
+                                    marginTop: 2,
+                                  }}
+                                />
                               </div>
-                              <input
-                                type="text"
-                                value={v.value}
-                                onChange={(e) => handleCssVarChange(v.name, e.target.value)}
-                                style={{ ...inputStyle, fontSize: 11, padding: "4px 8px", marginTop: 2 }}
-                              />
-                            </div>
-                          ))}
+                            ))}
                         </div>
                       </div>
                     )}
@@ -2862,19 +4440,42 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                     {/* Other */}
                     {cssVars.filter((v) => v.category === "other").length > 0 && (
                       <div style={{ marginBottom: 16 }}>
-                        <h3 style={{ fontSize: 11, fontWeight: 700, color: "var(--text-4)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Other</h3>
+                        <h3
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 700,
+                            color: "var(--text-4)",
+                            textTransform: "uppercase",
+                            letterSpacing: 0.5,
+                            marginBottom: 8,
+                          }}
+                        >
+                          Other
+                        </h3>
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                          {cssVars.filter((v) => v.category === "other").map((v) => (
-                            <div key={v.name}>
-                              <label style={{ fontSize: 11, fontWeight: 500, color: "var(--text-2)", display: "block", marginBottom: 2 }}>{v.name}</label>
-                              <input
-                                type="text"
-                                value={v.value}
-                                onChange={(e) => handleCssVarChange(v.name, e.target.value)}
-                                style={{ ...inputStyle, fontSize: 11, padding: "4px 8px" }}
-                              />
-                            </div>
-                          ))}
+                          {cssVars
+                            .filter((v) => v.category === "other")
+                            .map((v) => (
+                              <div key={v.name}>
+                                <label
+                                  style={{
+                                    fontSize: 11,
+                                    fontWeight: 500,
+                                    color: "var(--text-2)",
+                                    display: "block",
+                                    marginBottom: 2,
+                                  }}
+                                >
+                                  {v.name}
+                                </label>
+                                <input
+                                  type="text"
+                                  value={v.value}
+                                  onChange={(e) => handleCssVarChange(v.name, e.target.value)}
+                                  style={{ ...inputStyle, fontSize: 11, padding: "4px 8px" }}
+                                />
+                              </div>
+                            ))}
                         </div>
                       </div>
                     )}
@@ -2887,32 +4488,80 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
           {/* ── LANGUAGES TAB ─────────────────────────────────────────────── */}
           {activeTab === "languages" && (
             <>
-              <div style={{ flexShrink: 0, padding: "10px 16px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div
+                style={{
+                  flexShrink: 0,
+                  padding: "10px 16px",
+                  borderBottom: "1px solid var(--border)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
                 <div>
                   <h2 style={{ fontSize: 14, fontWeight: 650, color: "var(--text)" }}>Languages</h2>
-                  <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 2 }}>AI-translated versions of this page</p>
+                  <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 2 }}>
+                    AI-translated versions of this page
+                  </p>
                 </div>
                 <button
                   className="btn btn-primary"
                   onClick={() => setShowLangPicker(true)}
-                  style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, padding: "5px 10px" }}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 5,
+                    fontSize: 11,
+                    padding: "5px 10px",
+                  }}
                 >
                   <Globe style={{ width: 12, height: 12 }} />
                   Add language
                 </button>
               </div>
 
-              <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
+              <div
+                style={{
+                  flex: 1,
+                  overflowY: "auto",
+                  padding: "12px 16px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                }}
+              >
                 {/* English original row */}
-                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: "var(--r-sm)", background: previewLang === null ? "var(--accent-bg)" : "var(--surface)", border: "1px solid var(--border)" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    padding: "8px 10px",
+                    borderRadius: "var(--r-sm)",
+                    background: previewLang === null ? "var(--accent-bg)" : "var(--surface)",
+                    border: "1px solid var(--border)",
+                  }}
+                >
                   <Globe style={{ width: 14, height: 14, color: "var(--accent)", flexShrink: 0 }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>English</span>
-                    <span style={{ fontSize: 10, color: "var(--text-4)", marginLeft: 6 }}>Original</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>
+                      English
+                    </span>
+                    <span style={{ fontSize: 10, color: "var(--text-4)", marginLeft: 6 }}>
+                      Original
+                    </span>
                   </div>
                   <button
                     onClick={() => handlePreviewTranslation(null)}
-                    style={{ fontSize: 10, padding: "2px 8px", borderRadius: "var(--r-sm)", border: "1px solid var(--border)", background: previewLang === null ? "var(--accent)" : "none", color: previewLang === null ? "#fff" : "var(--text-3)", cursor: "pointer" }}
+                    style={{
+                      fontSize: 10,
+                      padding: "2px 8px",
+                      borderRadius: "var(--r-sm)",
+                      border: "1px solid var(--border)",
+                      background: previewLang === null ? "var(--accent)" : "none",
+                      color: previewLang === null ? "#fff" : "var(--text-3)",
+                      cursor: "pointer",
+                    }}
                   >
                     Preview
                   </button>
@@ -2922,24 +4571,88 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                 {translations.map((t) => {
                   const isTranslating = translatingLangs.includes(t.language);
                   const stale = t.stale;
-                  const baseUrl = buildLpUrl({ clientSlug: lp?.client?.slug, customSubdomain: lp?.customSubdomain, lpSlug: lp?.slug, publicSlug: lp?.publicSlug, shareToken: lp?.shareToken });
+                  const baseUrl = buildLpUrl({
+                    clientSlug: lp?.client?.slug,
+                    customSubdomain: lp?.customSubdomain,
+                    lpSlug: lp?.slug,
+                    publicSlug: lp?.publicSlug,
+                    shareToken: lp?.shareToken,
+                  });
                   const translationUrl = baseUrl ? `${baseUrl}?lang=${t.language}` : "";
                   return (
-                    <div key={t.language} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: "var(--r-sm)", background: previewLang === t.language ? "var(--accent-bg)" : "var(--surface)", border: "1px solid var(--border)" }}>
-                      <Globe style={{ width: 14, height: 14, color: "var(--text-4)", flexShrink: 0 }} />
+                    <div
+                      key={t.language}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        padding: "8px 10px",
+                        borderRadius: "var(--r-sm)",
+                        background:
+                          previewLang === t.language ? "var(--accent-bg)" : "var(--surface)",
+                        border: "1px solid var(--border)",
+                      }}
+                    >
+                      <Globe
+                        style={{ width: 14, height: 14, color: "var(--text-4)", flexShrink: 0 }}
+                      />
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
-                          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>{t.languageName}</span>
-                          <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 10, fontWeight: 600,
-                            background: isTranslating ? "var(--warning-bg)" : t.status === "published" ? "var(--success-bg)" : "var(--border-subtle)",
-                            color: isTranslating ? "var(--warning-text)" : t.status === "published" ? "var(--success-text)" : "var(--text-4)",
-                          }}>
-                            {isTranslating ? "Generating\u2026" : stale ? "Stale" : t.status === "published" ? "Live" : "Hidden"}
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 5,
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>
+                            {t.languageName}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: 9,
+                              padding: "1px 5px",
+                              borderRadius: 10,
+                              fontWeight: 600,
+                              background: isTranslating
+                                ? "var(--warning-bg)"
+                                : t.status === "published"
+                                  ? "var(--success-bg)"
+                                  : "var(--border-subtle)",
+                              color: isTranslating
+                                ? "var(--warning-text)"
+                                : t.status === "published"
+                                  ? "var(--success-text)"
+                                  : "var(--text-4)",
+                            }}
+                          >
+                            {isTranslating
+                              ? "Generating\u2026"
+                              : stale
+                                ? "Stale"
+                                : t.status === "published"
+                                  ? "Live"
+                                  : "Hidden"}
                           </span>
                         </div>
                         {translationUrl ? (
-                          <a href={translationUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, color: t.status === "published" ? "var(--accent)" : "var(--text-4)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 2 }} title="Open page">
-                            {translationUrl.length > 48 ? `${translationUrl.slice(0, 48)}\u2026` : translationUrl}
+                          <a
+                            href={translationUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              fontSize: 10,
+                              color: t.status === "published" ? "var(--accent)" : "var(--text-4)",
+                              textDecoration: "none",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 2,
+                            }}
+                            title="Open page"
+                          >
+                            {translationUrl.length > 48
+                              ? `${translationUrl.slice(0, 48)}\u2026`
+                              : translationUrl}
                             <ExternalLink style={{ width: 9, height: 9, flexShrink: 0 }} />
                           </a>
                         ) : (
@@ -2950,37 +4663,85 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                         {!isTranslating && (
                           <>
                             <button
-                              onClick={() => handlePreviewTranslation(previewLang === t.language ? null : t.language)}
-                              title={previewLang === t.language ? "Stop preview" : "Preview in editor"}
-                              style={{ fontSize: 10, padding: "2px 6px", borderRadius: "var(--r-sm)", border: "1px solid var(--border)", background: previewLang === t.language ? "var(--accent)" : "none", color: previewLang === t.language ? "#fff" : "var(--text-3)", cursor: "pointer" }}
+                              onClick={() =>
+                                handlePreviewTranslation(
+                                  previewLang === t.language ? null : t.language,
+                                )
+                              }
+                              title={
+                                previewLang === t.language ? "Stop preview" : "Preview in editor"
+                              }
+                              style={{
+                                fontSize: 10,
+                                padding: "2px 6px",
+                                borderRadius: "var(--r-sm)",
+                                border: "1px solid var(--border)",
+                                background: previewLang === t.language ? "var(--accent)" : "none",
+                                color: previewLang === t.language ? "#fff" : "var(--text-3)",
+                                cursor: "pointer",
+                              }}
                             >
                               {previewLang === t.language ? "Previewing" : "Preview"}
                             </button>
                             <button
                               onClick={() => handlePublishTranslation(t.language, t.status)}
                               title={t.status === "published" ? "Hide this language" : "Make live"}
-                              style={{ fontSize: 10, padding: "2px 6px", borderRadius: "var(--r-sm)", border: "1px solid var(--border)", background: t.status === "published" ? "var(--success-bg)" : "none", color: t.status === "published" ? "var(--success-text)" : "var(--text-3)", cursor: "pointer" }}
+                              style={{
+                                fontSize: 10,
+                                padding: "2px 6px",
+                                borderRadius: "var(--r-sm)",
+                                border: "1px solid var(--border)",
+                                background: t.status === "published" ? "var(--success-bg)" : "none",
+                                color:
+                                  t.status === "published"
+                                    ? "var(--success-text)"
+                                    : "var(--text-3)",
+                                cursor: "pointer",
+                              }}
                             >
                               {t.status === "published" ? "Live" : "Hidden"}
                             </button>
                             <button
                               onClick={() => handleTranslate([t.language])}
                               title="Regenerate"
-                              style={{ fontSize: 10, padding: "2px 6px", borderRadius: "var(--r-sm)", border: "1px solid var(--border)", background: "none", color: "var(--text-3)", cursor: "pointer" }}
+                              style={{
+                                fontSize: 10,
+                                padding: "2px 6px",
+                                borderRadius: "var(--r-sm)",
+                                border: "1px solid var(--border)",
+                                background: "none",
+                                color: "var(--text-3)",
+                                cursor: "pointer",
+                              }}
                             >
                               <RotateCcw style={{ width: 11, height: 11 }} />
                             </button>
                             <button
                               onClick={() => handleDeleteTranslation(t.language)}
                               title="Delete"
-                              style={{ fontSize: 10, padding: "2px 6px", borderRadius: "var(--r-sm)", border: "none", background: "none", color: "var(--error-text)", cursor: "pointer" }}
+                              style={{
+                                fontSize: 10,
+                                padding: "2px 6px",
+                                borderRadius: "var(--r-sm)",
+                                border: "none",
+                                background: "none",
+                                color: "var(--error-text)",
+                                cursor: "pointer",
+                              }}
                             >
                               <Trash2 style={{ width: 11, height: 11 }} />
                             </button>
                           </>
                         )}
                         {isTranslating && (
-                          <Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite", color: "var(--accent)" }} />
+                          <Loader2
+                            style={{
+                              width: 14,
+                              height: 14,
+                              animation: "spin 1s linear infinite",
+                              color: "var(--accent)",
+                            }}
+                          />
                         )}
                       </div>
                     </div>
@@ -2988,74 +4749,219 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                 })}
 
                 {/* In-progress translations (not yet in DB) */}
-                {translatingLangs.filter((l) => !translations.some((t) => t.language === l)).map((lang) => {
-                  const entry = LP_SUPPORTED_LANGUAGES_UI.find((l) => l.language === lang);
-                  return (
-                    <div key={lang} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: "var(--r-sm)", background: "var(--surface)", border: "1px solid var(--border)", opacity: 0.7 }}>
-                      <Globe style={{ width: 14, height: 14, color: "var(--text-4)", flexShrink: 0 }} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>{entry?.name ?? lang}</span>
-                          <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 10, fontWeight: 600, background: "var(--warning-bg)", color: "var(--warning-text)" }}>Generating\u2026</span>
+                {translatingLangs
+                  .filter((l) => !translations.some((t) => t.language === l))
+                  .map((lang) => {
+                    const entry = LP_SUPPORTED_LANGUAGES_UI.find((l) => l.language === lang);
+                    return (
+                      <div
+                        key={lang}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          padding: "8px 10px",
+                          borderRadius: "var(--r-sm)",
+                          background: "var(--surface)",
+                          border: "1px solid var(--border)",
+                          opacity: 0.7,
+                        }}
+                      >
+                        <Globe
+                          style={{ width: 14, height: 14, color: "var(--text-4)", flexShrink: 0 }}
+                        />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>
+                              {entry?.name ?? lang}
+                            </span>
+                            <span
+                              style={{
+                                fontSize: 9,
+                                padding: "1px 5px",
+                                borderRadius: 10,
+                                fontWeight: 600,
+                                background: "var(--warning-bg)",
+                                color: "var(--warning-text)",
+                              }}
+                            >
+                              Generating\u2026
+                            </span>
+                          </div>
                         </div>
+                        <Loader2
+                          style={{
+                            width: 14,
+                            height: 14,
+                            animation: "spin 1s linear infinite",
+                            color: "var(--accent)",
+                          }}
+                        />
                       </div>
-                      <Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite", color: "var(--accent)" }} />
-                    </div>
-                  );
-                })}
+                    );
+                  })}
 
                 {!translationsLoaded && (
                   <div style={{ textAlign: "center", paddingTop: 32 }}>
-                    <Loader2 style={{ width: 20, height: 20, animation: "spin 1s linear infinite", color: "var(--text-4)" }} />
+                    <Loader2
+                      style={{
+                        width: 20,
+                        height: 20,
+                        animation: "spin 1s linear infinite",
+                        color: "var(--text-4)",
+                      }}
+                    />
                   </div>
                 )}
-                {translationsLoaded && translations.length === 0 && translatingLangs.length === 0 && (
-                  <p style={{ fontSize: 12, color: "var(--text-4)", textAlign: "center", paddingTop: 32 }}>
-                    No translations yet.<br />Click &ldquo;Add language&rdquo; to translate this page.
-                  </p>
-                )}
+                {translationsLoaded &&
+                  translations.length === 0 &&
+                  translatingLangs.length === 0 && (
+                    <p
+                      style={{
+                        fontSize: 12,
+                        color: "var(--text-4)",
+                        textAlign: "center",
+                        paddingTop: 32,
+                      }}
+                    >
+                      No translations yet.
+                      <br />
+                      Click &ldquo;Add language&rdquo; to translate this page.
+                    </p>
+                  )}
               </div>
 
               {/* Language picker modal */}
               {showLangPicker && (
-                <div style={{ position: "fixed", inset: 0, zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.45)" }} onClick={() => setShowLangPicker(false)}>
-                  <div className="card" style={{ width: "100%", maxWidth: 420, margin: "0 16px" }} onClick={(e) => e.stopPropagation()}>
-                    <div className="card-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div
+                  style={{
+                    position: "fixed",
+                    inset: 0,
+                    zIndex: 60,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: "rgba(0,0,0,0.45)",
+                  }}
+                  onClick={() => setShowLangPicker(false)}
+                >
+                  <div
+                    className="card"
+                    style={{ width: "100%", maxWidth: 420, margin: "0 16px" }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div
+                      className="card-header"
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                      }}
+                    >
                       <span className="card-title">Select Languages</span>
-                      <button onClick={() => setShowLangPicker(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-4)", padding: 2 }}>
+                      <button
+                        onClick={() => setShowLangPicker(false)}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
+                          color: "var(--text-4)",
+                          padding: 2,
+                        }}
+                      >
                         <X style={{ width: 16, height: 16 }} />
                       </button>
                     </div>
                     <div className="card-body">
-                      <p style={{ fontSize: 12, color: "var(--text-4)", marginBottom: 12 }}>Select languages to generate AI translations. Existing translations will be regenerated.</p>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, maxHeight: 280, overflowY: "auto" }}>
+                      <p style={{ fontSize: 12, color: "var(--text-4)", marginBottom: 12 }}>
+                        Select languages to generate AI translations. Existing translations will be
+                        regenerated.
+                      </p>
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "1fr 1fr",
+                          gap: 6,
+                          maxHeight: 280,
+                          overflowY: "auto",
+                        }}
+                      >
                         {LP_SUPPORTED_LANGUAGES_UI.map((lang) => {
-                          const alreadyExists = translations.some((t) => t.language === lang.language);
+                          const alreadyExists = translations.some(
+                            (t) => t.language === lang.language,
+                          );
                           const isSelected = selectedLangs.includes(lang.language);
                           return (
                             <button
                               key={lang.language}
-                              onClick={() => setSelectedLangs((prev) => isSelected ? prev.filter((l) => l !== lang.language) : [...prev, lang.language])}
+                              onClick={() =>
+                                setSelectedLangs((prev) =>
+                                  isSelected
+                                    ? prev.filter((l) => l !== lang.language)
+                                    : [...prev, lang.language],
+                                )
+                              }
                               style={{
-                                display: "flex", alignItems: "center", gap: 6, padding: "7px 10px",
-                                borderRadius: "var(--r-sm)", border: "1px solid",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 6,
+                                padding: "7px 10px",
+                                borderRadius: "var(--r-sm)",
+                                border: "1px solid",
                                 borderColor: isSelected ? "var(--accent)" : "var(--border)",
                                 background: isSelected ? "var(--accent-bg)" : "var(--surface)",
-                                cursor: "pointer", textAlign: "left",
+                                cursor: "pointer",
+                                textAlign: "left",
                               }}
                             >
                               <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text)" }}>{lang.name}</div>
-                                <div style={{ fontSize: 10, color: "var(--text-4)" }}>{lang.nativeName}</div>
+                                <div
+                                  style={{ fontSize: 11, fontWeight: 600, color: "var(--text)" }}
+                                >
+                                  {lang.name}
+                                </div>
+                                <div style={{ fontSize: 10, color: "var(--text-4)" }}>
+                                  {lang.nativeName}
+                                </div>
                               </div>
-                              {alreadyExists && <span style={{ fontSize: 8, color: "var(--text-4)", fontWeight: 600 }}>EXISTS</span>}
-                              {isSelected && <Check style={{ width: 12, height: 12, color: "var(--accent)", flexShrink: 0 }} />}
+                              {alreadyExists && (
+                                <span
+                                  style={{ fontSize: 8, color: "var(--text-4)", fontWeight: 600 }}
+                                >
+                                  EXISTS
+                                </span>
+                              )}
+                              {isSelected && (
+                                <Check
+                                  style={{
+                                    width: 12,
+                                    height: 12,
+                                    color: "var(--accent)",
+                                    flexShrink: 0,
+                                  }}
+                                />
+                              )}
                             </button>
                           );
                         })}
                       </div>
-                      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 14 }}>
-                        <button className="btn btn-ghost" onClick={() => { setShowLangPicker(false); setSelectedLangs([]); }}>Cancel</button>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "flex-end",
+                          gap: 8,
+                          marginTop: 14,
+                        }}
+                      >
+                        <button
+                          className="btn btn-ghost"
+                          onClick={() => {
+                            setShowLangPicker(false);
+                            setSelectedLangs([]);
+                          }}
+                        >
+                          Cancel
+                        </button>
                         <button
                           className="btn btn-primary"
                           onClick={() => handleTranslate(selectedLangs)}
@@ -3077,17 +4983,52 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
 
       {/* Save as Template modal */}
       {showSaveTemplate && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.4)" }}>
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 50,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(0,0,0,0.4)",
+          }}
+        >
           <div className="card" style={{ width: "100%", maxWidth: 420, margin: "0 16px" }}>
-            <div className="card-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div
+              className="card-header"
+              style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
+            >
               <span className="card-title">Save as Template</span>
-              <button onClick={() => setShowSaveTemplate(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-4)", padding: 2 }}>
+              <button
+                onClick={() => setShowSaveTemplate(false)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "var(--text-4)",
+                  padding: 2,
+                }}
+              >
                 <X style={{ width: 16, height: 16 }} />
               </button>
             </div>
-            <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div
+              className="card-body"
+              style={{ display: "flex", flexDirection: "column", gap: 14 }}
+            >
               <div>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>Template Name</label>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: "var(--text-2)",
+                    marginBottom: 4,
+                  }}
+                >
+                  Template Name
+                </label>
                 <input
                   type="text"
                   value={templateName}
@@ -3097,7 +5038,17 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                 />
               </div>
               <div>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>Category</label>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: "var(--text-2)",
+                    marginBottom: 4,
+                  }}
+                >
+                  Category
+                </label>
                 <select
                   value={templateCategory}
                   onChange={(e) => setTemplateCategory(e.target.value)}
@@ -3111,7 +5062,17 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                 </select>
               </div>
               <div>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>Description (optional)</label>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: "var(--text-2)",
+                    marginBottom: 4,
+                  }}
+                >
+                  Description (optional)
+                </label>
                 <input
                   type="text"
                   value={templateDesc}
@@ -3126,7 +5087,13 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                 disabled={!templateName || savingTemplate}
                 style={{ width: "100%", justifyContent: "center" }}
               >
-                {savingTemplate ? <Loader2 style={{ width: 16, height: 16, animation: "spin 1s linear infinite" }} /> : <Save style={{ width: 16, height: 16 }} />}
+                {savingTemplate ? (
+                  <Loader2
+                    style={{ width: 16, height: 16, animation: "spin 1s linear infinite" }}
+                  />
+                ) : (
+                  <Save style={{ width: 16, height: 16 }} />
+                )}
                 Save Template
               </button>
             </div>
@@ -3136,17 +5103,69 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
 
       {/* Tracking & conversions modal */}
       {showTrackingSettings && lp && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.55)", padding: 16 }}>
-          <div style={{ width: "100%", maxWidth: 660, maxHeight: "90vh", display: "flex", flexDirection: "column", background: "var(--surface)", borderRadius: "var(--r)", boxShadow: "0 8px 40px rgba(0,0,0,0.28)", overflow: "hidden" }}>
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 50,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(0,0,0,0.55)",
+            padding: 16,
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 660,
+              maxHeight: "90vh",
+              display: "flex",
+              flexDirection: "column",
+              background: "var(--surface)",
+              borderRadius: "var(--r)",
+              boxShadow: "0 8px 40px rgba(0,0,0,0.28)",
+              overflow: "hidden",
+            }}
+          >
             {/* Header */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 18px 0", flexShrink: 0 }}>
-              <span style={{ fontWeight: 700, fontSize: 15, color: "var(--text)" }}>Tracking &amp; conversions</span>
-              <button onClick={closeTrackingSettings} title="Close" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-4)", padding: 2 }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "14px 18px 0",
+                flexShrink: 0,
+              }}
+            >
+              <span style={{ fontWeight: 700, fontSize: 15, color: "var(--text)" }}>
+                Tracking &amp; conversions
+              </span>
+              <button
+                onClick={closeTrackingSettings}
+                title="Close"
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "var(--text-4)",
+                  padding: 2,
+                }}
+              >
                 <X style={{ width: 16, height: 16 }} />
               </button>
             </div>
             {/* Tabs */}
-            <div style={{ display: "flex", gap: 0, borderBottom: "1px solid var(--border)", padding: "0 18px", flexShrink: 0, marginTop: 12 }}>
+            <div
+              style={{
+                display: "flex",
+                gap: 0,
+                borderBottom: "1px solid var(--border)",
+                padding: "0 18px",
+                flexShrink: 0,
+                marginTop: 12,
+              }}
+            >
               {(["tracking", "form"] as const).map((tab) => (
                 <button
                   key={tab}
@@ -3159,7 +5178,8 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                     fontSize: 13,
                     fontWeight: trackingTab === tab ? 600 : 400,
                     color: trackingTab === tab ? "var(--accent)" : "var(--text-3)",
-                    borderBottom: trackingTab === tab ? "2px solid var(--accent)" : "2px solid transparent",
+                    borderBottom:
+                      trackingTab === tab ? "2px solid var(--accent)" : "2px solid transparent",
                     marginBottom: -1,
                     transition: "color 0.15s",
                   }}
@@ -3172,8 +5192,13 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
             <div style={{ overflowY: "auto", flex: 1, padding: "16px 18px" }}>
               {trackingTab === "tracking" ? (
                 <>
-                  <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 0, marginBottom: 14 }}>
-                    Tags are injected into the public share URL. Use the bug icon in the toolbar to open the page in test mode &mdash; calls to gtag/fbq/lintrk/ttq/uetq are intercepted and shown in an overlay so you can verify wiring without firing real events.
+                  <p
+                    style={{ fontSize: 12, color: "var(--text-3)", marginTop: 0, marginBottom: 14 }}
+                  >
+                    Tags are injected into the public share URL. Use the bug icon in the toolbar to
+                    open the page in test mode &mdash; calls to gtag/fbq/lintrk/ttq/uetq are
+                    intercepted and shown in an overlay so you can verify wiring without firing real
+                    events.
                   </p>
                   <AnalyticsConfigForm
                     value={analyticsConfig}
@@ -3187,14 +5212,33 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
               )}
             </div>
             {/* Footer */}
-            <div style={{ flexShrink: 0, borderTop: "1px solid var(--border)", padding: "10px 18px", display: "flex", gap: 8, justifyContent: "flex-end", alignItems: "center" }}>
+            <div
+              style={{
+                flexShrink: 0,
+                borderTop: "1px solid var(--border)",
+                padding: "10px 18px",
+                display: "flex",
+                gap: 8,
+                justifyContent: "flex-end",
+                alignItems: "center",
+              }}
+            >
               {trackingDirty && (
                 <span style={{ fontSize: 12, color: "var(--warning-text)", marginRight: "auto" }}>
                   Unsaved changes
                 </span>
               )}
               {analyticsSaved && (
-                <span style={{ fontSize: 12, color: "var(--success-text)", display: "inline-flex", alignItems: "center", gap: 4, marginRight: "auto" }}>
+                <span
+                  style={{
+                    fontSize: 12,
+                    color: "var(--success-text)",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                    marginRight: "auto",
+                  }}
+                >
                   <Check style={{ width: 13, height: 13 }} /> Saved
                 </span>
               )}
@@ -3202,10 +5246,18 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                 <button
                   className="btn btn-secondary"
                   disabled={formCheckRunning}
-                  onClick={() => { void runFormCheck(); }}
+                  onClick={() => {
+                    void runFormCheck();
+                  }}
                   style={{ fontSize: 13 }}
                 >
-                  {formCheckRunning ? <Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }} /> : <ClipboardCheck style={{ width: 14, height: 14 }} />}
+                  {formCheckRunning ? (
+                    <Loader2
+                      style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }}
+                    />
+                  ) : (
+                    <ClipboardCheck style={{ width: 14, height: 14 }} />
+                  )}
                   {formCheckRunning ? "Checking…" : "Check form"}
                 </button>
               )}
@@ -3224,7 +5276,13 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                 }}
                 style={{ fontSize: 13 }}
               >
-                {savingAnalytics ? <Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }} /> : <Save style={{ width: 14, height: 14 }} />}
+                {savingAnalytics ? (
+                  <Loader2
+                    style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }}
+                  />
+                ) : (
+                  <Save style={{ width: 14, height: 14 }} />
+                )}
                 {savingAnalytics ? "Saving…" : "Save now"}
               </button>
             </div>
@@ -3234,10 +5292,37 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
 
       {/* Form check modal */}
       {showFormCheckModal && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.55)", padding: 16 }}>
-          <div className="card" style={{ width: "100%", maxWidth: 680, maxHeight: "86vh", overflow: "hidden", display: "flex", flexDirection: "column" }}>
-            <div className="card-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <span className="card-title" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 60,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(0,0,0,0.55)",
+            padding: 16,
+          }}
+        >
+          <div
+            className="card"
+            style={{
+              width: "100%",
+              maxWidth: 680,
+              maxHeight: "86vh",
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <div
+              className="card-header"
+              style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
+            >
+              <span
+                className="card-title"
+                style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+              >
                 <ClipboardCheck style={{ width: 16, height: 16 }} />
                 Form check
               </span>
@@ -3246,44 +5331,70 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                   if (formCheckRunning) return;
                   setShowFormCheckModal(false);
                 }}
-                style={{ background: "none", border: "none", cursor: formCheckRunning ? "not-allowed" : "pointer", color: "var(--text-4)", padding: 2, opacity: formCheckRunning ? 0.5 : 1 }}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: formCheckRunning ? "not-allowed" : "pointer",
+                  color: "var(--text-4)",
+                  padding: 2,
+                  opacity: formCheckRunning ? 0.5 : 1,
+                }}
               >
                 <X style={{ width: 16, height: 16 }} />
               </button>
             </div>
 
-            <div className="card-body" style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
+            <div
+              className="card-body"
+              style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: 12 }}
+            >
               {formCheckRunning && (
-                <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: "var(--text-2)" }}>
-                  <Loader2 style={{ width: 16, height: 16, animation: "spin 1s linear infinite" }} />
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    fontSize: 13,
+                    color: "var(--text-2)",
+                  }}
+                >
+                  <Loader2
+                    style={{ width: 16, height: 16, animation: "spin 1s linear infinite" }}
+                  />
                   Running form checks, please wait...
                 </div>
               )}
 
               {!formCheckRunning && formCheckResult && (
                 <>
-                  <div style={{
-                    border: "1px solid var(--border)",
-                    borderRadius: "var(--r)",
-                    padding: "10px 12px",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 6,
-                    background: formCheckResult.status === "pass"
-                      ? "var(--success-bg)"
-                      : formCheckResult.status === "warn"
-                        ? "var(--warning-bg)"
-                        : "var(--danger-bg)",
-                  }}>
-                    <span style={{
-                      fontSize: 13,
-                      fontWeight: 700,
-                      color: formCheckResult.status === "pass"
-                        ? "var(--success-text)"
-                        : formCheckResult.status === "warn"
-                          ? "var(--warning-text)"
-                          : "var(--danger)",
-                    }}>
+                  <div
+                    style={{
+                      border: "1px solid var(--border)",
+                      borderRadius: "var(--r)",
+                      padding: "10px 12px",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 6,
+                      background:
+                        formCheckResult.status === "pass"
+                          ? "var(--success-bg)"
+                          : formCheckResult.status === "warn"
+                            ? "var(--warning-bg)"
+                            : "var(--danger-bg)",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 700,
+                        color:
+                          formCheckResult.status === "pass"
+                            ? "var(--success-text)"
+                            : formCheckResult.status === "warn"
+                              ? "var(--warning-text)"
+                              : "var(--danger)",
+                      }}
+                    >
                       {formCheckResult.status === "pass"
                         ? "Form check passed"
                         : formCheckResult.status === "warn"
@@ -3309,30 +5420,52 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                           background: "var(--surface)",
                         }}
                       >
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>{check.label}</span>
-                          <span style={{
-                            fontSize: 10,
-                            fontWeight: 700,
-                            textTransform: "uppercase",
-                            letterSpacing: 0.4,
-                            padding: "2px 7px",
-                            borderRadius: 999,
-                            background: check.status === "pass"
-                              ? "var(--success-bg)"
-                              : check.status === "warn"
-                                ? "var(--warning-bg)"
-                                : "var(--danger-bg)",
-                            color: check.status === "pass"
-                              ? "var(--success-text)"
-                              : check.status === "warn"
-                                ? "var(--warning-text)"
-                                : "var(--danger)",
-                          }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: 10,
+                          }}
+                        >
+                          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>
+                            {check.label}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: 10,
+                              fontWeight: 700,
+                              textTransform: "uppercase",
+                              letterSpacing: 0.4,
+                              padding: "2px 7px",
+                              borderRadius: 999,
+                              background:
+                                check.status === "pass"
+                                  ? "var(--success-bg)"
+                                  : check.status === "warn"
+                                    ? "var(--warning-bg)"
+                                    : "var(--danger-bg)",
+                              color:
+                                check.status === "pass"
+                                  ? "var(--success-text)"
+                                  : check.status === "warn"
+                                    ? "var(--warning-text)"
+                                    : "var(--danger)",
+                            }}
+                          >
                             {check.status}
                           </span>
                         </div>
-                        <p style={{ margin: 0, fontSize: 12, color: "var(--text-3)", lineHeight: 1.4 }}>{check.detail}</p>
+                        <p
+                          style={{
+                            margin: 0,
+                            fontSize: 12,
+                            color: "var(--text-3)",
+                            lineHeight: 1.4,
+                          }}
+                        >
+                          {check.detail}
+                        </p>
                       </div>
                     ))}
                   </div>
@@ -3346,7 +5479,15 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
               )}
             </div>
 
-            <div className="card-body" style={{ borderTop: "1px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: 8 }}>
+            <div
+              className="card-body"
+              style={{
+                borderTop: "1px solid var(--border)",
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 8,
+              }}
+            >
               <button
                 className="btn btn-secondary"
                 onClick={() => {
@@ -3360,10 +5501,18 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
               <button
                 className="btn btn-primary"
                 disabled={formCheckRunning}
-                onClick={() => { void runFormCheck(); }}
+                onClick={() => {
+                  void runFormCheck();
+                }}
                 style={{ fontSize: 13 }}
               >
-                {formCheckRunning ? <Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }} /> : <ClipboardCheck style={{ width: 14, height: 14 }} />}
+                {formCheckRunning ? (
+                  <Loader2
+                    style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }}
+                  />
+                ) : (
+                  <ClipboardCheck style={{ width: 14, height: 14 }} />
+                )}
                 {formCheckRunning ? "Checking…" : "Run again"}
               </button>
             </div>
@@ -3373,17 +5522,53 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
 
       {/* Page settings modal */}
       {showPageSettings && lp && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.4)", padding: 16 }}>
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 50,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(0,0,0,0.4)",
+            padding: 16,
+          }}
+        >
           <div className="card" style={{ width: "100%", maxWidth: 480 }}>
-            <div className="card-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div
+              className="card-header"
+              style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
+            >
               <span className="card-title">Page settings</span>
-              <button onClick={() => setShowPageSettings(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-4)", padding: 2 }}>
+              <button
+                onClick={() => setShowPageSettings(false)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "var(--text-4)",
+                  padding: 2,
+                }}
+              >
                 <X style={{ width: 16, height: 16 }} />
               </button>
             </div>
-            <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div
+              className="card-body"
+              style={{ display: "flex", flexDirection: "column", gap: 14 }}
+            >
               <div>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>Title</label>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: "var(--text-2)",
+                    marginBottom: 4,
+                  }}
+                >
+                  Title
+                </label>
                 <input
                   value={settingsTitle}
                   onChange={(e) => setSettingsTitle(e.target.value)}
@@ -3392,8 +5577,17 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                 />
               </div>
               <div>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>
-                  Assign to Client <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: "var(--text-2)",
+                    marginBottom: 4,
+                  }}
+                >
+                  Assign to Client{" "}
+                  <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span>
                 </label>
                 <select
                   value={settingsClientId ?? ""}
@@ -3408,48 +5602,99 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                   ))}
                 </select>
                 <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 4 }}>
-                  Assigning to a client will use their subdomain for routing. Leave empty to use a custom subdomain.
+                  Assigning to a client will use their subdomain for routing. Leave empty to use a
+                  custom subdomain.
                 </p>
               </div>
               <div>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>
-                  Subdomain <span style={{ fontWeight: 400, color: "var(--text-4)" }}>— the part before .{LP_DOMAIN}</span>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: "var(--text-2)",
+                    marginBottom: 4,
+                  }}
+                >
+                  Subdomain{" "}
+                  <span style={{ fontWeight: 400, color: "var(--text-4)" }}>
+                    — the part before .{LP_DOMAIN}
+                  </span>
                 </label>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <input
                     value={settingsSubdomain}
-                    onChange={(e) => setSettingsSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))}
+                    onChange={(e) =>
+                      setSettingsSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))
+                    }
                     style={{ ...inputStyle, flex: 1 }}
                     placeholder="e.g. inspired-gaming-lounge"
                     disabled={!!settingsClientId}
                   />
-                  <span style={{ fontSize: 12, color: "var(--text-4)", whiteSpace: "nowrap" }}>.{LP_DOMAIN}</span>
+                  <span style={{ fontSize: 12, color: "var(--text-4)", whiteSpace: "nowrap" }}>
+                    .{LP_DOMAIN}
+                  </span>
                 </div>
                 {settingsClientId && (
                   <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 4 }}>
-                    Subdomain is set by the assigned client. Unassign the client to use a custom subdomain.
+                    Subdomain is set by the assigned client. Unassign the client to use a custom
+                    subdomain.
                   </p>
                 )}
               </div>
               <div>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>
-                  Page slug <span style={{ fontWeight: 400, color: "var(--text-4)" }}>— the path after the subdomain</span>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: "var(--text-2)",
+                    marginBottom: 4,
+                  }}
+                >
+                  Page slug{" "}
+                  <span style={{ fontWeight: 400, color: "var(--text-4)" }}>
+                    — the path after the subdomain
+                  </span>
                 </label>
                 <input
                   value={settingsSlug}
-                  onChange={(e) => setSettingsSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))}
+                  onChange={(e) =>
+                    setSettingsSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))
+                  }
                   style={inputStyle}
                   placeholder="e.g. inspired-gaming-lounge"
                 />
               </div>
               {(settingsSubdomain || lp.client?.slug) && settingsSlug && (
-                <p style={{ fontSize: 12, color: "var(--accent)", background: "var(--accent-bg)", padding: "6px 10px", borderRadius: "var(--r-sm)", fontFamily: "monospace" }}>
+                <p
+                  style={{
+                    fontSize: 12,
+                    color: "var(--accent)",
+                    background: "var(--accent-bg)",
+                    padding: "6px 10px",
+                    borderRadius: "var(--r-sm)",
+                    fontFamily: "monospace",
+                  }}
+                >
                   {toSubLabel(lp.client?.slug ?? settingsSubdomain)}.{LP_DOMAIN}/{settingsSlug}
                 </p>
               )}
             </div>
-            <div className="card-body" style={{ borderTop: "1px solid var(--border)", display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button className="btn btn-secondary" onClick={() => setShowPageSettings(false)} style={{ fontSize: 13 }}>
+            <div
+              className="card-body"
+              style={{
+                borderTop: "1px solid var(--border)",
+                display: "flex",
+                gap: 8,
+                justifyContent: "flex-end",
+              }}
+            >
+              <button
+                className="btn btn-secondary"
+                onClick={() => setShowPageSettings(false)}
+                style={{ fontSize: 13 }}
+              >
                 Cancel
               </button>
               <button
@@ -3476,14 +5721,19 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                     });
                     if (res.ok) {
                       const data = await res.json();
-                      setLp((prev) => prev ? {
-                        ...prev,
-                        title: data.landingPage.title,
-                        slug: data.landingPage.slug,
-                        customSubdomain: data.landingPage.customSubdomain ?? prev.customSubdomain,
-                        clientId: data.landingPage.clientId ?? prev.clientId,
-                        client: data.landingPage.client ?? prev.client,
-                      } : prev);
+                      setLp((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              title: data.landingPage.title,
+                              slug: data.landingPage.slug,
+                              customSubdomain:
+                                data.landingPage.customSubdomain ?? prev.customSubdomain,
+                              clientId: data.landingPage.clientId ?? prev.clientId,
+                              client: data.landingPage.client ?? prev.client,
+                            }
+                          : prev,
+                      );
                       setShowPageSettings(false);
                     }
                   } finally {
@@ -3492,7 +5742,13 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                 }}
                 style={{ fontSize: 13 }}
               >
-                {savingSettings ? <Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }} /> : <Save style={{ width: 14, height: 14 }} />}
+                {savingSettings ? (
+                  <Loader2
+                    style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }}
+                  />
+                ) : (
+                  <Save style={{ width: 14, height: 14 }} />
+                )}
                 Save
               </button>
             </div>
@@ -3506,15 +5762,17 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
         isOpen={showLeadsModal}
         onClose={() => setShowLeadsModal(false)}
         onLeadDeleted={() => {
-          setLp((prev) => prev
-            ? {
-                ...prev,
-                _count: {
-                  ...prev._count,
-                  leads: Math.max(0, prev._count.leads - 1),
-                },
-              }
-            : prev);
+          setLp((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  _count: {
+                    ...prev._count,
+                    leads: Math.max(0, prev._count.leads - 1),
+                  },
+                }
+              : prev,
+          );
         }}
       />
 
