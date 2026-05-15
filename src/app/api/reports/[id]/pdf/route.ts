@@ -142,7 +142,6 @@ export async function GET(
         // Diagnostic: log all section elements with their bounding rects so we
         // can spot region overlaps or unexpected heights in Vercel logs.
         const scrollH_diag = document.documentElement.scrollHeight;
-        // eslint-disable-next-line no-console
         console.log(
           `[pdf-sections] scrollH=${scrollH_diag} Found ${sectionEls.length} element(s): ` +
           sectionEls.map(el => {
@@ -159,7 +158,6 @@ export async function GET(
         if (seoEl) {
           const seoRect = seoEl.getBoundingClientRect();
           const fullText = (seoEl.textContent ?? "").replace(/\s+/g, " ").trim();
-          // eslint-disable-next-line no-console
           console.log(
             `[pdf-seo-text] seo h=${Math.round(seoRect.height)} ` +
             `firstText="${fullText.slice(0, 120)}" ` +
@@ -189,7 +187,6 @@ export async function GET(
           }
         }
         if (removedDupes.length > 0) {
-          // eslint-disable-next-line no-console
           console.warn(
             `[pdf-dedup] Removed ${removedDupes.length} duplicate section element(s) from DOM: ${removedDupes.join(", ")}`
           );
@@ -276,8 +273,9 @@ export async function GET(
       const PAGE_WIDTH_PT = 1200;
       // Keep screenshot chunks under compositor texture limits, then stitch
       // chunks onto a single PDF page per section.
-      const MAX_CHUNK_DEVICE_PX = 7600;
+      const MAX_CHUNK_DEVICE_PX = 7200;
       const MAX_CHUNK_CSS_PX = Math.floor(MAX_CHUNK_DEVICE_PX / DEVICE_SCALE_FACTOR);
+      const MIN_CHUNK_CSS_PX = 100;
       const outputDoc = await PDFDocument.create();
       const helvetica = await outputDoc.embedFont(StandardFonts.Helvetica);
       const FONT_SIZE = 9;
@@ -300,6 +298,20 @@ export async function GET(
         pdfPage.drawText(report.period, { x: PAGE_WIDTH_PT - H_MARGIN - periodWidth, y: footerY, size: FONT_SIZE, font: helvetica, color: TEXT_COLOR });
       };
 
+      const isJpegBuffer = (buffer: Uint8Array) =>
+        buffer.length >= 2 && buffer[0] === 0xff && buffer[1] === 0xd8;
+
+      const isPngBuffer = (buffer: Uint8Array) =>
+        buffer.length >= 8 &&
+        buffer[0] === 0x89 &&
+        buffer[1] === 0x50 &&
+        buffer[2] === 0x4e &&
+        buffer[3] === 0x47 &&
+        buffer[4] === 0x0d &&
+        buffer[5] === 0x0a &&
+        buffer[6] === 0x1a &&
+        buffer[7] === 0x0a;
+
       for (let idx = 0; idx < regions.length; idx++) {
         const region = regions[idx];
         const clipY = Math.max(0, Math.floor(region.y));
@@ -315,29 +327,59 @@ export async function GET(
         const pageHeight = clipHeight + SECTION_PAGE_PADDING_PX * 2;
         const newPage = outputDoc.addPage([PAGE_WIDTH_PT, pageHeight]);
 
-        const totalChunks = Math.ceil(clipHeight / MAX_CHUNK_CSS_PX);
-        for (let chunk = 0; chunk < totalChunks; chunk++) {
-          const chunkOffset = chunk * MAX_CHUNK_CSS_PX;
+        let chunkOffset = 0;
+        while (chunkOffset < clipHeight) {
+          let chunkH = Math.min(MAX_CHUNK_CSS_PX, clipHeight - chunkOffset);
+          const remainingAfterChunk = clipHeight - (chunkOffset + chunkH);
+
+          // Avoid tiny trailing chunks that can produce invalid image payloads.
+          if (remainingAfterChunk > 0 && remainingAfterChunk < MIN_CHUNK_CSS_PX) {
+            chunkH = clipHeight - chunkOffset;
+          }
+
+          if (chunkH <= 0) break;
+
           const chunkStartY = clipY + chunkOffset;
-          const chunkH = Math.min(MAX_CHUNK_CSS_PX, clipHeight - chunkOffset);
 
-          if (chunkH <= 0) continue;
-
-          const screenshotBuffer = await page.screenshot({
+          const screenshotRaw = await page.screenshot({
             type: "jpeg",
             quality: JPEG_QUALITY,
             clip: { x: 0, y: chunkStartY, width: VIEWPORT_WIDTH_CSS, height: chunkH },
             captureBeyondViewport: true,
           });
+          const screenshotBuffer = Buffer.isBuffer(screenshotRaw)
+            ? screenshotRaw
+            : Buffer.from(screenshotRaw);
 
-          const jpegImage = await outputDoc.embedJpg(screenshotBuffer);
+          let embeddedImage;
+          if (isJpegBuffer(screenshotBuffer)) {
+            embeddedImage = await outputDoc.embedJpg(screenshotBuffer);
+          } else if (isPngBuffer(screenshotBuffer)) {
+            embeddedImage = await outputDoc.embedPng(screenshotBuffer);
+          } else {
+            console.warn(
+              `[pdf-guard] Invalid JPEG payload for chunk, retrying as PNG: idx=${idx} id=${region.id} chunkStartY=${chunkStartY} chunkH=${chunkH}`
+            );
+            const fallbackRaw = await page.screenshot({
+              type: "png",
+              clip: { x: 0, y: chunkStartY, width: VIEWPORT_WIDTH_CSS, height: chunkH },
+              captureBeyondViewport: true,
+            });
+            const fallbackBuffer = Buffer.isBuffer(fallbackRaw)
+              ? fallbackRaw
+              : Buffer.from(fallbackRaw);
+            embeddedImage = await outputDoc.embedPng(fallbackBuffer);
+          }
+
           const targetY = SECTION_PAGE_PADDING_PX + (clipHeight - chunkOffset - chunkH);
-          newPage.drawImage(jpegImage, {
+          newPage.drawImage(embeddedImage, {
             x: 0,
             y: targetY,
             width: PAGE_WIDTH_PT,
             height: chunkH,
           });
+
+          chunkOffset += chunkH;
         }
 
         // Keep the cover page clean; apply header/footer from section pages onward.
