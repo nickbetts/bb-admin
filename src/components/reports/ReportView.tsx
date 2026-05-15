@@ -169,12 +169,87 @@ type NarrativeResult = {
   goalProgressNarrative?: string;
 };
 
-type GenerationMode = "manual" | "preflight";
-
 type PreflightQuestion = {
   id: string;
   question: string;
   hint?: string;
+};
+
+type MetricVisibilityRule = {
+  blockId: string;
+  cardId?: string;
+};
+
+const PREFLIGHT_METRIC_VISIBILITY: Record<string, Record<string, MetricVisibilityRule>> = {
+  seo: {
+    organicTraffic: { blockId: "kpis", cardId: "organic_traffic" },
+    organicKeywords: { blockId: "kpis", cardId: "organic_keywords" },
+    organicCost: { blockId: "kpis", cardId: "traffic_value" },
+    paidTraffic: { blockId: "kpis" },
+    paidKeywords: { blockId: "kpis" },
+  },
+  web: {
+    sessions: { blockId: "kpis", cardId: "sessions" },
+    users: { blockId: "kpis", cardId: "users" },
+    newUsers: { blockId: "kpis", cardId: "new_users" },
+    pageviews: { blockId: "kpis", cardId: "pageviews" },
+    bounceRate: { blockId: "kpis", cardId: "bounce_rate" },
+    avgSessionDuration: { blockId: "kpis", cardId: "avg_session" },
+    conversionRate: { blockId: "kpis", cardId: "conv_rate" },
+    engagedSessions: { blockId: "secondary_kpis" },
+    engagementRate: { blockId: "secondary_kpis" },
+  },
+  ga4: {
+    sessions: { blockId: "kpis", cardId: "sessions" },
+    users: { blockId: "kpis", cardId: "users" },
+    newUsers: { blockId: "kpis", cardId: "new_users" },
+    pageviews: { blockId: "kpis", cardId: "pageviews" },
+    bounceRate: { blockId: "kpis", cardId: "bounce_rate" },
+    avgSessionDuration: { blockId: "kpis", cardId: "avg_session" },
+    conversionRate: { blockId: "kpis", cardId: "conv_rate" },
+    engagedSessions: { blockId: "secondary_kpis" },
+    engagementRate: { blockId: "secondary_kpis" },
+  },
+  paid_social: {
+    totalSpend: { blockId: "kpis", cardId: "spend" },
+    totalImpressions: { blockId: "kpis", cardId: "impressions" },
+    totalClicks: { blockId: "kpis", cardId: "clicks" },
+    avgCtr: { blockId: "kpis" },
+    avgCpc: { blockId: "kpis", cardId: "cpc" },
+    avgCpm: { blockId: "kpis" },
+    totalConversions: { blockId: "kpis", cardId: "conversions" },
+    avgRoas: { blockId: "kpis", cardId: "roas" },
+    reach: { blockId: "kpis", cardId: "reach" },
+    frequency: { blockId: "kpis", cardId: "frequency" },
+  },
+  meta: {
+    totalSpend: { blockId: "kpis", cardId: "spend" },
+    totalImpressions: { blockId: "kpis", cardId: "impressions" },
+    totalClicks: { blockId: "kpis", cardId: "clicks" },
+    avgCtr: { blockId: "kpis" },
+    avgCpc: { blockId: "kpis", cardId: "cpc" },
+    avgCpm: { blockId: "kpis" },
+    totalConversions: { blockId: "kpis", cardId: "conversions" },
+    avgRoas: { blockId: "kpis", cardId: "roas" },
+    reach: { blockId: "kpis", cardId: "reach" },
+    frequency: { blockId: "kpis", cardId: "frequency" },
+  },
+  googleads: {
+    clicks: { blockId: "kpis", cardId: "clicks" },
+    impressions: { blockId: "kpis", cardId: "impressions" },
+    cost: { blockId: "kpis", cardId: "cost" },
+    conversions: { blockId: "kpis", cardId: "conversions" },
+    conversionValue: { blockId: "kpis", cardId: "conv_value" },
+    ctr: { blockId: "kpis", cardId: "ctr" },
+    roas: { blockId: "kpis", cardId: "roas" },
+    cpa: { blockId: "kpis", cardId: "cpa" },
+  },
+  searchconsole: {
+    clicks: { blockId: "kpis", cardId: "total_clicks" },
+    impressions: { blockId: "kpis", cardId: "impressions" },
+    ctr: { blockId: "kpis", cardId: "avg_ctr" },
+    position: { blockId: "kpis", cardId: "avg_position" },
+  },
 };
 
 interface ReportViewProps {
@@ -678,7 +753,6 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
   const [aiFormat, setAiFormat] = useState<"prose" | "bullets" | "both">("prose");
   const [aiSpin, setAiSpin] = useState<"positive" | "balanced" | "neutral">("positive");
   const [aiNarrativeContext, setAiNarrativeContext] = useState("");
-  const [generationMode, setGenerationMode] = useState<GenerationMode>("manual");
   const [preflightStep, setPreflightStep] = useState<"config" | "questions">("config");
   const [preflightLoading, setPreflightLoading] = useState(false);
   const [preflightQuestions, setPreflightQuestions] = useState<PreflightQuestion[]>([]);
@@ -928,6 +1002,50 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
     } catch {
       return undefined;
     }
+  };
+
+  const isBlockVisibleForPreflight = (visibleBlocks: string[] | undefined, blockId: string) =>
+    !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(blockId);
+
+  const isCardVisibleForPreflight = (
+    hiddenCards: Record<string, string[]> | undefined,
+    blockId: string,
+    cardId: string | undefined,
+  ) => !cardId || !(hiddenCards?.[blockId] ?? []).includes(cardId);
+
+  const filterSectionMetricsForPreflight = (
+    section: Section,
+    metrics: Record<string, number> | undefined,
+  ): Record<string, number> | undefined => {
+    if (!metrics) return undefined;
+
+    const visibleBlocks = getVisibleBlocks(section);
+    const hiddenCards = getHiddenCards(section);
+    const rules = PREFLIGHT_METRIC_VISIBILITY[section.sectionType] ?? {};
+
+    const filtered = Object.entries(metrics).reduce<Record<string, number>>((acc, [metricKey, value]) => {
+      const rule = rules[metricKey];
+
+      if (!rule) {
+        if (Object.keys(rules).length === 0) {
+          acc[metricKey] = value;
+        }
+        return acc;
+      }
+
+      if (!isBlockVisibleForPreflight(visibleBlocks, rule.blockId)) {
+        return acc;
+      }
+
+      if (!isCardVisibleForPreflight(hiddenCards, rule.blockId, rule.cardId)) {
+        return acc;
+      }
+
+      acc[metricKey] = value;
+      return acc;
+    }, {});
+
+    return Object.keys(filtered).length > 0 ? filtered : undefined;
   };
 
   const handleToggleSectionEnabled = async (sectionId: string) => {
@@ -1390,12 +1508,18 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
     try {
       const sectionsForPreflight = report.sections
         .filter((s) => s.enabled !== false && s.sectionType !== "overview")
-        .map((s) => ({
-          sectionType: s.sectionType,
-          title: s.title,
-          metrics: sectionMetrics[s.id] ?? undefined,
-          previousMetrics: sectionPreviousMetrics[s.id] ?? undefined,
-        }));
+        .map((s) => {
+          const metrics = filterSectionMetricsForPreflight(s, sectionMetrics[s.id]);
+          const previousMetrics = filterSectionMetricsForPreflight(s, sectionPreviousMetrics[s.id]);
+
+          return {
+            sectionType: s.sectionType,
+            title: s.title,
+            metrics,
+            previousMetrics,
+          };
+        })
+        .filter((s) => s.metrics || s.previousMetrics);
 
       const res = await fetch("/api/ai/report-preflight-questions", {
         method: "POST",
@@ -3002,12 +3126,12 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                     <div style={{ minWidth: 0 }}>
                       <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-4)", marginBottom: 6 }}>AI Commentary</p>
                       <h3 style={{ margin: 0, fontSize: 16, lineHeight: 1.2, color: "var(--text)", fontWeight: 700 }}>
-                        {preflightStep === "questions" ? "Preflight Questions" : "Configure generation"}
+                        {preflightStep === "questions" ? "Preflight Questions" : "Configure preflight"}
                       </h3>
                       <p style={{ margin: "6px 0 0", fontSize: 12, lineHeight: 1.5, color: "var(--text-3)", maxWidth: 560 }}>
                         {preflightStep === "questions"
                           ? "Answer anything the AI needs to know before it writes the narrative. Use skip if the report already tells the full story."
-                          : "Choose how the AI should write the commentary and whether it should ask you for clarification before drafting."}
+                          : "Choose how the AI should write the commentary, then run preflight before drafting."}
                       </p>
                     </div>
                     <button
@@ -3065,48 +3189,23 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                       <>
                         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
                           <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r)", padding: 14 }}>
-                            <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-4)", marginBottom: 10 }}>Generation Mode</p>
-                            <div style={{ display: "flex", gap: 8 }}>
-                              <button
-                                onClick={() => {
-                                  setGenerationMode("manual");
-                                  setPreflightStep("config");
-                                }}
-                                style={{
-                                  flex: 1, justifyContent: "center", fontSize: 12,
-                                  background: generationMode === "manual" ? "var(--accent)" : "var(--surface-2)",
-                                  color: generationMode === "manual" ? "#fff" : "var(--text-2)",
-                                  border: `1px solid ${generationMode === "manual" ? "var(--accent)" : "var(--border)"}`,
-                                  borderRadius: "var(--r-sm)",
-                                  padding: "9px 10px",
-                                  fontWeight: generationMode === "manual" ? 700 : 600,
-                                  cursor: "pointer",
-                                  transition: "all 0.15s",
-                                }}
-                              >
-                                Manual
-                              </button>
-                              <button
-                                onClick={() => setGenerationMode("preflight")}
-                                style={{
-                                  flex: 1, justifyContent: "center", fontSize: 12,
-                                  background: generationMode === "preflight" ? "var(--accent)" : "var(--surface-2)",
-                                  color: generationMode === "preflight" ? "#fff" : "var(--text-2)",
-                                  border: `1px solid ${generationMode === "preflight" ? "var(--accent)" : "var(--border)"}`,
-                                  borderRadius: "var(--r-sm)",
-                                  padding: "9px 10px",
-                                  fontWeight: generationMode === "preflight" ? 700 : 600,
-                                  cursor: "pointer",
-                                  transition: "all 0.15s",
-                                }}
-                              >
-                                Preflight
-                              </button>
+                            <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-4)", marginBottom: 10 }}>Generation mode</p>
+                            <div style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontSize: 12,
+                              background: "var(--accent)",
+                              color: "#fff",
+                              border: "1px solid var(--accent)",
+                              borderRadius: "var(--r-sm)",
+                              padding: "9px 12px",
+                              fontWeight: 700,
+                            }}>
+                              Preflight required
                             </div>
                             <p style={{ fontSize: 11, color: "var(--text-4)", margin: "10px 0 0", lineHeight: 1.5 }}>
-                              {generationMode === "manual"
-                                ? "Use the context box and generate straight away."
-                                : "Ask the AI to spot gaps or anomalies before it drafts the report."}
+                              The AI always runs a preflight check before generating report commentary and narrative.
                             </p>
                           </div>
 
@@ -3227,18 +3326,14 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                       <>
                         <button
                           onClick={() => {
-                            if (generationMode === "preflight") {
-                              void handleStartPreflightQuestions();
-                            } else {
-                              void handleGenerateCombined(aiNarrativeContext);
-                            }
+                            void handleStartPreflightQuestions();
                           }}
                           disabled={preflightLoading}
                           className="btn btn-primary btn-sm"
                           style={{ gap: 6 }}
                         >
                           <Sparkles size={12} />
-                          {preflightLoading ? "Checking Data…" : generationMode === "preflight" ? "Run Preflight" : "Generate"}
+                          {preflightLoading ? "Checking Data…" : "Run Preflight"}
                         </button>
                         <button
                           onClick={() => {

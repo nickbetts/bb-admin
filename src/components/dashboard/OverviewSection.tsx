@@ -973,6 +973,12 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
   const show = (block: string) =>
     !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
 
+  const showCard = (blockId: string, cardId: string) =>
+    !(hiddenCards?.[blockId] ?? []).includes(cardId);
+
+  const hasVisibleCards = (blockId: string, cardIds: string[]) =>
+    cardIds.some((cardId) => showCard(blockId, cardId));
+
   // ─── Report mode ───────────────────────────────────────────────────────────
   if (reportMode) {
     return (
@@ -1022,26 +1028,26 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
         )}
 
         {/* Combined Paid Performance KPIs */}
-        {show("paid_kpis") && hasPaidData && (
+        {show("paid_kpis") && hasPaidData && hasVisibleCards("paid_kpis", ["total_ad_spend", "total_conversions", "total_revenue", "blended_roas", "blended_cpa", "total_paid_clicks"]) && (
           <SectionCard title="Combined Paid Performance" subtitle="Aggregated metrics across all paid channels">
             <div className="grid-3" style={{ gap: 16 }}>
-              <MetricCard title="Total Ad Spend" value={formatCurrency(totalAdSpend)} icon={<DollarSign className="h-5 w-5" />} color="purple" change={hasPrevPaid ? pctChange(totalAdSpend, prevTotalAdSpend) : undefined} changeDiff={hasPrevPaid ? diffStr(totalAdSpend, prevTotalAdSpend, "currency") : undefined} changeLabel="vs prev period" />
-              <MetricCard title="Total Conversions" value={formatNumber(totalConversions)} icon={<ShoppingCart className="h-5 w-5" />} color="green" change={hasPrevPaid ? pctChange(totalConversions, prevTotalConversions) : undefined} changeDiff={hasPrevPaid ? diffStr(totalConversions, prevTotalConversions, "count") : undefined} changeLabel="vs prev period" />
-              <MetricCard title="Total Revenue" value={formatCurrency(totalRevenue)} icon={<TrendingUp className="h-5 w-5" />} color="green" change={hasPrevPaid ? pctChange(totalRevenue, prevTotalRevenue) : undefined} changeDiff={hasPrevPaid ? diffStr(totalRevenue, prevTotalRevenue, "currency") : undefined} changeLabel="vs prev period" />
-              <MetricCard title="Blended ROAS" value={`${blendedRoas.toFixed(2)}x`} icon={<TrendingUp className="h-5 w-5" />} color="blue" change={hasPrevPaid && prevBlendedRoas > 0 ? pctChange(blendedRoas, prevBlendedRoas) : undefined} changeLabel="vs prev period" />
-              <MetricCard title="Blended CPA" value={formatCurrency(blendedCpa)} icon={<Wallet className="h-5 w-5" />} color="orange" change={hasPrevPaid && prevBlendedCpa > 0 ? pctChange(prevBlendedCpa, blendedCpa) : undefined} changeDiff={hasPrevPaid ? diffStr(blendedCpa, prevBlendedCpa, "currency") : undefined} changeLabel="vs prev period" />
-              <MetricCard title="Total Paid Clicks" value={formatNumber(totalPaidClicks)} icon={<MousePointer className="h-5 w-5" />} color="blue" change={hasPrevPaid ? pctChange(totalPaidClicks, prevTotalPaidClicks) : undefined} changeDiff={hasPrevPaid ? diffStr(totalPaidClicks, prevTotalPaidClicks, "count") : undefined} changeLabel="vs prev period" />
+              {showCard("paid_kpis", "total_ad_spend") && <MetricCard title="Total Ad Spend" value={formatCurrency(totalAdSpend)} icon={<DollarSign className="h-5 w-5" />} color="purple" change={hasPrevPaid ? pctChange(totalAdSpend, prevTotalAdSpend) : undefined} changeDiff={hasPrevPaid ? diffStr(totalAdSpend, prevTotalAdSpend, "currency") : undefined} changeLabel="vs prev period" />}
+              {showCard("paid_kpis", "total_conversions") && <MetricCard title="Total Conversions" value={formatNumber(totalConversions)} icon={<ShoppingCart className="h-5 w-5" />} color="green" change={hasPrevPaid ? pctChange(totalConversions, prevTotalConversions) : undefined} changeDiff={hasPrevPaid ? diffStr(totalConversions, prevTotalConversions, "count") : undefined} changeLabel="vs prev period" />}
+              {showCard("paid_kpis", "total_revenue") && <MetricCard title="Total Revenue" value={formatCurrency(totalRevenue)} icon={<TrendingUp className="h-5 w-5" />} color="green" change={hasPrevPaid ? pctChange(totalRevenue, prevTotalRevenue) : undefined} changeDiff={hasPrevPaid ? diffStr(totalRevenue, prevTotalRevenue, "currency") : undefined} changeLabel="vs prev period" />}
+              {showCard("paid_kpis", "blended_roas") && <MetricCard title="Blended ROAS" value={`${blendedRoas.toFixed(2)}x`} icon={<TrendingUp className="h-5 w-5" />} color="blue" change={hasPrevPaid && prevBlendedRoas > 0 ? pctChange(blendedRoas, prevBlendedRoas) : undefined} changeLabel="vs prev period" />}
+              {showCard("paid_kpis", "blended_cpa") && <MetricCard title="Blended CPA" value={formatCurrency(blendedCpa)} icon={<Wallet className="h-5 w-5" />} color="orange" change={hasPrevPaid && prevBlendedCpa > 0 ? pctChange(prevBlendedCpa, blendedCpa) : undefined} changeDiff={hasPrevPaid ? diffStr(blendedCpa, prevBlendedCpa, "currency") : undefined} changeLabel="vs prev period" />}
+              {showCard("paid_kpis", "total_paid_clicks") && <MetricCard title="Total Paid Clicks" value={formatNumber(totalPaidClicks)} icon={<MousePointer className="h-5 w-5" />} color="blue" change={hasPrevPaid ? pctChange(totalPaidClicks, prevTotalPaidClicks) : undefined} changeDiff={hasPrevPaid ? diffStr(totalPaidClicks, prevTotalPaidClicks, "count") : undefined} changeLabel="vs prev period" />}
             </div>
           </SectionCard>
         )}
 
         {/* Standalone Blended CPA highlight */}
-        {show("blended_cpa") && hasPaidData && totalConversions > 0 && (
+        {show("blended_cpa") && hasPaidData && totalConversions > 0 && hasVisibleCards("blended_cpa", ["blended_cpa", "total_spend", "total_conversions"]) && (
           <SectionCard title="Blended CPA" subtitle="Cost per conversion across all paid channels combined">
             <div className="grid-3" style={{ gap: 16 }}>
-              <MetricCard title="Blended CPA" value={formatCurrency(blendedCpa)} icon={<Wallet className="h-5 w-5" />} color="orange" change={hasPrevPaid && prevBlendedCpa > 0 ? pctChange(prevBlendedCpa, blendedCpa) : undefined} changeDiff={hasPrevPaid ? diffStr(blendedCpa, prevBlendedCpa, "currency") : undefined} changeLabel="vs prev period" />
-              <MetricCard title="Total Spend" value={formatCurrency(totalAdSpend)} icon={<DollarSign className="h-5 w-5" />} color="purple" />
-              <MetricCard title="Total Conversions" value={formatNumber(totalConversions)} icon={<ShoppingCart className="h-5 w-5" />} color="green" />
+              {showCard("blended_cpa", "blended_cpa") && <MetricCard title="Blended CPA" value={formatCurrency(blendedCpa)} icon={<Wallet className="h-5 w-5" />} color="orange" change={hasPrevPaid && prevBlendedCpa > 0 ? pctChange(prevBlendedCpa, blendedCpa) : undefined} changeDiff={hasPrevPaid ? diffStr(blendedCpa, prevBlendedCpa, "currency") : undefined} changeLabel="vs prev period" />}
+              {showCard("blended_cpa", "total_spend") && <MetricCard title="Total Spend" value={formatCurrency(totalAdSpend)} icon={<DollarSign className="h-5 w-5" />} color="purple" />}
+              {showCard("blended_cpa", "total_conversions") && <MetricCard title="Total Conversions" value={formatNumber(totalConversions)} icon={<ShoppingCart className="h-5 w-5" />} color="green" />}
             </div>
           </SectionCard>
         )}
@@ -1076,25 +1082,25 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
         )}
 
         {/* Website & Organic KPIs */}
-        {show("website_kpis") && (data.ga4 || data.seo || data.searchconsole) && (
+        {show("website_kpis") && (data.ga4 || data.seo || data.searchconsole) && hasVisibleCards("website_kpis", ["website_sessions", "website_users", "organic_traffic", "organic_keywords", "search_clicks", "avg_position"]) && (
           <SectionCard title="Website & Organic Performance">
             <div className="grid-3" style={{ gap: 16 }}>
               {data.ga4 && (
                 <>
-                  <MetricCard title="Website Sessions" value={formatNumber(data.ga4.sessions)} icon={<Users className="h-5 w-5" />} color="orange" change={prevData.ga4 ? pctChange(data.ga4.sessions, prevData.ga4.sessions) : undefined} changeDiff={prevData.ga4 ? diffStr(data.ga4.sessions, prevData.ga4.sessions, "count") : undefined} changeLabel="vs prev period" />
-                  <MetricCard title="Website Users" value={formatNumber(data.ga4.users)} icon={<Users className="h-5 w-5" />} color="blue" change={prevData.ga4 ? pctChange(data.ga4.users, prevData.ga4.users) : undefined} changeDiff={prevData.ga4 ? diffStr(data.ga4.users, prevData.ga4.users, "count") : undefined} changeLabel="vs prev period" />
+                  {showCard("website_kpis", "website_sessions") && <MetricCard title="Website Sessions" value={formatNumber(data.ga4.sessions)} icon={<Users className="h-5 w-5" />} color="orange" change={prevData.ga4 ? pctChange(data.ga4.sessions, prevData.ga4.sessions) : undefined} changeDiff={prevData.ga4 ? diffStr(data.ga4.sessions, prevData.ga4.sessions, "count") : undefined} changeLabel="vs prev period" />}
+                  {showCard("website_kpis", "website_users") && <MetricCard title="Website Users" value={formatNumber(data.ga4.users)} icon={<Users className="h-5 w-5" />} color="blue" change={prevData.ga4 ? pctChange(data.ga4.users, prevData.ga4.users) : undefined} changeDiff={prevData.ga4 ? diffStr(data.ga4.users, prevData.ga4.users, "count") : undefined} changeLabel="vs prev period" />}
                 </>
               )}
               {data.seo && (
                 <>
-                  <MetricCard title="Organic Traffic" value={formatNumber(data.seo.organicTraffic)} icon={<Globe className="h-5 w-5" />} color="green" />
-                  <MetricCard title="Organic Keywords" value={formatNumber(data.seo.organicKeywords)} icon={<Search className="h-5 w-5" />} color="green" />
+                  {showCard("website_kpis", "organic_traffic") && <MetricCard title="Organic Traffic" value={formatNumber(data.seo.organicTraffic)} icon={<Globe className="h-5 w-5" />} color="green" />}
+                  {showCard("website_kpis", "organic_keywords") && <MetricCard title="Organic Keywords" value={formatNumber(data.seo.organicKeywords)} icon={<Search className="h-5 w-5" />} color="green" />}
                 </>
               )}
               {data.searchconsole && (
                 <>
-                  <MetricCard title="Search Clicks" value={formatNumber(data.searchconsole.clicks)} icon={<MousePointer className="h-5 w-5" />} color="purple" change={prevData.searchconsole ? pctChange(data.searchconsole.clicks, prevData.searchconsole.clicks) : undefined} changeDiff={prevData.searchconsole ? diffStr(data.searchconsole.clicks, prevData.searchconsole.clicks, "count") : undefined} changeLabel="vs prev period" />
-                  <MetricCard title="Avg Position" value={data.searchconsole.position.toFixed(1)} icon={<Search className="h-5 w-5" />} color="purple" change={prevData.searchconsole ? pctChange(data.searchconsole.position, prevData.searchconsole.position) : undefined} changeLabel="vs prev period" />
+                  {showCard("website_kpis", "search_clicks") && <MetricCard title="Search Clicks" value={formatNumber(data.searchconsole.clicks)} icon={<MousePointer className="h-5 w-5" />} color="purple" change={prevData.searchconsole ? pctChange(data.searchconsole.clicks, prevData.searchconsole.clicks) : undefined} changeDiff={prevData.searchconsole ? diffStr(data.searchconsole.clicks, prevData.searchconsole.clicks, "count") : undefined} changeLabel="vs prev period" />}
+                  {showCard("website_kpis", "avg_position") && <MetricCard title="Avg Position" value={data.searchconsole.position.toFixed(1)} icon={<Search className="h-5 w-5" />} color="purple" change={prevData.searchconsole ? pctChange(data.searchconsole.position, prevData.searchconsole.position) : undefined} changeLabel="vs prev period" />}
                 </>
               )}
             </div>
@@ -1102,36 +1108,36 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
         )}
 
         {/* Engagement & Conversion KPIs */}
-        {show("engagement_kpis") && data.ga4 && (
+        {show("engagement_kpis") && data.ga4 && hasVisibleCards("engagement_kpis", ["bounce_rate", "engagement_rate", "conversion_rate", "pageviews", "traffic_value", "search_ctr"]) && (
           <SectionCard title="Engagement & Conversion">
             <div className="grid-3" style={{ gap: 16 }}>
-              <MetricCard title="Bounce Rate" value={formatPercent(data.ga4.bounceRate / 100)} icon={<Eye className="h-5 w-5" />} color="red" change={prevData.ga4 ? pctChange(prevData.ga4.bounceRate, data.ga4.bounceRate) : undefined} changeLabel="vs prev period" />
-              <MetricCard title="Engagement Rate" value={formatPercent(data.ga4.engagementRate / 100)} icon={<TrendingUp className="h-5 w-5" />} color="green" change={prevData.ga4 ? pctChange(data.ga4.engagementRate, prevData.ga4.engagementRate) : undefined} changeLabel="vs prev period" />
-              <MetricCard title="Conversion Rate" value={formatPercent(data.ga4.conversionRate / 100)} icon={<ShoppingCart className="h-5 w-5" />} color="green" change={prevData.ga4 ? pctChange(data.ga4.conversionRate, prevData.ga4.conversionRate) : undefined} changeLabel="vs prev period" />
-              <MetricCard title="Pageviews" value={formatNumber(data.ga4.pageviews)} icon={<Eye className="h-5 w-5" />} color="blue" change={prevData.ga4 ? pctChange(data.ga4.pageviews, prevData.ga4.pageviews) : undefined} changeDiff={prevData.ga4 ? diffStr(data.ga4.pageviews, prevData.ga4.pageviews, "count") : undefined} changeLabel="vs prev period" />
-              {data.seo && <MetricCard title="Traffic Value" value={formatCurrency(data.seo.organicCost)} icon={<DollarSign className="h-5 w-5" />} color="green" />}
-              {data.searchconsole && <MetricCard title="Search CTR" value={formatPercent(data.searchconsole.ctr)} icon={<MousePointer className="h-5 w-5" />} color="purple" change={prevData.searchconsole ? pctChange(data.searchconsole.ctr, prevData.searchconsole.ctr) : undefined} changeLabel="vs prev period" />}
+              {showCard("engagement_kpis", "bounce_rate") && <MetricCard title="Bounce Rate" value={formatPercent(data.ga4.bounceRate / 100)} icon={<Eye className="h-5 w-5" />} color="red" change={prevData.ga4 ? pctChange(prevData.ga4.bounceRate, data.ga4.bounceRate) : undefined} changeLabel="vs prev period" />}
+              {showCard("engagement_kpis", "engagement_rate") && <MetricCard title="Engagement Rate" value={formatPercent(data.ga4.engagementRate / 100)} icon={<TrendingUp className="h-5 w-5" />} color="green" change={prevData.ga4 ? pctChange(data.ga4.engagementRate, prevData.ga4.engagementRate) : undefined} changeLabel="vs prev period" />}
+              {showCard("engagement_kpis", "conversion_rate") && <MetricCard title="Conversion Rate" value={formatPercent(data.ga4.conversionRate / 100)} icon={<ShoppingCart className="h-5 w-5" />} color="green" change={prevData.ga4 ? pctChange(data.ga4.conversionRate, prevData.ga4.conversionRate) : undefined} changeLabel="vs prev period" />}
+              {showCard("engagement_kpis", "pageviews") && <MetricCard title="Pageviews" value={formatNumber(data.ga4.pageviews)} icon={<Eye className="h-5 w-5" />} color="blue" change={prevData.ga4 ? pctChange(data.ga4.pageviews, prevData.ga4.pageviews) : undefined} changeDiff={prevData.ga4 ? diffStr(data.ga4.pageviews, prevData.ga4.pageviews, "count") : undefined} changeLabel="vs prev period" />}
+              {data.seo && showCard("engagement_kpis", "traffic_value") && <MetricCard title="Traffic Value" value={formatCurrency(data.seo.organicCost)} icon={<DollarSign className="h-5 w-5" />} color="green" />}
+              {data.searchconsole && showCard("engagement_kpis", "search_ctr") && <MetricCard title="Search CTR" value={formatPercent(data.searchconsole.ctr)} icon={<MousePointer className="h-5 w-5" />} color="purple" change={prevData.searchconsole ? pctChange(data.searchconsole.ctr, prevData.searchconsole.ctr) : undefined} changeLabel="vs prev period" />}
             </div>
           </SectionCard>
         )}
 
         {/* Year-on-Year Overview — always vs same period last year regardless of report date range */}
-        {hasYoyAny && (
+        {show("yoy_overview") && hasYoyAny && hasVisibleCards("yoy_overview", ["ad_spend", "conversions", "revenue", "blended_roas", "paid_clicks", "sessions", "search_clicks"]) && (
           <SectionCard title={`Year-on-Year Overview`} subtitle={`Current period vs same period in ${yoyYear} — fixed comparison, independent of report date range`}>
             <div className="grid-3" style={{ gap: 16 }}>
               {hasYoyPaid && (
                 <>
-                  <MetricCard title="Ad Spend" value={formatCurrency(totalAdSpend)} icon={<DollarSign className="h-5 w-5" />} color="purple" change={pctChange(totalAdSpend, yoyTotalAdSpend) ?? undefined} changeDiff={diffStr(totalAdSpend, yoyTotalAdSpend, "currency")} changeLabel={`vs same period ${yoyYear}`} />
-                  <MetricCard title="Conversions" value={formatNumber(totalConversions)} icon={<ShoppingCart className="h-5 w-5" />} color="green" change={pctChange(totalConversions, yoyTotalConversions) ?? undefined} changeDiff={diffStr(totalConversions, yoyTotalConversions, "count")} changeLabel={`vs same period ${yoyYear}`} />
-                  <MetricCard title="Revenue" value={formatCurrency(totalRevenue)} icon={<TrendingUp className="h-5 w-5" />} color="green" change={pctChange(totalRevenue, yoyTotalRevenue) ?? undefined} changeDiff={diffStr(totalRevenue, yoyTotalRevenue, "currency")} changeLabel={`vs same period ${yoyYear}`} />
-                  <MetricCard title="Blended ROAS" value={`${blendedRoas.toFixed(2)}x`} icon={<TrendingUp className="h-5 w-5" />} color="blue" change={pctChange(blendedRoas, yoyBlendedRoas) ?? undefined} changeDiff={diffStr(blendedRoas, yoyBlendedRoas, "count")} changeLabel={`vs same period ${yoyYear}`} />
-                  <MetricCard title="Paid Clicks" value={formatNumber(totalPaidClicks)} icon={<MousePointer className="h-5 w-5" />} color="blue" change={pctChange(totalPaidClicks, yoyTotalPaidClicks) ?? undefined} changeDiff={diffStr(totalPaidClicks, yoyTotalPaidClicks, "count")} changeLabel={`vs same period ${yoyYear}`} />
+                  {showCard("yoy_overview", "ad_spend") && <MetricCard title="Ad Spend" value={formatCurrency(totalAdSpend)} icon={<DollarSign className="h-5 w-5" />} color="purple" change={pctChange(totalAdSpend, yoyTotalAdSpend) ?? undefined} changeDiff={diffStr(totalAdSpend, yoyTotalAdSpend, "currency")} changeLabel={`vs same period ${yoyYear}`} />}
+                  {showCard("yoy_overview", "conversions") && <MetricCard title="Conversions" value={formatNumber(totalConversions)} icon={<ShoppingCart className="h-5 w-5" />} color="green" change={pctChange(totalConversions, yoyTotalConversions) ?? undefined} changeDiff={diffStr(totalConversions, yoyTotalConversions, "count")} changeLabel={`vs same period ${yoyYear}`} />}
+                  {showCard("yoy_overview", "revenue") && <MetricCard title="Revenue" value={formatCurrency(totalRevenue)} icon={<TrendingUp className="h-5 w-5" />} color="green" change={pctChange(totalRevenue, yoyTotalRevenue) ?? undefined} changeDiff={diffStr(totalRevenue, yoyTotalRevenue, "currency")} changeLabel={`vs same period ${yoyYear}`} />}
+                  {showCard("yoy_overview", "blended_roas") && <MetricCard title="Blended ROAS" value={`${blendedRoas.toFixed(2)}x`} icon={<TrendingUp className="h-5 w-5" />} color="blue" change={pctChange(blendedRoas, yoyBlendedRoas) ?? undefined} changeDiff={diffStr(blendedRoas, yoyBlendedRoas, "count")} changeLabel={`vs same period ${yoyYear}`} />}
+                  {showCard("yoy_overview", "paid_clicks") && <MetricCard title="Paid Clicks" value={formatNumber(totalPaidClicks)} icon={<MousePointer className="h-5 w-5" />} color="blue" change={pctChange(totalPaidClicks, yoyTotalPaidClicks) ?? undefined} changeDiff={diffStr(totalPaidClicks, yoyTotalPaidClicks, "count")} changeLabel={`vs same period ${yoyYear}`} />}
                 </>
               )}
-              {data.ga4 && yoyData.ga4 && (
+              {data.ga4 && yoyData.ga4 && showCard("yoy_overview", "sessions") && (
                 <MetricCard title="Sessions" value={formatNumber(data.ga4.sessions)} icon={<Users className="h-5 w-5" />} color="orange" change={pctChange(data.ga4.sessions, yoyData.ga4.sessions) ?? undefined} changeDiff={diffStr(data.ga4.sessions, yoyData.ga4.sessions, "count")} changeLabel={`vs same period ${yoyYear}`} />
               )}
-              {data.searchconsole && yoyData.searchconsole && (
+              {data.searchconsole && yoyData.searchconsole && showCard("yoy_overview", "search_clicks") && (
                 <MetricCard title="Search Clicks" value={formatNumber(data.searchconsole.clicks)} icon={<Search className="h-5 w-5" />} color="purple" change={pctChange(data.searchconsole.clicks, yoyData.searchconsole.clicks) ?? undefined} changeDiff={diffStr(data.searchconsole.clicks, yoyData.searchconsole.clicks, "count")} changeLabel={`vs same period ${yoyYear}`} />
               )}
             </div>
@@ -1770,7 +1776,7 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
             {aiResult && (
               <button
                 onClick={() => setAiExpanded((v) => !v)}
-                className="p-1.5 rounded-lg hover:bg-[var(--border-subtle)] transition"
+                className="p-1.5 rounded-lg hover:bg-(--border-subtle) transition"
                 style={{ color: "var(--text-3)" }}
               >
                 {aiExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
