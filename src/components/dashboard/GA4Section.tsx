@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, type ReactNode } from "react";
+import { useEffect, useState, useMemo, useRef, type ReactNode } from "react";
 import {
   AreaChart,
   Area,
@@ -199,6 +199,16 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
   const [error, setError] = useState<string | null>(null);
   const [alertAiRecs, setAlertAiRecs] = useState<string[]>([]);
   const [alertAiLoading, setAlertAiLoading] = useState(false);
+  const metricsReadyRef = useRef(onMetricsReady);
+  const previousMetricsReadyRef = useRef(onPreviousMetricsReady);
+
+  useEffect(() => {
+    metricsReadyRef.current = onMetricsReady;
+  }, [onMetricsReady]);
+
+  useEffect(() => {
+    previousMetricsReadyRef.current = onPreviousMetricsReady;
+  }, [onPreviousMetricsReady]);
 
   // Compute anomaly alerts from GA4 data
   const gaAlerts = useMemo<GA4Alert[]>(() => {
@@ -428,7 +438,7 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
         }
 
         setOverview(ov);
-        if (ov) onMetricsReady?.({
+        if (ov) metricsReadyRef.current?.({
           sessions: ov.sessions, users: ov.users, newUsers: ov.newUsers,
           pageviews: ov.pageviews, bounceRate: ov.bounceRate,
           avgSessionDuration: ov.avgSessionDuration, conversionRate: ov.conversionRate,
@@ -438,7 +448,7 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
         setSources(Array.isArray(s) ? s : []);
         setPages(Array.isArray(p) ? p : []);
         setPrevOverview(prevOv);
-        if (prevOv) onPreviousMetricsReady?.({
+        if (prevOv) previousMetricsReadyRef.current?.({
           sessions: prevOv.sessions, users: prevOv.users, newUsers: prevOv.newUsers,
           pageviews: prevOv.pageviews, bounceRate: prevOv.bounceRate,
           avgSessionDuration: prevOv.avgSessionDuration, conversionRate: prevOv.conversionRate,
@@ -497,7 +507,7 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
     }
     fetchData();
     return () => controller.abort();
-  }, [propertyId, startDate, endDate, compareStartDate, compareEndDate, onMetricsReady, onPreviousMetricsReady]);
+  }, [propertyId, startDate, endDate, compareStartDate, compareEndDate]);
 
   const sourceChartData = sources.slice(0, 6).map((s) => ({
     name: `${s.source} / ${s.medium}`,
