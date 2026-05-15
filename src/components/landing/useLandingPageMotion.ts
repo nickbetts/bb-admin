@@ -93,9 +93,7 @@ export function useLandingPageMotion({
       { threshold: 0.1 },
     );
 
-    document
-      .querySelectorAll<Element>(revealSelector)
-      .forEach((el) => observer.observe(el));
+    document.querySelectorAll<Element>(revealSelector).forEach((el) => observer.observe(el));
 
     return () => observer.disconnect();
   }, [revealSelector, statsSectionId]);
