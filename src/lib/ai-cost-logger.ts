@@ -11,11 +11,24 @@ const PRICING = {
   "claude-3-5-sonnet": { input: 0.003, output: 0.015 },
 
   // OpenAI
+  "gpt-5.4": { input: 0.0025, output: 0.015 },
+  "gpt-5.4-mini": { input: 0.00075, output: 0.0045 },
+  "gpt-5.4-nano": { input: 0.0002, output: 0.00125 },
   "gpt-4o": { input: 0.00525, output: 0.021 },
   "gpt-4o-mini": { input: 0.00015, output: 0.0006 },
 } as const;
 
 type ModelKey = keyof typeof PRICING;
+
+function resolvePricingModel(model: string): ModelKey | null {
+  if (model in PRICING) {
+    return model as ModelKey;
+  }
+
+  // OpenAI often returns version-suffixed IDs (for example gpt-5.4-nano-2026-03-17).
+  const byPrefix = (Object.keys(PRICING) as ModelKey[]).find((key) => model.startsWith(`${key}-`));
+  return byPrefix ?? null;
+}
 
 export interface AICostLogInput {
   tool: string; // e.g. "content-strategy", "summary", "grand-plan"
@@ -33,7 +46,8 @@ export function calculateCostUSD(
   inputTokens: number,
   outputTokens: number
 ): number {
-  const pricing = PRICING[model as ModelKey];
+  const pricingModel = resolvePricingModel(model);
+  const pricing = pricingModel ? PRICING[pricingModel] : null;
   if (!pricing) {
     console.warn(`Unknown model for pricing: ${model}`);
     return 0;

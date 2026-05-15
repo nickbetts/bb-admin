@@ -336,6 +336,22 @@ export async function GET(
           const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
           const raf = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
+          const SERIES_GEOMETRY_SELECTOR = [
+            ".recharts-line-curve",
+            ".recharts-area-curve",
+            ".recharts-area-area",
+            ".recharts-bar-rectangle rect",
+            ".recharts-bar-rectangle path",
+            ".recharts-scatter-symbol circle",
+            ".recharts-scatter-symbol path",
+            ".recharts-pie-sector path",
+            ".recharts-radial-bar-sector path",
+            ".recharts-funnel-trapezoid path",
+            ".recharts-radar-polygon polygon",
+            ".recharts-radar path",
+            ".recharts-treemap-rectangle rect",
+          ].join(",");
+
           const inRegion = (el: HTMLElement) => {
             const rect = el.getBoundingClientRect();
             const style = window.getComputedStyle(el);
@@ -349,21 +365,68 @@ export async function GET(
           const chartContainers = () =>
             Array.from(document.querySelectorAll<HTMLElement>(".recharts-responsive-container")).filter(inRegion);
 
+          const hasDrawableGeometry = (node: SVGElement) => {
+            const style = window.getComputedStyle(node);
+            if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0) {
+              return false;
+            }
+
+            const tag = node.tagName.toLowerCase();
+
+            if (tag === "path") {
+              const path = node as SVGPathElement;
+              const d = path.getAttribute("d") ?? "";
+              if (!d.trim()) return false;
+              try {
+                return path.getTotalLength() > 2;
+              } catch {
+                // Fall through to bounding-box checks below.
+              }
+            }
+
+            if (tag === "rect") {
+              const rect = node as SVGRectElement;
+              const width = Number(rect.getAttribute("width") ?? 0);
+              const height = Number(rect.getAttribute("height") ?? 0);
+              if (width > 1 && height > 1) return true;
+            }
+
+            if (tag === "circle") {
+              const circle = node as SVGCircleElement;
+              const r = Number(circle.getAttribute("r") ?? 0);
+              if (r > 1) return true;
+            }
+
+            if (tag === "polygon" || tag === "polyline") {
+              const points = node.getAttribute("points") ?? "";
+              if (points.trim().length > 3) return true;
+            }
+
+            try {
+              const box = (node as SVGGraphicsElement).getBBox();
+              return box.width > 1 || box.height > 1;
+            } catch {
+              return false;
+            }
+          };
+
           const isReady = (el: HTMLElement) => {
             const svg = el.querySelector<SVGElement>("svg.recharts-surface, svg");
             if (!svg) return false;
             const rect = svg.getBoundingClientRect();
             if (rect.width <= 40 || rect.height <= 40) return false;
-            return Boolean(svg.querySelector("path, rect, circle, polygon, polyline, line"));
+            const seriesNodes = Array.from(svg.querySelectorAll<SVGElement>(SERIES_GEOMETRY_SELECTOR));
+            if (seriesNodes.length === 0) return false;
+            return seriesNodes.some(hasDrawableGeometry);
           };
 
-          for (let attempt = 1; attempt <= 4; attempt++) {
+          for (let attempt = 1; attempt <= 7; attempt++) {
             window.scrollTo({ top: Math.max(0, regionY - 140), left: 0, behavior: "instant" });
             window.dispatchEvent(new Event("resize"));
             void document.body.offsetHeight;
             await raf();
             await raf();
-            await wait(80);
+            await wait(120);
 
             const charts = chartContainers();
             if (charts.length === 0) {
@@ -377,7 +440,7 @@ export async function GET(
 
           const charts = chartContainers();
           const unready = charts.filter((chart) => !isReady(chart)).length;
-          return { ok: unready === 0, chartCount: charts.length, unready, attempts: 4 };
+          return { ok: unready === 0, chartCount: charts.length, unready, attempts: 7 };
         }, { regionY: clipY, regionHeight: clipHeight });
 
         if (!regionChartReady.ok) {

@@ -158,7 +158,8 @@ Cross-section story rules:
 - Only include a story when there is clear evidence across at least two non-overview sections.
 - Do not include "overview" in any story section key.
 - If there are no strong cross-channel links, return an empty "crossSectionStories" array.
-- Use the account manager context only where directly relevant, never force it into every story.
+- Use the account manager context wherever relevant and ensure no relevant clarification is ignored.
+- If account manager clarifications are provided, reflect them in the executive summary and/or cross-section stories when evidence supports them.
 
 You MUST respond with valid JSON matching this exact structure:
 {
@@ -169,7 +170,7 @@ You MUST respond with valid JSON matching this exact structure:
   "sectionEnhancements": { "section_key": "string — additional context sentence to append to that section's commentary" },
   "keyThemes": ["theme1", "theme2", "theme3"],
   "goalProgressNarrative": "string — how goal attainment ties into the report data (empty string if no goals)"
-}${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}${additionalContext ? `\n\nIMPORTANT CONTEXT FROM THE ACCOUNT MANAGER: The following context has been provided and should be used only where directly relevant to the narrative and cross-channel stories:\n${additionalContext}` : ""}`;
+}${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}${additionalContext ? `\n\nIMPORTANT CONTEXT FROM THE ACCOUNT MANAGER: The following context has been provided by the account team. Treat each item as authoritative context and incorporate every relevant point in the narrative outputs:\n${additionalContext}` : ""}`;
 
     const userPrompt = `## Report ID
 ${reportId}
@@ -177,8 +178,8 @@ ${reportId}
 ## Section Commentaries
 ${sectionEntries}
 
-${crossPlatformMetrics ? `## Cross-Platform Aggregated Metrics\n${JSON.stringify(crossPlatformMetrics, null, 2)}\n` : ""}${goalsContext ? `## Active Client Goals\n${goalsContext}\n` : ""}
-Analyse all sections together. Identify cross-section stories only where there is clear evidence across at least two non-overview sections, write connection sentences for each section, produce the executive summary, extract key themes, and tie in goal progress. Return valid JSON only.`;
+${crossPlatformMetrics ? `## Cross-Platform Aggregated Metrics\n${JSON.stringify(crossPlatformMetrics, null, 2)}\n` : ""}${goalsContext ? `## Active Client Goals\n${goalsContext}\n` : ""}${additionalContext ? `## Account Manager Clarifications (must be considered)\n${additionalContext}\n` : ""}
+Analyse all sections together. Identify cross-section stories only where there is clear evidence across at least two non-overview sections, write connection sentences for each section, produce the executive summary, extract key themes, and tie in goal progress. Make sure all relevant account manager clarifications are reflected. Return valid JSON only.`;
 
     // ── Streaming path ─────────────────────────────────────────────────────
     if (stream) {

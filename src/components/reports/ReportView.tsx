@@ -1048,6 +1048,12 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
     return Object.keys(filtered).length > 0 ? filtered : undefined;
   };
 
+  const getFilteredSectionMetrics = (section: Section): Record<string, number> =>
+    filterSectionMetricsForPreflight(section, sectionMetrics[section.id]) ?? {};
+
+  const getFilteredSectionPreviousMetrics = (section: Section): Record<string, number> | undefined =>
+    filterSectionMetricsForPreflight(section, sectionPreviousMetrics[section.id]);
+
   const handleToggleSectionEnabled = async (sectionId: string) => {
     const section = report.sections.find((s) => s.id === sectionId);
     if (!section) return;
@@ -1360,8 +1366,8 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             sectionType: apiSectionType,
-            metrics: sectionMetrics[section.id] ?? {},
-            previousMetrics: sectionPreviousMetrics[section.id] ?? undefined,
+            metrics: getFilteredSectionMetrics(section),
+            previousMetrics: getFilteredSectionPreviousMetrics(section),
             clientName: report.client.name,
             clientId: report.client.id,
             dateRange: report.period,
@@ -1414,8 +1420,8 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           sectionType: apiSectionType,
-          metrics: sectionMetrics[section.id] ?? {},
-          previousMetrics: sectionPreviousMetrics[section.id] ?? undefined,
+          metrics: getFilteredSectionMetrics(section),
+          previousMetrics: getFilteredSectionPreviousMetrics(section),
           clientName: report.client.name,
           clientId: report.client.id,
           dateRange: report.period,
@@ -1493,8 +1499,8 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
 
     if (clarified.length > 0) {
       contextParts.push(
-        `Preflight clarification notes:\n${clarified
-          .map((item) => `Q: ${item.q.question}\nA: ${item.answer}`)
+        `Preflight clarification notes (account manager provided, use all relevant points):\n${clarified
+          .map((item, index) => `${index + 1}. Question: ${item.q.question}\n   Answer: ${item.answer}`)
           .join("\n\n")}`,
       );
     }
@@ -1602,8 +1608,8 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               sectionType: apiSectionType,
-              metrics: sectionMetrics[section.id] ?? {},
-              previousMetrics: sectionPreviousMetrics[section.id] ?? undefined,
+              metrics: getFilteredSectionMetrics(section),
+              previousMetrics: getFilteredSectionPreviousMetrics(section),
               clientName: report.client.name,
               clientId: report.client.id,
               dateRange: report.period,
@@ -3156,6 +3162,17 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                           <span className="badge badge-slate">Optional clarifications</span>
                         </div>
 
+                        <div style={{
+                          background: "var(--warning-bg)",
+                          border: "1px solid var(--warning-border)",
+                          borderRadius: "var(--r)",
+                          padding: "12px 14px",
+                        }}>
+                          <p style={{ margin: 0, fontSize: 11, lineHeight: 1.5, color: "var(--warning-text)", fontWeight: 600 }}>
+                            Guidance only: these AI hints are hypotheses from visible report data and context. They may be incomplete and do not reflect all live campaign activity or actions already taken by the team.
+                          </p>
+                        </div>
+
                         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                           {preflightQuestions.map((q, index) => (
                             <div key={q.id} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r)", padding: 14 }}>
@@ -3165,7 +3182,11 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                                 </div>
                                 <div style={{ minWidth: 0, flex: 1 }}>
                                   <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "var(--text)", lineHeight: 1.4, marginBottom: 4 }}>{q.question}</label>
-                                  {q.hint && <p style={{ fontSize: 11, color: "var(--text-4)", margin: 0, lineHeight: 1.45 }}>{q.hint}</p>}
+                                  {q.hint && (
+                                    <p style={{ fontSize: 11, color: "var(--text-3)", margin: 0, lineHeight: 1.5 }}>
+                                      AI guidance (hypothesis): {q.hint}
+                                    </p>
+                                  )}
                                 </div>
                               </div>
                               <textarea

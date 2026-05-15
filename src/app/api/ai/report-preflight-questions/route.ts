@@ -20,6 +20,10 @@ type PreflightQuestion = {
   hint?: string;
 };
 
+const PREFLIGHT_HINT_FALLBACK = "Potential reasons may include seasonality, budget reallocation, creative or audience changes, tracking updates, or landing-page changes.";
+
+const AVG_POSITION_CHANGE_REGEX = /average position[^0-9-]*\(?\s*([0-9]+(?:\.[0-9]+)?)\s*(?:→|->)\s*([0-9]+(?:\.[0-9]+)?)/i;
+
 function formatMetricKey(key: string): string {
   return key
     .replace(/([a-z])([A-Z])/g, "$1 $2")
@@ -50,6 +54,32 @@ function buildNotableSignals(sections: InputSection[]): string[] {
   return signals.slice(0, 25);
 }
 
+function normaliseAveragePositionQuestion(question: string): string {
+  const match = AVG_POSITION_CHANGE_REGEX.exec(question);
+  if (!match) return question;
+
+  const previous = Number(match[1]);
+  const current = Number(match[2]);
+
+  if (!Number.isFinite(previous) || !Number.isFinite(current) || previous === current) {
+    return question;
+  }
+
+  if (current > previous) {
+    return question
+      .replace(/average position has improved/gi, "average position has worsened")
+      .replace(/average position improved/gi, "average position worsened")
+      .replace(/average position got better/gi, "average position got worse")
+      .replace(/average position is better/gi, "average position is worse");
+  }
+
+  return question
+    .replace(/average position has worsened/gi, "average position has improved")
+    .replace(/average position worsened/gi, "average position improved")
+    .replace(/average position got worse/gi, "average position got better")
+    .replace(/average position is worse/gi, "average position is better");
+}
+
 function sanitiseQuestions(value: unknown): PreflightQuestion[] {
   if (!Array.isArray(value)) return [];
 
@@ -63,7 +93,7 @@ function sanitiseQuestions(value: unknown): PreflightQuestion[] {
     const hintRaw = (item as { hint?: unknown }).hint;
 
     if (typeof questionRaw !== "string") continue;
-    const question = questionRaw.trim();
+    const question = normaliseAveragePositionQuestion(questionRaw.trim());
     if (!question) continue;
 
     const key = question.toLowerCase().replace(/\s+/g, " ");
@@ -73,7 +103,7 @@ function sanitiseQuestions(value: unknown): PreflightQuestion[] {
     output.push({
       id: `q-${output.length + 1}`,
       question,
-      hint: typeof hintRaw === "string" && hintRaw.trim() ? hintRaw.trim() : undefined,
+      hint: typeof hintRaw === "string" && hintRaw.trim() ? hintRaw.trim() : PREFLIGHT_HINT_FALLBACK,
     });
 
     if (output.length >= 8) break;
@@ -142,11 +172,18 @@ Rules:
 - Return 0 to 8 questions.
 - Keep each question concise, specific, and decision-relevant.
 - Avoid generic filler questions.
-- Include a short hint only when it helps the user answer faster.
+- Use change wording like "increased" / "decreased" first; avoid ambiguous wording.
+- Never use contradictory phrasing (for example: "improved ... actually worse").
+- Direction rules: lower is better for average position, bounce rate, CPA, CPC, CPM, and cost.
+- Direction rules: higher is better for clicks, impressions, CTR, ROAS, conversions, conversion value, revenue, sessions, users, and engagement rate.
+- Include a short hint for every question.
+- Each hint must describe 1 to 3 plausible potential reasons based only on the provided data/context.
+- Write each hint as a hypothesis, not a fact, and keep it under 28 words.
+- Start each hint with "Potential reasons:".
 - Return valid JSON only in this shape:
 {
   "questions": [
-    { "question": "string", "hint": "string (optional)" }
+    { "question": "string", "hint": "string" }
   ]
 }${client.aiReportInstructions ? `\n\nClient-specific instructions:\n${client.aiReportInstructions}` : ""}`;
 
@@ -162,6 +199,10 @@ ${notableSignals.length > 0 ? notableSignals.map((s) => `- ${s}`).join("\n") : "
 
 Section payload:
 ${JSON.stringify(promptPayload, null, 2)}
+
+Metric direction reference:
+- Lower is better: average position, bounce rate, CPA, CPC, CPM, cost.
+- Higher is better: clicks, impressions, CTR, ROAS, conversions, conversion value, revenue, sessions, users, engagement rate.
 
 If clarifications are needed, ask focused preflight questions now. If not needed, return an empty questions array.`;
 

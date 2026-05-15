@@ -270,6 +270,10 @@ export async function POST(req: NextRequest) {
 
     const currentMetricsText = formatMetrics(metrics);
     const previousMetricsText = previousMetrics ? formatMetrics(previousMetrics) : null;
+    const availableMetricKeys = Object.keys(metrics).sort();
+    const accountManagerContextBlock = additionalContext?.trim()
+      ? `\n\nAccount manager clarifications (use every relevant point):\n${additionalContext.trim()}\n`
+      : "";
 
     // ── Chaos mode ─────────────────────────────────────────────────────────────
     // For chaos tones: throw out ALL structure, constraints, format rules, spin
@@ -335,7 +339,8 @@ ${spinRule}
 - Do not start with "This section" or "In this section". Start with a substantive observation about the data.
 - When goals are provided, reference progress towards targets naturally (e.g. "The ROAS is now at 82% of the target").
 - Sound like a human account manager wrote it, not an AI.
-- Never use em dashes (—). Use commas, full stops, or semicolons instead.${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}${additionalContext ? `\n\nCONTEXT FROM THE ACCOUNT MANAGER — treat this as first-hand knowledge you have about this period. Work it naturally into the commentary where relevant, as if you already knew this:\n${additionalContext}` : ""}${approvalContext}`;
+- Never use em dashes (—). Use commas, full stops, or semicolons instead.
+- Never mention a metric that is not present in the provided "Available metric keys" list for this request.${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}${additionalContext ? `\n\nCONTEXT FROM THE ACCOUNT MANAGER — treat this as first-hand knowledge you have about this period. Incorporate every relevant clarification naturally into the commentary:\n${additionalContext}` : ""}${approvalContext}`;
 
     // Build the previous-commentaries context block to prevent repetition
     let previousCommentariesContext = "";
@@ -359,17 +364,19 @@ ${spinRule}
 
 Client: ${clientName ?? "the client"}
 Period: ${dateRange ?? "the reporting period"}
+    Available metric keys: ${availableMetricKeys.length > 0 ? availableMetricKeys.join(", ") : "none"}
 
-This is the opening section of the report. Write a warm, forward-looking introduction that sets the tone for the month, acknowledges the ongoing work across channels, and positions the rest of the report. Address the client directly using "the" for campaigns/channels and "your" for the client's assets. Do not use first person ("we", "our").${previousCommentariesContext}`
+    This is the opening section of the report. Write a warm, forward-looking introduction that sets the tone for the month, acknowledges the ongoing work across channels, and positions the rest of the report. Address the client directly using "the" for campaigns/channels and "your" for the client's assets. Do not use first person ("we", "our").${accountManagerContextBlock}${previousCommentariesContext}`
       : `Write a ${tone} ${length} ${format === "bullets" ? "bullet-point" : "prose"} commentary for the ${sectionLabel} section of a digital marketing report.
 
 Client: ${clientName ?? "the client"}
 Period: ${dateRange ?? "the reporting period"}
+    Available metric keys: ${availableMetricKeys.length > 0 ? availableMetricKeys.join(", ") : "none"}
 
 Current period metrics:
 ${currentMetricsText}
-${previousMetricsText ? `\nPrevious period metrics:\n${previousMetricsText}\n` : ""}${goalsContext}${serpContext}${previousCommentariesContext}
-Address the client directly using "the" for campaigns/channels and "your" for the client's assets. Do not use first person ("we", "our"). Describe what the data shows, what is being worked on, and what is performing well. Only reference metrics that are present and non-zero. Do not mention anything that is absent.`;
+    ${previousMetricsText ? `\nPrevious period metrics:\n${previousMetricsText}\n` : ""}${goalsContext}${serpContext}${accountManagerContextBlock}${previousCommentariesContext}
+    Address the client directly using "the" for campaigns/channels and "your" for the client's assets. Do not use first person ("we", "our"). Describe what the data shows, what is being worked on, and what is performing well. Only reference metrics that are present and non-zero. Do not mention anything that is absent. Do not reference any metric that is not listed in "Available metric keys".`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-5.4-nano",
