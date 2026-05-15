@@ -1041,6 +1041,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
 
   // ── NEW: Auto-save debounce ───────────────────────────────────────────────
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoSaveAbortRef = useRef<AbortController | null>(null);
   const [savingVersion, setSavingVersion] = useState(false);
 
   // ── NEW: Section organiser ────────────────────────────────────────────────
@@ -1125,6 +1126,8 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
 
   useEffect(() => {
     return () => {
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+      if (autoSaveAbortRef.current) autoSaveAbortRef.current.abort();
       if (trackingSaveTimerRef.current) clearTimeout(trackingSaveTimerRef.current);
     };
   }, []);
@@ -1159,6 +1162,18 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
   // ── NEW: Undo / Redo ──────────────────────────────────────────────────────
   const canUndo = historyIndex > 0;
   const canRedo = historyIndex < htmlHistory.length - 1;
+
+  const cancelPendingAutoSave = useCallback(() => {
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+      autoSaveTimerRef.current = null;
+    }
+
+    if (autoSaveAbortRef.current) {
+      autoSaveAbortRef.current.abort();
+      autoSaveAbortRef.current = null;
+    }
+  }, []);
 
   const handleUndo = useCallback(() => {
     if (!canUndo) return;
@@ -1202,16 +1217,26 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
       setLp((prev) => (prev ? { ...prev, currentHtml: html } : prev));
       pushHistory(html);
       // Debounced auto-save to DB (no version creation)
-      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+      cancelPendingAutoSave();
       autoSaveTimerRef.current = setTimeout(() => {
+        const abortController = new AbortController();
+        autoSaveAbortRef.current = abortController;
+
         fetch(`/api/tools/landing-pages/${id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ html }),
-        }).catch(() => {});
+          signal: abortController.signal,
+        })
+          .catch(() => {})
+          .finally(() => {
+            if (autoSaveAbortRef.current === abortController) {
+              autoSaveAbortRef.current = null;
+            }
+          });
       }, 1500);
     },
-    [id, pushHistory],
+    [cancelPendingAutoSave, id, pushHistory],
   );
 
   // ── NEW: Debounced form field reconciliation ──────────────────────────────
@@ -1466,12 +1491,19 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
 
   // ── NEW: Manual save version ──────────────────────────────────────────────
   const handleSaveVersion = useCallback(async () => {
+    cancelPendingAutoSave();
+    const baseHtml = previewLang ? (lp?.currentHtml ?? previewHtml) : previewHtml;
+
     setSavingVersion(true);
     try {
       await fetch(`/api/tools/landing-pages/${id}/versions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ save: true, description: "Manual save" }),
+        body: JSON.stringify({
+          save: true,
+          description: "Manual save",
+          html: baseHtml,
+        }),
       });
       // Refresh LP to get updated versions list
       const res = await fetch(`/api/tools/landing-pages/${id}`);
@@ -1483,7 +1515,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
     } finally {
       setSavingVersion(false);
     }
-  }, [id]);
+  }, [cancelPendingAutoSave, id, lp?.currentHtml, previewHtml, previewLang]);
 
   // ── NEW: Section operations ───────────────────────────────────────────────
   const handleSectionDragEnd = useCallback(
@@ -1752,6 +1784,9 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
     ]);
 
     try {
+      cancelPendingAutoSave();
+      const baseHtmlForRefine = previewLang ? (lp?.currentHtml ?? previewHtml) : previewHtml;
+
       const aiHistory = chatHistory
         .filter(
           (m) =>
@@ -1767,6 +1802,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           prompt: userPrompt,
+          currentHtml: baseHtmlForRefine,
           conversationHistory: aiHistory,
           imageUrls: successfulImageUrls.length ? successfulImageUrls : undefined,
           crawlUrls: validCrawlUrls.length ? validCrawlUrls : undefined,
@@ -2127,6 +2163,8 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
       danger: true,
     });
     if (!proceed) return;
+
+    cancelPendingAutoSave();
 
     const res = await fetch(`/api/tools/landing-pages/${id}/versions`, {
       method: "POST",

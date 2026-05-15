@@ -115,6 +115,43 @@ function sectionProgressPercent(opts: {
   return 62 + Math.floor(sectionProgress * 30);
 }
 
+const MAJOR_LAYOUT_CHANGE_RE =
+  /\b(redesign|re-design|rebuild|re-work|rework|overhaul|revamp|restructure|from scratch|new layout|different layout|change layout|full refresh|completely new)\b/i;
+
+function allowsMajorLayoutChanges(prompt: string | null | undefined): boolean {
+  if (!prompt) return false;
+  return MAJOR_LAYOUT_CHANGE_RE.test(prompt);
+}
+
+function isAggressiveSectionRewrite(originalHtml: string, candidateHtml: string): boolean {
+  const original = originalHtml.trim();
+  const candidate = candidateHtml.trim();
+
+  if (!candidate || candidate.length < 20) return true;
+
+  const hasPageWrapper = /<(?:html|head|body)\b/i.test(candidate);
+  if (hasPageWrapper) return true;
+
+  const lengthRatio = candidate.length / Math.max(1, original.length);
+  if (lengthRatio > 2.2 || lengthRatio < 0.45) return true;
+
+  const originalRootTag = original.match(/^<([a-z0-9-]+)/i)?.[1]?.toLowerCase();
+  const candidateRootTag = candidate.match(/^<([a-z0-9-]+)/i)?.[1]?.toLowerCase();
+  if (originalRootTag && candidateRootTag && originalRootTag !== candidateRootTag) return true;
+
+  const originalBlockCount = (
+    original.match(/<(section|header|footer|main|article|nav|form|aside)\b/gi) ?? []
+  ).length;
+  const candidateBlockCount = (
+    candidate.match(/<(section|header|footer|main|article|nav|form|aside)\b/gi) ?? []
+  ).length;
+  if (originalBlockCount > 0 && Math.abs(candidateBlockCount - originalBlockCount) >= 3) {
+    return true;
+  }
+
+  return false;
+}
+
 // POST /api/tools/landing-pages/[id]/refine/jobs/[jobId]/run
 // Processes one bounded refinement step per request.
 export async function POST(
@@ -335,10 +372,24 @@ export async function POST(
           additionalContext,
         });
 
-        state.currentHtml = replaceSection(state.currentHtml, section, refinedSectionHtml);
+        const protectLayout =
+          !allowsMajorLayoutChanges(payload.prompt) &&
+          !allowsMajorLayoutChanges(state.passTwoPrompt);
+        const keepOriginalSection =
+          protectLayout && isAggressiveSectionRewrite(section.outerHtml, refinedSectionHtml);
+        const appliedSectionHtml = keepOriginalSection ? section.outerHtml : refinedSectionHtml;
+
+        if (keepOriginalSection) {
+          const warning = `Skipped aggressive rewrite for ${section.label} to preserve the existing layout.`;
+          if (!state.crawlWarnings.includes(warning)) {
+            state.crawlWarnings.push(warning);
+          }
+        }
+
+        state.currentHtml = replaceSection(state.currentHtml, section, appliedSectionHtml);
         state.sections[state.sectionIndex] = {
           ...section,
-          outerHtml: refinedSectionHtml,
+          outerHtml: appliedSectionHtml,
         };
         state.sectionIndex += 1;
 

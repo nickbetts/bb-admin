@@ -5,10 +5,7 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
 // GET /api/tools/landing-pages/[id]/versions — list all versions
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -34,10 +31,7 @@ export async function GET(
 }
 
 // POST /api/tools/landing-pages/[id]/versions — revert to a specific version OR save new version
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -46,25 +40,39 @@ export async function POST(
   const landingPage = await prisma.landingPage.findUnique({ where: { id } });
   if (!landingPage) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const body = await request.json() as { versionNumber?: number; save?: boolean; description?: string };
+  const body = (await request.json()) as {
+    versionNumber?: number;
+    save?: boolean;
+    description?: string;
+    html?: string;
+  };
 
   // Manual save: create a new version from current HTML
   if (body.save) {
+    const htmlFromClient = typeof body.html === "string" ? body.html : undefined;
+    const snapshotHtml = htmlFromClient?.trim() ? htmlFromClient : landingPage.currentHtml;
+
     const latestVersion = await prisma.landingPageVersion.findFirst({
       where: { landingPageId: id },
       orderBy: { versionNumber: "desc" },
     });
     const nextNumber = (latestVersion?.versionNumber ?? 0) + 1;
-    const version = await prisma.landingPageVersion.create({
-      data: {
-        landingPageId: id,
-        versionNumber: nextNumber,
-        html: landingPage.currentHtml,
-        prompt: body.description || "Manual save",
-        createdByUserId: session.user.id,
-        createdByEmail: session.user.email,
-      },
-    });
+    const [version] = await prisma.$transaction([
+      prisma.landingPageVersion.create({
+        data: {
+          landingPageId: id,
+          versionNumber: nextNumber,
+          html: snapshotHtml,
+          prompt: body.description || "Manual save",
+          createdByUserId: session.user.id,
+          createdByEmail: session.user.email,
+        },
+      }),
+      prisma.landingPage.update({
+        where: { id },
+        data: { currentHtml: snapshotHtml },
+      }),
+    ]);
     return NextResponse.json({ success: true, version });
   }
 

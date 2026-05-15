@@ -38,12 +38,18 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: "prompt is required" }, { status: 400 });
     }
 
+    const currentHtmlFromClient =
+      typeof body.currentHtml === "string" && body.currentHtml.trim()
+        ? body.currentHtml
+        : undefined;
+
     const refinementMode = toRefinementMode(body.refinementMode);
     const crawlUrlLimit =
       refinementMode === "double-pass" ? DOUBLE_PASS_URL_LIMIT : SINGLE_PASS_URL_LIMIT;
 
     const payload: RefineJobPayload = {
       prompt,
+      currentHtml: currentHtmlFromClient,
       refinementMode,
       conversationHistory: Array.isArray(body.conversationHistory)
         ? body.conversationHistory.slice(-12)
@@ -55,7 +61,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     const initialState = parseRefineState(null);
     initialState.phase = "prepare";
-    initialState.currentHtml = landingPage.currentHtml;
+    initialState.currentHtml = currentHtmlFromClient ?? landingPage.currentHtml;
 
     const job = await prisma.landingPageRefineJob.create({
       data: {

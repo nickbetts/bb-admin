@@ -4,6 +4,7 @@ export type RefinementMode = "single-pass" | "double-pass";
 
 export interface RefineJobPayload {
   prompt: string;
+  currentHtml?: string;
   conversationHistory?: { role: "user" | "assistant"; content: string }[];
   referenceHtml?: string;
   imageUrls?: string[];
@@ -268,9 +269,11 @@ ${base}
 Rules for this section:
 1. Apply only changes relevant to this section.
 2. If the request does not apply, return this section unchanged.
-3. Preserve existing valid markup, classes, and responsive behaviour.
+3. Preserve existing valid markup, classes, IDs, data attributes, and responsive behaviour.
 4. Keep British English and preserve brand tone.
-5. Do not remove working forms, tracking hooks, or required attributes.`;
+5. Keep section layout geometry stable: do not change wrapper hierarchy, container widths, spacing system, or grid/flex structure unless explicitly requested.
+6. Do not add or remove top-level elements in this section unless explicitly required by the request.
+7. Do not remove working forms, tracking hooks, or required attributes.`;
 }
 
 export function buildPageContextSnapshot(html: string, maxTextChars = 14_000): string {
