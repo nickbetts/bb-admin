@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getBrowser } from "@/lib/puppeteer";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 export async function GET(
   _request: NextRequest,
@@ -77,11 +77,11 @@ export async function GET(
 
       // Set viewport to match the PDF width exactly so section height
       // measurements taken at this viewport are valid for the crop step.
-      // deviceScaleFactor: 2 renders at 2x DPI (2400px wide), screenshots are
-      // embedded at 1200pt — equivalent to a retina display, giving crisp text.
+      // Use a moderate device scale for a better quality/runtime balance in
+      // Vercel serverless time limits.
       const VIEWPORT_WIDTH_CSS = 1200;
       const VIEWPORT_HEIGHT_CSS = 900;
-      const DEVICE_SCALE_FACTOR = 2;
+      const DEVICE_SCALE_FACTOR = 1.5;
       await page.setViewport({
         width: VIEWPORT_WIDTH_CSS,
         height: VIEWPORT_HEIGHT_CSS,
@@ -117,74 +117,13 @@ export async function GET(
       // ensure all section data has loaded and charts have rendered.
       await page.waitForNetworkIdle({ idleTime: 1000, timeout: 20000 });
 
-      // Recharts can occasionally mount with zero-width containers in headless
-      // capture flows. Trigger resize/reflow passes and wait until visible
-      // chart containers have real SVG dimensions before screenshot capture.
-      const rechartsReady = await page.evaluate(async () => {
-        const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
-        const raf = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-
-        const visibleChartContainers = () =>
-          Array.from(document.querySelectorAll<HTMLElement>(".recharts-responsive-container"))
-            .filter((el) => {
-              const rect = el.getBoundingClientRect();
-              const style = window.getComputedStyle(el);
-              return (
-                style.display !== "none" &&
-                style.visibility !== "hidden" &&
-                rect.width > 40 &&
-                rect.height > 40
-              );
-            });
-
-        const isReady = (el: HTMLElement) => {
-          const svg = el.querySelector("svg");
-          if (!svg) return false;
-          const rect = svg.getBoundingClientRect();
-          return rect.width > 40 && rect.height > 40;
-        };
-
-        let charts = visibleChartContainers();
-        if (charts.length === 0) {
-          return { ok: true, visibleCharts: 0, unreadyCharts: 0, attempts: 0 };
-        }
-
-        for (let attempt = 1; attempt <= 8; attempt++) {
-          window.dispatchEvent(new Event("resize"));
-          void document.body.offsetHeight;
-          await raf();
-          await raf();
-          await wait(120);
-
-          charts = visibleChartContainers();
-          const unready = charts.filter((chart) => !isReady(chart)).length;
-          if (unready === 0) {
-            return {
-              ok: true,
-              visibleCharts: charts.length,
-              unreadyCharts: 0,
-              attempts: attempt,
-            };
-          }
-        }
-
-        const unreadyCharts = charts.filter((chart) => !isReady(chart)).length;
-        return {
-          ok: unreadyCharts === 0,
-          visibleCharts: charts.length,
-          unreadyCharts,
-          attempts: 8,
-        };
+      // Global nudge for chart layout observers before section-level checks.
+      await page.evaluate(async () => {
+        window.dispatchEvent(new Event("resize"));
+        void document.body.offsetHeight;
+        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
       });
-
-      if (!rechartsReady.ok) {
-        console.warn(
-          `[pdf-recharts] Charts still not ready before capture: visible=${rechartsReady.visibleCharts} unready=${rechartsReady.unreadyCharts}`
-        );
-      }
-
-      // Final short buffer for any remaining SVG/chart paint after readiness.
-      await page.evaluate(() => new Promise((r) => setTimeout(r, 250)));
+      await page.evaluate(() => new Promise((r) => setTimeout(r, 180)));
 
       // Measure the full rendered height and collect per-section bounding boxes
       // so we can crop the PDF into variable-height pages after generation.
@@ -334,7 +273,7 @@ export async function GET(
       // Each main section gets its own PDF page with fixed top/bottom padding.
       // Capture uses measured section regions (not DOM style mutation) so we
       // retain stable boundaries and include the cover/header in the first page.
-      const JPEG_QUALITY = 85;
+      const JPEG_QUALITY = 80;
       const SECTION_PAGE_PADDING_PX = 100;
       const PAGE_WIDTH_PT = 1200;
       // Keep screenshot chunks under compositor texture limits, then stitch
@@ -392,6 +331,60 @@ export async function GET(
 
         const pageHeight = clipHeight + SECTION_PAGE_PADDING_PX * 2;
         const newPage = outputDoc.addPage([PAGE_WIDTH_PT, pageHeight]);
+
+        const regionChartReady = await page.evaluate(async ({ regionY, regionHeight }) => {
+          const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+          const raf = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
+          const inRegion = (el: HTMLElement) => {
+            const rect = el.getBoundingClientRect();
+            const style = window.getComputedStyle(el);
+            if (style.display === "none" || style.visibility === "hidden") return false;
+            if (rect.width <= 40 || rect.height <= 40) return false;
+            const top = rect.top + window.scrollY;
+            const bottom = top + rect.height;
+            return bottom > regionY && top < regionY + regionHeight;
+          };
+
+          const chartContainers = () =>
+            Array.from(document.querySelectorAll<HTMLElement>(".recharts-responsive-container")).filter(inRegion);
+
+          const isReady = (el: HTMLElement) => {
+            const svg = el.querySelector<SVGElement>("svg.recharts-surface, svg");
+            if (!svg) return false;
+            const rect = svg.getBoundingClientRect();
+            if (rect.width <= 40 || rect.height <= 40) return false;
+            return Boolean(svg.querySelector("path, rect, circle, polygon, polyline, line"));
+          };
+
+          for (let attempt = 1; attempt <= 4; attempt++) {
+            window.scrollTo({ top: Math.max(0, regionY - 140), left: 0, behavior: "instant" });
+            window.dispatchEvent(new Event("resize"));
+            void document.body.offsetHeight;
+            await raf();
+            await raf();
+            await wait(80);
+
+            const charts = chartContainers();
+            if (charts.length === 0) {
+              return { ok: true, chartCount: 0, unready: 0, attempts: attempt };
+            }
+            const unready = charts.filter((chart) => !isReady(chart)).length;
+            if (unready === 0) {
+              return { ok: true, chartCount: charts.length, unready: 0, attempts: attempt };
+            }
+          }
+
+          const charts = chartContainers();
+          const unready = charts.filter((chart) => !isReady(chart)).length;
+          return { ok: unready === 0, chartCount: charts.length, unready, attempts: 4 };
+        }, { regionY: clipY, regionHeight: clipHeight });
+
+        if (!regionChartReady.ok) {
+          console.warn(
+            `[pdf-recharts] Region chart readiness incomplete: idx=${idx} id=${region.id} charts=${regionChartReady.chartCount} unready=${regionChartReady.unready}`
+          );
+        }
 
         let chunkOffset = 0;
         while (chunkOffset < clipHeight) {
