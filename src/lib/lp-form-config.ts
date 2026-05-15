@@ -92,9 +92,16 @@ export function isWebhookUrlSafe(url: string): boolean {
     return false;
   }
 
-  if (parsed.protocol !== "https:") return false;
-
   const host = parsed.hostname.toLowerCase();
+
+  const e2eLocalAllowed = process.env.ENABLE_E2E_TEST_ENDPOINTS === "1";
+  if (e2eLocalAllowed && (parsed.protocol === "http:" || parsed.protocol === "https:")) {
+    if (host === "localhost" || host === "127.0.0.1" || host === "::1") {
+      return true;
+    }
+  }
+
+  if (parsed.protocol !== "https:") return false;
 
   // Block loopback
   if (host === "localhost" || host === "127.0.0.1" || host === "::1") return false;

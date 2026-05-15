@@ -8,10 +8,13 @@ import {
   Loader2,
   Mail,
   Phone,
+  RotateCcw,
   Trash2,
   User,
   X,
 } from "lucide-react";
+
+type DeliveryFilter = "all" | "delivered" | "partial" | "failed" | "not-configured";
 
 interface Lead {
   id: string;
@@ -200,6 +203,8 @@ export function LeadsViewerModal({ lpId, isOpen, onClose, onLeadDeleted }: Leads
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [deletingLeadId, setDeletingLeadId] = useState<string | null>(null);
+  const [retryingLeadId, setRetryingLeadId] = useState<string | null>(null);
+  const [deliveryFilter, setDeliveryFilter] = useState<DeliveryFilter>("all");
   const limit = 50;
 
   const loadLeads = useCallback(async () => {
@@ -227,14 +232,27 @@ export function LeadsViewerModal({ lpId, isOpen, onClose, onLeadDeleted }: Leads
   const canPrevious = page > 1;
   const canNext = page < totalPages;
 
+  const visibleLeads = useMemo(() => {
+    if (deliveryFilter === "all") return leads;
+
+    return leads.filter((lead) => {
+      const summary = getLeadDeliverySummary(lead).label;
+      if (deliveryFilter === "delivered") return summary === "Delivered";
+      if (deliveryFilter === "partial") return summary === "Partially delivered";
+      if (deliveryFilter === "failed") return summary === "Delivery failed";
+      if (deliveryFilter === "not-configured") return summary === "Not configured";
+      return true;
+    });
+  }, [leads, deliveryFilter]);
+
   const sourceBreakdown = useMemo(() => {
     const counts = new Map<string, number>();
-    for (const lead of leads) {
+    for (const lead of visibleLeads) {
       const source = detectLeadSource(lead).label;
       counts.set(source, (counts.get(source) ?? 0) + 1);
     }
     return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
-  }, [leads]);
+  }, [visibleLeads]);
 
   if (!isOpen) return null;
 
@@ -252,7 +270,7 @@ export function LeadsViewerModal({ lpId, isOpen, onClose, onLeadDeleted }: Leads
       "Delivery attempts",
       "Extra fields",
     ];
-    const rows = leads.map((lead) => {
+    const rows = visibleLeads.map((lead) => {
       const source = detectLeadSource(lead);
       const extras = getExtraFields(lead)
         .map((item) => `${item.key}: ${item.value}`)
@@ -284,6 +302,36 @@ export function LeadsViewerModal({ lpId, isOpen, onClose, onLeadDeleted }: Leads
     a.download = `leads-${new Date().toISOString().split("T")[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleRetryWebhook = async (lead: Lead) => {
+    setRetryingLeadId(lead.id);
+    setError(null);
+
+    try {
+      const res = await fetch(`/api/tools/landing-pages/${lpId}/leads/${lead.id}/retry-webhook`, {
+        method: "POST",
+      });
+
+      const data = await res.json().catch(() => ({})) as {
+        error?: string;
+        lead?: Lead;
+      };
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to retry webhook delivery");
+      }
+
+      if (data.lead) {
+        setLeads((prev) => prev.map((item) => (item.id === lead.id ? { ...item, ...data.lead } : item)));
+      } else {
+        void loadLeads();
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not retry webhook delivery");
+    } finally {
+      setRetryingLeadId(null);
+    }
   };
 
   const handleDeleteLead = async (lead: Lead) => {
@@ -362,6 +410,9 @@ export function LeadsViewerModal({ lpId, isOpen, onClose, onLeadDeleted }: Leads
               <span style={{ fontSize: 12, color: "var(--text-3)" }}>
                 {total === 0 ? "No leads yet" : `${total} total lead${total !== 1 ? "s" : ""}`}
               </span>
+              <span style={{ fontSize: 11, color: "var(--text-4)" }}>
+                Showing {visibleLeads.length} on this page
+              </span>
               {sourceBreakdown.slice(0, 4).map(([label, count]) => {
                 const badge = sourceBadgeStyle(label);
                 return (
@@ -381,10 +432,40 @@ export function LeadsViewerModal({ lpId, isOpen, onClose, onLeadDeleted }: Leads
                 );
               })}
             </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {([
+                { id: "all", label: "All" },
+                { id: "failed", label: "Failed" },
+                { id: "partial", label: "Partial" },
+                { id: "delivered", label: "Delivered" },
+                { id: "not-configured", label: "Not configured" },
+              ] as Array<{ id: DeliveryFilter; label: string }>).map((item) => {
+                const active = deliveryFilter === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => setDeliveryFilter(item.id)}
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      padding: "4px 9px",
+                      borderRadius: 999,
+                      border: active ? "1px solid var(--accent)" : "1px solid var(--border)",
+                      background: active ? "var(--accent-bg)" : "var(--surface)",
+                      color: active ? "var(--accent)" : "var(--text-3)",
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-            {total > 0 && (
+            {visibleLeads.length > 0 && (
               <button
                 onClick={handleExportCSV}
                 style={{
@@ -452,7 +533,7 @@ export function LeadsViewerModal({ lpId, isOpen, onClose, onLeadDeleted }: Leads
             >
               {error}
             </div>
-          ) : leads.length === 0 ? (
+          ) : visibleLeads.length === 0 ? (
             <div
               style={{
                 display: "flex",
@@ -464,11 +545,11 @@ export function LeadsViewerModal({ lpId, isOpen, onClose, onLeadDeleted }: Leads
                 fontSize: 13,
               }}
             >
-              No leads captured yet.
+              {deliveryFilter === "all" ? "No leads captured yet." : "No leads match this delivery filter."}
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 12 }}>
-              {leads.map((lead) => {
+              {visibleLeads.map((lead) => {
                 const source = detectLeadSource(lead);
                 const badge = sourceBadgeStyle(source.label);
                 const extras = getExtraFields(lead);
@@ -545,6 +626,33 @@ export function LeadsViewerModal({ lpId, isOpen, onClose, onLeadDeleted }: Leads
                           <Calendar style={{ width: 11, height: 11 }} />
                           {new Date(lead.createdAt).toLocaleString("en-GB")}
                         </span>
+                        <button
+                          onClick={() => handleRetryWebhook(lead)}
+                          disabled={retryingLeadId === lead.id || deletingLeadId === lead.id || normaliseDeliveryStatus(lead.webhookStatus) !== "failed"}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 5,
+                            padding: "4px 8px",
+                            border: "1px solid var(--accent)",
+                            borderRadius: 8,
+                            background: "transparent",
+                            color: "var(--accent)",
+                            fontSize: 11,
+                            fontWeight: 600,
+                            cursor: (retryingLeadId === lead.id || deletingLeadId === lead.id || normaliseDeliveryStatus(lead.webhookStatus) !== "failed") ? "not-allowed" : "pointer",
+                            opacity: (retryingLeadId === lead.id || deletingLeadId === lead.id || normaliseDeliveryStatus(lead.webhookStatus) !== "failed") ? 0.6 : 1,
+                            fontFamily: "inherit",
+                          }}
+                          title={normaliseDeliveryStatus(lead.webhookStatus) === "failed" ? "Retry webhook delivery" : "Webhook retry not required"}
+                        >
+                          {retryingLeadId === lead.id ? (
+                            <Loader2 style={{ width: 11, height: 11, animation: "spin 1s linear infinite" }} />
+                          ) : (
+                            <RotateCcw style={{ width: 11, height: 11 }} />
+                          )}
+                          Retry webhook
+                        </button>
                         <button
                           onClick={() => handleDeleteLead(lead)}
                           disabled={deletingLeadId === lead.id}

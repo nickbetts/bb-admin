@@ -18,6 +18,33 @@ import { prisma } from "@/lib/prisma";
 import { getOpenAiClient } from "@/lib/openai-client";
 import type { LpFormField } from "@/lib/lp-form-config";
 
+type LpTestEmailMode = "success" | "fail";
+
+declare global {
+  var __lpTestEmailMode: LpTestEmailMode | undefined;
+}
+
+function isE2eTestModeEnabled(): boolean {
+  return process.env.ENABLE_E2E_TEST_ENDPOINTS === "1";
+}
+
+function getLpTestEmailMode(): LpTestEmailMode | null {
+  if (!isE2eTestModeEnabled()) return null;
+
+  const fromMemory = globalThis.__lpTestEmailMode;
+  if (fromMemory === "success" || fromMemory === "fail") return fromMemory;
+
+  const fromEnv = (process.env.LP_TEST_EMAIL_MODE ?? "").trim().toLowerCase();
+  if (fromEnv === "success" || fromEnv === "fail") return fromEnv;
+
+  return null;
+}
+
+export function setLpTestEmailMode(mode: LpTestEmailMode | null): void {
+  if (!isE2eTestModeEnabled()) return;
+  globalThis.__lpTestEmailMode = mode ?? undefined;
+}
+
 export class SmtpNotConfiguredError extends Error {
   constructor() {
     super("Resend not configured. Add your Resend API key in Settings → Email.");
@@ -50,6 +77,14 @@ export interface SendEmailOptions {
 }
 
 export async function sendEmail(opts: SendEmailOptions): Promise<void> {
+  const testMode = getLpTestEmailMode();
+  if (testMode === "success") {
+    return;
+  }
+  if (testMode === "fail") {
+    throw new Error("Mock email failure");
+  }
+
   const { client, from } = await getResendClient();
 
   const { error } = await client.emails.send({

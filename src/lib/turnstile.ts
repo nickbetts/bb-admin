@@ -13,6 +13,33 @@ import { prisma } from "@/lib/prisma";
 
 let _cache: { siteKey: string | null; secretKey: string | null } | null = null;
 
+type LpTestTurnstileMode = "pass" | "fail";
+
+declare global {
+  var __lpTestTurnstileMode: LpTestTurnstileMode | undefined;
+}
+
+function isE2eTestModeEnabled(): boolean {
+  return process.env.ENABLE_E2E_TEST_ENDPOINTS === "1";
+}
+
+function getLpTestTurnstileMode(): LpTestTurnstileMode | null {
+  if (!isE2eTestModeEnabled()) return null;
+
+  const fromMemory = globalThis.__lpTestTurnstileMode;
+  if (fromMemory === "pass" || fromMemory === "fail") return fromMemory;
+
+  const fromEnv = (process.env.LP_TEST_TURNSTILE_MODE ?? "").trim().toLowerCase();
+  if (fromEnv === "pass" || fromEnv === "fail") return fromEnv;
+
+  return null;
+}
+
+export function setLpTestTurnstileMode(mode: LpTestTurnstileMode | null): void {
+  if (!isE2eTestModeEnabled()) return;
+  globalThis.__lpTestTurnstileMode = mode ?? undefined;
+}
+
 async function getConfig(): Promise<{ siteKey: string | null; secretKey: string | null }> {
   if (_cache) return _cache;
   const rows = await prisma.appSetting.findMany({
@@ -50,6 +77,10 @@ export async function verifyTurnstileToken(
   token: string | undefined | null,
   ip?: string,
 ): Promise<boolean> {
+  const testMode = getLpTestTurnstileMode();
+  if (testMode === "pass") return true;
+  if (testMode === "fail") return false;
+
   const { secretKey } = await getConfig();
   if (!secretKey) return true; // not configured — skip verification
   if (!token) return false;

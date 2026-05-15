@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { parseLpFormConfig, isWebhookUrlSafe } from "@/lib/lp-form-config";
+import { parseLpFormConfig } from "@/lib/lp-form-config";
 import { sendEmail, buildLeadNotificationHtml, SmtpNotConfiguredError } from "@/lib/email";
+import { attemptLeadWebhookDelivery, getNextWebhookRetryAt } from "@/lib/lp-lead-webhook";
 import { verifyTurnstileToken } from "@/lib/turnstile";
 
 export const dynamic = "force-dynamic";
@@ -12,6 +13,7 @@ interface DeliveryChannelResult {
   configured: boolean;
   attempted: boolean;
   status: DeliveryChannelStatus;
+  retryable: boolean;
   error: string | null;
   httpStatus: number | null;
   sentAt: Date | null;
@@ -33,6 +35,7 @@ interface CapturedLeadShape {
   email: string;
   phone: string | null;
   message: string | null;
+  createdAt: Date;
 }
 
 function makeSkippedResult(configured: boolean): DeliveryChannelResult {
@@ -40,6 +43,7 @@ function makeSkippedResult(configured: boolean): DeliveryChannelResult {
     configured,
     attempted: false,
     status: "skipped",
+    retryable: false,
     error: null,
     httpStatus: null,
     sentAt: null,
@@ -84,94 +88,36 @@ function resolveNotifyEmails(configNotifyEmails: string[] | undefined, clientCon
 
 async function attemptWebhookDelivery(input: {
   landingPage: LeadPageContext;
-  formConfig: ReturnType<typeof parseLpFormConfig>;
   lead: CapturedLeadShape;
   body: Record<string, unknown>;
   referrer: string | null;
 }): Promise<DeliveryChannelResult> {
-  const { landingPage, formConfig, lead, body, referrer } = input;
+  const { landingPage, lead, body, referrer } = input;
 
-  const webhookUrl = formConfig.webhookUrl?.trim();
-  if (!webhookUrl) return makeSkippedResult(false);
-
-  if (!isWebhookUrlSafe(webhookUrl)) {
-    console.warn("[lead-webhook] Skipped unsafe webhook URL:", webhookUrl);
-    return {
-      configured: true,
-      attempted: false,
-      status: "failed",
-      error: "Webhook URL failed security validation",
-      httpStatus: null,
-      sentAt: null,
-    };
-  }
-
-  const capturedAtIso = new Date().toISOString();
-  const rawPayload: Record<string, unknown> = {
+  const result = await attemptLeadWebhookDelivery({
     landingPageId: landingPage.id,
-    capturedAt: capturedAtIso,
-    ...body,
+    landingPageTitle: landingPage.title,
+    formConfigRaw: landingPage.formConfig,
+    lead: {
+      name: lead.name,
+      email: lead.email,
+      phone: lead.phone,
+      message: lead.message,
+      referrer,
+      submittedAt: lead.createdAt,
+    },
+    fields: body,
+  });
+
+  return {
+    configured: result.configured,
+    attempted: result.attempted,
+    status: result.status,
+    retryable: result.retryable,
+    error: result.error,
+    httpStatus: result.httpStatus,
+    sentAt: result.sentAt,
   };
-
-  const payload = isLikelyTeamsWebhook(webhookUrl)
-    ? buildPowerAutomatePayload({
-        landingPageId: landingPage.id,
-        lpTitle: landingPage.title ?? "Landing Page",
-        name: lead.name,
-        email: lead.email,
-        phone: lead.phone,
-        message: lead.message,
-        capturedAtIso,
-        referrer,
-        fields: body,
-      })
-    : rawPayload;
-
-  try {
-    const response = await fetch(webhookUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(10_000),
-    });
-
-    if (!response.ok) {
-      const raw = await response.text().catch(() => "");
-      const message = `Webhook responded ${response.status} ${response.statusText}`.slice(0, 500);
-      console.error("[lead-webhook] Non-2xx response:", {
-        status: response.status,
-        statusText: response.statusText,
-        body: raw.slice(0, 500),
-      });
-      return {
-        configured: true,
-        attempted: true,
-        status: "failed",
-        error: message,
-        httpStatus: response.status,
-        sentAt: null,
-      };
-    }
-
-    return {
-      configured: true,
-      attempted: true,
-      status: "sent",
-      error: null,
-      httpStatus: response.status,
-      sentAt: new Date(),
-    };
-  } catch (error) {
-    console.error("[lead-webhook] POST failed:", error);
-    return {
-      configured: true,
-      attempted: true,
-      status: "failed",
-      error: sanitiseErrorMessage(error),
-      httpStatus: null,
-      sentAt: null,
-    };
-  }
 }
 
 async function attemptEmailDelivery(input: {
@@ -226,6 +172,7 @@ async function attemptEmailDelivery(input: {
       configured: true,
       attempted: true,
       status: "sent",
+      retryable: false,
       error: null,
       httpStatus: null,
       sentAt: new Date(),
@@ -241,88 +188,12 @@ async function attemptEmailDelivery(input: {
       configured: true,
       attempted: true,
       status: "failed",
+      retryable: false,
       error: sanitiseErrorMessage(error),
       httpStatus: null,
       sentAt: null,
     };
   }
-}
-
-function isLikelyTeamsWebhook(url: string): boolean {
-  try {
-    const { hostname } = new URL(url);
-    const h = hostname.toLowerCase();
-    return (
-      h.includes("office.com")
-      || h.includes("office365.com")
-      || h.includes("logic.azure.com")
-      || h.includes("powerautomate.com")
-    );
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Builds a Power Automate-friendly webhook payload.
- *
- * Power Automate's PostCardToConversation action expects `body/messageBody`
- * to be HTML, not raw JSON.  We include a pre-formatted `messageBody` HTML
- * field so the flow can map it directly:
- *
- *   body/messageBody  →  @{triggerBody()?['messageBody']}
- *
- * All raw lead fields are also included so the flow can use them individually.
- */
-function buildPowerAutomatePayload(input: {
-  landingPageId: string;
-  lpTitle: string;
-  name: string;
-  email: string;
-  phone: string | null;
-  message: string | null;
-  capturedAtIso: string;
-  referrer: string | null;
-  fields: Record<string, unknown>;
-}): Record<string, unknown> {
-  const taken = new Set(["name", "email", "phone", "message", "cf-turnstile-response"]);
-
-  const extraRows = Object.entries(input.fields)
-    .filter(([k]) => !taken.has(k.toLowerCase()))
-    .map(([k, v]) => {
-      const val = typeof v === "string" ? v : JSON.stringify(v);
-      return val ? `<tr><td><strong>${k}</strong></td><td>${val.slice(0, 500)}</td></tr>` : "";
-    })
-    .filter(Boolean)
-    .join("");
-
-  const html = `
-<h3>New lead: ${input.name || input.email}</h3>
-<table>
-  <tr><td><strong>Landing Page</strong></td><td>${input.lpTitle}</td></tr>
-  <tr><td><strong>Name</strong></td><td>${input.name || "(not provided)"}</td></tr>
-  <tr><td><strong>Email</strong></td><td>${input.email}</td></tr>
-  <tr><td><strong>Phone</strong></td><td>${input.phone || "(not provided)"}</td></tr>
-  <tr><td><strong>Message</strong></td><td>${input.message || "(not provided)"}</td></tr>
-  ${extraRows}
-  <tr><td><strong>Submitted</strong></td><td>${input.capturedAtIso}</td></tr>
-  <tr><td><strong>Referrer</strong></td><td>${input.referrer || "(not provided)"}</td></tr>
-</table>`.trim();
-
-  return {
-    // Pre-formatted HTML for PostCardToConversation body/messageBody
-    messageBody: html,
-    // Raw fields for any other flow actions
-    landingPageId: input.landingPageId,
-    lpTitle: input.lpTitle,
-    capturedAt: input.capturedAtIso,
-    name: input.name,
-    email: input.email,
-    phone: input.phone ?? "",
-    message: input.message ?? "",
-    referrer: input.referrer ?? "",
-    ...input.fields,
-  };
 }
 
 // POST /api/share/landing-page/[token]/lead — capture form submission (public, no auth)
@@ -474,12 +345,12 @@ export async function POST(
     email: lead.email,
     phone: lead.phone,
     message: lead.message,
+    createdAt: lead.createdAt,
   };
 
   const [webhookDelivery, emailDelivery] = await Promise.all([
     attemptWebhookDelivery({
       landingPage,
-      formConfig,
       lead: capturedLead,
       body,
       referrer,
@@ -495,26 +366,50 @@ export async function POST(
 
   const hasConfiguredChannel = webhookDelivery.configured || emailDelivery.configured;
   const hasSuccessfulChannel = webhookDelivery.status === "sent" || emailDelivery.status === "sent";
-  const attemptCount = Number(webhookDelivery.attempted) + Number(emailDelivery.attempted);
+  const attemptCount = Number(webhookDelivery.configured) + Number(emailDelivery.configured);
   const now = new Date();
+  const webhookAttemptNumber = webhookDelivery.configured ? 1 : null;
+  const nextWebhookRetryAt = (
+    webhookDelivery.status === "failed"
+    && webhookDelivery.retryable
+    && webhookAttemptNumber
+  )
+    ? getNextWebhookRetryAt(webhookAttemptNumber, now)
+    : null;
 
   try {
-    await prisma.landingPageLead.update({
-      where: { id: lead.id },
-      data: {
-        emailStatus: emailDelivery.status,
-        emailSentAt: emailDelivery.sentAt ?? undefined,
-        emailError: emailDelivery.error ?? undefined,
-        webhookStatus: webhookDelivery.status,
-        webhookSentAt: webhookDelivery.sentAt ?? undefined,
-        webhookHttpStatus: webhookDelivery.httpStatus ?? undefined,
-        webhookError: webhookDelivery.error ?? undefined,
-        notificationAttempts: attemptCount > 0 ? attemptCount : undefined,
-        lastNotificationAttemptAt: attemptCount > 0 ? now : undefined,
-        lastNotificationSuccessAt: hasSuccessfulChannel
-          ? (webhookDelivery.sentAt ?? emailDelivery.sentAt ?? now)
-          : undefined,
-      },
+    await prisma.$transaction(async (tx) => {
+      await tx.landingPageLead.update({
+        where: { id: lead.id },
+        data: {
+          emailStatus: emailDelivery.status,
+          emailSentAt: emailDelivery.sentAt ?? undefined,
+          emailError: emailDelivery.error ?? undefined,
+          webhookStatus: webhookDelivery.status,
+          webhookSentAt: webhookDelivery.sentAt ?? undefined,
+          webhookHttpStatus: webhookDelivery.httpStatus ?? undefined,
+          webhookError: webhookDelivery.error ?? undefined,
+          webhookRetryCount: webhookAttemptNumber ?? undefined,
+          nextWebhookRetryAt: nextWebhookRetryAt ?? undefined,
+          notificationAttempts: attemptCount > 0 ? attemptCount : undefined,
+          lastNotificationAttemptAt: attemptCount > 0 ? now : undefined,
+          lastNotificationSuccessAt: hasSuccessfulChannel
+            ? (webhookDelivery.sentAt ?? emailDelivery.sentAt ?? now)
+            : undefined,
+        },
+      });
+
+      if (webhookAttemptNumber) {
+        await tx.landingPageLeadWebhookAttempt.create({
+          data: {
+            leadId: lead.id,
+            attemptNumber: webhookAttemptNumber,
+            status: webhookDelivery.status,
+            httpStatus: webhookDelivery.httpStatus ?? undefined,
+            error: webhookDelivery.error ?? undefined,
+          },
+        });
+      }
     });
   } catch (error) {
     console.error("[lead] Failed to persist delivery status:", error);

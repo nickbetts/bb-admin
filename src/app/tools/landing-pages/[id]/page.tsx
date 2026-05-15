@@ -562,6 +562,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
   });
   const trackingSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const trackingSaveRequestRef = useRef(0);
+  const trackingSavePromiseRef = useRef<Promise<boolean> | null>(null);
 
   // Leads viewer modal
   const [showLeadsModal, setShowLeadsModal] = useState(false);
@@ -1552,131 +1553,153 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
   const saveTrackingSettings = useCallback(async (opts?: { showSaved?: boolean; silent?: boolean }) => {
     if (!lp) return false;
 
-    const { showSaved = true, silent = true } = opts ?? {};
-    const requestId = ++trackingSaveRequestRef.current;
-    setSavingAnalytics(true);
-    if (showSaved) setAnalyticsSaved(false);
+    if (trackingSavePromiseRef.current) {
+      return trackingSavePromiseRef.current;
+    }
 
-    let nextFormConfig: LpFormConfig = formConfig;
-    if ((formConfig.fields?.length ?? 0) > 0) {
+    const savePromise = (async () => {
+      const { showSaved = true, silent = true } = opts ?? {};
+      const requestId = ++trackingSaveRequestRef.current;
+      setSavingAnalytics(true);
+      if (showSaved) setAnalyticsSaved(false);
+
+      let nextFormConfig: LpFormConfig = formConfig;
+      if ((formConfig.fields?.length ?? 0) > 0) {
+        try {
+          const sanityRes = await fetch(`/api/tools/landing-pages/${lp.id}/ai-email-field-sanity`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ fields: formConfig.fields }),
+          });
+          if (sanityRes.ok) {
+            const sanityData = await sanityRes.json() as { fields?: LpFormConfig["fields"] };
+            if (Array.isArray(sanityData.fields) && sanityData.fields.length > 0) {
+              nextFormConfig = {
+                ...formConfig,
+                fields: sanityData.fields,
+              };
+            }
+          }
+        } catch {
+          // Non-blocking: continue save with current form config.
+        }
+      }
+
+      let htmlWithFormConfig = previewHtml;
+
       try {
-        const sanityRes = await fetch(`/api/tools/landing-pages/${lp.id}/ai-email-field-sanity`, {
+        const aiRes = await fetch("/api/tools/landing-pages/rebuild-form", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fields: formConfig.fields }),
+          body: JSON.stringify({
+            html: previewHtml,
+            fields: nextFormConfig.fields ?? [],
+          }),
         });
-        if (sanityRes.ok) {
-          const sanityData = await sanityRes.json() as { fields?: LpFormConfig["fields"] };
-          if (Array.isArray(sanityData.fields) && sanityData.fields.length > 0) {
-            nextFormConfig = {
-              ...formConfig,
-              fields: sanityData.fields,
-            };
+
+        if (aiRes.ok) {
+          const aiData = await aiRes.json() as { formHtml?: string };
+          if (aiData.formHtml?.trim()) {
+            htmlWithFormConfig = replaceBuiltInForm(previewHtml, aiData.formHtml);
           }
         }
       } catch {
-        // Non-blocking: continue save with current form config.
+        // Fall back to deterministic rewriting below.
       }
-    }
 
-    let htmlWithFormConfig = previewHtml;
+      htmlWithFormConfig = applyConfiguredFormFields(htmlWithFormConfig, nextFormConfig.fields ?? []);
 
-    try {
-      const aiRes = await fetch("/api/tools/landing-pages/rebuild-form", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          html: previewHtml,
-          fields: nextFormConfig.fields ?? [],
-        }),
-      });
+      try {
+        const res = await fetch(`/api/tools/landing-pages/${lp.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            analyticsConfig,
+            formConfig: nextFormConfig,
+            html: htmlWithFormConfig,
+          }),
+        });
 
-      if (aiRes.ok) {
-        const aiData = await aiRes.json() as { formHtml?: string };
-        if (aiData.formHtml?.trim()) {
-          htmlWithFormConfig = replaceBuiltInForm(previewHtml, aiData.formHtml);
+        if (!res.ok) {
+          if (!silent) {
+            toast("Could not save Tracking/Form changes.", "error");
+          }
+          return false;
         }
-      }
-    } catch {
-      // Fall back to deterministic rewriting below.
-    }
 
-    htmlWithFormConfig = applyConfiguredFormFields(htmlWithFormConfig, nextFormConfig.fields ?? []);
+        const data = await res.json();
 
-    try {
-      const res = await fetch(`/api/tools/landing-pages/${lp.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          analyticsConfig,
-          formConfig: nextFormConfig,
-          html: htmlWithFormConfig,
-        }),
-      });
+        // Ignore stale responses from older in-flight requests.
+        if (requestId !== trackingSaveRequestRef.current) {
+          return true;
+        }
 
-      if (!res.ok) {
+        if (htmlWithFormConfig !== previewHtml) {
+          setPreviewHtml(htmlWithFormConfig);
+        }
+
+        if (nextFormConfig !== formConfig) {
+          setFormConfig(nextFormConfig);
+        }
+
+        setLp((prev) => prev ? {
+          ...prev,
+          currentHtml: data.landingPage.currentHtml,
+          analyticsConfig: data.landingPage.analyticsConfig,
+          formConfig: data.landingPage.formConfig,
+        } : prev);
+
+        setTrackingBaseline({
+          analytics: JSON.stringify(analyticsConfig ?? {}),
+          form: JSON.stringify(nextFormConfig ?? {}),
+        });
+
+        if (showSaved) {
+          setAnalyticsSaved(true);
+        }
+
+        return true;
+      } catch {
         if (!silent) {
           toast("Could not save Tracking/Form changes.", "error");
         }
         return false;
+      } finally {
+        if (requestId === trackingSaveRequestRef.current) {
+          setSavingAnalytics(false);
+        }
       }
+    })();
 
-      const data = await res.json();
+    trackingSavePromiseRef.current = savePromise;
 
-      // Ignore stale responses from older in-flight requests.
-      if (requestId !== trackingSaveRequestRef.current) {
-        return true;
-      }
-
-      if (htmlWithFormConfig !== previewHtml) {
-        setPreviewHtml(htmlWithFormConfig);
-      }
-
-      if (nextFormConfig !== formConfig) {
-        setFormConfig(nextFormConfig);
-      }
-
-      setLp((prev) => prev ? {
-        ...prev,
-        currentHtml: data.landingPage.currentHtml,
-        analyticsConfig: data.landingPage.analyticsConfig,
-        formConfig: data.landingPage.formConfig,
-      } : prev);
-
-      setTrackingBaseline({
-        analytics: JSON.stringify(analyticsConfig ?? {}),
-        form: JSON.stringify(nextFormConfig ?? {}),
-      });
-
-      if (showSaved) {
-        setAnalyticsSaved(true);
-      }
-
-      return true;
-    } catch {
-      if (!silent) {
-        toast("Could not save Tracking/Form changes.", "error");
-      }
-      return false;
+    try {
+      return await savePromise;
     } finally {
-      if (requestId === trackingSaveRequestRef.current) {
-        setSavingAnalytics(false);
+      if (trackingSavePromiseRef.current === savePromise) {
+        trackingSavePromiseRef.current = null;
       }
     }
   }, [lp, previewHtml, formConfig, analyticsConfig, toast]);
+
+  const saveTrackingSettingsRef = useRef(saveTrackingSettings);
+
+  useEffect(() => {
+    saveTrackingSettingsRef.current = saveTrackingSettings;
+  }, [saveTrackingSettings]);
 
   useEffect(() => {
     if (!showTrackingSettings || !trackingDirty) return;
 
     if (trackingSaveTimerRef.current) clearTimeout(trackingSaveTimerRef.current);
     trackingSaveTimerRef.current = setTimeout(() => {
-      void saveTrackingSettings({ showSaved: false, silent: true });
+      void saveTrackingSettingsRef.current({ showSaved: false, silent: true });
     }, 800);
 
     return () => {
       if (trackingSaveTimerRef.current) clearTimeout(trackingSaveTimerRef.current);
     };
-  }, [showTrackingSettings, trackingDirty, saveTrackingSettings]);
+  }, [showTrackingSettings, trackingDirty]);
 
   const openTrackingSettings = () => {
     setAnalyticsSaved(false);
@@ -1697,7 +1720,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
     }
 
     if (trackingDirty) {
-      const saved = await saveTrackingSettings({ showSaved: false, silent: false });
+      const saved = await saveTrackingSettingsRef.current({ showSaved: false, silent: false });
       if (!saved) return;
     }
 

@@ -877,14 +877,34 @@ model LandingPageLead {
   webhookSentAt DateTime?
   webhookHttpStatus Int?
   webhookError  String?
+  webhookRetryCount Int?
+  nextWebhookRetryAt DateTime?
   notificationAttempts Int?
   lastNotificationAttemptAt DateTime?
   lastNotificationSuccessAt DateTime?
   landingPage   LandingPage @relation(fields: [landingPageId], references: [id], onDelete: Cascade)
+  webhookAttempts LandingPageLeadWebhookAttempt[]
 
   @@index([landingPageId, createdAt])
   @@index([landingPageId, emailStatus, createdAt])
   @@index([landingPageId, webhookStatus, createdAt])
+  @@index([webhookStatus, nextWebhookRetryAt])
+}
+
+// Persisted webhook delivery history for LP lead retries and diagnostics
+model LandingPageLeadWebhookAttempt {
+  id            String           @id @default(cuid())
+  leadId        String
+  attemptNumber Int
+  status        String // sent | failed
+  httpStatus    Int?
+  error         String?
+  createdAt     DateTime         @default(now())
+  lead          LandingPageLead  @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@unique([leadId, attemptNumber])
+  @@index([leadId, createdAt])
+  @@index([status, createdAt])
 }
 
 // AI-translated versions of a landing page, served via ?lang= query param
