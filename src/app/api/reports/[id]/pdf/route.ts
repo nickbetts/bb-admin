@@ -377,6 +377,10 @@ export async function GET(
             console.warn(`[pdf-guard] Skipping chunk with non-positive height: idx=${idx} chunk=${chunk} id=${region.id} chunkStartY=${chunkStartY} chunkH=${chunkH}`);
             continue;
           }
+          if (chunkH < 100) {
+            console.warn(`[pdf-guard] Skipping chunk with too-small height (<100px): idx=${idx} chunk=${chunk} id=${region.id} chunkStartY=${chunkStartY} chunkH=${chunkH}`);
+            continue;
+          }
 
           console.log(`[pdf-chunk] idx=${idx} id=${region.id} chunk=${chunk} chunkStartY=${chunkStartY} chunkH=${chunkH}`);
 
