@@ -144,6 +144,26 @@ function diffStr(curr: number, prev: number | null | undefined, fmt: "count" | "
   return sign + (fmt === "currency" ? formatCurrency(Math.abs(d)) : formatNumber(Math.abs(d)));
 }
 
+async function fetchWithTimeout(url: string, parentSignal: AbortSignal, timeoutMs = 20000): Promise<Response> {
+  const requestController = new AbortController();
+  const onParentAbort = () => requestController.abort();
+
+  parentSignal.addEventListener("abort", onParentAbort);
+  const timeoutId = globalThis.setTimeout(() => requestController.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, { signal: requestController.signal });
+  } catch (error) {
+    if (!parentSignal.aborted && requestController.signal.aborted) {
+      throw new Error(`GA4 request timed out (${timeoutMs}ms): ${url}`);
+    }
+    throw error;
+  } finally {
+    globalThis.clearTimeout(timeoutId);
+    parentSignal.removeEventListener("abort", onParentAbort);
+  }
+}
+
 export function GA4Section({ propertyId, startDate, endDate, compareStartDate, compareEndDate, crossPlatformContext, visibleBlocks, hiddenCards, hideAlerts, hideAi, clientId, clientName, onMetricsReady, onPreviousMetricsReady, afterHeader }: GA4SectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const showCard = (blockId: string, cardId: string) => !hiddenCards?.[blockId]?.includes(cardId);
@@ -301,39 +321,39 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
         if (yoyEnd.getMonth() !== origEndMonth) yoyEnd.setDate(0);
         const yoyBase = `/api/ga4?propertyId=${encodeURIComponent(propertyId)}&startDate=${yoyStart.toISOString().split("T")[0]}&endDate=${yoyEnd.toISOString().split("T")[0]}`;
         const [ovRes, dailyRes, srcRes, pagesRes, prevOvRes, prevPagesRes, geoRes, devRes, organicRes, yoyRes, nvrRes, demoRes, cvEvRes, cvChRes, aiRefRes, lpRes, ujRes, crRes, sessDurRes, evParamRes, contGrpRes, scrollRes, browserOsRes, ecomRevRes, userAcqRes, revSessRes] = await Promise.all([
-          fetch(`${base}&type=overview`, { signal: controller.signal }),
-          fetch(`${base}&type=daily`, { signal: controller.signal }),
-          fetch(`${base}&type=sources`, { signal: controller.signal }),
-          fetch(`${base}&type=pages`, { signal: controller.signal }),
-          fetch(`${prevBase}&type=overview`, { signal: controller.signal }),
-          fetch(`${prevBase}&type=pages`, { signal: controller.signal }),
-          fetch(`${base}&type=geography`, { signal: controller.signal }),
-          fetch(`${base}&type=devices`, { signal: controller.signal }),
-          fetch(`${base}&type=organic-overview`, { signal: controller.signal }),
-          fetch(`${yoyBase}&type=overview`, { signal: controller.signal }),
-          fetch(`${base}&type=new-vs-returning`, { signal: controller.signal }),
-          fetch(`${base}&type=demographics`, { signal: controller.signal }),
-          fetch(`${base}&type=conversion-events`, { signal: controller.signal }),
-          fetch(`${base}&type=conversions-by-channel`, { signal: controller.signal }),
-          fetch(`${base}&type=ai-referrals`, { signal: controller.signal }),
-          fetch(`${base}&type=landing-pages`, { signal: controller.signal }),
-          fetch(`${base}&type=user-journeys`, { signal: controller.signal }),
-          fetch(`${base}&type=cohort-retention`, { signal: controller.signal }),
-          fetch(`${base}&type=session-duration`, { signal: controller.signal }).catch(() => null),
-          fetch(`${base}&type=event-parameters`, { signal: controller.signal }).catch(() => null),
-          fetch(`${base}&type=content-grouping`, { signal: controller.signal }).catch(() => null),
-          fetch(`${base}&type=scroll-depth`, { signal: controller.signal }).catch(() => null),
-          fetch(`${base}&type=browser-os`, { signal: controller.signal }).catch(() => null),
-          fetch(`${base}&type=ecommerce-revenue`, { signal: controller.signal }).catch(() => null),
-          fetch(`${base}&type=user-acquisition`, { signal: controller.signal }).catch(() => null),
-          fetch(`${base}&type=revenue-per-session`, { signal: controller.signal }).catch(() => null),
+          fetchWithTimeout(`${base}&type=overview`, controller.signal),
+          fetchWithTimeout(`${base}&type=daily`, controller.signal),
+          fetchWithTimeout(`${base}&type=sources`, controller.signal),
+          fetchWithTimeout(`${base}&type=pages`, controller.signal),
+          fetchWithTimeout(`${prevBase}&type=overview`, controller.signal).catch(() => null),
+          fetchWithTimeout(`${prevBase}&type=pages`, controller.signal).catch(() => null),
+          fetchWithTimeout(`${base}&type=geography`, controller.signal).catch(() => null),
+          fetchWithTimeout(`${base}&type=devices`, controller.signal).catch(() => null),
+          fetchWithTimeout(`${base}&type=organic-overview`, controller.signal).catch(() => null),
+          fetchWithTimeout(`${yoyBase}&type=overview`, controller.signal).catch(() => null),
+          fetchWithTimeout(`${base}&type=new-vs-returning`, controller.signal).catch(() => null),
+          fetchWithTimeout(`${base}&type=demographics`, controller.signal).catch(() => null),
+          fetchWithTimeout(`${base}&type=conversion-events`, controller.signal).catch(() => null),
+          fetchWithTimeout(`${base}&type=conversions-by-channel`, controller.signal).catch(() => null),
+          fetchWithTimeout(`${base}&type=ai-referrals`, controller.signal).catch(() => null),
+          fetchWithTimeout(`${base}&type=landing-pages`, controller.signal).catch(() => null),
+          fetchWithTimeout(`${base}&type=user-journeys`, controller.signal).catch(() => null),
+          fetchWithTimeout(`${base}&type=cohort-retention`, controller.signal).catch(() => null),
+          fetchWithTimeout(`${base}&type=session-duration`, controller.signal).catch(() => null),
+          fetchWithTimeout(`${base}&type=event-parameters`, controller.signal).catch(() => null),
+          fetchWithTimeout(`${base}&type=content-grouping`, controller.signal).catch(() => null),
+          fetchWithTimeout(`${base}&type=scroll-depth`, controller.signal).catch(() => null),
+          fetchWithTimeout(`${base}&type=browser-os`, controller.signal).catch(() => null),
+          fetchWithTimeout(`${base}&type=ecommerce-revenue`, controller.signal).catch(() => null),
+          fetchWithTimeout(`${base}&type=user-acquisition`, controller.signal).catch(() => null),
+          fetchWithTimeout(`${base}&type=revenue-per-session`, controller.signal).catch(() => null),
         ]);
 
         let resolvedDailyRes = dailyRes;
         if (!dailyRes.ok && !controller.signal.aborted) {
           logPdfGa4(`daily endpoint non-OK on first attempt: status=${dailyRes.status}`);
           try {
-            resolvedDailyRes = await fetch(`${base}&type=daily`, { signal: controller.signal });
+            resolvedDailyRes = await fetchWithTimeout(`${base}&type=daily`, controller.signal);
             if (!resolvedDailyRes.ok) {
               logPdfGa4(`daily endpoint retry non-OK: status=${resolvedDailyRes.status}`);
             }
@@ -357,11 +377,11 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
           throw new Error(`Failed to fetch GA4 top pages (${pagesRes.status})`);
         }
 
-        if (!prevOvRes.ok) {
-          logPdfGa4(`comparison overview non-OK: status=${prevOvRes.status}`);
+        if (!prevOvRes?.ok) {
+          logPdfGa4(`comparison overview non-OK or unavailable${prevOvRes ? `: status=${prevOvRes.status}` : ""}`);
         }
-        if (!prevPagesRes.ok) {
-          logPdfGa4(`comparison pages non-OK: status=${prevPagesRes.status}`);
+        if (!prevPagesRes?.ok) {
+          logPdfGa4(`comparison pages non-OK or unavailable${prevPagesRes ? `: status=${prevPagesRes.status}` : ""}`);
         }
 
         const [ov, d, s, p, prevOv, prevP, geo, devs, organic, yoy, nvr, demo, cvEv, cvCh, aiRef, lp, uj, cr, sessDurData, evParamData, contGrpData, scrollData, browserData, ecomRevData, userAcqData, revSessData] = await Promise.all([
@@ -369,20 +389,20 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
           resolvedDailyRes.json(),
           srcRes.json(),
           pagesRes.json(),
-          prevOvRes.ok ? prevOvRes.json() : Promise.resolve(null),
-          prevPagesRes.ok ? prevPagesRes.json() : Promise.resolve([]),
-          geoRes.ok ? geoRes.json() : Promise.resolve([]),
-          devRes.ok ? devRes.json() : Promise.resolve([]),
-          organicRes.ok ? organicRes.json() : Promise.resolve(null),
-          yoyRes.ok ? yoyRes.json() : Promise.resolve(null),
-          nvrRes.ok ? nvrRes.json() : Promise.resolve(null),
-          demoRes.ok ? demoRes.json() : Promise.resolve(null),
-          cvEvRes.ok ? cvEvRes.json() : Promise.resolve([]),
-          cvChRes.ok ? cvChRes.json() : Promise.resolve([]),
-          aiRefRes.ok ? aiRefRes.json() : Promise.resolve([]),
-          lpRes.ok ? lpRes.json().catch(() => []) : Promise.resolve([]),
-          ujRes.ok ? ujRes.json().catch(() => []) : Promise.resolve([]),
-          crRes.ok ? crRes.json().catch(() => []) : Promise.resolve([]),
+          prevOvRes?.ok ? prevOvRes.json() : Promise.resolve(null),
+          prevPagesRes?.ok ? prevPagesRes.json() : Promise.resolve([]),
+          geoRes?.ok ? geoRes.json() : Promise.resolve([]),
+          devRes?.ok ? devRes.json() : Promise.resolve([]),
+          organicRes?.ok ? organicRes.json() : Promise.resolve(null),
+          yoyRes?.ok ? yoyRes.json() : Promise.resolve(null),
+          nvrRes?.ok ? nvrRes.json() : Promise.resolve(null),
+          demoRes?.ok ? demoRes.json() : Promise.resolve(null),
+          cvEvRes?.ok ? cvEvRes.json() : Promise.resolve([]),
+          cvChRes?.ok ? cvChRes.json() : Promise.resolve([]),
+          aiRefRes?.ok ? aiRefRes.json() : Promise.resolve([]),
+          lpRes?.ok ? lpRes.json().catch(() => []) : Promise.resolve([]),
+          ujRes?.ok ? ujRes.json().catch(() => []) : Promise.resolve([]),
+          crRes?.ok ? crRes.json().catch(() => []) : Promise.resolve([]),
           sessDurRes?.ok ? sessDurRes.json().catch(() => []) : Promise.resolve([]),
           evParamRes?.ok ? evParamRes.json().catch(() => []) : Promise.resolve([]),
           contGrpRes?.ok ? contGrpRes.json().catch(() => []) : Promise.resolve([]),
