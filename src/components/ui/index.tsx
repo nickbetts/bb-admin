@@ -22,7 +22,7 @@ export function LoadingSpinner({ size = "md", className, label = "Loading" }: Lo
       className={cn(
         "animate-spin rounded-full border-slate-200 border-t-indigo-600",
         sizeMap[size],
-        className
+        className,
       )}
     >
       <span className="sr-only">{label}</span>
@@ -38,13 +38,7 @@ interface SectionCardProps {
   action?: React.ReactNode;
 }
 
-export function SectionCard({
-  title,
-  subtitle,
-  children,
-  className,
-  action,
-}: SectionCardProps) {
+export function SectionCard({ title, subtitle, children, className, action }: SectionCardProps) {
   return (
     <div className={cn("card", className)}>
       <div className="card-header">
@@ -75,7 +69,11 @@ export function Delta({ current, previous, format = "none", invert = false }: De
   const pctVal = (diff / previous) * 100;
   if (!isFinite(pctVal)) return null;
   if (Math.abs(pctVal) < 0.05) {
-    return <span style={{ fontSize: 11, color: "#94a3b8", fontWeight: 500, whiteSpace: "nowrap" }}>–</span>;
+    return (
+      <span style={{ fontSize: 11, color: "#94a3b8", fontWeight: 500, whiteSpace: "nowrap" }}>
+        –
+      </span>
+    );
   }
   const isUp = diff > 0;
   const isGood = invert ? !isUp : isUp;
@@ -84,16 +82,54 @@ export function Delta({ current, previous, format = "none", invert = false }: De
   let numPart = "";
   if (format === "count") {
     const abs = Math.abs(diff);
-    const rendered = abs >= 1000 ? formatNumber(Math.round(abs)) : abs % 1 === 0 ? String(Math.round(abs)) : abs.toFixed(1);
+    const rendered =
+      abs >= 1000
+        ? formatNumber(Math.round(abs))
+        : abs % 1 === 0
+          ? String(Math.round(abs))
+          : abs.toFixed(1);
     numPart = `${isUp ? "+" : "-"}${rendered} `;
   } else if (format === "currency") {
     numPart = `${isUp ? "+" : "-"}${formatCurrency(Math.abs(diff))} `;
   }
-  const ArrowShape = isUp
-    ? <span style={{ display: "inline-block", width: 0, height: 0, borderLeft: "3.5px solid transparent", borderRight: "3.5px solid transparent", borderBottom: "5px solid currentColor", verticalAlign: "middle", marginRight: 2 }} />
-    : <span style={{ display: "inline-block", width: 0, height: 0, borderLeft: "3.5px solid transparent", borderRight: "3.5px solid transparent", borderTop: "5px solid currentColor", verticalAlign: "middle", marginRight: 2 }} />;
+  const ArrowShape = isUp ? (
+    <span
+      style={{
+        display: "inline-block",
+        width: 0,
+        height: 0,
+        borderLeft: "3.5px solid transparent",
+        borderRight: "3.5px solid transparent",
+        borderBottom: "5px solid currentColor",
+        verticalAlign: "middle",
+        marginRight: 2,
+      }}
+    />
+  ) : (
+    <span
+      style={{
+        display: "inline-block",
+        width: 0,
+        height: 0,
+        borderLeft: "3.5px solid transparent",
+        borderRight: "3.5px solid transparent",
+        borderTop: "5px solid currentColor",
+        verticalAlign: "middle",
+        marginRight: 2,
+      }}
+    />
+  );
   return (
-    <span style={{ display: "block", fontSize: 11, fontWeight: 500, color, whiteSpace: "nowrap", marginTop: 2 }}>
+    <span
+      style={{
+        display: "block",
+        fontSize: 11,
+        fontWeight: 500,
+        color,
+        whiteSpace: "nowrap",
+        marginTop: 2,
+      }}
+    >
       {ArrowShape} {numPart}({pctStr})
     </span>
   );
@@ -116,11 +152,18 @@ export function Badge({ children, variant = "default" }: BadgeProps) {
   return (
     <span
       className={cn(
-        "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium",
-        variantMap[variant]
+        "inline-flex items-center rounded px-2 py-0.5 text-xs font-medium",
+        variantMap[variant],
       )}
     >
       {children}
     </span>
   );
 }
+
+export * from "./InViewReveal";
+export * from "./LottieAnimation";
+export * from "./RadixDialog";
+export * from "./RadixDropdownMenu";
+export * from "./RadixPopover";
+export * from "./RadixTooltip";

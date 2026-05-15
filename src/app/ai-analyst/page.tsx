@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import LandingNav from "@/components/landing/LandingNav";
+import { useLandingPageMotion } from "@/components/landing/useLandingPageMotion";
 import {
   Brain,
   ArrowRight,
@@ -49,60 +50,9 @@ export default function AiAnalystPage() {
   const accentLight = "#c7d2fe";
   const accentGlow = "rgba(129,140,248,0.6)";
 
-  const [scrollPct, setScrollPct] = useState(0);
-  const [activeSection, setActiveSection] = useState("");
-  const [mouse, setMouse] = useState({ x: -999, y: -999 });
-  const [statsVisible, setStatsVisible] = useState(false);
-  const [parallaxY, setParallaxY] = useState(0);
-
-  useEffect(() => {
-    const onScroll = () => {
-      const el = document.documentElement;
-      setScrollPct((el.scrollTop / (el.scrollHeight - el.clientHeight)) * 100);
-      setParallaxY(el.scrollTop * 0.25);
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
-  useEffect(() => {
-    const onMouse = (e: MouseEvent) => setMouse({ x: e.clientX, y: e.clientY });
-    window.addEventListener("mousemove", onMouse, { passive: true });
-    return () => window.removeEventListener("mousemove", onMouse);
-  }, []);
-
   const navIds = ["features", "mockup", "cta"];
-  useEffect(() => {
-    const obs: IntersectionObserver[] = [];
-    navIds.forEach((id) => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      const o = new IntersectionObserver(
-        ([entry]) => { if (entry.isIntersecting) setActiveSection(id); },
-        { rootMargin: "-35% 0px -60% 0px" }
-      );
-      o.observe(el);
-      obs.push(o);
-    });
-    return () => obs.forEach((o) => o.disconnect());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("section-visible");
-            if (entry.target.id === "stats-row") setStatsVisible(true);
-          }
-        });
-      },
-      { threshold: 0.1 }
-    );
-    document.querySelectorAll<Element>(".reveal-section").forEach((el) => observer.observe(el));
-    return () => observer.disconnect();
-  }, []);
+  const { scrollPct, activeSection, mouse, statsVisible, parallaxY } =
+    useLandingPageMotion({ navIds });
 
   const particles = Array.from({ length: 18 }, (_, i) => ({
     id: i, top: `${6 + (i * 5.2) % 84}%`, left: `${4 + (i * 7.1) % 92}%`,

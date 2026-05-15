@@ -25,6 +25,29 @@ const REFINE_MODEL = "claude-sonnet-4-5"; // Faster for refinements — avoids 3
 // headroom for both the base page and any additions.
 const MAX_TOKENS = 64000;
 
+// Ingestion caps for richer multi-sector source material (property, ecommerce,
+// travel, services, etc.) while still bounding worst-case prompt size.
+const GENERATE_IMAGERY_URL_LIST_LIMIT = 36;
+const GENERATE_VISION_IMAGE_LIMIT = 16;
+const PLAN_IMAGERY_URL_LIST_LIMIT = 60;
+const PLAN_VISION_IMAGE_LIMIT = 20;
+const SECTION_IMAGERY_URL_LIST_LIMIT = 8;
+const SECTION_VISION_IMAGE_LIMIT = 8;
+const PRIMARY_SITE_HEADING_LIMIT = 32;
+const PRIMARY_SITE_LIST_ITEM_LIMIT = 180;
+const PRIMARY_SITE_STATS_LIMIT = 50;
+const PRIMARY_SITE_BODY_COPY_LIMIT = 30;
+const PRIMARY_SITE_FULL_TEXT_LIMIT = 40_000;
+const ADDITIONAL_PAGE_HEADING_LIMIT = 24;
+const ADDITIONAL_PAGE_LIST_ITEM_LIMIT = 100;
+const ADDITIONAL_PAGE_STATS_LIMIT = 40;
+const ADDITIONAL_PAGE_BODY_COPY_LIMIT = 20;
+const ADDITIONAL_PAGE_FULL_TEXT_LIMIT = 12_000;
+const ADDITIONAL_PAGES_TOTAL_CHAR_BUDGET = 180_000;
+const REFINE_SECTION_IMAGE_LIMIT = 8;
+const REFINE_IMAGE_LIMIT = 12;
+const CHAT_IMAGE_LIMIT = 12;
+
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export interface GenerateLPOptions {
@@ -83,9 +106,7 @@ type AnthropicMediaType = "image/jpeg" | "image/png" | "image/gif" | "image/webp
  * URLs that require cookies, sit behind a CDN that blocks bots, or
  * redirect through auth walls.
  */
-async function fetchImageBlock(
-  url: string,
-): Promise<{
+async function fetchImageBlock(url: string): Promise<{
   type: "image";
   source: { type: "base64"; media_type: AnthropicMediaType; data: string };
 } | null> {
@@ -243,14 +264,14 @@ function buildGenerateSystemPrompt(
     if (pc.listItems?.length)
       parts.push(
         `List items / bullet points from site (services, features, benefits):\n${pc.listItems
-          .slice(0, 30)
+          .slice(0, PRIMARY_SITE_LIST_ITEM_LIMIT)
           .map((i) => `  • ${i}`)
           .join("\n")}`,
       );
     if (pc.numericStats?.length)
       parts.push(
         `Stats and numbers found on site:\n${pc.numericStats
-          .slice(0, 15)
+          .slice(0, PRIMARY_SITE_STATS_LIMIT)
           .map((s) => `  ${s}`)
           .join("\n")}`,
       );
@@ -290,9 +311,13 @@ Social links: ${brandContext.socialLinks.slice(0, 4).join(", ") || "None provide
 ${pageCopyBlock}${rawHtmlBlock}
 ## Available imagery
 ${(() => {
-  const labelled = labelledImageUrls(brandContext.imageryUrls, uploadedImageUrls, 8);
+  const labelled = labelledImageUrls(
+    brandContext.imageryUrls,
+    uploadedImageUrls,
+    GENERATE_IMAGERY_URL_LIST_LIMIT,
+  );
   return labelled
-    ? `The images are attached above for visual analysis. Study each one: identify people, products, locations, brand style, and real content. Use these exact URLs in <img src> tags in the generated page — pick the most suitable image for each placement.\n\n${uploadedImageUrls?.length ? `User-uploaded reference images (prioritise these):\n${uploadedImageUrls.map((u, i) => `  Image ${i + 1}: ${u}`).join("\n")}\n\n` : ""}Scraped website images:\n${labelledImageUrls(brandContext.imageryUrls, undefined, 8)}`
+    ? `The images are attached above for visual analysis. Study each one: identify people, products, locations, brand style, and real content. Use these exact URLs in <img src> tags in the generated page — pick the most suitable image for each placement.\n\n${uploadedImageUrls?.length ? `User-uploaded reference images (prioritise these):\n${uploadedImageUrls.map((u, i) => `  Image ${i + 1}: ${u}`).join("\n")}\n\n` : ""}Scraped website images:\n${labelledImageUrls(brandContext.imageryUrls, undefined, GENERATE_IMAGERY_URL_LIST_LIMIT)}`
     : "No images available — use CSS gradients, patterns and bold typography for visual interest. Do NOT use emoji as illustrations.";
 })()}
 
@@ -632,7 +657,7 @@ export async function generateLandingPage(opts: GenerateLPOptions): Promise<stri
   const imageBlocks = await buildImageBlocks(
     opts.brandContext.imageryUrls,
     opts.uploadedImageUrls,
-    8,
+    GENERATE_VISION_IMAGE_LIMIT,
   );
 
   async function callGenerate(withImages: boolean) {
@@ -1246,7 +1271,7 @@ USER REQUEST: ${opts.prompt}`;
   }
 
   const imageBlocks = opts.imageUrls?.length
-    ? await buildImageBlocks(opts.imageUrls, undefined, 4)
+    ? await buildImageBlocks(opts.imageUrls, undefined, REFINE_SECTION_IMAGE_LIMIT)
     : [];
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1328,7 +1353,7 @@ export async function refineLandingPage(opts: RefineLPOptions): Promise<string> 
   }
 
   if (opts.imageUrls?.length) {
-    const imageBlocks = await buildImageBlocks(opts.imageUrls, undefined, 6);
+    const imageBlocks = await buildImageBlocks(opts.imageUrls, undefined, REFINE_IMAGE_LIMIT);
     const urlList = opts.imageUrls.map((u, i) => `${i + 1}. ${u}`).join("\n");
     const augmentedText = `${userContent}\n\nThe following images are attached by the user. Embed them in the new section using their original URLs as <img src="..."> values — do not use placeholder or data-URI src values.\n\n${urlList}`;
     messages.push({
@@ -1395,7 +1420,7 @@ export async function streamRefineLandingPage(opts: RefineLPOptions) {
   }
 
   if (opts.imageUrls?.length) {
-    const imageBlocks = await buildImageBlocks(opts.imageUrls, undefined, 6);
+    const imageBlocks = await buildImageBlocks(opts.imageUrls, undefined, REFINE_IMAGE_LIMIT);
     const urlList = opts.imageUrls.map((u, i) => `${i + 1}. ${u}`).join("\n");
     const augmentedText = `${userContent}\n\nThe following images are attached by the user. Embed them in the new section using their original URLs as <img src="..."> values — do not use placeholder or data-URI src values.\n\n${urlList}`;
     messages.push({
@@ -1658,7 +1683,7 @@ export async function chatAboutLandingPage(opts: ChatLPOptions): Promise<ChatLPR
   }
 
   if (opts.imageUrls?.length) {
-    const imageBlocks = await buildImageBlocks(opts.imageUrls, undefined, 6);
+    const imageBlocks = await buildImageBlocks(opts.imageUrls, undefined, CHAT_IMAGE_LIMIT);
     const urlList = opts.imageUrls.map((u, i) => `${i + 1}. ${u}`).join("\n");
     const augmentedText = `${userContent}\n\nThe following images are attached. If recommending a new section, note that these images should be embedded using their original URLs.\n\n${urlList}`;
     messages.push({
@@ -1828,11 +1853,12 @@ Output ONLY in this exact tagged format. No text outside the tags.
 </STICKY_BAR>
 
 ## Image assignment rules
-The imagery list below shows all available image URLs (numbered). For each section, look at the images and decide which 1-2 images best suit that section based on their visual content. Assign them in the section's "imageUrls" array using the exact URLs. Rules:
+The imagery list below shows all available image URLs (numbered). For each section, look at the images and assign all relevant ones in that section's "imageUrls" array using exact URLs. Rules:
 - Hero: assign the most dramatic, action-packed image (stadium, crowd, sport in motion)
-- Benefits/features cards: assign a different image per card where possible so cards vary visually
+- Benefits/features/listing cards: assign different images per card where possible so cards vary visually
 - Testimonials: use a team/people photo if available
-- If an image fits multiple sections, prefer assigning it to the most prominent one
+- For image-rich sectors (property, travel, ecommerce catalogues), include gallery/inventory-style sections and assign larger image sets (typically 4-8 images) to those sections.
+- If an image fits multiple sections, prefer assigning it to the most prominent one and avoid excessive duplication
 - Sections with no suitable image (e.g. FAQ, stats strip) should have an empty imageUrls array
 
 <SECTIONS>
@@ -1855,26 +1881,86 @@ function buildLPPlanUserPrompt(opts: GenerateLPOptions): string {
   if (pc) {
     if (pc.metaTitle) contentParts.push(`Site title: ${pc.metaTitle}`);
     if (pc.h1) contentParts.push(`H1: ${pc.h1}`);
-    if (pc.headings.length) contentParts.push(`Headings: ${pc.headings.slice(0, 12).join(" | ")}`);
+    if (pc.headings.length)
+      contentParts.push(
+        `Headings: ${pc.headings.slice(0, PRIMARY_SITE_HEADING_LIMIT).join(" | ")}`,
+      );
     if (pc.ctaTexts.length) contentParts.push(`CTAs: ${pc.ctaTexts.join(" | ")}`);
     if (pc.listItems?.length)
       contentParts.push(
         `Services / features:\n${pc.listItems
-          .slice(0, 30)
+          .slice(0, PRIMARY_SITE_LIST_ITEM_LIMIT)
           .map((i) => `  • ${i}`)
           .join("\n")}`,
       );
     if (pc.numericStats?.length)
-      contentParts.push(`Stats: ${pc.numericStats.slice(0, 12).join(" | ")}`);
+      contentParts.push(`Stats: ${pc.numericStats.slice(0, PRIMARY_SITE_STATS_LIMIT).join(" | ")}`);
     if (pc.bodyCopy.length)
       contentParts.push(
         `Body copy:\n${pc.bodyCopy
-          .slice(0, 10)
+          .slice(0, PRIMARY_SITE_BODY_COPY_LIMIT)
           .map((p) => `  "${p}"`)
           .join("\n")}`,
       );
-    if (pc.allBodyText) contentParts.push(`Full site text:\n${pc.allBodyText.slice(0, 10000)}`);
+    if (pc.allBodyText)
+      contentParts.push(
+        `Full site text:\n${pc.allBodyText.slice(0, PRIMARY_SITE_FULL_TEXT_LIMIT)}`,
+      );
   }
+
+  const additionalPageContentBlock = (() => {
+    if (!opts.additionalPageContents || opts.additionalPageContents.length === 0) return "";
+
+    const chunks: string[] = [];
+    let remainingBudget = ADDITIONAL_PAGES_TOTAL_CHAR_BUDGET;
+
+    for (const { sourceUrl, content: pc2 } of opts.additionalPageContents) {
+      if (remainingBudget <= 0) break;
+
+      const parts: string[] = [`### ${sourceUrl}`];
+      if (pc2.metaTitle) parts.push(`Title: ${pc2.metaTitle}`);
+      if (pc2.h1) parts.push(`H1: ${pc2.h1}`);
+      if (pc2.headings.length)
+        parts.push(`Headings: ${pc2.headings.slice(0, ADDITIONAL_PAGE_HEADING_LIMIT).join(" | ")}`);
+      if (pc2.ctaTexts.length) parts.push(`CTAs: ${pc2.ctaTexts.join(" | ")}`);
+      if (pc2.listItems?.length) {
+        parts.push(
+          `Services / features:\n${pc2.listItems
+            .slice(0, ADDITIONAL_PAGE_LIST_ITEM_LIMIT)
+            .map((i) => `  • ${i}`)
+            .join("\n")}`,
+        );
+      }
+      if (pc2.numericStats?.length)
+        parts.push(`Stats: ${pc2.numericStats.slice(0, ADDITIONAL_PAGE_STATS_LIMIT).join(" | ")}`);
+      if (pc2.bodyCopy.length) {
+        parts.push(
+          `Body copy:\n${pc2.bodyCopy
+            .slice(0, ADDITIONAL_PAGE_BODY_COPY_LIMIT)
+            .map((p) => `  "${p}"`)
+            .join("\n")}`,
+        );
+      }
+      if (pc2.allBodyText)
+        parts.push(`Full page text:\n${pc2.allBodyText.slice(0, ADDITIONAL_PAGE_FULL_TEXT_LIMIT)}`);
+
+      let chunk = parts.join("\n");
+      if (chunk.length > remainingBudget) {
+        chunk = `${chunk.slice(0, Math.max(0, remainingBudget - 3))}...`;
+      }
+
+      chunks.push(chunk);
+      remainingBudget -= chunk.length;
+    }
+
+    if (chunks.length === 0) return "";
+
+    return (
+      "\n## Additional page content (scraped from reference URLs)\n" +
+      "Use this content alongside the primary site content above — extract services, features, stats, and copy to enrich the landing page.\n\n" +
+      chunks.join("\n\n")
+    );
+  })();
 
   return `Plan a high-converting post-click landing page for this campaign.
 
@@ -1898,41 +1984,7 @@ ${bc.fonts.length ? bc.fonts.join(", ") : "Use a clean system font stack."}
 
 ## Scraped website content
 ${contentParts.join("\n\n") || "No content scraped — infer from brief."}
-${
-  opts.additionalPageContents && opts.additionalPageContents.length > 0
-    ? "\n## Additional page content (scraped from reference URLs)\nUse this content alongside the primary site content above — extract services, features, stats, and copy to enrich the landing page.\n\n" +
-      opts.additionalPageContents
-        .map(({ sourceUrl, content: pc2 }) => {
-          const parts: string[] = [`### ${sourceUrl}`];
-          if (pc2.metaTitle) parts.push(`Title: ${pc2.metaTitle}`);
-          if (pc2.h1) parts.push(`H1: ${pc2.h1}`);
-          if (pc2.headings.length) parts.push(`Headings: ${pc2.headings.slice(0, 12).join(" | ")}`);
-          if (pc2.ctaTexts.length) parts.push(`CTAs: ${pc2.ctaTexts.join(" | ")}`);
-          if (pc2.listItems?.length)
-            parts.push(
-              `Services / features:\n${pc2.listItems
-                .slice(0, 20)
-                .map((i) => `  • ${i}`)
-                .join("\n")}`,
-            );
-          if (pc2.numericStats?.length)
-            parts.push(`Stats: ${pc2.numericStats.slice(0, 10).join(" | ")}`);
-          if (pc2.bodyCopy.length)
-            parts.push(
-              `Body copy:\n${pc2.bodyCopy
-                .slice(0, 8)
-                .map((p) => `  "${p}"`)
-                .join("\n")}`,
-            );
-          if (pc2.allBodyText)
-            // Additional pages are supplementary — 2 KB is enough for the
-            // planner to extract services/stats without burying the brief.
-            parts.push(`Full page text:\n${pc2.allBodyText.slice(0, 2000)}`);
-          return parts.join("\n");
-        })
-        .join("\n\n")
-    : ""
-}
+${additionalPageContentBlock}
 ${buildPlannerCroBlock(opts.campaignType)}
 ${buildUserRequestedCroBlock(opts.requestedComponentIds ?? [])}
 
@@ -1944,7 +1996,7 @@ Numbered image list (reference these exact URLs in imageUrls arrays):
 ${(() => {
   const combined = [...(opts.uploadedImageUrls ?? []), ...opts.brandContext.imageryUrls]
     .filter((u) => /^https?:\/\//i.test(u) && !/\.svg(\?|$)/i.test(u))
-    .slice(0, 12);
+    .slice(0, PLAN_IMAGERY_URL_LIST_LIMIT);
   if (!combined.length)
     return "  None available — sections should use CSS gradients and bold typography.";
   return combined.map((u, i) => `  Image ${i + 1}: ${u}`).join("\n");
@@ -1996,7 +2048,11 @@ function buildSectionUserPrompt(params: {
   // general brand pool. This ensures each section gets the right images rather
   // than every section competing for the same generic pool.
   const sectionImageUrls = section.imageUrls?.length ? section.imageUrls : brandContext.imageryUrls;
-  const labelled = labelledImageUrls(sectionImageUrls, uploadedImageUrls, 4);
+  const labelled = labelledImageUrls(
+    sectionImageUrls,
+    uploadedImageUrls,
+    SECTION_IMAGERY_URL_LIST_LIMIT,
+  );
   const imagery = labelled
     ? `Images are visually attached for analysis. These images have been specifically selected for this section — use them as <img src="URL"> in the HTML. Every image in this list should appear somewhere in this section's markup:\n${labelled}\n\nIMPORTANT: Do NOT use a CSS gradient as a background when a real photo is available above. Use the photo.`
     : "No images available for this section — use CSS gradients, bold typography, and brand colours for visual impact.";
@@ -2040,7 +2096,7 @@ async function planLandingPage(opts: GenerateLPOptions): Promise<LPPagePlan> {
   const imageBlocks = await buildImageBlocks(
     opts.brandContext.imageryUrls,
     opts.uploadedImageUrls,
-    12,
+    PLAN_VISION_IMAGE_LIMIT,
   );
   const planPrompt = buildLPPlanUserPrompt(opts);
 
@@ -2118,7 +2174,11 @@ async function generateSectionHtml(params: {
   const sectionImagePool = params.section.imageUrls?.length
     ? params.section.imageUrls
     : params.brandContext.imageryUrls;
-  const imageBlocks = await buildImageBlocks(sectionImagePool, params.uploadedImageUrls, 4);
+  const imageBlocks = await buildImageBlocks(
+    sectionImagePool,
+    params.uploadedImageUrls,
+    SECTION_VISION_IMAGE_LIMIT,
+  );
   const sectionPrompt = buildSectionUserPrompt(params);
 
   async function callSection(withImages: boolean) {

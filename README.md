@@ -19,19 +19,19 @@ Built with **Next.js 16**, **React 19**, **Prisma v7**, **Tailwind CSS v4**, and
 
 ## Tech Stack
 
-| Layer        | Technology                                          |
-| ------------ | --------------------------------------------------- |
-| Framework    | Next.js 16.1.6 (App Router)                         |
-| Language     | TypeScript (strict)                                 |
-| UI           | React 19.2.3 + Tailwind CSS v4                      |
-| Charts       | Recharts 3.8                                        |
-| Database     | Prisma v7 + Vercel Postgres (Neon)                  |
-| AI           | OpenAI (GPT-4o-mini, GPT-4o, GPT-4o-search-preview) |
-| Auth         | HMAC-SHA256 signed cookies + bcrypt                 |
-| File storage | Vercel Blob                                         |
-| PDF          | Puppeteer-core + @sparticuz/chromium-min            |
-| Hosting      | Vercel (serverless)                                 |
-| CI           | GitHub Actions                                      |
+| Layer        | Technology                                                                               |
+| ------------ | ---------------------------------------------------------------------------------------- |
+| Framework    | Next.js 16.1.6 (App Router)                                                              |
+| Language     | TypeScript (strict)                                                                      |
+| UI           | React 19.2.3 + Tailwind CSS v4 + Framer Motion + Radix UI primitives + GSAP/Lenis/Lottie |
+| Charts       | Recharts 3.8                                                                             |
+| Database     | Prisma v7 + Vercel Postgres (Neon)                                                       |
+| AI           | OpenAI (GPT-4o-mini, GPT-4o, GPT-4o-search-preview)                                      |
+| Auth         | HMAC-SHA256 signed cookies + bcrypt                                                      |
+| File storage | Vercel Blob                                                                              |
+| PDF          | Puppeteer-core + @sparticuz/chromium-min                                                 |
+| Hosting      | Vercel (serverless)                                                                      |
+| CI           | GitHub Actions                                                                           |
 
 ---
 

@@ -80,6 +80,11 @@ prisma.config.ts        # Prisma CLI config — reads DIRECT_URL (preferred) the
 - **API caching**: wrap all external channel API calls with `withApiCache(key, ttlHours, fn)` from `src/lib/api-cache.ts`.
 - **Auth**: use `getSession()` for user-facing routes; `getSessionOrCronAuth(request)` for routes callable by cron jobs (also accepts `CRON_SECRET` bearer token).
 - **Tailwind v4** — utility-first, no component library. Keep styles co-located with components. No inline `style={{}}`.
+- **Frontend motion stack** — use `framer-motion` for component/page transitions and `react-intersection-observer` for in-view triggers. Prefer shared wrappers in `src/components/ui/InViewReveal.tsx` and `src/components/providers/FrontendEnhancementsProvider.tsx` over ad-hoc per-page animation code.
+- **Landing motion scaffold** — for landing/feature marketing pages with side-nav tracking, mouse spotlight, reveal-section observers, and parallax state, reuse `src/components/landing/useLandingPageMotion.ts` instead of repeating per-page `useEffect` blocks.
+- **Headless UI primitives** — use Radix wrappers in `src/components/ui/`: `RadixDialog`, `RadixPopover`, `RadixTooltip`, and `RadixDropdownMenu`.
+- **Animation utilities** — use `class-variance-authority` for variant-driven class composition (`src/components/ui/motion-variants.ts`) and `tailwindcss-animate` utility classes for state transitions.
+- **Premium motion tools** — `gsap`, `lenis`, and `lottie-react` are available for advanced interactions and hero-level animation when justified.
 - **Unit tests** — Vitest is available for unit/component tests. Use `npm run test:unit` (or `npm run test:unit:watch`) for local testing.
 - **Code quality automation** — Husky + lint-staged run ESLint and Prettier on staged files at commit time.
 - **British English** — all AI-generated text, comments, and UI copy should use British spellings.

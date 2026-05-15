@@ -13,6 +13,6 @@
     "tests/**/*.ts"
   ],
   "project": ["src/**/*.{ts,tsx}", "prisma/**/*.ts", "scripts/**/*.{ts,mjs}", "tests/**/*.ts"],
-  "ignoreDependencies": ["@libsql/client"],
+  "ignoreDependencies": ["@libsql/client", "tailwindcss-animate"],
   "ignoreBinaries": ["vercel"]
 }

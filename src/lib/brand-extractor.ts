@@ -16,12 +16,12 @@ export interface BrandColour {
 
 export interface PageContent {
   h1?: string;
-  headings: string[];       // h2–h4 text
-  ctaTexts: string[];       // button and CTA link text
-  bodyCopy: string[];       // body copy snippets
-  listItems: string[];      // <li> content — often services, benefits, features
-  numericStats: string[];   // snippets containing notable numbers/stats
-  allBodyText: string;      // cleaned full-page text (scripts/styles/nav/footer stripped)
+  headings: string[]; // h2–h4 text
+  ctaTexts: string[]; // button and CTA link text
+  bodyCopy: string[]; // body copy snippets
+  listItems: string[]; // <li> content — often services, benefits, features
+  numericStats: string[]; // snippets containing notable numbers/stats
+  allBodyText: string; // cleaned full-page text (scripts/styles/nav/footer stripped)
   metaTitle?: string;
   metaDescription?: string;
 }
@@ -41,7 +41,7 @@ export interface BrandContext {
     address?: string;
   };
   pageContent?: PageContent;
-  rawHtml?: string;     // Full source HTML of the scraped page — stored for deep LP generation context
+  rawHtml?: string; // Full source HTML of the scraped page — stored for deep LP generation context
 }
 
 // ── Main export ──────────────────────────────────────────────────────────────
@@ -153,7 +153,9 @@ export async function extractBrandContext(url: string): Promise<BrandContext> {
  * we want additional content context but not full brand analysis.
  * Silently returns null on any network/parse error.
  */
-export async function extractPageContentFromUrl(url: string): Promise<(PageContent & { sourceUrl: string; imageryUrls: string[] }) | null> {
+export async function extractPageContentFromUrl(
+  url: string,
+): Promise<(PageContent & { sourceUrl: string; imageryUrls: string[] }) | null> {
   if (!url || (!url.startsWith("http://") && !url.startsWith("https://"))) return null;
   try {
     const controller = new AbortController();
@@ -161,7 +163,8 @@ export async function extractPageContentFromUrl(url: string): Promise<(PageConte
     const res = await fetch(url, {
       signal: controller.signal,
       headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
         Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "en-GB,en;q=0.9",
       },
@@ -171,7 +174,11 @@ export async function extractPageContentFromUrl(url: string): Promise<(PageConte
     if (!res.ok) return null;
     const html = await res.text();
     const origin = new URL(url).origin;
-    return { ...extractPageContent(html), imageryUrls: extractImageryUrls(html, origin), sourceUrl: url };
+    return {
+      ...extractPageContent(html),
+      imageryUrls: extractImageryUrls(html, origin),
+      sourceUrl: url,
+    };
   } catch {
     return null;
   }
@@ -181,17 +188,23 @@ export async function extractPageContentFromUrl(url: string): Promise<(PageConte
 
 function extractCompanyName(html: string): string | undefined {
   // Try structured data first
-  const ldJsonBlocks = [...html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)];
+  const ldJsonBlocks = [
+    ...html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi),
+  ];
   for (const block of ldJsonBlocks) {
     try {
       const data = JSON.parse(block[1]);
       const name = data?.name || data?.organization?.name || data?.publisher?.name;
       if (name && typeof name === "string") return name.trim();
-    } catch { /* skip malformed JSON-LD */ }
+    } catch {
+      /* skip malformed JSON-LD */
+    }
   }
 
   // Try OG site_name
-  const ogSiteName = html.match(/<meta\s[^>]*property=["']og:site_name["'][^>]*content=["']([^"']+)["']/i);
+  const ogSiteName = html.match(
+    /<meta\s[^>]*property=["']og:site_name["'][^>]*content=["']([^"']+)["']/i,
+  );
   if (ogSiteName) return ogSiteName[1].trim();
 
   // Fallback: title tag, strip common suffixes
@@ -208,7 +221,9 @@ function extractCompanyName(html: string): string | undefined {
 }
 
 function extractTagline(html: string): string | undefined {
-  const ogDesc = html.match(/<meta\s[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i);
+  const ogDesc = html.match(
+    /<meta\s[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i,
+  );
   if (ogDesc && ogDesc[1].length < 120) return ogDesc[1].trim();
 
   const metaDesc = html.match(/<meta\s[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i);
@@ -359,7 +374,18 @@ function extractFonts(html: string): string[] {
   for (const m of allCss.matchAll(/font-family:\s*["']?([^"';},]+)/gi)) {
     const family = m[1].trim().replace(/["']/g, "");
     // Skip generic families
-    if (!["serif", "sans-serif", "monospace", "cursive", "fantasy", "system-ui", "inherit", "initial"].includes(family.toLowerCase())) {
+    if (
+      ![
+        "serif",
+        "sans-serif",
+        "monospace",
+        "cursive",
+        "fantasy",
+        "system-ui",
+        "inherit",
+        "initial",
+      ].includes(family.toLowerCase())
+    ) {
       fonts.add(family);
     }
   }
@@ -407,46 +433,124 @@ function extractFaviconUrl(html: string, origin: string): string | undefined {
 
 // ── Imagery ──────────────────────────────────────────────────────────────────
 
+const IMAGE_URL_ATTRS = [
+  "src",
+  "data-src",
+  "data-lazy-src",
+  "data-original",
+  "data-image",
+  "data-background",
+  "data-bg",
+] as const;
+
+function extractAttr(tag: string, attr: string): string | null {
+  const escaped = attr.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = tag.match(new RegExp(`${escaped}=["']([^"']+)["']`, "i"));
+  return match?.[1] ?? null;
+}
+
+function extractUrlsFromSrcset(srcset: string): string[] {
+  return srcset
+    .split(",")
+    .map((entry) => entry.trim().split(/\s+/)[0])
+    .filter(Boolean);
+}
+
+function addImageUrl(
+  rawUrl: string | null | undefined,
+  origin: string,
+  images: string[],
+  seen: Set<string>,
+) {
+  if (!rawUrl) return;
+
+  const cleaned = rawUrl
+    .replace(/&amp;/gi, "&")
+    .replace(/^['"]|['"]$/g, "")
+    .trim();
+
+  if (!cleaned) return;
+  if (/^(data:|blob:|javascript:)/i.test(cleaned)) return;
+
+  const resolved = resolveUrl(cleaned, origin);
+  const dedupeKey = resolved.split("#")[0];
+
+  if (!/^https?:\/\//i.test(dedupeKey)) return;
+  if (/\.svg(?:\?|#|$)/i.test(dedupeKey)) return;
+  if (isTrackingPixel(dedupeKey)) return;
+  if (seen.has(dedupeKey)) return;
+
+  seen.add(dedupeKey);
+  images.push(dedupeKey);
+}
+
 function extractImageryUrls(html: string, origin: string): string[] {
   const images: string[] = [];
   const seen = new Set<string>();
 
   // OG image first (highest quality representative image)
   const ogImage = html.match(/<meta\s[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i);
-  if (ogImage?.[1]) {
-    const resolved = resolveUrl(ogImage[1], origin);
-    images.push(resolved);
-    seen.add(resolved);
-  }
+  addImageUrl(ogImage?.[1], origin, images, seen);
 
-  // Hero/banner images (large images in header/hero sections)
-  const heroSection = html.match(/<(?:header|section|div)\s[^>]*(?:class|id)=["'][^"']*(?:hero|banner|jumbotron)[^"']*["'][^>]*>[\s\S]*?<\/(?:header|section|div)>/gi);
-  if (heroSection) {
-    for (const section of heroSection) {
-      for (const m of section.matchAll(/<img\s[^>]*src=["']([^"']+)["']/gi)) {
-        const resolved = resolveUrl(m[1], origin);
-        if (!seen.has(resolved) && !isTrackingPixel(m[1])) {
-          images.push(resolved);
-          seen.add(resolved);
-        }
+  // Twitter image fallback
+  const twitterImage = html.match(
+    /<meta\s[^>]*name=["']twitter:image["'][^>]*content=["']([^"']+)["']/i,
+  );
+  addImageUrl(twitterImage?.[1], origin, images, seen);
+
+  // Parse all <img> tags including lazy-loading attributes and srcset.
+  for (const match of html.matchAll(/<img\b[^>]*>/gi)) {
+    const tag = match[0];
+
+    for (const attr of IMAGE_URL_ATTRS) {
+      addImageUrl(extractAttr(tag, attr), origin, images, seen);
+    }
+
+    const srcset = extractAttr(tag, "srcset");
+    if (srcset) {
+      for (const candidate of extractUrlsFromSrcset(srcset)) {
+        addImageUrl(candidate, origin, images, seen);
       }
-      // Background images in inline styles
-      for (const m of section.matchAll(/background(?:-image)?:\s*url\(["']?([^)"']+)/gi)) {
-        const resolved = resolveUrl(m[1], origin);
-        if (!seen.has(resolved)) {
-          images.push(resolved);
-          seen.add(resolved);
-        }
+    }
+
+    const dataSrcset = extractAttr(tag, "data-srcset");
+    if (dataSrcset) {
+      for (const candidate of extractUrlsFromSrcset(dataSrcset)) {
+        addImageUrl(candidate, origin, images, seen);
       }
     }
   }
 
-  // Other prominent images
-  for (const m of html.matchAll(/<img\s[^>]*src=["']([^"']+)["'][^>]*>/gi)) {
-    const resolved = resolveUrl(m[1], origin);
-    if (!seen.has(resolved) && !isTrackingPixel(m[1])) {
-      images.push(resolved);
-      seen.add(resolved);
+  // Parse <picture><source srcset="..."> variants.
+  for (const match of html.matchAll(/<source\b[^>]*>/gi)) {
+    const tag = match[0];
+    addImageUrl(extractAttr(tag, "src"), origin, images, seen);
+
+    const srcset = extractAttr(tag, "srcset");
+    if (srcset) {
+      for (const candidate of extractUrlsFromSrcset(srcset)) {
+        addImageUrl(candidate, origin, images, seen);
+      }
+    }
+  }
+
+  // Background images in styles and style attributes across the full page.
+  for (const match of html.matchAll(
+    /background(?:-image)?\s*:\s*[^;]*url\((['"]?)([^'"\)]+)\1\)/gi,
+  )) {
+    addImageUrl(match[2], origin, images, seen);
+  }
+
+  // Common lazy-load data attributes used by listing cards.
+  for (const match of html.matchAll(
+    /data-(?:src|lazy-src|original|image|background|bg)=["']([^"']+)["']/gi,
+  )) {
+    addImageUrl(match[1], origin, images, seen);
+  }
+
+  for (const match of html.matchAll(/data-srcset=["']([^"']+)["']/gi)) {
+    for (const candidate of extractUrlsFromSrcset(match[1])) {
+      addImageUrl(candidate, origin, images, seen);
     }
   }
 
@@ -454,10 +558,12 @@ function extractImageryUrls(html: string, origin: string): string[] {
 }
 
 function isTrackingPixel(src: string): boolean {
-  return /\b(pixel|tracking|analytics|beacon|1x1|spacer)\b/i.test(src) ||
+  return (
+    /\b(pixel|tracking|analytics|beacon|1x1|spacer)\b/i.test(src) ||
     src.includes("facebook.com/tr") ||
     src.includes("google-analytics") ||
-    src.includes("doubleclick");
+    src.includes("doubleclick")
+  );
 }
 
 // ── Social links ─────────────────────────────────────────────────────────────
@@ -465,8 +571,14 @@ function isTrackingPixel(src: string): boolean {
 function extractSocialLinks(html: string): string[] {
   const socials = new Set<string>();
   const socialDomains = [
-    "facebook.com", "twitter.com", "x.com", "instagram.com",
-    "linkedin.com", "youtube.com", "tiktok.com", "pinterest.com",
+    "facebook.com",
+    "twitter.com",
+    "x.com",
+    "instagram.com",
+    "linkedin.com",
+    "youtube.com",
+    "tiktok.com",
+    "pinterest.com",
   ];
 
   for (const m of html.matchAll(/<a\s[^>]*href=["']([^"']+)["']/gi)) {
@@ -496,15 +608,21 @@ function extractContactInfo(html: string): BrandContext["contactInfo"] {
   if (emailMatch) info.email = emailMatch[1].trim();
 
   // Address — structured data
-  const ldJsonBlocks = [...html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)];
+  const ldJsonBlocks = [
+    ...html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi),
+  ];
   for (const block of ldJsonBlocks) {
     try {
       const data = JSON.parse(block[1]);
       const addr = data?.address || data?.location?.address;
       if (addr?.streetAddress) {
-        info.address = [addr.streetAddress, addr.addressLocality, addr.postalCode].filter(Boolean).join(", ");
+        info.address = [addr.streetAddress, addr.addressLocality, addr.postalCode]
+          .filter(Boolean)
+          .join(", ");
       }
-    } catch { /* skip */ }
+    } catch {
+      /* skip */
+    }
   }
 
   return info;
@@ -513,18 +631,29 @@ function extractContactInfo(html: string): BrandContext["contactInfo"] {
 // ── Page copy extraction ─────────────────────────────────────────────────────
 
 function stripTags(html: string): string {
-  return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  return html
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function extractPageContent(html: string): PageContent {
-  const content: PageContent = { headings: [], ctaTexts: [], bodyCopy: [], listItems: [], numericStats: [], allBodyText: "" };
+  const content: PageContent = {
+    headings: [],
+    ctaTexts: [],
+    bodyCopy: [],
+    listItems: [],
+    numericStats: [],
+    allBodyText: "",
+  };
 
   // Meta title & description
   const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
   if (titleMatch) content.metaTitle = stripTags(titleMatch[1]).slice(0, 120);
 
-  const metaDesc = html.match(/<meta\s[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i)
-    ?? html.match(/<meta\s[^>]*content=["']([^"']+)["'][^>]*name=["']description["']/i);
+  const metaDesc =
+    html.match(/<meta\s[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i) ??
+    html.match(/<meta\s[^>]*content=["']([^"']+)["'][^>]*name=["']description["']/i);
   if (metaDesc) content.metaDescription = metaDesc[1].slice(0, 300);
 
   // H1
@@ -547,7 +676,9 @@ function extractPageContent(html: string): PageContent {
     }
   }
   // Also pick up <a> tags that look like CTAs (class contains btn/button/cta)
-  for (const m of html.matchAll(/<a\s[^>]*class=["'][^"']*(?:btn|button|cta)[^"']*["'][^>]*>([\s\S]*?)<\/a>/gi)) {
+  for (const m of html.matchAll(
+    /<a\s[^>]*class=["'][^"']*(?:btn|button|cta)[^"']*["'][^>]*>([\s\S]*?)<\/a>/gi,
+  )) {
     const text = stripTags(m[1]).slice(0, 80).trim();
     if (text.length > 1 && !ctaSeen.has(text)) {
       ctaSeen.add(text);
@@ -567,7 +698,7 @@ function extractPageContent(html: string): PageContent {
   const listSeen = new Set<string>();
   for (const m of html.matchAll(/<li[^>]*>([\s\S]*?)<\/li>/gi)) {
     const text = stripTags(m[1]).trim();
-    if (text.length > 5 && text.length < 300 && !listSeen.has(text)) {
+    if (text.length > 5 && text.length < 600 && !listSeen.has(text)) {
       listSeen.add(text);
       content.listItems.push(text);
     }
@@ -575,7 +706,9 @@ function extractPageContent(html: string): PageContent {
 
   // Numeric stats — short snippets containing numbers (years, clients, ratings, etc.)
   const statSeen = new Set<string>();
-  for (const m of html.matchAll(/<(?:p|div|span|h[2-6]|strong|b)[^>]*>([^<]{3,150})<\/(?:p|div|span|h[2-6]|strong|b)>/gi)) {
+  for (const m of html.matchAll(
+    /<(?:p|div|span|h[2-6]|strong|b)[^>]*>([^<]{3,150})<\/(?:p|div|span|h[2-6]|strong|b)>/gi,
+  )) {
     const text = stripTags(m[1]).trim();
     if (/\d/.test(text) && text.length >= 5 && text.length <= 150 && !statSeen.has(text)) {
       statSeen.add(text);
@@ -590,7 +723,10 @@ function extractPageContent(html: string): PageContent {
     .replace(/<nav[\s\S]*?<\/nav>/gi, "")
     .replace(/<footer[\s\S]*?<\/footer>/gi, "")
     .replace(/<header[^>]*>[\s\S]*?<\/header>/gi, "");
-  content.allBodyText = cleaned.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  content.allBodyText = cleaned
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 
   return content;
 }
