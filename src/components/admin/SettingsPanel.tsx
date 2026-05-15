@@ -74,7 +74,6 @@ function SettingsPanelInner() {
 
   const [clickupApiToken, setClickupApiToken] = useState("");
   const [clickupApiTokenInput, setClickupApiTokenInput] = useState("");
-  const [clickupSalesHandoffListId, setClickupSalesHandoffListId] = useState("");
   const [clickupTokenSaving, setClickupTokenSaving] = useState(false);
   const [clickupTokenSaved, setClickupTokenSaved] = useState(false);
   const [clickupTokenError, setClickupTokenError] = useState<string | null>(null);
@@ -195,7 +194,6 @@ function SettingsPanelInner() {
       const storedClickupToken = settings.clickupApiToken ?? "";
       setClickupApiToken(storedClickupToken);
       setClickupApiTokenInput(storedClickupToken ? "pk_…redacted" : "");
-      setClickupSalesHandoffListId(settings.clickupSalesHandoffListId ?? "");
       if (settings.taskBenchmarks) {
         try {
           const stored = JSON.parse(settings.taskBenchmarks) as Array<{ task: string; hours: number }>;
@@ -272,10 +270,7 @@ function SettingsPanelInner() {
       const res = await fetch("/api/settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          clickupApiToken: tokenToSave,
-          clickupSalesHandoffListId: clickupSalesHandoffListId.trim(),
-        }),
+        body: JSON.stringify({ clickupApiToken: tokenToSave }),
       });
       if (!res.ok) throw new Error("Failed to save");
       setClickupApiToken(tokenToSave);
@@ -756,22 +751,6 @@ function SettingsPanelInner() {
         </div>
         <div className="card-body">
           {clickupTokenError && <p style={{ fontSize: 13, color: "var(--danger)", marginBottom: 12 }}>{clickupTokenError}</p>}
-          <div style={{ marginBottom: 12 }}>
-            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>
-              Sales handoff list ID
-            </label>
-            <input
-              type="text"
-              className="form-input"
-              style={{ fontFamily: "monospace", fontSize: 13 }}
-              placeholder="901234567890"
-              value={clickupSalesHandoffListId}
-              onChange={(e) => setClickupSalesHandoffListId(e.target.value)}
-            />
-            <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 4 }}>
-              Fixed destination list for the Sales Handoff tool.
-            </p>
-          </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             <input
               type="password"

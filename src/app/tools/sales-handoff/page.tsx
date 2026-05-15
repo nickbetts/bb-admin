@@ -9,7 +9,6 @@ interface SalesHandoffForm {
   website: string;
   targetAudienceSummary: string;
   secondCallAt: string;
-  requestedDeliverables: string;
   budgetRange: string;
   otherInformation: string;
 }
@@ -19,7 +18,6 @@ const INITIAL_FORM: SalesHandoffForm = {
   website: "",
   targetAudienceSummary: "",
   secondCallAt: "",
-  requestedDeliverables: "",
   budgetRange: "",
   otherInformation: "",
 };
@@ -49,7 +47,6 @@ export default function SalesHandoffPage() {
       form.website.trim().length > 0 &&
       form.targetAudienceSummary.trim().length > 0 &&
       form.secondCallAt.trim().length > 0 &&
-      form.requestedDeliverables.trim().length > 0 &&
       form.budgetRange.trim().length > 0
     );
   }, [form]);
@@ -214,18 +211,6 @@ export default function SalesHandoffPage() {
               className="form-input"
               value={form.secondCallAt}
               onChange={(e) => update("secondCallAt", e.target.value)}
-              required
-            />
-          </div>
-
-          <div style={{ display: "grid", gap: 6 }}>
-            <label className="form-label">Requested Deliverables</label>
-            <textarea
-              className="form-input"
-              value={form.requestedDeliverables}
-              onChange={(e) => update("requestedDeliverables", e.target.value)}
-              placeholder="What should marketing prepare before the second call?"
-              rows={4}
               required
             />
           </div>
