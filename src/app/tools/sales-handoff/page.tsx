@@ -1,7 +1,8 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { ClipboardList, ExternalLink, Loader2 } from "lucide-react";
+import { ClipboardList, ExternalLink, Loader2, Sparkles, Zap } from "lucide-react";
+import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 
 interface SalesHandoffForm {
@@ -34,6 +35,32 @@ const INITIAL_FORM: SalesHandoffForm = {
   otherInformation: "",
 };
 
+interface ConfettiPiece {
+  id: number;
+  left: number;
+  size: number;
+  delayMs: number;
+  durationMs: number;
+  rotateDeg: number;
+  color: string;
+  shape: "rect" | "pill";
+}
+
+const CHAOS_CONFETTI_COLOURS = ["#ef4444", "#f97316", "#facc15", "#22c55e", "#3b82f6", "#a855f7", "#ec4899"];
+
+function createChaosConfettiPieces(count = 84): ConfettiPiece[] {
+  return Array.from({ length: count }, (_, id) => ({
+    id,
+    left: Math.random() * 100,
+    size: 6 + Math.random() * 8,
+    delayMs: Math.random() * 420,
+    durationMs: 1500 + Math.random() * 1600,
+    rotateDeg: Math.random() * 360,
+    color: CHAOS_CONFETTI_COLOURS[Math.floor(Math.random() * CHAOS_CONFETTI_COLOURS.length)],
+    shape: Math.random() > 0.5 ? "pill" : "rect",
+  }));
+}
+
 function looksLikeUrl(value: string): boolean {
   if (!value.trim()) return false;
   const candidate = value.startsWith("http://") || value.startsWith("https://") ? value : `https://${value}`;
@@ -52,6 +79,9 @@ export default function SalesHandoffPage() {
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [createdTaskUrl, setCreatedTaskUrl] = useState<string | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [confettiRunId, setConfettiRunId] = useState(0);
+  const [confettiPieces, setConfettiPieces] = useState<ConfettiPiece[]>(() => createChaosConfettiPieces(84));
   const [serviceOptions, setServiceOptions] = useState<string[]>(DEFAULT_SERVICE_OPTIONS);
 
   useEffect(() => {
@@ -124,6 +154,9 @@ export default function SalesHandoffPage() {
       }
 
       setCreatedTaskUrl(data.taskUrl ?? null);
+      setConfettiPieces(createChaosConfettiPieces(84));
+      setConfettiRunId((prev) => prev + 1);
+      setShowSuccessModal(true);
       setForm(INITIAL_FORM);
       toast("Sales handoff task created in ClickUp", "success");
     } catch (error) {
@@ -191,35 +224,6 @@ export default function SalesHandoffPage() {
           }}
         >
           {fieldError}
-        </div>
-      )}
-
-      {createdTaskUrl && (
-        <div
-          style={{
-            marginBottom: 16,
-            border: "1px solid var(--success-border)",
-            background: "var(--success-bg)",
-            color: "var(--success-text)",
-            borderRadius: "var(--r)",
-            padding: "12px 14px",
-            fontSize: 13,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 12,
-          }}
-        >
-          <span>Task created successfully. Marketing can pick this up immediately.</span>
-          <a
-            href={createdTaskUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn btn-sm"
-            style={{ display: "inline-flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}
-          >
-            Open in ClickUp <ExternalLink style={{ width: 14, height: 14 }} />
-          </a>
         </div>
       )}
 
@@ -338,6 +342,145 @@ export default function SalesHandoffPage() {
           </div>
         </div>
       </form>
+
+      <Modal
+        open={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        title="Chaos Mode Complete"
+        description="Your sales handoff task is now live in ClickUp."
+        size="md"
+        footer={
+          <>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => setShowSuccessModal(false)}
+            >
+              Close
+            </button>
+            {createdTaskUrl && (
+              <a
+                href={createdTaskUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-primary"
+                style={{ display: "inline-flex", alignItems: "center", gap: 8, whiteSpace: "nowrap" }}
+              >
+                Open ClickUp Task <ExternalLink style={{ width: 14, height: 14 }} />
+              </a>
+            )}
+          </>
+        }
+      >
+        <div
+          style={{
+            position: "relative",
+            minHeight: 250,
+            border: "1px solid var(--border-subtle)",
+            borderRadius: "var(--r-lg)",
+            background: "linear-gradient(160deg, rgba(239,68,68,0.08), rgba(59,130,246,0.06) 45%, rgba(250,204,21,0.08))",
+            overflow: "hidden",
+            display: "grid",
+            placeItems: "center",
+            padding: "24px 16px",
+          }}
+        >
+          <div
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              inset: 0,
+              overflow: "hidden",
+              pointerEvents: "none",
+            }}
+          >
+            {confettiPieces.map((piece) => (
+              <span
+                key={`${confettiRunId}-${piece.id}`}
+                style={{
+                  position: "absolute",
+                  top: -24,
+                  left: `${piece.left}%`,
+                  width: piece.size,
+                  height: piece.shape === "pill" ? Math.max(4, piece.size * 0.45) : piece.size,
+                  borderRadius: piece.shape === "pill" ? 999 : 2,
+                  background: piece.color,
+                  opacity: 0.95,
+                  transform: `rotate(${piece.rotateDeg}deg)`,
+                  animation: `salesHandoffConfettiFall ${piece.durationMs}ms cubic-bezier(0.18, 0.82, 0.35, 1) ${piece.delayMs}ms forwards`,
+                }}
+              />
+            ))}
+          </div>
+
+          <div style={{ position: "relative", zIndex: 1, textAlign: "center", maxWidth: 420 }}>
+            <div
+              style={{
+                width: 72,
+                height: 72,
+                borderRadius: 999,
+                margin: "0 auto 14px",
+                display: "grid",
+                placeItems: "center",
+                color: "white",
+                background: "linear-gradient(135deg, #ef4444, #f97316 52%, #facc15)",
+                boxShadow: "0 14px 32px rgba(239, 68, 68, 0.38)",
+                animation: "salesHandoffChaosPulse 1.4s ease-in-out infinite",
+              }}
+            >
+              <Sparkles style={{ width: 30, height: 30 }} />
+            </div>
+
+            <p
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                margin: "0 0 8px",
+                padding: "6px 10px",
+                borderRadius: 999,
+                background: "rgba(17,24,39,0.06)",
+                color: "var(--text-2)",
+                fontSize: 11,
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+              }}
+            >
+              <Zap style={{ width: 12, height: 12 }} /> Chaos Mode
+            </p>
+
+            <h3 style={{ margin: "0 0 8px", fontSize: 22, fontWeight: 800, color: "var(--text)", lineHeight: 1.2 }}>
+              Sales Handoff Created
+            </h3>
+
+            <p style={{ margin: 0, fontSize: 14, color: "var(--text-2)", lineHeight: 1.55 }}>
+              Marketing has everything they need. Open the task to see the brief and track checklist progress.
+            </p>
+          </div>
+
+          <style>{`
+            @keyframes salesHandoffConfettiFall {
+              0% {
+                transform: translateY(-18px) rotate(0deg);
+                opacity: 1;
+              }
+              100% {
+                transform: translateY(330px) rotate(520deg);
+                opacity: 0;
+              }
+            }
+            @keyframes salesHandoffChaosPulse {
+              0%, 100% {
+                transform: scale(1);
+              }
+              50% {
+                transform: scale(1.08);
+              }
+            }
+          `}</style>
+        </div>
+      </Modal>
     </div>
   );
 }
