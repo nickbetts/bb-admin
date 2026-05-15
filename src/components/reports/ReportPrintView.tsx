@@ -414,15 +414,22 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
           </>
         );
 
-        const visibleBlocks = section.cardConfig
+        const cardConfig = section.cardConfig
           ? (() => {
               try {
-                const cfg = JSON.parse(section.cardConfig as string);
-                return cfg.visibleBlocks as string[] | undefined;
+                return JSON.parse(section.cardConfig as string) as {
+                  visibleBlocks?: string[];
+                  hiddenCards?: Record<string, string[]>;
+                };
               } catch {
                 return undefined;
               }
             })()
+          : undefined;
+
+        const visibleBlocks = cardConfig?.visibleBlocks;
+        const hiddenCards = cardConfig?.hiddenCards && Object.keys(cardConfig.hiddenCards).length > 0
+          ? cardConfig.hiddenCards
           : undefined;
 
         // Executive summary
@@ -533,6 +540,7 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
                 compareEndDate={compareEndDate ?? undefined}
                 reportMode
                 visibleBlocks={visibleBlocks}
+                hiddenCards={hiddenCards}
                 afterHeader={afterHeader}
               />
             )}
@@ -545,6 +553,7 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
                   startDate={startDate}
                   endDate={endDate}
                   visibleBlocks={visibleBlocks}
+                  hiddenCards={hiddenCards}
                   hideAlerts
                   hideAi
                   afterHeader={afterHeader}
@@ -566,6 +575,7 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
                   compareStartDate={compareStartDate ?? undefined}
                   compareEndDate={compareEndDate ?? undefined}
                   visibleBlocks={visibleBlocks}
+                  hiddenCards={hiddenCards}
                   hideAlerts
                   hideAi
                   afterHeader={afterHeader}
@@ -586,6 +596,7 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
                   compareStartDate={compareStartDate ?? undefined}
                   compareEndDate={compareEndDate ?? undefined}
                   visibleBlocks={visibleBlocks}
+                  hiddenCards={hiddenCards}
                   hideAlerts
                   hideAi
                   reportMode
@@ -608,6 +619,7 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
                   compareStartDate={compareStartDate ?? undefined}
                   compareEndDate={compareEndDate ?? undefined}
                   visibleBlocks={visibleBlocks}
+                  hiddenCards={hiddenCards}
                   hideAlerts
                   hideAi
                   reportMode
@@ -628,6 +640,7 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
                   compareStartDate={compareStartDate ?? undefined}
                   compareEndDate={compareEndDate ?? undefined}
                   visibleBlocks={visibleBlocks}
+                  hiddenCards={hiddenCards}
                   hideAlerts
                   hideAi
                   afterHeader={afterHeader}
@@ -648,6 +661,7 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
                     startDate={startDate}
                     endDate={endDate}
                     visibleBlocks={visibleBlocks}
+                    hiddenCards={hiddenCards}
                   />
                 </>
               ) : (
@@ -666,6 +680,7 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
                     startDate={startDate}
                     endDate={endDate}
                     visibleBlocks={visibleBlocks}
+                    hiddenCards={hiddenCards}
                   />
                 </>
               ) : (
@@ -684,6 +699,7 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
                     startDate={startDate}
                     endDate={endDate}
                     visibleBlocks={visibleBlocks}
+                    hiddenCards={hiddenCards}
                   />
                 </>
               ) : (
@@ -704,6 +720,7 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
                     startDate={startDate}
                     endDate={endDate}
                     visibleBlocks={visibleBlocks}
+                    hiddenCards={hiddenCards}
                   />
                 </>
               ) : (
@@ -722,6 +739,7 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
                     startDate={startDate}
                     endDate={endDate}
                     visibleBlocks={visibleBlocks}
+                    hiddenCards={hiddenCards}
                   />
                 </>
               ) : (
@@ -744,6 +762,7 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
                     clientId={report.client.id}
                     clientName={report.client.name}
                     visibleBlocks={visibleBlocks}
+                    hiddenCards={hiddenCards}
                   />
                 </>
               ) : (
@@ -760,6 +779,7 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
                     clientId={report.client.id}
                     clientName={report.client.name}
                     visibleBlocks={visibleBlocks}
+                    hiddenCards={hiddenCards}
                   />
                 </>
               ) : (
@@ -776,6 +796,7 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
                     clientId={report.client.id}
                     clientName={report.client.name}
                     visibleBlocks={visibleBlocks}
+                    hiddenCards={hiddenCards}
                   />
                 </>
               ) : (
@@ -788,7 +809,11 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
               (report.client.website ? (
                 <>
                   {afterHeader}
-                  <CoreWebVitalsSection url={report.client.website} visibleBlocks={visibleBlocks} />
+                  <CoreWebVitalsSection
+                    url={report.client.website}
+                    visibleBlocks={visibleBlocks}
+                    hiddenCards={hiddenCards}
+                  />
                 </>
               ) : (
                 <>
