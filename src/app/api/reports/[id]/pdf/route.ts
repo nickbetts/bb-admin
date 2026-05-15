@@ -113,6 +113,10 @@ export async function GET(
         { timeout: 15000 }
       );
 
+      await page.evaluate(() => {
+        document.body.setAttribute("data-disable-chart-animations", "true");
+      });
+
       // Section components (GA4, Meta, etc.) start their own API fetches
       // AFTER React mounts, so data-print-ready firing early doesn't mean
       // the data is on screen yet. Wait for network to go idle again to

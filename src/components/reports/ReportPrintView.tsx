@@ -143,8 +143,7 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
   const sectionContainerStyle = {
     marginBottom: 64,
     position: "relative" as const,
-    overflow: "hidden" as const,
-    contain: "paint" as const,
+    overflow: "visible" as const,
   };
 
   // Parse the narrative once so it can be used in the overview section's afterHeader

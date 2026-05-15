@@ -168,6 +168,10 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const showCard = (blockId: string, cardId: string) => !hiddenCards?.[blockId]?.includes(cardId);
   const isExplicit = (block: string) => Array.isArray(visibleBlocks) && visibleBlocks.includes(block);
+  const isPdfRenderMode =
+    typeof window !== "undefined" &&
+    (new URLSearchParams(window.location.search).get("pdfNoAnimation") === "1" ||
+      document.body.getAttribute("data-print-ready") === "true");
   const [overview, setOverview] = useState<GA4Overview | null>(null);
   const [prevOverview, setPrevOverview] = useState<GA4Overview | null>(null);
   const [yoyOverview, setYoyOverview] = useState<GA4Overview | null>(null);
@@ -679,22 +683,42 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
         <SectionCard title="Sessions Over Time" subtitle="Daily sessions trend">
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={daily}>
-              <defs>
-                <linearGradient id="sessGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="userGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                </linearGradient>
-              </defs>
+              {!isPdfRenderMode && (
+                <defs>
+                  <linearGradient id="sessGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="userGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+              )}
               <CartesianGrid {...CHART_GRID_STYLE} />
               <XAxis dataKey="date" {...CHART_AXIS_STYLE} />
               <YAxis {...CHART_AXIS_STYLE} />
               <Tooltip {...CHART_TOOLTIP_STYLE} />
-              <Area {...CHART_AREA_STYLE} dataKey="sessions" stroke="#3b82f6" fill="url(#sessGrad)" name="Sessions" />
-              <Area {...CHART_AREA_STYLE} dataKey="users" stroke="#6366f1" fill="url(#userGrad)" name="Users" />
+              <Area
+                {...CHART_AREA_STYLE}
+                dataKey="sessions"
+                stroke="#3b82f6"
+                fill={isPdfRenderMode ? "#3b82f6" : "url(#sessGrad)"}
+                fillOpacity={isPdfRenderMode ? 0.18 : undefined}
+                isAnimationActive={isPdfRenderMode ? false : CHART_AREA_STYLE.isAnimationActive}
+                animationDuration={isPdfRenderMode ? 0 : CHART_AREA_STYLE.animationDuration}
+                name="Sessions"
+              />
+              <Area
+                {...CHART_AREA_STYLE}
+                dataKey="users"
+                stroke="#6366f1"
+                fill={isPdfRenderMode ? "#6366f1" : "url(#userGrad)"}
+                fillOpacity={isPdfRenderMode ? 0.14 : undefined}
+                isAnimationActive={isPdfRenderMode ? false : CHART_AREA_STYLE.isAnimationActive}
+                animationDuration={isPdfRenderMode ? 0 : CHART_AREA_STYLE.animationDuration}
+                name="Users"
+              />
               <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
             </AreaChart>
           </ResponsiveContainer>
@@ -716,6 +740,8 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
                   outerRadius={90}
                   paddingAngle={3}
                   dataKey="value"
+                  isAnimationActive={!isPdfRenderMode}
+                  animationDuration={isPdfRenderMode ? 0 : 600}
                 >
                   {sourceChartData.map((_, index) => (
                     <Cell
@@ -785,6 +811,8 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
                     outerRadius={80}
                     paddingAngle={3}
                     dataKey="value"
+                    isAnimationActive={!isPdfRenderMode}
+                    animationDuration={isPdfRenderMode ? 0 : 600}
                   >
                     {deviceChartData.map((entry, index) => (
                       <Cell
