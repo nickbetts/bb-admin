@@ -117,8 +117,74 @@ export async function GET(
       // ensure all section data has loaded and charts have rendered.
       await page.waitForNetworkIdle({ idleTime: 1000, timeout: 20000 });
 
-      // Short buffer for any remaining SVG/chart paint after data arrives.
-      await page.evaluate(() => new Promise((r) => setTimeout(r, 500)));
+      // Recharts can occasionally mount with zero-width containers in headless
+      // capture flows. Trigger resize/reflow passes and wait until visible
+      // chart containers have real SVG dimensions before screenshot capture.
+      const rechartsReady = await page.evaluate(async () => {
+        const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+        const raf = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
+        const visibleChartContainers = () =>
+          Array.from(document.querySelectorAll<HTMLElement>(".recharts-responsive-container"))
+            .filter((el) => {
+              const rect = el.getBoundingClientRect();
+              const style = window.getComputedStyle(el);
+              return (
+                style.display !== "none" &&
+                style.visibility !== "hidden" &&
+                rect.width > 40 &&
+                rect.height > 40
+              );
+            });
+
+        const isReady = (el: HTMLElement) => {
+          const svg = el.querySelector("svg");
+          if (!svg) return false;
+          const rect = svg.getBoundingClientRect();
+          return rect.width > 40 && rect.height > 40;
+        };
+
+        let charts = visibleChartContainers();
+        if (charts.length === 0) {
+          return { ok: true, visibleCharts: 0, unreadyCharts: 0, attempts: 0 };
+        }
+
+        for (let attempt = 1; attempt <= 8; attempt++) {
+          window.dispatchEvent(new Event("resize"));
+          void document.body.offsetHeight;
+          await raf();
+          await raf();
+          await wait(120);
+
+          charts = visibleChartContainers();
+          const unready = charts.filter((chart) => !isReady(chart)).length;
+          if (unready === 0) {
+            return {
+              ok: true,
+              visibleCharts: charts.length,
+              unreadyCharts: 0,
+              attempts: attempt,
+            };
+          }
+        }
+
+        const unreadyCharts = charts.filter((chart) => !isReady(chart)).length;
+        return {
+          ok: unreadyCharts === 0,
+          visibleCharts: charts.length,
+          unreadyCharts,
+          attempts: 8,
+        };
+      });
+
+      if (!rechartsReady.ok) {
+        console.warn(
+          `[pdf-recharts] Charts still not ready before capture: visible=${rechartsReady.visibleCharts} unready=${rechartsReady.unreadyCharts}`
+        );
+      }
+
+      // Final short buffer for any remaining SVG/chart paint after readiness.
+      await page.evaluate(() => new Promise((r) => setTimeout(r, 250)));
 
       // Measure the full rendered height and collect per-section bounding boxes
       // so we can crop the PDF into variable-height pages after generation.
