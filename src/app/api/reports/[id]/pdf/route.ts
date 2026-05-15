@@ -119,6 +119,93 @@ export async function GET(
       // ensure all section data has loaded and charts have rendered.
       await page.waitForNetworkIdle({ idleTime: 1000, timeout: 20000 });
 
+      // Recharts can generate repeated SVG ids (clipPaths/gradients) across
+      // many charts on one long print page. Isolate each chart's ids to avoid
+      // cross-chart reference collisions that can blank series in exports.
+      const chartIdIsolation = await page.evaluate(() => {
+        const svgs = Array.from(
+          document.querySelectorAll<SVGSVGElement>(
+            ".recharts-responsive-container svg.recharts-surface, .recharts-responsive-container svg"
+          )
+        );
+
+        let rewrittenIds = 0;
+
+        const referenceAttributes = [
+          "fill",
+          "stroke",
+          "filter",
+          "mask",
+          "clip-path",
+          "marker-start",
+          "marker-mid",
+          "marker-end",
+          "href",
+          "xlink:href",
+        ];
+
+        const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+        for (let svgIndex = 0; svgIndex < svgs.length; svgIndex++) {
+          const svg = svgs[svgIndex];
+          const idNodes = Array.from(svg.querySelectorAll<SVGElement>("[id]"));
+          const idMap = new Map<string, string>();
+
+          for (const node of idNodes) {
+            const oldId = node.getAttribute("id");
+            if (!oldId) continue;
+            const newId = `pdf-${svgIndex}-${oldId}`;
+            if (newId === oldId) continue;
+            idMap.set(oldId, newId);
+            node.setAttribute("id", newId);
+            rewrittenIds += 1;
+          }
+
+          if (idMap.size === 0) continue;
+
+          const rewriteReferenceValue = (value: string) => {
+            let rewritten = value;
+            for (const [oldId, newId] of idMap.entries()) {
+              const escapedId = escapeRegex(oldId);
+              rewritten = rewritten.replace(
+                new RegExp(`url\\((['\"]?)#${escapedId}\\1\\)`, "g"),
+                `url(#${newId})`
+              );
+              rewritten = rewritten.replace(new RegExp(`^#${escapedId}$`), `#${newId}`);
+            }
+            return rewritten;
+          };
+
+          const nodes = Array.from(svg.querySelectorAll<SVGElement>("*"));
+          for (const node of nodes) {
+            for (const attr of referenceAttributes) {
+              const current = node.getAttribute(attr);
+              if (!current) continue;
+              const rewritten = rewriteReferenceValue(current);
+              if (rewritten !== current) {
+                node.setAttribute(attr, rewritten);
+              }
+            }
+
+            const styleValue = node.getAttribute("style");
+            if (styleValue && styleValue.includes("url(#")) {
+              const rewrittenStyle = rewriteReferenceValue(styleValue);
+              if (rewrittenStyle !== styleValue) {
+                node.setAttribute("style", rewrittenStyle);
+              }
+            }
+          }
+        }
+
+        return { svgCount: svgs.length, rewrittenIds };
+      });
+
+      if (chartIdIsolation.rewrittenIds > 0) {
+        console.log(
+          `[pdf-recharts] Isolated chart SVG ids: svgs=${chartIdIsolation.svgCount} rewrittenIds=${chartIdIsolation.rewrittenIds}`
+        );
+      }
+
       // Global nudge for chart layout observers before section-level checks.
       await page.evaluate(async () => {
         window.dispatchEvent(new Event("resize"));
@@ -337,8 +424,7 @@ export async function GET(
         const regionChartReady = await page.evaluate(async ({ regionY, regionHeight }) => {
           const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
           const raf = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-          const noAnimationMode = new URLSearchParams(window.location.search).get("pdfNoAnimation") === "1";
-          const requiredStablePasses = noAnimationMode ? 0 : 1;
+          const requiredStablePasses = 1;
 
           const SERIES_GEOMETRY_SELECTOR = [
             ".recharts-line-curve",
@@ -455,13 +541,23 @@ export async function GET(
             }
 
             const hasVisibleSeries = seriesNodes.some(hasDrawableGeometry);
+            const clipRects = Array.from(svg.querySelectorAll<SVGRectElement>("clipPath rect"));
+            const hasVisibleClipRect =
+              clipRects.length === 0 ||
+              clipRects.some((clip) => {
+                const width = Number(clip.getAttribute("width") ?? 0);
+                const height = Number(clip.getAttribute("height") ?? 0);
+                return Number.isFinite(width) && Number.isFinite(height) && width > 1 && height > 1;
+              });
+
+            const isReady = hasVisibleSeries && hasVisibleClipRect;
             const seriesSignature = seriesNodes.map(nodeSignature).join("|");
-            const clipSignature = Array.from(svg.querySelectorAll<SVGRectElement>("clipPath rect"))
+            const clipSignature = clipRects
               .map((clip) => `clip:${toNum(clip.getAttribute("x"))},${toNum(clip.getAttribute("y"))},${toNum(clip.getAttribute("width"))},${toNum(clip.getAttribute("height"))}`)
               .join("|");
 
             return {
-              ready: hasVisibleSeries,
+              ready: isReady,
               signature: `${seriesSignature}::${clipSignature}`,
             };
           };
