@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { ClipboardList, ExternalLink, Loader2, Sparkles, Zap } from "lucide-react";
+import { ClipboardList, ExternalLink, Loader2, Sparkles } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 
@@ -346,7 +346,7 @@ export default function SalesHandoffPage() {
       <Modal
         open={showSuccessModal}
         onClose={() => setShowSuccessModal(false)}
-        title="Chaos Mode Complete"
+        title="Task Created"
         description="Your sales handoff task is now live in ClickUp."
         size="md"
         footer={
@@ -430,25 +430,6 @@ export default function SalesHandoffPage() {
             >
               <Sparkles style={{ width: 30, height: 30 }} />
             </div>
-
-            <p
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                margin: "0 0 8px",
-                padding: "6px 10px",
-                borderRadius: 999,
-                background: "rgba(17,24,39,0.06)",
-                color: "var(--text-2)",
-                fontSize: 11,
-                fontWeight: 700,
-                textTransform: "uppercase",
-                letterSpacing: "0.08em",
-              }}
-            >
-              <Zap style={{ width: 12, height: 12 }} /> Chaos Mode
-            </p>
 
             <h3 style={{ margin: "0 0 8px", fontSize: 22, fontWeight: 800, color: "var(--text)", lineHeight: 1.2 }}>
               Sales Handoff Created

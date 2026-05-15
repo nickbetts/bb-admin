@@ -161,30 +161,23 @@ function buildTaskDescription(input: {
   const noticeStatus = buildNoticeStatus(input.secondCallAtMs);
 
   return [
-    "## Sales to Marketing Handoff",
+    "**Prospect Summary**",
+    `- **Prospect:** ${input.prospectName}`,
+    `- **Website:** ${input.website}`,
+    `- **Budget range:** ${input.budgetRange}`,
+    `- **Second call:** ${formattedSecondCall}`,
+    `- **48-hour notice status:** ${noticeStatus}`,
     "",
-    "Please prepare a practical plan for the second call using the context below.",
-    "",
-    "### Prospect Summary",
-    `- Prospect: ${input.prospectName}`,
-    `- Website: [${input.website}](${input.website})`,
-    `- Budget range: ${input.budgetRange}`,
-    `- Second call: ${formattedSecondCall}`,
-    `- 48-hour notice status: ${noticeStatus}`,
-    "",
-    "### Target Audience",
+    "**Target Audience**",
     input.targetAudienceSummary,
     "",
-    "### Services of Interest",
+    "**Services of Interest**",
     input.interestedServices.length > 0
       ? input.interestedServices.map((service) => `- ${service}`).join("\n")
       : "None selected",
     "",
-    "### Additional Context from Sales",
+    "**Additional Context from Sales**",
     input.otherInformation || "No additional context provided.",
-    "",
-    "### Delivery Goal",
-    "Provide a clear prep plan before the second call with recommended channels, rationale, and next actions.",
   ].join("\n");
 }
 

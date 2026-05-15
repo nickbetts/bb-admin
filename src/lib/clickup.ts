@@ -224,7 +224,7 @@ export async function createClickUpTaskWithChecklist(
       method: "POST",
       body: JSON.stringify({
         name: taskName,
-        ...(description ? { description } : {}),
+        ...(description ? { markdown_description: description } : {}),
         ...(assignees && assignees.length > 0 ? { assignees } : {}),
         ...(dueDateMs ? { due_date: dueDateMs, due_date_time: false } : {}),
       }),
