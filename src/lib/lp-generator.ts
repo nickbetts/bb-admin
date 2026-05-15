@@ -1324,6 +1324,178 @@ export async function streamRefineLandingPage(opts: RefineLPOptions) {
   });
 }
 
+// ── Double-pass refinement helpers ─────────────────────────────────────────
+
+/**
+ * Extract image-like asset URLs currently referenced by the page HTML.
+ * Used for strict, deterministic URL matching in double-pass mode.
+ */
+export function extractReferencedAssetUrlsFromHtml(html: string): string[] {
+  const urls = new Set<string>();
+
+  // <img src="...">
+  for (const match of html.matchAll(/<img\s[^>]*\ssrc=["']([^"']+)["']/gi)) {
+    const url = match[1]?.trim();
+    if (url) urls.add(url);
+  }
+
+  // <source srcset="url1 1x, url2 2x"> and <img srcset="...">
+  for (const match of html.matchAll(/\ssrcset=["']([^"']+)["']/gi)) {
+    const srcset = match[1] ?? "";
+    const entries = srcset
+      .split(",")
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .map((part) => part.split(/\s+/)[0]?.trim())
+      .filter((part): part is string => Boolean(part));
+    for (const entry of entries) urls.add(entry);
+  }
+
+  // CSS background-image / background: url(...)
+  for (const match of html.matchAll(/background(?:-image)?\s*:\s*url\((?:["'])?([^"')]+)(?:["'])?\)/gi)) {
+    const url = match[1]?.trim();
+    if (url) urls.add(url);
+  }
+
+  return [...urls];
+}
+
+/**
+ * Strict exact-match audit for imported image URLs.
+ * Returns imported URLs not currently referenced in HTML.
+ */
+export function findMissingImportedImageUrls(html: string, importedImageUrls: string[]): string[] {
+  if (importedImageUrls.length === 0) return [];
+
+  const referenced = new Set(extractReferencedAssetUrlsFromHtml(html));
+  const uniqueImported = [...new Set(importedImageUrls.map((u) => u.trim()).filter(Boolean))];
+
+  return uniqueImported.filter((url) => !referenced.has(url));
+}
+
+const DOUBLE_PASS_REFERENCE_AUDIT_SYSTEM_PROMPT = `You are auditing a landing page after the first refinement pass.
+
+Goal: identify what is still missing or incorrect versus:
+1) the original user request
+2) the provided reference URL digest
+
+Rules:
+- Focus only on actionable, high-impact misses.
+- Prefer precision over volume.
+- Do not suggest broad rewrites.
+- Keep existing brand identity unless the user explicitly asked to change it.
+- If everything is aligned, return an empty JSON array.
+
+Return ONLY a JSON array. Each item must be:
+{
+  "area": string,
+  "issue": string,
+  "fix": string,
+  "severity": "high" | "medium" | "low"
+}
+
+Use British English. No markdown fences, no commentary.`;
+
+/**
+ * AI audit used between pass 1 and pass 2 in double-pass refinement mode.
+ * Returns targeted fixes for items still missing from reference material.
+ */
+export async function auditReferenceAlignmentAfterRefine(opts: {
+  html: string;
+  userPrompt: string;
+  referenceDigest?: string;
+  maxFindings?: number;
+}): Promise<LPCritiqueItem[]> {
+  if (!opts.referenceDigest?.trim()) return [];
+
+  const anthropic = await getAnthropicClient();
+  const maxFindings = Math.max(1, Math.min(opts.maxFindings ?? 8, 12));
+
+  const userPrompt = `Audit this landing page after pass 1 refinement.
+
+## Original user request
+${opts.userPrompt}
+
+## Reference digest
+${opts.referenceDigest}
+
+## Current landing page HTML (post pass 1)
+${stripScripts(opts.html)}
+
+Return up to ${maxFindings} items.`;
+
+  const response = await anthropic.messages.create({
+    model: REFINE_MODEL,
+    max_tokens: 3000,
+    system: DOUBLE_PASS_REFERENCE_AUDIT_SYSTEM_PROMPT,
+    messages: [{ role: "user", content: userPrompt }],
+  });
+
+  const block = response.content[0];
+  const raw = block.type === "text" ? block.text.trim() : "";
+  const cleaned = stripMarkdownFences(raw).trim();
+
+  try {
+    const parsed = JSON.parse(cleaned) as unknown;
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed
+      .filter(
+        (item): item is LPCritiqueItem =>
+          typeof item === "object" &&
+          item !== null &&
+          typeof (item as LPCritiqueItem).area === "string" &&
+          typeof (item as LPCritiqueItem).issue === "string" &&
+          typeof (item as LPCritiqueItem).fix === "string" &&
+          typeof (item as LPCritiqueItem).severity === "string",
+      )
+      .slice(0, maxFindings);
+  } catch (err) {
+    console.warn("[lp-generator] Reference alignment audit JSON parse failed:", err);
+    return [];
+  }
+}
+
+/**
+ * Build a focused second-pass prompt from deterministic and AI audit outputs.
+ */
+export function buildSecondPassRefinePrompt(opts: {
+  originalPrompt: string;
+  missingImportedImageUrls: string[];
+  referenceFindings: LPCritiqueItem[];
+}): string {
+  const instructions: string[] = [];
+
+  if (opts.missingImportedImageUrls.length > 0) {
+    for (const url of opts.missingImportedImageUrls) {
+      instructions.push(
+        `Ensure this exact imported image URL appears in the final HTML (as <img src="..."> or CSS background-image): ${url}`,
+      );
+    }
+  }
+
+  const severityRank = { high: 0, medium: 1, low: 2 } as const;
+  const orderedFindings = [...opts.referenceFindings].sort(
+    (a, b) => severityRank[a.severity] - severityRank[b.severity],
+  );
+  for (const finding of orderedFindings.slice(0, 8)) {
+    instructions.push(`[${finding.area}] ${finding.fix}`);
+  }
+
+  const instructionBlock = instructions.length > 0
+    ? instructions.map((line, index) => `${index + 1}. ${line}`).join("\n")
+    : "1. Re-check the page against the original request and ensure all requested updates are fully applied without removing working content.";
+
+  return `This is pass 2 of a verified refinement workflow.
+
+Original user request:
+${opts.originalPrompt}
+
+Apply the following targeted fixes. Keep changes scoped. Do not rewrite unrelated sections.
+
+${instructionBlock}`;
+}
+
 // ── Chat about landing page ─────────────────────────────────────────────────
 
 const CHAT_SYSTEM_PROMPT = `You are a senior CRO specialist and landing page expert helping a digital agency improve a client landing page. You have access to a web search tool and should use it proactively when the user asks about trends, current best practices, competitor approaches, layout ideas, or anything requiring up-to-date knowledge.

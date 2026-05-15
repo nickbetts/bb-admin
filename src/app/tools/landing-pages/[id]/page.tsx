@@ -610,6 +610,8 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
   const chatEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [chatting, setChatting] = useState(false);
+  const [doublePassRefine, setDoublePassRefine] = useState(false);
+  const [refineProgressMessage, setRefineProgressMessage] = useState<string | null>(null);
 
   // Chat URL references (scraped on send for additional context)
   const [chatUrls, setChatUrls] = useState<string[]>([]);
@@ -1236,10 +1238,12 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
 
     if (!overridePrompt) setPrompt("");
     setRefining(true);
+    setRefineProgressMessage(doublePassRefine ? "Double-pass refinement enabled." : "Applying refinement...");
 
     const successfulImageUrls = chatImages.filter((img) => img.status === "done" && img.blobUrl).map((img) => img.blobUrl as string);
 
-    const validCrawlUrls = chatUrls.filter((u) => { try { new URL(u); return true; } catch { return false; } });
+    const maxRefineUrls = doublePassRefine ? 10 : 3;
+    const validCrawlUrls = chatUrls.filter((u) => { try { new URL(u); return true; } catch { return false; } }).slice(0, maxRefineUrls);
     setChatHistory((prev) => [...prev, { role: "user", content: userPrompt, type: "refine" as const, attachedImageUrls: successfulImageUrls.length ? successfulImageUrls : undefined, attachedUrls: validCrawlUrls.length ? validCrawlUrls : undefined }]);
 
     try {
@@ -1256,6 +1260,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
           conversationHistory: aiHistory,
           imageUrls: successfulImageUrls.length ? successfulImageUrls : undefined,
           crawlUrls: validCrawlUrls.length ? validCrawlUrls : undefined,
+          refinementMode: doublePassRefine ? "double-pass" : "single-pass",
         }),
       });
 
@@ -1298,6 +1303,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
           if (!part.startsWith("data: ")) continue;
           const payload = JSON.parse(part.slice(6)) as {
             content?: string;
+            progress?: string;
             done?: boolean;
             html?: string;
             version?: { id: string; versionNumber: number; prompt: string; createdAt: string };
@@ -1305,6 +1311,11 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
             error?: string;
             status?: number;
           };
+
+          if (payload.progress) {
+            setRefineProgressMessage(payload.progress);
+            continue;
+          }
 
           if (payload.error) {
             if (payload.status === 422) {
@@ -1343,6 +1354,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
       setChatHistory((prev) => [...prev, { role: "assistant", content: `Error: ${err instanceof Error ? err.message : "Unknown error"}`, type: "refine" as const }]);
     } finally {
       setRefining(false);
+      setRefineProgressMessage(null);
       setChatImages((prev) => { prev.forEach((img) => URL.revokeObjectURL(img.previewUrl)); return []; });
     }
   };
@@ -1450,7 +1462,9 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
     if (stagedChanges.length === 0 || refining || chatting) return;
     const proceed = await confirm({
       title: `Apply ${stagedChanges.length} staged changes?`,
-      description: "This will generate and apply all staged updates to the page in one pass.",
+      description: doublePassRefine
+        ? "This will generate and apply staged updates with double-pass mode (pass 1, audit, pass 2)."
+        : "This will generate and apply all staged updates to the page in one pass.",
       confirmLabel: "Apply all",
       cancelLabel: "Cancel",
     });
@@ -2441,7 +2455,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                   <div style={{ display: "flex", justifyContent: "flex-start" }}>
                     <div style={{ background: "var(--border-subtle)", borderRadius: 12, padding: "8px 12px", fontSize: 12, color: "var(--text-3)", display: "flex", alignItems: "center", gap: 8 }}>
                       <Loader2 style={{ width: 12, height: 12, animation: "spin 1s linear infinite" }} />
-                      Generating changes...
+                      {refineProgressMessage ?? "Generating changes..."}
                     </div>
                   </div>
                 )}
@@ -2568,7 +2582,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                         )}
                       </div>
                     ))}
-                    {chatUrls.length < 3 && (
+                    {chatUrls.length < (doublePassRefine ? 10 : 3) && (
                       <button
                         onClick={() => setChatUrls((prev) => [...prev, ""])}
                         style={{ marginTop: 5, fontSize: 10, color: "var(--accent)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
@@ -2578,6 +2592,27 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                     )}
                   </div>
                 )}
+
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    fontSize: 10,
+                    color: "var(--text-3)",
+                    marginBottom: 8,
+                    cursor: refining || chatting ? "not-allowed" : "pointer",
+                    opacity: refining || chatting ? 0.5 : 1,
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={doublePassRefine}
+                    disabled={refining || chatting}
+                    onChange={(e) => setDoublePassRefine(e.target.checked)}
+                  />
+                  Double-pass refinement: run pass 1, audit, then pass 2. Allows up to {doublePassRefine ? 10 : 3} reference URLs.
+                </label>
 
                 <textarea
                   ref={textareaRef}
