@@ -17,6 +17,13 @@ interface Connection {
   createdAt: string;
 }
 
+interface ClickUpMember {
+  id: number;
+  username: string;
+  email: string;
+  profilePicture: string | null;
+}
+
 const OAUTH_ERRORS: Record<string, string> = {
   oauth_state_mismatch: "OAuth state mismatch. Please try again.",
   token_exchange_failed: "Failed to exchange authorisation code. Check your OAuth credentials.",
@@ -47,6 +54,34 @@ function normaliseMultilineList(value: string, fallback: string[]): string {
 
   const finalValues = values.length > 0 ? Array.from(new Set(values)) : fallback;
   return finalValues.join("\n");
+}
+
+function parseMultilineList(value: string | undefined, fallback: string[]): string[] {
+  if (!value) return fallback;
+
+  const values = value
+    .split(/[\n,]+/)
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+
+  return values.length > 0 ? Array.from(new Set(values)) : fallback;
+}
+
+function parseNumberList(value: string | undefined): number[] {
+  if (!value) return [];
+
+  return Array.from(
+    new Set(
+      value
+        .split(/[\n,]+/)
+        .map((item) => Number.parseInt(item.trim(), 10))
+        .filter((item) => Number.isFinite(item) && item > 0),
+    ),
+  );
+}
+
+function normaliseForMatch(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
 function GoogleIcon() {
@@ -97,7 +132,10 @@ function SettingsPanelInner() {
   const [clickupApiToken, setClickupApiToken] = useState("");
   const [clickupApiTokenInput, setClickupApiTokenInput] = useState("");
   const [clickupSalesHandoffServicesInput, setClickupSalesHandoffServicesInput] = useState("");
-  const [clickupSalesHandoffAssigneesInput, setClickupSalesHandoffAssigneesInput] = useState("");
+  const [clickupSalesHandoffAssigneeNamesFallback, setClickupSalesHandoffAssigneeNamesFallback] = useState<string[]>(DEFAULT_SALES_HANDOFF_ASSIGNEES);
+  const [clickupMembers, setClickupMembers] = useState<ClickUpMember[]>([]);
+  const [clickupMembersLoading, setClickupMembersLoading] = useState(false);
+  const [selectedClickupSalesHandoffAssigneeIds, setSelectedClickupSalesHandoffAssigneeIds] = useState<number[]>([]);
   const [clickupTokenSaving, setClickupTokenSaving] = useState(false);
   const [clickupTokenSaved, setClickupTokenSaved] = useState(false);
   const [clickupTokenError, setClickupTokenError] = useState<string | null>(null);
@@ -221,8 +259,11 @@ function SettingsPanelInner() {
       setClickupSalesHandoffServicesInput(
         settings.clickupSalesHandoffServices ?? DEFAULT_SALES_HANDOFF_SERVICES.join("\n"),
       );
-      setClickupSalesHandoffAssigneesInput(
-        settings.clickupSalesHandoffAssignees ?? DEFAULT_SALES_HANDOFF_ASSIGNEES.join("\n"),
+      setSelectedClickupSalesHandoffAssigneeIds(
+        parseNumberList(settings.clickupSalesHandoffAssigneeIds),
+      );
+      setClickupSalesHandoffAssigneeNamesFallback(
+        parseMultilineList(settings.clickupSalesHandoffAssignees, DEFAULT_SALES_HANDOFF_ASSIGNEES),
       );
       if (settings.taskBenchmarks) {
         try {
@@ -242,11 +283,58 @@ function SettingsPanelInner() {
     }
   }, []);
 
+  const loadClickupMembers = useCallback(async () => {
+    setClickupMembersLoading(true);
+    try {
+      const res = await fetch("/api/clickup/members");
+      const data = await res.json() as { members?: ClickUpMember[]; error?: string };
+      if (!res.ok || !Array.isArray(data.members)) {
+        setClickupMembers([]);
+        return;
+      }
+
+      const members = data.members;
+      setClickupMembers(members);
+
+      setSelectedClickupSalesHandoffAssigneeIds((prev) => {
+        if (prev.length > 0) return prev;
+
+        const fallbackIds = clickupSalesHandoffAssigneeNamesFallback
+          .map((name) => {
+            const terms = name
+              .split(/\s+/)
+              .map((term) => normaliseForMatch(term))
+              .filter((term) => term.length > 0);
+
+            if (terms.length === 0) return null;
+
+            const matched = members.find((member) => {
+              const haystack = normaliseForMatch(`${member.username} ${member.email}`);
+              return terms.every((term) => haystack.includes(term));
+            });
+
+            return matched?.id ?? null;
+          })
+          .filter((id): id is number => typeof id === "number");
+
+        return Array.from(new Set(fallbackIds));
+      });
+    } catch {
+      setClickupMembers([]);
+    } finally {
+      setClickupMembersLoading(false);
+    }
+  }, [clickupSalesHandoffAssigneeNamesFallback]);
+
   useEffect(() => {
     loadConnections();
     loadMcc();
     loadMs365Connections();
   }, [loadConnections, loadMcc, loadMs365Connections]);
+
+  useEffect(() => {
+    loadClickupMembers();
+  }, [loadClickupMembers]);
 
   async function handleOpenaiKeySave() {
     setOpenaiKeySaving(true);
@@ -297,6 +385,11 @@ function SettingsPanelInner() {
     setClickupTokenError(null);
     try {
       const tokenToSave = clickupApiTokenInput.startsWith("pk_…") ? clickupApiToken : clickupApiTokenInput;
+      const selectedMembers = clickupMembers.filter((member) =>
+        selectedClickupSalesHandoffAssigneeIds.includes(member.id),
+      );
+      const selectedNames = selectedMembers.map((member) => member.username || member.email);
+
       const res = await fetch("/api/settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -306,8 +399,9 @@ function SettingsPanelInner() {
             clickupSalesHandoffServicesInput,
             DEFAULT_SALES_HANDOFF_SERVICES,
           ),
+          clickupSalesHandoffAssigneeIds: selectedClickupSalesHandoffAssigneeIds.join(","),
           clickupSalesHandoffAssignees: normaliseMultilineList(
-            clickupSalesHandoffAssigneesInput,
+            selectedNames.join("\n"),
             DEFAULT_SALES_HANDOFF_ASSIGNEES,
           ),
         }),
@@ -318,9 +412,7 @@ function SettingsPanelInner() {
       setClickupSalesHandoffServicesInput((prev) =>
         normaliseMultilineList(prev, DEFAULT_SALES_HANDOFF_SERVICES),
       );
-      setClickupSalesHandoffAssigneesInput((prev) =>
-        normaliseMultilineList(prev, DEFAULT_SALES_HANDOFF_ASSIGNEES),
-      );
+      await loadClickupMembers();
       setClickupTokenSaved(true);
       setTimeout(() => setClickupTokenSaved(false), 3000);
     } catch (err) {
@@ -812,18 +904,62 @@ function SettingsPanelInner() {
           </div>
           <div style={{ marginBottom: 12 }}>
             <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>
-              Sales handoff auto-assignees (one per line)
+              Sales handoff auto-assignees
             </label>
-            <textarea
-              className="form-input"
-              rows={4}
-              value={clickupSalesHandoffAssigneesInput}
-              onChange={(e) => setClickupSalesHandoffAssigneesInput(e.target.value)}
-              placeholder="Nick Betts"
-              style={{ fontSize: 13 }}
-            />
+            <div
+              style={{
+                border: "1px solid var(--border)",
+                borderRadius: "var(--r-sm)",
+                padding: "10px 12px",
+                maxHeight: 210,
+                overflowY: "auto",
+                background: "var(--surface)",
+                display: "grid",
+                gap: 8,
+              }}
+            >
+              {clickupMembersLoading ? (
+                <p style={{ fontSize: 12, color: "var(--text-3)" }}>Loading ClickUp users…</p>
+              ) : clickupMembers.length === 0 ? (
+                <p style={{ fontSize: 12, color: "var(--text-3)" }}>
+                  No ClickUp users found. Confirm the token has access to your workspace.
+                </p>
+              ) : (
+                clickupMembers.map((member) => {
+                  const checked = selectedClickupSalesHandoffAssigneeIds.includes(member.id);
+                  return (
+                    <label
+                      key={member.id}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        fontSize: 13,
+                        color: "var(--text-2)",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => {
+                          setSelectedClickupSalesHandoffAssigneeIds((prev) =>
+                            prev.includes(member.id)
+                              ? prev.filter((id) => id !== member.id)
+                              : [...prev, member.id],
+                          );
+                        }}
+                      />
+                      <span>{member.username || member.email}</span>
+                      {member.email && member.email !== member.username && (
+                        <span style={{ color: "var(--text-4)" }}>({member.email})</span>
+                      )}
+                    </label>
+                  );
+                })
+              )}
+            </div>
             <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 4 }}>
-              Tasks are auto-assigned by matching these names against ClickUp members.
+              Tick which ClickUp users should be auto-assigned to sales handoff tasks.
             </p>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>

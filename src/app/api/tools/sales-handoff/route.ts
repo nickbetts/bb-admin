@@ -52,11 +52,24 @@ function parseListSetting(raw: string | undefined, fallback: string[]): string[]
   return values.length > 0 ? Array.from(new Set(values)) : fallback;
 }
 
-async function getSalesHandoffSettings(): Promise<{ services: string[]; assignees: string[] }> {
+function parseAssigneeIdSetting(raw: string | undefined): number[] {
+  if (!raw) return [];
+
+  return Array.from(
+    new Set(
+      raw
+        .split(/[\n,]+/)
+        .map((item) => Number.parseInt(item.trim(), 10))
+        .filter((item) => Number.isFinite(item) && item > 0),
+    ),
+  );
+}
+
+async function getSalesHandoffSettings(): Promise<{ services: string[]; assignees: string[]; assigneeIds: number[] }> {
   const rows = await prisma.appSetting.findMany({
     where: {
       key: {
-        in: ["clickupSalesHandoffServices", "clickupSalesHandoffAssignees"],
+        in: ["clickupSalesHandoffServices", "clickupSalesHandoffAssignees", "clickupSalesHandoffAssigneeIds"],
       },
     },
     select: { key: true, value: true },
@@ -67,6 +80,7 @@ async function getSalesHandoffSettings(): Promise<{ services: string[]; assignee
   return {
     services: parseListSetting(settings.clickupSalesHandoffServices, DEFAULT_SERVICE_OPTIONS),
     assignees: parseListSetting(settings.clickupSalesHandoffAssignees, DEFAULT_ASSIGNEES),
+    assigneeIds: parseAssigneeIdSetting(settings.clickupSalesHandoffAssigneeIds),
   };
 }
 
@@ -175,7 +189,7 @@ export async function POST(request: NextRequest) {
     const budgetRange = cleanText(body.budgetRange);
     const otherInformation = cleanText(body.otherInformation);
 
-    const { services: serviceOptions, assignees } = await getSalesHandoffSettings();
+    const { services: serviceOptions, assignees, assigneeIds: configuredAssigneeIds } = await getSalesHandoffSettings();
 
     if (!prospectName) {
       return NextResponse.json({ error: "prospectName is required" }, { status: 400 });
@@ -208,15 +222,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "secondCallAt must be a valid date/time" }, { status: 400 });
     }
 
-    const members = await getClickUpMembers();
-    const { assigneeIds, missing } = resolveAutoAssignees(assignees, members);
-    if (missing.length > 0) {
-      return NextResponse.json(
-        {
-          error: `Could not auto-assign ClickUp users: ${missing.join(", ")}.`,
-        },
-        { status: 500 },
-      );
+    let assigneeIds = configuredAssigneeIds;
+    if (assigneeIds.length === 0) {
+      const members = await getClickUpMembers();
+      const { assigneeIds: resolvedAssigneeIds, missing } = resolveAutoAssignees(assignees, members);
+      if (missing.length > 0) {
+        return NextResponse.json(
+          {
+            error: `Could not auto-assign ClickUp users: ${missing.join(", ")}.`,
+          },
+          { status: 500 },
+        );
+      }
+      assigneeIds = resolvedAssigneeIds;
     }
 
     const taskName = `Sales Handoff - ${prospectName}`;
