@@ -198,6 +198,174 @@ body {
     radial-gradient(ellipse at 28% 65%, rgb(99 102 241 / 0.04) 0%, transparent 35%), var(--bg);
 }
 
+.app-shell-enhanced {
+  background:
+    radial-gradient(ellipse at 8% 0%, rgb(99 102 241 / 0.06) 0%, transparent 44%),
+    radial-gradient(ellipse at 92% 14%, rgb(236 72 153 / 0.05) 0%, transparent 46%), var(--bg);
+}
+
+.app-main-enhanced {
+  position: relative;
+}
+
+.platform-topbar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  padding: 14px 20px 8px;
+  background: linear-gradient(
+    180deg,
+    rgb(238 240 248 / 0.92),
+    rgb(238 240 248 / 0.78),
+    rgb(238 240 248 / 0)
+  );
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.platform-topbar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid rgb(255 255 255 / 0.7);
+  border-radius: 16px;
+  background: rgb(255 255 255 / 0.72);
+  box-shadow: 0 8px 28px -14px rgb(15 23 42 / 0.25);
+  padding: 10px 14px;
+}
+
+.platform-topbar-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.platform-topbar-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgb(99 102 241 / 0.12);
+  color: var(--accent-text);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.platform-topbar-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.25;
+}
+
+.platform-topbar-subtitle {
+  font-size: 12px;
+  color: var(--text-3);
+  margin-top: 1px;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 360px;
+}
+
+.platform-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.platform-topbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgb(255 255 255 / 0.75);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 10px;
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.platform-topbar-btn:hover,
+.platform-topbar-btn:focus-visible {
+  border-color: rgb(99 102 241 / 0.45);
+  color: var(--accent-text);
+  transform: translateY(-1px);
+}
+
+.platform-topbar-btn-primary {
+  border-color: rgb(99 102 241 / 0.45);
+  background: linear-gradient(135deg, rgb(99 102 241 / 0.14), rgb(168 85 247 / 0.1));
+  color: var(--accent-text);
+}
+
+.platform-topbar-kbd {
+  border: 1px solid rgb(99 102 241 / 0.35);
+  border-radius: 6px;
+  background: rgb(255 255 255 / 0.8);
+  color: var(--accent-text);
+  font-size: 10px;
+  font-weight: 700;
+  font-family: inherit;
+  padding: 1px 6px;
+}
+
+[data-theme="dark"] .platform-topbar {
+  background: linear-gradient(180deg, rgb(15 23 42 / 0.9), rgb(15 23 42 / 0.72), rgb(15 23 42 / 0));
+}
+
+[data-theme="dark"] .platform-topbar-inner {
+  border-color: rgb(71 85 105 / 0.6);
+  background: rgb(15 23 42 / 0.72);
+  box-shadow: 0 10px 30px -16px rgb(0 0 0 / 0.6);
+}
+
+[data-theme="dark"] .platform-topbar-btn {
+  border-color: rgb(71 85 105 / 0.7);
+  background: rgb(30 41 59 / 0.72);
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .platform-topbar-btn:hover,
+[data-theme="dark"] .platform-topbar-btn:focus-visible {
+  border-color: rgb(129 140 248 / 0.5);
+  color: #e2e8f0;
+}
+
+[data-theme="dark"] .platform-topbar-btn-primary {
+  border-color: rgb(129 140 248 / 0.5);
+  background: linear-gradient(135deg, rgb(99 102 241 / 0.22), rgb(168 85 247 / 0.18));
+}
+
+[data-theme="dark"] .platform-topbar-kbd {
+  border-color: rgb(129 140 248 / 0.45);
+  background: rgb(30 41 59 / 0.86);
+  color: #e2e8f0;
+}
+
+@media (max-width: 1024px) {
+  .platform-topbar-subtitle {
+    max-width: 220px;
+  }
+}
+
+@media (max-width: 767px) {
+  .platform-topbar {
+    display: none;
+  }
+}
+
 /* =============================================
    SIDEBAR
 ============================================= */

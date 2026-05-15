@@ -14,6 +14,11 @@ export function FrontendEnhancementsProvider({ children }: FrontendEnhancementsP
   const pathname = usePathname();
   const prefersReducedMotion = useReducedMotion();
   const lenisEnabled = process.env.NEXT_PUBLIC_ENABLE_LENIS !== "0";
+  const isReportLikePath =
+    pathname.startsWith("/reports") ||
+    pathname.includes("/report/") ||
+    pathname.endsWith("/print") ||
+    pathname.startsWith("/share/report");
 
   useEffect(() => {
     gsap.defaults({
@@ -24,12 +29,21 @@ export function FrontendEnhancementsProvider({ children }: FrontendEnhancementsP
 
   useEffect(() => {
     if (!lenisEnabled) return;
+    if (isReportLikePath) return;
+
+    // App-shell routes use .app-main as their native scroll container.
+    // Running Lenis globally on these routes can swallow wheel/touch events.
+    if (document.querySelector(".app-main")) return;
 
     const lenis = new Lenis({
       duration: 1.1,
       smoothWheel: true,
       wheelMultiplier: 0.9,
       touchMultiplier: 1.1,
+      prevent: (node) => {
+        const element = node as HTMLElement | null;
+        return Boolean(element?.closest?.(".app-main, [data-lenis-prevent], [data-native-scroll]"));
+      },
     });
 
     let rafId = 0;
@@ -45,7 +59,11 @@ export function FrontendEnhancementsProvider({ children }: FrontendEnhancementsP
       window.cancelAnimationFrame(rafId);
       lenis.destroy();
     };
-  }, [lenisEnabled]);
+  }, [isReportLikePath, lenisEnabled, pathname]);
+
+  if (isReportLikePath) {
+    return <>{children}</>;
+  }
 
   const initial = prefersReducedMotion ? { opacity: 1 } : { opacity: 0, y: 8 };
   const animate = { opacity: 1, y: 0 };
