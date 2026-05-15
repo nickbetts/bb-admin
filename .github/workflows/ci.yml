@@ -8,7 +8,7 @@ on:
 
 jobs:
   lint-and-build:
-    name: Lint & Build
+    name: Lint, Unit Test & Build
     runs-on: ubuntu-latest
 
     steps:
@@ -26,6 +26,9 @@ jobs:
 
       - name: Lint
         run: npm run lint
+
+      - name: Unit tests
+        run: npm run test:unit
 
       - name: Build
         run: npm run build
@@ -67,4 +70,3 @@ jobs:
           MS365_TENANT_ID: placeholder
           NEXT_PUBLIC_APP_URL: http://localhost:3000
           APP_PASSWORD: placeholder
-

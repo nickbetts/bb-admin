@@ -5,6 +5,7 @@
 i3media Report is an internal agency platform built with **Next.js 16 (App Router) + React 19 + TypeScript + Prisma + Tailwind CSS v4**, deployed on **Vercel**. It aggregates data from 16 marketing channels (GA4, Google Ads, Meta, TikTok, Microsoft Ads, LinkedIn, Klaviyo, YouTube, HubSpot, CallRail, SemRush, Search Console, Moz, WooCommerce, Shopify, Core Web Vitals) and surfaces AI-powered insights via **OpenAI** (GPT-4o / GPT-4o-mini).
 
 > **Coding agents available:** Specialised sub-agent instructions live in `.github/agents/`:
+>
 > - `orchestrator.agent.md` — routing tasks and orchestrating multi-step workflows across agents (@Orchestrator in chat)
 > - `channel-integration.agent.md` — adding new marketing channel data integrations (@Channel Integration in chat)
 > - `ai-endpoint.agent.md` — creating AI analysis API endpoints (@AI Endpoint Expert in chat)
@@ -79,7 +80,8 @@ prisma.config.ts        # Prisma CLI config — reads DIRECT_URL (preferred) the
 - **API caching**: wrap all external channel API calls with `withApiCache(key, ttlHours, fn)` from `src/lib/api-cache.ts`.
 - **Auth**: use `getSession()` for user-facing routes; `getSessionOrCronAuth(request)` for routes callable by cron jobs (also accepts `CRON_SECRET` bearer token).
 - **Tailwind v4** — utility-first, no component library. Keep styles co-located with components. No inline `style={{}}`.
-- **No test infrastructure** — there is currently no test runner. Validate changes with `npm run lint` and `npm run build`.
+- **Unit tests** — Vitest is available for unit/component tests. Use `npm run test:unit` (or `npm run test:unit:watch`) for local testing.
+- **Code quality automation** — Husky + lint-staged run ESLint and Prettier on staged files at commit time.
 - **British English** — all AI-generated text, comments, and UI copy should use British spellings.
 
 ## Common code patterns
@@ -114,7 +116,10 @@ export async function POST(request: NextRequest) {
   const openai = await getOpenAiClient(); // never new OpenAI()
   const response = await openai.chat.completions.create({
     model: "gpt-4o-mini",
-    messages: [{ role: "system", content: "..." }, { role: "user", content: "..." }],
+    messages: [
+      { role: "system", content: "..." },
+      { role: "user", content: "..." },
+    ],
     temperature: 0.65,
     max_tokens: 500,
   });
@@ -156,11 +161,35 @@ npm run dev
 # Lint (ESLint 9 + eslint-config-next)
 npm run lint
 
+# Format codebase (Prettier + Tailwind class sorting)
+npm run format
+
+# Check formatting only (CI-style)
+npm run format:check
+
+# Run unit tests (Vitest)
+npm run test:unit
+
+# Run unit tests in watch mode
+npm run test:unit:watch
+
+# Run unit tests with coverage
+npm run test:unit:coverage
+
+# Dependency hygiene scan
+npm run knip
+
 # Full build (prisma generate + next build)
 npm run build
 
-# Database — local SQLite
-DATABASE_URL=file:dev.db npm run build   # Build needs this for prisma generate
+# Full local quality gate
+npm run check
+
+# Build with bundle analysis enabled
+npm run analyze
+
+# Build with CI-style Postgres stubs (or set real Neon URLs in .env.local)
+DATABASE_URL='postgresql://stub:stub@localhost:5432/stub?sslmode=disable' DIRECT_URL='postgresql://stub:stub@localhost:5432/stub?sslmode=disable' npm run build
 
 # DB migrations / seed (requires DATABASE_URL set)
 npm run db:migrate   # prisma migrate dev
@@ -192,17 +221,20 @@ Notes:
 ## CI expectations
 
 Every PR must pass:
-1. `npm run lint` — ESLint must report 0 errors.
-2. `npm run build` — Next.js production build must succeed (includes `prisma generate`).
 
-There is no separate typecheck or test step in CI. TypeScript errors surface through `next build`.
+1. `npm run lint` — ESLint must report 0 errors.
+2. `npm run test:unit` — Vitest unit tests must pass.
+3. `npm run build` — Next.js production build must succeed (includes `prisma generate`).
+
+TypeScript errors surface through `next build`.
+Knip (`npm run knip`) is available for dependency/export/file hygiene and should be run before large refactors.
 
 ## Prisma / database notes
 
 - **Database**: Vercel Postgres (Neon-backed). Same engine in local dev, preview, and production — prefer using a Neon **dev branch** for local work.
 - **Required env vars**:
-  - `DATABASE_URL` — the *pooled* connection string (Vercel exposes this as `POSTGRES_PRISMA_URL`).
-  - `DIRECT_URL` — the *non-pooled* connection (Vercel exposes this as `POSTGRES_URL_NON_POOLING`). Used by Prisma migrations only.
+  - `DATABASE_URL` — the _pooled_ connection string (Vercel exposes this as `POSTGRES_PRISMA_URL`).
+  - `DIRECT_URL` — the _non-pooled_ connection (Vercel exposes this as `POSTGRES_URL_NON_POOLING`). Used by Prisma migrations only.
 - **CI**: uses a syntactically-valid stub Postgres URL so `prisma generate` and `next build` succeed without a real database. `prisma generate` does not connect.
 - **`prisma.config.ts`** reads `DIRECT_URL` (preferred) then falls back to `DATABASE_URL` from env.
 - Always run `npm run db:migrate` after changing `prisma/schema.prisma` locally. The generated migration is committed and applied to production via the `DB Migrate (Postgres)` GitHub Action.
@@ -212,31 +244,31 @@ There is no separate typecheck or test step in CI. TypeScript errors surface thr
 
 **Never commit real secrets.** Use `.env.local` (git-ignored) for local development.
 
-| Variable | Required for prod | Can be stubbed in CI/build |
-|---|---|---|
-| `DATABASE_URL` | ✅ (pooled Postgres URL) | ✅ `postgresql://stub:stub@localhost:5432/stub?sslmode=disable` |
-| `DIRECT_URL` | ✅ (non-pooled Postgres URL) | ✅ same stub as above |
-| `SESSION_SECRET` | ✅ | ✅ any random string |
-| `NEXTAUTH_SECRET` | ✅ | ✅ any random string |
-| `BLOB_READ_WRITE_TOKEN` | ✅ | ✅ `vercel_blob_rw_placeholder` |
-| `OPENAI_API_KEY` | ✅ | ✅ `placeholder` (AI features won't work) |
-| `SEMRUSH_API_KEY` | ✅ | ✅ `placeholder` |
-| `GA4_CLIENT_EMAIL` | ✅ | ✅ `placeholder` |
-| `GA4_PRIVATE_KEY` | ✅ | ✅ `placeholder` |
-| `META_ACCESS_TOKEN` | ✅ | ✅ `placeholder` |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | ✅ | ✅ `placeholder` |
-| `GOOGLE_ADS_DEVELOPER_TOKEN` / `GOOGLE_ADS_CLIENT_ID` / `GOOGLE_ADS_CLIENT_SECRET` / `GOOGLE_ADS_REFRESH_TOKEN` | ✅ | ✅ `placeholder` |
-| `GOOGLE_ADS_MANAGER_CUSTOMER_ID` | ✅ | ✅ `placeholder` |
-| `GOOGLE_API_KEY` | ✅ (YouTube) | ✅ `placeholder` |
-| `GOOGLE_CRUX_API_KEY` | ✅ (Core Web Vitals) | ✅ `placeholder` |
-| `MICROSOFT_ADS_CLIENT_ID` / `MICROSOFT_ADS_CLIENT_SECRET` / `MICROSOFT_ADS_DEVELOPER_TOKEN` / `MICROSOFT_ADS_REFRESH_TOKEN` | channel-dependent | ✅ `placeholder` |
-| `MICROSOFT_ADS_CUSTOMER_ID` | channel-dependent | ✅ `placeholder` |
-| `TIKTOK_ACCESS_TOKEN` | channel-dependent | ✅ `placeholder` |
-| `MOZ_ACCESS_ID` / `MOZ_SECRET_KEY` | channel-dependent | ✅ `placeholder` |
-| `MS365_CLIENT_ID` / `MS365_CLIENT_SECRET` / `MS365_TENANT_ID` | ✅ (email notifications) | ✅ `placeholder` |
-| `CRON_SECRET` | ✅ | ✅ `placeholder` |
-| `APP_PASSWORD` | ✅ (legacy login) | ✅ `placeholder` |
-| `NEXT_PUBLIC_APP_URL` | ✅ | ✅ `http://localhost:3000` |
+| Variable                                                                                                                    | Required for prod            | Can be stubbed in CI/build                                      |
+| --------------------------------------------------------------------------------------------------------------------------- | ---------------------------- | --------------------------------------------------------------- |
+| `DATABASE_URL`                                                                                                              | ✅ (pooled Postgres URL)     | ✅ `postgresql://stub:stub@localhost:5432/stub?sslmode=disable` |
+| `DIRECT_URL`                                                                                                                | ✅ (non-pooled Postgres URL) | ✅ same stub as above                                           |
+| `SESSION_SECRET`                                                                                                            | ✅                           | ✅ any random string                                            |
+| `NEXTAUTH_SECRET`                                                                                                           | ✅                           | ✅ any random string                                            |
+| `BLOB_READ_WRITE_TOKEN`                                                                                                     | ✅                           | ✅ `vercel_blob_rw_placeholder`                                 |
+| `OPENAI_API_KEY`                                                                                                            | ✅                           | ✅ `placeholder` (AI features won't work)                       |
+| `SEMRUSH_API_KEY`                                                                                                           | ✅                           | ✅ `placeholder`                                                |
+| `GA4_CLIENT_EMAIL`                                                                                                          | ✅                           | ✅ `placeholder`                                                |
+| `GA4_PRIVATE_KEY`                                                                                                           | ✅                           | ✅ `placeholder`                                                |
+| `META_ACCESS_TOKEN`                                                                                                         | ✅                           | ✅ `placeholder`                                                |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`                                                                                 | ✅                           | ✅ `placeholder`                                                |
+| `GOOGLE_ADS_DEVELOPER_TOKEN` / `GOOGLE_ADS_CLIENT_ID` / `GOOGLE_ADS_CLIENT_SECRET` / `GOOGLE_ADS_REFRESH_TOKEN`             | ✅                           | ✅ `placeholder`                                                |
+| `GOOGLE_ADS_MANAGER_CUSTOMER_ID`                                                                                            | ✅                           | ✅ `placeholder`                                                |
+| `GOOGLE_API_KEY`                                                                                                            | ✅ (YouTube)                 | ✅ `placeholder`                                                |
+| `GOOGLE_CRUX_API_KEY`                                                                                                       | ✅ (Core Web Vitals)         | ✅ `placeholder`                                                |
+| `MICROSOFT_ADS_CLIENT_ID` / `MICROSOFT_ADS_CLIENT_SECRET` / `MICROSOFT_ADS_DEVELOPER_TOKEN` / `MICROSOFT_ADS_REFRESH_TOKEN` | channel-dependent            | ✅ `placeholder`                                                |
+| `MICROSOFT_ADS_CUSTOMER_ID`                                                                                                 | channel-dependent            | ✅ `placeholder`                                                |
+| `TIKTOK_ACCESS_TOKEN`                                                                                                       | channel-dependent            | ✅ `placeholder`                                                |
+| `MOZ_ACCESS_ID` / `MOZ_SECRET_KEY`                                                                                          | channel-dependent            | ✅ `placeholder`                                                |
+| `MS365_CLIENT_ID` / `MS365_CLIENT_SECRET` / `MS365_TENANT_ID`                                                               | ✅ (email notifications)     | ✅ `placeholder`                                                |
+| `CRON_SECRET`                                                                                                               | ✅                           | ✅ `placeholder`                                                |
+| `APP_PASSWORD`                                                                                                              | ✅ (legacy login)            | ✅ `placeholder`                                                |
+| `NEXT_PUBLIC_APP_URL`                                                                                                       | ✅                           | ✅ `http://localhost:3000`                                      |
 
 See `.env.local.example` for the full list and documentation.
 
@@ -245,18 +277,20 @@ See `.env.local.example` for the full list and documentation.
 - **Small, focused diffs**: one logical change per PR. Avoid refactoring unrelated code.
 - **Explicit file paths**: always state which file you're changing and why.
 - **No drive-by style changes**: don't reformat files you're not otherwise modifying.
-- **Test your change**: run `npm run lint && npm run build` before opening a PR.
+- **Test your change**: run `npm run check` before opening a PR (`lint + unit tests + build`).
 - **Prisma schema changes**: always include the corresponding migration (`npm run db:migrate`), never just `db:push` for production-destined changes.
 - **Env var changes**: list any new env vars in the PR description and update `.env.local.example`.
 
 ## Vercel deployment failure workflow
 
 When a Vercel deployment fails, the `vercel-monitor.yml` workflow automatically:
+
 1. Fetches build logs from the Vercel API.
 2. Opens a GitHub issue titled `🚨 Vercel build failed — <branch> @ <sha>` labelled `vercel-failure`.
 3. Embeds the last ~20 kB of build output in the issue body.
 
 **To get an AI-generated fix suggestion:**
+
 1. Open the issue.
 2. Post a comment containing `/fix` (exactly, or starting with `/fix`).
 3. The workflow responds with a `🤖 Copilot Fix Suggestion` comment generated by GitHub Models (Copilot) — no external API key required.

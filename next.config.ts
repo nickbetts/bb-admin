@@ -1,4 +1,9 @@
 import type { NextConfig } from "next";
+import createBundleAnalyzer from "@next/bundle-analyzer";
+
+const withBundleAnalyzer = createBundleAnalyzer({
+  enabled: process.env.ANALYZE === "true",
+});
 
 const nextConfig: NextConfig = {
   serverExternalPackages: ["@sparticuz/chromium-min", "puppeteer-core", "sharp"],
@@ -14,12 +19,10 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/(.*)",
-        headers: [
-          { key: "X-Robots-Tag", value: "noindex, nofollow, nosnippet, noarchive" },
-        ],
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow, nosnippet, noarchive" }],
       },
     ];
   },
 };
 
-export default nextConfig;
+export default withBundleAnalyzer(nextConfig);

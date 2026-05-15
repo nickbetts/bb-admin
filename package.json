@@ -5,17 +5,35 @@
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
+    "analyze": "ANALYZE=true npm run build",
     "start": "next start",
     "lint": "eslint",
+    "format": "prettier . --cache --ignore-unknown --write",
+    "format:check": "prettier . --ignore-unknown --check",
+    "knip": "knip --include dependencies,unlisted,binaries,unresolved --reporter compact",
+    "test:unit": "vitest run",
+    "test:unit:watch": "vitest",
+    "test:unit:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
+    "check": "npm run lint && npm run test:unit && npm run build",
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
     "db:reset": "prisma migrate reset",
     "db:push": "prisma db push",
+    "prepare": "husky",
     "vercel:link": "vercel link",
     "vercel:env:pull": "vercel env pull .env.local",
     "vercel:deploy": "vercel --prod"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,mjs,cjs}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,css,md,yml,yaml}": [
+      "prettier --write"
+    ]
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.85.0",
@@ -59,19 +77,32 @@
   },
   "devDependencies": {
     "@libsql/client": "^0.17.3",
+    "@next/bundle-analyzer": "^16.2.6",
     "@playwright/test": "^1.60.0",
     "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitest/coverage-v8": "^4.1.6",
     "bcryptjs": "^3.0.3",
     "dotenv": "^17.4.0",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
+    "husky": "^9.1.7",
+    "jsdom": "^29.1.1",
+    "knip": "^6.14.0",
+    "lint-staged": "^17.0.4",
+    "msw": "^2.14.6",
+    "prettier": "^3.8.3",
+    "prettier-plugin-tailwindcss": "^0.8.0",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
-    "vercel": "^50.32.5"
+    "vercel": "^50.32.5",
+    "vitest": "^4.1.6"
   }
 }
