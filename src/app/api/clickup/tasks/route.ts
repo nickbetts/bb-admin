@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic";
 interface CreateTaskBody {
   listId?: string;
   taskName?: string;
+  description?: string;
   checklistItems?: string[];
   assignees?: number[];
   dueDate?: string; // ISO date string e.g. "2026-05-20"
@@ -31,6 +32,7 @@ export async function POST(request: NextRequest) {
       body.checklistItems ?? [],
       body.assignees,
       dueDateMs,
+      body.description,
     );
 
     return NextResponse.json(result);

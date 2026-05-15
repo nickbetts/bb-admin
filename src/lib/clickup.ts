@@ -211,6 +211,7 @@ export async function createClickUpTaskWithChecklist(
   checklistItems: string[],
   assignees?: number[],
   dueDateMs?: number,
+  description?: string,
 ): Promise<{ taskId: string; taskUrl: string }> {
   const token = await getClickUpToken();
 
@@ -222,6 +223,7 @@ export async function createClickUpTaskWithChecklist(
       method: "POST",
       body: JSON.stringify({
         name: taskName,
+        ...(description ? { description } : {}),
         ...(assignees && assignees.length > 0 ? { assignees } : {}),
         ...(dueDateMs ? { due_date: dueDateMs, due_date_time: false } : {}),
       }),

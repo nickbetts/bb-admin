@@ -74,6 +74,7 @@ function SettingsPanelInner() {
 
   const [clickupApiToken, setClickupApiToken] = useState("");
   const [clickupApiTokenInput, setClickupApiTokenInput] = useState("");
+  const [clickupSalesHandoffListId, setClickupSalesHandoffListId] = useState("");
   const [clickupTokenSaving, setClickupTokenSaving] = useState(false);
   const [clickupTokenSaved, setClickupTokenSaved] = useState(false);
   const [clickupTokenError, setClickupTokenError] = useState<string | null>(null);
@@ -194,6 +195,7 @@ function SettingsPanelInner() {
       const storedClickupToken = settings.clickupApiToken ?? "";
       setClickupApiToken(storedClickupToken);
       setClickupApiTokenInput(storedClickupToken ? "pk_…redacted" : "");
+      setClickupSalesHandoffListId(settings.clickupSalesHandoffListId ?? "");
       if (settings.taskBenchmarks) {
         try {
           const stored = JSON.parse(settings.taskBenchmarks) as Array<{ task: string; hours: number }>;
@@ -270,7 +272,10 @@ function SettingsPanelInner() {
       const res = await fetch("/api/settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clickupApiToken: tokenToSave }),
+        body: JSON.stringify({
+          clickupApiToken: tokenToSave,
+          clickupSalesHandoffListId: clickupSalesHandoffListId.trim(),
+        }),
       });
       if (!res.ok) throw new Error("Failed to save");
       setClickupApiToken(tokenToSave);
@@ -746,11 +751,27 @@ function SettingsPanelInner() {
         <div className="card-header">
           <div>
             <h2 className="card-title">ClickUp Integration</h2>
-            <p className="card-subtitle">Used to automatically create go-live checklists in ClickUp when landing pages are generated. Get your personal API token from <a href="https://app.clickup.com/settings/apps" target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)" }}>ClickUp Settings → Apps</a>.</p>
+            <p className="card-subtitle">Used to automatically create go-live checklists and sales handoff tasks in ClickUp. Get your personal API token from <a href="https://app.clickup.com/settings/apps" target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)" }}>ClickUp Settings → Apps</a>.</p>
           </div>
         </div>
         <div className="card-body">
           {clickupTokenError && <p style={{ fontSize: 13, color: "var(--danger)", marginBottom: 12 }}>{clickupTokenError}</p>}
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>
+              Sales handoff list ID
+            </label>
+            <input
+              type="text"
+              className="form-input"
+              style={{ fontFamily: "monospace", fontSize: 13 }}
+              placeholder="901234567890"
+              value={clickupSalesHandoffListId}
+              onChange={(e) => setClickupSalesHandoffListId(e.target.value)}
+            />
+            <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 4 }}>
+              Fixed destination list for the Sales Handoff tool.
+            </p>
+          </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             <input
               type="password"
@@ -769,7 +790,7 @@ function SettingsPanelInner() {
               {clickupTokenSaving ? "Saving…" : clickupTokenSaved ? "Saved ✓" : "Save"}
             </button>
           </div>
-          {clickupApiToken && <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 8 }}>✓ ClickUp token configured. Go-live checklists will be created automatically when landing pages are generated.</p>}
+          {clickupApiToken && <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 8 }}>✓ ClickUp token configured. Go-live checklists and sales handoff tasks can be created automatically.</p>}
         </div>
       </div>
 

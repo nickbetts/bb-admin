@@ -45,6 +45,7 @@ const PERMISSION_GROUPS = [
       { key: "email_verifier", label: "Email Verifier" },
       { key: "ad_image_generator", label: "Ad Image Generator" },
       { key: "meta_audience_scraper", label: "Meta Assassin" },
+      { key: "sales_handoff", label: "Sales Handoff" },
     ],
   },
   {

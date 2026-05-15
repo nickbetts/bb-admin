@@ -45,6 +45,7 @@ import {
   Crosshair,
   ChevronDown,
   ChevronUp,
+  ClipboardList,
 } from "lucide-react";
 import { SidebarClickUpPanel } from "@/components/layout/SidebarClickUpPanel";
 import { CommandPalette } from "@/components/ui/CommandPalette";
@@ -95,6 +96,7 @@ const toolsNavItems: NavItem[] = [
   { href: "/tools/ad-image-generator", label: "AI Assistant", icon: <Brain className="h-4 w-4" />, permission: "ad_image_generator" },
   { href: "/tools/internal-linking", label: "Internal Linking", icon: <Link2 className="h-4 w-4" />, permission: "internal_linking" },
   { href: "/tools/meta-audience-scraper", label: "Meta Assassin", icon: <Crosshair className="h-4 w-4" />, permission: "meta_audience_scraper" },
+  { href: "/tools/sales-handoff", label: "Sales Handoff", icon: <ClipboardList className="h-4 w-4" />, permission: "sales_handoff" },
 ];
 
 interface SidebarProps {
