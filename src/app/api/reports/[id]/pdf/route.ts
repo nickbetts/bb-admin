@@ -410,17 +410,62 @@ export async function GET(
             }
           };
 
-          const isReady = (el: HTMLElement) => {
-            const svg = el.querySelector<SVGElement>("svg.recharts-surface, svg");
-            if (!svg) return false;
-            const rect = svg.getBoundingClientRect();
-            if (rect.width <= 40 || rect.height <= 40) return false;
-            const seriesNodes = Array.from(svg.querySelectorAll<SVGElement>(SERIES_GEOMETRY_SELECTOR));
-            if (seriesNodes.length === 0) return false;
-            return seriesNodes.some(hasDrawableGeometry);
+          const toNum = (value: string | null) => {
+            const n = Number(value);
+            return Number.isFinite(n) ? n.toFixed(2) : "0.00";
           };
 
-          for (let attempt = 1; attempt <= 7; attempt++) {
+          const nodeSignature = (node: SVGElement) => {
+            const tag = node.tagName.toLowerCase();
+            if (tag === "path") {
+              const d = node.getAttribute("d") ?? "";
+              return `p:${d.length}:${d.slice(0, 80)}:${d.slice(-60)}`;
+            }
+            if (tag === "rect") {
+              return `r:${toNum(node.getAttribute("x"))},${toNum(node.getAttribute("y"))},${toNum(node.getAttribute("width"))},${toNum(node.getAttribute("height"))}`;
+            }
+            if (tag === "circle") {
+              return `c:${toNum(node.getAttribute("cx"))},${toNum(node.getAttribute("cy"))},${toNum(node.getAttribute("r"))}`;
+            }
+            if (tag === "polygon" || tag === "polyline") {
+              const points = node.getAttribute("points") ?? "";
+              return `${tag}:${points.length}:${points.slice(0, 80)}:${points.slice(-60)}`;
+            }
+            return `${tag}:${node.getAttribute("transform") ?? ""}`;
+          };
+
+          const getChartState = (el: HTMLElement) => {
+            const svg = el.querySelector<SVGElement>("svg.recharts-surface, svg");
+            if (!svg) {
+              return { ready: false, signature: "no-svg" };
+            }
+
+            const rect = svg.getBoundingClientRect();
+            if (rect.width <= 40 || rect.height <= 40) {
+              return { ready: false, signature: `tiny-svg:${Math.round(rect.width)}x${Math.round(rect.height)}` };
+            }
+
+            const seriesNodes = Array.from(svg.querySelectorAll<SVGElement>(SERIES_GEOMETRY_SELECTOR));
+            if (seriesNodes.length === 0) {
+              return { ready: false, signature: "no-series-nodes" };
+            }
+
+            const hasVisibleSeries = seriesNodes.some(hasDrawableGeometry);
+            const seriesSignature = seriesNodes.map(nodeSignature).join("|");
+            const clipSignature = Array.from(svg.querySelectorAll<SVGRectElement>("clipPath rect"))
+              .map((clip) => `clip:${toNum(clip.getAttribute("x"))},${toNum(clip.getAttribute("y"))},${toNum(clip.getAttribute("width"))},${toNum(clip.getAttribute("height"))}`)
+              .join("|");
+
+            return {
+              ready: hasVisibleSeries,
+              signature: `${seriesSignature}::${clipSignature}`,
+            };
+          };
+
+          let previousSignature = "";
+          let stablePasses = 0;
+
+          for (let attempt = 1; attempt <= 10; attempt++) {
             window.scrollTo({ top: Math.max(0, regionY - 140), left: 0, behavior: "instant" });
             window.dispatchEvent(new Event("resize"));
             void document.body.offsetHeight;
@@ -430,23 +475,58 @@ export async function GET(
 
             const charts = chartContainers();
             if (charts.length === 0) {
-              return { ok: true, chartCount: 0, unready: 0, attempts: attempt };
+              return { ok: true, chartCount: 0, unready: 0, attempts: attempt, stablePasses: 0 };
             }
-            const unready = charts.filter((chart) => !isReady(chart)).length;
+
+            const states = charts.map((chart) => getChartState(chart));
+            const unready = states.filter((state) => !state.ready).length;
+
             if (unready === 0) {
-              return { ok: true, chartCount: charts.length, unready: 0, attempts: attempt };
+              const signature = states.map((state) => state.signature).join("||");
+              if (signature === previousSignature) {
+                stablePasses += 1;
+              } else {
+                previousSignature = signature;
+                stablePasses = 0;
+              }
+
+              if (stablePasses >= 1) {
+                return {
+                  ok: true,
+                  chartCount: charts.length,
+                  unready: 0,
+                  attempts: attempt,
+                  stablePasses,
+                };
+              }
+            } else {
+              previousSignature = "";
+              stablePasses = 0;
             }
+
+            await wait(140);
           }
 
           const charts = chartContainers();
-          const unready = charts.filter((chart) => !isReady(chart)).length;
-          return { ok: unready === 0, chartCount: charts.length, unready, attempts: 7 };
+          const states = charts.map((chart) => getChartState(chart));
+          const unready = states.filter((state) => !state.ready).length;
+          return { ok: unready === 0, chartCount: charts.length, unready, attempts: 10, stablePasses };
         }, { regionY: clipY, regionHeight: clipHeight });
 
         if (!regionChartReady.ok) {
           console.warn(
-            `[pdf-recharts] Region chart readiness incomplete: idx=${idx} id=${region.id} charts=${regionChartReady.chartCount} unready=${regionChartReady.unready}`
+            `[pdf-recharts] Region chart readiness incomplete: idx=${idx} id=${region.id} charts=${regionChartReady.chartCount} unready=${regionChartReady.unready} attempts=${regionChartReady.attempts} stablePasses=${regionChartReady.stablePasses ?? 0}`
           );
+
+          // Last-chance repaint nudge for charts that are still settling.
+          await page.evaluate(async ({ regionY }) => {
+            window.scrollTo({ top: Math.max(0, regionY - 140), left: 0, behavior: "instant" });
+            window.dispatchEvent(new Event("resize"));
+            void document.body.offsetHeight;
+            await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+            await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+          }, { regionY: clipY });
+          await page.evaluate(() => new Promise((r) => setTimeout(r, 420)));
         }
 
         let chunkOffset = 0;
