@@ -217,16 +217,42 @@ No em dashes. No banned phrases. Long-form 80-220 words. Variants read different
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function parseJsonFromAnthropicResponse(res: any): unknown {
   const blocks = (res?.content ?? []) as { type: string; text?: string }[];
-  const textBlock = blocks.find((b) => b.type === "text" && typeof b.text === "string");
-  const raw = textBlock?.text ?? "";
+  const textBlocks = blocks
+    .filter((b) => b.type === "text" && typeof b.text === "string")
+    .map((b) => b.text ?? "");
+
+  for (const raw of textBlocks) {
+    const parsed = parseJsonObjectCandidate(raw);
+    if (parsed) return parsed;
+  }
+
+  return parseJsonObjectCandidate(textBlocks.join("\n\n"));
+}
+
+function parseJsonObjectCandidate(raw: string): Record<string, unknown> | null {
   const cleaned = raw
-    .replace(/^```json\s*/i, "")
-    .replace(/^```\s*/i, "")
+    .replace(/^```(?:json)?\s*/i, "")
     .replace(/```\s*$/i, "")
     .trim();
   if (!cleaned) return null;
+
+  const direct = parseObject(cleaned);
+  if (direct) return direct;
+
+  const objectMatch = cleaned.match(/\{[\s\S]*\}/);
+  if (objectMatch) {
+    const extracted = parseObject(objectMatch[0]);
+    if (extracted) return extracted;
+  }
+
+  return null;
+}
+
+function parseObject(input: string): Record<string, unknown> | null {
   try {
-    return JSON.parse(cleaned);
+    const parsed = JSON.parse(input);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+    return parsed as Record<string, unknown>;
   } catch {
     return null;
   }
