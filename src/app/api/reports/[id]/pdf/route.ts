@@ -119,90 +119,97 @@ export async function GET(
       // ensure all section data has loaded and charts have rendered.
       await page.waitForNetworkIdle({ idleTime: 1000, timeout: 20000 });
 
-      // Recharts can generate repeated SVG ids (clipPaths/gradients) across
-      // many charts on one long print page. Isolate each chart's ids to avoid
-      // cross-chart reference collisions that can blank series in exports.
-      const chartIdIsolation = await page.evaluate(() => {
-        const svgs = Array.from(
-          document.querySelectorAll<SVGSVGElement>(
-            ".recharts-responsive-container svg.recharts-surface, .recharts-responsive-container svg"
-          )
-        );
+      const isolateChartSvgIds = async () =>
+        page.evaluate(() => {
+          const svgs = Array.from(
+            document.querySelectorAll<SVGSVGElement>(
+              ".recharts-responsive-container svg.recharts-surface, .recharts-responsive-container svg"
+            )
+          );
 
-        let rewrittenIds = 0;
+          let rewrittenIds = 0;
+          let newlyIsolated = 0;
 
-        const referenceAttributes = [
-          "fill",
-          "stroke",
-          "filter",
-          "mask",
-          "clip-path",
-          "marker-start",
-          "marker-mid",
-          "marker-end",
-          "href",
-          "xlink:href",
-        ];
+          const referenceAttributes = [
+            "fill",
+            "stroke",
+            "filter",
+            "mask",
+            "clip-path",
+            "marker-start",
+            "marker-mid",
+            "marker-end",
+            "href",
+            "xlink:href",
+          ];
 
-        const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-        for (let svgIndex = 0; svgIndex < svgs.length; svgIndex++) {
-          const svg = svgs[svgIndex];
-          const idNodes = Array.from(svg.querySelectorAll<SVGElement>("[id]"));
-          const idMap = new Map<string, string>();
-
-          for (const node of idNodes) {
-            const oldId = node.getAttribute("id");
-            if (!oldId) continue;
-            const newId = `pdf-${svgIndex}-${oldId}`;
-            if (newId === oldId) continue;
-            idMap.set(oldId, newId);
-            node.setAttribute("id", newId);
-            rewrittenIds += 1;
-          }
-
-          if (idMap.size === 0) continue;
-
-          const rewriteReferenceValue = (value: string) => {
-            let rewritten = value;
-            for (const [oldId, newId] of idMap.entries()) {
-              const escapedId = escapeRegex(oldId);
-              rewritten = rewritten.replace(
-                new RegExp(`url\\((['\"]?)#${escapedId}\\1\\)`, "g"),
-                `url(#${newId})`
-              );
-              rewritten = rewritten.replace(new RegExp(`^#${escapedId}$`), `#${newId}`);
+          for (let svgIndex = 0; svgIndex < svgs.length; svgIndex++) {
+            const svg = svgs[svgIndex];
+            if (svg.getAttribute("data-pdf-id-isolated") === "true") {
+              continue;
             }
-            return rewritten;
-          };
 
-          const nodes = Array.from(svg.querySelectorAll<SVGElement>("*"));
-          for (const node of nodes) {
-            for (const attr of referenceAttributes) {
-              const current = node.getAttribute(attr);
-              if (!current) continue;
-              const rewritten = rewriteReferenceValue(current);
-              if (rewritten !== current) {
-                node.setAttribute(attr, rewritten);
+            newlyIsolated += 1;
+            const idNodes = Array.from(svg.querySelectorAll<SVGElement>("[id]"));
+            const idMap = new Map<string, string>();
+
+            for (const node of idNodes) {
+              const oldId = node.getAttribute("id");
+              if (!oldId) continue;
+              const newId = `pdf-${svgIndex}-${oldId}`;
+              if (newId === oldId) continue;
+              idMap.set(oldId, newId);
+              node.setAttribute("id", newId);
+              rewrittenIds += 1;
+            }
+
+            if (idMap.size > 0) {
+              const rewriteReferenceValue = (value: string) => {
+                let rewritten = value;
+                for (const [oldId, newId] of idMap.entries()) {
+                  const escapedId = escapeRegex(oldId);
+                  rewritten = rewritten.replace(
+                    new RegExp(`url\\(\\s*(['\"]?)#${escapedId}\\1\\s*\\)`, "g"),
+                    `url(#${newId})`
+                  );
+                  rewritten = rewritten.replace(new RegExp(`^#${escapedId}$`), `#${newId}`);
+                }
+                return rewritten;
+              };
+
+              const nodes = Array.from(svg.querySelectorAll<SVGElement>("*"));
+              for (const node of nodes) {
+                for (const attr of referenceAttributes) {
+                  const current = node.getAttribute(attr);
+                  if (!current) continue;
+                  const rewritten = rewriteReferenceValue(current);
+                  if (rewritten !== current) {
+                    node.setAttribute(attr, rewritten);
+                  }
+                }
+
+                const styleValue = node.getAttribute("style");
+                if (styleValue && styleValue.includes("url(#")) {
+                  const rewrittenStyle = rewriteReferenceValue(styleValue);
+                  if (rewrittenStyle !== styleValue) {
+                    node.setAttribute("style", rewrittenStyle);
+                  }
+                }
               }
             }
 
-            const styleValue = node.getAttribute("style");
-            if (styleValue && styleValue.includes("url(#")) {
-              const rewrittenStyle = rewriteReferenceValue(styleValue);
-              if (rewrittenStyle !== styleValue) {
-                node.setAttribute("style", rewrittenStyle);
-              }
-            }
+            svg.setAttribute("data-pdf-id-isolated", "true");
           }
-        }
 
-        return { svgCount: svgs.length, rewrittenIds };
-      });
+          return { svgCount: svgs.length, newlyIsolated, rewrittenIds };
+        });
 
-      if (chartIdIsolation.rewrittenIds > 0) {
+      const chartIdIsolation = await isolateChartSvgIds();
+      if (chartIdIsolation.newlyIsolated > 0 || chartIdIsolation.rewrittenIds > 0) {
         console.log(
-          `[pdf-recharts] Isolated chart SVG ids: svgs=${chartIdIsolation.svgCount} rewrittenIds=${chartIdIsolation.rewrittenIds}`
+          `[pdf-recharts] Isolated chart SVG ids: svgs=${chartIdIsolation.svgCount} newlyIsolated=${chartIdIsolation.newlyIsolated} rewrittenIds=${chartIdIsolation.rewrittenIds}`
         );
       }
 
@@ -421,6 +428,13 @@ export async function GET(
         const pageHeight = clipHeight + SECTION_PAGE_PADDING_PX * 2;
         const newPage = outputDoc.addPage([PAGE_WIDTH_PT, pageHeight]);
 
+        const regionChartIsolation = await isolateChartSvgIds();
+        if (regionChartIsolation.newlyIsolated > 0 || regionChartIsolation.rewrittenIds > 0) {
+          console.log(
+            `[pdf-recharts] Region svg id isolation: idx=${idx} id=${region.id} newlyIsolated=${regionChartIsolation.newlyIsolated} rewrittenIds=${regionChartIsolation.rewrittenIds}`
+          );
+        }
+
         const regionChartReady = await page.evaluate(async ({ regionY, regionHeight }) => {
           const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
           const raf = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
@@ -524,6 +538,53 @@ export async function GET(
             return `${tag}:${node.getAttribute("transform") ?? ""}`;
           };
 
+          const CLIP_PATH_REF_REGEX = /url\(\s*(['"]?)#([^)"'\s]+)\1\s*\)/;
+
+          const extractClipPathId = (node: Element, svg: SVGElement) => {
+            let current: Element | null = node;
+            while (current) {
+              const direct = current.getAttribute("clip-path");
+              if (direct) {
+                const match = direct.match(CLIP_PATH_REF_REGEX);
+                if (match?.[2]) return match[2];
+              }
+
+              const styleAttr = current.getAttribute("style");
+              if (styleAttr && styleAttr.includes("clip-path")) {
+                const match = styleAttr.match(CLIP_PATH_REF_REGEX);
+                if (match?.[2]) return match[2];
+              }
+
+              if (current === svg) break;
+              current = current.parentElement;
+            }
+            return null;
+          };
+
+          const escapeCss = (value: string) => {
+            if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
+              return CSS.escape(value);
+            }
+            return value.replace(/([ #;?%&,.+*~':"!^$[\]()=>|\/@])/g, "\\$1");
+          };
+
+          const hasVisibleReferencedClipPath = (node: SVGElement, svg: SVGElement) => {
+            const clipId = extractClipPathId(node, svg);
+            if (!clipId) return true;
+
+            const clipEl = svg.querySelector<SVGClipPathElement>(`#${escapeCss(clipId)}`);
+            if (!clipEl) return false;
+
+            const clipRects = Array.from(clipEl.querySelectorAll<SVGRectElement>("rect"));
+            if (clipRects.length === 0) return true;
+
+            return clipRects.some((clip) => {
+              const width = Number(clip.getAttribute("width") ?? 0);
+              const height = Number(clip.getAttribute("height") ?? 0);
+              return Number.isFinite(width) && Number.isFinite(height) && width > 1 && height > 1;
+            });
+          };
+
           const getChartState = (el: HTMLElement) => {
             const svg = el.querySelector<SVGElement>("svg.recharts-surface, svg");
             if (!svg) {
@@ -540,7 +601,9 @@ export async function GET(
               return { ready: false, signature: "no-series-nodes" };
             }
 
-            const hasVisibleSeries = seriesNodes.some(hasDrawableGeometry);
+            const hasVisibleSeries = seriesNodes.some(
+              (node) => hasDrawableGeometry(node) && hasVisibleReferencedClipPath(node, svg)
+            );
             const clipRects = Array.from(svg.querySelectorAll<SVGRectElement>("clipPath rect"));
             const hasVisibleClipRect =
               clipRects.length === 0 ||
@@ -617,6 +680,86 @@ export async function GET(
           console.warn(
             `[pdf-recharts] Region chart readiness incomplete: idx=${idx} id=${region.id} charts=${regionChartReady.chartCount} unready=${regionChartReady.unready} attempts=${regionChartReady.attempts} stablePasses=${regionChartReady.stablePasses ?? 0}`
           );
+
+          const clipRepair = await page.evaluate(({ regionY, regionHeight }) => {
+            const CLIP_PATH_REF_REGEX = /url\(\s*(['"]?)#([^)"'\s]+)\1\s*\)/;
+
+            const escapeCss = (value: string) => {
+              if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
+                return CSS.escape(value);
+              }
+              return value.replace(/([ #;?%&,.+*~':"!^$[\]()=>|\/@])/g, "\\$1");
+            };
+
+            const parseClipId = (value: string | null) => {
+              if (!value) return null;
+              const match = value.match(CLIP_PATH_REF_REGEX);
+              return match?.[2] ?? null;
+            };
+
+            const inRegion = (el: HTMLElement) => {
+              const rect = el.getBoundingClientRect();
+              const top = rect.top + window.scrollY;
+              const bottom = top + rect.height;
+              return bottom > regionY && top < regionY + regionHeight;
+            };
+
+            const chartContainers = Array.from(
+              document.querySelectorAll<HTMLElement>(".recharts-responsive-container")
+            ).filter(inRegion);
+
+            let repaired = 0;
+
+            for (const container of chartContainers) {
+              const svg = container.querySelector<SVGElement>("svg.recharts-surface, svg");
+              if (!svg) continue;
+
+              const nodes = Array.from(
+                svg.querySelectorAll<SVGElement>("[clip-path], [style*='clip-path']")
+              );
+
+              for (const node of nodes) {
+                const clipId =
+                  parseClipId(node.getAttribute("clip-path")) ??
+                  parseClipId(node.getAttribute("style"));
+                if (!clipId) continue;
+
+                const clipEl = svg.querySelector<SVGClipPathElement>(`#${escapeCss(clipId)}`);
+                const clipRects = clipEl
+                  ? Array.from(clipEl.querySelectorAll<SVGRectElement>("rect"))
+                  : [];
+
+                const clipVisible =
+                  !!clipEl &&
+                  (clipRects.length === 0 ||
+                    clipRects.some((clip) => {
+                      const width = Number(clip.getAttribute("width") ?? 0);
+                      const height = Number(clip.getAttribute("height") ?? 0);
+                      return Number.isFinite(width) && Number.isFinite(height) && width > 1 && height > 1;
+                    }));
+
+                if (clipVisible) continue;
+
+                if (node.hasAttribute("clip-path")) {
+                  node.removeAttribute("clip-path");
+                  repaired += 1;
+                }
+
+                if ((node as SVGElement).style.clipPath) {
+                  (node as SVGElement).style.removeProperty("clip-path");
+                  repaired += 1;
+                }
+              }
+            }
+
+            return { chartCount: chartContainers.length, repaired };
+          }, { regionY: clipY, regionHeight: clipHeight });
+
+          if (clipRepair.repaired > 0) {
+            console.warn(
+              `[pdf-recharts] Clip-path repair applied: idx=${idx} id=${region.id} charts=${clipRepair.chartCount} repaired=${clipRepair.repaired}`
+            );
+          }
 
           // Last-chance repaint nudge for charts that are still settling.
           await page.evaluate(async ({ regionY }) => {
