@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { put } from "@vercel/blob";
 import { getSession, hasPermission } from "@/lib/auth";
 import { getOpenAiClient } from "@/lib/openai-client";
+import {
+  enforceMetaAssassinImageGuardrail,
+  logMetaAssassinImageUsage,
+} from "@/lib/meta-assassin-image-guardrails";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -34,6 +38,26 @@ export async function POST(request: NextRequest) {
 
     const prompt = (body.prompt ?? "").trim();
     if (!prompt) return NextResponse.json({ error: "prompt is required" }, { status: 400 });
+    if (prompt.length > 5000) {
+      return NextResponse.json(
+        { error: "prompt must be 5000 characters or fewer" },
+        { status: 400 },
+      );
+    }
+
+    const guardrail = enforceMetaAssassinImageGuardrail(session.user.id, "generate");
+    if (!guardrail.ok) {
+      return NextResponse.json(
+        {
+          error: guardrail.error,
+          limits: {
+            remainingHour: guardrail.remainingHour,
+            remainingDay: guardrail.remainingDay,
+          },
+        },
+        { status: 429 },
+      );
+    }
 
     const size = ASPECT_TO_SIZE[body.aspect ?? "square"] ?? "1024x1024";
     const quality: "low" | "medium" | "high" = body.quality ?? "medium";
@@ -59,7 +83,18 @@ export async function POST(request: NextRequest) {
       addRandomSuffix: true,
     });
 
-    return NextResponse.json({ url: blob.url, prompt, aspect: body.aspect ?? "square", quality });
+    await logMetaAssassinImageUsage("generate");
+
+    return NextResponse.json({
+      url: blob.url,
+      prompt,
+      aspect: body.aspect ?? "square",
+      quality,
+      limits: {
+        remainingHour: guardrail.remainingHour,
+        remainingDay: guardrail.remainingDay,
+      },
+    });
   } catch (error) {
     console.error("meta-audience-scraper generate-image error:", error);
     const message = error instanceof Error ? error.message : "Image generation failed";

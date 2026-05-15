@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession, hasPermission } from "@/lib/auth";
-import { getAnthropicClient, createLongMessage } from "@/lib/anthropic-client";
+import { getAnthropicClient, createLongMessage, logAnthropicUsage } from "@/lib/anthropic-client";
 import {
   findCopyHygieneViolations,
   formatViolationsForPrompt,
@@ -12,7 +12,6 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 const MODEL = "claude-opus-4-7";
-const THINKING_BUDGET = 10000;
 const MAX_TOKENS = 22000;
 
 // POST /api/tools/meta-audience-scraper/refine-plan
@@ -56,20 +55,22 @@ export async function POST(request: NextRequest) {
 
     const anthropic = await getAnthropicClient();
 
-    const historyBlock = history.length > 0
-      ? `\nPRIOR REFINEMENT HISTORY (most recent last)\n${history.map((h, i) => `${i + 1}. ${h.feedback.slice(0, 280)}`).join("\n")}\n`
-      : "";
+    const historyBlock =
+      history.length > 0
+        ? `\nPRIOR REFINEMENT HISTORY (most recent last)\n${history.map((h, i) => `${i + 1}. ${h.feedback.slice(0, 280)}`).join("\n")}\n`
+        : "";
 
     const prompt = `ROLE
 You are a senior Meta Ads specialist with 10+ years of in-the-platform experience. You are revising an existing campaign plan based on direct feedback from the team. Apply the feedback faithfully and confidently. Keep every other decision intact unless the change forces a recalculation. Do not water down strong calls or regress decisions the user did not ask you to change.
 
 INSTRUCTIONS
-- Return ONLY valid JSON matching the SAME shape as the input plan (summary, structureRationale, campaigns with adSets and creatives, creativeTestingFramework, weekByWeek, measurement, risks, scaleUp). No markdown fences, no commentary.
+- Return ONLY valid JSON matching the SAME shape as the input plan (summary, structureRationale, controlsVsSuggestions, campaigns with adSets and creatives, creativeTestingFramework, weekByWeek, measurement, risks, scaleUp, handoffPack). No markdown fences, no commentary.
 - If the feedback changes the budget or campaign count, update budgets so they sum correctly across campaigns and ad sets.
 - Update the relevant "why" fields with 2-3 sentences of expert reasoning that reflects the new decision. Do not leave stale rationale behind.
 - British English throughout.
 - If a creative is replaced, regenerate hooks, headlines, primaryTexts, longFormVariants, copyAngle and imagePrompts. Do not just tweak surface words.
 - Honour ad-set fields: group, geoTargeting, geoTargetingNotes, expatTargeting, cohort, detailedTargeting, lookalikeStrategy, exclusions, frequencyCap, conversionEvent. Do not lose these on revision.
+- Preserve and update controlsVsSuggestions and handoffPack whenever the feedback changes strategy, automation tolerance, launch sequencing, or scale/kill logic.
 - If the feedback is wrong-headed (e.g. an action that breaks Meta's learning phase), apply it but call out the trade-off in the relevant "why" field.
 - COPY HYGIENE (still non-negotiable on revised copy): NO em dashes (—) or en dashes (–). NO AI-tell phrasing — banned: "Unlock", "Discover", "Elevate", "In today's world", "Game-changer", "Take your X to the next level", "Whether you're", "Cutting-edge", "Revolutionary", "Seamless", "Empower", "Harness", "Leverage", "Tap into", "Step into", "Dive into", "Journey", "Furthermore", "Moreover", "Crafted", "Curated", "Transform your X", "Reimagine", "Redefine", "Picture this", "Imagine if". Variants must read differently from siblings (different opening word, angle, sentence length). Long-form variants must be 80-220 words.
 
@@ -88,12 +89,13 @@ ${JSON.stringify(body.plan)}`;
       temperature: 1,
       messages: [{ role: "user", content: prompt }],
     });
+    await logAnthropicUsage("meta-assassin-refine-plan", res);
 
     let plan: unknown = parsePlanFromAnthropicResponse(res);
     if (!plan) {
       return NextResponse.json(
         { error: "Could not parse refined plan", raw: serialiseRaw(res) },
-        { status: 502 }
+        { status: 502 },
       );
     }
 
@@ -128,6 +130,7 @@ Return ONLY corrected JSON with the same shape. No em dashes / en dashes. No ban
           temperature: 1,
           messages: [{ role: "user", content: fixPrompt }],
         });
+        await logAnthropicUsage("meta-assassin-refine-plan-copy-fix", fixRes);
         const fixed = parsePlanFromAnthropicResponse(fixRes);
         if (fixed) {
           if (validIds.size > 0) {
@@ -168,7 +171,11 @@ function parsePlanFromAnthropicResponse(res: any): unknown {
   const blocks = (res?.content ?? []) as { type: string; text?: string }[];
   const textBlock = blocks.find((b) => b.type === "text" && typeof b.text === "string");
   const raw = textBlock?.text ?? "";
-  const cleaned = raw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
+  const cleaned = raw
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/```\s*$/i, "")
+    .trim();
   if (!cleaned) return null;
   try {
     return JSON.parse(cleaned);

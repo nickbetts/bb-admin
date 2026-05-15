@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession, hasPermission } from "@/lib/auth";
-import { getAnthropicClient, createLongMessage } from "@/lib/anthropic-client";
+import { getAnthropicClient, createLongMessage, logAnthropicUsage } from "@/lib/anthropic-client";
 import {
   findCopyHygieneViolations,
   formatViolationsForPrompt,
@@ -12,7 +12,6 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 240;
 
 const MODEL = "claude-opus-4-7";
-const THINKING_BUDGET = 8000;
 const MAX_TOKENS = 16000;
 
 // POST /api/tools/meta-audience-scraper/refine-slice
@@ -96,9 +95,10 @@ export async function POST(request: NextRequest) {
 
     const anthropic = await getAnthropicClient();
 
-    const historyBlock = history.length > 0
-      ? `\nPRIOR REFINEMENT HISTORY (most recent last)\n${history.map((h, i) => `${i + 1}. ${h.feedback.slice(0, 280)}`).join("\n")}\n`
-      : "";
+    const historyBlock =
+      history.length > 0
+        ? `\nPRIOR REFINEMENT HISTORY (most recent last)\n${history.map((h, i) => `${i + 1}. ${h.feedback.slice(0, 280)}`).join("\n")}\n`
+        : "";
 
     const prompt = `ROLE
 You are a senior Meta Ads specialist with 10+ years of in-the-platform experience. The team has asked you to revise ONE slice of an existing campaign plan: ${scopeLabel}. Apply the feedback to that slice and ONLY that slice. Do not touch anything outside it.
@@ -108,6 +108,7 @@ INSTRUCTIONS
 - The slice's downstream children (e.g. ad sets within a campaign, creatives within an ad set) should also be regenerated/updated where the feedback implies.
 - British English throughout.
 - Honour all schema fields. For ad sets that means: name, group, geoTargeting, geoTargetingNotes, expatTargeting, cohort, pillarName, audienceSummary, targetingOptionIds, detailedTargeting, exclusions, lookalikeStrategy, optimizationGoal, conversionEvent, billingEvent, dailyBudget, frequencyCap, placements, manualPlacements, ageRange, genders, advantageAudience, why, creatives (each with format, copyAngle, hooks, headlines, primaryTexts, longFormVariants, cta, imagePrompts, why).
+- If refining a campaign slice, preserve and update controlsVsSuggestions and handoffPack implications at campaign level where relevant.
 - COPY HYGIENE on any regenerated copy: NO em dashes (—) or en dashes (–). NO AI-tell phrasing — banned: "Unlock", "Discover", "Elevate", "In today's world", "Game-changer", "Take your X to the next level", "Whether you're", "Cutting-edge", "Revolutionary", "Seamless", "Empower", "Harness", "Leverage", "Tap into", "Step into", "Dive into", "Journey", "Furthermore", "Moreover", "Crafted", "Curated", "Transform your X", "Reimagine", "Redefine", "Picture this", "Imagine if". Each variant must read differently from siblings (different opening word, angle, sentence length). Long-form variants must be 80-220 words.
 
 ${body.clientName ? `CLIENT: ${body.clientName}\n` : ""}${body.brief ? `BRIEF:\n${body.brief}\n\n` : ""}${historyBlock}
@@ -125,12 +126,13 @@ ${JSON.stringify(sliceForPrompt)}`;
       temperature: 1,
       messages: [{ role: "user", content: prompt }],
     });
+    await logAnthropicUsage("meta-assassin-refine-slice", res);
 
     const refinedSlice = parseJsonFromAnthropicResponse(res);
     if (!refinedSlice || typeof refinedSlice !== "object") {
       return NextResponse.json(
         { error: "Could not parse refined slice", raw: serialiseRaw(res) },
-        { status: 502 }
+        { status: 502 },
       );
     }
 
@@ -175,6 +177,7 @@ No em dashes. No banned phrases. Long-form 80-220 words. Variants read different
           temperature: 1,
           messages: [{ role: "user", content: fixPrompt }],
         });
+        await logAnthropicUsage("meta-assassin-refine-slice-copy-fix", fixRes);
         const fixed = parseJsonFromAnthropicResponse(fixRes);
         if (fixed) {
           if (validIds.size > 0) {
@@ -216,7 +219,11 @@ function parseJsonFromAnthropicResponse(res: any): unknown {
   const blocks = (res?.content ?? []) as { type: string; text?: string }[];
   const textBlock = blocks.find((b) => b.type === "text" && typeof b.text === "string");
   const raw = textBlock?.text ?? "";
-  const cleaned = raw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
+  const cleaned = raw
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/```\s*$/i, "")
+    .trim();
   if (!cleaned) return null;
   try {
     return JSON.parse(cleaned);

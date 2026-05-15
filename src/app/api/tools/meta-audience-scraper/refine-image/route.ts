@@ -3,6 +3,10 @@ import { put } from "@vercel/blob";
 import { toFile } from "openai";
 import { getSession, hasPermission } from "@/lib/auth";
 import { getOpenAiClient } from "@/lib/openai-client";
+import {
+  enforceMetaAssassinImageGuardrail,
+  logMetaAssassinImageUsage,
+} from "@/lib/meta-assassin-image-guardrails";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -45,6 +49,26 @@ export async function POST(request: NextRequest) {
 
     const refinement = (body.refinement ?? "").trim();
     if (!refinement) return NextResponse.json({ error: "refinement is required" }, { status: 400 });
+    if (refinement.length > 2000) {
+      return NextResponse.json(
+        { error: "refinement must be 2000 characters or fewer" },
+        { status: 400 },
+      );
+    }
+
+    const guardrail = enforceMetaAssassinImageGuardrail(session.user.id, "refine");
+    if (!guardrail.ok) {
+      return NextResponse.json(
+        {
+          error: guardrail.error,
+          limits: {
+            remainingHour: guardrail.remainingHour,
+            remainingDay: guardrail.remainingDay,
+          },
+        },
+        { status: 429 },
+      );
+    }
 
     const size = ASPECT_TO_SIZE[body.aspect ?? "square"] ?? "1024x1024";
     const quality: "low" | "medium" | "high" = body.quality ?? "medium";
@@ -100,7 +124,18 @@ export async function POST(request: NextRequest) {
       addRandomSuffix: true,
     });
 
-    return NextResponse.json({ url: blob.url, prompt: refinement, aspect: body.aspect ?? "square", quality });
+    await logMetaAssassinImageUsage("refine");
+
+    return NextResponse.json({
+      url: blob.url,
+      prompt: refinement,
+      aspect: body.aspect ?? "square",
+      quality,
+      limits: {
+        remainingHour: guardrail.remainingHour,
+        remainingDay: guardrail.remainingDay,
+      },
+    });
   } catch (error) {
     console.error("meta-audience-scraper refine-image error:", error);
     const message = error instanceof Error ? error.message : "Image refinement failed";

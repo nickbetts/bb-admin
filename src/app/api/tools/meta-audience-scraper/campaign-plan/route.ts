@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession, hasPermission } from "@/lib/auth";
-import { getAnthropicClient, createLongMessage } from "@/lib/anthropic-client";
+import { getAnthropicClient, createLongMessage, logAnthropicUsage } from "@/lib/anthropic-client";
 import { getOpenAiClient } from "@/lib/openai-client";
 import {
   findCopyHygieneViolations,
@@ -14,10 +14,6 @@ export const maxDuration = 300;
 
 const MODEL = "claude-opus-4-7";
 
-// Extended thinking budget for the campaign-plan call. Bigger than the
-// default reasoning we get for free; gives Claude room to actually work
-// through the geo + cohort + budget split before producing JSON.
-const THINKING_BUDGET = 12000;
 const MAX_TOKENS = 24000;
 
 // Quick KPI / benchmark grounding via OpenAI web search. Runs in parallel
@@ -97,12 +93,18 @@ export async function POST(request: NextRequest) {
 
     const dailyBudget = Number(body.dailyBudget);
     if (!Number.isFinite(dailyBudget) || dailyBudget <= 0) {
-      return NextResponse.json({ error: "dailyBudget is required and must be > 0" }, { status: 400 });
+      return NextResponse.json(
+        { error: "dailyBudget is required and must be > 0" },
+        { status: 400 },
+      );
     }
     const currency = (body.currency ?? "GBP").trim().toUpperCase();
     const pillars = body.pillars ?? [];
     if (pillars.length === 0) {
-      return NextResponse.json({ error: "At least one audience pillar is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "At least one audience pillar is required" },
+        { status: 400 },
+      );
     }
 
     // Run web-search benchmarking and the Anthropic client setup in parallel.
@@ -123,10 +125,15 @@ export async function POST(request: NextRequest) {
     for (const p of pillars) for (const o of p.options) if (o.id) validIds.add(String(o.id));
 
     const monthlyBudget = dailyBudget * 30;
-    const pillarsBlock = pillars.map((p, i) => {
-      const opts = p.options.slice(0, 30).map((o) => `${o.name} (${o.type}, id ${o.id})`).join("; ");
-      return `Pillar ${i + 1}: ${p.name}\n  Rationale: ${p.rationale ?? "—"}\n  Targeting options (${p.options.length}): ${opts}`;
-    }).join("\n\n");
+    const pillarsBlock = pillars
+      .map((p, i) => {
+        const opts = p.options
+          .slice(0, 30)
+          .map((o) => `${o.name} (${o.type}, id ${o.id})`)
+          .join("; ");
+        return `Pillar ${i + 1}: ${p.name}\n  Rationale: ${p.rationale ?? "—"}\n  Targeting options (${p.options.length}): ${opts}`;
+      })
+      .join("\n\n");
 
     const prompt = `ROLE
 You are a senior Meta Ads specialist with 10+ years of in-the-platform experience running paid social for brands across DTC, lead gen, B2B, charity, hospitality and luxury. You have personally managed accounts at every budget tier from £50/day to £500k/day. You write campaign plans the way the best media buyers in the industry do — opinionated, specific, grounded in current Meta best practice (CBO + Advantage+, broad targeting where appropriate, relentless creative testing, lean ad-set count, conservative attribution windows). You do NOT hedge with vague advice. Every recommendation has a clear strategic reason behind it that a media buyer will recognise as correct.
@@ -139,9 +146,13 @@ Daily budget: ${currency} ${dailyBudget.toFixed(2)} (≈ ${currency} ${monthlyBu
 ${body.objective ? `Stated campaign objective: ${body.objective}` : "Pick the most appropriate Meta objective yourself based on the brief."}
 ${body.thesis ? `Strategic thesis from the audience workup: "${body.thesis}"` : ""}
 
-${benchmarks ? `LIVE SECTOR BENCHMARKS (web-fetched, 2025)
+${
+  benchmarks
+    ? `LIVE SECTOR BENCHMARKS (web-fetched, 2025)
 Use these to anchor the measurement section's KPI targets. Where a number contradicts your gut, trust the source over your priors. Cite the source name in measurement.primaryKpi when you reference a number.
-${benchmarks}` : ""}
+${benchmarks}`
+    : ""
+}
 
 WHAT YOU MUST DO
 Produce a build-ready campaign plan that a media buyer could plug straight into Ads Manager today. Apply the modern Meta playbook:
@@ -193,6 +204,8 @@ Produce a build-ready campaign plan that a media buyer could plug straight into 
    The number of items in imagePrompts MUST match these rules. Do not generate fewer than the format requires.
 10. EXCLUSIONS, FREQUENCY, LOOKALIKES — Recommend when relevant. Exclude existing customers from prospecting. Frequency cap retargeting. Lookalikes off purchasers (or value-based LALs) when there's enough seed data; ${dailyBudget < 50 ? "at this budget skip LALs initially — pixel data first." : "make the call based on the brief and explain it."}
 11. WHY EVERYTHING — Every "why" field must be 2-3 sentences of *specific, expert* reasoning. Not "this audience is good for the brand" — actually explain the media-buying logic ("Stacking three behaviour signals that Meta's auction can intersect lets us hold CPM down while still hitting a high-intent pool. Optimising for Purchase rather than ATC means delivery skews to people who Meta has seen complete checkouts on similar products in the last 7 days.").
+12. CONTROLS VS SUGGESTIONS — Separate hard constraints from optional recommendations. Identify what the buyer should treat as non-negotiable controls versus testable suggestions.
+13. STRATEGY HANDOFF PACK — Provide a handoff block a strategist can copy into an implementation ticket. It must include build order, launch checklist, first-14-day guardrails, and kill/scale rules with concrete thresholds.
 
 Map the audience pillars below to ad sets. Consolidate aggressively. Each ad set needs ~50 conversions per week to exit learning. If the budget can't support a pillar as its own ad set, fold it into another or drop it. BUT — per rule 8c — if the brief naturally splits across regions or distinct cohorts, do produce one ad set per region+cohort combination and let the budget split sort itself out. Do not collapse Europe and the Middle East into one ad set just to save budget.
 
@@ -205,6 +218,11 @@ Return ONLY valid JSON (no markdown fences, no commentary). British English thro
 {
   "summary": "2-3 sentences. Executive summary written for the media buyer.",
   "structureRationale": "3-5 sentences. Explain the campaign-count, CBO/ABO, and Advantage+ decisions in concrete terms.",
+  "controlsVsSuggestions": {
+    "hardControls": ["string — must-do setup controls the buyer should not ignore"],
+    "suggestions": ["string — optional tests or optimisation suggestions"],
+    "manualOverrideTriggers": ["string — explicit condition where manual intervention should override automation"]
+  },
   "campaigns": [
     {
       "name": "string — e.g. PROS | UK | Sales | CBO",
@@ -282,10 +300,18 @@ Return ONLY valid JSON (no markdown fences, no commentary). British English thro
     "primaryKpi": "string with target, e.g. 'CPA ≤ £25'",
     "secondaryKpis": ["string with target", "..."],
     "minLearningPhaseEvents": "string — e.g. '50 purchases per ad set per 7 days; expect ~5-7 days to exit learning at this budget'",
-    "ctaToHoldOff": "1-2 sentences. What NOT to touch in the first 7 days and why."
+    "ctaToHoldOff": "1-2 sentences. What NOT to touch in the first 7 days and why.",
+    "campaignLevelReading": "string — how to judge campaign-level performance before making structural edits"
   },
   "risks": ["string — 1 sentence each, expert-level. e.g. 'Audience overlap between Pillar A and B will cannibalise — monitor in Inspect tool after 5 days and merge if overlap > 30%.'"],
-  "scaleUp": "1 paragraph. Specific scaling moves: budget % increase per step, when to introduce new ad sets, when to add lookalikes, when to expand geography, when to graduate to Advantage+ Shopping. Reference numbers."
+  "scaleUp": "1 paragraph. Specific scaling moves: budget % increase per step, when to introduce new ad sets, when to add lookalikes, when to expand geography, when to graduate to Advantage+ Shopping. Reference numbers.",
+  "handoffPack": {
+    "campaignBuildOrder": ["string — ordered implementation steps in Ads Manager"],
+    "creativeTestMatrix": ["string — what to test against what, including primary success metric"],
+    "launchChecklist": ["string — pre-launch checks"],
+    "first14DayGuardrails": ["string — guardrail with explicit threshold and response"],
+    "killScaleRules": ["string — decision rules with concrete KPI cut-offs"]
+  }
 }
 
 ${body.brief ? `BRIEF\n${body.brief}` : ""}`;
@@ -301,12 +327,13 @@ ${body.brief ? `BRIEF\n${body.brief}` : ""}`;
       temperature: 1,
       messages: [{ role: "user", content: prompt }],
     });
+    await logAnthropicUsage("meta-assassin-campaign-plan", res);
 
     let plan: unknown = parsePlanFromAnthropicResponse(res);
     if (!plan) {
       return NextResponse.json(
         { error: "Could not parse AI campaign plan", raw: serialiseRaw(res) },
-        { status: 502 }
+        { status: 502 },
       );
     }
 
@@ -350,6 +377,7 @@ ${JSON.stringify(plan)}`;
           temperature: 1,
           messages: [{ role: "user", content: fixPrompt }],
         });
+        await logAnthropicUsage("meta-assassin-campaign-plan-copy-fix", fixRes);
         const fixed = parsePlanFromAnthropicResponse(fixRes);
         if (fixed) {
           // Re-run ID + budget validators on the fixed plan.
@@ -393,7 +421,11 @@ function parsePlanFromAnthropicResponse(res: any): unknown {
   const blocks = (res?.content ?? []) as { type: string; text?: string }[];
   const textBlock = blocks.find((b) => b.type === "text" && typeof b.text === "string");
   const raw = textBlock?.text ?? "";
-  const cleaned = raw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
+  const cleaned = raw
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/```\s*$/i, "")
+    .trim();
   if (!cleaned) return null;
   try {
     return JSON.parse(cleaned);

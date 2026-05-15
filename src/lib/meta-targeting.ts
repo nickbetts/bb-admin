@@ -17,7 +17,7 @@ export type MetaTargetingType =
 export interface MetaTargetingResult {
   id: string;
   name: string;
-  type: string;                 // "interests", "behaviors", "demographics", "life_events", etc.
+  type: string; // "interests", "behaviors", "demographics", "life_events", etc.
   topic?: string;
   path?: string[];
   description?: string;
@@ -42,7 +42,7 @@ export interface MetaTargetingSpec {
   };
   age_min?: number;
   age_max?: number;
-  genders?: number[];           // 1 = male, 2 = female
+  genders?: number[]; // 1 = male, 2 = female
   interests?: { id: string; name?: string }[];
   behaviors?: { id: string; name?: string }[];
   flexible_spec?: { interests?: { id: string }[]; behaviors?: { id: string }[] }[];
@@ -90,7 +90,7 @@ function normalise(row: SearchEntity): MetaTargetingResult {
 
 export async function searchTargetingCategories(
   query: string,
-  opts: { token?: string; limit?: number; classes?: string[] } = {}
+  opts: { token?: string; limit?: number; classes?: string[] } = {},
 ): Promise<MetaTargetingResult[]> {
   const params = new URLSearchParams({
     type: "adTargetingCategory",
@@ -114,7 +114,7 @@ export async function searchTargetingCategories(
 
 export async function searchInterests(
   query: string,
-  opts: { token?: string; limit?: number } = {}
+  opts: { token?: string; limit?: number } = {},
 ): Promise<MetaTargetingResult[]> {
   const params = new URLSearchParams({
     type: "adinterest",
@@ -133,7 +133,7 @@ export async function searchInterests(
 
 export async function suggestSimilarInterests(
   interestNames: string[],
-  opts: { token?: string; limit?: number } = {}
+  opts: { token?: string; limit?: number } = {},
 ): Promise<MetaTargetingResult[]> {
   if (!interestNames.length) return [];
   const params = new URLSearchParams({
@@ -154,7 +154,7 @@ export async function suggestSimilarInterests(
 export interface MetaGeoResult {
   key: string;
   name: string;
-  type: string;        // city, region, country, zip, ...
+  type: string; // city, region, country, zip, ...
   countryCode?: string;
   countryName?: string;
   region?: string;
@@ -163,7 +163,7 @@ export interface MetaGeoResult {
 
 export async function searchGeolocations(
   query: string,
-  opts: { token?: string; types?: string[]; limit?: number } = {}
+  opts: { token?: string; types?: string[]; limit?: number } = {},
 ): Promise<MetaGeoResult[]> {
   const params = new URLSearchParams({
     type: "adgeolocation",
@@ -205,8 +205,8 @@ export async function getDeliveryEstimate(
   spec: MetaTargetingSpec,
   opts: {
     token?: string;
-    optimization_goal?: string;          // default REACH
-  } = {}
+    optimization_goal?: string; // default REACH
+  } = {},
 ): Promise<MetaDeliveryEstimate> {
   const params = new URLSearchParams({
     access_token: getToken(opts.token),
@@ -214,10 +214,9 @@ export async function getDeliveryEstimate(
     optimization_goal: opts.optimization_goal ?? "REACH",
   });
 
-  const res = await fetch(
-    `${META_API}/act_${accountId}/delivery_estimate?${params}`,
-    { cache: "no-store" }
-  );
+  const res = await fetch(`${META_API}/act_${accountId}/delivery_estimate?${params}`, {
+    cache: "no-store",
+  });
   if (!res.ok) throw new Error(`Meta delivery_estimate failed: ${await res.text()}`);
   const json = (await res.json()) as {
     data?: {
@@ -245,11 +244,13 @@ export async function getDeliveryEstimate(
 
 export async function searchTargetingMany(
   queries: string[],
-  opts: { token?: string; perQueryLimit?: number } = {}
+  opts: { token?: string; perQueryLimit?: number } = {},
 ): Promise<MetaTargetingResult[]> {
   const unique = Array.from(new Set(queries.map((q) => q.trim()).filter(Boolean)));
   const settled = await Promise.allSettled(
-    unique.map((q) => searchTargetingCategories(q, { token: opts.token, limit: opts.perQueryLimit ?? 20 }))
+    unique.map((q) =>
+      searchTargetingCategories(q, { token: opts.token, limit: opts.perQueryLimit ?? 20 }),
+    ),
   );
 
   const byId = new Map<string, MetaTargetingResult>();
@@ -288,6 +289,7 @@ export interface ExhaustiveSearchResult {
     byEndpoint: Record<string, number>;
     expansionSeeds: string[];
     expansionAdded: number;
+    expansionSkippedReason?: string;
   };
 }
 
@@ -305,12 +307,21 @@ function expandToSingleWords(queries: string[]): string[] {
 
 export async function exhaustiveTargetingSearch(
   queries: string[],
-  opts: { token?: string; perQueryLimit?: number; expansionLimit?: number; concurrency?: number } = {}
+  opts: {
+    token?: string;
+    perQueryLimit?: number;
+    expansionLimit?: number;
+    concurrency?: number;
+    enableExpansion?: boolean;
+    skipExpansionIfResultsGte?: number;
+  } = {},
 ): Promise<ExhaustiveSearchResult> {
   const trimmed = Array.from(new Set(queries.map((q) => q.trim()).filter(Boolean)));
   const expanded = expandToSingleWords(trimmed);
   const limit = opts.perQueryLimit ?? 18;
   const expansionLimit = opts.expansionLimit ?? 30;
+  const enableExpansion = opts.enableExpansion !== false;
+  const skipExpansionIfResultsGte = opts.skipExpansionIfResultsGte ?? 240;
 
   const byId = new Map<string, MetaTargetingResult>();
   const byEndpoint: Record<string, number> = {
@@ -331,15 +342,25 @@ export async function exhaustiveTargetingSearch(
     }));
     calls.push(async () => ({
       endpoint: "adinterest",
-      results: await searchInterests(q, { token: opts.token, limit: Math.min(limit, 15) }).catch(() => []),
+      results: await searchInterests(q, { token: opts.token, limit: Math.min(limit, 15) }).catch(
+        () => [],
+      ),
     }));
     calls.push(async () => ({
       endpoint: "behaviors",
-      results: await searchTargetingCategories(q, { token: opts.token, limit: 10, classes: ["behaviors"] }).catch(() => []),
+      results: await searchTargetingCategories(q, {
+        token: opts.token,
+        limit: 10,
+        classes: ["behaviors"],
+      }).catch(() => []),
     }));
     calls.push(async () => ({
       endpoint: "demographics",
-      results: await searchTargetingCategories(q, { token: opts.token, limit: 8, classes: ["demographics", "life_events", "family_statuses"] }).catch(() => []),
+      results: await searchTargetingCategories(q, {
+        token: opts.token,
+        limit: 8,
+        classes: ["demographics", "life_events", "family_statuses"],
+      }).catch(() => []),
     }));
   }
 
@@ -365,16 +386,25 @@ export async function exhaustiveTargetingSearch(
   // recommender for more like them. Skip if we have nothing yet.
   const topInterests = [...byId.values()]
     .filter((r) => /interest/i.test(r.type ?? ""))
-    .sort((a, b) => ((b.audienceSizeUpper ?? 0) - (a.audienceSizeUpper ?? 0)))
+    .sort((a, b) => (b.audienceSizeUpper ?? 0) - (a.audienceSizeUpper ?? 0))
     .slice(0, 8);
 
   let expansionAdded = 0;
+  let expansionSkippedReason: string | undefined;
   const expansionSeeds = topInterests.map((r) => r.name);
-  if (topInterests.length > 0) {
+  if (!enableExpansion) {
+    expansionSkippedReason = "disabled_by_caller";
+  } else if (byId.size >= skipExpansionIfResultsGte) {
+    expansionSkippedReason = `base_result_count_${byId.size}`;
+  } else if (topInterests.length === 0) {
+    expansionSkippedReason = "no_interest_seeds";
+  }
+
+  if (!expansionSkippedReason && topInterests.length > 0) {
     try {
       const similar = await suggestSimilarInterests(
         topInterests.map((r) => r.name),
-        { token: opts.token, limit: expansionLimit }
+        { token: opts.token, limit: expansionLimit },
       );
       byEndpoint.interestSuggestion += similar.length;
       for (const r of similar) {
@@ -385,6 +415,7 @@ export async function exhaustiveTargetingSearch(
       }
     } catch {
       // best-effort
+      expansionSkippedReason = "suggestion_call_failed";
     }
   }
 
@@ -396,6 +427,7 @@ export async function exhaustiveTargetingSearch(
       byEndpoint,
       expansionSeeds,
       expansionAdded,
+      expansionSkippedReason,
     },
   };
 }

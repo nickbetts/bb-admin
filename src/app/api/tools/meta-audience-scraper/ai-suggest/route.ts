@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession, hasPermission } from "@/lib/auth";
-import { getAnthropicClient } from "@/lib/anthropic-client";
+import { getAnthropicClient, logAnthropicUsage } from "@/lib/anthropic-client";
 import { exhaustiveTargetingSearch, type MetaTargetingResult } from "@/lib/meta-targeting";
 
 export const dynamic = "force-dynamic";
@@ -46,12 +46,13 @@ export async function POST(request: NextRequest) {
     if (!brief && keywords.length === 0) {
       return NextResponse.json(
         { error: "Provide either a brief or at least one keyword" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     const anthropic = await getAnthropicClient();
-    const briefContext = `${body.clientName ? `Client: ${body.clientName}\n` : ""}${body.sector ? `Sector: ${body.sector}\n` : ""}${body.geography ? `Geography: ${body.geography}\n` : ""}${brief ? `Brief:\n${brief}\n` : ""}${keywords.length ? `Seed keywords: ${keywords.join(", ")}\n` : ""}`.trim();
+    const briefContext =
+      `${body.clientName ? `Client: ${body.clientName}\n` : ""}${body.sector ? `Sector: ${body.sector}\n` : ""}${body.geography ? `Geography: ${body.geography}\n` : ""}${brief ? `Brief:\n${brief}\n` : ""}${keywords.length ? `Seed keywords: ${keywords.join(", ")}\n` : ""}`.trim();
 
     // ── Pass 1: deep analysis + initial query plan ──────────────────────────
     const analysisPrompt = `You are a senior Meta Ads strategist. You will plan audience targeting for a real campaign, but FIRST you need to genuinely understand the brief.
@@ -107,6 +108,7 @@ ${briefContext}`;
       max_tokens: 4000,
       messages: [{ role: "user", content: analysisPrompt }],
     });
+    await logAnthropicUsage("meta-assassin-ai-suggest-analysis", analysisRes);
 
     const analysisText = analysisRes.content.find((c) => c.type === "text");
     const analysisRaw = analysisText && analysisText.type === "text" ? analysisText.text : "";
@@ -122,12 +124,15 @@ ${briefContext}`;
     } catch {
       return NextResponse.json(
         { error: "Could not parse AI analysis pass", raw: analysisClean },
-        { status: 502 }
+        { status: 502 },
       );
     }
 
     const pass1Queries = Array.isArray(analysis.queries)
-      ? Array.from(new Set(analysis.queries.map((q) => String(q).trim()).filter(Boolean))).slice(0, 35)
+      ? Array.from(new Set(analysis.queries.map((q) => String(q).trim()).filter(Boolean))).slice(
+          0,
+          35,
+        )
       : [];
     const allInitialQueries = Array.from(new Set([...keywords, ...pass1Queries]));
 
@@ -142,6 +147,7 @@ ${briefContext}`;
     // the top results. Telemetry is returned so we can show coverage.
     const firstWaveRun = await exhaustiveTargetingSearch(allInitialQueries, { perQueryLimit: 18 });
     const firstWave = firstWaveRun.results;
+    const firstWaveTypeCoverage = getTypeCoverageScore(firstWave);
 
     // ── Pass 3: gap analysis — what did the first wave miss? ────────────────
     const firstWaveSummary = summariseForGapPrompt(firstWave);
@@ -175,6 +181,7 @@ ${firstWaveSummary}`;
       max_tokens: 2500,
       messages: [{ role: "user", content: gapPrompt }],
     });
+    await logAnthropicUsage("meta-assassin-ai-suggest-gap-analysis", gapRes);
 
     const gapText = gapRes.content.find((c) => c.type === "text");
     const gapRaw = gapText && gapText.type === "text" ? gapText.text : "";
@@ -188,18 +195,43 @@ ${firstWaveSummary}`;
       gap = {};
     }
 
+    const existingQueries = new Set(allInitialQueries.map((q) => q.toLowerCase()));
     const pass2Queries = Array.isArray(gap.queries)
-      ? Array.from(new Set(
-          gap.queries
-            .map((q) => String(q).trim())
-            .filter((q) => q && !allInitialQueries.includes(q))
-        )).slice(0, 15)
+      ? Array.from(
+          new Set(
+            gap.queries
+              .map((q) => String(q).trim())
+              .filter((q) => q && !existingQueries.has(q.toLowerCase())),
+          ),
+        ).slice(0, 15)
       : [];
 
+    const gapWaveDecision = shouldRunGapWave({
+      firstWaveCount: firstWave.length,
+      firstWaveTypeCoverage,
+      pass2QueryCount: pass2Queries.length,
+    });
+
     // ── Pass 4: Meta search (gap wave, exhaustive) ──────────────────────────
-    const secondWaveRun = pass2Queries.length
-      ? await exhaustiveTargetingSearch(pass2Queries, { perQueryLimit: 15 })
-      : { results: [], telemetry: { queriesUsed: 0, callsFired: 0, byEndpoint: {}, expansionSeeds: [], expansionAdded: 0 } };
+    const secondWaveRun =
+      pass2Queries.length && gapWaveDecision.run
+        ? await exhaustiveTargetingSearch(pass2Queries, {
+            perQueryLimit: 15,
+            enableExpansion: false,
+          })
+        : {
+            results: [],
+            telemetry: {
+              queriesUsed: 0,
+              callsFired: 0,
+              byEndpoint: {},
+              expansionSeeds: [],
+              expansionAdded: 0,
+              expansionSkippedReason:
+                gapWaveDecision.reason ??
+                (pass2Queries.length ? "skipped_gap_wave" : "no_gap_queries"),
+            },
+          };
     const secondWave = secondWaveRun.results;
 
     // Merge both waves, deduping by id.
@@ -222,19 +254,24 @@ ${firstWaveSummary}`;
     }
 
     // ── Pass 5: curation ────────────────────────────────────────────────────
-    const ranked = [...mergedList].sort((a, b) => {
-      const am = ((a.audienceSizeLower ?? 0) + (a.audienceSizeUpper ?? 0)) / 2;
-      const bm = ((b.audienceSizeLower ?? 0) + (b.audienceSizeUpper ?? 0)) / 2;
-      return bm - am;
-    }).slice(0, 250);
+    const ranked = [...mergedList]
+      .sort((a, b) => {
+        const am = ((a.audienceSizeLower ?? 0) + (a.audienceSizeUpper ?? 0)) / 2;
+        const bm = ((b.audienceSizeLower ?? 0) + (b.audienceSizeUpper ?? 0)) / 2;
+        return bm - am;
+      })
+      .slice(0, 250);
 
-    const catalogueLines = ranked.map((r, i) => {
-      const size = r.audienceSizeLower && r.audienceSizeUpper
-        ? `${formatNumber(r.audienceSizeLower)}-${formatNumber(r.audienceSizeUpper)}`
-        : "size unknown";
-      const path = r.path?.length ? r.path.join(" > ") : "";
-      return `${i + 1}. [${r.id}] ${r.name} — ${r.type}${path ? ` (${path})` : ""} · ${size}`;
-    }).join("\n");
+    const catalogueLines = ranked
+      .map((r, i) => {
+        const size =
+          r.audienceSizeLower && r.audienceSizeUpper
+            ? `${formatNumber(r.audienceSizeLower)}-${formatNumber(r.audienceSizeUpper)}`
+            : "size unknown";
+        const path = r.path?.length ? r.path.join(" > ") : "";
+        return `${i + 1}. [${r.id}] ${r.name} — ${r.type}${path ? ` (${path})` : ""} · ${size}`;
+      })
+      .join("\n");
 
     const curatePrompt = `You are now picking the final Meta targeting set for the campaign below.
 
@@ -277,6 +314,7 @@ ${catalogueLines}`;
       max_tokens: 8000,
       messages: [{ role: "user", content: curatePrompt }],
     });
+    await logAnthropicUsage("meta-assassin-ai-suggest-curation", curateRes);
 
     const curateText = curateRes.content.find((c) => c.type === "text");
     const curateRaw = curateText && curateText.type === "text" ? curateText.text : "";
@@ -294,7 +332,7 @@ ${catalogueLines}`;
     } catch {
       return NextResponse.json(
         { error: "Could not parse AI curation", raw: curateClean },
-        { status: 502 }
+        { status: 502 },
       );
     }
 
@@ -340,6 +378,11 @@ ${catalogueLines}`;
       totalCandidates: mergedList.length,
       pillars,
       coverage: combinedTelemetry,
+      optimisation: {
+        gapWaveExecuted: gapWaveDecision.run,
+        gapWaveReason: gapWaveDecision.reason,
+        firstWaveTypeCoverage,
+      },
     });
   } catch (error) {
     console.error("meta-audience-scraper ai-suggest error:", error);
@@ -356,6 +399,7 @@ interface SearchTelemetry {
   byEndpoint: Record<string, number>;
   expansionSeeds: string[];
   expansionAdded: number;
+  expansionSkippedReason?: string;
 }
 
 function mergeTelemetry(a: SearchTelemetry, b: SearchTelemetry): SearchTelemetry {
@@ -369,11 +413,56 @@ function mergeTelemetry(a: SearchTelemetry, b: SearchTelemetry): SearchTelemetry
     byEndpoint,
     expansionSeeds: [...new Set([...a.expansionSeeds, ...b.expansionSeeds])],
     expansionAdded: a.expansionAdded + b.expansionAdded,
+    expansionSkippedReason:
+      [a.expansionSkippedReason, b.expansionSkippedReason].filter(Boolean).join(" | ") || undefined,
   };
 }
 
+function shouldRunGapWave(args: {
+  firstWaveCount: number;
+  firstWaveTypeCoverage: number;
+  pass2QueryCount: number;
+}): { run: boolean; reason?: string } {
+  const { firstWaveCount, firstWaveTypeCoverage, pass2QueryCount } = args;
+  if (pass2QueryCount === 0) {
+    return { run: false, reason: "no_new_gap_queries" };
+  }
+  if (firstWaveCount >= 320) {
+    return { run: false, reason: "first_wave_already_very_deep" };
+  }
+  if (firstWaveCount >= 240 && firstWaveTypeCoverage >= 3 && pass2QueryCount <= 6) {
+    return { run: false, reason: "first_wave_coverage_already_strong" };
+  }
+  return { run: true };
+}
+
+function getTypeCoverageScore(results: MetaTargetingResult[]): number {
+  const buckets = {
+    interest: false,
+    behaviour: false,
+    demographic: false,
+    lifeEvent: false,
+  };
+
+  for (const item of results) {
+    const type = (item.type ?? "").toLowerCase();
+    const path = (item.path ?? []).join(" ").toLowerCase();
+    if (type.includes("interest") || path.includes("interest")) buckets.interest = true;
+    if (type.includes("behaviour") || path.includes("behaviour")) buckets.behaviour = true;
+    if (type.includes("demographic") || path.includes("demographic")) buckets.demographic = true;
+    if (path.includes("life events") || path.includes("life event") || type.includes("life"))
+      buckets.lifeEvent = true;
+  }
+
+  return Object.values(buckets).filter(Boolean).length;
+}
+
 function stripJsonFences(s: string): string {
-  return s.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
+  return s
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/```\s*$/i, "")
+    .trim();
 }
 
 function formatNumber(n: number): string {
@@ -396,7 +485,7 @@ function summariseForGapPrompt(results: MetaTargetingResult[]): string {
   const lines: string[] = [];
   for (const [type, rows] of byType) {
     const names = rows
-      .sort((a, b) => ((b.audienceSizeUpper ?? 0) - (a.audienceSizeUpper ?? 0)))
+      .sort((a, b) => (b.audienceSizeUpper ?? 0) - (a.audienceSizeUpper ?? 0))
       .slice(0, 25)
       .map((r) => r.name)
       .join(", ");
