@@ -3,6 +3,19 @@
  * Import these into chart components for consistent styling.
  */
 
+const CHART_ANIMATION_DURATION_MS = 600;
+
+function shouldDisableChartAnimations(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("pdfNoAnimation") === "1") return true;
+  } catch {
+    // Ignore malformed location values and fall back to body flag.
+  }
+  return document.body.getAttribute("data-disable-chart-animations") === "true";
+}
+
 // ── Tooltip ─────────────────────────────────────────────────────────────────
 export const CHART_TOOLTIP_STYLE = {
   contentStyle: {
@@ -40,14 +53,24 @@ export const CHART_AREA_STYLE = {
   type: "monotone" as const,
   dot: false as const,
   strokeWidth: 2,
-  animationDuration: 600,
+  get isAnimationActive() {
+    return !shouldDisableChartAnimations();
+  },
+  get animationDuration() {
+    return shouldDisableChartAnimations() ? 0 : CHART_ANIMATION_DURATION_MS;
+  },
   animationEasing: "ease-out" as const,
 };
 
 // ── Bars ─────────────────────────────────────────────────────────────────────
 export const CHART_BAR_STYLE = {
   radius: [4, 4, 0, 0] as [number, number, number, number],
-  animationDuration: 600,
+  get isAnimationActive() {
+    return !shouldDisableChartAnimations();
+  },
+  get animationDuration() {
+    return shouldDisableChartAnimations() ? 0 : CHART_ANIMATION_DURATION_MS;
+  },
   animationEasing: "ease-out" as const,
 };
 
@@ -56,7 +79,12 @@ export const CHART_LINE_STYLE = {
   type: "monotone" as const,
   dot: false as const,
   strokeWidth: 2,
-  animationDuration: 600,
+  get isAnimationActive() {
+    return !shouldDisableChartAnimations();
+  },
+  get animationDuration() {
+    return shouldDisableChartAnimations() ? 0 : CHART_ANIMATION_DURATION_MS;
+  },
   animationEasing: "ease-out" as const,
   activeDot: { r: 4, strokeWidth: 0 },
 };

@@ -94,6 +94,8 @@ export async function GET(
       for (const [k, v] of _request.nextUrl.searchParams.entries()) {
         if (k !== "showDescriptions") sortParams.set(k, v);
       }
+      // Disable chart animations in print mode to avoid capture races.
+      sortParams.set("pdfNoAnimation", "1");
       const sortString = sortParams.toString();
       const printUrl = `${baseUrl}/reports/${id}/print?showDescriptions=${showDescriptions}${sortString ? `&${sortString}` : ""}`;
 
@@ -335,6 +337,8 @@ export async function GET(
         const regionChartReady = await page.evaluate(async ({ regionY, regionHeight }) => {
           const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
           const raf = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+          const noAnimationMode = new URLSearchParams(window.location.search).get("pdfNoAnimation") === "1";
+          const requiredStablePasses = noAnimationMode ? 0 : 1;
 
           const SERIES_GEOMETRY_SELECTOR = [
             ".recharts-line-curve",
@@ -490,7 +494,7 @@ export async function GET(
                 stablePasses = 0;
               }
 
-              if (stablePasses >= 1) {
+              if (stablePasses >= requiredStablePasses) {
                 return {
                   ok: true,
                   chartCount: charts.length,
