@@ -427,13 +427,28 @@ export function getFormCaptureScript(shareToken: string | null, turnstileSiteKey
   var forms = document.querySelectorAll('[data-lp-form="true"]');
   if (!forms.length) forms = document.querySelectorAll('form');
   forms.forEach(function(form) {
+    if (form.getAttribute('data-lp-submit-bound') === '1') return;
+    form.setAttribute('data-lp-submit-bound', '1');
+
     form.addEventListener('submit', function(e) {
       e.preventDefault();
+      e.stopPropagation();
+      if (typeof e.stopImmediatePropagation === 'function') {
+        e.stopImmediatePropagation();
+      }
+
       var btn = form.querySelector('button[type="submit"], input[type="submit"]');
       var originalBtnText = '';
       if (btn) {
         originalBtnText = (btn.tagName === 'INPUT') ? (btn.value || 'Submit') : (btn.textContent || 'Submit');
       }
+
+      var restoreButton = function() {
+        if (!btn) return;
+        btn.disabled = false;
+        if (btn.tagName === 'INPUT') btn.value = originalBtnText;
+        else btn.textContent = originalBtnText;
+      };
 
       // Block submission if Turnstile widget hasn't been completed
       if (TURNSTILE_SITE_KEY) {
@@ -476,11 +491,7 @@ export function getFormCaptureScript(shareToken: string | null, turnstileSiteKey
       };
 
       if (!SHARE_TOKEN) {
-        if (btn) {
-          btn.disabled = false;
-          if (btn.tagName === 'INPUT') btn.value = originalBtnText;
-          else btn.textContent = originalBtnText;
-        }
+        restoreButton();
         setError('Submission endpoint is not configured.');
         return;
       }
@@ -490,33 +501,24 @@ export function getFormCaptureScript(shareToken: string | null, turnstileSiteKey
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
       }).then(function(r) {
-        if (!r.ok) {
-          // Parse and show the actual server error message; restore button on failure.
-          r.json().then(function(j) {
+        return r.json().then(function(j) {
+          if (!r.ok || !j || j.success !== true) {
             setError((j && j.error) ? j.error : 'Submission failed. Please try again.');
-          }).catch(function() {
-            setError('Submission failed. Please try again.');
-          }).then(function() {
-            if (btn) {
-              btn.disabled = false;
-              if (btn.tagName === 'INPUT') btn.value = originalBtnText;
-              else btn.textContent = originalBtnText;
-            }
-          });
-          return;
-        }
+            restoreButton();
+            return;
+          }
 
-        form.innerHTML = '<div style="text-align:center;padding:32px 16px"><h3 style="color:inherit;margin-bottom:8px">Thank you!</h3><p style="opacity:.8">We\\'ll be in touch shortly.</p></div>';
-        if (typeof window.__lpFireLead === 'function') window.__lpFireLead();
+          form.innerHTML = '<div style="text-align:center;padding:32px 16px"><h3 style="color:inherit;margin-bottom:8px">Thank you!</h3><p style="opacity:.8">We\\'ll be in touch shortly.</p></div>';
+          if (typeof window.__lpFireLead === 'function') window.__lpFireLead();
+        }).catch(function() {
+          setError('Submission failed. Please try again.');
+          restoreButton();
+        });
       }).catch(function(err) {
-        if (btn) {
-          btn.disabled = false;
-          if (btn.tagName === 'INPUT') btn.value = originalBtnText;
-          else btn.textContent = originalBtnText;
-        }
+        restoreButton();
         setError(err && err.message ? err.message : 'Submission failed. Please try again.');
       });
-    });
+    }, true);
   });
 })();
 </script>`;

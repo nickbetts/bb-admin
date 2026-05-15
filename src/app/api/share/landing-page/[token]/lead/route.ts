@@ -55,6 +55,47 @@ function sanitiseErrorMessage(error: unknown): string {
   return raw.trim().slice(0, 500);
 }
 
+function decodeMaybeUriComponent(value: string): string {
+  if (!/%[0-9a-fA-F]{2}/.test(value)) return value;
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+function normaliseEmailCandidate(value: unknown): string {
+  if (typeof value !== "string") return "";
+
+  let candidate = value.trim();
+  if (!candidate) return "";
+
+  try {
+    candidate = candidate.normalize("NFKC");
+  } catch {
+    // Best effort only; continue with the raw candidate.
+  }
+
+  candidate = candidate.replace(/^mailto:/i, "");
+  candidate = decodeMaybeUriComponent(candidate);
+  candidate = candidate.replace(/[\u0000-\u001F\u007F]/g, "");
+  candidate = candidate.replace(/\s+/g, "");
+  candidate = (candidate.split(/[;,]/)[0] ?? "").trim();
+
+  return candidate.slice(0, 200);
+}
+
+function isLikelyEmail(value: string): boolean {
+  if (!value) return false;
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return true;
+
+  const atIndex = value.indexOf("@");
+  if (atIndex <= 0 || atIndex !== value.lastIndexOf("@")) return false;
+
+  const domain = value.slice(atIndex + 1);
+  return domain.includes(".") && !domain.startsWith(".") && !domain.endsWith(".");
+}
+
 function normaliseEmailList(list: string[]): string[] {
   const seen = new Set<string>();
   const normalised: string[] = [];
@@ -244,34 +285,35 @@ export async function POST(
   // Every LP is AI-generated with different field names, so we scan values
   // rather than assuming fixed keys.
 
-  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  // Lenient check: key is literally "email" — just requires an @ sign.
-  // This handles autocomplete quirks, zero-width chars, or non-ASCII that
-  // would fail the strict regex even though the address is structurally valid.
-  const HAS_AT = (s: string) => s.includes("@");
-
   // Find the email: prefer keys containing "email", else scan all string values
   let email = "";
   for (const [k, v] of Object.entries(body)) {
-    if (typeof v === "string" && k.toLowerCase().includes("email")) {
-      // Normalise: strip non-printable/non-ASCII control chars that browsers
-      // sometimes inject via autocomplete (zero-width spaces, RTL marks, etc.)
-      const candidate = v.replace(/[^\x20-\x7E]/g, "").trim();
-      const kExact = k.toLowerCase() === "email";
-      if (EMAIL_RE.test(candidate) || (kExact && HAS_AT(candidate))) {
+    const key = k.trim().toLowerCase();
+    if (key.includes("email")) {
+      const candidate = normaliseEmailCandidate(v);
+      const isExactKey = key === "email";
+      if (isLikelyEmail(candidate) || (isExactKey && candidate.includes("@"))) {
         email = candidate; break;
       }
     }
   }
+
+  if (!email) {
+    const directEmailCandidate = normaliseEmailCandidate(body.email);
+    if (directEmailCandidate.includes("@")) {
+      email = directEmailCandidate;
+    }
+  }
+
   if (!email) {
     // Fallback: first string value that looks like an email
     for (const v of Object.values(body)) {
-      if (typeof v === "string" && EMAIL_RE.test(v.trim())) {
-        email = v.trim(); break;
+      const candidate = normaliseEmailCandidate(v);
+      if (isLikelyEmail(candidate)) {
+        email = candidate; break;
       }
     }
   }
-  email = email.slice(0, 200);
 
   if (!email) {
     console.error("[lead] No email found in submission. Keys:", Object.keys(body), "Values:", Object.fromEntries(Object.entries(body).map(([k, v]) => [k, typeof v])));

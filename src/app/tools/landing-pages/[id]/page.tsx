@@ -563,6 +563,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
   const trackingSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const trackingSaveRequestRef = useRef(0);
   const trackingSavePromiseRef = useRef<Promise<boolean> | null>(null);
+  const initialFormSanitySyncRef = useRef<string | null>(null);
 
   // Leads viewer modal
   const [showLeadsModal, setShowLeadsModal] = useState(false);
@@ -1687,6 +1688,16 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
   useEffect(() => {
     saveTrackingSettingsRef.current = saveTrackingSettings;
   }, [saveTrackingSettings]);
+
+  useEffect(() => {
+    if (!lp?.id) return;
+    if ((formConfig.fields?.length ?? 0) === 0) return;
+    if (!previewHtml.trim()) return;
+    if (initialFormSanitySyncRef.current === lp.id) return;
+
+    initialFormSanitySyncRef.current = lp.id;
+    void saveTrackingSettingsRef.current({ showSaved: false, silent: true });
+  }, [lp?.id, formConfig.fields, previewHtml]);
 
   useEffect(() => {
     if (!showTrackingSettings || !trackingDirty) return;
