@@ -265,6 +265,15 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
 
   useEffect(() => {
     const controller = new AbortController();
+    const isPdfExportMode =
+      typeof window !== "undefined" &&
+      (new URLSearchParams(window.location.search).get("pdfNoAnimation") === "1" ||
+        document.body.getAttribute("data-print-ready") === "true");
+
+    const logPdfGa4 = (message: string) => {
+      if (!isPdfExportMode) return;
+      console.warn(`[pdf-ga4] ${message}`);
+    };
 
     async function fetchData() {
       setLoading(true);
@@ -320,14 +329,44 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
           fetch(`${base}&type=revenue-per-session`, { signal: controller.signal }).catch(() => null),
         ]);
 
+        let resolvedDailyRes = dailyRes;
+        if (!dailyRes.ok && !controller.signal.aborted) {
+          logPdfGa4(`daily endpoint non-OK on first attempt: status=${dailyRes.status}`);
+          try {
+            resolvedDailyRes = await fetch(`${base}&type=daily`, { signal: controller.signal });
+            if (!resolvedDailyRes.ok) {
+              logPdfGa4(`daily endpoint retry non-OK: status=${resolvedDailyRes.status}`);
+            }
+          } catch {
+            logPdfGa4("daily endpoint retry threw");
+          }
+        }
+
         if (!ovRes.ok) {
           const err = await ovRes.json();
           throw new Error(err.error ?? "Failed to fetch GA4 data");
         }
 
+        if (!resolvedDailyRes.ok) {
+          throw new Error(`Failed to fetch GA4 daily data (${resolvedDailyRes.status})`);
+        }
+        if (!srcRes.ok) {
+          throw new Error(`Failed to fetch GA4 traffic sources (${srcRes.status})`);
+        }
+        if (!pagesRes.ok) {
+          throw new Error(`Failed to fetch GA4 top pages (${pagesRes.status})`);
+        }
+
+        if (!prevOvRes.ok) {
+          logPdfGa4(`comparison overview non-OK: status=${prevOvRes.status}`);
+        }
+        if (!prevPagesRes.ok) {
+          logPdfGa4(`comparison pages non-OK: status=${prevPagesRes.status}`);
+        }
+
         const [ov, d, s, p, prevOv, prevP, geo, devs, organic, yoy, nvr, demo, cvEv, cvCh, aiRef, lp, uj, cr, sessDurData, evParamData, contGrpData, scrollData, browserData, ecomRevData, userAcqData, revSessData] = await Promise.all([
           ovRes.json(),
-          dailyRes.json(),
+          resolvedDailyRes.json(),
           srcRes.json(),
           pagesRes.json(),
           prevOvRes.ok ? prevOvRes.json() : Promise.resolve(null),
@@ -353,6 +392,20 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
           userAcqRes?.ok ? userAcqRes.json().catch(() => []) : Promise.resolve([]),
           revSessRes?.ok ? revSessRes.json().catch(() => []) : Promise.resolve([]),
         ]);
+
+        if (!Array.isArray(d)) {
+          throw new Error("GA4 daily payload was not an array");
+        }
+        if (!Array.isArray(s)) {
+          throw new Error("GA4 traffic sources payload was not an array");
+        }
+        if (!Array.isArray(p)) {
+          throw new Error("GA4 top pages payload was not an array");
+        }
+
+        if (d.length === 0) {
+          logPdfGa4("daily payload resolved but empty");
+        }
 
         setOverview(ov);
         if (ov) onMetricsReady?.({
@@ -416,6 +469,7 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
         setRevenuePerSession(Array.isArray(revSessData) ? revSessData : []);
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") return;
+        logPdfGa4(`section load failed: ${err instanceof Error ? err.message : String(err)}`);
         setError(err instanceof Error ? err.message : "Failed to load GA4 data");
       } finally {
         setLoading(false);
@@ -423,7 +477,7 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
     }
     fetchData();
     return () => controller.abort();
-  }, [propertyId, startDate, endDate, compareStartDate, compareEndDate]);
+  }, [propertyId, startDate, endDate, compareStartDate, compareEndDate, onMetricsReady, onPreviousMetricsReady]);
 
   const sourceChartData = sources.slice(0, 6).map((s) => ({
     name: `${s.source} / ${s.medium}`,

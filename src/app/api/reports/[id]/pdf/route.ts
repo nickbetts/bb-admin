@@ -770,6 +770,96 @@ export async function GET(
             await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
           }, { regionY: clipY });
           await page.evaluate(() => new Promise((r) => setTimeout(r, 420)));
+
+          const postRepairChartReady = await page.evaluate(({ regionY, regionHeight }) => {
+            const inRegion = (el: HTMLElement) => {
+              const rect = el.getBoundingClientRect();
+              const style = window.getComputedStyle(el);
+              if (style.display === "none" || style.visibility === "hidden") return false;
+              if (rect.width <= 40 || rect.height <= 40) return false;
+              const top = rect.top + window.scrollY;
+              const bottom = top + rect.height;
+              return bottom > regionY && top < regionY + regionHeight;
+            };
+
+            const chartContainers = Array.from(
+              document.querySelectorAll<HTMLElement>(".recharts-responsive-container")
+            ).filter(inRegion);
+
+            if (chartContainers.length === 0) {
+              return { ok: true, chartCount: 0, unready: 0 };
+            }
+
+            const SERIES_GEOMETRY_SELECTOR = [
+              ".recharts-line-curve",
+              ".recharts-area-curve",
+              ".recharts-area-area",
+              ".recharts-bar-rectangle rect",
+              ".recharts-bar-rectangle path",
+              ".recharts-scatter-symbol circle",
+              ".recharts-scatter-symbol path",
+              ".recharts-pie-sector path",
+              ".recharts-radial-bar-sector path",
+              ".recharts-funnel-trapezoid path",
+              ".recharts-radar-polygon polygon",
+              ".recharts-radar path",
+              ".recharts-treemap-rectangle rect",
+            ].join(",");
+
+            const hasDrawableGeometry = (node: SVGElement) => {
+              const style = window.getComputedStyle(node);
+              if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0) {
+                return false;
+              }
+              const tag = node.tagName.toLowerCase();
+              if (tag === "path") {
+                const d = node.getAttribute("d") ?? "";
+                return d.trim().length > 0;
+              }
+              if (tag === "rect") {
+                const width = Number(node.getAttribute("width") ?? 0);
+                const height = Number(node.getAttribute("height") ?? 0);
+                return width > 1 && height > 1;
+              }
+              if (tag === "circle") {
+                const r = Number(node.getAttribute("r") ?? 0);
+                return r > 1;
+              }
+              if (tag === "polygon" || tag === "polyline") {
+                const points = node.getAttribute("points") ?? "";
+                return points.trim().length > 3;
+              }
+              return true;
+            };
+
+            const unready = chartContainers.filter((container) => {
+              const svg = container.querySelector<SVGElement>("svg.recharts-surface, svg");
+              if (!svg) return true;
+
+              const seriesNodes = Array.from(svg.querySelectorAll<SVGElement>(SERIES_GEOMETRY_SELECTOR));
+              if (seriesNodes.length === 0) return true;
+
+              const hasSeries = seriesNodes.some(hasDrawableGeometry);
+              const clipRects = Array.from(svg.querySelectorAll<SVGRectElement>("clipPath rect"));
+              const hasClip =
+                clipRects.length === 0 ||
+                clipRects.some((clip) => {
+                  const width = Number(clip.getAttribute("width") ?? 0);
+                  const height = Number(clip.getAttribute("height") ?? 0);
+                  return Number.isFinite(width) && Number.isFinite(height) && width > 1 && height > 1;
+                });
+
+              return !(hasSeries && hasClip);
+            }).length;
+
+            return { ok: unready === 0, chartCount: chartContainers.length, unready };
+          }, { regionY: clipY, regionHeight: clipHeight });
+
+          if (!postRepairChartReady.ok) {
+            console.warn(
+              `[pdf-recharts] Region still unready after repair: idx=${idx} id=${region.id} charts=${postRepairChartReady.chartCount} unready=${postRepairChartReady.unready}`
+            );
+          }
         }
 
         let chunkOffset = 0;
