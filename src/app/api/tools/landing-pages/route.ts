@@ -294,9 +294,8 @@ export async function POST(request: NextRequest) {
         const additionalPageContents = extraPageResults
           .filter((r): r is NonNullable<typeof r> => r !== null)
           .map((result) => {
-            const { sourceUrl, ...rest } = result;
-            const content = { ...rest };
-            delete content.imageryUrls;
+            const { sourceUrl, imageryUrls, ...content } = result;
+            void imageryUrls;
             return { sourceUrl, content };
           });
 
