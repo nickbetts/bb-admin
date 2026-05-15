@@ -274,7 +274,7 @@ export async function GET(
       // captureBeyondViewport: true (default in Puppeteer 22+) allows clip regions
       // outside the 900px viewport without needing to resize the page.
       const JPEG_QUALITY = 85;
-      const DESIRED_PAD_PX = 64;
+      const DESIRED_PAD_PX = 0;
       // Use 1 CSS px = 1 PDF pt — screen-format PDF, never physically printed.
       const PAGE_WIDTH_PT = 1200;
       // Chromium compositor textures are typically capped around ~8192 device

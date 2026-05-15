@@ -140,6 +140,13 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
     catch { return []; }
   }, [report.client.semrushCampaignIds]);
 
+  const sectionContainerStyle = {
+    marginBottom: 64,
+    position: "relative" as const,
+    overflow: "hidden" as const,
+    contain: "paint" as const,
+  };
+
   // Parse the narrative once so it can be used in the overview section's afterHeader
   const narrativeResult: {
     executiveSummary?: string;
@@ -478,7 +485,7 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
         if (isTextSection(section.sectionType)) {
           if (section.sectionType === "text_screenshots") {
             return (
-              <div key={section.id} id={`section-${section.id}`} data-section-type={section.sectionType} style={{ marginBottom: 64 }}>
+              <div key={section.id} id={`section-${section.id}`} data-section-type={section.sectionType} style={sectionContainerStyle}>
                 <ScreenshotsSection
                   screenshots={report.screenshots.filter((s) => !s.sectionId)}
                   title={TEXT_SECTION_LABELS[section.sectionType as TextSectionType] ?? section.title}
@@ -488,7 +495,7 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
             );
           }
           return (
-            <div key={section.id} id={`section-${section.id}`} data-section-type={section.sectionType} style={{ marginBottom: 64 }}>
+            <div key={section.id} id={`section-${section.id}`} data-section-type={section.sectionType} style={sectionContainerStyle}>
               <TextSection
                 sectionId={section.id}
                 reportId={report.id}
@@ -516,7 +523,7 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
         );
 
         return (
-          <div key={section.id} id={`section-${section.id}`} data-section-type={section.sectionType} style={{ marginBottom: 64 }}>
+          <div key={section.id} id={`section-${section.id}`} data-section-type={section.sectionType} style={sectionContainerStyle}>
             {section.sectionType === "overview" && (
               <OverviewSection
                 client={report.client}

@@ -469,7 +469,7 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
   // Fetch AI-generated recommendations for each alert
   useEffect(() => {
     setAlertAiRecs([]);
-    if (!semrushAlerts.length) return;
+    if (hideAlerts || hideAi || !semrushAlerts.length) return;
     setAlertAiLoading(true);
     fetch("/api/ai/summary", {
       method: "POST",
@@ -485,7 +485,7 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
       .then(json => { if (json?.recommendations?.length) setAlertAiRecs(json.recommendations); })
       .catch(() => {})
       .finally(() => setAlertAiLoading(false));
-  }, [semrushAlerts, startDate, endDate]);
+  }, [hideAlerts, hideAi, semrushAlerts, startDate, endDate]);
 
   return (
     <div className="flex flex-col gap-8">
