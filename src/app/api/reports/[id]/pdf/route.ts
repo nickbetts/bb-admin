@@ -269,7 +269,7 @@ export async function GET(
       // Capture uses measured section regions (not DOM style mutation) so we
       // retain stable boundaries and include the cover/header in the first page.
       const JPEG_QUALITY = 85;
-      const SECTION_PAGE_PADDING_PX = 200;
+      const SECTION_PAGE_PADDING_PX = 100;
       const PAGE_WIDTH_PT = 1200;
       // Keep screenshot chunks under compositor texture limits, then stitch
       // chunks onto a single PDF page per section.
