@@ -870,9 +870,21 @@ model LandingPageLead {
   formData      String? // JSON: additional custom field data
   referrer      String?
   createdAt     DateTime    @default(now())
+  emailStatus   String? // skipped | sent | failed
+  emailSentAt   DateTime?
+  emailError    String?
+  webhookStatus String? // skipped | sent | failed
+  webhookSentAt DateTime?
+  webhookHttpStatus Int?
+  webhookError  String?
+  notificationAttempts Int?
+  lastNotificationAttemptAt DateTime?
+  lastNotificationSuccessAt DateTime?
   landingPage   LandingPage @relation(fields: [landingPageId], references: [id], onDelete: Cascade)
 
   @@index([landingPageId, createdAt])
+  @@index([landingPageId, emailStatus, createdAt])
+  @@index([landingPageId, webhookStatus, createdAt])
 }
 
 // AI-translated versions of a landing page, served via ?lang= query param

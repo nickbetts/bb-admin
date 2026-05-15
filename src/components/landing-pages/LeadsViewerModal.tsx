@@ -22,6 +22,16 @@ interface Lead {
   formData: string | null;
   referrer: string | null;
   createdAt: string;
+  emailStatus?: string | null;
+  emailSentAt?: string | null;
+  emailError?: string | null;
+  webhookStatus?: string | null;
+  webhookSentAt?: string | null;
+  webhookHttpStatus?: number | null;
+  webhookError?: string | null;
+  notificationAttempts?: number | null;
+  lastNotificationAttemptAt?: string | null;
+  lastNotificationSuccessAt?: string | null;
 }
 
 interface LeadsViewerModalProps {
@@ -127,6 +137,62 @@ function sourceBadgeStyle(label: string) {
   return { background: "var(--border-subtle)", color: "var(--text-3)" };
 }
 
+function normaliseDeliveryStatus(status: string | null | undefined): "sent" | "failed" | "skipped" | "unknown" {
+  if (status === "sent" || status === "failed" || status === "skipped") return status;
+  return "unknown";
+}
+
+function getLeadDeliverySummary(lead: Lead): { label: string; detail: string; style: { background: string; color: string } } {
+  const emailStatus = normaliseDeliveryStatus(lead.emailStatus);
+  const webhookStatus = normaliseDeliveryStatus(lead.webhookStatus);
+  const sentCount = Number(emailStatus === "sent") + Number(webhookStatus === "sent");
+  const failedCount = Number(emailStatus === "failed") + Number(webhookStatus === "failed");
+
+  if (sentCount > 0 && failedCount > 0) {
+    return {
+      label: "Partially delivered",
+      detail: "One notification channel succeeded and one failed",
+      style: { background: "#FFF5E5", color: "#9A5C00" },
+    };
+  }
+
+  if (sentCount > 0) {
+    return {
+      label: "Delivered",
+      detail: "At least one notification channel succeeded",
+      style: { background: "#E8F8EF", color: "#19703F" },
+    };
+  }
+
+  if (failedCount > 0) {
+    return {
+      label: "Delivery failed",
+      detail: "No notification channel succeeded",
+      style: { background: "#FEEBEC", color: "#B42318" },
+    };
+  }
+
+  if (emailStatus === "skipped" && webhookStatus === "skipped") {
+    return {
+      label: "Not configured",
+      detail: "No notification channels were configured for this submission",
+      style: { background: "#EEF2FF", color: "#3B4CCA" },
+    };
+  }
+
+  return {
+    label: "Unknown",
+    detail: "Legacy lead or missing delivery metadata",
+    style: { background: "var(--border-subtle)", color: "var(--text-3)" },
+  };
+}
+
+function formatChannelStatus(status: string | null | undefined): string {
+  const normalised = normaliseDeliveryStatus(status);
+  if (normalised === "unknown") return "Unknown";
+  return normalised.charAt(0).toUpperCase() + normalised.slice(1);
+}
+
 export function LeadsViewerModal({ lpId, isOpen, onClose, onLeadDeleted }: LeadsViewerModalProps) {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(false);
@@ -173,7 +239,19 @@ export function LeadsViewerModal({ lpId, isOpen, onClose, onLeadDeleted }: Leads
   if (!isOpen) return null;
 
   const handleExportCSV = () => {
-    const headers = ["Name", "Email", "Phone", "Message", "Source", "Date", "Referrer", "Extra fields"];
+    const headers = [
+      "Name",
+      "Email",
+      "Phone",
+      "Message",
+      "Source",
+      "Date",
+      "Referrer",
+      "Email status",
+      "Webhook status",
+      "Delivery attempts",
+      "Extra fields",
+    ];
     const rows = leads.map((lead) => {
       const source = detectLeadSource(lead);
       const extras = getExtraFields(lead)
@@ -187,6 +265,9 @@ export function LeadsViewerModal({ lpId, isOpen, onClose, onLeadDeleted }: Leads
         source.label,
         new Date(lead.createdAt).toLocaleString("en-GB"),
         lead.referrer ?? "",
+        formatChannelStatus(lead.emailStatus),
+        formatChannelStatus(lead.webhookStatus),
+        lead.notificationAttempts ?? "",
         extras,
       ];
     });
@@ -391,6 +472,7 @@ export function LeadsViewerModal({ lpId, isOpen, onClose, onLeadDeleted }: Leads
                 const source = detectLeadSource(lead);
                 const badge = sourceBadgeStyle(source.label);
                 const extras = getExtraFields(lead);
+                const delivery = getLeadDeliverySummary(lead);
                 return (
                   <article
                     key={lead.id}
@@ -446,6 +528,19 @@ export function LeadsViewerModal({ lpId, isOpen, onClose, onLeadDeleted }: Leads
                         >
                           {source.label}
                         </span>
+                        <span
+                          style={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            padding: "3px 8px",
+                            borderRadius: 999,
+                            background: delivery.style.background,
+                            color: delivery.style.color,
+                          }}
+                          title={delivery.detail}
+                        >
+                          {delivery.label}
+                        </span>
                         <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "var(--text-4)", fontSize: 11 }}>
                           <Calendar style={{ width: 11, height: 11 }} />
                           {new Date(lead.createdAt).toLocaleString("en-GB")}
@@ -500,6 +595,50 @@ export function LeadsViewerModal({ lpId, isOpen, onClose, onLeadDeleted }: Leads
                         </a>
                       </div>
                     )}
+
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      <span
+                        style={{
+                          fontSize: 10,
+                          lineHeight: 1.3,
+                          padding: "4px 7px",
+                          borderRadius: 8,
+                          background: "var(--border-subtle)",
+                          color: "var(--text-2)",
+                        }}
+                        title={lead.emailError ?? undefined}
+                      >
+                        <strong>Email:</strong> {formatChannelStatus(lead.emailStatus)}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: 10,
+                          lineHeight: 1.3,
+                          padding: "4px 7px",
+                          borderRadius: 8,
+                          background: "var(--border-subtle)",
+                          color: "var(--text-2)",
+                        }}
+                        title={lead.webhookError ?? undefined}
+                      >
+                        <strong>Webhook:</strong> {formatChannelStatus(lead.webhookStatus)}
+                        {typeof lead.webhookHttpStatus === "number" ? ` (${lead.webhookHttpStatus})` : ""}
+                      </span>
+                      {typeof lead.notificationAttempts === "number" && (
+                        <span
+                          style={{
+                            fontSize: 10,
+                            lineHeight: 1.3,
+                            padding: "4px 7px",
+                            borderRadius: 8,
+                            background: "var(--border-subtle)",
+                            color: "var(--text-2)",
+                          }}
+                        >
+                          <strong>Attempts:</strong> {lead.notificationAttempts}
+                        </span>
+                      )}
+                    </div>
 
                     {extras.length > 0 && (
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
