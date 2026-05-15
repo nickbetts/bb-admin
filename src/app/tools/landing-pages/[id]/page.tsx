@@ -64,7 +64,7 @@ import { FormConfigPanel } from "@/components/landing-pages/FormConfigPanel";
 import { LeadsViewerModal } from "@/components/landing-pages/LeadsViewerModal";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import type { LpAnalyticsConfig } from "@/lib/lp-analytics";
-import { parseLpFormConfig, reconcileFormFields, type LpFormConfig } from "@/lib/lp-form-config";
+import { extractFormFieldsFromHtml, parseLpFormConfig, reconcileFormFields, type LpFormConfig, type LpFormField } from "@/lib/lp-form-config";
 import { applyConfiguredFormFields, replaceBuiltInForm } from "@/lib/lp-form-fields-html";
 import { useToast } from "@/components/ui/Toast";
 
@@ -197,6 +197,29 @@ type LpTranslation = {
   createdAt: string;
   updatedAt: string;
 };
+
+type FormCheckStatus = "pass" | "warn" | "fail";
+
+type FormCheckItem = {
+  label: string;
+  status: FormCheckStatus;
+  detail: string;
+};
+
+type FormCheckResult = {
+  status: FormCheckStatus;
+  checkedAt: string;
+  checks: FormCheckItem[];
+};
+
+function isValidEmailAddress(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function serialiseFieldSignature(field: LpFormField): string {
+  const options = (field.options ?? []).map((option) => `${option.label}:${option.value}`).join("|");
+  return [field.name, field.label, field.type, String(field.required), options].join("::");
+}
 
 /* ── Sortable section row for the organiser ──────────────────────────────── */
 
@@ -564,6 +587,9 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
   const trackingSaveRequestRef = useRef(0);
   const trackingSavePromiseRef = useRef<Promise<boolean> | null>(null);
   const initialFormSanitySyncRef = useRef<string | null>(null);
+  const [showFormCheckModal, setShowFormCheckModal] = useState(false);
+  const [formCheckRunning, setFormCheckRunning] = useState(false);
+  const [formCheckResult, setFormCheckResult] = useState<FormCheckResult | null>(null);
 
   // Leads viewer modal
   const [showLeadsModal, setShowLeadsModal] = useState(false);
@@ -1688,6 +1714,165 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
   useEffect(() => {
     saveTrackingSettingsRef.current = saveTrackingSettings;
   }, [saveTrackingSettings]);
+
+  const runFormCheck = useCallback(async () => {
+    setShowFormCheckModal(true);
+    setFormCheckRunning(true);
+    setFormCheckResult(null);
+
+    const checks: FormCheckItem[] = [];
+    const addCheck = (label: string, status: FormCheckStatus, detail: string) => {
+      checks.push({ label, status, detail });
+    };
+
+    const embedCode = formConfig.embedCode?.trim() ?? "";
+    const notifyEmails = (formConfig.notifyEmails ?? []).map((email) => email.trim()).filter(Boolean);
+    const webhookUrl = formConfig.webhookUrl?.trim() ?? "";
+
+    const invalidNotifyEmails = notifyEmails.filter((email) => !isValidEmailAddress(email));
+    if (invalidNotifyEmails.length > 0) {
+      addCheck(
+        "Notification recipients",
+        "fail",
+        `Invalid recipient email${invalidNotifyEmails.length === 1 ? "" : "s"}: ${invalidNotifyEmails.join(", ")}`,
+      );
+    } else if (notifyEmails.length > 0) {
+      addCheck(
+        "Notification recipients",
+        "pass",
+        `${notifyEmails.length} recipient${notifyEmails.length === 1 ? "" : "s"} configured for lead notifications.`,
+      );
+    } else {
+      addCheck("Notification recipients", "warn", "No notification recipients configured.");
+    }
+
+    if (!webhookUrl) {
+      addCheck("Webhook delivery", "warn", "No webhook URL configured.");
+    } else {
+      try {
+        const parsedWebhook = new URL(webhookUrl);
+        if (parsedWebhook.protocol !== "https:") {
+          addCheck("Webhook delivery", "fail", "Webhook URL must use HTTPS.");
+        } else {
+          addCheck("Webhook delivery", "pass", "Webhook URL format looks valid.");
+        }
+      } catch {
+        addCheck("Webhook delivery", "fail", "Webhook URL is not a valid URL.");
+      }
+    }
+
+    const hasAnyLeadRouting = Boolean(embedCode) || notifyEmails.length > 0 || webhookUrl.length > 0;
+    if (hasAnyLeadRouting) {
+      addCheck("Lead routing", "pass", "At least one lead delivery channel is configured.");
+    } else {
+      addCheck("Lead routing", "fail", "Configure recipients, webhook, or embed code so leads can be routed.");
+    }
+
+    if (embedCode) {
+      addCheck(
+        "Form source",
+        "warn",
+        "Embed code is enabled. Built-in Stratos field sync checks are skipped because the external provider controls submission.",
+      );
+    } else {
+      const htmlFields = extractFormFieldsFromHtml(previewHtml);
+      if (htmlFields.length === 0) {
+        addCheck("Page form fields", "fail", "No named form fields were detected in the current page HTML.");
+      } else {
+        addCheck("Page form fields", "pass", `${htmlFields.length} named field${htmlFields.length === 1 ? "" : "s"} detected in page HTML.`);
+      }
+
+      const hasEmailField = htmlFields.some((field) => field.type === "email" || field.name.toLowerCase().includes("email"));
+      if (hasEmailField) {
+        addCheck("Email capture field", "pass", "A valid email field is present in the page form.");
+      } else {
+        addCheck("Email capture field", "fail", "No email field was detected. Add a field named like email or with type=email.");
+      }
+
+      const configuredFields = formConfig.fields ?? [];
+      if (configuredFields.length === 0) {
+        addCheck("Configured field map", "warn", "No configured fields found. Sync fields from page to keep email templates aligned.");
+      } else {
+        const htmlFieldNames = new Set(htmlFields.map((field) => field.name));
+        const configuredFieldNames = new Set(configuredFields.map((field) => field.name));
+
+        const missingInConfig = htmlFields.filter((field) => !configuredFieldNames.has(field.name)).map((field) => field.name);
+        const staleInConfig = configuredFields.filter((field) => !htmlFieldNames.has(field.name)).map((field) => field.name);
+
+        if (missingInConfig.length === 0 && staleInConfig.length === 0) {
+          addCheck("Configured field map", "pass", "Configured fields are in sync with the current page HTML.");
+        } else {
+          const mismatchDetails: string[] = [];
+          if (missingInConfig.length > 0) mismatchDetails.push(`Missing from config: ${missingInConfig.join(", ")}`);
+          if (staleInConfig.length > 0) mismatchDetails.push(`Not in HTML: ${staleInConfig.join(", ")}`);
+          addCheck("Configured field map", "fail", mismatchDetails.join(". "));
+        }
+      }
+
+      if ((formConfig.fields?.length ?? 0) > 0) {
+        try {
+          const sanityRes = await fetch(`/api/tools/landing-pages/${id}/ai-email-field-sanity`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ fields: formConfig.fields }),
+          });
+
+          if (!sanityRes.ok) {
+            addCheck("AI field sanity", "warn", "AI field sanity endpoint could not be reached.");
+          } else {
+            const sanityData = await sanityRes.json() as { fields?: LpFormField[] };
+            if (!Array.isArray(sanityData.fields) || sanityData.fields.length === 0) {
+              addCheck("AI field sanity", "warn", "AI sanity check returned no field result.");
+            } else {
+              const currentSignatures = (formConfig.fields ?? []).map(serialiseFieldSignature);
+              const saneSignatures = sanityData.fields.map(serialiseFieldSignature);
+              const maxLength = Math.max(currentSignatures.length, saneSignatures.length);
+              let diffCount = 0;
+              for (let i = 0; i < maxLength; i += 1) {
+                if (currentSignatures[i] !== saneSignatures[i]) diffCount += 1;
+              }
+
+              if (diffCount === 0) {
+                addCheck("AI field sanity", "pass", "AI sanity check reports no field metadata issues.");
+              } else {
+                addCheck("AI field sanity", "fail", `AI sanity check suggests ${diffCount} field update${diffCount === 1 ? "" : "s"}. Save form settings to apply the corrections.`);
+              }
+            }
+          }
+        } catch {
+          addCheck("AI field sanity", "warn", "AI field sanity check failed to run.");
+        }
+      } else {
+        addCheck("AI field sanity", "warn", "AI sanity check skipped because no form fields are configured yet.");
+      }
+    }
+
+    try {
+      const previewRes = await fetch(`/api/tools/landing-pages/${id}/email-preview`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+
+      if (previewRes.ok) {
+        addCheck("Email template preview", "pass", "Notification email preview rendered successfully.");
+      } else {
+        addCheck("Email template preview", "warn", "Email preview could not be generated. Check OpenAI/email template settings.");
+      }
+    } catch {
+      addCheck("Email template preview", "warn", "Email preview check failed to run.");
+    }
+
+    const hasFailure = checks.some((check) => check.status === "fail");
+    const hasWarning = checks.some((check) => check.status === "warn");
+
+    setFormCheckResult({
+      status: hasFailure ? "fail" : hasWarning ? "warn" : "pass",
+      checkedAt: new Date().toISOString(),
+      checks,
+    });
+    setFormCheckRunning(false);
+  }, [formConfig, id, previewHtml]);
 
   useEffect(() => {
     if (!lp?.id) return;
@@ -2978,6 +3163,17 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                   <Check style={{ width: 13, height: 13 }} /> Saved
                 </span>
               )}
+              {trackingTab === "form" && (
+                <button
+                  className="btn btn-secondary"
+                  disabled={formCheckRunning}
+                  onClick={() => { void runFormCheck(); }}
+                  style={{ fontSize: 13 }}
+                >
+                  {formCheckRunning ? <Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }} /> : <ClipboardCheck style={{ width: 14, height: 14 }} />}
+                  {formCheckRunning ? "Checking…" : "Check form"}
+                </button>
+              )}
               <button
                 className="btn btn-secondary"
                 onClick={closeTrackingSettings}
@@ -2995,6 +3191,145 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
               >
                 {savingAnalytics ? <Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }} /> : <Save style={{ width: 14, height: 14 }} />}
                 {savingAnalytics ? "Saving…" : "Save now"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Form check modal */}
+      {showFormCheckModal && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.55)", padding: 16 }}>
+          <div className="card" style={{ width: "100%", maxWidth: 680, maxHeight: "86vh", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+            <div className="card-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span className="card-title" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                <ClipboardCheck style={{ width: 16, height: 16 }} />
+                Form check
+              </span>
+              <button
+                onClick={() => {
+                  if (formCheckRunning) return;
+                  setShowFormCheckModal(false);
+                }}
+                style={{ background: "none", border: "none", cursor: formCheckRunning ? "not-allowed" : "pointer", color: "var(--text-4)", padding: 2, opacity: formCheckRunning ? 0.5 : 1 }}
+              >
+                <X style={{ width: 16, height: 16 }} />
+              </button>
+            </div>
+
+            <div className="card-body" style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
+              {formCheckRunning && (
+                <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: "var(--text-2)" }}>
+                  <Loader2 style={{ width: 16, height: 16, animation: "spin 1s linear infinite" }} />
+                  Running form checks, please wait...
+                </div>
+              )}
+
+              {!formCheckRunning && formCheckResult && (
+                <>
+                  <div style={{
+                    border: "1px solid var(--border)",
+                    borderRadius: "var(--r)",
+                    padding: "10px 12px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 6,
+                    background: formCheckResult.status === "pass"
+                      ? "var(--success-bg)"
+                      : formCheckResult.status === "warn"
+                        ? "var(--warning-bg)"
+                        : "var(--danger-bg)",
+                  }}>
+                    <span style={{
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: formCheckResult.status === "pass"
+                        ? "var(--success-text)"
+                        : formCheckResult.status === "warn"
+                          ? "var(--warning-text)"
+                          : "var(--danger)",
+                    }}>
+                      {formCheckResult.status === "pass"
+                        ? "Form check passed"
+                        : formCheckResult.status === "warn"
+                          ? "Form check passed with warnings"
+                          : "Form check failed"}
+                    </span>
+                    <span style={{ fontSize: 11, color: "var(--text-3)" }}>
+                      Checked at {new Date(formCheckResult.checkedAt).toLocaleString()}
+                    </span>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {formCheckResult.checks.map((check, index) => (
+                      <div
+                        key={`${check.label}-${index}`}
+                        style={{
+                          border: "1px solid var(--border)",
+                          borderRadius: "var(--r)",
+                          padding: "9px 10px",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 5,
+                          background: "var(--surface)",
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>{check.label}</span>
+                          <span style={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            textTransform: "uppercase",
+                            letterSpacing: 0.4,
+                            padding: "2px 7px",
+                            borderRadius: 999,
+                            background: check.status === "pass"
+                              ? "var(--success-bg)"
+                              : check.status === "warn"
+                                ? "var(--warning-bg)"
+                                : "var(--danger-bg)",
+                            color: check.status === "pass"
+                              ? "var(--success-text)"
+                              : check.status === "warn"
+                                ? "var(--warning-text)"
+                                : "var(--danger)",
+                          }}>
+                            {check.status}
+                          </span>
+                        </div>
+                        <p style={{ margin: 0, fontSize: 12, color: "var(--text-3)", lineHeight: 1.4 }}>{check.detail}</p>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {!formCheckRunning && !formCheckResult && (
+                <p style={{ margin: 0, fontSize: 12, color: "var(--text-3)" }}>
+                  No form check results available yet.
+                </p>
+              )}
+            </div>
+
+            <div className="card-body" style={{ borderTop: "1px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => {
+                  if (formCheckRunning) return;
+                  setShowFormCheckModal(false);
+                }}
+                style={{ fontSize: 13 }}
+              >
+                Close
+              </button>
+              <button
+                className="btn btn-primary"
+                disabled={formCheckRunning}
+                onClick={() => { void runFormCheck(); }}
+                style={{ fontSize: 13 }}
+              >
+                {formCheckRunning ? <Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }} /> : <ClipboardCheck style={{ width: 14, height: 14 }} />}
+                {formCheckRunning ? "Checking…" : "Run again"}
               </button>
             </div>
           </div>
