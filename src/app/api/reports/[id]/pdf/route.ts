@@ -268,9 +268,16 @@ export async function GET(
         return { fullHeight: scrollH, regions: rects };
       });
 
-      // New logic: Each main section gets its own page with 200px top/bottom padding
+      // Each main section gets its own PDF page with fixed top/bottom padding.
+      // Capture uses measured section regions (not DOM style mutation) so we
+      // retain stable boundaries and include the cover/header in the first page.
       const JPEG_QUALITY = 85;
+      const SECTION_PAGE_PADDING_PX = 200;
       const PAGE_WIDTH_PT = 1200;
+      // Keep screenshot chunks under compositor texture limits, then stitch
+      // chunks onto a single PDF page per section.
+      const MAX_CHUNK_DEVICE_PX = 7600;
+      const MAX_CHUNK_CSS_PX = Math.floor(MAX_CHUNK_DEVICE_PX / DEVICE_SCALE_FACTOR);
       const outputDoc = await PDFDocument.create();
       const helvetica = await outputDoc.embedFont(StandardFonts.Helvetica);
       const FONT_SIZE = 9;
@@ -295,47 +302,48 @@ export async function GET(
 
       for (let idx = 0; idx < regions.length; idx++) {
         const region = regions[idx];
-        // Add 200px padding above and below the section before screenshotting
-        await page.evaluate((id) => {
-          const el = document.getElementById(id);
-          if (el) {
-            el.style.paddingTop = '200px';
-            el.style.paddingBottom = '200px';
-          }
-        }, region.id);
+        const clipY = Math.max(0, Math.floor(region.y));
+        const clipHeight = Math.min(Math.floor(region.height), fullHeight - clipY);
 
-        // Measure the new height with padding
-        const padded = await page.evaluate((id) => {
-          const el = document.getElementById(id);
-          if (!el) return null;
-          const rect = el.getBoundingClientRect();
-          return { y: Math.round(rect.top + window.scrollY), height: Math.round(rect.height) };
-        }, region.id);
-        if (!padded) continue;
-        const clipY = padded.y;
-        const clipHeight = padded.height;
-        if (clipHeight <= 0) continue;
+        if (clipHeight <= 0) {
+          console.warn(
+            `[pdf-guard] Skipping region with non-positive height: idx=${idx} id=${region.id} y=${region.y} height=${region.height}`
+          );
+          continue;
+        }
 
-        const screenshotBuffer = await page.screenshot({
-          type: "jpeg",
-          quality: JPEG_QUALITY,
-          clip: { x: 0, y: clipY, width: VIEWPORT_WIDTH_CSS, height: clipHeight },
-          captureBeyondViewport: true,
-        });
+        const pageHeight = clipHeight + SECTION_PAGE_PADDING_PX * 2;
+        const newPage = outputDoc.addPage([PAGE_WIDTH_PT, pageHeight]);
 
-        const jpegImage = await outputDoc.embedJpg(screenshotBuffer);
-        const newPage = outputDoc.addPage([PAGE_WIDTH_PT, clipHeight]);
-        newPage.drawImage(jpegImage, { x: 0, y: 0, width: PAGE_WIDTH_PT, height: clipHeight });
-        drawHeaderFooter(newPage, clipHeight);
+        const totalChunks = Math.ceil(clipHeight / MAX_CHUNK_CSS_PX);
+        for (let chunk = 0; chunk < totalChunks; chunk++) {
+          const chunkOffset = chunk * MAX_CHUNK_CSS_PX;
+          const chunkStartY = clipY + chunkOffset;
+          const chunkH = Math.min(MAX_CHUNK_CSS_PX, clipHeight - chunkOffset);
 
-        // Remove the padding so it doesn't affect subsequent screenshots
-        await page.evaluate((id) => {
-          const el = document.getElementById(id);
-          if (el) {
-            el.style.paddingTop = '';
-            el.style.paddingBottom = '';
-          }
-        }, region.id);
+          if (chunkH <= 0) continue;
+
+          const screenshotBuffer = await page.screenshot({
+            type: "jpeg",
+            quality: JPEG_QUALITY,
+            clip: { x: 0, y: chunkStartY, width: VIEWPORT_WIDTH_CSS, height: chunkH },
+            captureBeyondViewport: true,
+          });
+
+          const jpegImage = await outputDoc.embedJpg(screenshotBuffer);
+          const targetY = SECTION_PAGE_PADDING_PX + (clipHeight - chunkOffset - chunkH);
+          newPage.drawImage(jpegImage, {
+            x: 0,
+            y: targetY,
+            width: PAGE_WIDTH_PT,
+            height: chunkH,
+          });
+        }
+
+        // Keep the cover page clean; apply header/footer from section pages onward.
+        if (idx > 0) {
+          drawHeaderFooter(newPage, pageHeight);
+        }
       }
 
       // useObjectStreams enables cross-reference stream compression for an additional
