@@ -178,6 +178,21 @@ interface GeneratedImage {
   loading?: boolean;
 }
 
+function isValidCampaignPlan(value: unknown): value is FullPlan {
+  if (!value || typeof value !== "object") return false;
+  const campaigns = (value as { campaigns?: unknown }).campaigns;
+  if (!Array.isArray(campaigns)) return false;
+  return campaigns.every((campaign) => {
+    if (!campaign || typeof campaign !== "object") return false;
+    const adSets = (campaign as { adSets?: unknown }).adSets;
+    if (!Array.isArray(adSets)) return false;
+    return adSets.every((adSet) => {
+      if (!adSet || typeof adSet !== "object") return false;
+      return Array.isArray((adSet as { creatives?: unknown }).creatives);
+    });
+  });
+}
+
 // ─── Component ────────────────────────────────────────────────────────────
 
 export default function MetaAudienceScraperPage() {
@@ -456,7 +471,10 @@ export default function MetaAudienceScraperPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Plan generation failed");
-      setPlan(data.plan as FullPlan);
+      if (!isValidCampaignPlan(data.plan)) {
+        throw new Error("AI returned an invalid campaign plan. Please try again.");
+      }
+      setPlan(data.plan);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Plan generation failed");
     } finally {
@@ -499,7 +517,10 @@ export default function MetaAudienceScraperPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Refinement failed");
-      setPlan(data.plan as FullPlan);
+      if (!isValidCampaignPlan(data.plan)) {
+        throw new Error("AI returned an invalid refined plan. Please try again.");
+      }
+      setPlan(data.plan);
       setRefinementHistory((prev) => [
         ...prev,
         { feedback: feedbackText, appliedAt: new Date().toISOString() },
@@ -604,7 +625,14 @@ export default function MetaAudienceScraperPage() {
       setObjective(s.objective ?? "");
       setAccountId(s.accountId ?? "");
       setAiResult(s.aiResult ?? null);
-      setPlan(s.plan ?? null);
+      if (s.plan == null) {
+        setPlan(null);
+      } else if (isValidCampaignPlan(s.plan)) {
+        setPlan(s.plan);
+      } else {
+        setPlan(null);
+        setError("Saved plan is invalid. Rebuild the campaign plan before continuing.");
+      }
       setExcludedPillars(
         new Set<string>(Array.isArray(s.excludedPillars) ? s.excludedPillars : []),
       );
@@ -680,7 +708,10 @@ export default function MetaAudienceScraperPage() {
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? "Slice refinement failed");
-        setPlan(data.plan as FullPlan);
+        if (!isValidCampaignPlan(data.plan)) {
+          throw new Error("AI returned an invalid refined plan. Please try again.");
+        }
+        setPlan(data.plan);
         setRefinementHistory((prev) => [
           ...prev,
           { feedback: `[scoped] ${feedback}`, appliedAt: new Date().toISOString() },
@@ -722,11 +753,23 @@ export default function MetaAudienceScraperPage() {
         behaviorIds?: { id: string }[];
         advantageAudience?: boolean;
       }[] = [];
-      plan.campaigns.forEach((c, ci) => {
-        c.adSets.forEach((a, ai) => {
+      const campaigns = Array.isArray(plan.campaigns) ? plan.campaigns : [];
+      campaigns.forEach((c, ci) => {
+        const campaignAdSets = Array.isArray(c.adSets) ? c.adSets : [];
+        campaignAdSets.forEach((a, ai) => {
+          if (
+            !a?.ageRange ||
+            typeof a.ageRange.min !== "number" ||
+            typeof a.ageRange.max !== "number"
+          ) {
+            return;
+          }
           const interestIds: { id: string }[] = [];
           const behaviorIds: { id: string }[] = [];
-          for (const id of a.targetingOptionIds ?? []) {
+          const targetingOptionIds = Array.isArray(a.targetingOptionIds)
+            ? a.targetingOptionIds
+            : [];
+          for (const id of targetingOptionIds) {
             const t = (optionTypeById.get(String(id)) ?? "").toLowerCase();
             if (t.includes("behavior") || t.includes("behaviour"))
               behaviorIds.push({ id: String(id) });
@@ -738,7 +781,7 @@ export default function MetaAudienceScraperPage() {
             geoCountries: a.geoTargeting && a.geoTargeting.length > 0 ? a.geoTargeting : undefined,
             ageMin: a.ageRange.min,
             ageMax: a.ageRange.max,
-            genders: a.genders,
+            genders: a.genders ?? "all",
             interestIds: interestIds.length > 0 ? interestIds : undefined,
             behaviorIds: behaviorIds.length > 0 ? behaviorIds : undefined,
             advantageAudience: a.advantageAudience,
@@ -825,9 +868,12 @@ export default function MetaAudienceScraperPage() {
     const tasks: Task[] = [];
     const existing = imagesRef.current;
 
-    p.campaigns.forEach((campaign, ci) => {
-      campaign.adSets.forEach((adSet, ai) => {
-        adSet.creatives.forEach((creative, cri) => {
+    const campaigns = Array.isArray(p.campaigns) ? p.campaigns : [];
+    campaigns.forEach((campaign, ci) => {
+      const adSets = Array.isArray(campaign.adSets) ? campaign.adSets : [];
+      adSets.forEach((adSet, ai) => {
+        const creatives = Array.isArray(adSet.creatives) ? adSet.creatives : [];
+        creatives.forEach((creative, cri) => {
           const prompts = creative.imagePrompts?.length
             ? creative.imagePrompts
             : creative.imagePrompt
@@ -877,15 +923,13 @@ export default function MetaAudienceScraperPage() {
           });
           if (myToken !== generationToken.current) return;
           if (!res.ok) {
-            const err = await res
-              .json()
-              .catch(
-                () =>
-                  ({}) as {
-                    error?: string;
-                    limits?: { remainingHour: number; remainingDay: number };
-                  },
-              );
+            const err = await res.json().catch(
+              () =>
+                ({}) as {
+                  error?: string;
+                  limits?: { remainingHour: number; remainingDay: number };
+                },
+            );
             const suffix = err.limits
               ? ` (remaining: ${err.limits.remainingHour}/hour, ${err.limits.remainingDay}/day)`
               : "";
@@ -1554,14 +1598,18 @@ function CampaignPlanSection(props: CampaignPlanSectionProps) {
   } = props;
 
   const budgetReady = parseFloat(dailyBudget) > 0;
+  const campaigns = Array.isArray(plan?.campaigns) ? plan.campaigns : [];
 
   function downloadHandoffPack(currentPlan: FullPlan) {
+    const campaignNames = Array.isArray(currentPlan.campaigns)
+      ? currentPlan.campaigns.map((c) => c.name)
+      : [];
     const payload = {
       summary: currentPlan.summary,
       structureRationale: currentPlan.structureRationale,
       controlsVsSuggestions: currentPlan.controlsVsSuggestions ?? null,
       handoffPack: currentPlan.handoffPack ?? null,
-      campaignNames: currentPlan.campaigns.map((c) => c.name),
+      campaignNames,
       createdAt: new Date().toISOString(),
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
@@ -1652,7 +1700,7 @@ function CampaignPlanSection(props: CampaignPlanSectionProps) {
           </div>
 
           {/* Campaigns */}
-          {plan.campaigns.map((campaign, ci) => (
+          {campaigns.map((campaign, ci) => (
             <CampaignCard
               key={ci}
               campaign={campaign}
@@ -2150,6 +2198,8 @@ function CampaignCard({
   }) => void;
   sliceKey: (ci: number, ai?: number, cri?: number) => string;
 }) {
+  const advantagePlus = campaign.advantagePlus ?? { enabled: false, type: "none", why: "" };
+  const campaignAdSets = Array.isArray(campaign.adSets) ? campaign.adSets : [];
   return (
     <div
       style={{
@@ -2183,16 +2233,15 @@ function CampaignCard({
               {currency} {campaign.dailyBudget.toFixed(0)}/day
             </Tag>
             {campaign.bidStrategy && <Tag>{formatBidStrategy(campaign.bidStrategy)}</Tag>}
-            {campaign.advantagePlus.enabled && <Tag tone="accent">Advantage+</Tag>}
+            {advantagePlus.enabled && <Tag tone="accent">Advantage+</Tag>}
           </div>
         </div>
         <p style={{ margin: "10px 0 0", fontSize: 12, color: "var(--text-2)", lineHeight: 1.5 }}>
           <strong>Why:</strong> {campaign.why}
         </p>
-        {campaign.advantagePlus.enabled && (
+        {advantagePlus.enabled && (
           <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--accent)", lineHeight: 1.5 }}>
-            <strong>Advantage+ ({campaign.advantagePlus.type}):</strong>{" "}
-            {campaign.advantagePlus.why}
+            <strong>Advantage+ ({advantagePlus.type}):</strong> {advantagePlus.why}
           </p>
         )}
         <div
@@ -2222,7 +2271,7 @@ function CampaignCard({
           // by region/audience-group. Ad sets without a group share an
           // implicit "" bucket and render flat.
           const groups = new Map<string, { adSet: AdSetPlan; index: number }[]>();
-          campaign.adSets.forEach((adSet, ai) => {
+          campaignAdSets.forEach((adSet, ai) => {
             const key = (adSet.group ?? "").trim();
             if (!groups.has(key)) groups.set(key, []);
             groups.get(key)!.push({ adSet, index: ai });
@@ -2361,6 +2410,10 @@ function AdSetCard({
   sliceKey: (ci: number, ai?: number, cri?: number) => string;
 }) {
   const hasGeo = (adSet.geoTargeting?.length ?? 0) > 0;
+  const targetingOptionIds = Array.isArray(adSet.targetingOptionIds)
+    ? adSet.targetingOptionIds
+    : [];
+  const creatives = Array.isArray(adSet.creatives) ? adSet.creatives : [];
   const adSetRefineKey = sliceKey(campaignIndex, adSetIndex);
   const adSetRefine = sliceRefines[adSetRefineKey] ?? { feedback: "", loading: false };
   return (
@@ -2609,10 +2662,10 @@ function AdSetCard({
         <strong style={{ color: "var(--text)" }}>Why:</strong> {adSet.why}
       </p>
 
-      {adSet.targetingOptionIds.length > 0 && (
+      {targetingOptionIds.length > 0 && (
         <details style={{ marginTop: 8 }}>
           <summary style={{ fontSize: 11, color: "var(--text-3)", cursor: "pointer" }}>
-            {adSet.targetingOptionIds.length} targeting IDs
+            {targetingOptionIds.length} targeting IDs
           </summary>
           <p
             style={{
@@ -2622,14 +2675,14 @@ function AdSetCard({
               wordBreak: "break-all",
             }}
           >
-            {adSet.targetingOptionIds.join(", ")}
+            {targetingOptionIds.join(", ")}
           </p>
         </details>
       )}
 
       {/* Creatives */}
       <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
-        {adSet.creatives.map((creative, cri) => {
+        {creatives.map((creative, cri) => {
           const aspect: "square" | "portrait" | "landscape" =
             creative.format === "video" ? "portrait" : "square";
           const prompts = creative.imagePrompts?.length

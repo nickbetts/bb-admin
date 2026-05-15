@@ -147,6 +147,12 @@ ${JSON.stringify(sliceForPrompt)}`;
 
     // Validate the merged plan.
     let plan: unknown = fullPlan;
+    if (!isValidPlanStructure(plan)) {
+      return NextResponse.json(
+        { error: "AI returned an invalid refined plan structure", raw: serialiseRaw(res) },
+        { status: 502 },
+      );
+    }
     if (validIds.size > 0) {
       const idCheck = validateTargetingIds(plan, validIds);
       plan = idCheck.plan;
@@ -179,7 +185,7 @@ No em dashes. No banned phrases. Long-form 80-220 words. Variants read different
         });
         await logAnthropicUsage("meta-assassin-refine-slice-copy-fix", fixRes);
         const fixed = parseJsonFromAnthropicResponse(fixRes);
-        if (fixed) {
+        if (fixed && isValidPlanStructure(fixed)) {
           if (validIds.size > 0) {
             const fixedIds = validateTargetingIds(fixed, validIds);
             const fixedBudgets = validateAndRescaleBudgets(fixedIds.plan);
@@ -256,6 +262,22 @@ function parseObject(input: string): Record<string, unknown> | null {
   } catch {
     return null;
   }
+}
+
+function isValidPlanStructure(plan: unknown): boolean {
+  if (!plan || typeof plan !== "object") return false;
+  const campaigns = (plan as { campaigns?: unknown }).campaigns;
+  if (!Array.isArray(campaigns)) return false;
+
+  return campaigns.every((campaign) => {
+    if (!campaign || typeof campaign !== "object") return false;
+    const adSets = (campaign as { adSets?: unknown }).adSets;
+    if (!Array.isArray(adSets)) return false;
+    return adSets.every((adSet) => {
+      if (!adSet || typeof adSet !== "object") return false;
+      return Array.isArray((adSet as { creatives?: unknown }).creatives);
+    });
+  });
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
