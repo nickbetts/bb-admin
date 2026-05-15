@@ -11,9 +11,6 @@ import {
 
 export const dynamic = "force-dynamic";
 
-const SINGLE_PASS_URL_LIMIT = 12;
-const DOUBLE_PASS_URL_LIMIT = 20;
-
 // POST /api/tools/landing-pages/[id]/refine/jobs
 // Creates a background refinement job. The client polls /run for batched steps.
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -44,8 +41,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         : undefined;
 
     const refinementMode = toRefinementMode(body.refinementMode);
-    const crawlUrlLimit =
-      refinementMode === "double-pass" ? DOUBLE_PASS_URL_LIMIT : SINGLE_PASS_URL_LIMIT;
 
     const payload: RefineJobPayload = {
       prompt,
@@ -56,7 +51,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         : undefined,
       referenceHtml: typeof body.referenceHtml === "string" ? body.referenceHtml : undefined,
       imageUrls: normaliseUrlList(body.imageUrls, 120),
-      crawlUrls: normaliseUrlList(body.crawlUrls, crawlUrlLimit),
+      crawlUrls: normaliseUrlList(body.crawlUrls, Number.MAX_SAFE_INTEGER),
     };
 
     const initialState = parseRefineState(null);

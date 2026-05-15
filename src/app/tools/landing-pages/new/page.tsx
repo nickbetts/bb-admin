@@ -40,22 +40,47 @@ interface Template {
 }
 
 const CAMPAIGN_TYPES = [
-  { value: "lead-gen", label: "Lead Generation", description: "Capture leads with a form-focused page" },
-  { value: "event", label: "Event / Campaign", description: "Promote an event, offer, or seasonal campaign" },
-  { value: "product-launch", label: "Product Launch", description: "Showcase a new product or service" },
-  { value: "service", label: "Service Landing", description: "Convert visitors for a specific service" },
+  {
+    value: "lead-gen",
+    label: "Lead Generation",
+    description: "Capture leads with a form-focused page",
+  },
+  {
+    value: "event",
+    label: "Event / Campaign",
+    description: "Promote an event, offer, or seasonal campaign",
+  },
+  {
+    value: "product-launch",
+    label: "Product Launch",
+    description: "Showcase a new product or service",
+  },
+  {
+    value: "service",
+    label: "Service Landing",
+    description: "Convert visitors for a specific service",
+  },
   { value: "ecommerce", label: "E-commerce", description: "Drive product sales and conversions" },
 ];
 
 const inputStyle: React.CSSProperties = {
-  width: "100%", padding: "10px 14px",
-  border: "1px solid var(--border)", borderRadius: "var(--r)",
-  fontSize: 14, color: "var(--text)", background: "var(--surface)",
-  outline: "none", fontFamily: "inherit",
+  width: "100%",
+  padding: "10px 14px",
+  border: "1px solid var(--border)",
+  borderRadius: "var(--r)",
+  fontSize: 14,
+  color: "var(--text)",
+  background: "var(--surface)",
+  outline: "none",
+  fontFamily: "inherit",
 };
 
 const labelStyle: React.CSSProperties = {
-  display: "block", fontSize: 13, fontWeight: 600, color: "var(--text-2)", marginBottom: 6,
+  display: "block",
+  fontSize: 13,
+  fontWeight: 600,
+  color: "var(--text-2)",
+  marginBottom: 6,
 };
 
 export default function NewLandingPage() {
@@ -81,7 +106,9 @@ export default function NewLandingPage() {
   const [targetAudience, setTargetAudience] = useState("");
   const [customSubdomain, setCustomSubdomain] = useState("");
   const [templateId, setTemplateId] = useState("");
-  const [suggestedAudiences, setSuggestedAudiences] = useState<{ name: string; description: string }[]>([]);
+  const [suggestedAudiences, setSuggestedAudiences] = useState<
+    { name: string; description: string }[]
+  >([]);
   const [suggestingAudiences, setSuggestingAudiences] = useState(false);
   const [audienceSuggestError, setAudienceSuggestError] = useState<string | null>(null);
   const [requestedComponentIds, setRequestedComponentIds] = useState<string[]>([]);
@@ -89,7 +116,9 @@ export default function NewLandingPage() {
 
   // Tracking & conversions
   const [analyticsConfig, setAnalyticsConfig] = useState<LpAnalyticsConfig>({});
-  const [inheritedAnalytics, setInheritedAnalytics] = useState<LpAnalyticsConfig | undefined>(undefined);
+  const [inheritedAnalytics, setInheritedAnalytics] = useState<LpAnalyticsConfig | undefined>(
+    undefined,
+  );
   const [saveAsClientDefault, setSaveAsClientDefault] = useState(false);
 
   // Uploaded reference images
@@ -111,19 +140,23 @@ export default function NewLandingPage() {
   const [progressMessages, setProgressMessages] = useState<string[]>([]);
 
   useEffect(() => {
-    fetch("/api/clients").then(async (r) => {
-      if (r.ok) {
-        const data = await r.json();
-        // API returns a plain array
-        setClients(Array.isArray(data) ? data : (data.clients ?? []));
-      }
-    }).catch(() => {});
-    fetch("/api/tools/landing-pages/templates").then(async (r) => {
-      if (r.ok) {
-        const data = await r.json();
-        setTemplates(data.templates ?? []);
-      }
-    }).catch(() => {});
+    fetch("/api/clients")
+      .then(async (r) => {
+        if (r.ok) {
+          const data = await r.json();
+          // API returns a plain array
+          setClients(Array.isArray(data) ? data : (data.clients ?? []));
+        }
+      })
+      .catch(() => {});
+    fetch("/api/tools/landing-pages/templates")
+      .then(async (r) => {
+        if (r.ok) {
+          const data = await r.json();
+          setTemplates(data.templates ?? []);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const handleClientChange = (newClientId: string) => {
@@ -159,7 +192,10 @@ export default function NewLandingPage() {
       const res = await fetch("/api/clients", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newClientName.trim(), website: newClientWebsite.trim() || undefined }),
+        body: JSON.stringify({
+          name: newClientName.trim(),
+          website: newClientWebsite.trim() || undefined,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -190,7 +226,10 @@ export default function NewLandingPage() {
       for (const file of uploads) {
         const fd = new FormData();
         fd.append("file", file);
-        const res = await fetch("/api/tools/landing-pages/upload-image", { method: "POST", body: fd });
+        const res = await fetch("/api/tools/landing-pages/upload-image", {
+          method: "POST",
+          body: fd,
+        });
         const data = await res.json();
         if (!res.ok) {
           setImageUploadError(data.error ?? "Upload failed");
@@ -223,7 +262,10 @@ export default function NewLandingPage() {
           clientName: clients.find((c) => c.id === clientId)?.name,
         }),
       });
-      const data = await res.json() as { audiences?: { name: string; description: string }[]; error?: string };
+      const data = (await res.json()) as {
+        audiences?: { name: string; description: string }[];
+        error?: string;
+      };
       if (!res.ok) {
         setAudienceSuggestError(data.error || "Failed to suggest audiences");
         return;
@@ -258,18 +300,21 @@ export default function NewLandingPage() {
           targetOffering: targetOffering || undefined,
           targetAudience: targetAudience || undefined,
           customSubdomain: customSubdomain.trim() || undefined,
-          requestedComponentIds: requestedComponentIds.length > 0 ? requestedComponentIds : undefined,
+          requestedComponentIds:
+            requestedComponentIds.length > 0 ? requestedComponentIds : undefined,
           templateId: templateId || undefined,
           analyticsConfig: Object.keys(analyticsConfig).length > 0 ? analyticsConfig : undefined,
-          additionalImageUrls: uploadedImages.length > 0 ? uploadedImages.map((i) => i.url) : undefined,
-          additionalUrls: additionalUrls.filter((u) => u.trim()).length > 0
-            ? additionalUrls.filter((u) => u.trim())
-            : undefined,
+          additionalImageUrls:
+            uploadedImages.length > 0 ? uploadedImages.map((i) => i.url) : undefined,
+          additionalUrls:
+            additionalUrls.filter((u) => u.trim()).length > 0
+              ? additionalUrls.filter((u) => u.trim())
+              : undefined,
         }),
       });
 
       if (!res.ok || !res.body) {
-        const data = await res.json().catch(() => ({})) as { error?: string };
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
         setError((data.error as string | undefined) ?? "Generation failed");
         setLoading(false);
         return;
@@ -290,11 +335,24 @@ export default function NewLandingPage() {
         for (const line of lines) {
           if (!line.trim()) continue;
           try {
-            const event = JSON.parse(line) as { type: string; message?: string; landingPage?: { id: string } };
+            const event = JSON.parse(line) as {
+              type: string;
+              message?: string;
+              landingPage?: { id: string };
+              scrapeWarnings?: string[];
+            };
             if (event.type === "progress" && event.message) {
               setProgressMessages((prev) => [...prev, event.message!]);
             } else if (event.type === "done" && event.landingPage) {
               landingPageId = event.landingPage.id;
+
+              if (event.scrapeWarnings?.length) {
+                setProgressMessages((prev) => [
+                  ...prev,
+                  ...event.scrapeWarnings!.map((warning) => `Warning: ${warning}`),
+                ]);
+              }
+
               // Optionally persist client default
               if (saveAsClientDefault && clientId && Object.keys(analyticsConfig).length > 0) {
                 fetch(`/api/clients/${clientId}`, {
@@ -308,7 +366,9 @@ export default function NewLandingPage() {
               setLoading(false);
               return;
             }
-          } catch { /* skip malformed line */ }
+          } catch {
+            /* skip malformed line */
+          }
         }
       }
 
@@ -333,7 +393,9 @@ export default function NewLandingPage() {
                 setProgressMessages((prev) => [...prev, `${passLabel}: ${event.message!}`]);
               }
               // "error" from audit is non-fatal — page was already saved
-            } catch { /* skip malformed */ }
+            } catch {
+              /* skip malformed */
+            }
           }
         }
       };
@@ -346,7 +408,9 @@ export default function NewLandingPage() {
         await runAuditPass(landingPageId, "Optimising (pass 2)");
 
         setGeneratedLpId(landingPageId);
-        setGeneratedLpClientName(clientId ? clients.find((c) => c.id === clientId)?.name : undefined);
+        setGeneratedLpClientName(
+          clientId ? clients.find((c) => c.id === clientId)?.name : undefined,
+        );
         setShowClickUpModal(true);
         setLoading(false);
       } else {
@@ -361,631 +425,1108 @@ export default function NewLandingPage() {
 
   return (
     <>
-    {/* ── Generation screen (replaces form while AI is working) ────────────── */}
-    {loading && (
-      <LpGeneratingScreen
-        funMode={funMode}
-        messages={progressMessages}
-        title={title}
-        onChaosToggle={() => setFunMode((v) => !v)}
-      />
-    )}
+      {/* ── Generation screen (replaces form while AI is working) ────────────── */}
+      {loading && (
+        <LpGeneratingScreen
+          funMode={funMode}
+          messages={progressMessages}
+          title={title}
+          onChaosToggle={() => setFunMode((v) => !v)}
+        />
+      )}
 
-    {/* ── ClickUp go-live checklist modal ─────────────────────────────────── */}
-    {showClickUpModal && generatedLpId && (
-      <ClickUpTaskModal
-        lpTitle={title}
-        lpId={generatedLpId}
-        clientName={generatedLpClientName}
-        onClose={() => {
-          setShowClickUpModal(false);
-          router.push(`/tools/landing-pages/${generatedLpId}`);
-        }}
-      />
-    )}
+      {/* ── ClickUp go-live checklist modal ─────────────────────────────────── */}
+      {showClickUpModal && generatedLpId && (
+        <ClickUpTaskModal
+          lpTitle={title}
+          lpId={generatedLpId}
+          clientName={generatedLpClientName}
+          onClose={() => {
+            setShowClickUpModal(false);
+            router.push(`/tools/landing-pages/${generatedLpId}`);
+          }}
+        />
+      )}
 
-    {/* ── Form (hidden while generating) ──────────────────────────────────── */}
-    <div className="page" style={{ maxWidth: 720, display: loading ? "none" : undefined }}>
-      <ClientBackLink />
-      {/* Back link */}
-      <Link
-        href="/tools/landing-pages"
-        style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 13, color: "var(--text-3)", marginBottom: 16, textDecoration: "none" }}
-      >
-        <ArrowLeft style={{ width: 14, height: 14 }} /> Back to landing pages
-      </Link>
+      {/* ── Form (hidden while generating) ──────────────────────────────────── */}
+      <div className="page" style={{ maxWidth: 720, display: loading ? "none" : undefined }}>
+        <ClientBackLink />
+        {/* Back link */}
+        <Link
+          href="/tools/landing-pages"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 4,
+            fontSize: 13,
+            color: "var(--text-3)",
+            marginBottom: 16,
+            textDecoration: "none",
+          }}
+        >
+          <ArrowLeft style={{ width: 14, height: 14 }} /> Back to landing pages
+        </Link>
 
-      {/* Header */}
-      <div style={{ marginBottom: 32 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", lineHeight: 1 }}>Create Landing Page</h1>
-        <p style={{ fontSize: 13, color: "var(--text-3)", marginTop: 6 }}>
-          Provide a website to scrape for branding and a brief — Meridian will generate an optimised LP
-        </p>
-      </div>
+        {/* Header */}
+        <div style={{ marginBottom: 32 }}>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", lineHeight: 1 }}>
+            Create Landing Page
+          </h1>
+          <p style={{ fontSize: 13, color: "var(--text-3)", marginTop: 6 }}>
+            Provide a website to scrape for branding and a brief — Meridian will generate an
+            optimised LP
+          </p>
+        </div>
 
-      <div className="card">
-        <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+        <div className="card">
+          <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+            {/* Client selection */}
+            <div>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: 6,
+                }}
+              >
+                <label style={{ ...labelStyle, marginBottom: 0 }}>
+                  Client <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span>
+                </label>
+                {!showNewClient && (
+                  <button
+                    type="button"
+                    onClick={() => setShowNewClient(true)}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 4,
+                      fontSize: 12,
+                      color: "var(--accent)",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      padding: 0,
+                      fontWeight: 600,
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    <Plus style={{ width: 13, height: 13 }} /> New client
+                  </button>
+                )}
+              </div>
 
-          {/* Client selection */}
-          <div>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-              <label style={{ ...labelStyle, marginBottom: 0 }}>
-                Client <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span>
-              </label>
-              {!showNewClient && (
-                <button
-                  type="button"
-                  onClick={() => setShowNewClient(true)}
-                  style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "var(--accent)", background: "none", border: "none", cursor: "pointer", padding: 0, fontWeight: 600, fontFamily: "inherit" }}
+              {showNewClient ? (
+                <div
+                  style={{
+                    border: "1px solid var(--accent)",
+                    borderRadius: "var(--r)",
+                    padding: "14px 16px",
+                    background: "var(--accent-bg)",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 10,
+                  }}
                 >
-                  <Plus style={{ width: 13, height: 13 }} /> New client
-                </button>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", margin: 0 }}>
+                    New client
+                  </p>
+                  <input
+                    type="text"
+                    value={newClientName}
+                    onChange={(e) => setNewClientName(e.target.value)}
+                    placeholder="Client name *"
+                    style={inputStyle}
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleCreateClient();
+                      if (e.key === "Escape") setShowNewClient(false);
+                    }}
+                  />
+                  <input
+                    type="url"
+                    value={newClientWebsite}
+                    onChange={(e) => setNewClientWebsite(e.target.value)}
+                    placeholder="Website (optional, e.g. https://example.com)"
+                    style={inputStyle}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleCreateClient();
+                      if (e.key === "Escape") setShowNewClient(false);
+                    }}
+                  />
+                  {clientError && (
+                    <p style={{ fontSize: 12, color: "var(--danger)", margin: 0 }}>{clientError}</p>
+                  )}
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button
+                      type="button"
+                      onClick={handleCreateClient}
+                      disabled={creatingClient || !newClientName.trim()}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                        padding: "7px 14px",
+                        background: "var(--accent)",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: "var(--r)",
+                        fontSize: 13,
+                        fontWeight: 600,
+                        cursor: creatingClient ? "not-allowed" : "pointer",
+                        opacity: creatingClient ? 0.7 : 1,
+                        fontFamily: "inherit",
+                      }}
+                    >
+                      {creatingClient ? (
+                        <Loader2
+                          style={{ width: 13, height: 13, animation: "spin 1s linear infinite" }}
+                        />
+                      ) : (
+                        <Check style={{ width: 13, height: 13 }} />
+                      )}
+                      {creatingClient ? "Creating…" : "Create & select"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowNewClient(false);
+                        setNewClientName("");
+                        setNewClientWebsite("");
+                        setClientError(null);
+                      }}
+                      style={{
+                        padding: "7px 14px",
+                        background: "none",
+                        border: "1px solid var(--border)",
+                        borderRadius: "var(--r)",
+                        fontSize: 13,
+                        cursor: "pointer",
+                        color: "var(--text-2)",
+                        fontFamily: "inherit",
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <select
+                  value={clientId}
+                  onChange={(e) => handleClientChange(e.target.value)}
+                  style={inputStyle}
+                >
+                  <option value="">No client (standalone)</option>
+                  {clients.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
               )}
             </div>
 
-            {showNewClient ? (
-              <div style={{ border: "1px solid var(--accent)", borderRadius: "var(--r)", padding: "14px 16px", background: "var(--accent-bg)", display: "flex", flexDirection: "column", gap: 10 }}>
-                <p style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", margin: 0 }}>New client</p>
-                <input
-                  type="text"
-                  value={newClientName}
-                  onChange={(e) => setNewClientName(e.target.value)}
-                  placeholder="Client name *"
-                  style={inputStyle}
-                  autoFocus
-                  onKeyDown={(e) => { if (e.key === "Enter") handleCreateClient(); if (e.key === "Escape") setShowNewClient(false); }}
+            {/* Title */}
+            <div>
+              <label style={labelStyle}>
+                Landing Page Title <span style={{ color: "var(--danger)" }}>*</span>
+              </label>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g. Summer Camp 2026 — Enrol Now"
+                style={inputStyle}
+              />
+            </div>
+
+            {/* Website URL */}
+            <div>
+              <label style={labelStyle}>
+                Website URL to Scrape <span style={{ color: "var(--danger)" }}>*</span>
+              </label>
+              <div style={{ position: "relative" }}>
+                <Globe
+                  style={{
+                    position: "absolute",
+                    left: 12,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    width: 16,
+                    height: 16,
+                    color: "var(--text-3)",
+                    pointerEvents: "none",
+                  }}
                 />
                 <input
                   type="url"
-                  value={newClientWebsite}
-                  onChange={(e) => setNewClientWebsite(e.target.value)}
-                  placeholder="Website (optional, e.g. https://example.com)"
-                  style={inputStyle}
-                  onKeyDown={(e) => { if (e.key === "Enter") handleCreateClient(); if (e.key === "Escape") setShowNewClient(false); }}
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="https://www.example.com"
+                  style={{ ...inputStyle, paddingLeft: 36 }}
                 />
-                {clientError && <p style={{ fontSize: 12, color: "var(--danger)", margin: 0 }}>{clientError}</p>}
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button
-                    type="button"
-                    onClick={handleCreateClient}
-                    disabled={creatingClient || !newClientName.trim()}
-                    style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 14px", background: "var(--accent)", color: "#fff", border: "none", borderRadius: "var(--r)", fontSize: 13, fontWeight: 600, cursor: creatingClient ? "not-allowed" : "pointer", opacity: creatingClient ? 0.7 : 1, fontFamily: "inherit" }}
-                  >
-                    {creatingClient ? <Loader2 style={{ width: 13, height: 13, animation: "spin 1s linear infinite" }} /> : <Check style={{ width: 13, height: 13 }} />}
-                    {creatingClient ? "Creating…" : "Create & select"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setShowNewClient(false); setNewClientName(""); setNewClientWebsite(""); setClientError(null); }}
-                    style={{ padding: "7px 14px", background: "none", border: "1px solid var(--border)", borderRadius: "var(--r)", fontSize: 13, cursor: "pointer", color: "var(--text-2)", fontFamily: "inherit" }}
-                  >
-                    Cancel
-                  </button>
-                </div>
               </div>
-            ) : (
-              <select
-                value={clientId}
-                onChange={(e) => handleClientChange(e.target.value)}
-                style={inputStyle}
-              >
-                <option value="">No client (standalone)</option>
-                {clients.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-            )}
-          </div>
-
-          {/* Title */}
-          <div>
-            <label style={labelStyle}>
-              Landing Page Title <span style={{ color: "var(--danger)" }}>*</span>
-            </label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Summer Camp 2026 — Enrol Now"
-              style={inputStyle}
-            />
-          </div>
-
-          {/* Website URL */}
-          <div>
-            <label style={labelStyle}>
-              Website URL to Scrape <span style={{ color: "var(--danger)" }}>*</span>
-            </label>
-            <div style={{ position: "relative" }}>
-              <Globe style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", width: 16, height: 16, color: "var(--text-3)", pointerEvents: "none" }} />
-              <input
-                type="url"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://www.example.com"
-                style={{ ...inputStyle, paddingLeft: 36 }}
-              />
-            </div>
-            <p style={{ fontSize: 12, color: "var(--text-4)", marginTop: 4 }}>
-              We&apos;ll extract brand colours, fonts, logos, and imagery from this site
-            </p>
-          </div>
-
-          {/* Additional reference URLs */}
-          <div>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-              <label style={{ ...labelStyle, marginBottom: 0 }}>
-                Additional Pages to Scrape <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span>
-              </label>
-              <button
-                type="button"
-                onClick={() => setAdditionalUrls((prev) => [...prev, ""])}
-                style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "var(--accent)", background: "none", border: "none", cursor: "pointer", padding: 0, fontWeight: 600, fontFamily: "inherit" }}
-              >
-                <Plus style={{ width: 13, height: 13 }} /> Add URL
-              </button>
-            </div>
-            {additionalUrls.length > 0 ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {additionalUrls.map((u, i) => (
-                  <div key={i} style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <div style={{ position: "relative", flex: 1 }}>
-                      <Globe style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", width: 14, height: 14, color: "var(--text-3)", pointerEvents: "none" }} />
-                      <input
-                        type="url"
-                        value={u}
-                        onChange={(e) => setAdditionalUrls((prev) => prev.map((v, j) => j === i ? e.target.value : v))}
-                        placeholder="https://www.example.com/services"
-                        style={{ ...inputStyle, paddingLeft: 34 }}
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setAdditionalUrls((prev) => prev.filter((_, j) => j !== i))}
-                      style={{ width: 30, height: 30, borderRadius: "var(--r)", border: "1px solid var(--border)", background: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-3)", flexShrink: 0 }}
-                      title="Remove URL"
-                    >
-                      <X style={{ width: 14, height: 14 }} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p style={{ fontSize: 12, color: "var(--text-4)", lineHeight: 1.5 }}>
-                Add service pages, product pages, or any other pages — the more content the AI has, the richer the landing page
+              <p style={{ fontSize: 12, color: "var(--text-4)", marginTop: 4 }}>
+                We&apos;ll extract brand colours, fonts, logos, and imagery from this site
               </p>
-            )}
-          </div>
-
-          {/* Campaign type */}
-          <div>
-            <label style={labelStyle}>Campaign Type</label>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 8 }}>
-              {CAMPAIGN_TYPES.map((type) => {
-                const active = campaignType === type.value;
-                return (
-                  <button
-                    key={type.value}
-                    onClick={() => setCampaignType(type.value)}
-                    style={{
-                      textAlign: "left" as const, padding: "10px 14px",
-                      border: active ? "1.5px solid var(--accent)" : "1px solid var(--border)",
-                      borderRadius: "var(--r)",
-                      background: active ? "var(--accent-bg)" : "var(--surface)",
-                      cursor: "pointer",
-                      transition: "all 0.2s",
-                    }}
-                  >
-                    <span style={{ fontSize: 13, fontWeight: 600, color: active ? "var(--accent)" : "var(--text)" }}>{type.label}</span>
-                    <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{type.description}</p>
-                  </button>
-                );
-              })}
             </div>
-          </div>
 
-          {/* Brief */}
-          <div>
-            <label style={labelStyle}>
-              Campaign Brief <span style={{ color: "var(--danger)" }}>*</span>
-            </label>
-            <textarea
-              value={brief}
-              onChange={(e) => setBrief(e.target.value)}
-              rows={4}
-              placeholder="Describe the campaign: what you're promoting, key selling points, the offer, any deadlines or urgency, desired CTA action..."
-              style={{ ...inputStyle, resize: "vertical" as const }}
-            />
-          </div>
-
-          {/* Target offering — the ONE thing this PPC page sells */}
-          <div>
-            <label style={labelStyle}>
-              Target Service / Product / Offering <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span>
-            </label>
-            <input
-              type="text"
-              value={targetOffering}
-              onChange={(e) => setTargetOffering(e.target.value)}
-              placeholder="e.g. GCSE Maths online tutoring — 1:1 weekly sessions"
-              style={inputStyle}
-            />
-            <div style={{ fontSize: 11.5, color: "var(--text-3)", marginTop: 4, lineHeight: 1.4 }}>
-              The single service or product this page sells. Keeping the page laser-focused on one offering converts best on PPC.
-            </div>
-          </div>
-
-          {/* Target audience */}
-          <div>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-              <label style={{ ...labelStyle, marginBottom: 0 }}>
-                Target Audience <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span>
-
-                        {/* Subdomain (standalone pages only) */}
-                        {!clientId && (
-                          <div>
-                            <label style={labelStyle}>
-                              Subdomain <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span>
-                            </label>
-                            <input
-                              type="text"
-                              value={customSubdomain}
-                              onChange={(e) => setCustomSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))}
-                              placeholder="e.g. international-football-academy"
-                              style={inputStyle}
-                            />
-                            <p style={{ fontSize: 12, color: "var(--text-4)", marginTop: 4 }}>
-                              If empty, we auto-generate this from the website URL.
-                            </p>
-                          </div>
-                        )}
-              </label>
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm"
-                disabled={brief.trim().length < 20 || suggestingAudiences}
-                onClick={handleSuggestAudiences}
-                title={brief.trim().length < 20 ? "Write a brief first (20+ characters)" : "Suggest audience options from the brief"}
+            {/* Additional reference URLs */}
+            <div>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: 6,
+                }}
               >
-                {suggestingAudiences
-                  ? <Loader2 style={{ width: 12, height: 12, animation: "spin 1s linear infinite" }} />
-                  : <Sparkles style={{ width: 12, height: 12 }} />}
-                {suggestingAudiences ? "Suggesting…" : "Suggest from brief"}
-              </button>
-            </div>
-            <input
-              type="text"
-              value={targetAudience}
-              onChange={(e) => setTargetAudience(e.target.value)}
-              placeholder="e.g. Parents of children aged 14-19 in the UK"
-              style={inputStyle}
-            />
-            {audienceSuggestError && (
-              <div style={{ marginTop: 8, fontSize: 12, color: "var(--danger)" }}>{audienceSuggestError}</div>
-            )}
-            {suggestedAudiences.length > 0 && (
-              <div style={{ marginTop: 10 }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                  <span style={{ fontSize: 11.5, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: 0.4 }}>
-                    Pick one to use, or keep typing
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setSuggestedAudiences([])}
-                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-3)", fontSize: 12, padding: 0, display: "inline-flex", alignItems: "center", gap: 4 }}
-                  >
-                    <X style={{ width: 11, height: 11 }} /> Dismiss
-                  </button>
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {suggestedAudiences.map((a) => {
-                    const selected = targetAudience === a.name;
-                    return (
+                <label style={{ ...labelStyle, marginBottom: 0 }}>
+                  Additional Pages to Scrape{" "}
+                  <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setAdditionalUrls((prev) => [...prev, ""])}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                    fontSize: 12,
+                    color: "var(--accent)",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: 0,
+                    fontWeight: 600,
+                    fontFamily: "inherit",
+                  }}
+                >
+                  <Plus style={{ width: 13, height: 13 }} /> Add URL
+                </button>
+              </div>
+              {additionalUrls.length > 0 ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {additionalUrls.map((u, i) => (
+                    <div key={i} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <div style={{ position: "relative", flex: 1 }}>
+                        <Globe
+                          style={{
+                            position: "absolute",
+                            left: 12,
+                            top: "50%",
+                            transform: "translateY(-50%)",
+                            width: 14,
+                            height: 14,
+                            color: "var(--text-3)",
+                            pointerEvents: "none",
+                          }}
+                        />
+                        <input
+                          type="url"
+                          value={u}
+                          onChange={(e) =>
+                            setAdditionalUrls((prev) =>
+                              prev.map((v, j) => (j === i ? e.target.value : v)),
+                            )
+                          }
+                          placeholder="https://www.example.com/services"
+                          style={{ ...inputStyle, paddingLeft: 34 }}
+                        />
+                      </div>
                       <button
-                        key={a.name}
                         type="button"
-                        onClick={() => {
-                          setTargetAudience(a.name);
-                          setSuggestedAudiences([]);
-                        }}
+                        onClick={() => setAdditionalUrls((prev) => prev.filter((_, j) => j !== i))}
                         style={{
-                          textAlign: "left",
-                          padding: "10px 12px",
-                          borderRadius: 8,
-                          border: `1px solid ${selected ? "var(--accent)" : "var(--border)"}`,
-                          background: selected ? "var(--accent-bg)" : "var(--surface)",
-                          color: "var(--text)",
+                          width: 30,
+                          height: 30,
+                          borderRadius: "var(--r)",
+                          border: "1px solid var(--border)",
+                          background: "none",
                           cursor: "pointer",
-                          fontFamily: "inherit",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: "var(--text-3)",
+                          flexShrink: 0,
+                        }}
+                        title="Remove URL"
+                      >
+                        <X style={{ width: 14, height: 14 }} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p style={{ fontSize: 12, color: "var(--text-4)", lineHeight: 1.5 }}>
+                  Add service pages, product pages, or any other pages — the more content the AI
+                  has, the richer the landing page
+                </p>
+              )}
+            </div>
+
+            {/* Campaign type */}
+            <div>
+              <label style={labelStyle}>Campaign Type</label>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+                  gap: 8,
+                }}
+              >
+                {CAMPAIGN_TYPES.map((type) => {
+                  const active = campaignType === type.value;
+                  return (
+                    <button
+                      key={type.value}
+                      onClick={() => setCampaignType(type.value)}
+                      style={{
+                        textAlign: "left" as const,
+                        padding: "10px 14px",
+                        border: active ? "1.5px solid var(--accent)" : "1px solid var(--border)",
+                        borderRadius: "var(--r)",
+                        background: active ? "var(--accent-bg)" : "var(--surface)",
+                        cursor: "pointer",
+                        transition: "all 0.2s",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 600,
+                          color: active ? "var(--accent)" : "var(--text)",
                         }}
                       >
-                        <div style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.35 }}>{a.name}</div>
-                        {a.description && (
-                          <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 3, lineHeight: 1.4 }}>{a.description}</div>
+                        {type.label}
+                      </span>
+                      <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>
+                        {type.description}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Brief */}
+            <div>
+              <label style={labelStyle}>
+                Campaign Brief <span style={{ color: "var(--danger)" }}>*</span>
+              </label>
+              <textarea
+                value={brief}
+                onChange={(e) => setBrief(e.target.value)}
+                rows={4}
+                placeholder="Describe the campaign: what you're promoting, key selling points, the offer, any deadlines or urgency, desired CTA action..."
+                style={{ ...inputStyle, resize: "vertical" as const }}
+              />
+            </div>
+
+            {/* Target offering — the ONE thing this PPC page sells */}
+            <div>
+              <label style={labelStyle}>
+                Target Service / Product / Offering{" "}
+                <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span>
+              </label>
+              <input
+                type="text"
+                value={targetOffering}
+                onChange={(e) => setTargetOffering(e.target.value)}
+                placeholder="e.g. GCSE Maths online tutoring — 1:1 weekly sessions"
+                style={inputStyle}
+              />
+              <div
+                style={{ fontSize: 11.5, color: "var(--text-3)", marginTop: 4, lineHeight: 1.4 }}
+              >
+                The single service or product this page sells. Keeping the page laser-focused on one
+                offering converts best on PPC.
+              </div>
+            </div>
+
+            {/* Target audience */}
+            <div>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: 6,
+                }}
+              >
+                <label style={{ ...labelStyle, marginBottom: 0 }}>
+                  Target Audience{" "}
+                  <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span>
+                  {/* Subdomain (standalone pages only) */}
+                  {!clientId && (
+                    <div>
+                      <label style={labelStyle}>
+                        Subdomain{" "}
+                        <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={customSubdomain}
+                        onChange={(e) =>
+                          setCustomSubdomain(
+                            e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"),
+                          )
+                        }
+                        placeholder="e.g. international-football-academy"
+                        style={inputStyle}
+                      />
+                      <p style={{ fontSize: 12, color: "var(--text-4)", marginTop: 4 }}>
+                        If empty, we auto-generate this from the website URL.
+                      </p>
+                    </div>
+                  )}
+                </label>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  disabled={brief.trim().length < 20 || suggestingAudiences}
+                  onClick={handleSuggestAudiences}
+                  title={
+                    brief.trim().length < 20
+                      ? "Write a brief first (20+ characters)"
+                      : "Suggest audience options from the brief"
+                  }
+                >
+                  {suggestingAudiences ? (
+                    <Loader2
+                      style={{ width: 12, height: 12, animation: "spin 1s linear infinite" }}
+                    />
+                  ) : (
+                    <Sparkles style={{ width: 12, height: 12 }} />
+                  )}
+                  {suggestingAudiences ? "Suggesting…" : "Suggest from brief"}
+                </button>
+              </div>
+              <input
+                type="text"
+                value={targetAudience}
+                onChange={(e) => setTargetAudience(e.target.value)}
+                placeholder="e.g. Parents of children aged 14-19 in the UK"
+                style={inputStyle}
+              />
+              {audienceSuggestError && (
+                <div style={{ marginTop: 8, fontSize: 12, color: "var(--danger)" }}>
+                  {audienceSuggestError}
+                </div>
+              )}
+              {suggestedAudiences.length > 0 && (
+                <div style={{ marginTop: 10 }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      marginBottom: 6,
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: 11.5,
+                        color: "var(--text-3)",
+                        textTransform: "uppercase",
+                        letterSpacing: 0.4,
+                      }}
+                    >
+                      Pick one to use, or keep typing
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setSuggestedAudiences([])}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        color: "var(--text-3)",
+                        fontSize: 12,
+                        padding: 0,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 4,
+                      }}
+                    >
+                      <X style={{ width: 11, height: 11 }} /> Dismiss
+                    </button>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {suggestedAudiences.map((a) => {
+                      const selected = targetAudience === a.name;
+                      return (
+                        <button
+                          key={a.name}
+                          type="button"
+                          onClick={() => {
+                            setTargetAudience(a.name);
+                            setSuggestedAudiences([]);
+                          }}
+                          style={{
+                            textAlign: "left",
+                            padding: "10px 12px",
+                            borderRadius: 8,
+                            border: `1px solid ${selected ? "var(--accent)" : "var(--border)"}`,
+                            background: selected ? "var(--accent-bg)" : "var(--surface)",
+                            color: "var(--text)",
+                            cursor: "pointer",
+                            fontFamily: "inherit",
+                          }}
+                        >
+                          <div style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.35 }}>
+                            {a.name}
+                          </div>
+                          {a.description && (
+                            <div
+                              style={{
+                                fontSize: 12,
+                                color: "var(--text-3)",
+                                marginTop: 3,
+                                lineHeight: 1.4,
+                              }}
+                            >
+                              {a.description}
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Components to consider — collapsible CRO element picker */}
+            <div>
+              <button
+                type="button"
+                onClick={() => setComponentsExpanded((v) => !v)}
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "10px 14px",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--r)",
+                  background: "var(--surface)",
+                  color: "var(--text)",
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  fontSize: 13,
+                  fontWeight: 600,
+                }}
+                aria-expanded={componentsExpanded}
+              >
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                  <Zap style={{ width: 14, height: 14 }} />
+                  Components to consider
+                  <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span>
+                  {requestedComponentIds.length > 0 && (
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 600,
+                        padding: "1px 8px",
+                        borderRadius: 999,
+                        background: "var(--accent-bg)",
+                        color: "var(--accent)",
+                      }}
+                    >
+                      {requestedComponentIds.length} selected
+                    </span>
+                  )}
+                </span>
+                <ChevronRight
+                  style={{
+                    width: 14,
+                    height: 14,
+                    transform: componentsExpanded ? "rotate(90deg)" : "none",
+                    transition: "transform 0.15s",
+                  }}
+                />
+              </button>
+              {componentsExpanded && (
+                <div
+                  style={{
+                    marginTop: 8,
+                    padding: 14,
+                    border: "1px solid var(--border)",
+                    borderRadius: "var(--r)",
+                    background: "var(--surface)",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: "var(--text-3)",
+                      lineHeight: 1.5,
+                      marginBottom: 12,
+                    }}
+                  >
+                    Tick the conversion components you&apos;d like the AI to consider for this page.
+                    The AI judges fit against your brief, offering and audience — it&apos;ll include
+                    the ones that genuinely help and skip the rest. Pick from any category,
+                    regardless of campaign type.
+                  </div>
+                  {(["urgency", "proof", "offer", "mechanics"] as CroCategory[]).map((cat) => {
+                    const items = CRO_ELEMENTS.filter((el) => el.category === cat);
+                    return (
+                      <div key={cat} style={{ marginBottom: 14 }}>
+                        <div
+                          style={{
+                            fontSize: 11.5,
+                            fontWeight: 700,
+                            textTransform: "uppercase",
+                            letterSpacing: 0.5,
+                            color: "var(--text-3)",
+                            marginBottom: 8,
+                          }}
+                        >
+                          {CRO_CATEGORY_LABELS[cat]}
+                        </div>
+                        <div
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+                            gap: 6,
+                          }}
+                        >
+                          {items.map((el) => {
+                            const checked = requestedComponentIds.includes(el.id);
+                            return (
+                              <label
+                                key={el.id}
+                                style={{
+                                  display: "flex",
+                                  alignItems: "flex-start",
+                                  gap: 8,
+                                  padding: "8px 10px",
+                                  borderRadius: 6,
+                                  border: `1px solid ${checked ? "var(--accent)" : "var(--border)"}`,
+                                  background: checked ? "var(--accent-bg)" : "transparent",
+                                  cursor: "pointer",
+                                  fontSize: 12.5,
+                                  lineHeight: 1.4,
+                                }}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={(e) => {
+                                    setRequestedComponentIds((prev) =>
+                                      e.target.checked
+                                        ? [...prev, el.id]
+                                        : prev.filter((id) => id !== el.id),
+                                    );
+                                  }}
+                                  style={{ marginTop: 2, cursor: "pointer" }}
+                                />
+                                <span style={{ flex: 1 }}>
+                                  <span style={{ fontWeight: 600, color: "var(--text)" }}>
+                                    {el.name}
+                                  </span>
+                                  <span
+                                    style={{
+                                      display: "block",
+                                      color: "var(--text-3)",
+                                      fontSize: 11.5,
+                                      marginTop: 2,
+                                    }}
+                                  >
+                                    {el.description}
+                                  </span>
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {requestedComponentIds.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setRequestedComponentIds([])}
+                      style={{
+                        marginTop: 4,
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        color: "var(--text-3)",
+                        fontSize: 12,
+                        padding: 0,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 4,
+                      }}
+                    >
+                      <X style={{ width: 11, height: 11 }} /> Clear all
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Reference images */}
+            <div>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: 6,
+                }}
+              >
+                <label style={{ ...labelStyle, marginBottom: 0 }}>
+                  Reference Images{" "}
+                  <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => imageInputRef.current?.click()}
+                  disabled={uploadingImage}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                    fontSize: 12,
+                    color: "var(--accent)",
+                    background: "none",
+                    border: "none",
+                    cursor: uploadingImage ? "not-allowed" : "pointer",
+                    padding: 0,
+                    fontWeight: 600,
+                    fontFamily: "inherit",
+                    opacity: uploadingImage ? 0.6 : 1,
+                  }}
+                >
+                  {uploadingImage ? (
+                    <Loader2
+                      style={{ width: 13, height: 13, animation: "spin 1s linear infinite" }}
+                    />
+                  ) : (
+                    <Plus style={{ width: 13, height: 13 }} />
+                  )}
+                  {uploadingImage ? "Uploading…" : "Add images"}
+                </button>
+              </div>
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                multiple
+                style={{ display: "none" }}
+                onChange={(e) => handleImageUpload(e.target.files)}
+              />
+              {uploadedImages.length > 0 ? (
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fill, minmax(96px, 1fr))",
+                    gap: 8,
+                    marginBottom: 8,
+                  }}
+                >
+                  {uploadedImages.map((img, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        position: "relative",
+                        borderRadius: "var(--r)",
+                        overflow: "hidden",
+                        border: "1px solid var(--border)",
+                        aspectRatio: "1",
+                        background: "var(--bg)",
+                      }}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={img.url}
+                        alt={img.filename}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          display: "block",
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setUploadedImages((prev) => prev.filter((_, j) => j !== i))}
+                        style={{
+                          position: "absolute",
+                          top: 4,
+                          right: 4,
+                          width: 20,
+                          height: 20,
+                          borderRadius: "50%",
+                          background: "rgba(0,0,0,0.55)",
+                          border: "none",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: "#fff",
+                        }}
+                        title="Remove image"
+                      >
+                        <X style={{ width: 11, height: 11 }} />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => imageInputRef.current?.click()}
+                    disabled={uploadingImage}
+                    style={{
+                      border: "1.5px dashed var(--border)",
+                      borderRadius: "var(--r)",
+                      background: "transparent",
+                      cursor: uploadingImage ? "not-allowed" : "pointer",
+                      aspectRatio: "1",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 4,
+                      color: "var(--text-3)",
+                    }}
+                  >
+                    {uploadingImage ? (
+                      <Loader2
+                        style={{ width: 18, height: 18, animation: "spin 1s linear infinite" }}
+                      />
+                    ) : (
+                      <Upload style={{ width: 18, height: 18 }} />
+                    )}
+                    <span style={{ fontSize: 10 }}>Add more</span>
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => imageInputRef.current?.click()}
+                  disabled={uploadingImage}
+                  style={{
+                    width: "100%",
+                    padding: "18px 16px",
+                    border: "1.5px dashed var(--border)",
+                    borderRadius: "var(--r)",
+                    background: "transparent",
+                    cursor: uploadingImage ? "not-allowed" : "pointer",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: 8,
+                    color: "var(--text-3)",
+                    transition: "border-color 0.15s",
+                  }}
+                >
+                  <ImageIcon style={{ width: 22, height: 22 }} />
+                  <span style={{ fontSize: 13, fontWeight: 500 }}>
+                    {uploadingImage ? "Uploading…" : "Upload images for Claude to use"}
+                  </span>
+                  <span style={{ fontSize: 11, color: "var(--text-4)" }}>
+                    Product photos, team shots, campaign imagery — supplements scraped site images
+                  </span>
+                </button>
+              )}
+              {imageUploadError && (
+                <p style={{ fontSize: 12, color: "var(--danger)", marginTop: 6 }}>
+                  {imageUploadError}
+                </p>
+              )}
+            </div>
+
+            {/* Template selection */}
+            {templates.length > 0 && (
+              <div>
+                <label style={labelStyle}>
+                  Start from Template{" "}
+                  <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span>
+                </label>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+                    gap: 8,
+                  }}
+                >
+                  <button
+                    onClick={() => setTemplateId("")}
+                    style={{
+                      textAlign: "left" as const,
+                      padding: "10px 14px",
+                      border: !templateId ? "1.5px solid var(--accent)" : "1px solid var(--border)",
+                      borderRadius: "var(--r)",
+                      background: !templateId ? "var(--accent-bg)" : "var(--surface)",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <span
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 5,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: !templateId ? "var(--accent)" : "var(--text)",
+                      }}
+                    >
+                      <Sparkles style={{ width: 13, height: 13 }} /> AI Freestyle
+                    </span>
+                    <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>
+                      Generate from scratch
+                    </p>
+                  </button>
+                  {templates.map((t) => {
+                    const active = templateId === t.id;
+                    return (
+                      <button
+                        key={t.id}
+                        onClick={() => setTemplateId(t.id)}
+                        style={{
+                          textAlign: "left" as const,
+                          padding: "10px 14px",
+                          border: active ? "1.5px solid var(--accent)" : "1px solid var(--border)",
+                          borderRadius: "var(--r)",
+                          background: active ? "var(--accent-bg)" : "var(--surface)",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 5,
+                            fontSize: 13,
+                            fontWeight: 600,
+                            color: active ? "var(--accent)" : "var(--text)",
+                          }}
+                        >
+                          {t.isBuiltIn ? (
+                            <Grid3X3 style={{ width: 13, height: 13 }} />
+                          ) : (
+                            <FileText style={{ width: 13, height: 13 }} />
+                          )}
+                          {t.name}
+                        </span>
+                        {t.description && (
+                          <p
+                            style={{
+                              fontSize: 11,
+                              color: "var(--text-3)",
+                              marginTop: 2,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {t.description}
+                          </p>
                         )}
+                        <span
+                          style={{
+                            display: "inline-block",
+                            marginTop: 4,
+                            fontSize: 10,
+                            padding: "1px 6px",
+                            borderRadius: 99,
+                            background: "var(--border-subtle)",
+                            color: "var(--text-3)",
+                          }}
+                        >
+                          {t.category}
+                        </span>
                       </button>
                     );
                   })}
                 </div>
               </div>
             )}
-          </div>
 
-          {/* Components to consider — collapsible CRO element picker */}
-          <div>
-            <button
-              type="button"
-              onClick={() => setComponentsExpanded((v) => !v)}
-              style={{
-                width: "100%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "10px 14px",
-                border: "1px solid var(--border)",
-                borderRadius: "var(--r)",
-                background: "var(--surface)",
-                color: "var(--text)",
-                cursor: "pointer",
-                fontFamily: "inherit",
-                fontSize: 13,
-                fontWeight: 600,
-              }}
-              aria-expanded={componentsExpanded}
-            >
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                <Zap style={{ width: 14, height: 14 }} />
-                Components to consider
-                <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span>
-                {requestedComponentIds.length > 0 && (
-                  <span style={{
-                    fontSize: 11, fontWeight: 600,
-                    padding: "1px 8px", borderRadius: 999,
-                    background: "var(--accent-bg)", color: "var(--accent)",
-                  }}>{requestedComponentIds.length} selected</span>
-                )}
-              </span>
-              <ChevronRight style={{ width: 14, height: 14, transform: componentsExpanded ? "rotate(90deg)" : "none", transition: "transform 0.15s" }} />
-            </button>
-            {componentsExpanded && (
-              <div style={{
-                marginTop: 8, padding: 14,
-                border: "1px solid var(--border)", borderRadius: "var(--r)",
-                background: "var(--surface)",
-              }}>
-                <div style={{ fontSize: 12, color: "var(--text-3)", lineHeight: 1.5, marginBottom: 12 }}>
-                  Tick the conversion components you&apos;d like the AI to consider for this page. The AI judges fit against your brief, offering and audience — it&apos;ll include the ones that genuinely help and skip the rest. Pick from any category, regardless of campaign type.
-                </div>
-                {(["urgency", "proof", "offer", "mechanics"] as CroCategory[]).map((cat) => {
-                  const items = CRO_ELEMENTS.filter((el) => el.category === cat);
-                  return (
-                    <div key={cat} style={{ marginBottom: 14 }}>
-                      <div style={{ fontSize: 11.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: "var(--text-3)", marginBottom: 8 }}>
-                        {CRO_CATEGORY_LABELS[cat]}
-                      </div>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 6 }}>
-                        {items.map((el) => {
-                          const checked = requestedComponentIds.includes(el.id);
-                          return (
-                            <label
-                              key={el.id}
-                              style={{
-                                display: "flex", alignItems: "flex-start", gap: 8,
-                                padding: "8px 10px", borderRadius: 6,
-                                border: `1px solid ${checked ? "var(--accent)" : "var(--border)"}`,
-                                background: checked ? "var(--accent-bg)" : "transparent",
-                                cursor: "pointer",
-                                fontSize: 12.5, lineHeight: 1.4,
-                              }}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={checked}
-                                onChange={(e) => {
-                                  setRequestedComponentIds((prev) =>
-                                    e.target.checked ? [...prev, el.id] : prev.filter((id) => id !== el.id),
-                                  );
-                                }}
-                                style={{ marginTop: 2, cursor: "pointer" }}
-                              />
-                              <span style={{ flex: 1 }}>
-                                <span style={{ fontWeight: 600, color: "var(--text)" }}>{el.name}</span>
-                                <span style={{ display: "block", color: "var(--text-3)", fontSize: 11.5, marginTop: 2 }}>{el.description}</span>
-                              </span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-                {requestedComponentIds.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setRequestedComponentIds([])}
-                    style={{
-                      marginTop: 4, background: "none", border: "none", cursor: "pointer",
-                      color: "var(--text-3)", fontSize: 12, padding: 0,
-                      display: "inline-flex", alignItems: "center", gap: 4,
-                    }}
-                  >
-                    <X style={{ width: 11, height: 11 }} /> Clear all
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Reference images */}
-          <div>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-              <label style={{ ...labelStyle, marginBottom: 0 }}>
-                Reference Images <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span>
-              </label>
-              <button
-                type="button"
-                onClick={() => imageInputRef.current?.click()}
-                disabled={uploadingImage}
-                style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "var(--accent)", background: "none", border: "none", cursor: uploadingImage ? "not-allowed" : "pointer", padding: 0, fontWeight: 600, fontFamily: "inherit", opacity: uploadingImage ? 0.6 : 1 }}
-              >
-                {uploadingImage ? <Loader2 style={{ width: 13, height: 13, animation: "spin 1s linear infinite" }} /> : <Plus style={{ width: 13, height: 13 }} />}
-                {uploadingImage ? "Uploading…" : "Add images"}
-              </button>
-            </div>
-            <input
-              ref={imageInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/gif,image/webp"
-              multiple
-              style={{ display: "none" }}
-              onChange={(e) => handleImageUpload(e.target.files)}
-            />
-            {uploadedImages.length > 0 ? (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(96px, 1fr))", gap: 8, marginBottom: 8 }}>
-                {uploadedImages.map((img, i) => (
-                  <div
-                    key={i}
-                    style={{ position: "relative", borderRadius: "var(--r)", overflow: "hidden", border: "1px solid var(--border)", aspectRatio: "1", background: "var(--bg)" }}
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={img.url}
-                      alt={img.filename}
-                      style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setUploadedImages((prev) => prev.filter((_, j) => j !== i))}
-                      style={{ position: "absolute", top: 4, right: 4, width: 20, height: 20, borderRadius: "50%", background: "rgba(0,0,0,0.55)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff" }}
-                      title="Remove image"
-                    >
-                      <X style={{ width: 11, height: 11 }} />
-                    </button>
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => imageInputRef.current?.click()}
-                  disabled={uploadingImage}
-                  style={{ border: "1.5px dashed var(--border)", borderRadius: "var(--r)", background: "transparent", cursor: uploadingImage ? "not-allowed" : "pointer", aspectRatio: "1", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, color: "var(--text-3)" }}
-                >
-                  {uploadingImage ? <Loader2 style={{ width: 18, height: 18, animation: "spin 1s linear infinite" }} /> : <Upload style={{ width: 18, height: 18 }} />}
-                  <span style={{ fontSize: 10 }}>Add more</span>
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => imageInputRef.current?.click()}
-                disabled={uploadingImage}
-                style={{ width: "100%", padding: "18px 16px", border: "1.5px dashed var(--border)", borderRadius: "var(--r)", background: "transparent", cursor: uploadingImage ? "not-allowed" : "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 8, color: "var(--text-3)", transition: "border-color 0.15s" }}
-              >
-                <ImageIcon style={{ width: 22, height: 22 }} />
-                <span style={{ fontSize: 13, fontWeight: 500 }}>{uploadingImage ? "Uploading…" : "Upload images for Claude to use"}</span>
-                <span style={{ fontSize: 11, color: "var(--text-4)" }}>Product photos, team shots, campaign imagery — supplements scraped site images</span>
-              </button>
-            )}
-            {imageUploadError && (
-              <p style={{ fontSize: 12, color: "var(--danger)", marginTop: 6 }}>{imageUploadError}</p>
-            )}
-          </div>
-
-          {/* Template selection */}
-          {templates.length > 0 && (
+            {/* Tracking & conversions */}
             <div>
-              <label style={labelStyle}>
-                Start from Template <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span>
-              </label>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 8 }}>
-                <button
-                  onClick={() => setTemplateId("")}
+              <AnalyticsConfigForm
+                value={analyticsConfig}
+                onChange={setAnalyticsConfig}
+                inheritedFrom={inheritedAnalytics}
+              />
+              {clientId && Object.keys(analyticsConfig).length > 0 && (
+                <label
                   style={{
-                    textAlign: "left" as const, padding: "10px 14px",
-                    border: !templateId ? "1.5px solid var(--accent)" : "1px solid var(--border)",
-                    borderRadius: "var(--r)",
-                    background: !templateId ? "var(--accent-bg)" : "var(--surface)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    fontSize: 12,
+                    color: "var(--text-3)",
+                    marginTop: 8,
                     cursor: "pointer",
                   }}
                 >
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, fontWeight: 600, color: !templateId ? "var(--accent)" : "var(--text)" }}>
-                    <Sparkles style={{ width: 13, height: 13 }} /> AI Freestyle
-                  </span>
-                  <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>Generate from scratch</p>
+                  <input
+                    type="checkbox"
+                    checked={saveAsClientDefault}
+                    onChange={(e) => setSaveAsClientDefault(e.target.checked)}
+                  />
+                  Also save as the default for{" "}
+                  {clients.find((c) => c.id === clientId)?.name ?? "this client"}
+                </label>
+              )}
+            </div>
+
+            {/* Error */}
+            {error && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
+                  padding: "12px 16px",
+                  background: "var(--danger-bg)",
+                  border: "1px solid var(--danger-border)",
+                  borderRadius: "var(--r)",
+                  color: "var(--danger-text)",
+                  fontSize: 13,
+                }}
+              >
+                <span>{error}</span>
+                <button
+                  onClick={() => setError(null)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: 4,
+                    color: "var(--danger-text)",
+                  }}
+                >
+                  <X style={{ width: 14, height: 14 }} />
                 </button>
-                {templates.map((t) => {
-                  const active = templateId === t.id;
-                  return (
-                    <button
-                      key={t.id}
-                      onClick={() => setTemplateId(t.id)}
-                      style={{
-                        textAlign: "left" as const, padding: "10px 14px",
-                        border: active ? "1.5px solid var(--accent)" : "1px solid var(--border)",
-                        borderRadius: "var(--r)",
-                        background: active ? "var(--accent-bg)" : "var(--surface)",
-                        cursor: "pointer",
-                      }}
-                    >
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, fontWeight: 600, color: active ? "var(--accent)" : "var(--text)" }}>
-                        {t.isBuiltIn ? <Grid3X3 style={{ width: 13, height: 13 }} /> : <FileText style={{ width: 13, height: 13 }} />}
-                        {t.name}
-                      </span>
-                      {t.description && <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.description}</p>}
-                      <span style={{ display: "inline-block", marginTop: 4, fontSize: 10, padding: "1px 6px", borderRadius: 99, background: "var(--border-subtle)", color: "var(--text-3)" }}>
-                        {t.category}
-                      </span>
-                    </button>
-                  );
-                })}
               </div>
-            </div>
-          )}
-
-          {/* Tracking & conversions */}
-          <div>
-            <AnalyticsConfigForm
-              value={analyticsConfig}
-              onChange={setAnalyticsConfig}
-              inheritedFrom={inheritedAnalytics}
-            />
-            {clientId && Object.keys(analyticsConfig).length > 0 && (
-              <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--text-3)", marginTop: 8, cursor: "pointer" }}>
-                <input
-                  type="checkbox"
-                  checked={saveAsClientDefault}
-                  onChange={(e) => setSaveAsClientDefault(e.target.checked)}
-                />
-                Also save as the default for {clients.find((c) => c.id === clientId)?.name ?? "this client"}
-              </label>
             )}
+
+            {/* Generate button */}
+            <button
+              className="btn btn-primary"
+              onClick={handleGenerate}
+              disabled={loading || !title || !url || !brief}
+              style={{ width: "100%", justifyContent: "center", padding: "14px 24px" }}
+            >
+              <Sparkles style={{ width: 16, height: 16 }} />
+              Generate Landing Page
+              <ChevronRight style={{ width: 16, height: 16 }} />
+            </button>
           </div>
-
-          {/* Error */}
-          {error && (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 16px", background: "var(--danger-bg)", border: "1px solid var(--danger-border)", borderRadius: "var(--r)", color: "var(--danger-text)", fontSize: 13 }}>
-              <span>{error}</span>
-              <button onClick={() => setError(null)} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "var(--danger-text)" }}><X style={{ width: 14, height: 14 }} /></button>
-            </div>
-          )}
-
-          {/* Generate button */}
-          <button
-            className="btn btn-primary"
-            onClick={handleGenerate}
-            disabled={loading || !title || !url || !brief}
-            style={{ width: "100%", justifyContent: "center", padding: "14px 24px" }}
-          >
-            <Sparkles style={{ width: 16, height: 16 }} />
-            Generate Landing Page
-            <ChevronRight style={{ width: 16, height: 16 }} />
-          </button>
         </div>
       </div>
-    </div>
 
-    {/* Chaos overlay */}
-    <LpChaosOverlay active={funMode && loading} />
-  </>
+      {/* Chaos overlay */}
+      <LpChaosOverlay active={funMode && loading} />
+    </>
   );
 }
 
@@ -994,14 +1535,14 @@ export default function NewLandingPage() {
 const PHASE_LABELS: Record<string, { icon: string; label: string }> = {
   "Analysing your website": { icon: "🔍", label: "Extracting brand identity" },
   "Planning page structure": { icon: "🗺️", label: "Planning page structure" },
-  "Generating": { icon: "⚡", label: "Generating sections" },
-  "Assembling": { icon: "🔧", label: "Assembling final page" },
+  Generating: { icon: "⚡", label: "Generating sections" },
+  Assembling: { icon: "🔧", label: "Assembling final page" },
   "Running CRO": { icon: "📈", label: "CRO audit" },
-  "Applying": { icon: "✏️", label: "Applying improvements" },
+  Applying: { icon: "✏️", label: "Applying improvements" },
   "Taking page screenshot": { icon: "📸", label: "Capturing page screenshot" },
   "Running Design": { icon: "🎨", label: "Design & sector audit" },
   "Running Copy": { icon: "✍️", label: "Copy quality audit" },
-  "Saving": { icon: "💾", label: "Saving your page" },
+  Saving: { icon: "💾", label: "Saving your page" },
 };
 
 function getPhaseInfo(msg: string): { icon: string; label: string } {
@@ -1076,7 +1617,6 @@ function LpGeneratingScreen({
       if (passiveTauntRef.current) clearTimeout(passiveTauntRef.current);
       if (passiveHideRef.current) clearTimeout(passiveHideRef.current);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [funMode]);
 
   useEffect(() => {
@@ -1143,7 +1683,9 @@ function LpGeneratingScreen({
               lineHeight: 1.4,
               textAlign: "center",
               boxShadow: funMode ? "0 4px 20px rgba(239,68,68,0.4)" : "0 4px 16px rgba(0,0,0,0.4)",
-              border: funMode ? "1px solid rgba(255,100,100,0.5)" : "1px solid rgba(255,255,255,0.1)",
+              border: funMode
+                ? "1px solid rgba(255,100,100,0.5)"
+                : "1px solid rgba(255,255,255,0.1)",
               animation: "lpTauntPop 0.25s cubic-bezier(0.34,1.56,0.64,1)",
               fontFamily: funMode ? '"Comic Sans MS", cursive' : "inherit",
               pointerEvents: "none",
@@ -1261,9 +1803,11 @@ function LpGeneratingScreen({
                 height: 14,
                 borderRadius: 99,
                 width: `${progress}%`,
-                background: "linear-gradient(90deg, #ff0080, #ff8c00, #ffed00, #00ff40, #00cfff, #cc00ff, #ff0080, #ff8c00, #ffed00)",
+                background:
+                  "linear-gradient(90deg, #ff0080, #ff8c00, #ffed00, #00ff40, #00cfff, #cc00ff, #ff0080, #ff8c00, #ffed00)",
                 backgroundSize: "300% 300%",
-                animation: "lpRainbowShift 1.2s ease infinite, lpBarWave 1s ease-in-out infinite, lpBarGlow 1.5s ease-in-out infinite",
+                animation:
+                  "lpRainbowShift 1.2s ease infinite, lpBarWave 1s ease-in-out infinite, lpBarGlow 1.5s ease-in-out infinite",
                 transition: "width 0.6s ease",
               }}
             />
@@ -1316,7 +1860,13 @@ function LpGeneratingScreen({
               }}
             >
               <span style={{ fontSize: 14, flexShrink: 0, lineHeight: "20px" }}>{info.icon}</span>
-              <span style={{ fontSize: 12, color: isLatest ? "var(--text)" : "var(--text-3)", lineHeight: 1.5 }}>
+              <span
+                style={{
+                  fontSize: 12,
+                  color: isLatest ? "var(--text)" : "var(--text-3)",
+                  lineHeight: 1.5,
+                }}
+              >
                 {funMode ? msg.toUpperCase() : msg}
               </span>
               {isLatest && (
@@ -1337,7 +1887,14 @@ function LpGeneratingScreen({
         })}
         {messages.length === 0 && (
           <div style={{ display: "flex", alignItems: "center", gap: 8, opacity: 0.5 }}>
-            <Loader2 style={{ width: 12, height: 12, color: "var(--accent)", animation: "spin 1s linear infinite" }} />
+            <Loader2
+              style={{
+                width: 12,
+                height: 12,
+                color: "var(--accent)",
+                animation: "spin 1s linear infinite",
+              }}
+            />
             <span style={{ fontSize: 12, color: "var(--text-3)" }}>Starting up…</span>
           </div>
         )}
@@ -1427,7 +1984,9 @@ function playLpChaosBleep() {
     const FREQS = [220, 261, 329, 392, 440, 523, 659, 784, 880, 1046, 1318, 1568];
     osc.frequency.value = FREQS[Math.floor(Math.random() * FREQS.length)];
     osc2.frequency.value = FREQS[Math.floor(Math.random() * FREQS.length)] * 1.5;
-    osc.type = (["square", "sawtooth", "triangle"] as OscillatorType[])[Math.floor(Math.random() * 3)];
+    osc.type = (["square", "sawtooth", "triangle"] as OscillatorType[])[
+      Math.floor(Math.random() * 3)
+    ];
     osc2.type = "sawtooth";
     gain.gain.setValueAtTime(0.06, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.14);
@@ -1436,29 +1995,31 @@ function playLpChaosBleep() {
     osc.stop(ctx.currentTime + 0.14);
     osc2.stop(ctx.currentTime + 0.14);
     osc.onended = () => ctx.close();
-  } catch { /* AudioContext blocked — silent fail */ }
+  } catch {
+    /* AudioContext blocked — silent fail */
+  }
 }
 
 function randomMsgPos() {
   // Keep the box fully on-screen (box is centred on this point, max ~680px wide ~120px tall)
   // Divide viewport into a 3×3 grid of zones and pick one at random to spread it around
   const zones = [
-    { top: "12%",  left: "25%"  },
-    { top: "12%",  left: "50%"  },
-    { top: "12%",  left: "75%"  },
-    { top: "42%",  left: "20%"  },
-    { top: "42%",  left: "50%"  },
-    { top: "42%",  left: "78%"  },
-    { top: "72%",  left: "25%"  },
-    { top: "72%",  left: "50%"  },
-    { top: "72%",  left: "75%"  },
+    { top: "12%", left: "25%" },
+    { top: "12%", left: "50%" },
+    { top: "12%", left: "75%" },
+    { top: "42%", left: "20%" },
+    { top: "42%", left: "50%" },
+    { top: "42%", left: "78%" },
+    { top: "72%", left: "25%" },
+    { top: "72%", left: "50%" },
+    { top: "72%", left: "75%" },
   ];
   // Add a small random jitter within each zone so it never lands in exactly the same spot
   const zone = zones[Math.floor(Math.random() * zones.length)];
-  const jitterTop  = (Math.random() - 0.5) * 8;
+  const jitterTop = (Math.random() - 0.5) * 8;
   const jitterLeft = (Math.random() - 0.5) * 8;
   return {
-    top:  `calc(${zone.top}  + ${jitterTop.toFixed(1)}%)`,
+    top: `calc(${zone.top}  + ${jitterTop.toFixed(1)}%)`,
     left: `calc(${zone.left} + ${jitterLeft.toFixed(1)}%)`,
   };
 }
@@ -1583,10 +2144,13 @@ function LpChaosOverlay({ active }: { active: boolean }) {
     playLpChaosBleep();
     let timeoutId: ReturnType<typeof setTimeout>;
     function scheduleNext() {
-      timeoutId = setTimeout(() => {
-        playLpChaosBleep();
-        scheduleNext();
-      }, 400 + Math.random() * 500); // 400–900ms (vs 600–1800ms in Grand Plan)
+      timeoutId = setTimeout(
+        () => {
+          playLpChaosBleep();
+          scheduleNext();
+        },
+        400 + Math.random() * 500,
+      ); // 400–900ms (vs 600–1800ms in Grand Plan)
     }
     scheduleNext();
     return () => clearTimeout(timeoutId);
@@ -1599,13 +2163,77 @@ function LpChaosOverlay({ active }: { active: boolean }) {
       return;
     }
     const EMOJIS = [
-      "✨","💖","🌸","⭐","🎀","💫","🦄","🌈","😻","💕","🎪","🚀",
-      "📊","📈","🎯","💅","✌️","🔥","👑","🎉","💣","🤯","🫠","😱",
-      "UwU","OwO",">.<",":3","rawr","xD","nyan~","BAKA","brrrr",
-      "404","ERROR","NaN","null","undefined","😈","🧨","💥","🌊",
-      "CTR","CTA","H1","div","px","rem","vw","vh","HTML","CSS",
-      "CONVERT","CLICK","BOUNCE","SCROLL","FUNNEL","🎨","🖼️","💻",
-      "W","T","F","LOL","HELP","WHY","HOW","YES","NO","???","!!!",
+      "✨",
+      "💖",
+      "🌸",
+      "⭐",
+      "🎀",
+      "💫",
+      "🦄",
+      "🌈",
+      "😻",
+      "💕",
+      "🎪",
+      "🚀",
+      "📊",
+      "📈",
+      "🎯",
+      "💅",
+      "✌️",
+      "🔥",
+      "👑",
+      "🎉",
+      "💣",
+      "🤯",
+      "🫠",
+      "😱",
+      "UwU",
+      "OwO",
+      ">.<",
+      ":3",
+      "rawr",
+      "xD",
+      "nyan~",
+      "BAKA",
+      "brrrr",
+      "404",
+      "ERROR",
+      "NaN",
+      "null",
+      "undefined",
+      "😈",
+      "🧨",
+      "💥",
+      "🌊",
+      "CTR",
+      "CTA",
+      "H1",
+      "div",
+      "px",
+      "rem",
+      "vw",
+      "vh",
+      "HTML",
+      "CSS",
+      "CONVERT",
+      "CLICK",
+      "BOUNCE",
+      "SCROLL",
+      "FUNNEL",
+      "🎨",
+      "🖼️",
+      "💻",
+      "W",
+      "T",
+      "F",
+      "LOL",
+      "HELP",
+      "WHY",
+      "HOW",
+      "YES",
+      "NO",
+      "???",
+      "!!!",
     ];
     const initial = Array.from({ length: 90 }, (_, i) => ({
       id: i,
@@ -1632,7 +2260,7 @@ function LpChaosOverlay({ active }: { active: boolean }) {
           scale: 0.4 + Math.random() * 1.8,
           skewX: (Math.random() - 0.5) * 20,
           skewY: (Math.random() - 0.5) * 10,
-        }))
+        })),
       );
     }, 150); // 150ms (vs 300ms in Grand Plan)
     return () => clearInterval(id);
@@ -1642,7 +2270,13 @@ function LpChaosOverlay({ active }: { active: boolean }) {
 
   return (
     <div
-      style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 9999, overflow: "hidden" }}
+      style={{
+        position: "fixed",
+        inset: 0,
+        pointerEvents: "none",
+        zIndex: 9999,
+        overflow: "hidden",
+      }}
     >
       {/* UwU status message — jumps to a new random position each message */}
       <div
@@ -1651,7 +2285,8 @@ function LpChaosOverlay({ active }: { active: boolean }) {
           top: msgPos.top,
           left: msgPos.left,
           transform: "translate(-50%, -50%)",
-          transition: "top 0.15s cubic-bezier(0.34,1.56,0.64,1), left 0.15s cubic-bezier(0.34,1.56,0.64,1)",
+          transition:
+            "top 0.15s cubic-bezier(0.34,1.56,0.64,1), left 0.15s cubic-bezier(0.34,1.56,0.64,1)",
           maxWidth: "min(680px, 90vw)",
           background: "rgba(0,0,0,0.92)",
           color: "#f9a8d4",
@@ -1685,9 +2320,10 @@ function LpChaosOverlay({ active }: { active: boolean }) {
             userSelect: "none",
             lineHeight: 1,
             willChange: "transform, opacity",
-            filter: p.size > 30
-              ? "drop-shadow(0 0 16px rgba(249,168,212,0.95)) drop-shadow(0 0 6px #f0f) drop-shadow(0 0 3px #0ff)"
-              : "drop-shadow(0 0 4px rgba(249,168,212,0.6))",
+            filter:
+              p.size > 30
+                ? "drop-shadow(0 0 16px rgba(249,168,212,0.95)) drop-shadow(0 0 6px #f0f) drop-shadow(0 0 3px #0ff)"
+                : "drop-shadow(0 0 4px rgba(249,168,212,0.6))",
             animation: `lpChaosFloat ${1.2 + p.delay}s ease-in-out infinite`,
             animationDelay: `${p.delay}s`,
           }}

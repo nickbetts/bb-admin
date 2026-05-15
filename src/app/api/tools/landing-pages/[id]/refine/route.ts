@@ -18,9 +18,6 @@ export const dynamic = "force-dynamic";
 // Streaming SSE response keeps the connection alive while the model generates.
 // Vercel Pro allows up to 800 s; set to 800 to accommodate very large pages.
 export const maxDuration = 800;
-
-const SINGLE_PASS_URL_LIMIT = 3;
-const DOUBLE_PASS_URL_LIMIT = 10;
 const SINGLE_PASS_TOTAL_CONTEXT_BUDGET = 60_000;
 const DOUBLE_PASS_TOTAL_CONTEXT_BUDGET = 95_000;
 const SINGLE_PASS_PER_URL_BUDGET = 22_000;
@@ -70,11 +67,25 @@ function buildReferenceDigest(
     if (page.h1) parts.push(`H1: ${truncate(page.h1, 200)}`);
     if (page.headings.length > 0) parts.push(`Headings: ${page.headings.slice(0, 40).join(" | ")}`);
     if (page.ctaTexts.length > 0) parts.push(`CTAs: ${page.ctaTexts.slice(0, 20).join(" | ")}`);
-    if (page.listItems.length > 0) parts.push(`List items:\n${page.listItems.slice(0, 80).map((item) => `  • ${truncate(item, 220)}`).join("\n")}`);
-    if (page.numericStats.length > 0) parts.push(`Stats: ${page.numericStats.slice(0, 40).join(" | ")}`);
-    if (page.bodyCopy.length > 0) parts.push(`Body copy:\n${page.bodyCopy.slice(0, 25).map((paragraph) => `  \"${truncate(paragraph, 280)}\"`).join("\n")}`);
+    if (page.listItems.length > 0)
+      parts.push(
+        `List items:\n${page.listItems
+          .slice(0, 80)
+          .map((item) => `  • ${truncate(item, 220)}`)
+          .join("\n")}`,
+      );
+    if (page.numericStats.length > 0)
+      parts.push(`Stats: ${page.numericStats.slice(0, 40).join(" | ")}`);
+    if (page.bodyCopy.length > 0)
+      parts.push(
+        `Body copy:\n${page.bodyCopy
+          .slice(0, 25)
+          .map((paragraph) => `  \"${truncate(paragraph, 280)}\"`)
+          .join("\n")}`,
+      );
     if (page.allBodyText) parts.push(`Full page text:\n${truncate(page.allBodyText, 7000)}`);
-    if (page.imageryUrls.length > 0) parts.push(`Images: ${page.imageryUrls.slice(0, 30).join(", ")}`);
+    if (page.imageryUrls.length > 0)
+      parts.push(`Images: ${page.imageryUrls.slice(0, 30).join(", ")}`);
 
     let chunk = parts.join("\n");
     if (chunk.length > opts.perUrlBudget) {
@@ -131,10 +142,7 @@ async function saveRefinedVersion(opts: {
 }
 
 // POST /api/tools/landing-pages/[id]/refine - iterative AI refinement
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -147,7 +155,7 @@ export async function POST(
   if (!landingPage) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   try {
-    const body = await request.json() as {
+    const body = (await request.json()) as {
       prompt: string;
       conversationHistory?: { role: "user" | "assistant"; content: string }[];
       referenceHtml?: string;
@@ -167,15 +175,22 @@ export async function POST(
       brandContext = { colors: [], fonts: [], imageryUrls: [], socialLinks: [], contactInfo: {} };
     }
 
-    const refinementMode: RefinementMode = body.refinementMode === "double-pass" ? "double-pass" : "single-pass";
-    const crawlUrlLimit = refinementMode === "double-pass" ? DOUBLE_PASS_URL_LIMIT : SINGLE_PASS_URL_LIMIT;
-    const perUrlBudget = refinementMode === "double-pass" ? DOUBLE_PASS_PER_URL_BUDGET : SINGLE_PASS_PER_URL_BUDGET;
-    const totalContextBudget = refinementMode === "double-pass" ? DOUBLE_PASS_TOTAL_CONTEXT_BUDGET : SINGLE_PASS_TOTAL_CONTEXT_BUDGET;
+    const refinementMode: RefinementMode =
+      body.refinementMode === "double-pass" ? "double-pass" : "single-pass";
+    const perUrlBudget =
+      refinementMode === "double-pass" ? DOUBLE_PASS_PER_URL_BUDGET : SINGLE_PASS_PER_URL_BUDGET;
+    const totalContextBudget =
+      refinementMode === "double-pass"
+        ? DOUBLE_PASS_TOTAL_CONTEXT_BUDGET
+        : SINGLE_PASS_TOTAL_CONTEXT_BUDGET;
 
     const crawlWarnings: string[] = [];
-    const crawlUrls = [...new Set((body.crawlUrls ?? []).filter((u) => isValidHttpUrl(u)).map((u) => u.trim()))]
-      .slice(0, crawlUrlLimit);
-    const importedImageUrls = [...new Set((body.imageUrls ?? []).filter((u) => isValidHttpUrl(u)).map((u) => u.trim()))];
+    const crawlUrls = [
+      ...new Set((body.crawlUrls ?? []).filter((u) => isValidHttpUrl(u)).map((u) => u.trim())),
+    ];
+    const importedImageUrls = [
+      ...new Set((body.imageUrls ?? []).filter((u) => isValidHttpUrl(u)).map((u) => u.trim())),
+    ];
 
     const encoder = new TextEncoder();
     const readable = new ReadableStream({
@@ -185,13 +200,22 @@ export async function POST(
         };
 
         try {
-          send({ progress: refinementMode === "double-pass" ? "Double-pass refinement enabled." : "Applying refinement..." });
+          send({
+            progress:
+              refinementMode === "double-pass"
+                ? "Double-pass refinement enabled."
+                : "Applying refinement...",
+          });
 
           let additionalContext: string | undefined;
           if (crawlUrls.length > 0) {
-            send({ progress: `Scraping ${crawlUrls.length} reference URL${crawlUrls.length === 1 ? "" : "s"}...` });
+            send({
+              progress: `Scraping ${crawlUrls.length} reference URL${crawlUrls.length === 1 ? "" : "s"}...`,
+            });
 
-            const results = await Promise.allSettled(crawlUrls.map((url) => extractPageContentFromUrl(url)));
+            const results = await Promise.allSettled(
+              crawlUrls.map((url) => extractPageContentFromUrl(url)),
+            );
             const digests: ReferencePageDigest[] = [];
 
             for (let i = 0; i < results.length; i++) {
@@ -200,7 +224,9 @@ export async function POST(
               if (result.status === "fulfilled" && result.value) {
                 digests.push(result.value);
               } else {
-                crawlWarnings.push(`Could not scrape ${url}, changes were applied without this reference.`);
+                crawlWarnings.push(
+                  `Could not scrape ${url}, changes were applied without this reference.`,
+                );
               }
             }
 
@@ -238,9 +264,10 @@ export async function POST(
             try {
               html = extractAndValidateHtml(fullText);
             } catch (err) {
-              const message = err instanceof HtmlValidationError
-                ? err.message
-                : "The model returned an incomplete response. Please try again.";
+              const message =
+                err instanceof HtmlValidationError
+                  ? err.message
+                  : "The model returned an incomplete response. Please try again.";
               console.warn("LP refine validation:", message);
               send({ error: message, status: 422 });
               controller.close();
@@ -282,9 +309,10 @@ export async function POST(
           }
 
           send({ progress: "Pass 1 of 2: applying requested changes..." });
-          const passOnePrompt = importedImageUrls.length > 0
-            ? `${body.prompt}\n\nImportant: if attached/imported images are used, preserve each image URL exactly as provided in src/background URLs.`
-            : body.prompt;
+          const passOnePrompt =
+            importedImageUrls.length > 0
+              ? `${body.prompt}\n\nImportant: if attached/imported images are used, preserve each image URL exactly as provided in src/background URLs.`
+              : body.prompt;
 
           const passOneHtml = await refineLandingPage({
             currentHtml: landingPage.currentHtml,
@@ -300,9 +328,10 @@ export async function POST(
           try {
             validatedPassOneHtml = extractAndValidateHtml(passOneHtml);
           } catch (err) {
-            const message = err instanceof HtmlValidationError
-              ? err.message
-              : "The first pass returned incomplete HTML. Please try again.";
+            const message =
+              err instanceof HtmlValidationError
+                ? err.message
+                : "The first pass returned incomplete HTML. Please try again.";
             console.warn("LP double-pass validation (pass 1):", message);
             send({ error: message, status: 422 });
             controller.close();
@@ -310,7 +339,10 @@ export async function POST(
           }
 
           send({ progress: "Audit: checking imported image URLs and reference alignment..." });
-          const missingImportedImageUrls = findMissingImportedImageUrls(validatedPassOneHtml, importedImageUrls);
+          const missingImportedImageUrls = findMissingImportedImageUrls(
+            validatedPassOneHtml,
+            importedImageUrls,
+          );
           const referenceFindings = await auditReferenceAlignmentAfterRefine({
             html: validatedPassOneHtml,
             userPrompt: body.prompt,
@@ -342,9 +374,10 @@ export async function POST(
           try {
             finalHtml = extractAndValidateHtml(passTwoHtml);
           } catch (err) {
-            const message = err instanceof HtmlValidationError
-              ? err.message
-              : "The second pass returned incomplete HTML. Please try again.";
+            const message =
+              err instanceof HtmlValidationError
+                ? err.message
+                : "The second pass returned incomplete HTML. Please try again.";
             console.warn("LP double-pass validation (pass 2):", message);
             send({ error: message, status: 422 });
             controller.close();

@@ -11,6 +11,37 @@ import { logActivity } from "@/lib/activity-logger";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300; // AI generation: up to ~60 s + brand extraction
 
+function normaliseHttpUrl(input: string): string | null {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+
+  let candidate = trimmed;
+  if (candidate.startsWith("//")) candidate = `https:${candidate}`;
+
+  // Allow users to paste bare domains like example.com/path
+  if (!/^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(candidate)) {
+    candidate = `https://${candidate}`;
+  }
+
+  try {
+    const parsed = new URL(candidate);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
+
+function summariseUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    const path = parsed.pathname === "/" ? "" : parsed.pathname;
+    return `${parsed.host}${path}${parsed.search}`;
+  } catch {
+    return url;
+  }
+}
+
 function toSubdomainLabel(input: string): string {
   return input
     .toLowerCase()
@@ -95,10 +126,13 @@ export async function POST(request: NextRequest) {
     const user = clickrSession.user;
     const limit = PLAN_LIMITS[user.planTier] ?? 1;
     if (user.lpsThisMonth >= limit) {
-      return NextResponse.json({
-        error: `You have reached your monthly limit of ${limit} landing page${limit === 1 ? "" : "s"} on the ${user.planTier} plan. Upgrade to create more.`,
-        upgradeRequired: true,
-      }, { status: 402 });
+      return NextResponse.json(
+        {
+          error: `You have reached your monthly limit of ${limit} landing page${limit === 1 ? "" : "s"} on the ${user.planTier} plan. Upgrade to create more.`,
+          upgradeRequired: true,
+        },
+        { status: 402 },
+      );
     }
   }
 
@@ -120,7 +154,7 @@ export async function POST(request: NextRequest) {
   };
 
   try {
-    body = await request.json() as typeof body;
+    body = (await request.json()) as typeof body;
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
@@ -143,7 +177,18 @@ export async function POST(request: NextRequest) {
   } = body;
 
   if (!title || !url || !brief || !campaignType) {
-    return NextResponse.json({ error: "title, url, brief, and campaignType are required" }, { status: 400 });
+    return NextResponse.json(
+      { error: "title, url, brief, and campaignType are required" },
+      { status: 400 },
+    );
+  }
+
+  const normalisedPrimaryUrl = normaliseHttpUrl(url);
+  if (!normalisedPrimaryUrl) {
+    return NextResponse.json(
+      { error: "Website URL must be a valid http/https URL" },
+      { status: 400 },
+    );
   }
 
   // Stream newline-delimited JSON events to the client so the UI can display
@@ -156,15 +201,83 @@ export async function POST(request: NextRequest) {
       }
 
       try {
-        const extraUrlCount = additionalUrls?.length ?? 0;
-        send({ type: "progress", message: extraUrlCount > 0
-          ? `Analysing ${1 + extraUrlCount} pages and extracting brand identity…`
-          : "Analysing your website and extracting brand identity…" });
+        const rawAdditionalUrls = Array.isArray(additionalUrls) ? additionalUrls : [];
 
-        const [brandContext, ...extraPageResults] = await Promise.all([
-          extractBrandContext(url),
-          ...(additionalUrls ?? []).map((u) => extractPageContentFromUrl(u)),
-        ]);
+        const invalidAdditionalUrls: string[] = [];
+        const normalisedAdditionalUrls: string[] = [];
+        const seenAdditionalUrls = new Set<string>();
+
+        for (const rawCandidate of rawAdditionalUrls) {
+          const normalised = normaliseHttpUrl(rawCandidate);
+          if (!normalised) {
+            if (rawCandidate.trim()) invalidAdditionalUrls.push(rawCandidate.trim());
+            continue;
+          }
+
+          if (normalised === normalisedPrimaryUrl) continue;
+          if (seenAdditionalUrls.has(normalised)) continue;
+
+          seenAdditionalUrls.add(normalised);
+          normalisedAdditionalUrls.push(normalised);
+        }
+
+        if (invalidAdditionalUrls.length > 0) {
+          send({
+            type: "progress",
+            message: `Skipped ${invalidAdditionalUrls.length} invalid additional URL${invalidAdditionalUrls.length === 1 ? "" : "s"}.`,
+          });
+        }
+
+        const scrapeWarnings: string[] = invalidAdditionalUrls.map(
+          (invalidUrl) => `Invalid additional URL skipped: ${invalidUrl}`,
+        );
+
+        const extraUrlCount = normalisedAdditionalUrls.length;
+        send({
+          type: "progress",
+          message:
+            extraUrlCount > 0
+              ? `Analysing ${1 + extraUrlCount} pages and extracting brand identity…`
+              : "Analysing your website and extracting brand identity…",
+        });
+
+        const brandContextPromise = extractBrandContext(normalisedPrimaryUrl);
+
+        let extraPageResults: Array<Awaited<ReturnType<typeof extractPageContentFromUrl>>> = [];
+        if (normalisedAdditionalUrls.length > 0) {
+          send({
+            type: "progress",
+            message: `Scraping ${normalisedAdditionalUrls.length} additional page${
+              normalisedAdditionalUrls.length === 1 ? "" : "s"
+            } in parallel…`,
+          });
+
+          extraPageResults = await Promise.all(
+            normalisedAdditionalUrls.map(async (referenceUrl, index) => {
+              const startedAt = Date.now();
+              const result = await extractPageContentFromUrl(referenceUrl);
+              const elapsedSeconds = ((Date.now() - startedAt) / 1000).toFixed(1);
+
+              if (result) {
+                send({
+                  type: "progress",
+                  message: `Scraped additional page ${index + 1}/${normalisedAdditionalUrls.length} (${elapsedSeconds}s): ${summariseUrl(referenceUrl)}`,
+                });
+              } else {
+                const warning = `Could not scrape additional URL: ${referenceUrl}`;
+                scrapeWarnings.push(warning);
+                send({
+                  type: "progress",
+                  message: `Could not scrape additional page ${index + 1}/${normalisedAdditionalUrls.length} (${elapsedSeconds}s): ${summariseUrl(referenceUrl)}`,
+                });
+              }
+
+              return result;
+            }),
+          );
+        }
+
+        const brandContext = await brandContextPromise;
 
         // Merge images from additional pages into brandContext (deduplicated)
         const seenImages = new Set(brandContext.imageryUrls);
@@ -180,11 +293,18 @@ export async function POST(request: NextRequest) {
 
         const additionalPageContents = extraPageResults
           .filter((r): r is NonNullable<typeof r> => r !== null)
-          .map(({ sourceUrl, imageryUrls: _imgs, ...content }) => ({ sourceUrl, content }));
+          .map((result) => {
+            const { sourceUrl, ...rest } = result;
+            const content = { ...rest };
+            delete content.imageryUrls;
+            return { sourceUrl, content };
+          });
 
         let templateHtml: string | undefined;
         if (templateId) {
-          const template = await prisma.landingPageTemplate.findUnique({ where: { id: templateId } });
+          const template = await prisma.landingPageTemplate.findUnique({
+            where: { id: templateId },
+          });
           if (template) templateHtml = template.html;
         }
 
@@ -196,9 +316,13 @@ export async function POST(request: NextRequest) {
           targetOffering,
           requestedComponentIds,
           templateHtml,
-          uploadedImageUrls: additionalImageUrls && additionalImageUrls.length > 0 ? additionalImageUrls : undefined,
-          additionalPageContents: additionalPageContents.length > 0 ? additionalPageContents : undefined,
-          onProgress: async (msg: string) => { send({ type: "progress", message: msg }); },
+          uploadedImageUrls:
+            additionalImageUrls && additionalImageUrls.length > 0 ? additionalImageUrls : undefined,
+          additionalPageContents:
+            additionalPageContents.length > 0 ? additionalPageContents : undefined,
+          onProgress: async (msg: string) => {
+            send({ type: "progress", message: msg });
+          },
         });
 
         send({ type: "progress", message: "Saving your landing page…" });
@@ -210,7 +334,7 @@ export async function POST(request: NextRequest) {
           : (() => {
               const fromBody = customSubdomain ? toSubdomainLabel(customSubdomain) : "";
               if (fromBody) return fromBody;
-              return deriveSubdomainFromUrl(url);
+              return deriveSubdomainFromUrl(normalisedPrimaryUrl);
             })();
 
         const landingPage = await prisma.landingPage.create({
@@ -222,7 +346,19 @@ export async function POST(request: NextRequest) {
             slug,
             customSubdomain: resolvedCustomSubdomain,
             currentHtml: html,
-            briefJson: JSON.stringify({ url, additionalUrls: additionalUrls?.length ? additionalUrls : undefined, brief, campaignType, targetAudience, targetOffering, requestedComponentIds: requestedComponentIds?.length ? requestedComponentIds : undefined }),
+            briefJson: JSON.stringify({
+              url: normalisedPrimaryUrl,
+              additionalUrls: normalisedAdditionalUrls.length
+                ? normalisedAdditionalUrls
+                : undefined,
+              brief,
+              campaignType,
+              targetAudience,
+              targetOffering,
+              requestedComponentIds: requestedComponentIds?.length
+                ? requestedComponentIds
+                : undefined,
+            }),
             brandContextJson: JSON.stringify(brandContext),
             formConfig: JSON.stringify(formConfig ?? {}),
             analyticsConfig: JSON.stringify(
@@ -234,8 +370,16 @@ export async function POST(request: NextRequest) {
                 versionNumber: 1,
                 html,
                 prompt: `Initial generation: ${brief}`,
-                createdByUserId: session ? session.user.id : clickrSession ? clickrSession.user.id : null,
-                createdByEmail: session ? session.user.email : clickrSession ? clickrSession.user.email : null,
+                createdByUserId: session
+                  ? session.user.id
+                  : clickrSession
+                    ? clickrSession.user.id
+                    : null,
+                createdByEmail: session
+                  ? session.user.email
+                  : clickrSession
+                    ? clickrSession.user.email
+                    : null,
               },
             },
           },
@@ -266,7 +410,11 @@ export async function POST(request: NextRequest) {
           });
         }
 
-        send({ type: "done", landingPage: { id: landingPage.id, slug: landingPage.slug } });
+        send({
+          type: "done",
+          landingPage: { id: landingPage.id, slug: landingPage.slug },
+          scrapeWarnings: scrapeWarnings.length > 0 ? scrapeWarnings : undefined,
+        });
       } catch (error) {
         const message = error instanceof Error ? error.message : "Unknown error";
         console.error("LP Generator create error:", error);
