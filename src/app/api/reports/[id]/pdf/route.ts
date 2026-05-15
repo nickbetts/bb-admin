@@ -77,9 +77,16 @@ export async function GET(
 
       // Set viewport to match the PDF width exactly so section height
       // measurements taken at this viewport are valid for the crop step.
-      // deviceScaleFactor: 2 renders at 2×DPI (2400px wide), screenshots are
+      // deviceScaleFactor: 2 renders at 2x DPI (2400px wide), screenshots are
       // embedded at 1200pt — equivalent to a retina display, giving crisp text.
-      await page.setViewport({ width: 1200, height: 900, deviceScaleFactor: 2 });
+      const VIEWPORT_WIDTH_CSS = 1200;
+      const VIEWPORT_HEIGHT_CSS = 900;
+      const DEVICE_SCALE_FACTOR = 2;
+      await page.setViewport({
+        width: VIEWPORT_WIDTH_CSS,
+        height: VIEWPORT_HEIGHT_CSS,
+        deviceScaleFactor: DEVICE_SCALE_FACTOR,
+      });
 
       // Forward any sort_* params from the export request so the print page
       // DataTables render with the same sort order the user had in the preview.
@@ -270,10 +277,12 @@ export async function GET(
       const DESIRED_PAD_PX = 64;
       // Use 1 CSS px = 1 PDF pt — screen-format PDF, never physically printed.
       const PAGE_WIDTH_PT = 1200;
-      // At deviceScaleFactor:2, Chromium's GPU texture limit is ~8192 CSS px.
-      // Cap each screenshot chunk below that to prevent silent truncation of
-      // tall sections (e.g. SEO with a large keywords-by-tag table).
-      const MAX_CHUNK_CSS_PX = 7500;
+      // Chromium compositor textures are typically capped around ~8192 device
+      // pixels. Since screenshots render at DEVICE_SCALE_FACTOR, the safe CSS
+      // chunk height must be derived from device pixels to prevent visual wrap
+      // artifacts (top-of-section content repeating near the bottom).
+      const MAX_CHUNK_DEVICE_PX = 7600;
+      const MAX_CHUNK_CSS_PX = Math.floor(MAX_CHUNK_DEVICE_PX / DEVICE_SCALE_FACTOR);
 
       const outputDoc = await PDFDocument.create();
       const helvetica = await outputDoc.embedFont(StandardFonts.Helvetica);
@@ -362,7 +371,7 @@ export async function GET(
           const screenshotBuffer = await page.screenshot({
             type: "jpeg",
             quality: JPEG_QUALITY,
-            clip: { x: 0, y: chunkStartY, width: 1200, height: chunkH },
+            clip: { x: 0, y: chunkStartY, width: VIEWPORT_WIDTH_CSS, height: chunkH },
             captureBeyondViewport: true,
           });
 
