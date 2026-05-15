@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { ClipboardList, ExternalLink, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 
@@ -9,15 +9,27 @@ interface SalesHandoffForm {
   website: string;
   targetAudienceSummary: string;
   secondCallAt: string;
+  interestedServices: string[];
   budgetRange: string;
   otherInformation: string;
 }
+
+const DEFAULT_SERVICE_OPTIONS = [
+  "Google PPC",
+  "Paid Meta",
+  "Organic Social",
+  "Website Design",
+  "SEO",
+  "Custom Landing Pages",
+  "Email marketing",
+];
 
 const INITIAL_FORM: SalesHandoffForm = {
   prospectName: "",
   website: "",
   targetAudienceSummary: "",
   secondCallAt: "",
+  interestedServices: [],
   budgetRange: "",
   otherInformation: "",
 };
@@ -40,6 +52,25 @@ export default function SalesHandoffPage() {
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [createdTaskUrl, setCreatedTaskUrl] = useState<string | null>(null);
+  const [serviceOptions, setServiceOptions] = useState<string[]>(DEFAULT_SERVICE_OPTIONS);
+
+  useEffect(() => {
+    async function loadConfig() {
+      try {
+        const res = await fetch("/api/tools/sales-handoff/config");
+        if (!res.ok) return;
+
+        const data = (await res.json()) as { services?: string[] };
+        if (Array.isArray(data.services) && data.services.length > 0) {
+          setServiceOptions(data.services);
+        }
+      } catch {
+        // Keep default options when config is unavailable.
+      }
+    }
+
+    void loadConfig();
+  }, []);
 
   const canSubmit = useMemo(() => {
     return (
@@ -53,6 +84,15 @@ export default function SalesHandoffPage() {
 
   function update<K extends keyof SalesHandoffForm>(key: K, value: SalesHandoffForm[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function toggleService(service: string) {
+    setForm((prev) => ({
+      ...prev,
+      interestedServices: prev.interestedServices.includes(service)
+        ? prev.interestedServices.filter((item) => item !== service)
+        : [...prev.interestedServices, service],
+    }));
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -121,6 +161,21 @@ export default function SalesHandoffPage() {
             </p>
           </div>
         </div>
+      </div>
+
+      <div
+        style={{
+          marginBottom: 16,
+          border: "1px solid var(--warning-border)",
+          background: "var(--warning-bg)",
+          color: "var(--warning-text)",
+          borderRadius: "var(--r)",
+          padding: "12px 14px",
+          fontSize: 13,
+          fontWeight: 500,
+        }}
+      >
+        Marketing needs at least 48 hours&apos; notice to prepare a plan for a potential client.
       </div>
 
       {fieldError && (
@@ -224,6 +279,34 @@ export default function SalesHandoffPage() {
               placeholder="e.g. GBP 3,000 to 5,000 per month"
               required
             />
+          </div>
+
+          <div style={{ display: "grid", gap: 8 }}>
+            <label className="form-label">Services They Might Be Interested In</label>
+            <div style={{ display: "grid", gap: 8 }}>
+              {serviceOptions.map((service) => {
+                const checked = form.interestedServices.includes(service);
+                return (
+                  <label
+                    key={service}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      fontSize: 13,
+                      color: "var(--text-2)",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleService(service)}
+                    />
+                    <span>{service}</span>
+                  </label>
+                );
+              })}
+            </div>
           </div>
 
           <div style={{ display: "grid", gap: 6 }}>

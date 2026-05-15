@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession, hasPermission } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { createClickUpTaskWithChecklist, getClickUpMembers } from "@/lib/clickup";
 
 export const dynamic = "force-dynamic";
@@ -9,16 +10,24 @@ interface SalesHandoffBody {
   website?: string;
   targetAudienceSummary?: string;
   secondCallAt?: string;
+  interestedServices?: string[];
   budgetRange?: string;
   otherInformation?: string;
 }
 
 const SALES_HANDOFF_LIST_ID = "901202558111";
 
-const AUTO_ASSIGNEES = [
-  { label: "Nick Betts", terms: ["nick", "betts"] },
-  { label: "Connor James", terms: ["connor", "james"] },
-] as const;
+const DEFAULT_SERVICE_OPTIONS = [
+  "Google PPC",
+  "Paid Meta",
+  "Organic Social",
+  "Website Design",
+  "SEO",
+  "Custom Landing Pages",
+  "Email marketing",
+];
+
+const DEFAULT_ASSIGNEES = ["Nick Betts", "Connor James"];
 
 const SALES_HANDOFF_CHECKLIST = [
   "Review the prospect website and current funnel",
@@ -30,6 +39,35 @@ const SALES_HANDOFF_CHECKLIST = [
 
 function cleanText(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function parseListSetting(raw: string | undefined, fallback: string[]): string[] {
+  if (!raw) return fallback;
+
+  const values = raw
+    .split(/[\n,]+/)
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+
+  return values.length > 0 ? Array.from(new Set(values)) : fallback;
+}
+
+async function getSalesHandoffSettings(): Promise<{ services: string[]; assignees: string[] }> {
+  const rows = await prisma.appSetting.findMany({
+    where: {
+      key: {
+        in: ["clickupSalesHandoffServices", "clickupSalesHandoffAssignees"],
+      },
+    },
+    select: { key: true, value: true },
+  });
+
+  const settings = Object.fromEntries(rows.map((row) => [row.key, row.value]));
+
+  return {
+    services: parseListSetting(settings.clickupSalesHandoffServices, DEFAULT_SERVICE_OPTIONS),
+    assignees: parseListSetting(settings.clickupSalesHandoffAssignees, DEFAULT_ASSIGNEES),
+  };
 }
 
 function normaliseForMatch(value: string): string {
@@ -53,21 +91,31 @@ function getSecondCallTimestamp(value: string): number | null {
 }
 
 function resolveAutoAssignees(
+  assigneeNames: string[],
   members: Array<{ id: number; username: string; email: string }>,
 ): { assigneeIds: number[]; missing: string[] } {
   const assigneeIds: number[] = [];
   const missing: string[] = [];
 
-  for (const assignee of AUTO_ASSIGNEES) {
+  for (const assigneeName of assigneeNames) {
+    const terms = assigneeName
+      .split(/\s+/)
+      .map((term) => normaliseForMatch(term))
+      .filter((term) => term.length > 0);
+
+    if (terms.length === 0) {
+      continue;
+    }
+
     const matched = members.find((member) => {
       const haystack = normaliseForMatch(`${member.username} ${member.email}`);
-      return assignee.terms.every((term) => haystack.includes(normaliseForMatch(term)));
+      return terms.every((term) => haystack.includes(term));
     });
 
     if (matched) {
       assigneeIds.push(matched.id);
     } else {
-      missing.push(assignee.label);
+      missing.push(assigneeName);
     }
   }
 
@@ -78,6 +126,7 @@ function buildTaskDescription(input: {
   website: string;
   targetAudienceSummary: string;
   secondCallAt: string;
+  interestedServices: string[];
   budgetRange: string;
   otherInformation: string;
 }): string {
@@ -89,6 +138,11 @@ function buildTaskDescription(input: {
     "",
     "### Target Audience Summary",
     input.targetAudienceSummary,
+    "",
+    "### Services They Might Be Interested In",
+    input.interestedServices.length > 0
+      ? input.interestedServices.map((service) => `- ${service}`).join("\n")
+      : "None selected",
     "",
     "### Budget Range",
     input.budgetRange,
@@ -115,8 +169,13 @@ export async function POST(request: NextRequest) {
     const websiteInput = cleanText(body.website);
     const targetAudienceSummary = cleanText(body.targetAudienceSummary);
     const secondCallAt = cleanText(body.secondCallAt);
+    const interestedServices = Array.isArray(body.interestedServices)
+      ? body.interestedServices.map(cleanText).filter((item) => item.length > 0)
+      : [];
     const budgetRange = cleanText(body.budgetRange);
     const otherInformation = cleanText(body.otherInformation);
+
+    const { services: serviceOptions, assignees } = await getSalesHandoffSettings();
 
     if (!prospectName) {
       return NextResponse.json({ error: "prospectName is required" }, { status: 400 });
@@ -134,6 +193,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "budgetRange is required" }, { status: 400 });
     }
 
+    const invalidServices = interestedServices.filter((service) => !serviceOptions.includes(service));
+    if (invalidServices.length > 0) {
+      return NextResponse.json({ error: "One or more selected services are invalid" }, { status: 400 });
+    }
+
     const website = normaliseWebsite(websiteInput);
     if (!website) {
       return NextResponse.json({ error: "website must be a valid URL" }, { status: 400 });
@@ -145,7 +209,7 @@ export async function POST(request: NextRequest) {
     }
 
     const members = await getClickUpMembers();
-    const { assigneeIds, missing } = resolveAutoAssignees(members);
+    const { assigneeIds, missing } = resolveAutoAssignees(assignees, members);
     if (missing.length > 0) {
       return NextResponse.json(
         {
@@ -160,6 +224,7 @@ export async function POST(request: NextRequest) {
       website,
       targetAudienceSummary,
       secondCallAt,
+      interestedServices,
       budgetRange,
       otherInformation,
     });

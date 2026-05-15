@@ -27,6 +27,28 @@ const OAUTH_ERRORS: Record<string, string> = {
   ms365_no_refresh_token: "Microsoft did not return a refresh token. Please try connecting again.",
 };
 
+const DEFAULT_SALES_HANDOFF_SERVICES = [
+  "Google PPC",
+  "Paid Meta",
+  "Organic Social",
+  "Website Design",
+  "SEO",
+  "Custom Landing Pages",
+  "Email marketing",
+];
+
+const DEFAULT_SALES_HANDOFF_ASSIGNEES = ["Nick Betts", "Connor James"];
+
+function normaliseMultilineList(value: string, fallback: string[]): string {
+  const values = value
+    .split(/[\n,]+/)
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+
+  const finalValues = values.length > 0 ? Array.from(new Set(values)) : fallback;
+  return finalValues.join("\n");
+}
+
 function GoogleIcon() {
   return (
     <svg viewBox="0 0 24 24" className="w-4 h-4" aria-hidden="true">
@@ -74,6 +96,8 @@ function SettingsPanelInner() {
 
   const [clickupApiToken, setClickupApiToken] = useState("");
   const [clickupApiTokenInput, setClickupApiTokenInput] = useState("");
+  const [clickupSalesHandoffServicesInput, setClickupSalesHandoffServicesInput] = useState("");
+  const [clickupSalesHandoffAssigneesInput, setClickupSalesHandoffAssigneesInput] = useState("");
   const [clickupTokenSaving, setClickupTokenSaving] = useState(false);
   const [clickupTokenSaved, setClickupTokenSaved] = useState(false);
   const [clickupTokenError, setClickupTokenError] = useState<string | null>(null);
@@ -194,6 +218,12 @@ function SettingsPanelInner() {
       const storedClickupToken = settings.clickupApiToken ?? "";
       setClickupApiToken(storedClickupToken);
       setClickupApiTokenInput(storedClickupToken ? "pk_…redacted" : "");
+      setClickupSalesHandoffServicesInput(
+        settings.clickupSalesHandoffServices ?? DEFAULT_SALES_HANDOFF_SERVICES.join("\n"),
+      );
+      setClickupSalesHandoffAssigneesInput(
+        settings.clickupSalesHandoffAssignees ?? DEFAULT_SALES_HANDOFF_ASSIGNEES.join("\n"),
+      );
       if (settings.taskBenchmarks) {
         try {
           const stored = JSON.parse(settings.taskBenchmarks) as Array<{ task: string; hours: number }>;
@@ -270,11 +300,27 @@ function SettingsPanelInner() {
       const res = await fetch("/api/settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clickupApiToken: tokenToSave }),
+        body: JSON.stringify({
+          clickupApiToken: tokenToSave,
+          clickupSalesHandoffServices: normaliseMultilineList(
+            clickupSalesHandoffServicesInput,
+            DEFAULT_SALES_HANDOFF_SERVICES,
+          ),
+          clickupSalesHandoffAssignees: normaliseMultilineList(
+            clickupSalesHandoffAssigneesInput,
+            DEFAULT_SALES_HANDOFF_ASSIGNEES,
+          ),
+        }),
       });
       if (!res.ok) throw new Error("Failed to save");
       setClickupApiToken(tokenToSave);
       setClickupApiTokenInput(tokenToSave ? "pk_…redacted" : "");
+      setClickupSalesHandoffServicesInput((prev) =>
+        normaliseMultilineList(prev, DEFAULT_SALES_HANDOFF_SERVICES),
+      );
+      setClickupSalesHandoffAssigneesInput((prev) =>
+        normaliseMultilineList(prev, DEFAULT_SALES_HANDOFF_ASSIGNEES),
+      );
       setClickupTokenSaved(true);
       setTimeout(() => setClickupTokenSaved(false), 3000);
     } catch (err) {
@@ -751,6 +797,35 @@ function SettingsPanelInner() {
         </div>
         <div className="card-body">
           {clickupTokenError && <p style={{ fontSize: 13, color: "var(--danger)", marginBottom: 12 }}>{clickupTokenError}</p>}
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>
+              Sales handoff service options (one per line)
+            </label>
+            <textarea
+              className="form-input"
+              rows={6}
+              value={clickupSalesHandoffServicesInput}
+              onChange={(e) => setClickupSalesHandoffServicesInput(e.target.value)}
+              placeholder="Google PPC"
+              style={{ fontSize: 13 }}
+            />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>
+              Sales handoff auto-assignees (one per line)
+            </label>
+            <textarea
+              className="form-input"
+              rows={4}
+              value={clickupSalesHandoffAssigneesInput}
+              onChange={(e) => setClickupSalesHandoffAssigneesInput(e.target.value)}
+              placeholder="Nick Betts"
+              style={{ fontSize: 13 }}
+            />
+            <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 4 }}>
+              Tasks are auto-assigned by matching these names against ClickUp members.
+            </p>
+          </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             <input
               type="password"
@@ -763,7 +838,7 @@ function SettingsPanelInner() {
             />
             <button
               onClick={handleClickupTokenSave}
-              disabled={clickupTokenSaving || !clickupApiTokenInput || clickupApiTokenInput === "pk_…redacted"}
+              disabled={clickupTokenSaving}
               className="btn btn-primary"
             >
               {clickupTokenSaving ? "Saving…" : clickupTokenSaved ? "Saved ✓" : "Save"}
