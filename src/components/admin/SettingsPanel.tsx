@@ -46,6 +46,12 @@ const DEFAULT_SALES_HANDOFF_SERVICES = [
 
 const DEFAULT_SALES_HANDOFF_ASSIGNEES = ["Nick Betts", "Connor James"];
 
+const DEFAULT_SALES_HANDOFF_CHECKLIST = [
+  "Plan generated",
+  "Internal sign-off",
+  "Ready for client meeting",
+];
+
 function normaliseMultilineList(value: string, fallback: string[]): string {
   const values = value
     .split(/[\n,]+/)
@@ -132,6 +138,7 @@ function SettingsPanelInner() {
   const [clickupApiToken, setClickupApiToken] = useState("");
   const [clickupApiTokenInput, setClickupApiTokenInput] = useState("");
   const [clickupSalesHandoffServicesInput, setClickupSalesHandoffServicesInput] = useState("");
+  const [clickupSalesHandoffChecklistInput, setClickupSalesHandoffChecklistInput] = useState("");
   const [clickupSalesHandoffAssigneeNamesFallback, setClickupSalesHandoffAssigneeNamesFallback] = useState<string[]>(DEFAULT_SALES_HANDOFF_ASSIGNEES);
   const [clickupMembers, setClickupMembers] = useState<ClickUpMember[]>([]);
   const [clickupMembersLoading, setClickupMembersLoading] = useState(false);
@@ -258,6 +265,9 @@ function SettingsPanelInner() {
       setClickupApiTokenInput(storedClickupToken ? "pk_…redacted" : "");
       setClickupSalesHandoffServicesInput(
         settings.clickupSalesHandoffServices ?? DEFAULT_SALES_HANDOFF_SERVICES.join("\n"),
+      );
+      setClickupSalesHandoffChecklistInput(
+        settings.clickupSalesHandoffChecklist ?? DEFAULT_SALES_HANDOFF_CHECKLIST.join("\n"),
       );
       setSelectedClickupSalesHandoffAssigneeIds(
         parseNumberList(settings.clickupSalesHandoffAssigneeIds),
@@ -399,6 +409,10 @@ function SettingsPanelInner() {
             clickupSalesHandoffServicesInput,
             DEFAULT_SALES_HANDOFF_SERVICES,
           ),
+          clickupSalesHandoffChecklist: normaliseMultilineList(
+            clickupSalesHandoffChecklistInput,
+            DEFAULT_SALES_HANDOFF_CHECKLIST,
+          ),
           clickupSalesHandoffAssigneeIds: selectedClickupSalesHandoffAssigneeIds.join(","),
           clickupSalesHandoffAssignees: normaliseMultilineList(
             selectedNames.join("\n"),
@@ -411,6 +425,9 @@ function SettingsPanelInner() {
       setClickupApiTokenInput(tokenToSave ? "pk_…redacted" : "");
       setClickupSalesHandoffServicesInput((prev) =>
         normaliseMultilineList(prev, DEFAULT_SALES_HANDOFF_SERVICES),
+      );
+      setClickupSalesHandoffChecklistInput((prev) =>
+        normaliseMultilineList(prev, DEFAULT_SALES_HANDOFF_CHECKLIST),
       );
       await loadClickupMembers();
       setClickupTokenSaved(true);
@@ -901,6 +918,22 @@ function SettingsPanelInner() {
               placeholder="Google PPC"
               style={{ fontSize: 13 }}
             />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>
+              Sales handoff progress checklist (one per line)
+            </label>
+            <textarea
+              className="form-input"
+              rows={4}
+              value={clickupSalesHandoffChecklistInput}
+              onChange={(e) => setClickupSalesHandoffChecklistInput(e.target.value)}
+              placeholder="Plan generated"
+              style={{ fontSize: 13 }}
+            />
+            <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 4 }}>
+              Order is preserved top to bottom when the checklist is created in ClickUp.
+            </p>
           </div>
           <div style={{ marginBottom: 12 }}>
             <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>

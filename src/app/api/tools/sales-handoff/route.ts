@@ -31,7 +31,7 @@ const DEFAULT_ASSIGNEES = ["Nick Betts", "Connor James"];
 
 const SALES_HANDOFF_CHECKLIST_NAME = "Marketing Handoff Progress";
 
-const SALES_HANDOFF_CHECKLIST = [
+const DEFAULT_SALES_HANDOFF_CHECKLIST = [
   "Plan generated",
   "Internal sign-off",
   "Ready for client meeting",
@@ -65,11 +65,21 @@ function parseAssigneeIdSetting(raw: string | undefined): number[] {
   );
 }
 
-async function getSalesHandoffSettings(): Promise<{ services: string[]; assignees: string[]; assigneeIds: number[] }> {
+async function getSalesHandoffSettings(): Promise<{
+  services: string[];
+  assignees: string[];
+  assigneeIds: number[];
+  checklist: string[];
+}> {
   const rows = await prisma.appSetting.findMany({
     where: {
       key: {
-        in: ["clickupSalesHandoffServices", "clickupSalesHandoffAssignees", "clickupSalesHandoffAssigneeIds"],
+        in: [
+          "clickupSalesHandoffServices",
+          "clickupSalesHandoffAssignees",
+          "clickupSalesHandoffAssigneeIds",
+          "clickupSalesHandoffChecklist",
+        ],
       },
     },
     select: { key: true, value: true },
@@ -81,6 +91,7 @@ async function getSalesHandoffSettings(): Promise<{ services: string[]; assignee
     services: parseListSetting(settings.clickupSalesHandoffServices, DEFAULT_SERVICE_OPTIONS),
     assignees: parseListSetting(settings.clickupSalesHandoffAssignees, DEFAULT_ASSIGNEES),
     assigneeIds: parseAssigneeIdSetting(settings.clickupSalesHandoffAssigneeIds),
+    checklist: parseListSetting(settings.clickupSalesHandoffChecklist, DEFAULT_SALES_HANDOFF_CHECKLIST),
   };
 }
 
@@ -222,7 +233,12 @@ export async function POST(request: NextRequest) {
     const budgetRange = cleanText(body.budgetRange);
     const otherInformation = cleanText(body.otherInformation);
 
-    const { services: serviceOptions, assignees, assigneeIds: configuredAssigneeIds } = await getSalesHandoffSettings();
+    const {
+      services: serviceOptions,
+      assignees,
+      assigneeIds: configuredAssigneeIds,
+      checklist,
+    } = await getSalesHandoffSettings();
 
     if (!prospectName) {
       return NextResponse.json({ error: "prospectName is required" }, { status: 400 });
@@ -285,7 +301,7 @@ export async function POST(request: NextRequest) {
     const result = await createClickUpTaskWithChecklist(
       SALES_HANDOFF_LIST_ID,
       taskName,
-      SALES_HANDOFF_CHECKLIST,
+      checklist,
       assigneeIds,
       secondCallAtMs,
       description,
