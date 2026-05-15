@@ -29,12 +29,12 @@ const DEFAULT_SERVICE_OPTIONS = [
 
 const DEFAULT_ASSIGNEES = ["Nick Betts", "Connor James"];
 
+const SALES_HANDOFF_CHECKLIST_NAME = "Marketing Handoff Progress";
+
 const SALES_HANDOFF_CHECKLIST = [
-  "Review the prospect website and current funnel",
-  "Summarise audience insights and decision-maker profiles",
-  "Draft channel recommendations for the second call",
-  "Prepare a 30, 60, and 90-day delivery outline",
-  "List assumptions, risks, and follow-up questions",
+  "Plan generated",
+  "Internal sign-off",
+  "Ready for client meeting",
 ];
 
 function cleanText(value: unknown): string {
@@ -137,36 +137,69 @@ function resolveAutoAssignees(
 }
 
 function buildTaskDescription(input: {
+  prospectName: string;
   website: string;
   targetAudienceSummary: string;
   secondCallAt: string;
+  secondCallAtMs: number;
   interestedServices: string[];
   budgetRange: string;
   otherInformation: string;
 }): string {
+  const formattedSecondCall = formatSecondCallDateTime(input.secondCallAt);
+  const noticeStatus = buildNoticeStatus(input.secondCallAtMs);
+
   return [
-    "## Sales Call Handoff",
+    "## Sales to Marketing Handoff",
     "",
-    "### Prospect Website",
-    input.website,
+    "Please prepare a practical plan for the second call using the context below.",
     "",
-    "### Target Audience Summary",
+    "### Prospect Summary",
+    `- Prospect: ${input.prospectName}`,
+    `- Website: [${input.website}](${input.website})`,
+    `- Budget range: ${input.budgetRange}`,
+    `- Second call: ${formattedSecondCall}`,
+    `- 48-hour notice status: ${noticeStatus}`,
+    "",
+    "### Target Audience",
     input.targetAudienceSummary,
     "",
-    "### Services They Might Be Interested In",
+    "### Services of Interest",
     input.interestedServices.length > 0
       ? input.interestedServices.map((service) => `- ${service}`).join("\n")
       : "None selected",
     "",
-    "### Budget Range",
-    input.budgetRange,
+    "### Additional Context from Sales",
+    input.otherInformation || "No additional context provided.",
     "",
-    "### Second Call Date and Time",
-    input.secondCallAt,
-    "",
-    "### Other Information",
-    input.otherInformation || "None provided",
+    "### Delivery Goal",
+    "Provide a clear prep plan before the second call with recommended channels, rationale, and next actions.",
   ].join("\n");
+}
+
+function formatSecondCallDateTime(value: string): string {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+
+  const formatted = new Intl.DateTimeFormat("en-GB", {
+    weekday: "short",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(parsed);
+
+  return `${formatted} (submitted as ${value})`;
+}
+
+function buildNoticeStatus(secondCallAtMs: number): string {
+  const hoursUntilCall = (secondCallAtMs - Date.now()) / (1000 * 60 * 60);
+
+  if (hoursUntilCall < 0) return "Second call time appears to be in the past - please verify";
+  if (hoursUntilCall < 48) return "Less than 48 hours notice - urgent preparation required";
+  return "At least 48 hours notice provided";
 }
 
 export async function POST(request: NextRequest) {
@@ -239,9 +272,11 @@ export async function POST(request: NextRequest) {
 
     const taskName = `Sales Handoff - ${prospectName}`;
     const description = buildTaskDescription({
+      prospectName,
       website,
       targetAudienceSummary,
       secondCallAt,
+      secondCallAtMs,
       interestedServices,
       budgetRange,
       otherInformation,
@@ -254,6 +289,7 @@ export async function POST(request: NextRequest) {
       assigneeIds,
       secondCallAtMs,
       description,
+      SALES_HANDOFF_CHECKLIST_NAME,
     );
 
     return NextResponse.json(result, { status: 201 });

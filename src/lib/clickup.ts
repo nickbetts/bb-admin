@@ -202,8 +202,8 @@ export async function getClickUpGroups(): Promise<
 }
 
 /**
- * Creates a task in the given list, then attaches a "Go-Live Checklist" with
- * the supplied items. Returns the new task ID and its ClickUp URL.
+ * Creates a task in the given list, then attaches a checklist with the
+ * supplied items. Returns the new task ID and its ClickUp URL.
  */
 export async function createClickUpTaskWithChecklist(
   listId: string,
@@ -212,6 +212,7 @@ export async function createClickUpTaskWithChecklist(
   assignees?: number[],
   dueDateMs?: number,
   description?: string,
+  checklistName = "Go-Live Checklist",
 ): Promise<{ taskId: string; taskUrl: string }> {
   const token = await getClickUpToken();
 
@@ -236,7 +237,7 @@ export async function createClickUpTaskWithChecklist(
     token,
     {
       method: "POST",
-      body: JSON.stringify({ name: "Go-Live Checklist" }),
+      body: JSON.stringify({ name: checklistName }),
     },
   );
 
