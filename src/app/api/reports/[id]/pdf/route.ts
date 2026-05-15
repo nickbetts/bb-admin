@@ -268,138 +268,74 @@ export async function GET(
         return { fullHeight: scrollH, regions: rects };
       });
 
-      // Take a JPEG screenshot of each section rather than generating a vector PDF.
-      // This flattens all SVG charts, animations, and compositor layers into compressed
-      // JPEG pixels — typically 150-300 KB per section vs several MB of vector/bitmap data.
-      // captureBeyondViewport: true (default in Puppeteer 22+) allows clip regions
-      // outside the 900px viewport without needing to resize the page.
+      // New logic: Each main section gets its own page with 200px top/bottom padding
       const JPEG_QUALITY = 85;
-      const DESIRED_PAD_PX = 0;
-      // Use 1 CSS px = 1 PDF pt — screen-format PDF, never physically printed.
       const PAGE_WIDTH_PT = 1200;
-      // Chromium compositor textures are typically capped around ~8192 device
-      // pixels. Since screenshots render at DEVICE_SCALE_FACTOR, the safe CSS
-      // chunk height must be derived from device pixels to prevent visual wrap
-      // artifacts (top-of-section content repeating near the bottom).
-      const MAX_CHUNK_DEVICE_PX = 7600;
-      const MAX_CHUNK_CSS_PX = Math.floor(MAX_CHUNK_DEVICE_PX / DEVICE_SCALE_FACTOR);
-
       const outputDoc = await PDFDocument.create();
       const helvetica = await outputDoc.embedFont(StandardFonts.Helvetica);
       const FONT_SIZE = 9;
-      const H_MARGIN = 40;  // points
-      const V_MARGIN = 18;  // points
+      const H_MARGIN = 40;
+      const V_MARGIN = 18;
       const LINE_COLOR = rgb(0.88, 0.88, 0.88);
       const TEXT_COLOR = rgb(0.58, 0.58, 0.58);
       const reportLabel = `${report.title}  ·  ${report.period}`;
 
       const drawHeaderFooter = (pdfPage: ReturnType<typeof outputDoc.addPage>, pageH: number) => {
-        // ── Header (top of page) ──────────────────────────────────────────
         const headerY = pageH - V_MARGIN - FONT_SIZE;
-        pdfPage.drawLine({
-          start: { x: H_MARGIN, y: headerY - 6 },
-          end: { x: PAGE_WIDTH_PT - H_MARGIN, y: headerY - 6 },
-          thickness: 0.5,
-          color: LINE_COLOR,
-        });
-        pdfPage.drawText("i3media", {
-          x: H_MARGIN,
-          y: headerY,
-          size: FONT_SIZE,
-          font: helvetica,
-          color: TEXT_COLOR,
-        });
+        pdfPage.drawLine({ start: { x: H_MARGIN, y: headerY - 6 }, end: { x: PAGE_WIDTH_PT - H_MARGIN, y: headerY - 6 }, thickness: 0.5, color: LINE_COLOR });
+        pdfPage.drawText("i3media", { x: H_MARGIN, y: headerY, size: FONT_SIZE, font: helvetica, color: TEXT_COLOR });
         const labelWidth = helvetica.widthOfTextAtSize(reportLabel, FONT_SIZE);
-        pdfPage.drawText(reportLabel, {
-          x: PAGE_WIDTH_PT - H_MARGIN - labelWidth,
-          y: headerY,
-          size: FONT_SIZE,
-          font: helvetica,
-          color: TEXT_COLOR,
-        });
-
-        // ── Footer (bottom of page) ───────────────────────────────────────
+        pdfPage.drawText(reportLabel, { x: PAGE_WIDTH_PT - H_MARGIN - labelWidth, y: headerY, size: FONT_SIZE, font: helvetica, color: TEXT_COLOR });
         const footerY = V_MARGIN;
-        pdfPage.drawLine({
-          start: { x: H_MARGIN, y: footerY + FONT_SIZE + 5 },
-          end: { x: PAGE_WIDTH_PT - H_MARGIN, y: footerY + FONT_SIZE + 5 },
-          thickness: 0.5,
-          color: LINE_COLOR,
-        });
-        pdfPage.drawText("i3media", {
-          x: H_MARGIN,
-          y: footerY,
-          size: FONT_SIZE,
-          font: helvetica,
-          color: TEXT_COLOR,
-        });
+        pdfPage.drawLine({ start: { x: H_MARGIN, y: footerY + FONT_SIZE + 5 }, end: { x: PAGE_WIDTH_PT - H_MARGIN, y: footerY + FONT_SIZE + 5 }, thickness: 0.5, color: LINE_COLOR });
+        pdfPage.drawText("i3media", { x: H_MARGIN, y: footerY, size: FONT_SIZE, font: helvetica, color: TEXT_COLOR });
         const periodWidth = helvetica.widthOfTextAtSize(report.period, FONT_SIZE);
-        pdfPage.drawText(report.period, {
-          x: PAGE_WIDTH_PT - H_MARGIN - periodWidth,
-          y: footerY,
-          size: FONT_SIZE,
-          font: helvetica,
-          color: TEXT_COLOR,
-        });
+        pdfPage.drawText(report.period, { x: PAGE_WIDTH_PT - H_MARGIN - periodWidth, y: footerY, size: FONT_SIZE, font: helvetica, color: TEXT_COLOR });
       };
 
       for (let idx = 0; idx < regions.length; idx++) {
         const region = regions[idx];
-        const prevEnd = idx > 0 ? regions[idx - 1].y + regions[idx - 1].height : 0;
-        const nextStart = idx < regions.length - 1 ? regions[idx + 1].y : fullHeight;
-
-        // Cap each side's padding to half the inter-section gap so that
-        // adjacent pages only reach to the midpoint of the whitespace between
-        // sections — never into the neighbouring section's actual content.
-        const topGap = region.y - prevEnd;
-        const bottomGap = nextStart - (region.y + region.height);
-        const topPad = Math.min(DESIRED_PAD_PX, Math.floor(topGap / 2));
-        const bottomPad = Math.min(DESIRED_PAD_PX, Math.floor(bottomGap / 2));
-
-        const clipY = Math.max(0, region.y - topPad);
-        const clipHeight = Math.min(region.height + topPad + bottomPad, fullHeight - clipY);
-
-        if (clipHeight <= 0) {
-          console.warn(`[pdf-guard] Skipping region with non-positive clipHeight: idx=${idx} id=${region.id} y=${region.y} height=${region.height} topPad=${topPad} bottomPad=${bottomPad} clipY=${clipY} clipHeight=${clipHeight}`);
-          continue;
-        }
-
-        // Tall sections (e.g. SEO with many tracked keywords) can exceed the
-        // Chromium GPU texture size limit, causing the screenshot to be silently
-        // truncated. Split into vertical chunks so each screenshot stays within
-        // the safe limit, producing one PDF page per chunk.
-        const totalChunks = Math.ceil(clipHeight / MAX_CHUNK_CSS_PX);
-        for (let chunk = 0; chunk < totalChunks; chunk++) {
-          const chunkStartY = clipY + chunk * MAX_CHUNK_CSS_PX;
-          const chunkH = Math.min(MAX_CHUNK_CSS_PX, clipY + clipHeight - chunkStartY);
-
-          if (chunkH <= 0) {
-            console.warn(`[pdf-guard] Skipping chunk with non-positive height: idx=${idx} chunk=${chunk} id=${region.id} chunkStartY=${chunkStartY} chunkH=${chunkH}`);
-            continue;
+        // Add 200px padding above and below the section before screenshotting
+        await page.evaluate((id) => {
+          const el = document.getElementById(id);
+          if (el) {
+            el.style.paddingTop = '200px';
+            el.style.paddingBottom = '200px';
           }
-          if (chunkH < 100) {
-            console.warn(`[pdf-guard] Skipping chunk with too-small height (<100px): idx=${idx} chunk=${chunk} id=${region.id} chunkStartY=${chunkStartY} chunkH=${chunkH}`);
-            continue;
+        }, region.id);
+
+        // Measure the new height with padding
+        const padded = await page.evaluate((id) => {
+          const el = document.getElementById(id);
+          if (!el) return null;
+          const rect = el.getBoundingClientRect();
+          return { y: Math.round(rect.top + window.scrollY), height: Math.round(rect.height) };
+        }, region.id);
+        if (!padded) continue;
+        const clipY = padded.y;
+        const clipHeight = padded.height;
+        if (clipHeight <= 0) continue;
+
+        const screenshotBuffer = await page.screenshot({
+          type: "jpeg",
+          quality: JPEG_QUALITY,
+          clip: { x: 0, y: clipY, width: VIEWPORT_WIDTH_CSS, height: clipHeight },
+          captureBeyondViewport: true,
+        });
+
+        const jpegImage = await outputDoc.embedJpg(screenshotBuffer);
+        const newPage = outputDoc.addPage([PAGE_WIDTH_PT, clipHeight]);
+        newPage.drawImage(jpegImage, { x: 0, y: 0, width: PAGE_WIDTH_PT, height: clipHeight });
+        drawHeaderFooter(newPage, clipHeight);
+
+        // Remove the padding so it doesn't affect subsequent screenshots
+        await page.evaluate((id) => {
+          const el = document.getElementById(id);
+          if (el) {
+            el.style.paddingTop = '';
+            el.style.paddingBottom = '';
           }
-
-          console.log(`[pdf-chunk] idx=${idx} id=${region.id} chunk=${chunk} chunkStartY=${chunkStartY} chunkH=${chunkH}`);
-
-          const screenshotBuffer = await page.screenshot({
-            type: "jpeg",
-            quality: JPEG_QUALITY,
-            clip: { x: 0, y: chunkStartY, width: VIEWPORT_WIDTH_CSS, height: chunkH },
-            captureBeyondViewport: true,
-          });
-
-          const jpegImage = await outputDoc.embedJpg(screenshotBuffer);
-          const newPage = outputDoc.addPage([PAGE_WIDTH_PT, chunkH]);
-          newPage.drawImage(jpegImage, { x: 0, y: 0, width: PAGE_WIDTH_PT, height: chunkH });
-
-          // Draw header and footer on every page except the cover (idx 0)
-          if (idx > 0) {
-            drawHeaderFooter(newPage, chunkH);
-          }
-        }
+        }, region.id);
       }
 
       // useObjectStreams enables cross-reference stream compression for an additional
