@@ -359,6 +359,11 @@ export async function GET(
         const clipY = Math.max(0, region.y - topPad);
         const clipHeight = Math.min(region.height + topPad + bottomPad, fullHeight - clipY);
 
+        if (clipHeight <= 0) {
+          console.warn(`[pdf-guard] Skipping region with non-positive clipHeight: idx=${idx} id=${region.id} y=${region.y} height=${region.height} topPad=${topPad} bottomPad=${bottomPad} clipY=${clipY} clipHeight=${clipHeight}`);
+          continue;
+        }
+
         // Tall sections (e.g. SEO with many tracked keywords) can exceed the
         // Chromium GPU texture size limit, causing the screenshot to be silently
         // truncated. Split into vertical chunks so each screenshot stays within
@@ -367,6 +372,13 @@ export async function GET(
         for (let chunk = 0; chunk < totalChunks; chunk++) {
           const chunkStartY = clipY + chunk * MAX_CHUNK_CSS_PX;
           const chunkH = Math.min(MAX_CHUNK_CSS_PX, clipY + clipHeight - chunkStartY);
+
+          if (chunkH <= 0) {
+            console.warn(`[pdf-guard] Skipping chunk with non-positive height: idx=${idx} chunk=${chunk} id=${region.id} chunkStartY=${chunkStartY} chunkH=${chunkH}`);
+            continue;
+          }
+
+          console.log(`[pdf-chunk] idx=${idx} id=${region.id} chunk=${chunk} chunkStartY=${chunkStartY} chunkH=${chunkH}`);
 
           const screenshotBuffer = await page.screenshot({
             type: "jpeg",
