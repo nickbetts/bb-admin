@@ -1265,12 +1265,77 @@ function countTextOccurrences(haystack: string, needle: string): number {
   return count;
 }
 
+function findTextIndices(haystack: string, needle: string, limit = 8): number[] {
+  if (!needle) return [];
+
+  const indices: number[] = [];
+  let index = 0;
+  while (index < haystack.length && indices.length < limit) {
+    const next = haystack.indexOf(needle, index);
+    if (next === -1) break;
+    indices.push(next);
+    index = next + needle.length;
+  }
+
+  return indices;
+}
+
+function isGenericListingTitle(title: string): boolean {
+  const value = title.toLowerCase().trim();
+  return ["under offer", "available", "to let", "for sale", "let agreed"].includes(value);
+}
+
+function hasPairedListingImage(sectionHtml: string, listing: PropertyListing): boolean {
+  if (!listing.imageUrl) return true;
+
+  const lowerHtml = sectionHtml.toLowerCase();
+  const imageNeedle = listing.imageUrl.toLowerCase().trim();
+  if (!imageNeedle) return true;
+
+  const indices = new Set<number>();
+  const pushIndices = (needle: string | undefined) => {
+    if (!needle) return;
+    for (const idx of findTextIndices(lowerHtml, needle, 8)) {
+      indices.add(idx);
+    }
+  };
+
+  const urlNeedle = listing.url?.toLowerCase().trim();
+  if (urlNeedle) pushIndices(urlNeedle);
+
+  const titleNeedle = listing.title.toLowerCase().replace(/\s+/g, " ").trim();
+  if (titleNeedle && !isGenericListingTitle(listing.title)) {
+    pushIndices(titleNeedle);
+    for (const fragment of titleNeedle
+      .split(/[,:-]/)
+      .map((part) => part.trim())
+      .filter((part) => part.length >= 12)
+      .slice(0, 2)) {
+      pushIndices(fragment);
+    }
+  }
+
+  if (indices.size === 0) {
+    return lowerHtml.includes(imageNeedle);
+  }
+
+  const SEARCH_RADIUS = 2200;
+  for (const idx of indices) {
+    const start = Math.max(0, idx - SEARCH_RADIUS);
+    const end = Math.min(lowerHtml.length, idx + SEARCH_RADIUS);
+    if (lowerHtml.slice(start, end).includes(imageNeedle)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 function validateSectionListingSync(
   sectionHtml: string,
   listings: PropertyListing[],
 ): SectionListingValidationResult {
   const plainText = normaliseComparableText(stripScripts(sectionHtml));
-  const referencedAssets = new Set(extractReferencedAssetUrlsFromHtml(sectionHtml));
 
   const missingListingIds: string[] = [];
   const duplicateListingIds: string[] = [];
@@ -1287,7 +1352,7 @@ function validateSectionListingSync(
       duplicateListingIds.push(listing.id);
     }
 
-    if (listing.imageUrl && !referencedAssets.has(listing.imageUrl)) {
+    if (listing.imageUrl && !hasPairedListingImage(sectionHtml, listing)) {
       missingImageListingIds.push(listing.id);
     }
   }

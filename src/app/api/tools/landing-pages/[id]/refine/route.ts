@@ -6,7 +6,6 @@ import {
   refineLandingPage,
   extractAndValidateHtml,
   HtmlValidationError,
-  extractReferencedAssetUrlsFromHtml,
   findMissingImportedImageUrls,
   auditReferenceAlignmentAfterRefine,
   buildSecondPassRefinePrompt,
@@ -61,9 +60,70 @@ function countOccurrences(haystack: string, needle: string): number {
   return count;
 }
 
+function findIndices(haystack: string, needle: string, limit = 8): number[] {
+  if (!needle) return [];
+
+  const indices: number[] = [];
+  let index = 0;
+  while (index < haystack.length && indices.length < limit) {
+    const next = haystack.indexOf(needle, index);
+    if (next === -1) break;
+    indices.push(next);
+    index = next + needle.length;
+  }
+
+  return indices;
+}
+
 function isGenericListingTitle(title: string): boolean {
   const value = title.toLowerCase().trim();
   return ["under offer", "available", "to let", "for sale", "let agreed"].includes(value);
+}
+
+function hasPairedListingImage(html: string, listing: PropertyListing): boolean {
+  if (!listing.imageUrl) return true;
+
+  const lowerHtml = html.toLowerCase();
+  const imageNeedle = listing.imageUrl.toLowerCase().trim();
+  if (!imageNeedle) return true;
+
+  const indices = new Set<number>();
+  const addIndices = (needle: string | undefined) => {
+    if (!needle) return;
+    for (const idx of findIndices(lowerHtml, needle, 8)) {
+      indices.add(idx);
+    }
+  };
+
+  const urlNeedle = listing.url?.toLowerCase().trim();
+  if (urlNeedle) addIndices(urlNeedle);
+
+  const titleNeedle = listing.title.toLowerCase().replace(/\s+/g, " ").trim();
+  if (titleNeedle && !isGenericListingTitle(listing.title)) {
+    addIndices(titleNeedle);
+    for (const fragment of titleNeedle
+      .split(/[,:-]/)
+      .map((part) => part.trim())
+      .filter((part) => part.length >= 12)
+      .slice(0, 2)) {
+      addIndices(fragment);
+    }
+  }
+
+  if (indices.size === 0) {
+    return lowerHtml.includes(imageNeedle);
+  }
+
+  const SEARCH_RADIUS = 2200;
+  for (const idx of indices) {
+    const start = Math.max(0, idx - SEARCH_RADIUS);
+    const end = Math.min(lowerHtml.length, idx + SEARCH_RADIUS);
+    if (lowerHtml.slice(start, end).includes(imageNeedle)) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 function dedupeListings(listings: PropertyListing[]): PropertyListing[] {
@@ -82,7 +142,6 @@ function buildDeterministicListingFindings(
   if (listings.length === 0) return [];
 
   const plainText = normaliseComparableText(html);
-  const referencedAssets = new Set(extractReferencedAssetUrlsFromHtml(html));
 
   const missingTitles: PropertyListing[] = [];
   const duplicateTitles: PropertyListing[] = [];
@@ -97,7 +156,7 @@ function buildDeterministicListingFindings(
 
     if (matches === 0 && (titleNeedle || urlNeedle)) missingTitles.push(listing);
     if (matches > 1 && !isGenericListingTitle(listing.title)) duplicateTitles.push(listing);
-    if (listing.imageUrl && !referencedAssets.has(listing.imageUrl)) missingImages.push(listing);
+    if (listing.imageUrl && !hasPairedListingImage(html, listing)) missingImages.push(listing);
   }
 
   const findings: LPCritiqueItem[] = [];
