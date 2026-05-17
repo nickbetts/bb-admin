@@ -211,6 +211,75 @@ function hasPaginationSignals(html: string): boolean {
   );
 }
 
+function findRootClosingTagMatch(html: string): RegExpExecArray | null {
+  const openTagMatch = html.match(/^<([a-z0-9-]+)/i);
+  if (!openTagMatch) return null;
+
+  const rootTag = openTagMatch[1];
+  const closeTagRe = new RegExp(`</${rootTag}\\s*>`, "gi");
+  let lastMatch: RegExpExecArray | null = null;
+  for (const match of html.matchAll(closeTagRe)) {
+    lastMatch = match;
+  }
+
+  return lastMatch;
+}
+
+function insertBeforeRootClose(html: string, snippet: string): string {
+  const closeTagMatch = findRootClosingTagMatch(html);
+  if (!closeTagMatch || closeTagMatch.index === undefined) {
+    return `${html}\n${snippet}`;
+  }
+
+  return `${html.slice(0, closeTagMatch.index)}\n${snippet}\n${html.slice(closeTagMatch.index)}`;
+}
+
+function extractPaginationBlocks(html: string): string[] {
+  const blocks: string[] = [];
+  const seen = new Set<string>();
+
+  const patterns = [
+    /<nav[^>]*(?:pagination|pager|next|prev|page-link|page-item)[^>]*>[\s\S]*?<\/nav>/gi,
+    /<(?:ul|ol)[^>]*(?:pagination|pager|page-link|page-item)[^>]*>[\s\S]*?<\/(?:ul|ol)>/gi,
+    /<div[^>]*(?:pagination|pager|page-link|page-item)[^>]*>[\s\S]*?<\/div>/gi,
+    /<a[^>]*\brel=["'](?:next|prev)["'][^>]*>[\s\S]*?<\/a>/gi,
+  ];
+
+  for (const pattern of patterns) {
+    for (const match of html.matchAll(pattern)) {
+      const block = match[0].trim();
+      if (!block || block.length < 24 || seen.has(block)) continue;
+      seen.add(block);
+      blocks.push(block);
+    }
+  }
+
+  return blocks;
+}
+
+function recoverListingRewriteWithPagination(
+  originalHtml: string,
+  candidateHtml: string,
+): { html: string; insertedBlocks: number } {
+  if (!hasPaginationSignals(originalHtml) || hasPaginationSignals(candidateHtml)) {
+    return { html: candidateHtml, insertedBlocks: 0 };
+  }
+
+  const paginationBlocks = extractPaginationBlocks(originalHtml);
+  if (paginationBlocks.length === 0) return { html: candidateHtml, insertedBlocks: 0 };
+
+  let merged = candidateHtml;
+  let insertedBlocks = 0;
+
+  for (const block of paginationBlocks.slice(0, 4)) {
+    if (merged.includes(block)) continue;
+    merged = insertBeforeRootClose(merged, block);
+    insertedBlocks += 1;
+  }
+
+  return { html: merged, insertedBlocks };
+}
+
 function hasTailContentOverlap(originalHtml: string, candidateHtml: string): boolean {
   const originalText = toComparableText(originalHtml);
   const candidateText = toComparableText(candidateHtml);
@@ -662,9 +731,31 @@ export async function POST(
         const aggressiveRewrite = isAggressiveSectionRewrite(section.outerHtml, refinedSectionHtml);
         const listingRewriteUnsafe =
           listingSyncApplied && !isListingSectionRewriteSafe(section.outerHtml, refinedSectionHtml);
+
+        let recoveredListingHtml: string | undefined;
+        let recoveredPaginationBlocks = 0;
+        if (protectLayout && listingRewriteUnsafe) {
+          const recovery = recoverListingRewriteWithPagination(
+            section.outerHtml,
+            refinedSectionHtml,
+          );
+          if (
+            recovery.insertedBlocks > 0 &&
+            isListingSectionRewriteSafe(section.outerHtml, recovery.html)
+          ) {
+            recoveredListingHtml = recovery.html;
+            recoveredPaginationBlocks = recovery.insertedBlocks;
+          }
+        }
+
         const keepOriginalSection =
-          protectLayout && (listingSyncApplied ? listingRewriteUnsafe : aggressiveRewrite);
-        let appliedSectionHtml = keepOriginalSection ? section.outerHtml : refinedSectionHtml;
+          protectLayout &&
+          (listingSyncApplied ? listingRewriteUnsafe && !recoveredListingHtml : aggressiveRewrite);
+        let appliedSectionHtml = recoveredListingHtml
+          ? recoveredListingHtml
+          : keepOriginalSection
+            ? section.outerHtml
+            : refinedSectionHtml;
 
         let appliedSafeListingSync = false;
         let safeListingSyncPatchedCount = 0;
@@ -683,6 +774,11 @@ export async function POST(
               ? `Skipped risky listing rewrite for ${section.label} to preserve pagination and downstream section layout. Applied safe in-place image sync to ${safeListingSyncPatchedCount} listing card${safeListingSyncPatchedCount === 1 ? "" : "s"}.`
               : `Skipped risky listing rewrite for ${section.label} to preserve pagination and downstream section layout.`
             : `Skipped aggressive rewrite for ${section.label} to preserve the existing layout.`;
+          if (!state.crawlWarnings.includes(warning)) {
+            state.crawlWarnings.push(warning);
+          }
+        } else if (recoveredListingHtml) {
+          const warning = `Applied listing rewrite for ${section.label} and reintroduced ${recoveredPaginationBlocks} pagination block${recoveredPaginationBlocks === 1 ? "" : "s"} to preserve navigation.`;
           if (!state.crawlWarnings.includes(warning)) {
             state.crawlWarnings.push(warning);
           }
