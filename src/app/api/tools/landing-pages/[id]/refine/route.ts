@@ -6,13 +6,16 @@ import {
   refineLandingPage,
   extractAndValidateHtml,
   HtmlValidationError,
+  extractReferencedAssetUrlsFromHtml,
   findMissingImportedImageUrls,
   auditReferenceAlignmentAfterRefine,
   buildSecondPassRefinePrompt,
+  type LPCritiqueItem,
 } from "@/lib/lp-generator";
 import { extractPageContentFromUrl } from "@/lib/brand-extractor";
-import type { BrandContext } from "@/lib/brand-extractor";
+import type { BrandContext, ExtractedPageContent, PropertyListing } from "@/lib/brand-extractor";
 import { logActivity } from "@/lib/activity-logger";
+import { buildReferenceDigest, normaliseUrlList } from "@/lib/lp-refine-jobs";
 
 export const dynamic = "force-dynamic";
 // Streaming SSE response keeps the connection alive while the model generates.
@@ -25,87 +28,109 @@ const DOUBLE_PASS_PER_URL_BUDGET = 14_000;
 
 type RefinementMode = "single-pass" | "double-pass";
 
-type ReferencePageDigest = {
-  sourceUrl: string;
-  metaTitle?: string;
-  h1?: string;
-  headings: string[];
-  ctaTexts: string[];
-  listItems: string[];
-  numericStats: string[];
-  bodyCopy: string[];
-  allBodyText: string;
-  imageryUrls: string[];
-};
-
-function isValidHttpUrl(value: string): boolean {
-  try {
-    const parsed = new URL(value);
-    return parsed.protocol === "http:" || parsed.protocol === "https:";
-  } catch {
-    return false;
-  }
+function isLikelyListingPrompt(prompt: string): boolean {
+  return /\b(listings?|inventory|catalog|products?|properties?|rooms?|tours?|packages?|sku|match|attribute|mapped|images?)\b/i.test(
+    prompt,
+  );
 }
 
-function truncate(value: string, maxChars: number): string {
-  if (value.length <= maxChars) return value;
-  return `${value.slice(0, maxChars)}...`;
+function normaliseComparableText(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&#39;/gi, "'")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
-function buildReferenceDigest(
-  pages: ReferencePageDigest[],
-  opts: { perUrlBudget: number; totalBudget: number },
-): string {
-  const chunks: string[] = [];
-  let usedChars = 0;
+function countOccurrences(haystack: string, needle: string): number {
+  if (!needle) return 0;
 
-  for (const page of pages) {
-    if (usedChars >= opts.totalBudget) break;
+  let count = 0;
+  let index = 0;
+  while (index < haystack.length) {
+    const next = haystack.indexOf(needle, index);
+    if (next === -1) break;
+    count += 1;
+    index = next + needle.length;
+  }
+  return count;
+}
 
-    const parts: string[] = [`### ${page.sourceUrl}`];
-    if (page.metaTitle) parts.push(`Title: ${truncate(page.metaTitle, 160)}`);
-    if (page.h1) parts.push(`H1: ${truncate(page.h1, 200)}`);
-    if (page.headings.length > 0) parts.push(`Headings: ${page.headings.slice(0, 40).join(" | ")}`);
-    if (page.ctaTexts.length > 0) parts.push(`CTAs: ${page.ctaTexts.slice(0, 20).join(" | ")}`);
-    if (page.listItems.length > 0)
-      parts.push(
-        `List items:\n${page.listItems
-          .slice(0, 80)
-          .map((item) => `  • ${truncate(item, 220)}`)
-          .join("\n")}`,
-      );
-    if (page.numericStats.length > 0)
-      parts.push(`Stats: ${page.numericStats.slice(0, 40).join(" | ")}`);
-    if (page.bodyCopy.length > 0)
-      parts.push(
-        `Body copy:\n${page.bodyCopy
-          .slice(0, 25)
-          .map((paragraph) => `  \"${truncate(paragraph, 280)}\"`)
-          .join("\n")}`,
-      );
-    if (page.allBodyText) parts.push(`Full page text:\n${truncate(page.allBodyText, 7000)}`);
-    if (page.imageryUrls.length > 0)
-      parts.push(`Images: ${page.imageryUrls.slice(0, 30).join(", ")}`);
+function dedupeListings(listings: PropertyListing[]): PropertyListing[] {
+  const map = new Map<string, PropertyListing>();
+  for (const listing of listings) {
+    if (!listing.id || map.has(listing.id)) continue;
+    map.set(listing.id, listing);
+  }
+  return [...map.values()];
+}
 
-    let chunk = parts.join("\n");
-    if (chunk.length > opts.perUrlBudget) {
-      chunk = truncate(chunk, opts.perUrlBudget);
-    }
+function buildDeterministicListingFindings(
+  html: string,
+  listings: PropertyListing[],
+): LPCritiqueItem[] {
+  if (listings.length === 0) return [];
 
-    const remaining = opts.totalBudget - usedChars;
-    if (remaining <= 0) break;
+  const plainText = normaliseComparableText(html);
+  const referencedAssets = new Set(extractReferencedAssetUrlsFromHtml(html));
 
-    if (chunk.length > remaining) {
-      chunks.push(truncate(chunk, remaining));
-      usedChars = opts.totalBudget;
-      break;
-    }
+  const missingTitles: PropertyListing[] = [];
+  const duplicateTitles: PropertyListing[] = [];
+  const missingImages: PropertyListing[] = [];
 
-    chunks.push(chunk);
-    usedChars += chunk.length;
+  for (const listing of listings) {
+    const needle = normaliseComparableText(listing.title);
+    const matches = needle ? countOccurrences(plainText, needle) : 0;
+
+    if (needle && matches === 0) missingTitles.push(listing);
+    if (needle && matches > 1) duplicateTitles.push(listing);
+    if (listing.imageUrl && !referencedAssets.has(listing.imageUrl)) missingImages.push(listing);
   }
 
-  return chunks.join("\n\n---\n\n");
+  const findings: LPCritiqueItem[] = [];
+
+  if (missingTitles.length > 0) {
+    findings.push({
+      area: "Listing coverage",
+      issue: `${missingTitles.length} source listings are missing from the generated page.`,
+      fix: `Add one card for each missing listing, preserving source order: ${missingTitles
+        .slice(0, 12)
+        .map((listing) => listing.title)
+        .join(" | ")}`,
+      severity: "high",
+    });
+  }
+
+  if (duplicateTitles.length > 0) {
+    findings.push({
+      area: "Listing duplication",
+      issue: `${duplicateTitles.length} listings appear more than once in the generated page.`,
+      fix: `Keep exactly one card for each duplicated listing: ${duplicateTitles
+        .slice(0, 12)
+        .map((listing) => listing.title)
+        .join(" | ")}`,
+      severity: "medium",
+    });
+  }
+
+  if (missingImages.length > 0) {
+    findings.push({
+      area: "Listing image mapping",
+      issue: `${missingImages.length} listings are missing their source image URL mapping.`,
+      fix: `Map each listing card to its exact source image URL: ${missingImages
+        .slice(0, 10)
+        .map((listing) => `${listing.title} => ${listing.imageUrl}`)
+        .join(" | ")}`,
+      severity: "high",
+    });
+  }
+
+  return findings;
 }
 
 async function saveRefinedVersion(opts: {
@@ -183,14 +208,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       refinementMode === "double-pass"
         ? DOUBLE_PASS_TOTAL_CONTEXT_BUDGET
         : SINGLE_PASS_TOTAL_CONTEXT_BUDGET;
+    const listingPromptRequested = isLikelyListingPrompt(body.prompt);
 
     const crawlWarnings: string[] = [];
-    const crawlUrls = [
-      ...new Set((body.crawlUrls ?? []).filter((u) => isValidHttpUrl(u)).map((u) => u.trim())),
-    ];
-    const importedImageUrls = [
-      ...new Set((body.imageUrls ?? []).filter((u) => isValidHttpUrl(u)).map((u) => u.trim())),
-    ];
+    const crawlUrls = normaliseUrlList(body.crawlUrls, refinementMode === "double-pass" ? 10 : 3);
+    const importedImageUrls = normaliseUrlList(body.imageUrls, 120);
 
     const encoder = new TextEncoder();
     const readable = new ReadableStream({
@@ -208,6 +230,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           });
 
           let additionalContext: string | undefined;
+          let structuredListings: PropertyListing[] = [];
           if (crawlUrls.length > 0) {
             send({
               progress: `Scraping ${crawlUrls.length} reference URL${crawlUrls.length === 1 ? "" : "s"}...`,
@@ -216,7 +239,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             const results = await Promise.allSettled(
               crawlUrls.map((url) => extractPageContentFromUrl(url)),
             );
-            const digests: ReferencePageDigest[] = [];
+            const digests: ExtractedPageContent[] = [];
 
             for (let i = 0; i < results.length; i++) {
               const result = results[i];
@@ -231,19 +254,62 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             }
 
             if (digests.length > 0) {
-              additionalContext = buildReferenceDigest(digests, {
-                perUrlBudget,
-                totalBudget: totalContextBudget,
+              structuredListings = dedupeListings(
+                digests.flatMap((page) => page.propertyListings ?? []),
+              );
+
+              const listingPages = digests.filter(
+                (page) =>
+                  (page.isStructuredListing || page.isPropertyListing) &&
+                  (page.listingCount ?? page.propertyCount) > 0,
+              );
+              const listingCategories = [
+                ...new Set(
+                  listingPages
+                    .map((page) => page.listingCategory)
+                    .filter((value): value is "property" | "catalog" => Boolean(value)),
+                ),
+              ];
+              const listingTotal = structuredListings.length;
+              const listingSummary =
+                listingPromptRequested && listingTotal > 0
+                  ? [
+                      "## Structured listing sync context",
+                      `Detected ${listingTotal} unique listings across ${listingPages.length || 1} reference URL${listingPages.length === 1 ? "" : "s"}.`,
+                      listingCategories.length > 0
+                        ? `Detected listing category: ${listingCategories.join(", ")}.`
+                        : "Detected listing category: mixed/unknown.",
+                      "Treat source listings as authoritative inventory and preserve one-to-one mapping for details and image URLs.",
+                    ].join("\n")
+                  : undefined;
+
+              const digest = buildReferenceDigest(digests, {
+                totalChars: totalContextBudget,
+                perPageChars: perUrlBudget,
+                listItemLimit: 220,
+                headingLimit: 120,
+                ctaLimit: 80,
+                bodyCopyLimit: 100,
+                statLimit: 120,
+                imageLimit: 140,
+                propertyListingLimit: 220,
               });
+
+              additionalContext = listingSummary ? `${listingSummary}\n\n${digest}` : digest;
             }
           }
+
+          const listingSyncInstruction =
+            listingPromptRequested && structuredListings.length > 0
+              ? `\n\nStrict listing sync requirements:\n- Include every source listing exactly once in source order.\n- Keep listing titles and details aligned to the source.\n- Use exact source image URLs for each listing where available.\n- Do not invent, merge, or remap listings.`
+              : "";
 
           if (refinementMode === "single-pass") {
             send({ progress: "Generating updated page..." });
 
             const anthropicStream = await streamRefineLandingPage({
               currentHtml: landingPage.currentHtml,
-              prompt: body.prompt,
+              prompt: `${body.prompt}${listingSyncInstruction}`,
               brandContext,
               conversationHistory: body.conversationHistory,
               referenceHtml: body.referenceHtml,
@@ -311,8 +377,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           send({ progress: "Pass 1 of 2: applying requested changes..." });
           const passOnePrompt =
             importedImageUrls.length > 0
-              ? `${body.prompt}\n\nImportant: if attached/imported images are used, preserve each image URL exactly as provided in src/background URLs.`
-              : body.prompt;
+              ? `${body.prompt}${listingSyncInstruction}\n\nImportant: if attached/imported images are used, preserve each image URL exactly as provided in src/background URLs.`
+              : `${body.prompt}${listingSyncInstruction}`;
 
           const passOneHtml = await refineLandingPage({
             currentHtml: landingPage.currentHtml,
@@ -343,12 +409,22 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             validatedPassOneHtml,
             importedImageUrls,
           );
-          const referenceFindings = await auditReferenceAlignmentAfterRefine({
+          const referenceFindingsRaw = await auditReferenceAlignmentAfterRefine({
             html: validatedPassOneHtml,
             userPrompt: body.prompt,
             referenceDigest: additionalContext,
             maxFindings: 8,
           });
+
+          const deterministicListingFindings =
+            listingPromptRequested && structuredListings.length > 0
+              ? buildDeterministicListingFindings(validatedPassOneHtml, structuredListings)
+              : [];
+
+          const referenceFindings = [
+            ...deterministicListingFindings,
+            ...referenceFindingsRaw,
+          ].slice(0, 12);
 
           send({
             progress: `Pass 2 of 2: applying ${missingImportedImageUrls.length + referenceFindings.length} targeted fixes...`,

@@ -26,6 +26,30 @@ export interface PageContent {
   metaDescription?: string;
 }
 
+export interface PropertyListing {
+  id: string;
+  title: string;
+  price?: string;
+  bedrooms?: string;
+  bathrooms?: string;
+  location?: string;
+  url?: string;
+  imageUrl?: string;
+}
+
+export type ListingCategory = "property" | "catalog";
+
+export interface ExtractedPageContent extends PageContent {
+  sourceUrl: string;
+  imageryUrls: string[];
+  propertyListings: PropertyListing[];
+  listingCategory?: ListingCategory;
+  isStructuredListing: boolean;
+  listingCount: number;
+  isPropertyListing: boolean;
+  propertyCount: number;
+}
+
 export interface BrandContext {
   colors: BrandColour[];
   fonts: string[];
@@ -153,9 +177,7 @@ export async function extractBrandContext(url: string): Promise<BrandContext> {
  * we want additional content context but not full brand analysis.
  * Silently returns null on any network/parse error.
  */
-export async function extractPageContentFromUrl(
-  url: string,
-): Promise<(PageContent & { sourceUrl: string; imageryUrls: string[] }) | null> {
+export async function extractPageContentFromUrl(url: string): Promise<ExtractedPageContent | null> {
   if (!url || (!url.startsWith("http://") && !url.startsWith("https://"))) return null;
   try {
     const controller = new AbortController();
@@ -174,10 +196,22 @@ export async function extractPageContentFromUrl(
     if (!res.ok) return null;
     const html = await res.text();
     const origin = new URL(url).origin;
+    const propertyListings = extractPropertyListings(html, origin);
+    const listingCategory = detectListingCategory(propertyListings);
+    const listingCount = propertyListings.length;
+    const isStructuredListing = listingCount > 0;
+    const isPropertyListing = listingCategory === "property" && listingCount > 0;
     return {
       ...extractPageContent(html),
       imageryUrls: extractImageryUrls(html, origin),
       sourceUrl: url,
+      propertyListings,
+      listingCategory,
+      isStructuredListing,
+      listingCount,
+      // Backward compatibility for existing property-specific consumers.
+      isPropertyListing,
+      propertyCount: isPropertyListing ? listingCount : 0,
     };
   } catch {
     return null;
@@ -626,6 +660,311 @@ function extractContactInfo(html: string): BrandContext["contactInfo"] {
   }
 
   return info;
+}
+
+// ── Property listing extraction ─────────────────────────────────────────────
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function toCleanText(value: unknown, maxLength: number): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const cleaned = value.replace(/\s+/g, " ").trim();
+  if (!cleaned) return undefined;
+  return cleaned.length > maxLength ? `${cleaned.slice(0, maxLength)}...` : cleaned;
+}
+
+function toStringList(value: unknown): string[] {
+  if (typeof value === "string") return [value];
+  if (Array.isArray(value)) return value.filter((item): item is string => typeof item === "string");
+  return [];
+}
+
+function firstString(value: unknown): string | undefined {
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = firstString(item);
+      if (found) return found;
+    }
+    return undefined;
+  }
+  if (isRecord(value)) {
+    return firstString(
+      value.url ??
+        value.contentUrl ??
+        value["@id"] ??
+        value.src ??
+        value["data-src"] ??
+        value["data-lazy-src"] ??
+        value["data-original"],
+    );
+  }
+  if (typeof value === "number") return String(value);
+  return undefined;
+}
+
+function toAddressString(value: unknown): string | undefined {
+  if (typeof value === "string") return toCleanText(value, 160);
+  if (!isRecord(value)) return undefined;
+
+  const parts = [
+    firstString(value.streetAddress),
+    firstString(value.addressLocality),
+    firstString(value.addressRegion),
+    firstString(value.postalCode),
+  ]
+    .map((part) => (part ? part.trim() : ""))
+    .filter(Boolean);
+
+  if (parts.length === 0) return undefined;
+  return toCleanText(parts.join(", "), 160);
+}
+
+function toBedrooms(value: unknown): string | undefined {
+  if (typeof value === "number") return String(value);
+  if (typeof value === "string") {
+    const match = value.match(/(\d+(?:\.\d+)?)/);
+    if (match) return match[1];
+    return toCleanText(value, 24);
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const parsed = toBedrooms(item);
+      if (parsed) return parsed;
+    }
+  }
+  if (isRecord(value)) {
+    return toBedrooms(value.value ?? value.minValue ?? value.maxValue ?? value.name);
+  }
+  return undefined;
+}
+
+function toPrice(value: unknown, currency?: string): string | undefined {
+  const raw = firstString(value);
+  if (!raw) return undefined;
+
+  const cleaned = raw.replace(/\s+/g, " ").trim();
+  if (!cleaned) return undefined;
+  if (/[$£€]/.test(cleaned) || !currency) return toCleanText(cleaned, 48);
+
+  const normalisedCurrency = currency.trim().toUpperCase();
+  if (!normalisedCurrency) return toCleanText(cleaned, 48);
+  return toCleanText(`${normalisedCurrency} ${cleaned}`, 48);
+}
+
+function toPropertyIdentity(listing: Omit<PropertyListing, "id">): string | null {
+  const bits = [listing.title, listing.price, listing.url]
+    .filter((value): value is string => Boolean(value))
+    .map((value) => value.toLowerCase().replace(/\s+/g, " ").trim());
+
+  if (bits.length === 0) return null;
+  return bits.join("|");
+}
+
+function flattenJsonLdNodes(value: unknown, bucket: Record<string, unknown>[]): void {
+  if (Array.isArray(value)) {
+    for (const item of value) flattenJsonLdNodes(item, bucket);
+    return;
+  }
+  if (!isRecord(value)) return;
+
+  bucket.push(value);
+  if (Array.isArray(value["@graph"])) {
+    for (const item of value["@graph"]) {
+      flattenJsonLdNodes(item, bucket);
+    }
+  }
+}
+
+function isListingLikeJsonLdNode(node: Record<string, unknown>): boolean {
+  const typeRaw = toStringList(node["@type"]).map((type) => type.toLowerCase());
+  const hasListingType = typeRaw.some((type) =>
+    [
+      "property",
+      "propertylisting",
+      "realestate",
+      "singlefamilyresidence",
+      "apartment",
+      "house",
+      "residence",
+      "offer",
+      "product",
+      "lodgingbusiness",
+      "hotel",
+      "suite",
+      "tour",
+      "package",
+    ].some((token) => type.includes(token)),
+  );
+
+  if (hasListingType) return true;
+
+  return Boolean(
+    node.numberOfBedrooms ??
+    node.numberOfBathroomsTotal ??
+    node.numberOfBathrooms ??
+    node.bedrooms ??
+    node.bathrooms ??
+    node.offers ??
+    node.price,
+  );
+}
+
+function detectListingCategory(listings: PropertyListing[]): ListingCategory | undefined {
+  if (listings.length === 0) return undefined;
+
+  const propertySignalThreshold = Math.max(1, Math.ceil(listings.length * 0.3));
+  let propertySignals = 0;
+
+  for (const listing of listings) {
+    const combined =
+      `${listing.title} ${listing.price ?? ""} ${listing.location ?? ""}`.toLowerCase();
+    if (
+      listing.bedrooms ||
+      listing.bathrooms ||
+      /\b(property|rent|rental|lease|bed|bath|apartment|studio|flat|house|office|sq\s*ft|sqm)\b/.test(
+        combined,
+      )
+    ) {
+      propertySignals += 1;
+    }
+    if (propertySignals >= propertySignalThreshold) return "property";
+  }
+
+  return "catalog";
+}
+
+function listingFromJsonLdNode(
+  node: Record<string, unknown>,
+  origin: string,
+): Omit<PropertyListing, "id"> | null {
+  if (!isListingLikeJsonLdNode(node)) return null;
+
+  const offers = isRecord(node.offers) ? node.offers : undefined;
+  const address = node.address ?? (isRecord(node.location) ? node.location.address : undefined);
+
+  const title = toCleanText(node.name ?? node.headline ?? node.title, 180);
+  const currency = firstString(offers?.priceCurrency);
+  const price =
+    toPrice(node.price, currency) ??
+    toPrice(offers?.price, currency) ??
+    toPrice(
+      isRecord(offers?.priceSpecification) ? offers?.priceSpecification.price : undefined,
+      currency,
+    );
+
+  const bedrooms =
+    toBedrooms(node.numberOfBedrooms) ??
+    toBedrooms(node.numberOfRooms) ??
+    toBedrooms(node.bedrooms);
+
+  const bathrooms =
+    toBedrooms(node.numberOfBathroomsTotal) ??
+    toBedrooms(node.numberOfBathrooms) ??
+    toBedrooms(node.bathrooms);
+
+  const location = toAddressString(address);
+  const urlCandidate = firstString(node.url ?? node["@id"] ?? node.mainEntityOfPage);
+  const url = urlCandidate ? resolveUrl(urlCandidate, origin) : undefined;
+  const imageCandidate = firstString(node.image);
+  const imageUrl = imageCandidate ? resolveUrl(imageCandidate, origin) : undefined;
+
+  // Require either a clear title or enough structured listing fields to avoid noisy matches.
+  if (!title && !price && !bedrooms && !bathrooms) return null;
+
+  return {
+    title: title ?? toCleanText(`${bedrooms ?? ""} listing`.trim(), 180) ?? "Listing",
+    price,
+    bedrooms,
+    bathrooms,
+    location,
+    url,
+    imageUrl,
+  };
+}
+
+function listingFromHtmlCard(cardHtml: string, origin: string): Omit<PropertyListing, "id"> | null {
+  const titleMatch =
+    cardHtml.match(/<h[1-6][^>]*>([\s\S]*?)<\/h[1-6]>/i) ??
+    cardHtml.match(
+      /<(?:a|span|div)[^>]*class=["'][^"']*(?:title|name|address|property|product|room|package|offer)[^"']*["'][^>]*>([\s\S]*?)<\/(?:a|span|div)>/i,
+    );
+  const title = titleMatch ? toCleanText(stripTags(titleMatch[1]), 180) : undefined;
+  if (!title) return null;
+
+  const cardText = stripTags(cardHtml).replace(/\s+/g, " ").trim();
+  const priceMatch = cardText.match(/(?:[$£€]\s?[\d,.]+(?:\s*(?:pcm|pw|per\s+\w+|month|week))?)/i);
+  const bedsMatch = cardText.match(/(\d+(?:\.\d+)?)\s*(?:bed|beds|bedroom|bedrooms)/i);
+  const bathsMatch = cardText.match(/(\d+(?:\.\d+)?)\s*(?:bath|baths|bathroom|bathrooms)/i);
+
+  const hrefMatch = cardHtml.match(/<a[^>]*href=["']([^"']+)["']/i);
+  const imageMatch =
+    cardHtml.match(/<img[^>]*src=["']([^"']+)["']/i) ??
+    cardHtml.match(/<img[^>]*data-src=["']([^"']+)["']/i);
+
+  return {
+    title,
+    price: priceMatch ? toCleanText(priceMatch[0], 48) : undefined,
+    bedrooms: bedsMatch ? bedsMatch[1] : undefined,
+    bathrooms: bathsMatch ? bathsMatch[1] : undefined,
+    url: hrefMatch ? resolveUrl(hrefMatch[1], origin) : undefined,
+    imageUrl: imageMatch ? resolveUrl(imageMatch[1], origin) : undefined,
+  };
+}
+
+function dedupePropertyListings(
+  listings: Array<Omit<PropertyListing, "id">>,
+  limit = 160,
+): PropertyListing[] {
+  const deduped: PropertyListing[] = [];
+  const seen = new Set<string>();
+
+  for (const candidate of listings) {
+    const identity = toPropertyIdentity(candidate);
+    if (!identity || seen.has(identity)) continue;
+
+    seen.add(identity);
+    deduped.push({ id: identity, ...candidate });
+    if (deduped.length >= limit) break;
+  }
+
+  return deduped;
+}
+
+function extractPropertyListings(html: string, origin: string): PropertyListing[] {
+  const candidates: Array<Omit<PropertyListing, "id">> = [];
+
+  for (const block of html.matchAll(
+    /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi,
+  )) {
+    try {
+      const parsed = JSON.parse(block[1]) as unknown;
+      const nodes: Record<string, unknown>[] = [];
+      flattenJsonLdNodes(parsed, nodes);
+
+      for (const node of nodes) {
+        const listing = listingFromJsonLdNode(node, origin);
+        if (listing) candidates.push(listing);
+      }
+    } catch {
+      // Ignore malformed JSON-LD blocks.
+    }
+  }
+
+  // Fallback heuristic for listing grids that lack JSON-LD.
+  if (candidates.length === 0) {
+    const cardBlocks = html.matchAll(
+      /<(?:article|li|div|section)[^>]*(?:property|listing|estate|result|card)[^>]*>([\s\S]*?)<\/(?:article|li|div|section)>/gi,
+    );
+    for (const block of cardBlocks) {
+      const listing = listingFromHtmlCard(block[0], origin);
+      if (listing) candidates.push(listing);
+    }
+  }
+
+  return dedupePropertyListings(candidates);
 }
 
 // ── Page copy extraction ─────────────────────────────────────────────────────

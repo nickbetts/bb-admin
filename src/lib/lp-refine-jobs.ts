@@ -1,4 +1,5 @@
 import type { LPCritiqueItem } from "@/lib/lp-generator";
+import type { ListingCategory, PropertyListing } from "@/lib/brand-extractor";
 
 export type RefinementMode = "single-pass" | "double-pass";
 
@@ -23,6 +24,12 @@ export interface ReferencePageDigest {
   bodyCopy: string[];
   allBodyText: string;
   imageryUrls: string[];
+  propertyListings?: PropertyListing[];
+  listingCategory?: ListingCategory;
+  isStructuredListing?: boolean;
+  listingCount?: number;
+  isPropertyListing?: boolean;
+  propertyCount?: number;
 }
 
 export type RefineJobPhase =
@@ -186,6 +193,7 @@ export function buildReferenceDigest(
     bodyCopyLimit?: number;
     statLimit?: number;
     imageLimit?: number;
+    propertyListingLimit?: number;
   },
 ): string {
   const totalChars = opts?.totalChars ?? DEFAULT_REFERENCE_TOTAL_CHARS;
@@ -196,6 +204,7 @@ export function buildReferenceDigest(
   const bodyCopyLimit = opts?.bodyCopyLimit ?? 80;
   const statLimit = opts?.statLimit ?? 120;
   const imageLimit = opts?.imageLimit ?? 120;
+  const propertyListingLimit = opts?.propertyListingLimit ?? 140;
 
   const chunks: string[] = [];
   const budget = { usedChars: 0, totalChars };
@@ -231,6 +240,27 @@ export function buildReferenceDigest(
     if (page.allBodyText) parts.push(`Full page text:\n${page.allBodyText}`);
     if (page.imageryUrls.length > 0)
       parts.push(`Images: ${page.imageryUrls.slice(0, imageLimit).join(", ")}`);
+    if (page.propertyListings?.length) {
+      const serialisedListings = page.propertyListings
+        .slice(0, propertyListingLimit)
+        .map((listing) => ({
+          title: listing.title,
+          price: listing.price,
+          bedrooms: listing.bedrooms,
+          bathrooms: listing.bathrooms,
+          location: listing.location,
+          url: listing.url,
+          imageUrl: listing.imageUrl,
+        }));
+      const listingLabel =
+        page.listingCategory === "property" ? "Property listings" : "Structured listings";
+      const listingTotal = page.listingCount ?? page.propertyCount ?? page.propertyListings.length;
+      parts.push(`${listingLabel} (${listingTotal}):\n${JSON.stringify(serialisedListings)}`);
+    }
+    if ((page.isStructuredListing || page.isPropertyListing) && !page.propertyListings?.length) {
+      const listingTotal = page.listingCount ?? page.propertyCount ?? 0;
+      parts.push(`Structured listing page: true (${listingTotal} listings detected)`);
+    }
 
     let pageChunk = parts.join("\n");
     if (pageChunk.length > perPageChars) {

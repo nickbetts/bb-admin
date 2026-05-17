@@ -7,7 +7,7 @@
 
 import sharp from "sharp";
 import { getAnthropicClient } from "@/lib/anthropic-client";
-import type { BrandContext, PageContent } from "@/lib/brand-extractor";
+import type { BrandContext, PageContent, PropertyListing } from "@/lib/brand-extractor";
 import { screenshotHtml } from "@/lib/puppeteer";
 import {
   buildPlannerCroBlock,
@@ -1204,6 +1204,163 @@ export interface RefineSectionOptions {
   imageUrls?: string[];
   /** Additional context scraped from user-provided URLs */
   additionalContext?: string;
+  /** Structured listings used for strict listing-card sync */
+  propertyListings?: PropertyListing[];
+  /** When true, enforce one-card-per-listing and image URL mapping */
+  strictListingSync?: boolean;
+}
+
+interface SectionListingValidationResult {
+  expectedCount: number;
+  missingListingIds: string[];
+  duplicateListingIds: string[];
+  missingImageListingIds: string[];
+  passed: boolean;
+}
+
+function extractSectionHtmlFromResponse(raw: string): string {
+  const stripped = stripMarkdownFences(raw);
+
+  // Claude occasionally prefixes the HTML with a brief explanation even when
+  // told not to. Trim everything before the first < and after the last >
+  // so only the section markup is returned.
+  const htmlStart = stripped.indexOf("<");
+  const htmlEnd = stripped.lastIndexOf(">");
+  const html =
+    htmlStart !== -1 && htmlEnd > htmlStart
+      ? stripped.slice(htmlStart, htmlEnd + 1).trim()
+      : stripped.trim();
+
+  if (!html || html.length < 10) {
+    throw new HtmlValidationError(
+      "The model returned an empty response for this section. Please try again.",
+    );
+  }
+
+  return html;
+}
+
+function normaliseComparableText(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&#39;/gi, "'")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function countTextOccurrences(haystack: string, needle: string): number {
+  if (!needle) return 0;
+
+  let count = 0;
+  let index = 0;
+  while (index < haystack.length) {
+    const next = haystack.indexOf(needle, index);
+    if (next === -1) break;
+    count += 1;
+    index = next + needle.length;
+  }
+  return count;
+}
+
+function validateSectionListingSync(
+  sectionHtml: string,
+  listings: PropertyListing[],
+): SectionListingValidationResult {
+  const plainText = normaliseComparableText(stripScripts(sectionHtml));
+  const referencedAssets = new Set(extractReferencedAssetUrlsFromHtml(sectionHtml));
+
+  const missingListingIds: string[] = [];
+  const duplicateListingIds: string[] = [];
+  const missingImageListingIds: string[] = [];
+
+  for (const listing of listings) {
+    const titleNeedle = normaliseComparableText(listing.title);
+    const titleOccurrences = titleNeedle ? countTextOccurrences(plainText, titleNeedle) : 0;
+
+    if (titleNeedle && titleOccurrences === 0) {
+      missingListingIds.push(listing.id);
+    }
+    if (titleNeedle && titleOccurrences > 1) {
+      duplicateListingIds.push(listing.id);
+    }
+
+    if (listing.imageUrl && !referencedAssets.has(listing.imageUrl)) {
+      missingImageListingIds.push(listing.id);
+    }
+  }
+
+  return {
+    expectedCount: listings.length,
+    missingListingIds,
+    duplicateListingIds,
+    missingImageListingIds,
+    passed:
+      missingListingIds.length === 0 &&
+      duplicateListingIds.length === 0 &&
+      missingImageListingIds.length === 0,
+  };
+}
+
+function buildSectionListingRepairInstructions(
+  listings: PropertyListing[],
+  validation: SectionListingValidationResult,
+): string {
+  const listingById = new Map(listings.map((listing) => [listing.id, listing]));
+  const lines: string[] = [
+    "Strict listing sync is enabled for this section.",
+    "Keep existing structure and styling where possible.",
+    "Ensure each source listing appears exactly once in the same order as the source JSON.",
+    "Do not invent, merge, or rename listings.",
+  ];
+
+  if (validation.missingListingIds.length > 0) {
+    lines.push("Add these missing listings exactly once:");
+    for (const id of validation.missingListingIds) {
+      const listing = listingById.get(id);
+      if (!listing) continue;
+      lines.push(
+        `- ${listing.title}${listing.price ? ` (${listing.price})` : ""}${listing.location ? `, ${listing.location}` : ""}`,
+      );
+    }
+  }
+
+  if (validation.duplicateListingIds.length > 0) {
+    lines.push("These listings appear multiple times, keep exactly one card for each:");
+    for (const id of validation.duplicateListingIds) {
+      const listing = listingById.get(id);
+      if (!listing) continue;
+      lines.push(`- ${listing.title}`);
+    }
+  }
+
+  if (validation.missingImageListingIds.length > 0) {
+    lines.push("Ensure these listings use the exact image URL in markup:");
+    for (const id of validation.missingImageListingIds) {
+      const listing = listingById.get(id);
+      if (!listing?.imageUrl) continue;
+      lines.push(`- ${listing.title}: ${listing.imageUrl}`);
+    }
+  }
+
+  const listingSourceJson = JSON.stringify(
+    listings.map((listing) => ({
+      title: listing.title,
+      price: listing.price,
+      bedrooms: listing.bedrooms,
+      bathrooms: listing.bathrooms,
+      location: listing.location,
+      url: listing.url,
+      imageUrl: listing.imageUrl,
+    })),
+  );
+
+  lines.push("Source listings JSON (ordered, treat as source of truth):");
+  lines.push(listingSourceJson);
+
+  return lines.join("\n");
 }
 
 export async function refineSectionHtml(opts: RefineSectionOptions): Promise<string> {
@@ -1216,12 +1373,19 @@ export async function refineSectionHtml(opts: RefineSectionOptions): Promise<str
       .map((c) => `${c.role}: ${c.hex}`)
       .join(", ") ?? "";
 
+  const isStrictListingSync = Boolean(opts.strictListingSync && opts.propertyListings?.length);
+  const listingPayload = (opts.propertyListings ?? []).slice(0, 180);
+
   const system = `You are an expert landing page designer editing a single section of an existing page.
 Return ONLY the updated section HTML — no full page wrapper, no <html>/<head>/<body> tags, no markdown fences, no explanation.
 Preserve the section's overall structure and visual style unless the user explicitly asks to change them.
 Match the colours, fonts, and tone described in the page context.
 Use the scraped website copy for accurate brand wording — real service names, real stats, real team names, real testimonials.
-For FAQ or accordion sections, always use native <details>/<summary> elements — they require zero JavaScript and work everywhere. If the design calls for custom styling, add a self-contained <style> block; never rely on external libraries.`;
+For FAQ or accordion sections, always use native <details>/<summary> elements — they require zero JavaScript and work everywhere. If the design calls for custom styling, add a self-contained <style> block; never rely on external libraries.${
+    isStrictListingSync
+      ? "\nStrict listing sync mode: for listing-card sections, render one card per source listing, preserve source ordering, keep listing titles intact, and use exact imageUrl values when provided. This applies across sectors, for example property, ecommerce catalogues, travel inventory, and service/package listings."
+      : ""
+  }`;
 
   const SECTION_INPUT_BUDGET_TOKENS = 120_000;
   const SECTION_OUTPUT_MAX_TOKENS = 7000;
@@ -1270,6 +1434,23 @@ USER REQUEST: ${opts.prompt}`;
     appendWithinBudget("## Additional context from provided URLs:", opts.additionalContext);
   }
 
+  if (isStrictListingSync) {
+    appendWithinBudget(
+      "## Structured listings (source of truth JSON):",
+      JSON.stringify(
+        listingPayload.map((listing) => ({
+          title: listing.title,
+          price: listing.price,
+          bedrooms: listing.bedrooms,
+          bathrooms: listing.bathrooms,
+          location: listing.location,
+          url: listing.url,
+          imageUrl: listing.imageUrl,
+        })),
+      ),
+    );
+  }
+
   const imageBlocks = opts.imageUrls?.length
     ? await buildImageBlocks(opts.imageUrls, undefined, REFINE_SECTION_IMAGE_LIMIT)
     : [];
@@ -1288,24 +1469,43 @@ USER REQUEST: ${opts.prompt}`;
 
   const block = response.content?.[0];
   const raw = block?.type === "text" ? block.text.trim() : "";
-  const stripped = stripMarkdownFences(raw);
+  let finalHtml = extractSectionHtmlFromResponse(raw);
 
-  // Claude occasionally prefixes the HTML with a brief explanation even when
-  // told not to. Trim everything before the first < and after the last >
-  // so only the section markup is returned.
-  const htmlStart = stripped.indexOf("<");
-  const htmlEnd = stripped.lastIndexOf(">");
-  const html =
-    htmlStart !== -1 && htmlEnd > htmlStart
-      ? stripped.slice(htmlStart, htmlEnd + 1).trim()
-      : stripped.trim();
+  if (isStrictListingSync) {
+    const firstValidation = validateSectionListingSync(finalHtml, listingPayload);
+    if (!firstValidation.passed) {
+      const repairInstructions = buildSectionListingRepairInstructions(
+        listingPayload,
+        firstValidation,
+      );
+      const repairText = `${userContent}\n\n## Strict listing sync repair\n${repairInstructions}`;
 
-  if (!html || html.length < 10) {
-    throw new HtmlValidationError(
-      "The model returned an empty response for this section. Please try again.",
-    );
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const repairMessageContent: any = imageBlocks.length
+        ? [{ type: "text", text: repairText }, ...imageBlocks]
+        : repairText;
+
+      const repairResponse = await anthropic.messages.create({
+        model: REFINE_MODEL,
+        max_tokens: SECTION_OUTPUT_MAX_TOKENS,
+        system,
+        messages: [{ role: "user", content: repairMessageContent }],
+      });
+
+      const repairBlock = repairResponse.content?.[0];
+      const repairRaw = repairBlock?.type === "text" ? repairBlock.text.trim() : "";
+      finalHtml = extractSectionHtmlFromResponse(repairRaw);
+
+      const secondValidation = validateSectionListingSync(finalHtml, listingPayload);
+      if (!secondValidation.passed) {
+        console.warn(
+          `[lp-generator] Strict listing sync still incomplete: missing=${secondValidation.missingListingIds.length}, duplicates=${secondValidation.duplicateListingIds.length}, missingImages=${secondValidation.missingImageListingIds.length}, expected=${secondValidation.expectedCount}`,
+        );
+      }
+    }
   }
-  return html;
+
+  return finalHtml;
 }
 
 export async function refineLandingPage(opts: RefineLPOptions): Promise<string> {
@@ -1636,6 +1836,7 @@ Guidelines:
 - Ask a single clarifying question if you need more context before recommending.
 - Reference the actual page content (headlines, CTAs, sections) when analysing.
 - If the user has uploaded a reference page, note what specific features or patterns from it would benefit the current page.
+- If structured listing context is present, treat it as source of truth. Call out count mismatches explicitly and do not merge or invent listings.
 
 ## Action tags (output these on their own line at the very end of your response, after all explanatory text)
 
@@ -1680,6 +1881,10 @@ export async function chatAboutLandingPage(opts: ChatLPOptions): Promise<ChatLPR
 
   if (opts.additionalContext) {
     userContent += `\n\n## Full text content scraped from reference URLs provided by the user\nUse this to understand the competitor/reference page's copy, services, features, and messaging. Reference it when answering questions or making recommendations:\n${opts.additionalContext}`;
+    if (opts.additionalContext.includes("Structured listing context")) {
+      userContent +=
+        "\n\nTreat the structured listing block as authoritative inventory context when giving recommendations.";
+    }
   }
 
   if (opts.imageUrls?.length) {
