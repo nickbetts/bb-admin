@@ -61,6 +61,11 @@ function countOccurrences(haystack: string, needle: string): number {
   return count;
 }
 
+function isGenericListingTitle(title: string): boolean {
+  const value = title.toLowerCase().trim();
+  return ["under offer", "available", "to let", "for sale", "let agreed"].includes(value);
+}
+
 function dedupeListings(listings: PropertyListing[]): PropertyListing[] {
   const map = new Map<string, PropertyListing>();
   for (const listing of listings) {
@@ -84,11 +89,14 @@ function buildDeterministicListingFindings(
   const missingImages: PropertyListing[] = [];
 
   for (const listing of listings) {
-    const needle = normaliseComparableText(listing.title);
-    const matches = needle ? countOccurrences(plainText, needle) : 0;
+    const titleNeedle = normaliseComparableText(listing.title);
+    const urlNeedle = listing.url ? listing.url.toLowerCase() : "";
+    const urlMatches = urlNeedle ? countOccurrences(html.toLowerCase(), urlNeedle) : 0;
+    const titleMatches = titleNeedle ? countOccurrences(plainText, titleNeedle) : 0;
+    const matches = urlMatches > 0 ? urlMatches : titleMatches;
 
-    if (needle && matches === 0) missingTitles.push(listing);
-    if (needle && matches > 1) duplicateTitles.push(listing);
+    if (matches === 0 && (titleNeedle || urlNeedle)) missingTitles.push(listing);
+    if (matches > 1 && !isGenericListingTitle(listing.title)) duplicateTitles.push(listing);
     if (listing.imageUrl && !referencedAssets.has(listing.imageUrl)) missingImages.push(listing);
   }
 
@@ -202,13 +210,21 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     const refinementMode: RefinementMode =
       body.refinementMode === "double-pass" ? "double-pass" : "single-pass";
-    const perUrlBudget =
-      refinementMode === "double-pass" ? DOUBLE_PASS_PER_URL_BUDGET : SINGLE_PASS_PER_URL_BUDGET;
-    const totalContextBudget =
-      refinementMode === "double-pass"
+    const listingPromptRequested = isLikelyListingPrompt(body.prompt);
+    const perUrlBudget = listingPromptRequested
+      ? refinementMode === "double-pass"
+        ? 55_000
+        : 36_000
+      : refinementMode === "double-pass"
+        ? DOUBLE_PASS_PER_URL_BUDGET
+        : SINGLE_PASS_PER_URL_BUDGET;
+    const totalContextBudget = listingPromptRequested
+      ? refinementMode === "double-pass"
+        ? 220_000
+        : 140_000
+      : refinementMode === "double-pass"
         ? DOUBLE_PASS_TOTAL_CONTEXT_BUDGET
         : SINGLE_PASS_TOTAL_CONTEXT_BUDGET;
-    const listingPromptRequested = isLikelyListingPrompt(body.prompt);
 
     const crawlWarnings: string[] = [];
     const crawlUrls = normaliseUrlList(body.crawlUrls, refinementMode === "double-pass" ? 10 : 3);
@@ -292,7 +308,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
                 bodyCopyLimit: 100,
                 statLimit: 120,
                 imageLimit: 140,
-                propertyListingLimit: 220,
+                propertyListingLimit: listingPromptRequested ? 280 : 220,
+                fullBodyTextLimit: listingPromptRequested ? 2500 : 18_000,
               });
 
               additionalContext = listingSummary ? `${listingSummary}\n\n${digest}` : digest;

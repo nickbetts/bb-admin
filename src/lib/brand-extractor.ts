@@ -914,6 +914,105 @@ function listingFromHtmlCard(cardHtml: string, origin: string): Omit<PropertyLis
   };
 }
 
+function humaniseSlug(slug: string): string {
+  return slug
+    .replace(/^\d+-/, "")
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function isLikelyNoiseListingTitle(title: string): boolean {
+  const normalised = title.toLowerCase().replace(/\s+/g, " ").trim();
+  return [
+    "properties found",
+    "could not load streetview map",
+    "prev",
+    "next",
+    "view map",
+    "save",
+    "share",
+  ].some((phrase) => normalised === phrase || normalised.startsWith(`${phrase} `));
+}
+
+function extractListingsFromDetailLinks(
+  html: string,
+  origin: string,
+): Array<Omit<PropertyListing, "id">> {
+  const listings: Array<Omit<PropertyListing, "id">> = [];
+  const seenUrls = new Set<string>();
+
+  const linkRegex = /<a[^>]*href=["']([^"']*\/properties\/\d+[^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi;
+
+  for (const match of html.matchAll(linkRegex)) {
+    const rawHref = match[1];
+    const anchorInnerHtml = match[2] ?? "";
+    const resolvedUrl = resolveUrl(rawHref, origin);
+    if (seenUrls.has(resolvedUrl)) continue;
+
+    seenUrls.add(resolvedUrl);
+
+    const parsed = new URL(resolvedUrl);
+    const slug = parsed.pathname.split("/").filter(Boolean).pop() ?? "";
+    const titleFromSlug = humaniseSlug(slug);
+    const anchorTitle = toCleanText(stripTags(anchorInnerHtml), 220);
+    const title = anchorTitle && anchorTitle.length > 3 ? anchorTitle : titleFromSlug;
+
+    if (!title || title.length < 4 || isLikelyNoiseListingTitle(title)) continue;
+
+    const matchIndex = match.index ?? 0;
+    const start = Math.max(0, matchIndex - 300);
+    const end = Math.min(html.length, matchIndex + 2500);
+    const windowHtml = html.slice(start, end);
+    const windowText = stripTags(windowHtml).replace(/\s+/g, " ").trim();
+
+    const anchorImgixMatch = anchorInnerHtml.match(/https?:\/\/as-images\.imgix\.net\/[^"'\s)]+/i);
+    const anchorImageAttrMatch =
+      anchorInnerHtml.match(/<img[^>]*(?:src|data-src)=["']([^"']+)["']/i) ??
+      anchorInnerHtml.match(/data-(?:src|lazy-src|original|image)=["']([^"']+)["']/i);
+
+    const imgixMatch = windowHtml.match(/https?:\/\/as-images\.imgix\.net\/[^"'\s)]+/i);
+    const imageAttrMatch =
+      windowHtml.match(/<img[^>]*(?:src|data-src)=["']([^"']+)["']/i) ??
+      windowHtml.match(/data-(?:src|lazy-src|original|image)=["']([^"']+)["']/i);
+    const imageCandidate = imgixMatch?.[0] ?? imageAttrMatch?.[1];
+
+    const priceMatch = windowText.match(
+      /((?:£|\$|€)\s?[\d,.]+(?:\s*(?:pcm|pw|per\s+\w+|month|week))?|\bPOA\b|\bPrice\s+on\s+application\b)/i,
+    );
+    const bedsMatch = windowText.match(/(\d+(?:\.\d+)?)\s*(?:bed|beds|bedroom|bedrooms)/i);
+    const bathsMatch = windowText.match(/(\d+(?:\.\d+)?)\s*(?:bath|baths|bathroom|bathrooms)/i);
+
+    listings.push({
+      title,
+      price: priceMatch ? toCleanText(priceMatch[1], 48) : undefined,
+      bedrooms: bedsMatch ? bedsMatch[1] : undefined,
+      bathrooms: bathsMatch ? bathsMatch[1] : undefined,
+      url: resolvedUrl,
+      imageUrl: anchorImgixMatch?.[0]
+        ? resolveUrl(anchorImgixMatch[0], origin)
+        : anchorImageAttrMatch?.[1]
+          ? resolveUrl(anchorImageAttrMatch[1], origin)
+          : imageCandidate
+            ? resolveUrl(imageCandidate, origin)
+            : undefined,
+    });
+  }
+
+  return listings;
+}
+
+function isUsefulListingCandidate(listing: Omit<PropertyListing, "id">): boolean {
+  if (!listing.title || listing.title.length < 4 || isLikelyNoiseListingTitle(listing.title)) {
+    return false;
+  }
+
+  return Boolean(
+    listing.url || listing.price || listing.imageUrl || listing.bedrooms || listing.bathrooms,
+  );
+}
+
 function dedupePropertyListings(
   listings: Array<Omit<PropertyListing, "id">>,
   limit = 160,
@@ -922,6 +1021,8 @@ function dedupePropertyListings(
   const seen = new Set<string>();
 
   for (const candidate of listings) {
+    if (!isUsefulListingCandidate(candidate)) continue;
+
     const identity = toPropertyIdentity(candidate);
     if (!identity || seen.has(identity)) continue;
 
@@ -953,8 +1054,12 @@ function extractPropertyListings(html: string, origin: string): PropertyListing[
     }
   }
 
+  if (candidates.length < 20) {
+    candidates.push(...extractListingsFromDetailLinks(html, origin));
+  }
+
   // Fallback heuristic for listing grids that lack JSON-LD.
-  if (candidates.length === 0) {
+  if (candidates.length < 10) {
     const cardBlocks = html.matchAll(
       /<(?:article|li|div|section)[^>]*(?:property|listing|estate|result|card)[^>]*>([\s\S]*?)<\/(?:article|li|div|section)>/gi,
     );

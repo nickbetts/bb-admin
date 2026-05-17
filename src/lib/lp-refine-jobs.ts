@@ -194,6 +194,7 @@ export function buildReferenceDigest(
     statLimit?: number;
     imageLimit?: number;
     propertyListingLimit?: number;
+    fullBodyTextLimit?: number;
   },
 ): string {
   const totalChars = opts?.totalChars ?? DEFAULT_REFERENCE_TOTAL_CHARS;
@@ -205,6 +206,7 @@ export function buildReferenceDigest(
   const statLimit = opts?.statLimit ?? 120;
   const imageLimit = opts?.imageLimit ?? 120;
   const propertyListingLimit = opts?.propertyListingLimit ?? 140;
+  const fullBodyTextLimit = opts?.fullBodyTextLimit ?? 18_000;
 
   const chunks: string[] = [];
   const budget = { usedChars: 0, totalChars };
@@ -237,9 +239,6 @@ export function buildReferenceDigest(
           .join("\n")}`,
       );
     }
-    if (page.allBodyText) parts.push(`Full page text:\n${page.allBodyText}`);
-    if (page.imageryUrls.length > 0)
-      parts.push(`Images: ${page.imageryUrls.slice(0, imageLimit).join(", ")}`);
     if (page.propertyListings?.length) {
       const serialisedListings = page.propertyListings
         .slice(0, propertyListingLimit)
@@ -260,6 +259,15 @@ export function buildReferenceDigest(
     if ((page.isStructuredListing || page.isPropertyListing) && !page.propertyListings?.length) {
       const listingTotal = page.listingCount ?? page.propertyCount ?? 0;
       parts.push(`Structured listing page: true (${listingTotal} listings detected)`);
+    }
+    if (page.imageryUrls.length > 0)
+      parts.push(`Images: ${page.imageryUrls.slice(0, imageLimit).join(", ")}`);
+    if (page.allBodyText) {
+      const limitForPage =
+        page.propertyListings?.length || page.isStructuredListing || page.isPropertyListing
+          ? Math.min(fullBodyTextLimit, 4000)
+          : fullBodyTextLimit;
+      parts.push(`Full page text:\n${truncate(page.allBodyText, limitForPage)}`);
     }
 
     let pageChunk = parts.join("\n");
