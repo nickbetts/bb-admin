@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { extractPageContentFromUrl, type BrandContext } from "@/lib/brand-extractor";
+import {
+  extractPageContentFromUrl,
+  type BrandContext,
+  type PropertyListing,
+} from "@/lib/brand-extractor";
 import {
   refineSectionHtml,
   extractAndValidateHtml,
@@ -150,6 +154,23 @@ function isAggressiveSectionRewrite(originalHtml: string, candidateHtml: string)
   }
 
   return false;
+}
+
+const LISTING_SECTION_RE =
+  /\b(property|listing|inventory|catalog|portfolio|product|sku|package|room|tour|price|rent|rental|offer|plan|bed|bath|bedroom|bathroom|sq\s*ft|sqft)\b/i;
+
+function isLikelyListingSection(sectionHtml: string, prompt: string | undefined): boolean {
+  const sample = `${prompt ?? ""} ${sectionHtml.slice(0, 6000)}`.toLowerCase();
+  return LISTING_SECTION_RE.test(sample);
+}
+
+function dedupeListings(listings: PropertyListing[]): PropertyListing[] {
+  const map = new Map<string, PropertyListing>();
+  for (const listing of listings) {
+    if (!listing.id || map.has(listing.id)) continue;
+    map.set(listing.id, listing);
+  }
+  return [...map.values()];
 }
 
 // POST /api/tools/landing-pages/[id]/refine/jobs/[jobId]/run
@@ -345,13 +366,48 @@ export async function POST(
 
         const section = state.sections[state.sectionIndex];
         const pageContext = buildPageContextSnapshot(state.currentHtml, 18_000);
-        const additionalContext =
+        const activePrompt =
+          state.sectionPass === 2 && state.passTwoPrompt ? state.passTwoPrompt : payload.prompt;
+
+        const structuredListings = dedupeListings(
+          state.referencePages.flatMap((page) => page.propertyListings ?? []),
+        );
+        const listingPages = state.referencePages.filter(
+          (page) =>
+            (page.isStructuredListing || page.isPropertyListing) &&
+            (page.listingCount ?? page.propertyCount ?? page.propertyListings?.length ?? 0) > 0,
+        );
+        const listingSyncApplied =
+          structuredListings.length > 0 && isLikelyListingSection(section.outerHtml, activePrompt);
+
+        const digest =
           state.referencePages.length > 0
             ? buildReferenceDigest(state.referencePages, {
                 totalChars: refinementMode === "double-pass" ? 220_000 : 170_000,
                 perPageChars: refinementMode === "double-pass" ? 80_000 : 60_000,
+                propertyListingLimit: listingSyncApplied ? 220 : 140,
               })
             : undefined;
+
+        const additionalContext = listingSyncApplied
+          ? [
+              "## Structured listing sync mode",
+              `Detected ${structuredListings.length} unique listings across ${listingPages.length || 1} reference URL${listingPages.length === 1 ? "" : "s"}.`,
+              `Detected listing category: ${
+                [
+                  ...new Set(
+                    listingPages
+                      .map((page) => page.listingCategory)
+                      .filter((value): value is "property" | "catalog" => Boolean(value)),
+                  ),
+                ].join(", ") || "mixed/unknown"
+              }.`,
+              "For listing cards, preserve one card per listing, preserve listing order, and map each listing to its own image URL when available.",
+              digest,
+            ]
+              .filter((part): part is string => Boolean(part && part.trim()))
+              .join("\n\n")
+          : digest;
 
         const sectionPrompt = buildSectionPrompt({
           userPrompt: payload.prompt,
@@ -370,13 +426,17 @@ export async function POST(
           brandContext,
           imageUrls: state.importedImageUrls.length > 0 ? state.importedImageUrls : undefined,
           additionalContext,
+          propertyListings: listingSyncApplied ? structuredListings : undefined,
+          strictListingSync: listingSyncApplied,
         });
 
         const protectLayout =
           !allowsMajorLayoutChanges(payload.prompt) &&
           !allowsMajorLayoutChanges(state.passTwoPrompt);
         const keepOriginalSection =
-          protectLayout && isAggressiveSectionRewrite(section.outerHtml, refinedSectionHtml);
+          !listingSyncApplied &&
+          protectLayout &&
+          isAggressiveSectionRewrite(section.outerHtml, refinedSectionHtml);
         const appliedSectionHtml = keepOriginalSection ? section.outerHtml : refinedSectionHtml;
 
         if (keepOriginalSection) {
