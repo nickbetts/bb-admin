@@ -159,6 +159,107 @@ function isAggressiveSectionRewrite(originalHtml: string, candidateHtml: string)
 const LISTING_SECTION_RE =
   /\b(property|listing|inventory|catalog|portfolio|product|sku|package|room|tour|price|rent|rental|offer|plan|bed|bath|bedroom|bathroom|sq\s*ft|sqft)\b/i;
 
+const PAGINATION_SIGNAL_RE =
+  /\b(pagination|paginate|page\s+\d+|next|previous|prev|load more|show more|view all)\b/i;
+
+const PAGINATION_ATTR_RE =
+  /\b(?:aria-label|class|id|data-testid)=["'][^"']*(?:pagination|pager|page-item|page-link|next|prev)[^"']*["']/i;
+
+const COMMON_TAIL_STOP_WORDS = new Set([
+  "about",
+  "after",
+  "again",
+  "below",
+  "from",
+  "have",
+  "into",
+  "just",
+  "more",
+  "next",
+  "over",
+  "same",
+  "some",
+  "than",
+  "that",
+  "their",
+  "there",
+  "these",
+  "this",
+  "with",
+]);
+
+function toComparableText(html: string): string {
+  return html
+    .toLowerCase()
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&#39;/gi, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function hasPaginationSignals(html: string): boolean {
+  const lower = html.toLowerCase();
+  return (
+    PAGINATION_SIGNAL_RE.test(lower) ||
+    PAGINATION_ATTR_RE.test(lower) ||
+    /\brel=["'](?:next|prev)["']/i.test(lower) ||
+    /\?page=\d+/i.test(lower)
+  );
+}
+
+function hasTailContentOverlap(originalHtml: string, candidateHtml: string): boolean {
+  const originalText = toComparableText(originalHtml);
+  const candidateText = toComparableText(candidateHtml);
+  if (!originalText || !candidateText) return true;
+
+  const tail = originalText.slice(Math.max(0, originalText.length - 1800));
+  const keywords = [
+    ...new Set(
+      tail
+        .split(/\s+/)
+        .map((word) => word.trim())
+        .filter((word) => word.length >= 5)
+        .filter((word) => !COMMON_TAIL_STOP_WORDS.has(word))
+        .slice(0, 60),
+    ),
+  ];
+
+  if (keywords.length < 8) return true;
+
+  const matches = keywords.reduce((count, word) => {
+    return candidateText.includes(word) ? count + 1 : count;
+  }, 0);
+
+  return matches / keywords.length >= 0.3;
+}
+
+function isListingSectionRewriteSafe(originalHtml: string, candidateHtml: string): boolean {
+  if (!candidateHtml || candidateHtml.trim().length < 20) return false;
+
+  const originalHasPagination = hasPaginationSignals(originalHtml);
+  const candidateHasPagination = hasPaginationSignals(candidateHtml);
+  if (originalHasPagination && !candidateHasPagination) return false;
+
+  const originalLandmarkCount = (
+    originalHtml.match(/<(section|header|footer|main|article|nav|form|aside)\b/gi) ?? []
+  ).length;
+  const candidateLandmarkCount = (
+    candidateHtml.match(/<(section|header|footer|main|article|nav|form|aside)\b/gi) ?? []
+  ).length;
+  if (
+    originalLandmarkCount >= 3 &&
+    candidateLandmarkCount < Math.ceil(originalLandmarkCount * 0.6)
+  ) {
+    return false;
+  }
+
+  return hasTailContentOverlap(originalHtml, candidateHtml);
+}
+
 function isLikelyListingSection(sectionHtml: string, prompt: string | undefined): boolean {
   const sample = `${prompt ?? ""} ${sectionHtml.slice(0, 6000)}`.toLowerCase();
   return LISTING_SECTION_RE.test(sample);
@@ -433,14 +534,17 @@ export async function POST(
         const protectLayout =
           !allowsMajorLayoutChanges(payload.prompt) &&
           !allowsMajorLayoutChanges(state.passTwoPrompt);
+        const aggressiveRewrite = isAggressiveSectionRewrite(section.outerHtml, refinedSectionHtml);
+        const listingRewriteUnsafe =
+          listingSyncApplied && !isListingSectionRewriteSafe(section.outerHtml, refinedSectionHtml);
         const keepOriginalSection =
-          !listingSyncApplied &&
-          protectLayout &&
-          isAggressiveSectionRewrite(section.outerHtml, refinedSectionHtml);
+          protectLayout && (listingSyncApplied ? listingRewriteUnsafe : aggressiveRewrite);
         const appliedSectionHtml = keepOriginalSection ? section.outerHtml : refinedSectionHtml;
 
         if (keepOriginalSection) {
-          const warning = `Skipped aggressive rewrite for ${section.label} to preserve the existing layout.`;
+          const warning = listingSyncApplied
+            ? `Skipped risky listing rewrite for ${section.label} to preserve pagination and downstream section layout.`
+            : `Skipped aggressive rewrite for ${section.label} to preserve the existing layout.`;
           if (!state.crawlWarnings.includes(warning)) {
             state.crawlWarnings.push(warning);
           }
