@@ -274,6 +274,131 @@ function dedupeListings(listings: PropertyListing[]): PropertyListing[] {
   return [...map.values()];
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function patchImageTagSource(imgTag: string, imageUrl: string): string {
+  let updated = imgTag;
+
+  if (/\bsrc=["'][^"']*["']/i.test(updated)) {
+    updated = updated.replace(/\bsrc=["'][^"']*["']/i, `src="${imageUrl}"`);
+  } else {
+    updated = updated.replace(/^<img\b/i, `<img src="${imageUrl}"`);
+  }
+
+  if (/\bsrcset=["'][^"']*["']/i.test(updated)) {
+    updated = updated.replace(/\bsrcset=["'][^"']*["']/i, `srcset="${imageUrl}"`);
+  }
+
+  for (const attr of ["data-src", "data-lazy-src", "data-original", "data-image"]) {
+    const attrRe = new RegExp(`\\b${escapeRegExp(attr)}=["'][^"']*["']`, "i");
+    if (attrRe.test(updated)) {
+      updated = updated.replace(attrRe, `${attr}="${imageUrl}"`);
+    }
+  }
+
+  return updated;
+}
+
+function patchNearestImageForNeedle(
+  sectionHtml: string,
+  needle: string,
+  imageUrl: string,
+): { html: string; patched: boolean } {
+  const searchNeedle = needle.trim().toLowerCase();
+  if (searchNeedle.length < 6) return { html: sectionHtml, patched: false };
+
+  const SEARCH_RADIUS = 2200;
+  let lower = sectionHtml.toLowerCase();
+  let index = lower.indexOf(searchNeedle);
+
+  while (index !== -1) {
+    const start = Math.max(0, index - SEARCH_RADIUS);
+    const end = Math.min(sectionHtml.length, index + SEARCH_RADIUS);
+    const windowHtml = sectionHtml.slice(start, end);
+    const relativeNeedleIndex = index - start;
+
+    const imageMatches = [...windowHtml.matchAll(/<img\b[^>]*>/gi)];
+    if (imageMatches.length > 0) {
+      let selected = imageMatches[0];
+      let selectedIndex = selected.index ?? 0;
+      let bestDistance = Math.abs(selectedIndex - relativeNeedleIndex);
+
+      for (let i = 1; i < imageMatches.length; i++) {
+        const candidate = imageMatches[i];
+        const candidateIndex = candidate.index ?? 0;
+        const distance = Math.abs(candidateIndex - relativeNeedleIndex);
+        if (distance < bestDistance) {
+          selected = candidate;
+          selectedIndex = candidateIndex;
+          bestDistance = distance;
+        }
+      }
+
+      const originalTag = selected[0];
+      const patchedTag = patchImageTagSource(originalTag, imageUrl);
+      if (patchedTag !== originalTag) {
+        const selectedEnd = selectedIndex + originalTag.length;
+        const patchedWindow =
+          windowHtml.slice(0, selectedIndex) + patchedTag + windowHtml.slice(selectedEnd);
+        const nextHtml = sectionHtml.slice(0, start) + patchedWindow + sectionHtml.slice(end);
+        return { html: nextHtml, patched: true };
+      }
+    }
+
+    index = lower.indexOf(searchNeedle, index + searchNeedle.length);
+    lower = sectionHtml.toLowerCase();
+  }
+
+  return { html: sectionHtml, patched: false };
+}
+
+function applySafeListingImageSync(
+  sectionHtml: string,
+  listings: PropertyListing[],
+): { html: string; patchedCount: number } {
+  let html = sectionHtml;
+  let patchedCount = 0;
+
+  for (const listing of listings) {
+    if (!listing.imageUrl) continue;
+
+    const needles: string[] = [];
+    if (listing.url) {
+      needles.push(listing.url.toLowerCase());
+      try {
+        const parsed = new URL(listing.url);
+        needles.push(parsed.pathname.toLowerCase());
+      } catch {
+        // Ignore invalid URLs; absolute URL needle is still attempted.
+      }
+    }
+
+    const titleNeedle = listing.title.toLowerCase().replace(/\s+/g, " ").trim();
+    if (titleNeedle.length >= 12) needles.push(titleNeedle);
+
+    const titleWords = titleNeedle
+      .split(" ")
+      .filter((word) => word.length >= 5)
+      .slice(0, 4);
+    if (titleWords.length >= 2) needles.push(titleWords.join(" "));
+
+    const uniqueNeedles = [...new Set(needles.filter((needle) => needle.length >= 6))];
+
+    for (const needle of uniqueNeedles) {
+      const result = patchNearestImageForNeedle(html, needle, listing.imageUrl);
+      if (result.patched) {
+        html = result.html;
+        patchedCount += 1;
+        break;
+      }
+    }
+  }
+
+  return { html, patchedCount };
+}
+
 // POST /api/tools/landing-pages/[id]/refine/jobs/[jobId]/run
 // Processes one bounded refinement step per request.
 export async function POST(
@@ -539,11 +664,24 @@ export async function POST(
           listingSyncApplied && !isListingSectionRewriteSafe(section.outerHtml, refinedSectionHtml);
         const keepOriginalSection =
           protectLayout && (listingSyncApplied ? listingRewriteUnsafe : aggressiveRewrite);
-        const appliedSectionHtml = keepOriginalSection ? section.outerHtml : refinedSectionHtml;
+        let appliedSectionHtml = keepOriginalSection ? section.outerHtml : refinedSectionHtml;
+
+        let appliedSafeListingSync = false;
+        let safeListingSyncPatchedCount = 0;
+        if (keepOriginalSection && listingSyncApplied) {
+          const safeListingSync = applySafeListingImageSync(section.outerHtml, structuredListings);
+          if (safeListingSync.patchedCount > 0) {
+            appliedSectionHtml = safeListingSync.html;
+            appliedSafeListingSync = true;
+            safeListingSyncPatchedCount = safeListingSync.patchedCount;
+          }
+        }
 
         if (keepOriginalSection) {
           const warning = listingSyncApplied
-            ? `Skipped risky listing rewrite for ${section.label} to preserve pagination and downstream section layout.`
+            ? appliedSafeListingSync
+              ? `Skipped risky listing rewrite for ${section.label} to preserve pagination and downstream section layout. Applied safe in-place image sync to ${safeListingSyncPatchedCount} listing card${safeListingSyncPatchedCount === 1 ? "" : "s"}.`
+              : `Skipped risky listing rewrite for ${section.label} to preserve pagination and downstream section layout.`
             : `Skipped aggressive rewrite for ${section.label} to preserve the existing layout.`;
           if (!state.crawlWarnings.includes(warning)) {
             state.crawlWarnings.push(warning);
