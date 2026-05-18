@@ -672,6 +672,135 @@ function scoreCardToListing(card: ListingCardSnapshot, listing: PropertyListing)
   return score;
 }
 
+function escapeHtmlText(value: string): string {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function escapeHtmlAttr(value: string): string {
+  return escapeHtmlText(value).replace(/"/g, "&quot;");
+}
+
+function updateTagAttribute(tag: string, attribute: string, value: string): string {
+  const escaped = escapeHtmlAttr(value);
+  const attrRe = new RegExp(`\\b${escapeRegExp(attribute)}=["'][^"']*["']`, "i");
+  if (attrRe.test(tag)) {
+    return tag.replace(attrRe, `${attribute}="${escaped}"`);
+  }
+
+  return tag.replace(/^<\w+\b/i, (openTag) => `${openTag} ${attribute}="${escaped}"`);
+}
+
+function toLocationSlug(location: string | undefined): string | undefined {
+  if (!location) return undefined;
+
+  const [firstPart] = location.split(",");
+  const slug = firstPart
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, " ")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+
+  return slug || undefined;
+}
+
+function rewritePropCardFromListing(
+  templateCardHtml: string,
+  listing: PropertyListing,
+): {
+  html: string;
+  patchedImages: number;
+  patchedTitles: number;
+  patchedLocations: number;
+} {
+  let html = templateCardHtml;
+  let patchedImages = 0;
+  let patchedTitles = 0;
+  let patchedLocations = 0;
+
+  const openingAnchorMatch = html.match(/<a\b[^>]*>/i);
+  if (openingAnchorMatch) {
+    let nextAnchorTag = openingAnchorMatch[0];
+
+    if (listing.url) {
+      nextAnchorTag = updateTagAttribute(nextAnchorTag, "data-source-url", listing.url);
+    }
+    if (listing.id) {
+      nextAnchorTag = updateTagAttribute(nextAnchorTag, "data-source-id", listing.id);
+    }
+
+    const locationSlug = toLocationSlug(listing.location);
+    if (locationSlug) {
+      nextAnchorTag = updateTagAttribute(nextAnchorTag, "data-location", locationSlug);
+    }
+
+    if (nextAnchorTag !== openingAnchorMatch[0]) {
+      html = html.replace(openingAnchorMatch[0], nextAnchorTag);
+    }
+  }
+
+  if (listing.title) {
+    const escapedTitle = escapeHtmlText(listing.title);
+    const nextTitleHtml = html.replace(
+      /(<h3[^>]*>)[\s\S]*?(<\/h3>)/i,
+      (_match, open, close) => `${open}${escapedTitle}${close}`,
+    );
+    if (nextTitleHtml !== html) {
+      patchedTitles += 1;
+      html = nextTitleHtml;
+    }
+  }
+
+  if (listing.imageUrl) {
+    const imgMatch = html.match(/<img\b[^>]*>/i);
+    if (imgMatch) {
+      const originalImgTag = imgMatch[0];
+      let nextImgTag = patchImageTagSource(originalImgTag, listing.imageUrl);
+      if (listing.title) {
+        nextImgTag = updateTagAttribute(nextImgTag, "alt", listing.title);
+      }
+
+      if (nextImgTag !== originalImgTag) {
+        html = html.replace(originalImgTag, nextImgTag);
+        patchedImages += 1;
+      }
+    }
+  }
+
+  if (listing.location) {
+    const escapedLocation = escapeHtmlText(listing.location);
+    const nextLocationHtml = html.replace(
+      /(<div[^>]*class=["'][^"']*prop-loc[^"']*["'][^>]*>\s*(?:<i[^>]*><\/i>)?\s*)([\s\S]*?)(<\/div>)/i,
+      (_match, prefix, _existing, suffix) => `${prefix}${escapedLocation}${suffix}`,
+    );
+    if (nextLocationHtml !== html) {
+      patchedLocations += 1;
+      html = nextLocationHtml;
+    }
+  }
+
+  if (listing.price) {
+    const escapedPrice = escapeHtmlText(listing.price);
+    const nextPriceHtml = html.replace(
+      /(<div[^>]*class=["'][^"']*prop-price[^"']*["'][^>]*>)([\s\S]*?)(<\/div>)/i,
+      (_match, open, content, close) => {
+        if (/<em[\s>]/i.test(content)) {
+          const nextContent = content.replace(
+            /(<em[^>]*>)[\s\S]*?(<\/em>)/i,
+            (_m: string, emOpen: string, emClose: string) => `${emOpen}${escapedPrice}${emClose}`,
+          );
+          return `${open}${nextContent}${close}`;
+        }
+
+        return `${open}Rent: <em>${escapedPrice}</em>${close}`;
+      },
+    );
+    html = nextPriceHtml;
+  }
+
+  return { html, patchedImages, patchedTitles, patchedLocations };
+}
+
 function applyDeterministicListingCardSync(
   sectionHtml: string,
   listings: PropertyListing[],
@@ -719,13 +848,20 @@ function applyDeterministicListingCardSync(
       }
     }
 
-    if (bestListingIndex >= 0 && bestScore >= 0.58) {
+    if (bestListingIndex >= 0 && bestScore >= 0.48) {
       matchedListings.add(bestListingIndex);
       cardMatches.set(cardIndex, bestListingIndex);
     }
   }
 
-  if (cardMatches.size === 0) {
+  const listingToMatchedCard = new Map<number, number>();
+  for (const [cardIndex, listingIndex] of cardMatches.entries()) {
+    listingToMatchedCard.set(listingIndex, cardIndex);
+  }
+
+  const firstCard = cards[0];
+  const lastCard = cards[cards.length - 1];
+  if (!firstCard || !lastCard) {
     return {
       html: sectionHtml,
       matchedCards: 0,
@@ -737,79 +873,39 @@ function applyDeterministicListingCardSync(
     };
   }
 
+  const cardSeparator = cards.length > 1 ? sectionHtml.slice(cards[0].end, cards[1].start) : "\n\n";
+
+  const rebuiltCards: string[] = [];
   let patchedImages = 0;
   let patchedTitles = 0;
   let patchedLocations = 0;
 
-  const chunks: string[] = [];
-  let cursor = 0;
+  for (let listingIndex = 0; listingIndex < usableListings.length; listingIndex++) {
+    const listing = usableListings[listingIndex];
+    const matchedCardIndex = listingToMatchedCard.get(listingIndex);
+    const templateCard =
+      matchedCardIndex !== undefined
+        ? cards[matchedCardIndex]?.html
+        : cards[Math.min(listingIndex, cards.length - 1)]?.html;
 
-  for (let cardIndex = 0; cardIndex < cards.length; cardIndex++) {
-    const card = cards[cardIndex];
-    chunks.push(sectionHtml.slice(cursor, card.start));
+    if (!templateCard) continue;
 
-    let nextCardHtml = card.html;
-    const listingIndex = cardMatches.get(cardIndex);
-    if (listingIndex !== undefined) {
-      const listing = usableListings[listingIndex];
-
-      if (listing.title) {
-        const updatedTitleCard = nextCardHtml.replace(
-          /(<h3[^>]*>)[\s\S]*?(<\/h3>)/i,
-          (_match, open, close) => `${open}${listing.title}${close}`,
-        );
-        if (updatedTitleCard !== nextCardHtml) {
-          patchedTitles += 1;
-          nextCardHtml = updatedTitleCard;
-        }
-      }
-
-      if (listing.imageUrl) {
-        const firstImgMatch = nextCardHtml.match(/<img\b[^>]*>/i);
-        if (firstImgMatch) {
-          const originalImgTag = firstImgMatch[0];
-          let patchedImgTag = patchImageTagSource(originalImgTag, listing.imageUrl);
-          if (listing.title) {
-            if (/\balt=["'][^"']*["']/i.test(patchedImgTag)) {
-              patchedImgTag = patchedImgTag.replace(
-                /\balt=["'][^"']*["']/i,
-                `alt="${listing.title}"`,
-              );
-            } else {
-              patchedImgTag = patchedImgTag.replace(/^<img\b/i, `<img alt="${listing.title}"`);
-            }
-          }
-
-          if (patchedImgTag !== originalImgTag) {
-            nextCardHtml = nextCardHtml.replace(originalImgTag, patchedImgTag);
-            patchedImages += 1;
-          }
-        }
-      }
-
-      if (listing.location) {
-        const updatedLocationCard = nextCardHtml.replace(
-          /(<div[^>]*class=["'][^"']*prop-loc[^"']*["'][^>]*>[\s\S]*?<\/i>\s*)([\s\S]*?)(<\/div>)/i,
-          (_match, prefix, _existing, suffix) => `${prefix}${listing.location}${suffix}`,
-        );
-        if (updatedLocationCard !== nextCardHtml) {
-          patchedLocations += 1;
-          nextCardHtml = updatedLocationCard;
-        }
-      }
-    }
-
-    chunks.push(nextCardHtml);
-    cursor = card.end;
+    const rewritten = rewritePropCardFromListing(templateCard, listing);
+    patchedImages += rewritten.patchedImages;
+    patchedTitles += rewritten.patchedTitles;
+    patchedLocations += rewritten.patchedLocations;
+    rebuiltCards.push(rewritten.html);
   }
 
-  chunks.push(sectionHtml.slice(cursor));
+  const rebuiltCardHtml = rebuiltCards.join(cardSeparator);
+  const mergedHtml =
+    sectionHtml.slice(0, firstCard.start) + rebuiltCardHtml + sectionHtml.slice(lastCard.end);
 
   return {
-    html: chunks.join(""),
+    html: mergedHtml,
     matchedCards: cardMatches.size,
-    unmatchedCards: cards.length - cardMatches.size,
-    unmatchedListings: usableListings.length - cardMatches.size,
+    unmatchedCards: Math.max(0, cards.length - cardMatches.size),
+    unmatchedListings: Math.max(0, usableListings.length - cardMatches.size),
     patchedImages,
     patchedTitles,
     patchedLocations,

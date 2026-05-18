@@ -928,6 +928,12 @@ function isLikelyNoiseListingTitle(title: string): boolean {
   return [
     "properties found",
     "could not load streetview map",
+    "under offer",
+    "coming soon",
+    "available",
+    "to let",
+    "for sale",
+    "let agreed",
     "prev",
     "next",
     "view map",
@@ -957,7 +963,10 @@ function extractListingsFromDetailLinks(
     const slug = parsed.pathname.split("/").filter(Boolean).pop() ?? "";
     const titleFromSlug = humaniseSlug(slug);
     const anchorTitle = toCleanText(stripTags(anchorInnerHtml), 220);
-    const title = anchorTitle && anchorTitle.length > 3 ? anchorTitle : titleFromSlug;
+    const title =
+      anchorTitle && anchorTitle.length > 3 && !isLikelyNoiseListingTitle(anchorTitle)
+        ? anchorTitle
+        : titleFromSlug;
 
     if (!title || title.length < 4 || isLikelyNoiseListingTitle(title)) continue;
 
