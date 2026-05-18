@@ -11,6 +11,7 @@ interface CreateTaskBody {
   checklistItems?: string[];
   assignees?: number[];
   dueDate?: string; // ISO date string e.g. "2026-05-20"
+  dueDateHasTime?: boolean;
 }
 
 export async function POST(request: NextRequest) {
@@ -33,6 +34,8 @@ export async function POST(request: NextRequest) {
       body.assignees,
       dueDateMs,
       body.description,
+      undefined,
+      body.dueDateHasTime === true,
     );
 
     return NextResponse.json(result);

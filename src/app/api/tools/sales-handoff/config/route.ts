@@ -14,6 +14,15 @@ const DEFAULT_SERVICE_OPTIONS = [
   "Email marketing",
 ];
 
+function parseBooleanSetting(raw: string | undefined, fallback: boolean): boolean {
+  if (!raw) return fallback;
+
+  const value = raw.trim().toLowerCase();
+  if (["1", "true", "yes", "on"].includes(value)) return true;
+  if (["0", "false", "no", "off"].includes(value)) return false;
+  return fallback;
+}
+
 function parseListSetting(raw: string | undefined, fallback: string[]): string[] {
   if (!raw) return fallback;
 
@@ -33,14 +42,43 @@ export async function GET() {
   }
 
   try {
-    const setting = await prisma.appSetting.findUnique({
-      where: { key: "clickupSalesHandoffServices" },
-      select: { value: true },
+    const rows = await prisma.appSetting.findMany({
+      where: {
+        key: {
+          in: [
+            "clickupSalesHandoffServices",
+            "clickupSalesHandoffEnforce48HourNotice",
+            "clickupSalesHandoffAllowUrgentOverride",
+            "clickupSalesHandoffListId",
+          ],
+        },
+      },
+      select: { key: true, value: true },
     });
 
-    const services = parseListSetting(setting?.value, DEFAULT_SERVICE_OPTIONS);
+    const settings = Object.fromEntries(rows.map((row) => [row.key, row.value]));
 
-    return NextResponse.json({ services });
+    const services = parseListSetting(
+      settings.clickupSalesHandoffServices,
+      DEFAULT_SERVICE_OPTIONS,
+    );
+    const enforce48HourNotice = parseBooleanSetting(
+      settings.clickupSalesHandoffEnforce48HourNotice,
+      true,
+    );
+    const allowUrgentOverride = parseBooleanSetting(
+      settings.clickupSalesHandoffAllowUrgentOverride,
+      true,
+    );
+    const listId = settings.clickupSalesHandoffListId?.trim() ?? "";
+
+    return NextResponse.json({
+      services,
+      enforce48HourNotice,
+      allowUrgentOverride,
+      listId,
+      clickupListConfigured: listId.length > 0,
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("Sales handoff config error:", error);

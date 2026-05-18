@@ -49,6 +49,31 @@ interface ClickUpChecklist {
   checklist: { id: string };
 }
 
+interface ClickUpTaskStatus {
+  status?: string;
+}
+
+interface ClickUpChecklistItemDetail {
+  resolved?: boolean;
+  checked?: boolean;
+}
+
+interface ClickUpChecklistDetail {
+  items?: ClickUpChecklistItemDetail[];
+}
+
+export interface ClickUpTaskDetail {
+  id: string;
+  url: string;
+  status?: ClickUpTaskStatus;
+  checklists?: ClickUpChecklistDetail[];
+  archived?: boolean;
+}
+
+interface UpdateClickUpTaskInput {
+  status?: string;
+}
+
 // ─── Token resolution ─────────────────────────────────────────────────────────
 
 export async function getClickUpToken(): Promise<string> {
@@ -149,7 +174,12 @@ export async function getClickUpMembers(): Promise<
   }>("/team", token);
 
   const seen = new Set<number>();
-  const members: Array<{ id: number; username: string; email: string; profilePicture: string | null }> = [];
+  const members: Array<{
+    id: number;
+    username: string;
+    email: string;
+    profilePicture: string | null;
+  }> = [];
 
   for (const team of teams ?? []) {
     for (const m of team.members ?? []) {
@@ -213,45 +243,66 @@ export async function createClickUpTaskWithChecklist(
   dueDateMs?: number,
   description?: string,
   checklistName = "Go-Live Checklist",
+  dueDateHasTime = false,
 ): Promise<{ taskId: string; taskUrl: string }> {
   const token = await getClickUpToken();
 
   // 1. Create the task
-  const task = await clickupFetch<ClickUpTask>(
-    `/list/${listId}/task`,
-    token,
-    {
-      method: "POST",
-      body: JSON.stringify({
-        name: taskName,
-        ...(description ? { markdown_description: description } : {}),
-        ...(assignees && assignees.length > 0 ? { assignees } : {}),
-        ...(dueDateMs ? { due_date: dueDateMs, due_date_time: false } : {}),
-      }),
-    },
-  );
+  const task = await clickupFetch<ClickUpTask>(`/list/${listId}/task`, token, {
+    method: "POST",
+    body: JSON.stringify({
+      name: taskName,
+      ...(description ? { markdown_description: description } : {}),
+      ...(assignees && assignees.length > 0 ? { assignees } : {}),
+      ...(dueDateMs ? { due_date: dueDateMs, due_date_time: dueDateHasTime } : {}),
+    }),
+  });
 
   // 2. Create the checklist on the task
-  const { checklist } = await clickupFetch<ClickUpChecklist>(
-    `/task/${task.id}/checklist`,
-    token,
-    {
-      method: "POST",
-      body: JSON.stringify({ name: checklistName }),
-    },
-  );
+  const { checklist } = await clickupFetch<ClickUpChecklist>(`/task/${task.id}/checklist`, token, {
+    method: "POST",
+    body: JSON.stringify({ name: checklistName }),
+  });
 
   // 3. Add each item sequentially (ClickUp doesn't offer a bulk endpoint)
   for (const item of checklistItems) {
-    await clickupFetch(
-      `/checklist/${checklist.id}/checklist_item`,
-      token,
-      {
-        method: "POST",
-        body: JSON.stringify({ name: item }),
-      },
-    );
+    await clickupFetch(`/checklist/${checklist.id}/checklist_item`, token, {
+      method: "POST",
+      body: JSON.stringify({ name: item }),
+    });
   }
 
   return { taskId: task.id, taskUrl: task.url };
+}
+
+/**
+ * Reads a single ClickUp task with checklist/state metadata.
+ */
+export async function getClickUpTask(taskId: string): Promise<ClickUpTaskDetail> {
+  const token = await getClickUpToken();
+  return clickupFetch<ClickUpTaskDetail>(`/task/${taskId}`, token);
+}
+
+/**
+ * Updates supported mutable fields on a ClickUp task.
+ */
+export async function updateClickUpTask(
+  taskId: string,
+  input: UpdateClickUpTaskInput,
+): Promise<ClickUpTaskDetail> {
+  const token = await getClickUpToken();
+  return clickupFetch<ClickUpTaskDetail>(`/task/${taskId}`, token, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+/**
+ * Convenience helper to update only the task status.
+ */
+export async function updateClickUpTaskStatus(
+  taskId: string,
+  status: string,
+): Promise<ClickUpTaskDetail> {
+  return updateClickUpTask(taskId, { status });
 }

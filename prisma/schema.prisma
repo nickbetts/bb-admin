@@ -43,6 +43,9 @@ model User {
   taskAttachments     TaskAttachment[]
   uploadedClientFiles ClientFile[]
   createdReports      Report[]       @relation("ReportCreatedBy")
+  createdSalesHandoffs SalesHandoff[]      @relation("SalesHandoffCreatedBy")
+  ownedSalesHandoffs  SalesHandoff[]       @relation("SalesHandoffOwner")
+  salesHandoffEvents  SalesHandoffEvent[]  @relation("SalesHandoffEventActor")
 }
 
 model Session {
@@ -158,6 +161,7 @@ model Client {
   files                   ClientFile[]
   emailVerificationJobs   EmailVerificationJob[]
   internalLinkingPlans    InternalLinkingPlan[]
+  salesHandoffs           SalesHandoff[]
 }
 
 model ClientGoal {
@@ -383,6 +387,7 @@ model Proposal {
   grandPlans       GrandPlan[]
   createdAt        DateTime                @default(now())
   updatedAt        DateTime                @updatedAt
+  salesHandoffs    SalesHandoff[]
 }
 
 model ProposalEnquiry {
@@ -495,6 +500,7 @@ model ActionItem {
   comments             TaskComment[]
   timeLogs             TaskTimeLog[]
   attachments          TaskAttachment[]
+  salesHandoffs        SalesHandoff[]
 
   @@index([clientId, categoryId, status, boardOrder])
   @@index([clientPortalUserId, status])
@@ -790,6 +796,73 @@ model UserActivityLog {
   @@index([action, createdAt])
 }
 
+model SalesHandoff {
+  id                         String             @id @default(cuid())
+  prospectName               String
+  website                    String
+  targetAudienceSummary      String
+  secondCallAt               DateTime
+  interestedServicesJson     String             @default("[]")
+  budgetRange                String
+  otherInformation           String?
+  urgentOverride             Boolean            @default(false)
+  urgentReason               String?
+  hoursUntilCall             Float?
+  noticeStatus               String?
+  status                     String             @default("submitted") // draft | submitted | in_progress | ready_for_meeting | completed | blocked | cancelled
+  clickupTaskId              String?            @unique
+  clickupTaskUrl             String?
+  clickupListId              String?
+  clickupSyncStatus          String             @default("not_synced") // not_synced | synced | failed
+  clickupLastSyncedAt        DateTime?
+  policyEnforce48HourNotice  Boolean            @default(true)
+  policyAllowUrgentOverride  Boolean            @default(true)
+  notes                      String?
+  sourceIdempotencyKey       String?            @unique
+  createdByUserId            String?
+  ownerUserId                String?
+  linkedClientId             String?
+  linkedProposalId           String?
+  linkedGrandPlanId          String?
+  linkedActionItemId         String?
+  createdAt                  DateTime           @default(now())
+  updatedAt                  DateTime           @updatedAt
+  createdBy                  User?              @relation("SalesHandoffCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  owner                      User?              @relation("SalesHandoffOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  client                     Client?            @relation(fields: [linkedClientId], references: [id], onDelete: SetNull)
+  proposal                   Proposal?          @relation(fields: [linkedProposalId], references: [id], onDelete: SetNull)
+  grandPlan                  GrandPlan?         @relation(fields: [linkedGrandPlanId], references: [id], onDelete: SetNull)
+  actionItem                 ActionItem?        @relation(fields: [linkedActionItemId], references: [id], onDelete: SetNull)
+  events                     SalesHandoffEvent[]
+
+  @@index([status, createdAt])
+  @@index([secondCallAt])
+  @@index([createdByUserId, createdAt])
+  @@index([ownerUserId, status])
+  @@index([linkedClientId, createdAt])
+  @@index([linkedProposalId])
+  @@index([linkedGrandPlanId])
+  @@index([linkedActionItemId])
+}
+
+model SalesHandoffEvent {
+  id          String       @id @default(cuid())
+  handoffId   String
+  eventType   String
+  title       String
+  description String?
+  metadataJson String?
+  actorUserId String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  handoff     SalesHandoff @relation(fields: [handoffId], references: [id], onDelete: Cascade)
+  actor       User?        @relation("SalesHandoffEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([handoffId, createdAt])
+  @@index([eventType, createdAt])
+  @@index([actorUserId, createdAt])
+}
+
 // Microsoft 365 connected accounts for email/calendar sync
 model Ms365Connection {
   id           String   @id @default(cuid())
@@ -1043,6 +1116,7 @@ model GrandPlan {
   enquiries                GrandPlanEnquiry[]
   previousPlan             GrandPlan?              @relation("PriorSprint", fields: [previousPlanId], references: [id], onDelete: SetNull)
   nextSprints              GrandPlan[]             @relation("PriorSprint")
+  salesHandoffs            SalesHandoff[]
 
   @@index([clientId, createdAt])
   @@index([userId, createdAt])
