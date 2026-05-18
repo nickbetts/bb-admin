@@ -165,6 +165,21 @@ const PAGINATION_SIGNAL_RE =
 const PAGINATION_ATTR_RE =
   /\b(?:aria-label|class|id|data-testid)=["'][^"']*(?:pagination|pager|page-item|page-link|next|prev)[^"']*["']/i;
 
+const STRICT_STRUCTURE_TAGS = [
+  "section",
+  "div",
+  "article",
+  "nav",
+  "ul",
+  "ol",
+  "li",
+  "form",
+  "main",
+  "aside",
+  "header",
+  "footer",
+] as const;
+
 const COMMON_TAIL_STOP_WORDS = new Set([
   "about",
   "after",
@@ -280,7 +295,68 @@ function recoverListingRewriteWithPagination(
   return { html: merged, insertedBlocks };
 }
 
-function hasTailContentOverlap(originalHtml: string, candidateHtml: string): boolean {
+function countTag(
+  html: string,
+  tagName: (typeof STRICT_STRUCTURE_TAGS)[number],
+  closing: boolean,
+): number {
+  const tagRe = closing
+    ? new RegExp(`</${tagName}\\s*>`, "gi")
+    : new RegExp(`<${tagName}(?:\\s|>)`, "gi");
+  return (html.match(tagRe) ?? []).length;
+}
+
+function hasStableTagBalance(originalHtml: string, candidateHtml: string): boolean {
+  for (const tag of STRICT_STRUCTURE_TAGS) {
+    const originalDelta = countTag(originalHtml, tag, false) - countTag(originalHtml, tag, true);
+    const candidateDelta = countTag(candidateHtml, tag, false) - countTag(candidateHtml, tag, true);
+    if (candidateDelta !== originalDelta) return false;
+  }
+
+  return true;
+}
+
+function hasRiskyGlobalMarkupInsertion(originalHtml: string, candidateHtml: string): boolean {
+  if (/<(?:html|head|body)\b/i.test(candidateHtml)) return true;
+  if (/<script\b/i.test(candidateHtml)) return true;
+
+  const originalStyleCount = (originalHtml.match(/<style\b/gi) ?? []).length;
+  const candidateStyleCount = (candidateHtml.match(/<style\b/gi) ?? []).length;
+  if (candidateStyleCount > originalStyleCount) return true;
+
+  return false;
+}
+
+function extractHeadingSnippet(html: string): string | null {
+  const headingMatch = html.match(/<h[1-4][^>]*>([\s\S]*?)<\/h[1-4]>/i);
+  if (!headingMatch) return null;
+
+  const text = toComparableText(headingMatch[1]);
+  if (!text || text.length < 8) return null;
+  return text.slice(0, 120);
+}
+
+function hasHeadingLeakBetweenSections(
+  originalSectionHtml: string,
+  candidateSectionHtml: string,
+  neighbourSectionHtml: string | undefined,
+): boolean {
+  if (!neighbourSectionHtml) return false;
+
+  const heading = extractHeadingSnippet(neighbourSectionHtml);
+  if (!heading) return false;
+
+  const originalText = toComparableText(originalSectionHtml);
+  const candidateText = toComparableText(candidateSectionHtml);
+
+  return !originalText.includes(heading) && candidateText.includes(heading);
+}
+
+function hasTailContentOverlap(
+  originalHtml: string,
+  candidateHtml: string,
+  minimumOverlapRatio = 0.3,
+): boolean {
   const originalText = toComparableText(originalHtml);
   const candidateText = toComparableText(candidateHtml);
   if (!originalText || !candidateText) return true;
@@ -303,11 +379,20 @@ function hasTailContentOverlap(originalHtml: string, candidateHtml: string): boo
     return candidateText.includes(word) ? count + 1 : count;
   }, 0);
 
-  return matches / keywords.length >= 0.3;
+  return matches / keywords.length >= minimumOverlapRatio;
 }
 
 function isListingSectionRewriteSafe(originalHtml: string, candidateHtml: string): boolean {
   if (!candidateHtml || candidateHtml.trim().length < 20) return false;
+
+  if (hasRiskyGlobalMarkupInsertion(originalHtml, candidateHtml)) return false;
+
+  const lengthRatio = candidateHtml.length / Math.max(1, originalHtml.length);
+  if (lengthRatio > 1.45 || lengthRatio < 0.7) return false;
+
+  if (!hasStableTagBalance(originalHtml, candidateHtml)) return false;
+
+  if (!findRootClosingTagMatch(candidateHtml)) return false;
 
   const originalHasPagination = hasPaginationSignals(originalHtml);
   const candidateHasPagination = hasPaginationSignals(candidateHtml);
@@ -326,7 +411,7 @@ function isListingSectionRewriteSafe(originalHtml: string, candidateHtml: string
     return false;
   }
 
-  return hasTailContentOverlap(originalHtml, candidateHtml);
+  return hasTailContentOverlap(originalHtml, candidateHtml, 0.45);
 }
 
 function isLikelyListingSection(sectionHtml: string, prompt: string | undefined): boolean {
@@ -729,8 +814,24 @@ export async function POST(
           !allowsMajorLayoutChanges(payload.prompt) &&
           !allowsMajorLayoutChanges(state.passTwoPrompt);
         const aggressiveRewrite = isAggressiveSectionRewrite(section.outerHtml, refinedSectionHtml);
+        const previousSectionHtml =
+          state.sectionIndex > 0 ? state.sections[state.sectionIndex - 1]?.outerHtml : undefined;
+        const nextSectionHtml =
+          state.sectionIndex + 1 < state.sections.length
+            ? state.sections[state.sectionIndex + 1]?.outerHtml
+            : undefined;
+        const headingLeakDetected =
+          listingSyncApplied &&
+          (hasHeadingLeakBetweenSections(
+            section.outerHtml,
+            refinedSectionHtml,
+            previousSectionHtml,
+          ) ||
+            hasHeadingLeakBetweenSections(section.outerHtml, refinedSectionHtml, nextSectionHtml));
         const listingRewriteUnsafe =
-          listingSyncApplied && !isListingSectionRewriteSafe(section.outerHtml, refinedSectionHtml);
+          listingSyncApplied &&
+          (headingLeakDetected ||
+            !isListingSectionRewriteSafe(section.outerHtml, refinedSectionHtml));
 
         let recoveredListingHtml: string | undefined;
         let recoveredPaginationBlocks = 0;
@@ -772,7 +873,9 @@ export async function POST(
           const warning = listingSyncApplied
             ? appliedSafeListingSync
               ? `Skipped risky listing rewrite for ${section.label} to preserve pagination and downstream section layout. Applied safe in-place image sync to ${safeListingSyncPatchedCount} listing card${safeListingSyncPatchedCount === 1 ? "" : "s"}.`
-              : `Skipped risky listing rewrite for ${section.label} to preserve pagination and downstream section layout.`
+              : headingLeakDetected
+                ? `Skipped risky listing rewrite for ${section.label} because it leaked neighbouring section content. Preserved layout and pagination.`
+                : `Skipped risky listing rewrite for ${section.label} to preserve pagination and downstream section layout.`
             : `Skipped aggressive rewrite for ${section.label} to preserve the existing layout.`;
           if (!state.crawlWarnings.includes(warning)) {
             state.crawlWarnings.push(warning);
