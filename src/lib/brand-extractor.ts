@@ -885,6 +885,59 @@ function listingFromJsonLdNode(
   };
 }
 
+function normaliseListingPriceValue(value: string): string | undefined {
+  const compact = value
+    .replace(/\u00a0/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!compact) return undefined;
+
+  const withoutPrefix = compact.replace(/^(?:rent|price)\s*:\s*/i, "");
+  const withoutUiTail = withoutPrefix.replace(
+    /\s+(?:shortlist|view property|save|share|enquire)\b.*$/i,
+    "",
+  );
+
+  const cleaned = toCleanText(withoutUiTail, 220);
+  return cleaned || undefined;
+}
+
+function extractListingPriceValueFromHtml(html: string): string | undefined {
+  const explicitPriceLineRegex =
+    /<p[^>]*class=["'][^"']*price-rent--[^"']*["'][^>]*>([\s\S]*?)<\/p>/gi;
+
+  for (const match of html.matchAll(explicitPriceLineRegex)) {
+    const parsed = normaliseListingPriceValue(stripTags(match[1] ?? ""));
+    if (parsed) return parsed;
+  }
+
+  const genericPriceNodeRegex =
+    /<(?:p|span|div)[^>]*class=["'][^"']*(?:price|rent)[^"']*["'][^>]*>([\s\S]*?)<\/(?:p|span|div)>/gi;
+
+  for (const match of html.matchAll(genericPriceNodeRegex)) {
+    const parsed = normaliseListingPriceValue(stripTags(match[1] ?? ""));
+    if (parsed) return parsed;
+  }
+
+  const text = stripTags(html).replace(/\s+/g, " ").trim();
+  if (!text) return undefined;
+
+  const labelledMatch = text.match(
+    /\b(?:rent|price)\s*:\s*(.+?)(?=(?:\b(?:shortlist|view property|save|share|enquire)\b|$))/i,
+  );
+  if (labelledMatch) {
+    const parsed = normaliseListingPriceValue(labelledMatch[1]);
+    if (parsed) return parsed;
+  }
+
+  const monetaryMatch = text.match(
+    /(?:[$£€]\s?[\d,.]+(?:\s*-\s*[$£€]?\s?[\d,.]+)?(?:\s*(?:pcm|pw|psf|per\s+(?:sq\s*ft|annum|month|week|\w+)|month|week))?)/i,
+  );
+
+  if (!monetaryMatch) return undefined;
+  return normaliseListingPriceValue(monetaryMatch[0]);
+}
+
 function listingFromHtmlCard(cardHtml: string, origin: string): Omit<PropertyListing, "id"> | null {
   const titleMatch =
     cardHtml.match(/<h[1-6][^>]*>([\s\S]*?)<\/h[1-6]>/i) ??
@@ -895,7 +948,7 @@ function listingFromHtmlCard(cardHtml: string, origin: string): Omit<PropertyLis
   if (!title) return null;
 
   const cardText = stripTags(cardHtml).replace(/\s+/g, " ").trim();
-  const priceMatch = cardText.match(/(?:[$£€]\s?[\d,.]+(?:\s*(?:pcm|pw|per\s+\w+|month|week))?)/i);
+  const price = extractListingPriceValueFromHtml(cardHtml);
   const bedsMatch = cardText.match(/(\d+(?:\.\d+)?)\s*(?:bed|beds|bedroom|bedrooms)/i);
   const bathsMatch = cardText.match(/(\d+(?:\.\d+)?)\s*(?:bath|baths|bathroom|bathrooms)/i);
 
@@ -906,7 +959,7 @@ function listingFromHtmlCard(cardHtml: string, origin: string): Omit<PropertyLis
 
   return {
     title,
-    price: priceMatch ? toCleanText(priceMatch[0], 48) : undefined,
+    price,
     bedrooms: bedsMatch ? bedsMatch[1] : undefined,
     bathrooms: bathsMatch ? bathsMatch[1] : undefined,
     url: hrefMatch ? resolveUrl(hrefMatch[1], origin) : undefined,
@@ -987,15 +1040,14 @@ function extractListingsFromDetailLinks(
       windowHtml.match(/data-(?:src|lazy-src|original|image)=["']([^"']+)["']/i);
     const imageCandidate = imgixMatch?.[0] ?? imageAttrMatch?.[1];
 
-    const priceMatch = windowText.match(
-      /((?:£|\$|€)\s?[\d,.]+(?:\s*(?:pcm|pw|per\s+\w+|month|week))?|\bPOA\b|\bPrice\s+on\s+application\b)/i,
-    );
+    const price =
+      extractListingPriceValueFromHtml(windowHtml) ?? extractListingPriceValueFromHtml(windowText);
     const bedsMatch = windowText.match(/(\d+(?:\.\d+)?)\s*(?:bed|beds|bedroom|bedrooms)/i);
     const bathsMatch = windowText.match(/(\d+(?:\.\d+)?)\s*(?:bath|baths|bathroom|bathrooms)/i);
 
     listings.push({
       title,
-      price: priceMatch ? toCleanText(priceMatch[1], 48) : undefined,
+      price,
       bedrooms: bedsMatch ? bedsMatch[1] : undefined,
       bathrooms: bathsMatch ? bathsMatch[1] : undefined,
       url: resolvedUrl,
