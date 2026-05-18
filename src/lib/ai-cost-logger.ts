@@ -6,8 +6,12 @@ import { prisma } from "@/lib/prisma";
  */
 const PRICING = {
   // Anthropic
+  "claude-opus-4-7": { input: 0.005, output: 0.025 },
+  "claude-opus-4-6": { input: 0.005, output: 0.025 },
   "claude-opus-4-5": { input: 0.015, output: 0.075 },
+  "claude-sonnet-4-6": { input: 0.003, output: 0.015 },
   "claude-sonnet-4-5": { input: 0.003, output: 0.015 },
+  "claude-haiku-4-5": { input: 0.001, output: 0.005 },
   "claude-3-5-sonnet": { input: 0.003, output: 0.015 },
 
   // OpenAI
@@ -30,24 +34,25 @@ function resolvePricingModel(model: string): ModelKey | null {
   return byPrefix ?? null;
 }
 
+export function getModelPricing(model: string): { input: number; output: number } | null {
+  const pricingModel = resolvePricingModel(model);
+  return pricingModel ? PRICING[pricingModel] : null;
+}
+
 export interface AICostLogInput {
   tool: string; // e.g. "content-strategy", "summary", "grand-plan"
   provider: "anthropic" | "openai";
   model: string;
   inputTokens: number;
   outputTokens: number;
+  costUSD?: number; // Optional override when provider-specific pricing logic is needed
 }
 
 /**
  * Calculate cost in USD for a given model and token counts
  */
-export function calculateCostUSD(
-  model: string,
-  inputTokens: number,
-  outputTokens: number
-): number {
-  const pricingModel = resolvePricingModel(model);
-  const pricing = pricingModel ? PRICING[pricingModel] : null;
+export function calculateCostUSD(model: string, inputTokens: number, outputTokens: number): number {
+  const pricing = getModelPricing(model);
   if (!pricing) {
     console.warn(`Unknown model for pricing: ${model}`);
     return 0;
@@ -63,7 +68,8 @@ export function calculateCostUSD(
  */
 export async function logAICost(input: AICostLogInput): Promise<void> {
   try {
-    const costUSD = calculateCostUSD(input.model, input.inputTokens, input.outputTokens);
+    const costUSD =
+      input.costUSD ?? calculateCostUSD(input.model, input.inputTokens, input.outputTokens);
 
     await prisma.aICostLog.create({
       data: {
@@ -86,15 +92,17 @@ export async function logAICost(input: AICostLogInput): Promise<void> {
  */
 export async function getCostsByTool(
   startDate: Date,
-  endDate: Date
-): Promise<Array<{
-  tool: string;
-  provider: "anthropic" | "openai";
-  totalCost: number;
-  callCount: number;
-  inputTokens: number;
-  outputTokens: number;
-}>> {
+  endDate: Date,
+): Promise<
+  Array<{
+    tool: string;
+    provider: "anthropic" | "openai";
+    totalCost: number;
+    callCount: number;
+    inputTokens: number;
+    outputTokens: number;
+  }>
+> {
   const logs = await prisma.aICostLog.findMany({
     where: {
       timestamp: {
@@ -136,9 +144,7 @@ export async function getCostsByTool(
     breakdown.set(key, existing);
   }
 
-  return Array.from(breakdown.values()).sort(
-    (a, b) => b.totalCost - a.totalCost
-  );
+  return Array.from(breakdown.values()).sort((a, b) => b.totalCost - a.totalCost);
 }
 
 /**
@@ -146,14 +152,16 @@ export async function getCostsByTool(
  */
 export async function getCostsByProvider(
   startDate: Date,
-  endDate: Date
-): Promise<Array<{
-  provider: "anthropic" | "openai";
-  totalCost: number;
-  callCount: number;
-  inputTokens: number;
-  outputTokens: number;
-}>> {
+  endDate: Date,
+): Promise<
+  Array<{
+    provider: "anthropic" | "openai";
+    totalCost: number;
+    callCount: number;
+    inputTokens: number;
+    outputTokens: number;
+  }>
+> {
   const logs = await prisma.aICostLog.findMany({
     where: {
       timestamp: {
@@ -200,7 +208,7 @@ export async function getCostsByProvider(
  */
 export async function getTotalCost(
   startDate: Date,
-  endDate: Date
+  endDate: Date,
 ): Promise<{ totalCost: number; callCount: number; inputTokens: number; outputTokens: number }> {
   const result = await prisma.aICostLog.aggregate({
     where: {
