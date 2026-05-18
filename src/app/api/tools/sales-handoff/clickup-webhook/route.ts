@@ -123,11 +123,16 @@ function verifySignature(input: { rawBody: string; signature: string; secret: st
 }
 
 function extractTaskId(payload: ClickUpWebhookPayload): string | null {
+  const record = payload as Record<string, unknown>;
+
   return (
     cleanText(payload.task_id) ??
     cleanText(payload.taskId) ??
     cleanText(payload.task?.id) ??
-    cleanText(payload.task?.task_id)
+    cleanText(payload.task?.task_id) ??
+    cleanText(record.taskID) ??
+    cleanText(record["task id"]) ??
+    cleanText(record["Task ID"])
   );
 }
 
@@ -151,6 +156,7 @@ async function appendHandoffEvent(input: {
 
 export async function POST(request: NextRequest) {
   const rawBody = await request.text();
+  const { searchParams } = new URL(request.url);
   const session = await getSessionOrCronAuth(request);
   const hasInternalAuth = !!session && hasPermission(session, "sales_handoff");
 
@@ -177,8 +183,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const eventName = cleanText(payload.event) ?? "unknown";
-  const taskId = extractTaskId(payload);
+  const eventName = cleanText(payload.event) ?? cleanText(searchParams.get("event")) ?? "unknown";
+  const taskId =
+    cleanText(searchParams.get("task_id") ?? searchParams.get("taskId")) ?? extractTaskId(payload);
 
   if (!taskId) {
     return NextResponse.json({
