@@ -553,6 +553,269 @@ function applySafeListingImageSync(
   return { html, patchedCount };
 }
 
+type ListingCardSnapshot = {
+  start: number;
+  end: number;
+  html: string;
+  title: string;
+  location?: string;
+};
+
+const GENERIC_LISTING_SYNC_TITLES = new Set([
+  "under offer",
+  "coming soon",
+  "available",
+  "to let",
+  "for sale",
+  "let agreed",
+]);
+
+function decodeHtmlEntities(value: string): string {
+  return value
+    .replace(/&amp;/gi, "&")
+    .replace(/&#39;/gi, "'")
+    .replace(/&quot;/gi, '"')
+    .replace(/&nbsp;/gi, " ");
+}
+
+function stripHtml(value: string): string {
+  return decodeHtmlEntities(value)
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normaliseListingText(value: string): string {
+  return stripHtml(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function listingTokenSet(value: string): Set<string> {
+  return new Set(
+    normaliseListingText(value)
+      .split(" ")
+      .map((token) => token.trim())
+      .filter((token) => token.length >= 3),
+  );
+}
+
+function listingJaccardScore(a: Set<string>, b: Set<string>): number {
+  if (a.size === 0 || b.size === 0) return 0;
+
+  let intersection = 0;
+  for (const token of a) {
+    if (b.has(token)) intersection += 1;
+  }
+
+  const union = new Set([...a, ...b]).size;
+  return union === 0 ? 0 : intersection / union;
+}
+
+function isGenericListingTitleForSync(title: string): boolean {
+  return GENERIC_LISTING_SYNC_TITLES.has(normaliseListingText(title));
+}
+
+function extractPropCards(sectionHtml: string): ListingCardSnapshot[] {
+  const cards: ListingCardSnapshot[] = [];
+  const cardRe = /<a[^>]*class=["'][^"']*prop-card[^"']*["'][\s\S]*?<\/a>/gi;
+
+  for (const match of sectionHtml.matchAll(cardRe)) {
+    const start = match.index;
+    if (start === undefined) continue;
+
+    const html = match[0];
+    const title = stripHtml(html.match(/<h3[^>]*>([\s\S]*?)<\/h3>/i)?.[1] ?? "");
+    if (!title) continue;
+
+    const location = stripHtml(
+      html.match(/<div[^>]*class=["'][^"']*prop-loc[^"']*["'][^>]*>([\s\S]*?)<\/div>/i)?.[1] ?? "",
+    );
+
+    cards.push({
+      start,
+      end: start + html.length,
+      html,
+      title,
+      location: location || undefined,
+    });
+  }
+
+  return cards;
+}
+
+function scoreCardToListing(card: ListingCardSnapshot, listing: PropertyListing): number {
+  const cardTitleNorm = normaliseListingText(card.title);
+  const listingTitleNorm = normaliseListingText(listing.title);
+  if (!cardTitleNorm || !listingTitleNorm) return 0;
+
+  let score = 0;
+  if (cardTitleNorm === listingTitleNorm) {
+    score += 1.2;
+  } else {
+    score += listingJaccardScore(listingTokenSet(card.title), listingTokenSet(listing.title));
+    if (cardTitleNorm.includes(listingTitleNorm) || listingTitleNorm.includes(cardTitleNorm)) {
+      score += 0.2;
+    }
+  }
+
+  if (card.location && listing.location) {
+    const locationScore = listingJaccardScore(
+      listingTokenSet(card.location),
+      listingTokenSet(listing.location),
+    );
+    score += locationScore * 0.25;
+  }
+
+  return score;
+}
+
+function applyDeterministicListingCardSync(
+  sectionHtml: string,
+  listings: PropertyListing[],
+): {
+  html: string;
+  matchedCards: number;
+  unmatchedCards: number;
+  unmatchedListings: number;
+  patchedImages: number;
+  patchedTitles: number;
+  patchedLocations: number;
+} {
+  const cards = extractPropCards(sectionHtml);
+  const usableListings = listings.filter(
+    (listing) => listing.title && !isGenericListingTitleForSync(listing.title),
+  );
+
+  if (cards.length === 0 || usableListings.length === 0) {
+    return {
+      html: sectionHtml,
+      matchedCards: 0,
+      unmatchedCards: cards.length,
+      unmatchedListings: usableListings.length,
+      patchedImages: 0,
+      patchedTitles: 0,
+      patchedLocations: 0,
+    };
+  }
+
+  const matchedListings = new Set<number>();
+  const cardMatches = new Map<number, number>();
+
+  for (let cardIndex = 0; cardIndex < cards.length; cardIndex++) {
+    const card = cards[cardIndex];
+    let bestListingIndex = -1;
+    let bestScore = 0;
+
+    for (let listingIndex = 0; listingIndex < usableListings.length; listingIndex++) {
+      if (matchedListings.has(listingIndex)) continue;
+      const listing = usableListings[listingIndex];
+      const score = scoreCardToListing(card, listing);
+      if (score > bestScore) {
+        bestScore = score;
+        bestListingIndex = listingIndex;
+      }
+    }
+
+    if (bestListingIndex >= 0 && bestScore >= 0.58) {
+      matchedListings.add(bestListingIndex);
+      cardMatches.set(cardIndex, bestListingIndex);
+    }
+  }
+
+  if (cardMatches.size === 0) {
+    return {
+      html: sectionHtml,
+      matchedCards: 0,
+      unmatchedCards: cards.length,
+      unmatchedListings: usableListings.length,
+      patchedImages: 0,
+      patchedTitles: 0,
+      patchedLocations: 0,
+    };
+  }
+
+  let patchedImages = 0;
+  let patchedTitles = 0;
+  let patchedLocations = 0;
+
+  const chunks: string[] = [];
+  let cursor = 0;
+
+  for (let cardIndex = 0; cardIndex < cards.length; cardIndex++) {
+    const card = cards[cardIndex];
+    chunks.push(sectionHtml.slice(cursor, card.start));
+
+    let nextCardHtml = card.html;
+    const listingIndex = cardMatches.get(cardIndex);
+    if (listingIndex !== undefined) {
+      const listing = usableListings[listingIndex];
+
+      if (listing.title) {
+        const updatedTitleCard = nextCardHtml.replace(
+          /(<h3[^>]*>)[\s\S]*?(<\/h3>)/i,
+          (_match, open, close) => `${open}${listing.title}${close}`,
+        );
+        if (updatedTitleCard !== nextCardHtml) {
+          patchedTitles += 1;
+          nextCardHtml = updatedTitleCard;
+        }
+      }
+
+      if (listing.imageUrl) {
+        const firstImgMatch = nextCardHtml.match(/<img\b[^>]*>/i);
+        if (firstImgMatch) {
+          const originalImgTag = firstImgMatch[0];
+          let patchedImgTag = patchImageTagSource(originalImgTag, listing.imageUrl);
+          if (listing.title) {
+            if (/\balt=["'][^"']*["']/i.test(patchedImgTag)) {
+              patchedImgTag = patchedImgTag.replace(
+                /\balt=["'][^"']*["']/i,
+                `alt="${listing.title}"`,
+              );
+            } else {
+              patchedImgTag = patchedImgTag.replace(/^<img\b/i, `<img alt="${listing.title}"`);
+            }
+          }
+
+          if (patchedImgTag !== originalImgTag) {
+            nextCardHtml = nextCardHtml.replace(originalImgTag, patchedImgTag);
+            patchedImages += 1;
+          }
+        }
+      }
+
+      if (listing.location) {
+        const updatedLocationCard = nextCardHtml.replace(
+          /(<div[^>]*class=["'][^"']*prop-loc[^"']*["'][^>]*>[\s\S]*?<\/i>\s*)([\s\S]*?)(<\/div>)/i,
+          (_match, prefix, _existing, suffix) => `${prefix}${listing.location}${suffix}`,
+        );
+        if (updatedLocationCard !== nextCardHtml) {
+          patchedLocations += 1;
+          nextCardHtml = updatedLocationCard;
+        }
+      }
+    }
+
+    chunks.push(nextCardHtml);
+    cursor = card.end;
+  }
+
+  chunks.push(sectionHtml.slice(cursor));
+
+  return {
+    html: chunks.join(""),
+    matchedCards: cardMatches.size,
+    unmatchedCards: cards.length - cardMatches.size,
+    unmatchedListings: usableListings.length - cardMatches.size,
+    patchedImages,
+    patchedTitles,
+    patchedLocations,
+  };
+}
+
 // POST /api/tools/landing-pages/[id]/refine/jobs/[jobId]/run
 // Processes one bounded refinement step per request.
 export async function POST(
@@ -869,6 +1132,22 @@ export async function POST(
           }
         }
 
+        let deterministicCardSyncWarning: string | undefined;
+        if (listingSyncApplied) {
+          const deterministicSync = applyDeterministicListingCardSync(
+            appliedSectionHtml,
+            structuredListings,
+          );
+          if (
+            deterministicSync.patchedImages > 0 ||
+            deterministicSync.patchedTitles > 0 ||
+            deterministicSync.patchedLocations > 0
+          ) {
+            appliedSectionHtml = deterministicSync.html;
+            deterministicCardSyncWarning = `Applied deterministic listing card sync for ${section.label}: matched ${deterministicSync.matchedCards} card${deterministicSync.matchedCards === 1 ? "" : "s"}, patched ${deterministicSync.patchedImages} image${deterministicSync.patchedImages === 1 ? "" : "s"}, ${deterministicSync.patchedTitles} title${deterministicSync.patchedTitles === 1 ? "" : "s"}, ${deterministicSync.patchedLocations} location${deterministicSync.patchedLocations === 1 ? "" : "s"}.`;
+          }
+        }
+
         if (keepOriginalSection) {
           const warning = listingSyncApplied
             ? appliedSafeListingSync
@@ -885,6 +1164,13 @@ export async function POST(
           if (!state.crawlWarnings.includes(warning)) {
             state.crawlWarnings.push(warning);
           }
+        }
+
+        if (
+          deterministicCardSyncWarning &&
+          !state.crawlWarnings.includes(deterministicCardSyncWarning)
+        ) {
+          state.crawlWarnings.push(deterministicCardSyncWarning);
         }
 
         state.currentHtml = replaceSection(state.currentHtml, section, appliedSectionHtml);
