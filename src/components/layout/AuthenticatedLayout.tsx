@@ -3,7 +3,6 @@ import { getEffectiveSession } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { ConnectionStatusBanner } from "@/components/layout/ConnectionStatusBanner";
-import { PlatformTopBar } from "@/components/layout/PlatformTopBar";
 
 interface AuthenticatedLayoutProps {
   children: React.ReactNode;
@@ -43,7 +42,6 @@ export async function AuthenticatedLayout({
       />
       <div className="flex min-w-0 flex-1 flex-col">
         <ConnectionStatusBanner />
-        {useEnhancedShell && <PlatformTopBar />}
         <main id="main-content" className={cn("app-main", useEnhancedShell && "app-main-enhanced")}>
           {children}
         </main>
