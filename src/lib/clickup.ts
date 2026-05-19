@@ -489,6 +489,16 @@ function parseDurationMs(entry: ClickUpTimeEntry): number {
   return Math.abs(parsed);
 }
 
+function isTimeEntryAccessError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const message = error.message;
+  return (
+    message.includes("TIMEENTRY_059") ||
+    message.includes("You have no access") ||
+    message.toLowerCase().includes("time entry")
+  );
+}
+
 function parsePrescribedHours(task: ClickUpListTask): {
   clientName: string;
   prescribedHours: number;
@@ -541,13 +551,16 @@ async function getClickUpListTasks(listId: string, token: string): Promise<Click
   return tasks;
 }
 
-async function getTrackedHoursForFolder(params: {
+type TimeEntryScope = "workspace" | "current_user";
+
+async function fetchTrackedHoursForFolder(params: {
   token: string;
   teamId: string;
   folderId: string;
   startDateMs: number;
   endDateMs: number;
   assigneeIds: number[];
+  includeAssigneeFilter: boolean;
 }): Promise<number> {
   const search = new URLSearchParams({
     start_date: String(params.startDateMs),
@@ -556,7 +569,7 @@ async function getTrackedHoursForFolder(params: {
     include_location_names: "true",
   });
 
-  if (params.assigneeIds.length > 0) {
+  if (params.includeAssigneeFilter && params.assigneeIds.length > 0) {
     search.set("assignee", params.assigneeIds.join(","));
   }
 
@@ -573,6 +586,50 @@ async function getTrackedHoursForFolder(params: {
 
   const totalMs = entries.reduce((sum, entry) => sum + parseDurationMs(entry), 0);
   return roundHours(totalMs / (1000 * 60 * 60));
+}
+
+async function getTrackedHoursForFolder(params: {
+  token: string;
+  teamId: string;
+  folderId: string;
+  startDateMs: number;
+  endDateMs: number;
+  assigneeIds: number[];
+}): Promise<{ hours: number; scope: TimeEntryScope }> {
+  if (params.assigneeIds.length === 0) {
+    const hours = await fetchTrackedHoursForFolder({
+      ...params,
+      includeAssigneeFilter: false,
+    });
+    return { hours, scope: "current_user" };
+  }
+
+  try {
+    const hours = await fetchTrackedHoursForFolder({
+      ...params,
+      includeAssigneeFilter: true,
+    });
+    return { hours, scope: "workspace" };
+  } catch (error) {
+    if (!isTimeEntryAccessError(error)) {
+      throw error;
+    }
+
+    try {
+      const hours = await fetchTrackedHoursForFolder({
+        ...params,
+        includeAssigneeFilter: false,
+      });
+      return { hours, scope: "current_user" };
+    } catch (fallbackError) {
+      if (isTimeEntryAccessError(fallbackError)) {
+        throw new Error(
+          "ClickUp token cannot access time entries for this folder. Use a Workspace Owner/Admin token with access to this folder.",
+        );
+      }
+      throw fallbackError;
+    }
+  }
 }
 
 async function mapWithConcurrency<T, R>(
@@ -839,9 +896,10 @@ export async function getClickUpTimeCheckerReport(input: {
   );
 
   const trackedByFolderId = new Map<string, number>();
+  const trackedScopeByFolderId = new Map<string, TimeEntryScope>();
 
   await mapWithConcurrency(matchedFolderIds, 4, async (folderId) => {
-    const trackedHours = await getTrackedHoursForFolder({
+    const tracked = await getTrackedHoursForFolder({
       token,
       teamId: workspaceId,
       folderId,
@@ -849,8 +907,9 @@ export async function getClickUpTimeCheckerReport(input: {
       endDateMs: input.endDateMs,
       assigneeIds,
     });
-    trackedByFolderId.set(folderId, trackedHours);
-    return trackedHours;
+    trackedByFolderId.set(folderId, tracked.hours);
+    trackedScopeByFolderId.set(folderId, tracked.scope);
+    return tracked;
   });
 
   const rows: ClickUpTimeCheckerRow[] = matchedRows
@@ -913,6 +972,11 @@ export async function getClickUpTimeCheckerReport(input: {
   if (rows.some((row) => row.prescribedHoursSource === "task_name")) {
     warnings.push(
       "Some prescribed hours were inferred from task titles. For best accuracy, store prescribed hours in a numeric custom field.",
+    );
+  }
+  if (Array.from(trackedScopeByFolderId.values()).includes("current_user")) {
+    warnings.push(
+      "Time entries are limited to the authenticated ClickUp user. Use a Workspace Owner/Admin token to include all users.",
     );
   }
 
