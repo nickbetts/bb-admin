@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Plus, Trash2 } from "lucide-react";
+import { Button, Input, Select, Textarea } from "@/components/ui/shadcn";
 
 interface Account {
   id: string;
@@ -784,16 +785,14 @@ function SettingsPanelInner() {
               dropdowns.
             </p>
           </div>
-          <a
-            href="/api/auth/google-ads"
-            className="btn btn-primary btn-sm"
-            style={{ display: "inline-flex", alignItems: "center", gap: 6, flexShrink: 0 }}
-          >
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden="true">
-              <path d="M12 11h8v2h-8v8h-2v-8H2v-2h8V3h2v8z" />
-            </svg>
-            Connect account
-          </a>
+          <Button asChild size="sm" className="shrink-0 gap-1.5">
+            <a href="/api/auth/google-ads">
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden="true">
+                <path d="M12 11h8v2h-8v8h-2v-8H2v-2h8V3h2v8z" />
+              </svg>
+              Connect account
+            </a>
+          </Button>
         </div>
         <div className="card-body">
           <div
@@ -919,37 +918,32 @@ function SettingsPanelInner() {
                       </li>
                     ))}
                   </ol>
-                  <a
-                    href="https://console.cloud.google.com/apis/credentials/consent"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn btn-sm"
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 6,
-                      background: "#d97706",
-                      color: "#fff",
-                      border: "none",
-                      width: "fit-content",
-                      marginTop: 10,
-                    }}
+                  <Button
+                    asChild
+                    size="sm"
+                    className="mt-2.5 w-fit gap-1.5 border-0 bg-[#d97706] text-white hover:bg-[#b45309]"
                   >
-                    Open OAuth consent screen
-                    <svg
-                      style={{ width: 14, height: 14 }}
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth={2}
+                    <a
+                      href="https://console.cloud.google.com/apis/credentials/consent"
+                      target="_blank"
+                      rel="noopener noreferrer"
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                      />
-                    </svg>
-                  </a>
+                      Open OAuth consent screen
+                      <svg
+                        style={{ width: 14, height: 14 }}
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                        />
+                      </svg>
+                    </a>
+                  </Button>
                 </div>
                 <div style={{ borderTop: "1px solid #fcd34d" }} />
                 <div>
@@ -1008,37 +1002,32 @@ function SettingsPanelInner() {
                       {clientIdCopied ? "Copied ✓" : "Copy"}
                     </button>
                   </div>
-                  <a
-                    href="https://admin.google.com/ac/owl/list?tab=configuredApps"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn btn-sm"
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 6,
-                      background: "#d97706",
-                      color: "#fff",
-                      border: "none",
-                      width: "fit-content",
-                      marginTop: 10,
-                    }}
+                  <Button
+                    asChild
+                    size="sm"
+                    className="mt-2.5 w-fit gap-1.5 border-0 bg-[#d97706] text-white hover:bg-[#b45309]"
                   >
-                    Open Google Admin Console
-                    <svg
-                      style={{ width: 14, height: 14 }}
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth={2}
+                    <a
+                      href="https://admin.google.com/ac/owl/list?tab=configuredApps"
+                      target="_blank"
+                      rel="noopener noreferrer"
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                      />
-                    </svg>
-                  </a>
+                      Open Google Admin Console
+                      <svg
+                        style={{ width: 14, height: 14 }}
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                        />
+                      </svg>
+                    </a>
+                  </Button>
                 </div>
               </div>
             )}
@@ -1179,22 +1168,21 @@ function SettingsPanelInner() {
                       <span className="badge badge-green">Active</span>
                     )}
                     {isExpired && (
-                      <a
-                        href="/api/auth/google-ads"
-                        className="btn btn-primary btn-sm"
-                        style={{ flexShrink: 0 }}
-                      >
-                        Reconnect
-                      </a>
+                      <Button asChild size="sm" className="shrink-0">
+                        <a href="/api/auth/google-ads">Reconnect</a>
+                      </Button>
                     )}
-                    <button
+                    <Button
+                      type="button"
                       onClick={() => handleRemoveConnection(conn.id)}
                       disabled={removing === conn.id}
-                      className="btn btn-ghost btn-sm"
+                      variant="ghost"
+                      size="sm"
+                      className="text-(--danger-text)"
                       style={{ color: "var(--danger)", opacity: removing === conn.id ? 0.4 : 1 }}
                     >
                       {removing === conn.id ? "Removing…" : "Disconnect"}
-                    </button>
+                    </Button>
                   </div>
                 );
               })}
@@ -1214,16 +1202,14 @@ function SettingsPanelInner() {
               Client Settings.
             </p>
           </div>
-          <a
-            href="/api/auth/ms365"
-            className="btn btn-primary btn-sm"
-            style={{ display: "inline-flex", alignItems: "center", gap: 6, flexShrink: 0 }}
-          >
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden="true">
-              <path d="M12 11h8v2h-8v8h-2v-8H2v-2h8V3h2v8z" />
-            </svg>
-            Connect account
-          </a>
+          <Button asChild size="sm" className="shrink-0 gap-1.5">
+            <a href="/api/auth/ms365">
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden="true">
+                <path d="M12 11h8v2h-8v8h-2v-8H2v-2h8V3h2v8z" />
+              </svg>
+              Connect account
+            </a>
+          </Button>
         </div>
         <div className="card-body">
           {ms365Loading && (
@@ -1308,17 +1294,20 @@ function SettingsPanelInner() {
                         </p>
                       </div>
                       <span className="badge badge-green">Active</span>
-                      <button
+                      <Button
+                        type="button"
                         onClick={() => handleRemoveMs365Connection(conn.id)}
                         disabled={removingMs365 === conn.id}
-                        className="btn btn-ghost btn-sm"
+                        variant="ghost"
+                        size="sm"
+                        className="text-(--danger-text)"
                         style={{
                           color: "var(--danger)",
                           opacity: removingMs365 === conn.id ? 0.4 : 1,
                         }}
                       >
                         {removingMs365 === conn.id ? "Removing…" : "Disconnect"}
-                      </button>
+                      </Button>
                     </div>
                   ))}
                 </div>
@@ -1384,10 +1373,9 @@ function SettingsPanelInner() {
             </p>
           )}
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <input
+            <Input
               type="password"
-              className="form-input"
-              style={{ flex: 1, fontFamily: "monospace", fontSize: 13 }}
+              className="flex-1 font-mono text-[13px]"
               placeholder="sk-…"
               value={openaiKeyInput}
               onChange={(e) => setOpenaiKeyInput(e.target.value)}
@@ -1395,13 +1383,13 @@ function SettingsPanelInner() {
                 if (openaiKeyInput === "sk-…redacted") setOpenaiKeyInput("");
               }}
             />
-            <button
+            <Button
+              type="button"
               onClick={handleOpenaiKeySave}
               disabled={openaiKeySaving || !openaiKeyInput || openaiKeyInput === "sk-…redacted"}
-              className="btn btn-primary"
             >
               {openaiKeySaving ? "Saving…" : openaiKeySaved ? "Saved ✓" : "Save"}
-            </button>
+            </Button>
           </div>
           {openaiKey && (
             <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 8 }}>
@@ -1437,10 +1425,9 @@ function SettingsPanelInner() {
             </p>
           )}
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <input
+            <Input
               type="password"
-              className="form-input"
-              style={{ flex: 1, fontFamily: "monospace", fontSize: 13 }}
+              className="flex-1 font-mono text-[13px]"
               placeholder="sk-ant-…"
               value={anthropicKeyInput}
               onChange={(e) => setAnthropicKeyInput(e.target.value)}
@@ -1448,7 +1435,8 @@ function SettingsPanelInner() {
                 if (anthropicKeyInput === "sk-ant-…redacted") setAnthropicKeyInput("");
               }}
             />
-            <button
+            <Button
+              type="button"
               onClick={async () => {
                 setAnthropicKeySaving(true);
                 setAnthropicKeySaved(false);
@@ -1476,10 +1464,9 @@ function SettingsPanelInner() {
               disabled={
                 anthropicKeySaving || !anthropicKeyInput || anthropicKeyInput === "sk-ant-…redacted"
               }
-              className="btn btn-primary"
             >
               {anthropicKeySaving ? "Saving…" : anthropicKeySaved ? "Saved ✓" : "Save"}
-            </button>
+            </Button>
           </div>
           {anthropicKey && (
             <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 8 }}>
@@ -1527,12 +1514,11 @@ function SettingsPanelInner() {
             >
               Sales handoff ClickUp list ID
             </label>
-            <input
-              className="form-input"
+            <Input
+              className="font-mono text-[13px]"
               value={clickupSalesHandoffListIdInput}
               onChange={(e) => setClickupSalesHandoffListIdInput(e.target.value)}
               placeholder="901202558111"
-              style={{ fontSize: 13, fontFamily: "monospace" }}
             />
             <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 4 }}>
               Sales handoff tasks are created in this list.
@@ -1585,13 +1571,12 @@ function SettingsPanelInner() {
             >
               Sales handoff service options (one per line)
             </label>
-            <textarea
-              className="form-input"
+            <Textarea
               rows={6}
               value={clickupSalesHandoffServicesInput}
               onChange={(e) => setClickupSalesHandoffServicesInput(e.target.value)}
               placeholder="Google PPC"
-              style={{ fontSize: 13 }}
+              className="text-[13px]"
             />
           </div>
           <div style={{ marginBottom: 12 }}>
@@ -1606,13 +1591,12 @@ function SettingsPanelInner() {
             >
               Sales handoff progress checklist (one per line)
             </label>
-            <textarea
-              className="form-input"
+            <Textarea
               rows={4}
               value={clickupSalesHandoffChecklistInput}
               onChange={(e) => setClickupSalesHandoffChecklistInput(e.target.value)}
               placeholder="Plan generated"
-              style={{ fontSize: 13 }}
+              className="text-[13px]"
             />
             <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 4 }}>
               Order is preserved top to bottom when the checklist is created in ClickUp.
@@ -1687,10 +1671,9 @@ function SettingsPanelInner() {
             </p>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <input
+            <Input
               type="password"
-              className="form-input"
-              style={{ flex: 1, fontFamily: "monospace", fontSize: 13 }}
+              className="flex-1 font-mono text-[13px]"
               placeholder="pk_…"
               value={clickupApiTokenInput}
               onChange={(e) => setClickupApiTokenInput(e.target.value)}
@@ -1698,13 +1681,9 @@ function SettingsPanelInner() {
                 if (clickupApiTokenInput === "pk_…redacted") setClickupApiTokenInput("");
               }}
             />
-            <button
-              onClick={handleClickupTokenSave}
-              disabled={clickupTokenSaving}
-              className="btn btn-primary"
-            >
+            <Button type="button" onClick={handleClickupTokenSave} disabled={clickupTokenSaving}>
               {clickupTokenSaving ? "Saving…" : clickupTokenSaved ? "Saved ✓" : "Save"}
-            </button>
+            </Button>
           </div>
           {clickupApiToken && (
             <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 8 }}>
@@ -1746,9 +1725,8 @@ function SettingsPanelInner() {
               >
                 Resend API Key
               </label>
-              <input
+              <Input
                 type="password"
-                className="form-input"
                 placeholder="re_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
                 value={resendApiKey}
                 onChange={(e) => setResendApiKey(e.target.value)}
@@ -1781,9 +1759,8 @@ function SettingsPanelInner() {
               >
                 From address
               </label>
-              <input
+              <Input
                 type="text"
-                className="form-input"
                 placeholder="Stratos Leads <noreply@clickr.marketing>"
                 value={resendFrom}
                 onChange={(e) => setResendFrom(e.target.value)}
@@ -1794,13 +1771,13 @@ function SettingsPanelInner() {
               </p>
             </div>
             <div>
-              <button
+              <Button
+                type="button"
                 onClick={handleResendSave}
                 disabled={resendSaving || !resendApiKey}
-                className="btn btn-primary"
               >
                 {resendSaving ? "Saving…" : resendSaved ? "Saved ✓" : "Save"}
-              </button>
+              </Button>
             </div>
           </div>
           {resendApiKey === "•••redacted•••" && (
@@ -1848,9 +1825,8 @@ function SettingsPanelInner() {
               >
                 Site Key <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(public)</span>
               </label>
-              <input
+              <Input
                 type="text"
-                className="form-input"
                 placeholder="0x4AAAAAAA..."
                 value={turnstileSiteKey}
                 onChange={(e) => setTurnstileSiteKey(e.target.value)}
@@ -1869,9 +1845,8 @@ function SettingsPanelInner() {
                 Secret Key{" "}
                 <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(server-side only)</span>
               </label>
-              <input
+              <Input
                 type="password"
-                className="form-input"
                 placeholder="0x4AAAAAAA..."
                 value={turnstileSecretKey}
                 onChange={(e) => setTurnstileSecretKey(e.target.value)}
@@ -1893,13 +1868,9 @@ function SettingsPanelInner() {
               . Leave both fields empty to disable bot protection.
             </p>
             <div>
-              <button
-                onClick={handleTurnstileSave}
-                disabled={turnstileSaving}
-                className="btn btn-primary"
-              >
+              <Button type="button" onClick={handleTurnstileSave} disabled={turnstileSaving}>
                 {turnstileSaving ? "Saving…" : turnstileSaved ? "Saved ✓" : "Save"}
-              </button>
+              </Button>
             </div>
           </div>
           {turnstileSecretKey === "•••redacted•••" && (
@@ -1923,21 +1894,21 @@ function SettingsPanelInner() {
             Default Assignee
           </label>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <input
+            <Input
               type="text"
-              className="form-input"
-              style={{ fontSize: 13, maxWidth: 320 }}
+              className="max-w-80 text-[13px]"
               placeholder="Name or email"
               value={defaultAssignee}
               onChange={(e) => setDefaultAssignee(e.target.value)}
             />
-            <button
-              className="btn btn-primary btn-sm"
+            <Button
+              type="button"
+              size="sm"
               onClick={handleDefaultAssigneeSave}
               disabled={defaultAssigneeSaving}
             >
               {defaultAssigneeSaving ? "Saving…" : defaultAssigneeSaved ? "Saved!" : "Save"}
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -1960,13 +1931,15 @@ function SettingsPanelInner() {
                 suggest realistic deliverables based on contracted hours.
               </p>
             </div>
-            <button
-              className="btn btn-secondary btn-sm"
-              style={{ gap: 5, flexShrink: 0, marginLeft: 16 }}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="ml-4 shrink-0 gap-1.5"
               onClick={() => setBenchmarks((prev) => [...prev, { task: "", hours: 1 }])}
             >
               <Plus size={13} /> Add Task
-            </button>
+            </Button>
           </div>
         </div>
         <div className="card-body">
@@ -1981,10 +1954,9 @@ function SettingsPanelInner() {
                   alignItems: "center",
                 }}
               >
-                <input
+                <Input
                   type="text"
-                  className="form-input"
-                  style={{ fontSize: 13 }}
+                  className="text-[13px]"
                   placeholder="Task name (e.g. Blog Post)"
                   value={b.task}
                   onChange={(e) =>
@@ -1994,12 +1966,11 @@ function SettingsPanelInner() {
                   }
                 />
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <input
+                  <Input
                     type="number"
                     min="0"
                     step="0.25"
-                    className="form-input"
-                    style={{ fontSize: 13, width: 90, textAlign: "right" }}
+                    className="w-22.5 text-right text-[13px]"
                     value={b.hours || ""}
                     onChange={(e) =>
                       setBenchmarks((prev) =>
@@ -2013,24 +1984,22 @@ function SettingsPanelInner() {
                     hours
                   </span>
                 </div>
-                <button
-                  className="btn btn-ghost btn-sm"
-                  style={{ padding: 6, color: "var(--danger)" }}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-(--danger-text)"
                   onClick={() => setBenchmarks((prev) => prev.filter((_, idx) => idx !== i))}
                 >
                   <Trash2 size={13} />
-                </button>
+                </Button>
               </div>
             ))}
           </div>
           <div style={{ marginTop: 16 }}>
-            <button
-              onClick={handleBenchmarksSave}
-              disabled={benchmarksSaving}
-              className="btn btn-primary"
-            >
+            <Button type="button" onClick={handleBenchmarksSave} disabled={benchmarksSaving}>
               {benchmarksSaving ? "Saving…" : benchmarksSaved ? "Saved ✓" : "Save Benchmarks"}
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -2049,12 +2018,11 @@ function SettingsPanelInner() {
         </div>
         <div className="card-body">
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-            <select
+            <Select
               value={snapshotMonths}
               onChange={(e) => setSnapshotMonths(Number(e.target.value))}
               disabled={snapshotRunning}
-              className="form-input"
-              style={{ width: "auto", fontSize: 13 }}
+              className="w-auto text-[13px]"
             >
               <option value={1}>Latest month only</option>
               <option value={3}>3 months backfill</option>
@@ -2062,12 +2030,12 @@ function SettingsPanelInner() {
               <option value={12}>12 months backfill</option>
               <option value={24}>24 months backfill</option>
               <option value={60}>All available (~5 years)</option>
-            </select>
-            <button
+            </Select>
+            <Button
+              type="button"
               onClick={handleRunSnapshots}
               disabled={snapshotRunning}
-              className="btn btn-primary"
-              style={{ minWidth: 160 }}
+              className="min-w-40"
             >
               {snapshotRunning ? (
                 <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -2089,7 +2057,7 @@ function SettingsPanelInner() {
               ) : (
                 "Run Snapshots Now"
               )}
-            </button>
+            </Button>
             <span style={{ fontSize: 12, color: "var(--text-3)" }}>
               {snapshotMonths === 1
                 ? "Fetches current month for all clients"
@@ -2489,10 +2457,10 @@ function SettingsPanelInner() {
           {mccError && <p style={{ fontSize: 13, color: "var(--danger)" }}>{mccError}</p>}
           {!mccLoading && !mccError && (
             <>
-              <select
+              <Select
                 value={selectedMcc}
                 onChange={(e) => setSelectedMcc(e.target.value)}
-                className="form-input"
+                className="mb-3"
                 style={{ marginBottom: 12 }}
               >
                 <option value="">Select an account</option>
@@ -2514,7 +2482,7 @@ function SettingsPanelInner() {
                     ))}
                   </optgroup>
                 )}
-              </select>
+              </Select>
               {currentMcc && (
                 <p style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 16 }}>
                   Current:{" "}
@@ -2532,13 +2500,13 @@ function SettingsPanelInner() {
                   </code>
                 </p>
               )}
-              <button
+              <Button
+                type="button"
                 onClick={handleMccSave}
                 disabled={mccSaving || selectedMcc === currentMcc || !selectedMcc}
-                className="btn btn-primary"
               >
                 {mccSaving ? "Saving…" : mccSaved ? "Saved ✓" : "Save"}
-              </button>
+              </Button>
             </>
           )}
         </div>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Pencil, Trash2, Plus, X, Check, Lock, Search, ListChecks, Eraser } from "lucide-react";
+import { Badge, Button, Input } from "@/components/ui/shadcn";
 
 const PERMISSION_GROUPS = [
   {
@@ -50,9 +51,7 @@ const PERMISSION_GROUPS = [
   },
   {
     label: "Meridian",
-    items: [
-      { key: "meridian_architecture", label: "Architecture & Roadmap" },
-    ],
+    items: [{ key: "meridian_architecture", label: "Architecture & Roadmap" }],
   },
   {
     label: "Admin",
@@ -179,14 +178,12 @@ function PermissionChecklist({
 
   const filteredGroups = useMemo(() => {
     if (!q) return PERMISSION_GROUPS.map((g) => ({ ...g, items: g.items.slice() }));
-    return PERMISSION_GROUPS
-      .map((g) => ({
-        ...g,
-        items: g.items.filter(
-          (i) => i.label.toLowerCase().includes(q) || i.key.toLowerCase().includes(q),
-        ),
-      }))
-      .filter((g) => g.items.length > 0);
+    return PERMISSION_GROUPS.map((g) => ({
+      ...g,
+      items: g.items.filter(
+        (i) => i.label.toLowerCase().includes(q) || i.key.toLowerCase().includes(q),
+      ),
+    })).filter((g) => g.items.length > 0);
   }, [q]);
 
   function toggle(key: string) {
@@ -207,44 +204,67 @@ function PermissionChecklist({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       {/* Toolbar — search + summary */}
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 12,
+          flexWrap: "wrap",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
         <div style={{ position: "relative", flex: "1 1 240px", maxWidth: 360 }}>
-          <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--text-4)", pointerEvents: "none" }} />
-          <input
+          <Search
+            size={14}
+            style={{
+              position: "absolute",
+              left: 10,
+              top: "50%",
+              transform: "translateY(-50%)",
+              color: "var(--text-4)",
+              pointerEvents: "none",
+            }}
+          />
+          <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search permissions…"
-            className="form-input"
-            style={{ paddingLeft: 32, height: 34, fontSize: 13 }}
+            className="h-8.5 pl-8 text-[13px]"
           />
         </div>
-        <div style={{ display: "inline-flex", alignItems: "center", gap: 10, fontSize: 12, color: "var(--text-3)" }}>
-          <span style={{
-            display: "inline-flex", alignItems: "center", gap: 6,
-            padding: "4px 10px", borderRadius: 999,
-            background: "var(--bg-2)", border: "1px solid var(--border-subtle)",
-            fontWeight: 600, color: "var(--text-2)",
-          }}>
+        <div
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 10,
+            fontSize: 12,
+            color: "var(--text-3)",
+          }}
+        >
+          <Badge variant="secondary" className="rounded-full px-2.5 py-1 text-[12px] font-semibold">
             {value.length} / {TOTAL_PERMISSIONS} enabled
-          </span>
-          <button
+          </Badge>
+          <Button
             type="button"
-            className="btn btn-ghost btn-sm"
+            variant="ghost"
+            size="sm"
             onClick={() => onChange([])}
             disabled={value.length === 0}
             title="Clear all permissions"
           >
             Clear all
-          </button>
+          </Button>
         </div>
       </div>
 
       {/* Group cards */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
-        gap: 12,
-      }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+          gap: 12,
+        }}
+      >
         {filteredGroups.length === 0 && (
           <div style={{ padding: 24, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
             No permissions match “{query}”.
@@ -268,48 +288,63 @@ function PermissionChecklist({
                 gap: 10,
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 8,
+                }}
+              >
                 <div style={{ display: "inline-flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-                  <span style={{
-                    fontSize: 11, fontWeight: 700, letterSpacing: "0.06em",
-                    textTransform: "uppercase", color: "var(--text-2)",
-                  }}>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      letterSpacing: "0.06em",
+                      textTransform: "uppercase",
+                      color: "var(--text-2)",
+                    }}
+                  >
                     {group.label}
                   </span>
-                  <span style={{
-                    fontSize: 10, fontWeight: 700,
-                    padding: "2px 7px", borderRadius: 999,
-                    background: allSelected ? "rgba(99,102,241,0.12)" : "var(--bg-2)",
-                    color: allSelected ? "var(--accent)" : "var(--text-3)",
-                    border: `1px solid ${allSelected ? "rgba(99,102,241,0.25)" : "var(--border-subtle)"}`,
-                  }}>
+                  <Badge
+                    variant={allSelected ? "info" : "secondary"}
+                    className="rounded-full px-1.5 py-0.5 text-[10px] font-bold"
+                  >
                     {selectedInGroup}/{total}
-                  </span>
+                  </Badge>
                 </div>
                 <div style={{ display: "inline-flex", gap: 4, flexShrink: 0 }}>
-                  <button
+                  <Button
                     type="button"
+                    variant="outline"
+                    size="icon"
                     onClick={() => selectGroup(group.items)}
                     disabled={allSelected}
                     title="Select all in this group"
-                    style={iconBtnStyle(allSelected)}
+                    className="h-6 w-6"
                   >
                     <ListChecks size={13} />
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
+                    variant="outline"
+                    size="icon"
                     onClick={() => clearGroup(group.items)}
                     disabled={noneSelected}
                     title="Clear this group"
-                    style={iconBtnStyle(noneSelected)}
+                    className="h-6 w-6"
                   >
                     <Eraser size={13} />
-                  </button>
+                  </Button>
                 </div>
               </div>
 
               {"note" in group && group.note && (
-                <p style={{ fontSize: 11.5, color: "var(--text-3)", margin: 0, lineHeight: 1.45 }}>{group.note}</p>
+                <p style={{ fontSize: 11.5, color: "var(--text-3)", margin: 0, lineHeight: 1.45 }}>
+                  {group.note}
+                </p>
               )}
 
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -319,20 +354,34 @@ function PermissionChecklist({
                     <label
                       key={item.key}
                       style={{
-                        display: "flex", alignItems: "center", gap: 9,
-                        cursor: "pointer", fontSize: 13, color: "var(--text)",
-                        padding: "5px 8px", borderRadius: 6,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 9,
+                        cursor: "pointer",
+                        fontSize: 13,
+                        color: "var(--text)",
+                        padding: "5px 8px",
+                        borderRadius: 6,
                         background: checked ? "rgba(99,102,241,0.06)" : "transparent",
                         transition: "background 0.12s",
                       }}
-                      onMouseEnter={(e) => { if (!checked) e.currentTarget.style.background = "var(--bg-2)"; }}
-                      onMouseLeave={(e) => { if (!checked) e.currentTarget.style.background = "transparent"; }}
+                      onMouseEnter={(e) => {
+                        if (!checked) e.currentTarget.style.background = "var(--bg-2)";
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!checked) e.currentTarget.style.background = "transparent";
+                      }}
                     >
                       <input
                         type="checkbox"
                         checked={checked}
                         onChange={() => toggle(item.key)}
-                        style={{ width: 14, height: 14, accentColor: "var(--accent, #6366f1)", flexShrink: 0 }}
+                        style={{
+                          width: 14,
+                          height: 14,
+                          accentColor: "var(--accent, #6366f1)",
+                          flexShrink: 0,
+                        }}
                       />
                       <span style={{ flex: 1, minWidth: 0 }}>{item.label}</span>
                     </label>
@@ -345,18 +394,6 @@ function PermissionChecklist({
       </div>
     </div>
   );
-}
-
-function iconBtnStyle(disabled: boolean): React.CSSProperties {
-  return {
-    width: 24, height: 24, padding: 0, borderRadius: 6,
-    border: "1px solid var(--border-subtle)",
-    background: "var(--bg-2)",
-    color: disabled ? "var(--text-4)" : "var(--text-2)",
-    cursor: disabled ? "default" : "pointer",
-    opacity: disabled ? 0.5 : 1,
-    display: "inline-flex", alignItems: "center", justifyContent: "center",
-  };
 }
 
 function RoleForm({
@@ -384,28 +421,29 @@ function RoleForm({
     >
       <div style={{ marginBottom: 16 }}>
         <label className="form-label">Role name</label>
-        <input
-          className="input"
+        <Input
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="e.g. Content Editor"
           required
-          style={{ maxWidth: 320 }}
+          className="h-9 max-w-80"
         />
       </div>
       <div style={{ marginBottom: 20 }}>
-        <label className="form-label" style={{ marginBottom: 12, display: "block" }}>Permissions</label>
+        <label className="form-label" style={{ marginBottom: 12, display: "block" }}>
+          Permissions
+        </label>
         <PermissionChecklist value={permissions} onChange={setPermissions} />
       </div>
       {error && <p style={{ color: "var(--danger)", fontSize: 13, marginBottom: 12 }}>{error}</p>}
       <div style={{ display: "flex", gap: 10 }}>
-        <button type="submit" className="btn btn-primary" disabled={saving}>
+        <Button type="submit" disabled={saving} className="gap-1.5">
           <Check size={14} />
           {saving ? "Saving…" : "Save role"}
-        </button>
-        <button type="button" className="btn btn-secondary" onClick={onCancel}>
+        </Button>
+        <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
-        </button>
+        </Button>
       </div>
     </form>
   );
@@ -419,7 +457,11 @@ function RolePermissionSummary({ permissions }: { permissions: string[] }) {
   }).filter((b) => b.selected.length > 0);
 
   if (buckets.length === 0) {
-    return <span style={{ fontSize: 12, color: "var(--text-4)", fontStyle: "italic" }}>No permissions</span>;
+    return (
+      <span style={{ fontSize: 12, color: "var(--text-4)", fontStyle: "italic" }}>
+        No permissions
+      </span>
+    );
   }
 
   return (
@@ -427,28 +469,20 @@ function RolePermissionSummary({ permissions }: { permissions: string[] }) {
       {buckets.map((b) => {
         const all = b.selected.length === b.total;
         return (
-          <span
+          <Badge
             key={b.label}
+            variant={all ? "info" : "secondary"}
             title={b.selected.map((s) => s.label).join(", ")}
-            style={{
-              display: "inline-flex", alignItems: "center", gap: 5,
-              fontSize: 11, fontWeight: 500,
-              padding: "3px 9px", borderRadius: 9999,
-              background: all ? "rgba(99,102,241,0.10)" : "var(--bg-2)",
-              border: `1px solid ${all ? "rgba(99,102,241,0.25)" : "var(--border-subtle)"}`,
-              color: all ? "var(--accent)" : "var(--text-2)",
-            }}
+            className="rounded-full px-2 py-0.5 text-[11px] font-medium"
           >
             {b.label}
-            <span style={{
-              fontSize: 10, fontWeight: 700,
-              padding: "1px 5px", borderRadius: 9999,
-              background: all ? "rgba(99,102,241,0.18)" : "var(--bg)",
-              color: all ? "var(--accent)" : "var(--text-3)",
-            }}>
+            <Badge
+              variant={all ? "outline" : "secondary"}
+              className="rounded-full px-1.5 py-0 text-[10px] font-bold"
+            >
               {all ? "all" : `${b.selected.length}/${b.total}`}
-            </span>
-          </span>
+            </Badge>
+          </Badge>
         );
       })}
     </div>
@@ -549,13 +583,17 @@ export function RolesManager() {
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
-        <button
-          className="btn btn-primary"
-          onClick={() => { setShowAdd((s) => !s); setAddError(null); }}
+        <Button
+          type="button"
+          onClick={() => {
+            setShowAdd((s) => !s);
+            setAddError(null);
+          }}
+          className="gap-1.5"
         >
-          <Plus style={{ width: 15, height: 15 }} />
+          <Plus size={15} />
           Add role
-        </button>
+        </Button>
       </div>
 
       {showAdd && (
@@ -588,9 +626,13 @@ export function RolesManager() {
         }}
       >
         {loading ? (
-          <div style={{ padding: 48, textAlign: "center", color: "var(--text-3)", fontSize: 14 }}>Loading…</div>
+          <div style={{ padding: 48, textAlign: "center", color: "var(--text-3)", fontSize: 14 }}>
+            Loading…
+          </div>
         ) : error ? (
-          <div style={{ padding: 48, textAlign: "center", color: "var(--danger)", fontSize: 14 }}>{error}</div>
+          <div style={{ padding: 48, textAlign: "center", color: "var(--danger)", fontSize: 14 }}>
+            {error}
+          </div>
         ) : (
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
@@ -623,22 +665,13 @@ export function RolesManager() {
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         {role.name}
                         {role.isSystem && (
-                          <span
+                          <Badge
+                            variant="info"
                             title="Built-in role"
-                            style={{
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: 3,
-                              fontSize: 10,
-                              fontWeight: 600,
-                              padding: "2px 7px",
-                              borderRadius: 9999,
-                              background: "rgb(99 102 241 / 0.1)",
-                              color: "var(--accent)",
-                            }}
+                            className="gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
                           >
                             <Lock size={9} /> Built-in
-                          </span>
+                          </Badge>
                         )}
                       </div>
                     </td>
@@ -650,9 +683,11 @@ export function RolesManager() {
                     </td>
                     <td style={{ padding: "14px 20px", textAlign: "right" }}>
                       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                        <button
-                          className="btn btn-ghost"
-                          style={{ padding: "5px 10px" }}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
                           onClick={() =>
                             editingId === role.id ? setEditingId(null) : setEditingId(role.id)
                           }
@@ -660,17 +695,19 @@ export function RolesManager() {
                           aria-label={editingId === role.id ? "Cancel editing" : "Edit role"}
                         >
                           {editingId === role.id ? <X size={14} /> : <Pencil size={14} />}
-                        </button>
+                        </Button>
                         {!role.isSystem && (
-                          <button
-                            className="btn btn-ghost"
-                            style={{ padding: "5px 10px", color: "var(--danger)" }}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-(--danger-text)"
                             onClick={() => setDeletingId(role.id)}
                             title="Delete"
                             aria-label="Delete role"
                           >
                             <Trash2 size={14} />
-                          </button>
+                          </Button>
                         )}
                       </div>
                     </td>
@@ -679,7 +716,10 @@ export function RolesManager() {
                   {editingId === role.id && editingRole && (
                     <tr
                       key={`${role.id}-edit`}
-                      style={{ background: "var(--surface)", borderBottom: "1px solid var(--border)" }}
+                      style={{
+                        background: "var(--surface)",
+                        borderBottom: "1px solid var(--border)",
+                      }}
                     >
                       <td colSpan={4} style={{ padding: "20px 24px" }}>
                         <RoleForm
@@ -696,24 +736,32 @@ export function RolesManager() {
                   {deletingId === role.id && (
                     <tr
                       key={`${role.id}-del`}
-                      style={{ background: "rgb(239 68 68 / 0.05)", borderBottom: "1px solid var(--border)" }}
+                      style={{
+                        background: "rgb(239 68 68 / 0.05)",
+                        borderBottom: "1px solid var(--border)",
+                      }}
                     >
                       <td colSpan={4} style={{ padding: "14px 20px" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
                           <span style={{ fontSize: 13, color: "var(--text-2)" }}>
-                            Delete <strong>{role.name}</strong>? Users assigned this role will lose their permissions.
+                            Delete <strong>{role.name}</strong>? Users assigned this role will lose
+                            their permissions.
                           </span>
-                          <button
-                            className="btn"
-                            style={{ background: "var(--danger)", color: "#fff", padding: "6px 14px", fontSize: 13 }}
+                          <Button
+                            type="button"
+                            variant="destructive"
                             onClick={() => handleDelete(role.id)}
                             disabled={deleteLoading}
                           >
                             {deleteLoading ? "Deleting…" : "Delete"}
-                          </button>
-                          <button className="btn btn-secondary" onClick={() => setDeletingId(null)}>
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setDeletingId(null)}
+                          >
                             Cancel
-                          </button>
+                          </Button>
                         </div>
                       </td>
                     </tr>

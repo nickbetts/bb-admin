@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { RefreshCw, User, Clock, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
+import { Badge, Button, Card, Input } from "@/components/ui/shadcn";
+import { cn } from "@/lib/utils";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -59,45 +61,43 @@ const ACTION_LABELS: Record<string, string> = {
   user_created: "User Created",
 };
 
-const ACTION_COLOURS: Record<string, { color: string; bg: string }> = {
-  report_created: { color: "var(--info-text)", bg: "#dbeafe" },
-  report_published: { color: "var(--success-text)", bg: "#dcfce7" },
-  report_shared: { color: "#0369a1", bg: "#e0f2fe" },
-  report_deleted: { color: "var(--danger-text)", bg: "#fee2e2" },
-  ai_strategy_generated: { color: "#7c3aed", bg: "#ede9fe" },
-  ai_summary_generated: { color: "#7c3aed", bg: "#ede9fe" },
-  ai_commentary_generated: { color: "#7c3aed", bg: "#ede9fe" },
-  ai_overview_narrative: { color: "#7c3aed", bg: "#ede9fe" },
-  ai_chat_message: { color: "#7c3aed", bg: "#ede9fe" },
-  client_created: { color: "#d97706", bg: "#fef3c7" },
-  client_updated: { color: "#d97706", bg: "#fef9c3" },
-  proposal_created: { color: "#0891b2", bg: "#cffafe" },
-  snapshot_triggered: { color: "#4b5563", bg: "#f3f4f6" },
-  user_login: { color: "#4b5563", bg: "#f3f4f6" },
-  user_created: { color: "var(--success-text)", bg: "#dcfce7" },
+type BadgeVariant =
+  | "default"
+  | "secondary"
+  | "destructive"
+  | "success"
+  | "warning"
+  | "info"
+  | "outline";
+
+const ACTION_BADGE_VARIANTS: Record<string, BadgeVariant> = {
+  report_created: "info",
+  report_published: "success",
+  report_shared: "info",
+  report_deleted: "destructive",
+  ai_strategy_generated: "info",
+  ai_summary_generated: "info",
+  ai_commentary_generated: "info",
+  ai_overview_narrative: "info",
+  ai_chat_message: "info",
+  client_created: "warning",
+  client_updated: "warning",
+  proposal_created: "info",
+  snapshot_triggered: "secondary",
+  user_login: "secondary",
+  user_created: "success",
 };
 
 function ActionBadge({ action }: { action: string }) {
   const label = ACTION_LABELS[action] ?? action.replace(/_/g, " ");
-  const style = ACTION_COLOURS[action] ?? { color: "#4b5563", bg: "#f3f4f6" };
+  const variant = ACTION_BADGE_VARIANTS[action] ?? "secondary";
   return (
-    <span
-      style={{
-        display: "inline-block",
-        padding: "2px 8px",
-        borderRadius: 4,
-        fontSize: 11,
-        fontWeight: 700,
-        letterSpacing: "0.04em",
-        textTransform: "uppercase",
-        background: style.bg,
-        color: style.color,
-        whiteSpace: "nowrap",
-        flexShrink: 0,
-      }}
+    <Badge
+      variant={variant}
+      className="rounded-sm px-2 py-0.5 text-[11px] font-bold tracking-[0.04em] whitespace-nowrap uppercase"
     >
       {label}
-    </span>
+    </Badge>
   );
 }
 
@@ -118,22 +118,27 @@ export function ActivityLogDashboard() {
   const [clearing, setClearing] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const load = useCallback(async (p = page, act = actionFilter, q = search) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const params = new URLSearchParams({ page: String(p), action: act, search: q });
-      const res = await fetch(`/api/admin/activity?${params}`);
-      if (!res.ok) throw new Error("Failed to load activity log");
-      setData(await res.json());
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Unknown error");
-    } finally {
-      setLoading(false);
-    }
-  }, [page, actionFilter, search]);
+  const load = useCallback(
+    async (p = page, act = actionFilter, q = search) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const params = new URLSearchParams({ page: String(p), action: act, search: q });
+        const res = await fetch(`/api/admin/activity?${params}`);
+        if (!res.ok) throw new Error("Failed to load activity log");
+        setData(await res.json());
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Unknown error");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [page, actionFilter, search],
+  );
 
-  useEffect(() => { load(page, actionFilter, search); }, [page, actionFilter, search, load]);
+  useEffect(() => {
+    load(page, actionFilter, search);
+  }, [page, actionFilter, search, load]);
 
   const handleSearchChange = (val: string) => {
     setSearchInput(val);
@@ -150,12 +155,20 @@ export function ActivityLogDashboard() {
   };
 
   const handleClear = async (days: number) => {
-    if (!(await confirm({ title: `Delete all activity logs older than ${days} day${days === 1 ? "" : "s"}?`, description: "This cannot be undone.", confirmLabel: "Delete", danger: true }))) return;
+    if (
+      !(await confirm({
+        title: `Delete all activity logs older than ${days} day${days === 1 ? "" : "s"}?`,
+        description: "This cannot be undone.",
+        confirmLabel: "Delete",
+        danger: true,
+      }))
+    )
+      return;
     setClearing(true);
     try {
       const res = await fetch(`/api/admin/activity?olderThanDays=${days}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Delete failed");
-      const { deleted } = await res.json() as { deleted: number };
+      const { deleted } = (await res.json()) as { deleted: number };
       toast(`Deleted ${deleted} log${deleted === 1 ? "" : "s"}.`, "success");
       setPage(1);
       load(1, actionFilter, search);
@@ -171,91 +184,65 @@ export function ActivityLogDashboard() {
   return (
     <div>
       {/* Controls */}
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          flexWrap: "wrap",
-          alignItems: "center",
-          marginBottom: 18,
-          justifyContent: "space-between",
-        }}
-      >
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-          <input
+      <div className="mb-4.5 flex flex-wrap items-center justify-between gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Input
             type="search"
             placeholder="Search description, user, client…"
             value={searchInput}
             onChange={(e) => handleSearchChange(e.target.value)}
-            style={{
-              padding: "7px 12px",
-              borderRadius: 8,
-              border: "1px solid var(--border)",
-              background: "var(--bg-2)",
-              color: "var(--text)",
-              fontSize: 13,
-              width: 260,
-              outline: "none",
-            }}
+            className="h-9 w-65 text-[13px]"
           />
           <select
             value={actionFilter}
             onChange={(e) => handleActionChange(e.target.value)}
-            style={{
-              padding: "7px 10px",
-              borderRadius: 8,
-              border: "1px solid var(--border)",
-              background: "var(--bg-2)",
-              color: "var(--text)",
-              fontSize: 13,
-              cursor: "pointer",
-            }}
+            className="h-9 rounded-md border border-(--border) bg-(--bg-2) px-2.5 text-[13px] text-(--text) transition outline-none focus-visible:ring-2 focus-visible:ring-(--accent) focus-visible:ring-offset-2 focus-visible:ring-offset-(--bg)"
           >
             <option value="">All actions</option>
             {ALL_ACTIONS.map((a) => (
-              <option key={a} value={a}>{ACTION_LABELS[a] ?? a}</option>
+              <option key={a} value={a}>
+                {ACTION_LABELS[a] ?? a}
+              </option>
             ))}
           </select>
-          <button
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
             onClick={() => load(page, actionFilter, search)}
             disabled={loading}
-            className="btn btn-secondary btn-sm"
-            style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+            className="h-9 gap-1.5 text-[13px]"
           >
-            <RefreshCw size={13} style={{ animation: loading ? "spin 1s linear infinite" : "none" }} />
+            <RefreshCw size={13} className={cn(loading && "animate-spin")} />
             Refresh
-          </button>
+          </Button>
         </div>
 
-        <div style={{ display: "flex", gap: 8 }}>
+        <div className="flex gap-2">
           <select
             defaultValue=""
             disabled={clearing}
-            onChange={(e) => { if (e.target.value) handleClear(parseInt(e.target.value)); e.target.value = ""; }}
-            style={{
-              padding: "7px 10px",
-              borderRadius: 8,
-              border: "1px solid var(--border)",
-              background: "var(--bg-2)",
-              color: "var(--text-3)",
-              fontSize: 12,
-              cursor: clearing ? "not-allowed" : "pointer",
-              opacity: clearing ? 0.6 : 1,
+            onChange={(e) => {
+              if (e.target.value) handleClear(parseInt(e.target.value, 10));
+              e.target.value = "";
             }}
+            className="h-9 rounded-md border border-(--border) bg-(--bg-2) px-2.5 text-[12px] text-(--text-3) transition outline-none focus-visible:ring-2 focus-visible:ring-(--accent) focus-visible:ring-offset-2 focus-visible:ring-offset-(--bg) disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <option value="" disabled>Clear old logs…</option>
+            <option value="" disabled>
+              Clear old logs…
+            </option>
             <option value="30">Older than 30 days</option>
             <option value="90">Older than 90 days</option>
             <option value="180">Older than 180 days</option>
             <option value="365">Older than 1 year</option>
           </select>
-          {clearing && <Trash2 size={14} style={{ color: "var(--text-3)", alignSelf: "center" }} />}
+          {clearing && <Trash2 size={14} className="self-center text-(--text-3)" />}
         </div>
       </div>
 
       {/* Stats */}
       {data && (
-        <p style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 14 }}>
+        <p className="mb-3.5 text-[13px] text-(--text-3)">
           {data.total.toLocaleString()} event{data.total === 1 ? "" : "s"}
           {actionFilter ? ` · ${ACTION_LABELS[actionFilter] ?? actionFilter}` : ""}
           {search ? ` matching "${search}"` : ""}
@@ -265,23 +252,24 @@ export function ActivityLogDashboard() {
 
       {/* Error */}
       {error && (
-        <div style={{ padding: "12px 16px", borderRadius: 8, background: "var(--danger-bg)", border: "1px solid var(--danger-border)", marginBottom: 16 }}>
-          <p style={{ fontSize: 13, color: "var(--danger-text)" }}>{error}</p>
+        <div className="mb-4 rounded-md border border-(--danger-border) bg-(--danger-bg) px-4 py-3">
+          <p className="text-[13px] text-(--danger-text)">{error}</p>
         </div>
       )}
 
       {/* Table */}
       {data && data.logs.length === 0 && !loading && (
-        <div className="card" style={{ padding: "32px 24px", textAlign: "center" }}>
-          <p style={{ fontSize: 14, color: "var(--text-3)" }}>No activity logged yet.</p>
-          <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 6 }}>
-            Actions such as creating reports, generating AI insights, and adding clients will appear here.
+        <Card className="px-6 py-8 text-center">
+          <p className="text-[14px] text-(--text-3)">No activity logged yet.</p>
+          <p className="mt-1.5 text-[12px] text-(--text-3)">
+            Actions such as creating reports, generating AI insights, and adding clients will appear
+            here.
           </p>
-        </div>
+        </Card>
       )}
 
       {data && data.logs.length > 0 && (
-        <div className="card" style={{ overflow: "hidden" }}>
+        <Card className="overflow-hidden p-0">
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ borderBottom: "1px solid var(--border)" }}>
@@ -317,7 +305,9 @@ export function ActivityLogDashboard() {
                   <td style={{ padding: "10px 16px", whiteSpace: "nowrap", verticalAlign: "top" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                       <Clock size={12} style={{ color: "var(--text-3)", flexShrink: 0 }} />
-                      <span style={{ fontSize: 12, color: "var(--text-3)" }}>{formatTime(log.createdAt)}</span>
+                      <span style={{ fontSize: 12, color: "var(--text-3)" }}>
+                        {formatTime(log.createdAt)}
+                      </span>
                     </div>
                   </td>
 
@@ -327,13 +317,33 @@ export function ActivityLogDashboard() {
                       <User size={12} style={{ color: "var(--text-3)", flexShrink: 0 }} />
                       <div>
                         {log.userName && (
-                          <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", margin: 0 }}>{log.userName}</p>
+                          <p
+                            style={{
+                              fontSize: 13,
+                              fontWeight: 600,
+                              color: "var(--text)",
+                              margin: 0,
+                            }}
+                          >
+                            {log.userName}
+                          </p>
                         )}
                         {log.userEmail && (
-                          <p style={{ fontSize: 11, color: "var(--text-3)", margin: 0 }}>{log.userEmail}</p>
+                          <p style={{ fontSize: 11, color: "var(--text-3)", margin: 0 }}>
+                            {log.userEmail}
+                          </p>
                         )}
                         {!log.userName && !log.userEmail && (
-                          <p style={{ fontSize: 12, color: "var(--text-3)", margin: 0, fontStyle: "italic" }}>System</p>
+                          <p
+                            style={{
+                              fontSize: 12,
+                              color: "var(--text-3)",
+                              margin: 0,
+                              fontStyle: "italic",
+                            }}
+                          >
+                            System
+                          </p>
                         )}
                       </div>
                     </div>
@@ -346,60 +356,86 @@ export function ActivityLogDashboard() {
 
                   {/* Description */}
                   <td style={{ padding: "10px 16px", verticalAlign: "top", maxWidth: 380 }}>
-                    <p style={{ fontSize: 13, color: "var(--text)", margin: 0, lineHeight: 1.4 }}>{log.description}</p>
-                    {log.metadata && (() => {
-                      try {
-                        const meta = JSON.parse(log.metadata);
-                        if (!meta || typeof meta !== "object" || Array.isArray(meta)) return null;
-                        const m = meta as Record<string, unknown>;
-                        const parts: string[] = [];
-                        if (typeof m.model === "string") parts.push(`Model: ${m.model}`);
-                        if (typeof m.inputTokens === "number") parts.push(`${m.inputTokens.toLocaleString()} input tokens`);
-                        if (typeof m.outputTokens === "number") parts.push(`${m.outputTokens.toLocaleString()} output tokens`);
-                        if (m.webSearch === true) parts.push("web search");
-                        if (parts.length === 0) return null;
-                        return <p style={{ fontSize: 11, color: "var(--text-3)", margin: "3px 0 0", fontStyle: "italic" }}>{parts.join(" · ")}</p>;
-                      } catch { return null; }
-                    })()}
+                    <p style={{ fontSize: 13, color: "var(--text)", margin: 0, lineHeight: 1.4 }}>
+                      {log.description}
+                    </p>
+                    {log.metadata &&
+                      (() => {
+                        try {
+                          const meta = JSON.parse(log.metadata);
+                          if (!meta || typeof meta !== "object" || Array.isArray(meta)) return null;
+                          const m = meta as Record<string, unknown>;
+                          const parts: string[] = [];
+                          if (typeof m.model === "string") parts.push(`Model: ${m.model}`);
+                          if (typeof m.inputTokens === "number")
+                            parts.push(`${m.inputTokens.toLocaleString()} input tokens`);
+                          if (typeof m.outputTokens === "number")
+                            parts.push(`${m.outputTokens.toLocaleString()} output tokens`);
+                          if (m.webSearch === true) parts.push("web search");
+                          if (parts.length === 0) return null;
+                          return (
+                            <p
+                              style={{
+                                fontSize: 11,
+                                color: "var(--text-3)",
+                                margin: "3px 0 0",
+                                fontStyle: "italic",
+                              }}
+                            >
+                              {parts.join(" · ")}
+                            </p>
+                          );
+                        } catch {
+                          return null;
+                        }
+                      })()}
                   </td>
 
                   {/* Client */}
                   <td style={{ padding: "10px 16px", verticalAlign: "top", whiteSpace: "nowrap" }}>
                     {log.clientName ? (
-                      <span style={{ fontSize: 12, color: "var(--text)", fontWeight: 500 }}>{log.clientName}</span>
+                      <span style={{ fontSize: 12, color: "var(--text)", fontWeight: 500 }}>
+                        {log.clientName}
+                      </span>
                     ) : (
-                      <span style={{ fontSize: 12, color: "var(--text-3)", fontStyle: "italic" }}>—</span>
+                      <span style={{ fontSize: 12, color: "var(--text-3)", fontStyle: "italic" }}>
+                        —
+                      </span>
                     )}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
+        </Card>
       )}
 
       {/* Pagination */}
       {data && totalPages > 1 && (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginTop: 16 }}>
-          <button
+        <div className="mt-4 flex items-center justify-center gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1 || loading}
-            className="btn btn-secondary btn-sm"
-            style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
+            className="h-9 gap-1 text-[13px]"
           >
             <ChevronLeft size={14} /> Previous
-          </button>
-          <span style={{ fontSize: 13, color: "var(--text-3)" }}>
+          </Button>
+          <span className="text-[13px] text-(--text-3)">
             Page {page} of {totalPages}
           </span>
-          <button
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={page === totalPages || loading}
-            className="btn btn-secondary btn-sm"
-            style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
+            className="h-9 gap-1 text-[13px]"
           >
             Next <ChevronRight size={14} />
-          </button>
+          </Button>
         </div>
       )}
     </div>

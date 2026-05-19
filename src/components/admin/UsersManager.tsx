@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Pencil, Trash2, Plus, X, Check, Eye, EyeOff } from "lucide-react";
+import { Badge, Button, Input } from "@/components/ui/shadcn";
 
 interface Role {
   id: string;
@@ -26,27 +27,24 @@ interface UsersManagerProps {
   currentUserId: string;
 }
 
-function RoleBadge({ role, userRole }: { role: string; userRole?: { id: string; name: string } | null }) {
+function RoleBadge({
+  role,
+  userRole,
+}: {
+  role: string;
+  userRole?: { id: string; name: string } | null;
+}) {
   const isAdmin = role === "admin";
   const displayName = userRole?.name ?? (isAdmin ? "Admin" : "User");
   const isNamed = !!userRole?.name && userRole.name !== "User";
-  const bg = isAdmin ? "rgb(99 102 241 / 0.12)" : isNamed ? "rgb(168 85 247 / 0.12)" : "rgb(148 163 184 / 0.15)";
-  const color = isAdmin ? "#6366f1" : isNamed ? "#a855f7" : "var(--text-3)";
+  const variant = isAdmin ? "info" : isNamed ? "default" : "secondary";
   return (
-    <span
-      style={{
-        display: "inline-block",
-        padding: "2px 10px",
-        borderRadius: 9999,
-        fontSize: 11,
-        fontWeight: 600,
-        letterSpacing: "0.02em",
-        background: bg,
-        color,
-      }}
+    <Badge
+      variant={variant}
+      className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold tracking-[0.02em]"
     >
       {displayName}
-    </span>
+    </Badge>
   );
 }
 
@@ -62,32 +60,22 @@ function PasswordInput({
   const [show, setShow] = useState(false);
   return (
     <div style={{ position: "relative" }}>
-      <input
+      <Input
         type={show ? "text" : "password"}
-        className="input"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder ?? "Password"}
-        style={{ paddingRight: 40 }}
+        className="h-9 pr-10"
       />
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        size="icon"
         onClick={() => setShow((s) => !s)}
-        style={{
-          position: "absolute",
-          right: 10,
-          top: "50%",
-          transform: "translateY(-50%)",
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          color: "var(--text-3)",
-          padding: 0,
-          display: "flex",
-        }}
+        className="absolute top-1/2 right-2 h-6 w-6 -translate-y-1/2 text-(--text-3)"
       >
         {show ? <EyeOff size={15} /> : <Eye size={15} />}
-      </button>
+      </Button>
     </div>
   );
 }
@@ -141,7 +129,9 @@ export function UsersManager({ currentUserId }: UsersManagerProps) {
       const data: Role[] = await res.json();
       setRoles(data);
       setAddRoleId((prev) => prev || data[0]?.id || "");
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }, []);
 
   useEffect(() => {
@@ -157,7 +147,12 @@ export function UsersManager({ currentUserId }: UsersManagerProps) {
       const res = await fetch("/api/admin/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: addEmail, name: addName, password: addPassword, roleId: addRoleId }),
+        body: JSON.stringify({
+          email: addEmail,
+          name: addName,
+          password: addPassword,
+          roleId: addRoleId,
+        }),
       });
       if (!res.ok) {
         const d = await res.json();
@@ -225,16 +220,17 @@ export function UsersManager({ currentUserId }: UsersManagerProps) {
     <div>
       {/* Add user button */}
       <div style={{ marginBottom: 24 }}>
-        <button
-          className="btn btn-primary"
+        <Button
+          type="button"
           onClick={() => {
             setShowAdd((s) => !s);
             setAddError(null);
           }}
+          className="gap-1.5"
         >
-          <Plus style={{ width: 15, height: 15 }} />
+          <Plus size={15} />
           Add user
-        </button>
+        </Button>
       </div>
 
       {/* Add user form */}
@@ -250,41 +246,49 @@ export function UsersManager({ currentUserId }: UsersManagerProps) {
         >
           <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 16 }}>New user</h3>
           <form onSubmit={handleAdd}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+            <div
+              style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}
+            >
               <div>
                 <label className="form-label">Name</label>
-                <input
-                  className="input"
+                <Input
                   value={addName}
                   onChange={(e) => setAddName(e.target.value)}
                   placeholder="Full name"
+                  className="h-9"
                   required
                 />
               </div>
               <div>
                 <label className="form-label">Email</label>
-                <input
-                  className="input"
+                <Input
                   type="email"
                   value={addEmail}
                   onChange={(e) => setAddEmail(e.target.value)}
                   placeholder="user@example.com"
+                  className="h-9"
                   required
                 />
               </div>
               <div>
                 <label className="form-label">Password</label>
-                <PasswordInput value={addPassword} onChange={setAddPassword} placeholder="Set a password" />
+                <PasswordInput
+                  value={addPassword}
+                  onChange={setAddPassword}
+                  placeholder="Set a password"
+                />
               </div>
               <div>
                 <label className="form-label">Role</label>
                 <select
-                  className="input"
+                  className="h-9 w-full rounded-md border border-(--border) bg-(--surface) px-3 text-sm text-(--text) transition outline-none focus-visible:ring-2 focus-visible:ring-(--accent) focus-visible:ring-offset-2 focus-visible:ring-offset-(--bg)"
                   value={addRoleId}
                   onChange={(e) => setAddRoleId(e.target.value)}
                 >
                   {roles.map((r) => (
-                    <option key={r.id} value={r.id}>{r.name}</option>
+                    <option key={r.id} value={r.id}>
+                      {r.name}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -293,16 +297,12 @@ export function UsersManager({ currentUserId }: UsersManagerProps) {
               <p style={{ color: "var(--danger)", fontSize: 13, marginBottom: 12 }}>{addError}</p>
             )}
             <div style={{ display: "flex", gap: 10 }}>
-              <button type="submit" className="btn btn-primary" disabled={addLoading}>
+              <Button type="submit" disabled={addLoading}>
                 {addLoading ? "Creating…" : "Create user"}
-              </button>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => setShowAdd(false)}
-              >
+              </Button>
+              <Button type="button" variant="outline" onClick={() => setShowAdd(false)}>
                 Cancel
-              </button>
+              </Button>
             </div>
           </form>
         </div>
@@ -356,12 +356,17 @@ export function UsersManager({ currentUserId }: UsersManagerProps) {
                     <td style={{ padding: "14px 20px", fontSize: 14, fontWeight: 500 }}>
                       {user.name}
                       {user.id === currentUserId && (
-                        <span style={{ fontSize: 11, color: "var(--text-3)", marginLeft: 6 }}>(you)</span>
+                        <span style={{ fontSize: 11, color: "var(--text-3)", marginLeft: 6 }}>
+                          (you)
+                        </span>
                       )}
                       {user.mustChangePassword && (
-                        <span style={{ fontSize: 10, fontWeight: 600, marginLeft: 8, padding: "2px 7px", borderRadius: 9999, background: "rgb(234 179 8 / 0.15)", color: "#a16207" }}>
+                        <Badge
+                          variant="warning"
+                          className="ml-2 rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
+                        >
                           must change password
-                        </span>
+                        </Badge>
                       )}
                     </td>
                     <td style={{ padding: "14px 20px", fontSize: 13, color: "var(--text-2)" }}>
@@ -375,9 +380,11 @@ export function UsersManager({ currentUserId }: UsersManagerProps) {
                     </td>
                     <td style={{ padding: "14px 20px", textAlign: "right" }}>
                       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                        <button
-                          className="btn btn-ghost"
-                          style={{ padding: "5px 10px" }}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
                           onClick={() =>
                             editingId === user.id ? setEditingId(null) : startEdit(user)
                           }
@@ -385,17 +392,19 @@ export function UsersManager({ currentUserId }: UsersManagerProps) {
                           aria-label={editingId === user.id ? "Cancel editing" : "Edit user"}
                         >
                           {editingId === user.id ? <X size={14} /> : <Pencil size={14} />}
-</button>
+                        </Button>
                         {user.id !== currentUserId && (
-                          <button
-                            className="btn btn-ghost"
-                            style={{ padding: "5px 10px", color: "var(--danger)" }}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-(--danger-text)"
                             onClick={() => setDeletingId(user.id)}
                             title="Delete"
                             aria-label="Delete user"
                           >
                             <Trash2 size={14} />
-                          </button>
+                          </Button>
                         )}
                       </div>
                     </td>
@@ -405,7 +414,10 @@ export function UsersManager({ currentUserId }: UsersManagerProps) {
                   {editingId === user.id && (
                     <tr
                       key={`${user.id}-edit`}
-                      style={{ background: "var(--surface)", borderBottom: "1px solid var(--border)" }}
+                      style={{
+                        background: "var(--surface)",
+                        borderBottom: "1px solid var(--border)",
+                      }}
                     >
                       <td colSpan={5} style={{ padding: "16px 20px" }}>
                         <form onSubmit={handleEdit}>
@@ -420,10 +432,10 @@ export function UsersManager({ currentUserId }: UsersManagerProps) {
                           >
                             <div>
                               <label className="form-label">Name</label>
-                              <input
-                                className="input"
+                              <Input
                                 value={editName}
                                 onChange={(e) => setEditName(e.target.value)}
+                                className="h-9"
                                 required
                               />
                             </div>
@@ -438,27 +450,29 @@ export function UsersManager({ currentUserId }: UsersManagerProps) {
                             <div>
                               <label className="form-label">Role</label>
                               <select
-                                className="input"
+                                className="h-9 w-full rounded-md border border-(--border) bg-(--surface) px-3 text-sm text-(--text) transition outline-none focus-visible:ring-2 focus-visible:ring-(--accent) focus-visible:ring-offset-2 focus-visible:ring-offset-(--bg)"
                                 value={editRoleId}
                                 onChange={(e) => setEditRoleId(e.target.value)}
                               >
                                 {roles.map((r) => (
-                                  <option key={r.id} value={r.id}>{r.name}</option>
+                                  <option key={r.id} value={r.id}>
+                                    {r.name}
+                                  </option>
                                 ))}
                               </select>
                             </div>
                             <div style={{ display: "flex", gap: 8 }}>
-                              <button type="submit" className="btn btn-primary" disabled={editLoading}>
+                              <Button type="submit" disabled={editLoading} className="gap-1.5">
                                 <Check size={14} />
-                                {editLoading ? "Saving…" : "Save"}
-                              </button>
-                              <button
+                                {editLoading ? "Saving..." : "Save"}
+                              </Button>
+                              <Button
                                 type="button"
-                                className="btn btn-secondary"
+                                variant="outline"
                                 onClick={() => setEditingId(null)}
                               >
                                 Cancel
-                              </button>
+                              </Button>
                             </div>
                           </div>
                           {editError && (
@@ -473,27 +487,31 @@ export function UsersManager({ currentUserId }: UsersManagerProps) {
                   {deletingId === user.id && (
                     <tr
                       key={`${user.id}-del`}
-                      style={{ background: "rgb(239 68 68 / 0.05)", borderBottom: "1px solid var(--border)" }}
+                      style={{
+                        background: "rgb(239 68 68 / 0.05)",
+                        borderBottom: "1px solid var(--border)",
+                      }}
                     >
                       <td colSpan={5} style={{ padding: "14px 20px" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
                           <span style={{ fontSize: 13, color: "var(--text-2)" }}>
                             Delete <strong>{user.name}</strong>? This cannot be undone.
                           </span>
-                          <button
-                            className="btn"
-                            style={{ background: "var(--danger)", color: "#fff", padding: "6px 14px", fontSize: 13 }}
+                          <Button
+                            type="button"
+                            variant="destructive"
                             onClick={() => handleDelete(user.id)}
                             disabled={deleteLoading}
                           >
-                            {deleteLoading ? "Deleting…" : "Delete"}
-                          </button>
-                          <button
-                            className="btn btn-secondary"
+                            {deleteLoading ? "Deleting..." : "Delete"}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
                             onClick={() => setDeletingId(null)}
                           >
                             Cancel
-                          </button>
+                          </Button>
                         </div>
                       </td>
                     </tr>

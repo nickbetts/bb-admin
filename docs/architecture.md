@@ -8,6 +8,7 @@ This document covers the system architecture, database schema, project structure
 
 - [System Architecture Diagram](#system-architecture-diagram)
 - [Tech Stack](#tech-stack)
+- [Frontend UI Foundation](#frontend-ui-foundation)
 - [Database Schema](#database-schema)
 - [Project Structure](#project-structure)
 - [Data Flows](#data-flows)
@@ -122,26 +123,38 @@ This document covers the system architecture, database schema, project structure
 
 ## Tech Stack
 
-| Layer | Technology | Purpose |
-|-------|-----------|---------|
-| **Framework** | Next.js 16.1.6 (App Router) | Server/client rendering, API routes, file-based routing |
-| **Language** | TypeScript (strict mode) | Type safety across the entire codebase |
-| **UI** | React 19.2.3 | Component rendering |
-| **Styling** | Tailwind CSS v4 + CSS custom properties | Utility-first styling with design tokens |
-| **Charts** | Recharts 3.8 | Area charts, bar charts, pie charts across all dashboard sections |
-| **Icons** | Lucide React | Consistent icon system |
-| **Drag & Drop** | dnd-kit | Report section reordering |
-| **Database** | Prisma v7 + Vercel Postgres (Neon) | ORM with 65 models |
-| **Auth** | HMAC-SHA256 signed cookies + bcrypt | Session management and password hashing |
-| **AI** | OpenAI (gpt-4o-mini, gpt-4o, gpt-4o-search-preview) | Insights, commentary, proposals, analysis |
-| **File Storage** | Vercel Blob | Screenshots and client logos |
-| **PDF** | Puppeteer-core + @sparticuz/chromium-min | Server-side headless Chrome PDF rendering on Vercel |
-| **HTTP Client** | Axios | External API requests (SemRush, Meta, etc.) |
-| **Google Auth** | google-auth-library | Service account (GA4/GSC) + OAuth2 (Google Ads) |
-| **Dates** | date-fns | Date formatting and manipulation |
-| **Class Utils** | clsx + tailwind-merge | Conditional className composition |
-| **Hosting** | Vercel | Serverless deployment with edge network |
-| **CI** | GitHub Actions | Lint + build on push/PR |
+| Layer            | Technology                                          | Purpose                                                           |
+| ---------------- | --------------------------------------------------- | ----------------------------------------------------------------- |
+| **Framework**    | Next.js 16.1.6 (App Router)                         | Server/client rendering, API routes, file-based routing           |
+| **Language**     | TypeScript (strict mode)                            | Type safety across the entire codebase                            |
+| **UI**           | React 19.2.3                                        | Component rendering                                               |
+| **Styling**      | Tailwind CSS v4 + CSS custom properties             | Utility-first styling with design tokens                          |
+| **Charts**       | Recharts 3.8                                        | Area charts, bar charts, pie charts across all dashboard sections |
+| **Icons**        | Lucide React                                        | Consistent icon system                                            |
+| **Drag & Drop**  | dnd-kit                                             | Report section reordering                                         |
+| **Database**     | Prisma v7 + Vercel Postgres (Neon)                  | ORM with 65 models                                                |
+| **Auth**         | HMAC-SHA256 signed cookies + bcrypt                 | Session management and password hashing                           |
+| **AI**           | OpenAI (gpt-4o-mini, gpt-4o, gpt-4o-search-preview) | Insights, commentary, proposals, analysis                         |
+| **File Storage** | Vercel Blob                                         | Screenshots and client logos                                      |
+| **PDF**          | Puppeteer-core + @sparticuz/chromium-min            | Server-side headless Chrome PDF rendering on Vercel               |
+| **HTTP Client**  | Axios                                               | External API requests (SemRush, Meta, etc.)                       |
+| **Google Auth**  | google-auth-library                                 | Service account (GA4/GSC) + OAuth2 (Google Ads)                   |
+| **Dates**        | date-fns                                            | Date formatting and manipulation                                  |
+| **Class Utils**  | clsx + tailwind-merge                               | Conditional className composition                                 |
+| **Hosting**      | Vercel                                              | Serverless deployment with edge network                           |
+| **CI**           | GitHub Actions                                      | Lint + build on push/PR                                           |
+
+---
+
+## Frontend UI Foundation
+
+The current frontend stack is layered so motion and primitive adoption can be rolled out gradually without destabilising report rendering/export flows.
+
+1. Global motion orchestration: `src/components/providers/FrontendEnhancementsProvider.tsx` applies route transitions with Framer Motion and optional smooth scrolling with Lenis. Report-like routes (`/reports`, print routes, and shared report links) are explicitly bypassed so PDF/export surfaces retain native behaviour.
+2. Shared motion utilities: `src/components/ui/InViewReveal.tsx` provides in-view reveal primitives via `react-intersection-observer` + Framer Motion, while `src/components/ui/motion-variants.ts` contains reusable CVA-driven motion style variants.
+3. Headless primitives: Radix wrappers are standardised in `src/components/ui/RadixDialog.tsx`, `src/components/ui/RadixPopover.tsx`, `src/components/ui/RadixTooltip.tsx`, and `src/components/ui/RadixDropdownMenu.tsx`.
+4. shadcn primitive layer (incremental rollout): base primitives live in `src/components/ui/shadcn/` (`button.tsx`, `input.tsx`, `badge.tsx`, `card.tsx`) with barrel exports in `src/components/ui/shadcn/index.ts`. Rollout policy is to migrate admin/settings/tooling surfaces first, then broader authenticated UX, while keeping report editor/view/print/export surfaces behaviour-stable.
+5. Global CSS + animation plugin: `src/app/globals.css` imports Tailwind v4 and `tailwindcss-animate`, and defines the semantic token system (`--success-*`, `--warning-*`, `--danger-*`, `--info-*`) used by shared primitives.
 
 ---
 
@@ -207,73 +220,73 @@ ApiCache            (standalone — short-lived API response cache)
 QaChecklist         (standalone — pre-launch and campaign QA checklists)
 ```
 
-| Model | Key Fields | Purpose |
-|-------|-----------|---------|
-| **Role** | name, permissions (JSON) | Permission-based access control |
-| **User** | email, password, roleId, mustChangePassword, notificationPrefs (JSON) | User accounts with role assignment |
-| **Session** | token, userId, expiresAt | Cookie-based sessions (7-day TTL) |
-| **Client** | name, website, logoUrl, all integration credentials, reportSchedule (JSON), contractedHours (JSON), competitorDomains (JSON) | Central entity storing all 15 integration credentials |
-| **Report** | title, period, status, shareToken, approvalStatus, approvedBy | Reports with approval workflow and sharing |
-| **ReportSection** | sectionType, title, commentary, contentText, enabled, cardConfig (JSON) | Individual report sections with AI context |
-| **Screenshot** | url, caption, sectionId | Vercel Blob-stored images linked to report sections |
-| **ReportComment** | content, userId, sectionId, resolved, parentId | Threaded comments for report collaboration |
-| **ReportTemplate** | name, sections (JSON), isDefault | Reusable report section configurations |
-| **GoogleConnection** | email, refreshToken, scopes | Multi-account Google OAuth storage |
-| **MetricSnapshot** | clientId, sectionType, periodStart, periodEnd, metrics (JSON), campaignData (JSON) | Historical metric storage (composite unique key) |
-| **AppSetting** | key, value | Global config (OpenAI key, MCC ID, benchmarks, pricing) |
-| **KeywordPlannerResearch** | keywords (JSON), adGroups (JSON), brief, websiteContext | Saved keyword research sessions |
-| **Proposal** | title, html, servicesJson, shareToken, viewCount, pipelineStage, expectedValue, closeDate | AI-generated proposals with pipeline CRM fields |
-| **ProposalEnquiry** | name, email, phone, message | Enquiries from public proposal views |
-| **LlmTemplate** | name, sector, templateText, promptGuidance, isBuiltIn | Templates for LLM.txt generation |
-| **ClientGoal** | metric, channel, targetValue, currentValue, targetDate, status | Per-client KPI goals with on-track/at-risk tracking |
-| **StrategyDocument** | title, period, content, shareToken | Quarterly AI strategy documents per client |
-| **BudgetRecommendation** | periodStart, periodEnd, recommendations (JSON), summary | Cross-channel budget reallocation snapshots |
-| **ActionItem** | title, status, priority, assignedTo, dueDate, outcome, sourceType | AI recommendations → assigned actions → outcomes |
-| **ClientCommunication** | type, direction, subject, body, status, sentAt | Centralised communication log |
-| **ClientPortalUser** | email, magicToken, tokenExpiry, permissions (JSON), isActive | Client self-serve portal access |
-| **CompetitorSnapshot** | domain, metrics (JSON), insights, periodStart, periodEnd | Competitive monitoring snapshots |
-| **MediaPlan** | title, objective, totalBudget, channels (JSON), forecast (JSON), status | Paid media planning with forecast outputs |
-| **Notification** | type, severity, title, body, channel, status | System notifications (email, Slack, in-app) |
-| **ClientConversation** | role, content, metadata (JSON) | Chat messages for "Ask the Data" feature |
-| **ServerLog** | level, message, context (JSON) | Operational server-side log records |
-| **CronLog** | jobName, status, duration, output | Cron job execution audit trail |
-| **ApiCache** | key, value, expiresAt | Short-lived API response cache (reduces external API calls) |
-| **QaChecklist** | title, items (JSON), clientId, status | QA checklists for pre-launch and campaign audits |
-| **TaskCategory** | name, colour, icon | Shared task category definitions |
-| **ClientTaskCategory** | clientId, taskCategoryId | Per-client task category assignments |
-| **TaskAssignee** | actionItemId, userId | Action item assignees (many-to-many) |
-| **TaskComment** | actionItemId, userId, content | Threaded comments on action items |
-| **TaskTimeLog** | actionItemId, userId, minutes | Time tracking entries per task |
-| **TaskAttachment** | actionItemId, url, filename | File attachments on action items |
-| **ClientFile** | clientId, url, filename, size | Client-scoped file storage records |
-| **DetectedAnomaly** | clientId, sectionType, metric, severity, description | Persisted anomaly records from AI/rules detection |
-| **ClickFraudEvent** | clientId, ip, userAgent, campaignId, platform | Click fraud events flagged by ad traffic protection |
-| **ContentStrategy** | clientId, title, spreadsheetData (JSON) | AI-generated content strategy documents |
-| **UserActivityLog** | userId, action, entity, entityId | Full audit trail of user actions |
-| **Ms365Connection** | userId, accessToken, refreshToken, scopes | Microsoft 365 OAuth connections |
-| **LandingPage** | clientId, title, slug, status, templateId | Landing pages built with the Clickr builder |
-| **LandingPageVersion** | landingPageId, content (JSON), publishedAt | Version history for landing pages |
-| **LandingPageLead** | landingPageId, email, data (JSON) | Leads captured via landing page forms |
-| **LandingPageTemplate** | name, category, content (JSON) | Reusable landing page templates |
-| **GrandPlan** | clientId, title, content (JSON), status | Comprehensive strategic grand plan documents |
-| **GrandPlanVersion** | grandPlanId, content (JSON) | Version history for grand plans |
-| **GrandPlanEnquiry** | grandPlanId, name, email, message | Enquiries submitted via shared grand plans |
-| **ClientRetainer** | clientId, monthlyValue, startDate, services (JSON) | Client retainer and billing configuration |
-| **ClientInvoice** | clientId, retainerId, amount, status, dueDate | Invoice records against client retainers |
-| **AgencyTimeEntry** | clientId, userId, minutes, date, description | Agency staff time entries per client |
-| **PortalThread** | clientPortalUserId, subject, status | Messaging threads in the client portal |
-| **PortalMessage** | threadId, senderType, content | Messages within portal threads |
-| **AgencySubscription** | plan, status, billingEmail, seats | Agency-level SaaS subscription record |
-| **EmailVerificationJob** | clientId, listName, status, totalEmails | Email list verification job records |
-| **EmailVerificationResult** | jobId, email, status, reason | Per-email result for a verification job |
-| **AdImageSession** | clientId, userId, prompt, imageUrl, platform | AI-generated ad image sessions |
-| **ContentGenerator** | clientId, title, topic, pillars (JSON), status | AI-generated long-form content strategies with pillar structure |
-| **InternalLinkingPlan** | clientId, siteUrl, status, planData (JSON) | Internal linking opportunity plans generated by AI |
-| **MetaAssassinPlan** | clientId, title, planData (JSON), status | Meta audience targeting plans with AI-generated insights |
-| **KeywordTrackerList** | name, keywords (JSON), clientId | Saved keyword tracking lists for position monitoring |
-| **LandingPageTranslation** | landingPageId, language, content (JSON) | Per-language translation content for landing pages |
-| **ClickrUser** | email, password, plan, stripeCustomerId | Standalone Clickr SaaS user accounts (separate auth from main platform) |
-| **ClickrSession** | clickrUserId, token, expiresAt | Session records for Clickr SaaS authenticated users |
+| Model                       | Key Fields                                                                                                                   | Purpose                                                                 |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| **Role**                    | name, permissions (JSON)                                                                                                     | Permission-based access control                                         |
+| **User**                    | email, password, roleId, mustChangePassword, notificationPrefs (JSON)                                                        | User accounts with role assignment                                      |
+| **Session**                 | token, userId, expiresAt                                                                                                     | Cookie-based sessions (7-day TTL)                                       |
+| **Client**                  | name, website, logoUrl, all integration credentials, reportSchedule (JSON), contractedHours (JSON), competitorDomains (JSON) | Central entity storing all 15 integration credentials                   |
+| **Report**                  | title, period, status, shareToken, approvalStatus, approvedBy                                                                | Reports with approval workflow and sharing                              |
+| **ReportSection**           | sectionType, title, commentary, contentText, enabled, cardConfig (JSON)                                                      | Individual report sections with AI context                              |
+| **Screenshot**              | url, caption, sectionId                                                                                                      | Vercel Blob-stored images linked to report sections                     |
+| **ReportComment**           | content, userId, sectionId, resolved, parentId                                                                               | Threaded comments for report collaboration                              |
+| **ReportTemplate**          | name, sections (JSON), isDefault                                                                                             | Reusable report section configurations                                  |
+| **GoogleConnection**        | email, refreshToken, scopes                                                                                                  | Multi-account Google OAuth storage                                      |
+| **MetricSnapshot**          | clientId, sectionType, periodStart, periodEnd, metrics (JSON), campaignData (JSON)                                           | Historical metric storage (composite unique key)                        |
+| **AppSetting**              | key, value                                                                                                                   | Global config (OpenAI key, MCC ID, benchmarks, pricing)                 |
+| **KeywordPlannerResearch**  | keywords (JSON), adGroups (JSON), brief, websiteContext                                                                      | Saved keyword research sessions                                         |
+| **Proposal**                | title, html, servicesJson, shareToken, viewCount, pipelineStage, expectedValue, closeDate                                    | AI-generated proposals with pipeline CRM fields                         |
+| **ProposalEnquiry**         | name, email, phone, message                                                                                                  | Enquiries from public proposal views                                    |
+| **LlmTemplate**             | name, sector, templateText, promptGuidance, isBuiltIn                                                                        | Templates for LLM.txt generation                                        |
+| **ClientGoal**              | metric, channel, targetValue, currentValue, targetDate, status                                                               | Per-client KPI goals with on-track/at-risk tracking                     |
+| **StrategyDocument**        | title, period, content, shareToken                                                                                           | Quarterly AI strategy documents per client                              |
+| **BudgetRecommendation**    | periodStart, periodEnd, recommendations (JSON), summary                                                                      | Cross-channel budget reallocation snapshots                             |
+| **ActionItem**              | title, status, priority, assignedTo, dueDate, outcome, sourceType                                                            | AI recommendations → assigned actions → outcomes                        |
+| **ClientCommunication**     | type, direction, subject, body, status, sentAt                                                                               | Centralised communication log                                           |
+| **ClientPortalUser**        | email, magicToken, tokenExpiry, permissions (JSON), isActive                                                                 | Client self-serve portal access                                         |
+| **CompetitorSnapshot**      | domain, metrics (JSON), insights, periodStart, periodEnd                                                                     | Competitive monitoring snapshots                                        |
+| **MediaPlan**               | title, objective, totalBudget, channels (JSON), forecast (JSON), status                                                      | Paid media planning with forecast outputs                               |
+| **Notification**            | type, severity, title, body, channel, status                                                                                 | System notifications (email, Slack, in-app)                             |
+| **ClientConversation**      | role, content, metadata (JSON)                                                                                               | Chat messages for "Ask the Data" feature                                |
+| **ServerLog**               | level, message, context (JSON)                                                                                               | Operational server-side log records                                     |
+| **CronLog**                 | jobName, status, duration, output                                                                                            | Cron job execution audit trail                                          |
+| **ApiCache**                | key, value, expiresAt                                                                                                        | Short-lived API response cache (reduces external API calls)             |
+| **QaChecklist**             | title, items (JSON), clientId, status                                                                                        | QA checklists for pre-launch and campaign audits                        |
+| **TaskCategory**            | name, colour, icon                                                                                                           | Shared task category definitions                                        |
+| **ClientTaskCategory**      | clientId, taskCategoryId                                                                                                     | Per-client task category assignments                                    |
+| **TaskAssignee**            | actionItemId, userId                                                                                                         | Action item assignees (many-to-many)                                    |
+| **TaskComment**             | actionItemId, userId, content                                                                                                | Threaded comments on action items                                       |
+| **TaskTimeLog**             | actionItemId, userId, minutes                                                                                                | Time tracking entries per task                                          |
+| **TaskAttachment**          | actionItemId, url, filename                                                                                                  | File attachments on action items                                        |
+| **ClientFile**              | clientId, url, filename, size                                                                                                | Client-scoped file storage records                                      |
+| **DetectedAnomaly**         | clientId, sectionType, metric, severity, description                                                                         | Persisted anomaly records from AI/rules detection                       |
+| **ClickFraudEvent**         | clientId, ip, userAgent, campaignId, platform                                                                                | Click fraud events flagged by ad traffic protection                     |
+| **ContentStrategy**         | clientId, title, spreadsheetData (JSON)                                                                                      | AI-generated content strategy documents                                 |
+| **UserActivityLog**         | userId, action, entity, entityId                                                                                             | Full audit trail of user actions                                        |
+| **Ms365Connection**         | userId, accessToken, refreshToken, scopes                                                                                    | Microsoft 365 OAuth connections                                         |
+| **LandingPage**             | clientId, title, slug, status, templateId                                                                                    | Landing pages built with the Clickr builder                             |
+| **LandingPageVersion**      | landingPageId, content (JSON), publishedAt                                                                                   | Version history for landing pages                                       |
+| **LandingPageLead**         | landingPageId, email, data (JSON)                                                                                            | Leads captured via landing page forms                                   |
+| **LandingPageTemplate**     | name, category, content (JSON)                                                                                               | Reusable landing page templates                                         |
+| **GrandPlan**               | clientId, title, content (JSON), status                                                                                      | Comprehensive strategic grand plan documents                            |
+| **GrandPlanVersion**        | grandPlanId, content (JSON)                                                                                                  | Version history for grand plans                                         |
+| **GrandPlanEnquiry**        | grandPlanId, name, email, message                                                                                            | Enquiries submitted via shared grand plans                              |
+| **ClientRetainer**          | clientId, monthlyValue, startDate, services (JSON)                                                                           | Client retainer and billing configuration                               |
+| **ClientInvoice**           | clientId, retainerId, amount, status, dueDate                                                                                | Invoice records against client retainers                                |
+| **AgencyTimeEntry**         | clientId, userId, minutes, date, description                                                                                 | Agency staff time entries per client                                    |
+| **PortalThread**            | clientPortalUserId, subject, status                                                                                          | Messaging threads in the client portal                                  |
+| **PortalMessage**           | threadId, senderType, content                                                                                                | Messages within portal threads                                          |
+| **AgencySubscription**      | plan, status, billingEmail, seats                                                                                            | Agency-level SaaS subscription record                                   |
+| **EmailVerificationJob**    | clientId, listName, status, totalEmails                                                                                      | Email list verification job records                                     |
+| **EmailVerificationResult** | jobId, email, status, reason                                                                                                 | Per-email result for a verification job                                 |
+| **AdImageSession**          | clientId, userId, prompt, imageUrl, platform                                                                                 | AI-generated ad image sessions                                          |
+| **ContentGenerator**        | clientId, title, topic, pillars (JSON), status                                                                               | AI-generated long-form content strategies with pillar structure         |
+| **InternalLinkingPlan**     | clientId, siteUrl, status, planData (JSON)                                                                                   | Internal linking opportunity plans generated by AI                      |
+| **MetaAssassinPlan**        | clientId, title, planData (JSON), status                                                                                     | Meta audience targeting plans with AI-generated insights                |
+| **KeywordTrackerList**      | name, keywords (JSON), clientId                                                                                              | Saved keyword tracking lists for position monitoring                    |
+| **LandingPageTranslation**  | landingPageId, language, content (JSON)                                                                                      | Per-language translation content for landing pages                      |
+| **ClickrUser**              | email, password, plan, stripeCustomerId                                                                                      | Standalone Clickr SaaS user accounts (separate auth from main platform) |
+| **ClickrSession**           | clickrUserId, token, expiresAt                                                                                               | Session records for Clickr SaaS authenticated users                     |
 
 ---
 
@@ -806,12 +819,12 @@ Output: sorted anomaly list (high severity first)
 
 **Platform-specific anomaly checks** go beyond basic metric thresholds:
 
-| Platform | Additional Checks |
-|----------|------------------|
+| Platform       | Additional Checks                                                                         |
+| -------------- | ----------------------------------------------------------------------------------------- |
 | **Google Ads** | Impression share loss (budget + rank), quality score degradation, auction competitiveness |
-| **Meta Ads** | Ad frequency/fatigue (>3.0), creative fatigue correlation, ROAS below 1x breakeven |
-| **GSC** | Clicks drop, position regression, CTR anomalies |
-| **GA4** | Sessions decline, bounce rate spike, conversion rate drop |
+| **Meta Ads**   | Ad frequency/fatigue (>3.0), creative fatigue correlation, ROAS below 1x breakeven        |
+| **GSC**        | Clicks drop, position regression, CTR anomalies                                           |
+| **GA4**        | Sessions decline, bounce rate spike, conversion rate drop                                 |
 
 ### AI Summary Generation
 
@@ -1086,4 +1099,4 @@ Output: formatted llm.txt content
 
 ---
 
-*Last updated: April 2026*
+_Last updated: April 2026_

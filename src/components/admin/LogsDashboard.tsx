@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
+import { cn } from "@/lib/utils";
+import { Badge, Button, Input } from "@/components/ui/shadcn";
 
 interface ServerLog {
   id: string;
@@ -33,23 +35,12 @@ function formatTime(iso: string) {
 function LevelBadge({ level }: { level: string }) {
   const isError = level === "error";
   return (
-    <span
-      style={{
-        display: "inline-block",
-        padding: "2px 8px",
-        borderRadius: 4,
-        fontSize: 11,
-        fontWeight: 700,
-        letterSpacing: "0.04em",
-        textTransform: "uppercase",
-        background: isError ? "#fee2e2" : "#fef9c3",
-        color: isError ? "#b91c1c" : "#92400e",
-        border: `1px solid ${isError ? "#fecaca" : "#fde68a"}`,
-        flexShrink: 0,
-      }}
+    <Badge
+      variant={isError ? "destructive" : "warning"}
+      className="rounded-sm px-2 py-0.5 text-[11px] font-bold tracking-[0.04em] uppercase"
     >
       {level}
-    </span>
+    </Badge>
   );
 }
 
@@ -68,25 +59,28 @@ export function LogsDashboard() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const fetchLogs = useCallback(async (pg = page, silent = false) => {
-    if (!silent) setLoading(true);
-    setError(null);
-    try {
-      const params = new URLSearchParams({
-        level,
-        search,
-        page: String(pg),
-      });
-      const res = await fetch(`/api/admin/logs?${params}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json: LogsResponse = await res.json();
-      setData(json);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load logs");
-    } finally {
-      setLoading(false);
-    }
-  }, [level, search, page]);
+  const fetchLogs = useCallback(
+    async (pg = page, silent = false) => {
+      if (!silent) setLoading(true);
+      setError(null);
+      try {
+        const params = new URLSearchParams({
+          level,
+          search,
+          page: String(pg),
+        });
+        const res = await fetch(`/api/admin/logs?${params}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json: LogsResponse = await res.json();
+        setData(json);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Failed to load logs");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [level, search, page],
+  );
 
   // Fetch when filters or page change
   useEffect(() => {
@@ -124,7 +118,15 @@ export function LogsDashboard() {
   }
 
   async function clearOldLogs(days: number) {
-    if (!(await confirm({ title: `Delete all logs older than ${days} day${days === 1 ? "" : "s"}?`, description: "This cannot be undone.", confirmLabel: "Delete", danger: true }))) return;
+    if (
+      !(await confirm({
+        title: `Delete all logs older than ${days} day${days === 1 ? "" : "s"}?`,
+        description: "This cannot be undone.",
+        confirmLabel: "Delete",
+        danger: true,
+      }))
+    )
+      return;
     setClearing(true);
     try {
       const res = await fetch(`/api/admin/logs?days=${days}`, { method: "DELETE" });
@@ -155,45 +157,35 @@ export function LogsDashboard() {
         }}
       >
         {/* Level filter */}
-        <div style={{ display: "flex", gap: 0, borderRadius: 6, overflow: "hidden", border: "1px solid var(--border)" }}>
+        <div className="inline-flex overflow-hidden rounded-md border border-(--border)">
           {(["all", "error", "warn"] as const).map((l) => (
-            <button
+            <Button
               key={l}
-              onClick={() => { setLevel(l); setPage(1); }}
-              style={{
-                padding: "6px 14px",
-                fontSize: 13,
-                fontWeight: level === l ? 700 : 400,
-                background: level === l ? "var(--primary, #6366f1)" : "var(--card-bg, #fff)",
-                color: level === l ? "#fff" : "var(--text-2)",
-                border: "none",
-                cursor: "pointer",
-                textTransform: "capitalize",
+              type="button"
+              size="sm"
+              variant={level === l ? "default" : "ghost"}
+              onClick={() => {
+                setLevel(l);
+                setPage(1);
               }}
+              className={cn(
+                "h-9 rounded-none border-0 px-3.5 text-[13px] font-medium capitalize",
+                level !== l && "text-(--text-2) hover:bg-(--border-subtle)",
+              )}
             >
               {l === "all" ? "All" : l.toUpperCase()}
-            </button>
+            </Button>
           ))}
         </div>
 
         {/* Search */}
-        <input
+        <Input
           ref={searchInputRef}
           type="text"
           placeholder="Search messages…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          style={{
-            flex: 1,
-            minWidth: 180,
-            padding: "6px 12px",
-            fontSize: 13,
-            border: "1px solid var(--border)",
-            borderRadius: 6,
-            background: "var(--card-bg, #fff)",
-            color: "var(--text)",
-            outline: "none",
-          }}
+          className="h-9 min-w-45 flex-1 text-[13px]"
         />
 
         {/* Auto-refresh toggle */}
@@ -218,22 +210,16 @@ export function LogsDashboard() {
         </label>
 
         {/* Refresh button */}
-        <button
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
           onClick={() => void fetchLogs(page)}
           disabled={loading}
-          style={{
-            padding: "6px 14px",
-            fontSize: 13,
-            borderRadius: 6,
-            border: "1px solid var(--border)",
-            background: "var(--card-bg, #fff)",
-            color: "var(--text-2)",
-            cursor: loading ? "not-allowed" : "pointer",
-            opacity: loading ? 0.6 : 1,
-          }}
+          className="h-9 text-[13px] text-(--text-2)"
         >
           {loading ? "Loading…" : "↻ Refresh"}
-        </button>
+        </Button>
 
         {/* Clear dropdown */}
         <div style={{ position: "relative" }}>
@@ -244,18 +230,11 @@ export function LogsDashboard() {
               e.target.value = "";
             }}
             defaultValue=""
-            style={{
-              padding: "6px 14px",
-              fontSize: 13,
-              borderRadius: 6,
-              border: "1px solid var(--danger-border)",
-              background: "var(--card-bg, #fff)",
-              color: "var(--danger-text)",
-              cursor: clearing ? "not-allowed" : "pointer",
-              opacity: clearing ? 0.6 : 1,
-            }}
+            className="h-9 rounded-md border border-(--danger-border) bg-(--surface) px-3 text-[13px] text-(--danger-text) transition outline-none focus-visible:ring-2 focus-visible:ring-(--danger) focus-visible:ring-offset-2 focus-visible:ring-offset-(--bg) disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <option value="" disabled>Clear old logs…</option>
+            <option value="" disabled>
+              Clear old logs…
+            </option>
             <option value="1">Older than 1 day</option>
             <option value="7">Older than 7 days</option>
             <option value="30">Older than 30 days</option>
@@ -312,11 +291,57 @@ export function LogsDashboard() {
         ) : (
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
-              <tr style={{ background: "var(--bg-2, #f8f9fa)", borderBottom: "1px solid var(--border)" }}>
-                <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, color: "var(--text-2)", width: 60 }}>Level</th>
-                <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, color: "var(--text-2)" }}>Message</th>
-                <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, color: "var(--text-2)", width: 200, display: "table-cell" }}>Source</th>
-                <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, color: "var(--text-2)", width: 160, whiteSpace: "nowrap" }}>Time</th>
+              <tr
+                style={{
+                  background: "var(--bg-2, #f8f9fa)",
+                  borderBottom: "1px solid var(--border)",
+                }}
+              >
+                <th
+                  style={{
+                    padding: "8px 12px",
+                    textAlign: "left",
+                    fontWeight: 600,
+                    color: "var(--text-2)",
+                    width: 60,
+                  }}
+                >
+                  Level
+                </th>
+                <th
+                  style={{
+                    padding: "8px 12px",
+                    textAlign: "left",
+                    fontWeight: 600,
+                    color: "var(--text-2)",
+                  }}
+                >
+                  Message
+                </th>
+                <th
+                  style={{
+                    padding: "8px 12px",
+                    textAlign: "left",
+                    fontWeight: 600,
+                    color: "var(--text-2)",
+                    width: 200,
+                    display: "table-cell",
+                  }}
+                >
+                  Source
+                </th>
+                <th
+                  style={{
+                    padding: "8px 12px",
+                    textAlign: "left",
+                    fontWeight: 600,
+                    color: "var(--text-2)",
+                    width: 160,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Time
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -335,7 +360,15 @@ export function LogsDashboard() {
                     <td style={{ padding: "10px 12px", verticalAlign: "top" }}>
                       <LevelBadge level={log.level} />
                     </td>
-                    <td style={{ padding: "10px 12px", verticalAlign: "top", wordBreak: "break-word", maxWidth: 0, width: "99%" }}>
+                    <td
+                      style={{
+                        padding: "10px 12px",
+                        verticalAlign: "top",
+                        wordBreak: "break-word",
+                        maxWidth: 0,
+                        width: "99%",
+                      }}
+                    >
                       <span style={{ color: "var(--text)", lineHeight: 1.5 }}>{log.message}</span>
                       {log.details && (
                         <span style={{ marginLeft: 6, fontSize: 11, color: "var(--text-4)" }}>
@@ -355,7 +388,14 @@ export function LogsDashboard() {
                     >
                       {log.source ?? "—"}
                     </td>
-                    <td style={{ padding: "10px 12px", verticalAlign: "top", color: "var(--text-3)", whiteSpace: "nowrap" }}>
+                    <td
+                      style={{
+                        padding: "10px 12px",
+                        verticalAlign: "top",
+                        color: "var(--text-3)",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
                       {formatTime(log.createdAt)}
                     </td>
                   </tr>
@@ -391,42 +431,38 @@ export function LogsDashboard() {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div style={{ display: "flex", gap: 8, marginTop: 16, justifyContent: "center", alignItems: "center" }}>
-          <button
+        <div
+          style={{
+            display: "flex",
+            gap: 8,
+            marginTop: 16,
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
             disabled={page === 1}
             onClick={() => setPage((p) => p - 1)}
-            style={{
-              padding: "6px 14px",
-              fontSize: 13,
-              borderRadius: 6,
-              border: "1px solid var(--border)",
-              background: "var(--card-bg, #fff)",
-              color: "var(--text-2)",
-              cursor: page === 1 ? "not-allowed" : "pointer",
-              opacity: page === 1 ? 0.5 : 1,
-            }}
+            className="h-9 text-[13px] text-(--text-2)"
           >
             ← Previous
-          </button>
+          </Button>
           <span style={{ fontSize: 13, color: "var(--text-3)" }}>
             Page {page} of {totalPages}
           </span>
-          <button
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
             disabled={page >= totalPages}
             onClick={() => setPage((p) => p + 1)}
-            style={{
-              padding: "6px 14px",
-              fontSize: 13,
-              borderRadius: 6,
-              border: "1px solid var(--border)",
-              background: "var(--card-bg, #fff)",
-              color: "var(--text-2)",
-              cursor: page >= totalPages ? "not-allowed" : "pointer",
-              opacity: page >= totalPages ? 0.5 : 1,
-            }}
+            className="h-9 text-[13px] text-(--text-2)"
           >
             Next →
-          </button>
+          </Button>
         </div>
       )}
     </div>

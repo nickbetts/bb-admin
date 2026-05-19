@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Loader2, Plus, Trash2, Archive } from "lucide-react";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
+import { Badge, Button, Input } from "@/components/ui/shadcn";
 
 interface Category {
   id: string;
@@ -25,11 +26,13 @@ export function TaskCategoryManager() {
   async function load() {
     setLoading(true);
     const res = await fetch("/api/admin/task-categories");
-    if (res.ok) setRows(await res.json() as Category[]);
+    if (res.ok) setRows((await res.json()) as Category[]);
     setLoading(false);
   }
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => {
+    void load();
+  }, []);
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
@@ -52,7 +55,7 @@ export function TaskCategoryManager() {
   }
 
   async function update(id: string, patch: Partial<Category>) {
-    setRows((rs) => rs.map((r) => r.id === id ? { ...r, ...patch } : r));
+    setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...patch } : r)));
     await fetch(`/api/admin/task-categories/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -61,7 +64,15 @@ export function TaskCategoryManager() {
   }
 
   async function remove(id: string) {
-    if (!(await confirm({ title: "Delete category?", description: "If tasks reference this category it will be archived instead.", confirmLabel: "Delete", danger: true }))) return;
+    if (
+      !(await confirm({
+        title: "Delete category?",
+        description: "If tasks reference this category it will be archived instead.",
+        confirmLabel: "Delete",
+        danger: true,
+      }))
+    )
+      return;
     await fetch(`/api/admin/task-categories/${id}`, { method: "DELETE" });
     await load();
   }
@@ -81,7 +92,12 @@ export function TaskCategoryManager() {
     });
   }
 
-  if (loading) return <div style={{ padding: 24, textAlign: "center" }}><Loader2 className="animate-spin" /></div>;
+  if (loading)
+    return (
+      <div style={{ padding: 24, textAlign: "center" }}>
+        <Loader2 className="animate-spin" />
+      </div>
+    );
 
   return (
     <div>
@@ -89,62 +105,159 @@ export function TaskCategoryManager() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <p style={{ fontSize: 14, fontWeight: 600 }}>Task categories</p>
-            <p style={{ fontSize: 12, color: "var(--text-3)" }}>Define the kanban boards available across all clients.</p>
+            <p style={{ fontSize: 12, color: "var(--text-3)" }}>
+              Define the kanban boards available across all clients.
+            </p>
           </div>
-          <button onClick={() => setShowForm((v) => !v)} className="btn btn-primary btn-sm" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-            <Plus style={{ width: 13, height: 13 }} /> {showForm ? "Cancel" : "New category"}
-          </button>
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => setShowForm((v) => !v)}
+            className="inline-flex items-center gap-1.5"
+          >
+            <Plus size={13} /> {showForm ? "Cancel" : "New category"}
+          </Button>
         </div>
 
         {showForm && (
-          <form onSubmit={create} style={{ marginTop: 16, padding: 14, background: "var(--bg-2)", borderRadius: "var(--r-sm)", display: "flex", gap: 10, alignItems: "flex-end" }}>
+          <form
+            onSubmit={create}
+            style={{
+              marginTop: 16,
+              padding: 14,
+              background: "var(--bg-2)",
+              borderRadius: "var(--r-sm)",
+              display: "flex",
+              gap: 10,
+              alignItems: "flex-end",
+            }}
+          >
             <div style={{ flex: 1 }}>
               <label className="form-label">Name</label>
-              <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className="form-input" placeholder="e.g. SEO" />
+              <Input
+                value={form.name}
+                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                placeholder="e.g. SEO"
+              />
             </div>
             <div>
               <label className="form-label">Colour</label>
-              <input type="color" value={form.color} onChange={(e) => setForm((f) => ({ ...f, color: e.target.value }))} style={{ width: 60, height: 36, padding: 4, border: "1px solid var(--border-subtle)", borderRadius: "var(--r-sm)" }} />
+              <input
+                type="color"
+                value={form.color}
+                onChange={(e) => setForm((f) => ({ ...f, color: e.target.value }))}
+                style={{
+                  width: 60,
+                  height: 36,
+                  padding: 4,
+                  border: "1px solid var(--border-subtle)",
+                  borderRadius: "var(--r-sm)",
+                }}
+              />
             </div>
-            <button type="submit" disabled={saving} className="btn btn-primary btn-sm">{saving ? "Adding…" : "Add"}</button>
+            <Button type="submit" size="sm" disabled={saving}>
+              {saving ? "Adding…" : "Add"}
+            </Button>
           </form>
         )}
       </div>
 
       <div className="card" style={{ padding: 0 }}>
         {rows.map((r, i) => (
-          <div key={r.id} style={{
-            display: "flex", alignItems: "center", gap: 12,
-            padding: "10px 16px",
-            borderBottom: i === rows.length - 1 ? "none" : "1px solid var(--border-subtle)",
-            opacity: r.isArchived ? 0.5 : 1,
-          }}>
+          <div
+            key={r.id}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              padding: "10px 16px",
+              borderBottom: i === rows.length - 1 ? "none" : "1px solid var(--border-subtle)",
+              opacity: r.isArchived ? 0.5 : 1,
+            }}
+          >
             <input
               type="color"
               value={r.color ?? "#6366f1"}
               onChange={(e) => void update(r.id, { color: e.target.value })}
-              style={{ width: 28, height: 28, padding: 2, border: "1px solid var(--border-subtle)", borderRadius: 6 }}
+              style={{
+                width: 28,
+                height: 28,
+                padding: 2,
+                border: "1px solid var(--border-subtle)",
+                borderRadius: 6,
+              }}
             />
-            <input
+            <Input
               value={r.name}
-              onChange={(e) => setRows((rs) => rs.map((x) => x.id === r.id ? { ...x, name: e.target.value } : x))}
+              onChange={(e) =>
+                setRows((rs) => rs.map((x) => (x.id === r.id ? { ...x, name: e.target.value } : x)))
+              }
               onBlur={(e) => void update(r.id, { name: e.target.value })}
-              className="form-input"
-              style={{ flex: 1, fontSize: 13, fontWeight: 500 }}
+              className="text-[13px] font-medium"
+              style={{ flex: 1 }}
             />
-            <code style={{ fontSize: 11, color: "var(--text-3)", padding: "2px 6px", background: "var(--bg-2)", borderRadius: 4 }}>{r.slug}</code>
-            {r.isArchived && <span className="badge badge-slate" style={{ fontSize: 10 }}>Archived</span>}
-            <button onClick={() => move(r.id, -1)} disabled={i === 0} className="btn btn-ghost btn-sm" style={{ padding: "2px 8px" }}>↑</button>
-            <button onClick={() => move(r.id, 1)} disabled={i === rows.length - 1} className="btn btn-ghost btn-sm" style={{ padding: "2px 8px" }}>↓</button>
-            <button onClick={() => void update(r.id, { isArchived: !r.isArchived })} className="btn btn-ghost btn-sm" title={r.isArchived ? "Unarchive" : "Archive"}>
-              <Archive style={{ width: 13, height: 13 }} />
-            </button>
-            <button onClick={() => void remove(r.id)} className="btn btn-ghost btn-sm" style={{ color: "var(--danger)" }} title="Delete">
-              <Trash2 style={{ width: 13, height: 13 }} />
-            </button>
+            <code
+              style={{
+                fontSize: 11,
+                color: "var(--text-3)",
+                padding: "2px 6px",
+                background: "var(--bg-2)",
+                borderRadius: 4,
+              }}
+            >
+              {r.slug}
+            </code>
+            {r.isArchived && (
+              <Badge variant="secondary" className="text-[10px]">
+                Archived
+              </Badge>
+            )}
+            <Button
+              type="button"
+              onClick={() => move(r.id, -1)}
+              disabled={i === 0}
+              variant="ghost"
+              size="sm"
+              className="px-2"
+            >
+              ↑
+            </Button>
+            <Button
+              type="button"
+              onClick={() => move(r.id, 1)}
+              disabled={i === rows.length - 1}
+              variant="ghost"
+              size="sm"
+              className="px-2"
+            >
+              ↓
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void update(r.id, { isArchived: !r.isArchived })}
+              variant="ghost"
+              size="sm"
+              title={r.isArchived ? "Unarchive" : "Archive"}
+            >
+              <Archive size={13} />
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void remove(r.id)}
+              variant="ghost"
+              size="sm"
+              className="text-(--danger-text)"
+              title="Delete"
+            >
+              <Trash2 size={13} />
+            </Button>
           </div>
         ))}
-        {rows.length === 0 && <div style={{ padding: 24, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>No categories yet.</div>}
+        {rows.length === 0 && (
+          <div style={{ padding: 24, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
+            No categories yet.
+          </div>
+        )}
       </div>
     </div>
   );
