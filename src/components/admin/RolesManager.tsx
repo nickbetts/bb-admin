@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Pencil, Trash2, Plus, X, Check, Lock, Search, ListChecks, Eraser } from "lucide-react";
-import { Badge, Button, Input } from "@/components/ui/shadcn";
+import { Button, Input } from "@/components/ui/shadcn";
 
 const PERMISSION_GROUPS = [
   {
@@ -241,9 +241,21 @@ function PermissionChecklist({
             color: "var(--text-3)",
           }}
         >
-          <Badge variant="secondary" className="rounded-full px-2.5 py-1 text-[12px] font-semibold">
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "4px 10px",
+              borderRadius: 999,
+              background: "var(--bg-2)",
+              border: "1px solid var(--border-subtle)",
+              fontWeight: 600,
+              color: "var(--text-2)",
+            }}
+          >
             {value.length} / {TOTAL_PERMISSIONS} enabled
-          </Badge>
+          </span>
           <Button
             type="button"
             variant="ghost"
@@ -308,12 +320,19 @@ function PermissionChecklist({
                   >
                     {group.label}
                   </span>
-                  <Badge
-                    variant={allSelected ? "info" : "secondary"}
-                    className="rounded-full px-1.5 py-0.5 text-[10px] font-bold"
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      padding: "2px 7px",
+                      borderRadius: 999,
+                      background: allSelected ? "rgba(99,102,241,0.12)" : "var(--bg-2)",
+                      color: allSelected ? "var(--accent)" : "var(--text-3)",
+                      border: `1px solid ${allSelected ? "rgba(99,102,241,0.25)" : "var(--border-subtle)"}`,
+                    }}
                   >
                     {selectedInGroup}/{total}
-                  </Badge>
+                  </span>
                 </div>
                 <div style={{ display: "inline-flex", gap: 4, flexShrink: 0 }}>
                   <Button
@@ -469,20 +488,36 @@ function RolePermissionSummary({ permissions }: { permissions: string[] }) {
       {buckets.map((b) => {
         const all = b.selected.length === b.total;
         return (
-          <Badge
+          <span
             key={b.label}
-            variant={all ? "info" : "secondary"}
             title={b.selected.map((s) => s.label).join(", ")}
-            className="rounded-full px-2 py-0.5 text-[11px] font-medium"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 5,
+              fontSize: 11,
+              fontWeight: 500,
+              padding: "3px 9px",
+              borderRadius: 9999,
+              background: all ? "rgba(99,102,241,0.10)" : "var(--bg-2)",
+              border: `1px solid ${all ? "rgba(99,102,241,0.25)" : "var(--border-subtle)"}`,
+              color: all ? "var(--accent)" : "var(--text-2)",
+            }}
           >
             {b.label}
-            <Badge
-              variant={all ? "outline" : "secondary"}
-              className="rounded-full px-1.5 py-0 text-[10px] font-bold"
+            <span
+              style={{
+                fontSize: 10,
+                fontWeight: 700,
+                padding: "1px 5px",
+                borderRadius: 9999,
+                background: all ? "rgba(99,102,241,0.18)" : "var(--bg)",
+                color: all ? "var(--accent)" : "var(--text-3)",
+              }}
             >
               {all ? "all" : `${b.selected.length}/${b.total}`}
-            </Badge>
-          </Badge>
+            </span>
+          </span>
         );
       })}
     </div>
@@ -665,13 +700,22 @@ export function RolesManager() {
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         {role.name}
                         {role.isSystem && (
-                          <Badge
-                            variant="info"
+                          <span
                             title="Built-in role"
-                            className="gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 3,
+                              fontSize: 10,
+                              fontWeight: 600,
+                              padding: "2px 7px",
+                              borderRadius: 9999,
+                              background: "rgb(99 102 241 / 0.1)",
+                              color: "var(--accent)",
+                            }}
                           >
                             <Lock size={9} /> Built-in
-                          </Badge>
+                          </span>
                         )}
                       </div>
                     </td>
