@@ -51,7 +51,101 @@ function rankListIdCandidate(value: string): number {
   return score;
 }
 
-function parseAllocationListIdCandidates(raw: string): string[] {
+function rankViewIdCandidate(value: string): number {
+  let score = 0;
+  if (/[a-z]/i.test(value)) score += 3;
+  if (value.length >= 5) score += 2;
+  if (value.includes("_") || value.includes("-")) score += 1;
+  return score;
+}
+
+function parseAllocationReferences(raw: string): {
+  listIdCandidates: string[];
+  viewIdCandidates: string[];
+} {
+  const listCandidates = new Set<string>();
+  const viewCandidates = new Set<string>();
+
+  function maybeAddList(value: string) {
+    const trimmed = value.trim();
+    if (/^\d{6,}$/.test(trimmed)) {
+      listCandidates.add(trimmed);
+    }
+  }
+
+  function maybeAddView(value: string) {
+    const trimmed = value.trim();
+    if (/^[a-z0-9_-]{4,}$/i.test(trimmed) && !/^\d+$/.test(trimmed)) {
+      viewCandidates.add(trimmed);
+    }
+  }
+
+  function parseSegment(segment: string) {
+    const trimmed = segment.trim();
+    if (!trimmed) return;
+
+    maybeAddList(trimmed);
+    maybeAddView(trimmed);
+
+    const compactMatch = trimmed.match(/^([a-z0-9_-]+)-(\d{4,})$/i);
+    if (compactMatch) {
+      maybeAddView(compactMatch[1]);
+      maybeAddList(compactMatch[2]);
+      maybeAddList(`90120${compactMatch[2]}`);
+    }
+  }
+
+  parseSegment(raw);
+
+  try {
+    const parsed = new URL(raw);
+    const segments = parsed.pathname.split("/").filter(Boolean);
+
+    const viewIndex = segments.findIndex((segment) => segment.toLowerCase() === "v");
+    if (viewIndex >= 0 && segments.length > viewIndex + 2) {
+      const viewType = segments[viewIndex + 1]?.toLowerCase();
+      const target = segments[viewIndex + 2];
+
+      if (viewType === "l" || viewType === "li") {
+        parseSegment(target);
+      }
+    }
+
+    for (const segment of segments) {
+      parseSegment(segment);
+    }
+
+    for (const key of ["list", "list_id", "id"]) {
+      const value = parsed.searchParams.get(key);
+      if (value) parseSegment(value);
+    }
+
+    for (const key of ["view", "view_id"]) {
+      const value = parsed.searchParams.get(key);
+      if (value) maybeAddView(value);
+    }
+  } catch {
+    // Not a URL — direct input already handled above.
+  }
+
+  const listIdCandidates = Array.from(listCandidates).sort((a, b) => {
+    const rankDiff = rankListIdCandidate(b) - rankListIdCandidate(a);
+    if (rankDiff !== 0) return rankDiff;
+    return b.length - a.length;
+  });
+
+  const viewIdCandidates = Array.from(viewCandidates).sort((a, b) => {
+    const rankDiff = rankViewIdCandidate(b) - rankViewIdCandidate(a);
+    if (rankDiff !== 0) return rankDiff;
+    return b.length - a.length;
+  });
+
+  return { listIdCandidates, viewIdCandidates };
+}
+
+function parseFolderIdCandidates(raw: string): string[] {
+  if (!raw.trim()) return [];
+
   const candidates = new Set<string>();
 
   function maybeAdd(value: string) {
@@ -63,37 +157,31 @@ function parseAllocationListIdCandidates(raw: string): string[] {
 
   maybeAdd(raw);
 
-  for (const match of raw.match(/\d{6,}/g) ?? []) {
-    maybeAdd(match);
-  }
-
   try {
     const parsed = new URL(raw);
     const segments = parsed.pathname.split("/").filter(Boolean);
+    const viewIndex = segments.findIndex((segment) => segment.toLowerCase() === "v");
+
+    if (viewIndex >= 0 && segments[viewIndex + 1]?.toLowerCase() === "f") {
+      const viewFolderSegment = segments[viewIndex + 2] ?? "";
+      const folderSegment = segments[viewIndex + 3] ?? "";
+      maybeAdd(folderSegment);
+      maybeAdd(viewFolderSegment);
+    }
 
     for (const segment of segments) {
       maybeAdd(segment);
-
-      const compactMatch = segment.match(/-(\d{4,})$/);
-      if (compactMatch) {
-        maybeAdd(compactMatch[1]);
-        maybeAdd(`90120${compactMatch[1]}`);
-      }
     }
 
-    for (const key of ["list", "list_id", "id"]) {
+    for (const key of ["folder", "folder_id", "id"]) {
       const value = parsed.searchParams.get(key);
       if (value) maybeAdd(value);
     }
   } catch {
-    // Not a URL — direct ID input still handled above.
+    // Not a URL — direct numeric input already handled above.
   }
 
-  return Array.from(candidates).sort((a, b) => {
-    const rankDiff = rankListIdCandidate(b) - rankListIdCandidate(a);
-    if (rankDiff !== 0) return rankDiff;
-    return b.length - a.length;
-  });
+  return Array.from(candidates);
 }
 
 export async function GET(request: NextRequest) {
@@ -122,12 +210,24 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const listIdCandidates = parseAllocationListIdCandidates(allocationList);
-    if (listIdCandidates.length === 0) {
+    const { listIdCandidates, viewIdCandidates } = parseAllocationReferences(allocationList);
+    if (listIdCandidates.length === 0 && viewIdCandidates.length === 0) {
       return NextResponse.json(
         {
           error:
-            "Could not parse a ClickUp list ID from allocationList. Paste a numeric list ID, or a list URL that contains one.",
+            "Could not parse a ClickUp allocation reference. Paste a list/view URL or numeric list ID.",
+        },
+        { status: 400 },
+      );
+    }
+
+    const clientFolder = searchParams.get("clientFolder")?.trim() ?? "";
+    const clientFolderIdCandidates = parseFolderIdCandidates(clientFolder);
+    if (clientFolder && clientFolderIdCandidates.length === 0) {
+      return NextResponse.json(
+        {
+          error:
+            "Could not parse a ClickUp folder ID from clientFolder. Paste a folder URL or numeric folder ID.",
         },
         { status: 400 },
       );
@@ -136,10 +236,17 @@ export async function GET(request: NextRequest) {
     const monthRange = parseMonthRange(searchParams.get("month"));
 
     try {
-      const cacheKey = `clickup:time-checker:${monthRange.month}:${listIdCandidates.join("-")}`;
+      const allocationCachePart =
+        listIdCandidates.join("-") +
+        (viewIdCandidates.length ? `:v:${viewIdCandidates.join("-")}` : "");
+      const folderCachePart =
+        clientFolderIdCandidates.length > 0 ? `:f:${clientFolderIdCandidates.join("-")}` : "";
+      const cacheKey = `clickup:time-checker:${monthRange.month}:${allocationCachePart}${folderCachePart}`;
       const report = await withApiCache(cacheKey, 1, () =>
         getClickUpTimeCheckerReport({
           allocationListIdCandidates: listIdCandidates,
+          allocationViewIdCandidates: viewIdCandidates,
+          clientFolderIdCandidates,
           month: monthRange.month,
           startDateMs: monthRange.startDateMs,
           endDateMs: monthRange.endDateMs,

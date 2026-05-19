@@ -85,6 +85,7 @@ function getStatusMeta(row: TimeCheckerRow): { label: string; className: string 
 
 export default function TimeCheckerPage() {
   const [allocationList, setAllocationList] = useState("");
+  const [clientFolder, setClientFolder] = useState("");
   const [month, setMonth] = useState(getCurrentMonthValue);
   const [report, setReport] = useState<TimeCheckerResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -124,6 +125,7 @@ export default function TimeCheckerPage() {
   const runCheck = useCallback(
     async ({ refresh }: { refresh: boolean }) => {
       const trimmedList = allocationList.trim();
+      const trimmedFolder = clientFolder.trim();
 
       setLoading(true);
       setError(null);
@@ -132,6 +134,9 @@ export default function TimeCheckerPage() {
         const params = new URLSearchParams({ month });
         if (trimmedList) {
           params.set("allocationList", trimmedList);
+        }
+        if (trimmedFolder) {
+          params.set("clientFolder", trimmedFolder);
         }
         if (refresh) {
           params.set("refresh", "1");
@@ -155,7 +160,7 @@ export default function TimeCheckerPage() {
         setLoading(false);
       }
     },
-    [allocationList, month],
+    [allocationList, clientFolder, month],
   );
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -184,7 +189,7 @@ export default function TimeCheckerPage() {
       <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <form
           onSubmit={onSubmit}
-          className="grid gap-4 lg:grid-cols-[2fr_1fr_auto_auto] lg:items-end"
+          className="grid gap-4 lg:grid-cols-[2fr_2fr_1fr_auto_auto] lg:items-end"
         >
           <label className="flex flex-col gap-2">
             <span className="text-xs font-semibold tracking-wide text-gray-500 uppercase">
@@ -199,6 +204,22 @@ export default function TimeCheckerPage() {
             />
             <span className="text-xs text-gray-500">
               Leave blank to use the shared default from Admin Settings.
+            </span>
+          </label>
+
+          <label className="flex flex-col gap-2">
+            <span className="text-xs font-semibold tracking-wide text-gray-500 uppercase">
+              Client folder URL or ID (optional)
+            </span>
+            <input
+              type="text"
+              value={clientFolder}
+              onChange={(event) => setClientFolder(event.target.value)}
+              placeholder="https://app.clickup.com/.../v/f/.../... or 9012..."
+              className="h-11 rounded-lg border border-gray-300 px-3 text-sm text-gray-900 transition outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+            />
+            <span className="text-xs text-gray-500">
+              Add this to run direct single-client mode without folder auto-matching.
             </span>
           </label>
 

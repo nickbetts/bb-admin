@@ -66,6 +66,10 @@ interface ClickUpListTask {
   custom_fields?: ClickUpCustomField[];
 }
 
+interface ClickUpViewTasksResponse {
+  tasks?: ClickUpListTask[];
+}
+
 interface ClickUpTimeEntry {
   duration?: number | string;
   time?: number | string;
@@ -596,6 +600,8 @@ async function mapWithConcurrency<T, R>(
 
 export async function getClickUpTimeCheckerReport(input: {
   allocationListIdCandidates: string[];
+  allocationViewIdCandidates?: string[];
+  clientFolderIdCandidates?: string[];
   month: string;
   startDateMs: number;
   endDateMs: number;
@@ -625,12 +631,21 @@ export async function getClickUpTimeCheckerReport(input: {
     ),
   );
 
-  if (candidateIds.length === 0) {
-    throw new Error("No valid allocation list IDs were provided.");
+  const candidateViewIds = Array.from(
+    new Set(
+      (input.allocationViewIdCandidates ?? [])
+        .map((value) => value.trim())
+        .filter((value) => /^[a-z0-9_-]{4,}$/i.test(value) && !/^\d+$/.test(value)),
+    ),
+  );
+
+  if (candidateIds.length === 0 && candidateViewIds.length === 0) {
+    throw new Error("No valid allocation list/view references were provided.");
   }
 
   let allocationListId: string | null = null;
   let allocationTasks: ClickUpListTask[] = [];
+  let allocationSource: "list" | "view" = "list";
   let lastListError: Error | null = null;
 
   for (const candidateId of candidateIds) {
@@ -638,14 +653,52 @@ export async function getClickUpTimeCheckerReport(input: {
       const tasks = await getClickUpListTasks(candidateId, token);
       allocationListId = candidateId;
       allocationTasks = tasks;
+      allocationSource = "list";
       break;
     } catch (error) {
       lastListError = error instanceof Error ? error : new Error("Unknown ClickUp list error");
     }
   }
 
+  async function getClickUpViewTasks(viewId: string): Promise<ClickUpListTask[]> {
+    const tasks: ClickUpListTask[] = [];
+
+    for (let page = 0; page < 40; page += 1) {
+      const response = await clickupFetch<ClickUpViewTasksResponse>(
+        `/view/${encodeURIComponent(viewId)}/task?page=${page}&include_closed=true`,
+        token,
+      );
+      const pageTasks = Array.isArray(response.tasks) ? response.tasks : [];
+
+      if (pageTasks.length === 0) break;
+      tasks.push(...pageTasks);
+
+      if (pageTasks.length < 100) break;
+    }
+
+    return tasks;
+  }
+
   if (!allocationListId) {
-    const attempted = candidateIds.join(", ");
+    for (const candidateViewId of candidateViewIds) {
+      try {
+        const tasks = await getClickUpViewTasks(candidateViewId);
+        allocationListId = candidateViewId;
+        allocationTasks = tasks;
+        allocationSource = "view";
+        break;
+      } catch (error) {
+        lastListError =
+          error instanceof Error ? error : new Error("Unknown ClickUp view lookup error");
+      }
+    }
+  }
+
+  if (!allocationListId) {
+    const attemptedListIds = candidateIds.length > 0 ? `list IDs: ${candidateIds.join(", ")}` : "";
+    const attemptedViewIds =
+      candidateViewIds.length > 0 ? `view IDs: ${candidateViewIds.join(", ")}` : "";
+    const attempted = [attemptedListIds, attemptedViewIds].filter(Boolean).join("; ");
     const reason = lastListError?.message ? ` (${lastListError.message})` : "";
     throw new Error(`Could not load the prescribed-hours list. Tried: ${attempted}${reason}`);
   }
@@ -695,29 +748,91 @@ export async function getClickUpTimeCheckerReport(input: {
     normalisedName: normaliseEntityName(folder.name),
   }));
 
-  const matchedRows = allocations.map((allocation) => {
-    const normalisedClient = normaliseEntityName(allocation.clientName);
-    let bestFolder: (typeof preparedFolders)[number] | null = null;
-    let bestScore = 0;
+  const folderCandidates = Array.from(
+    new Set(
+      (input.clientFolderIdCandidates ?? [])
+        .map((value) => value.trim())
+        .filter((value) => /^\d{6,}$/.test(value)),
+    ),
+  );
 
-    for (const folder of preparedFolders) {
-      const score = scoreNameMatch(normalisedClient, folder.normalisedName);
-      if (score > bestScore) {
-        bestScore = score;
-        bestFolder = folder;
+  const targetFolder =
+    folderCandidates.length > 0
+      ? (preparedFolders.find((folder) => folderCandidates.includes(folder.id)) ?? null)
+      : null;
+
+  if (folderCandidates.length > 0 && !targetFolder) {
+    throw new Error(
+      `Could not find the provided client folder in ClickUp. Tried folder IDs: ${folderCandidates.join(", ")}`,
+    );
+  }
+
+  interface MatchedAllocationRow {
+    clientName: string;
+    prescribedHours: number;
+    source: PrescribedHoursSource;
+    matchConfidence: "high" | "medium" | "low" | "none";
+    matchScore: number;
+    folderId: string | null;
+    folderName: string | null;
+    forcedFolderMatch?: boolean;
+  }
+
+  const matchedRows: MatchedAllocationRow[] = (() => {
+    if (targetFolder) {
+      let bestAllocation = allocations[0];
+      let bestScore = scoreNameMatch(
+        normaliseEntityName(allocations[0].clientName),
+        targetFolder.normalisedName,
+      );
+
+      for (const allocation of allocations.slice(1)) {
+        const score = scoreNameMatch(
+          normaliseEntityName(allocation.clientName),
+          targetFolder.normalisedName,
+        );
+        if (score > bestScore) {
+          bestScore = score;
+          bestAllocation = allocation;
+        }
       }
+
+      return [
+        {
+          ...bestAllocation,
+          matchConfidence: getMatchConfidence(bestScore),
+          matchScore: bestScore,
+          folderId: targetFolder.id,
+          folderName: targetFolder.name,
+          forcedFolderMatch: true,
+        },
+      ];
     }
 
-    const confidence = getMatchConfidence(bestScore);
+    return allocations.map((allocation) => {
+      const normalisedClient = normaliseEntityName(allocation.clientName);
+      let bestFolder: (typeof preparedFolders)[number] | null = null;
+      let bestScore = 0;
 
-    return {
-      ...allocation,
-      matchConfidence: confidence,
-      matchScore: bestScore,
-      folderId: confidence === "none" ? null : (bestFolder?.id ?? null),
-      folderName: confidence === "none" ? null : (bestFolder?.name ?? null),
-    };
-  });
+      for (const folder of preparedFolders) {
+        const score = scoreNameMatch(normalisedClient, folder.normalisedName);
+        if (score > bestScore) {
+          bestScore = score;
+          bestFolder = folder;
+        }
+      }
+
+      const confidence = getMatchConfidence(bestScore);
+
+      return {
+        ...allocation,
+        matchConfidence: confidence,
+        matchScore: bestScore,
+        folderId: confidence === "none" ? null : (bestFolder?.id ?? null),
+        folderName: confidence === "none" ? null : (bestFolder?.name ?? null),
+      };
+    });
+  })();
 
   const matchedFolderIds = Array.from(
     new Set(matchedRows.map((row) => row.folderId).filter((id): id is string => Boolean(id))),
@@ -748,6 +863,9 @@ export async function getClickUpTimeCheckerReport(input: {
       const notes: string[] = [];
       if (row.source === "task_name") {
         notes.push("Prescribed hours inferred from task title text.");
+      }
+      if (row.forcedFolderMatch && row.matchConfidence === "none") {
+        notes.push("Folder was explicitly provided and mapped with low name confidence.");
       }
       if (!row.folderId) {
         notes.push("No matching client folder found.");
@@ -787,6 +905,11 @@ export async function getClickUpTimeCheckerReport(input: {
       "Multiple ClickUp workspaces were detected. Time entries are currently queried from the first workspace only.",
     );
   }
+  if (targetFolder) {
+    warnings.push(
+      "Single-folder mode is active. Results are limited to the provided client folder URL.",
+    );
+  }
   if (rows.some((row) => row.prescribedHoursSource === "task_name")) {
     warnings.push(
       "Some prescribed hours were inferred from task titles. For best accuracy, store prescribed hours in a numeric custom field.",
@@ -795,7 +918,7 @@ export async function getClickUpTimeCheckerReport(input: {
 
   return {
     workspaceId,
-    allocationListId,
+    allocationListId: allocationSource === "view" ? `view:${allocationListId}` : allocationListId,
     month: input.month,
     startDateMs: input.startDateMs,
     endDateMs: input.endDateMs,
