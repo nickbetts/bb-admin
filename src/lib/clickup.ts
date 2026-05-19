@@ -746,7 +746,7 @@ export async function getClickUpTimeCheckerReport(input: {
         row.prescribedHours > 0 ? roundHours((trackedHours / row.prescribedHours) * 100) : null;
 
       const notes: string[] = [];
-      if (row.prescribedHoursSource === "task_name") {
+      if (row.source === "task_name") {
         notes.push("Prescribed hours inferred from task title text.");
       }
       if (!row.folderId) {
