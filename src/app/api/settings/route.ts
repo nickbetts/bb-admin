@@ -52,6 +52,10 @@ function normaliseClickUpListId(raw: string): string | null {
   return /^\d+$/.test(value) ? value : null;
 }
 
+function normaliseClickUpListReference(raw: string): string {
+  return raw.trim();
+}
+
 function normaliseSettingEntry(key: string, value: unknown): NormalisedSetting | InvalidSetting {
   const raw = toPersistableString(value);
   if (raw === null) {
@@ -85,6 +89,8 @@ function normaliseSettingEntry(key: string, value: unknown): NormalisedSetting |
       }
       return { key, value: normalisedListId };
     }
+    case "clickupTimeCheckerAllocationList":
+      return { key, value: normaliseClickUpListReference(raw) };
     default:
       return { key, value: raw };
   }

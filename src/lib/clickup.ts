@@ -45,6 +45,77 @@ interface ClickUpTask {
   url: string;
 }
 
+interface ClickUpCustomFieldOption {
+  id?: string;
+  name?: string;
+  orderindex?: string | number;
+}
+
+interface ClickUpCustomField {
+  name?: string;
+  type?: string;
+  value?: unknown;
+  type_config?: {
+    options?: ClickUpCustomFieldOption[];
+  };
+}
+
+interface ClickUpListTask {
+  id: string;
+  name: string;
+  custom_fields?: ClickUpCustomField[];
+}
+
+interface ClickUpTimeEntry {
+  duration?: number | string;
+  time?: number | string;
+}
+
+interface ClickUpTimeEntriesResponse {
+  data?: ClickUpTimeEntry[];
+  entries?: ClickUpTimeEntry[];
+}
+
+interface ClickUpTeamWithMembers {
+  id: string;
+  members?: ClickUpMember[];
+}
+
+type PrescribedHoursSource = "custom_field" | "task_name";
+
+export interface ClickUpTimeCheckerRow {
+  clientName: string;
+  prescribedHours: number;
+  trackedHours: number;
+  remainingHours: number;
+  utilisationPct: number | null;
+  folderId: string | null;
+  folderName: string | null;
+  folderMatchScore: number | null;
+  prescribedHoursSource: PrescribedHoursSource;
+  notes: string[];
+}
+
+export interface ClickUpTimeCheckerSummary {
+  prescribedHoursTotal: number;
+  trackedHoursTotal: number;
+  remainingHoursTotal: number;
+  overBudgetClients: number;
+  underBudgetClients: number;
+  unmatchedClients: number;
+}
+
+export interface ClickUpTimeCheckerReport {
+  workspaceId: string;
+  allocationListId: string;
+  month: string;
+  startDateMs: number;
+  endDateMs: number;
+  rows: ClickUpTimeCheckerRow[];
+  summary: ClickUpTimeCheckerSummary;
+  warnings: string[];
+}
+
 interface ClickUpChecklist {
   checklist: { id: string };
 }
@@ -305,4 +376,431 @@ export async function updateClickUpTaskStatus(
   status: string,
 ): Promise<ClickUpTaskDetail> {
   return updateClickUpTask(taskId, { status });
+}
+
+const HOURS_FIELD_HINT_REGEX = /(hour|hrs?|allocated|prescribed|retainer|contracted)/i;
+const HOURS_IN_TEXT_REGEX = /(\d+(?:[.,]\d+)?)\s*(?:h|hr|hrs|hour|hours)\b/i;
+
+function roundHours(value: number): number {
+  return Number.parseFloat(value.toFixed(2));
+}
+
+function parsePositiveNumber(raw: unknown): number | null {
+  if (typeof raw === "number") {
+    return Number.isFinite(raw) && raw > 0 ? raw : null;
+  }
+
+  if (typeof raw === "string") {
+    const match = raw.replace(/,/g, ".").match(/-?\d+(?:\.\d+)?/);
+    if (!match) return null;
+    const parsed = Number.parseFloat(match[0]);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  }
+
+  return null;
+}
+
+function extractDropdownOptionText(field: ClickUpCustomField): string | null {
+  const options = field.type_config?.options ?? [];
+  if (!Array.isArray(options) || options.length === 0 || field.value === undefined) return null;
+
+  const valueAsString = String(field.value);
+  const byId = options.find((option) => String(option.id) === valueAsString);
+  if (byId?.name) return byId.name;
+
+  const numericValue = Number.parseInt(valueAsString, 10);
+  if (Number.isFinite(numericValue)) {
+    const byOrder = options.find((option) => {
+      const order = Number.parseInt(String(option.orderindex ?? ""), 10);
+      return Number.isFinite(order) && order === numericValue;
+    });
+    if (byOrder?.name) return byOrder.name;
+  }
+
+  return null;
+}
+
+function parseHoursFromCustomField(field: ClickUpCustomField): number | null {
+  const directValue = parsePositiveNumber(field.value);
+  if (directValue !== null) return directValue;
+
+  if (field.type === "drop_down") {
+    const optionText = extractDropdownOptionText(field);
+    if (optionText) {
+      return parsePositiveNumber(optionText);
+    }
+  }
+
+  return null;
+}
+
+function cleanClientName(raw: string): string {
+  return raw
+    .replace(/(\d+(?:[.,]\d+)?)\s*(?:h|hr|hrs|hour|hours)\b/gi, "")
+    .replace(/[-|:\u2013\u2014]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normaliseEntityName(raw: string): string {
+  return raw
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\b(ltd|limited|llp|uk|co)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function scoreNameMatch(a: string, b: string): number {
+  if (!a || !b) return 0;
+  if (a === b) return 1;
+  if (a.includes(b) || b.includes(a)) return 0.9;
+
+  const aTokens = new Set(a.split(" ").filter(Boolean));
+  const bTokens = new Set(b.split(" ").filter(Boolean));
+  if (aTokens.size === 0 || bTokens.size === 0) return 0;
+
+  let overlap = 0;
+  for (const token of aTokens) {
+    if (bTokens.has(token)) overlap += 1;
+  }
+
+  return overlap / Math.max(aTokens.size, bTokens.size);
+}
+
+function getMatchConfidence(score: number): "high" | "medium" | "low" | "none" {
+  if (score >= 0.9) return "high";
+  if (score >= 0.7) return "medium";
+  if (score >= 0.5) return "low";
+  return "none";
+}
+
+function parseDurationMs(entry: ClickUpTimeEntry): number {
+  const raw = entry.duration ?? entry.time;
+  const parsed =
+    typeof raw === "number" ? raw : typeof raw === "string" ? Number.parseFloat(raw) : Number.NaN;
+
+  if (!Number.isFinite(parsed)) return 0;
+  return Math.abs(parsed);
+}
+
+function parsePrescribedHours(task: ClickUpListTask): {
+  clientName: string;
+  prescribedHours: number;
+  source: PrescribedHoursSource;
+} | null {
+  const hourFields = (task.custom_fields ?? []).filter((field) =>
+    HOURS_FIELD_HINT_REGEX.test(field.name ?? ""),
+  );
+
+  for (const field of hourFields) {
+    const parsed = parseHoursFromCustomField(field);
+    if (parsed !== null) {
+      return {
+        clientName: cleanClientName(task.name) || task.name.trim(),
+        prescribedHours: parsed,
+        source: "custom_field",
+      };
+    }
+  }
+
+  const titleMatch = HOURS_IN_TEXT_REGEX.exec(task.name);
+  if (titleMatch) {
+    const parsed = parsePositiveNumber(titleMatch[1]);
+    if (parsed !== null) {
+      return {
+        clientName: cleanClientName(task.name) || task.name.trim(),
+        prescribedHours: parsed,
+        source: "task_name",
+      };
+    }
+  }
+
+  return null;
+}
+
+async function getClickUpListTasks(listId: string, token: string): Promise<ClickUpListTask[]> {
+  const tasks: ClickUpListTask[] = [];
+
+  for (let page = 0; page < 40; page += 1) {
+    const path = `/list/${listId}/task?archived=false&include_closed=true&page=${page}`;
+    const response = await clickupFetch<{ tasks?: ClickUpListTask[] }>(path, token);
+    const pageTasks = Array.isArray(response.tasks) ? response.tasks : [];
+
+    if (pageTasks.length === 0) break;
+    tasks.push(...pageTasks);
+
+    if (pageTasks.length < 100) break;
+  }
+
+  return tasks;
+}
+
+async function getTrackedHoursForFolder(params: {
+  token: string;
+  teamId: string;
+  folderId: string;
+  startDateMs: number;
+  endDateMs: number;
+  assigneeIds: number[];
+}): Promise<number> {
+  const search = new URLSearchParams({
+    start_date: String(params.startDateMs),
+    end_date: String(params.endDateMs),
+    folder_id: params.folderId,
+    include_location_names: "true",
+  });
+
+  if (params.assigneeIds.length > 0) {
+    search.set("assignee", params.assigneeIds.join(","));
+  }
+
+  const response = await clickupFetch<ClickUpTimeEntriesResponse>(
+    `/team/${params.teamId}/time_entries?${search.toString()}`,
+    params.token,
+  );
+
+  const entries = Array.isArray(response.data)
+    ? response.data
+    : Array.isArray(response.entries)
+      ? response.entries
+      : [];
+
+  const totalMs = entries.reduce((sum, entry) => sum + parseDurationMs(entry), 0);
+  return roundHours(totalMs / (1000 * 60 * 60));
+}
+
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  worker: (item: T) => Promise<R>,
+): Promise<R[]> {
+  if (items.length === 0) return [];
+
+  const results = new Array<R>(items.length);
+  let nextIndex = 0;
+
+  async function runWorker() {
+    while (nextIndex < items.length) {
+      const index = nextIndex;
+      nextIndex += 1;
+      results[index] = await worker(items[index]);
+    }
+  }
+
+  const workerCount = Math.min(concurrency, items.length);
+  await Promise.all(Array.from({ length: workerCount }, () => runWorker()));
+  return results;
+}
+
+export async function getClickUpTimeCheckerReport(input: {
+  allocationListIdCandidates: string[];
+  month: string;
+  startDateMs: number;
+  endDateMs: number;
+}): Promise<ClickUpTimeCheckerReport> {
+  const token = await getClickUpToken();
+
+  const { teams } = await clickupFetch<{ teams: ClickUpTeamWithMembers[] }>("/team", token);
+  if (!Array.isArray(teams) || teams.length === 0) {
+    throw new Error("No ClickUp workspace found for the configured token.");
+  }
+
+  const workspaceId = teams[0].id;
+  const assigneeIds = Array.from(
+    new Set(
+      teams
+        .flatMap((team) => team.members ?? [])
+        .map((member) => member.user.id)
+        .filter((id) => Number.isFinite(id)),
+    ),
+  );
+
+  const candidateIds = Array.from(
+    new Set(
+      input.allocationListIdCandidates
+        .map((value) => value.trim())
+        .filter((value) => /^\d{6,}$/.test(value)),
+    ),
+  );
+
+  if (candidateIds.length === 0) {
+    throw new Error("No valid allocation list IDs were provided.");
+  }
+
+  let allocationListId: string | null = null;
+  let allocationTasks: ClickUpListTask[] = [];
+  let lastListError: Error | null = null;
+
+  for (const candidateId of candidateIds) {
+    try {
+      const tasks = await getClickUpListTasks(candidateId, token);
+      allocationListId = candidateId;
+      allocationTasks = tasks;
+      break;
+    } catch (error) {
+      lastListError = error instanceof Error ? error : new Error("Unknown ClickUp list error");
+    }
+  }
+
+  if (!allocationListId) {
+    const attempted = candidateIds.join(", ");
+    const reason = lastListError?.message ? ` (${lastListError.message})` : "";
+    throw new Error(`Could not load the prescribed-hours list. Tried: ${attempted}${reason}`);
+  }
+
+  const allocationByClient = new Map<
+    string,
+    { clientName: string; prescribedHours: number; source: PrescribedHoursSource }
+  >();
+
+  for (const task of allocationTasks) {
+    const parsed = parsePrescribedHours(task);
+    if (!parsed) continue;
+
+    const key = normaliseEntityName(parsed.clientName);
+    if (!key) continue;
+
+    const existing = allocationByClient.get(key);
+    if (!existing) {
+      allocationByClient.set(key, {
+        clientName: parsed.clientName,
+        prescribedHours: parsed.prescribedHours,
+        source: parsed.source,
+      });
+      continue;
+    }
+
+    existing.prescribedHours = roundHours(existing.prescribedHours + parsed.prescribedHours);
+    if (existing.source !== "custom_field" && parsed.source === "custom_field") {
+      existing.source = "custom_field";
+    }
+    if (parsed.clientName.length > existing.clientName.length) {
+      existing.clientName = parsed.clientName;
+    }
+  }
+
+  const allocations = Array.from(allocationByClient.values());
+
+  if (allocations.length === 0) {
+    throw new Error(
+      "No prescribed hours were found in the allocation list. Add an hours custom field or include values such as '18h' in task titles.",
+    );
+  }
+
+  const folders = await getClickUpFolders();
+  const preparedFolders = folders.map((folder) => ({
+    ...folder,
+    normalisedName: normaliseEntityName(folder.name),
+  }));
+
+  const matchedRows = allocations.map((allocation) => {
+    const normalisedClient = normaliseEntityName(allocation.clientName);
+    let bestFolder: (typeof preparedFolders)[number] | null = null;
+    let bestScore = 0;
+
+    for (const folder of preparedFolders) {
+      const score = scoreNameMatch(normalisedClient, folder.normalisedName);
+      if (score > bestScore) {
+        bestScore = score;
+        bestFolder = folder;
+      }
+    }
+
+    const confidence = getMatchConfidence(bestScore);
+
+    return {
+      ...allocation,
+      matchConfidence: confidence,
+      matchScore: bestScore,
+      folderId: confidence === "none" ? null : (bestFolder?.id ?? null),
+      folderName: confidence === "none" ? null : (bestFolder?.name ?? null),
+    };
+  });
+
+  const matchedFolderIds = Array.from(
+    new Set(matchedRows.map((row) => row.folderId).filter((id): id is string => Boolean(id))),
+  );
+
+  const trackedByFolderId = new Map<string, number>();
+
+  await mapWithConcurrency(matchedFolderIds, 4, async (folderId) => {
+    const trackedHours = await getTrackedHoursForFolder({
+      token,
+      teamId: workspaceId,
+      folderId,
+      startDateMs: input.startDateMs,
+      endDateMs: input.endDateMs,
+      assigneeIds,
+    });
+    trackedByFolderId.set(folderId, trackedHours);
+    return trackedHours;
+  });
+
+  const rows: ClickUpTimeCheckerRow[] = matchedRows
+    .map((row) => {
+      const trackedHours = row.folderId ? (trackedByFolderId.get(row.folderId) ?? 0) : 0;
+      const remainingHours = roundHours(row.prescribedHours - trackedHours);
+      const utilisationPct =
+        row.prescribedHours > 0 ? roundHours((trackedHours / row.prescribedHours) * 100) : null;
+
+      const notes: string[] = [];
+      if (row.prescribedHoursSource === "task_name") {
+        notes.push("Prescribed hours inferred from task title text.");
+      }
+      if (!row.folderId) {
+        notes.push("No matching client folder found.");
+      }
+
+      return {
+        clientName: row.clientName,
+        prescribedHours: row.prescribedHours,
+        trackedHours,
+        remainingHours,
+        utilisationPct,
+        folderId: row.folderId,
+        folderName: row.folderName,
+        folderMatchScore: row.folderId ? roundHours(row.matchScore) : null,
+        prescribedHoursSource: row.source,
+        notes,
+      };
+    })
+    .sort((a, b) => a.remainingHours - b.remainingHours);
+
+  const prescribedHoursTotal = roundHours(rows.reduce((sum, row) => sum + row.prescribedHours, 0));
+  const trackedHoursTotal = roundHours(rows.reduce((sum, row) => sum + row.trackedHours, 0));
+  const remainingHoursTotal = roundHours(rows.reduce((sum, row) => sum + row.remainingHours, 0));
+
+  const summary: ClickUpTimeCheckerSummary = {
+    prescribedHoursTotal,
+    trackedHoursTotal,
+    remainingHoursTotal,
+    overBudgetClients: rows.filter((row) => row.remainingHours < 0).length,
+    underBudgetClients: rows.filter((row) => row.remainingHours >= 0 && row.folderId).length,
+    unmatchedClients: rows.filter((row) => !row.folderId).length,
+  };
+
+  const warnings: string[] = [];
+  if (teams.length > 1) {
+    warnings.push(
+      "Multiple ClickUp workspaces were detected. Time entries are currently queried from the first workspace only.",
+    );
+  }
+  if (rows.some((row) => row.prescribedHoursSource === "task_name")) {
+    warnings.push(
+      "Some prescribed hours were inferred from task titles. For best accuracy, store prescribed hours in a numeric custom field.",
+    );
+  }
+
+  return {
+    workspaceId,
+    allocationListId,
+    month: input.month,
+    startDateMs: input.startDateMs,
+    endDateMs: input.endDateMs,
+    rows,
+    summary,
+    warnings,
+  };
 }

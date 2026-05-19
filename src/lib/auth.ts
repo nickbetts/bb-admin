@@ -37,6 +37,7 @@ export const ALL_PERMISSIONS = [
   "keyword_tracker",
   "meta_audience_scraper",
   "sales_handoff",
+  "time_checker",
   // Portal publishing — gates the "Publish to client portal" action on
   // reports, grand plans, content strategies and landing pages.
   "publish_to_portal",
@@ -90,7 +91,7 @@ export const ALL_PERMISSIONS = [
   "settings:clickfraud",
 ] as const;
 
-export type Permission = typeof ALL_PERMISSIONS[number];
+export type Permission = (typeof ALL_PERMISSIONS)[number];
 
 const DEFAULT_USER_PERMISSIONS: string[] = ["dashboard", "clients", "reports", "templates"];
 
@@ -241,10 +242,7 @@ export async function getSessionOrCronAuth(request: Request): Promise<Session | 
       try {
         const headerBuf = Buffer.from(authHeader);
         const expectedBuf = Buffer.from(expected);
-        if (
-          headerBuf.length === expectedBuf.length &&
-          timingSafeEqual(headerBuf, expectedBuf)
-        ) {
+        if (headerBuf.length === expectedBuf.length && timingSafeEqual(headerBuf, expectedBuf)) {
           return { user: LEGACY_ADMIN_USER };
         }
       } catch {

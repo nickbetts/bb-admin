@@ -162,6 +162,8 @@ function SettingsPanelInner() {
   const [clickupApiToken, setClickupApiToken] = useState("");
   const [clickupApiTokenInput, setClickupApiTokenInput] = useState("");
   const [clickupSalesHandoffListIdInput, setClickupSalesHandoffListIdInput] = useState("");
+  const [clickupTimeCheckerAllocationListInput, setClickupTimeCheckerAllocationListInput] =
+    useState("");
   const [clickupSalesHandoffServicesInput, setClickupSalesHandoffServicesInput] = useState("");
   const [clickupSalesHandoffChecklistInput, setClickupSalesHandoffChecklistInput] = useState("");
   const [clickupSalesHandoffEnforce48HourNotice, setClickupSalesHandoffEnforce48HourNotice] =
@@ -301,6 +303,7 @@ function SettingsPanelInner() {
       setClickupApiToken(storedClickupToken);
       setClickupApiTokenInput(storedClickupToken ? "pk_…redacted" : "");
       setClickupSalesHandoffListIdInput(settings.clickupSalesHandoffListId ?? "");
+      setClickupTimeCheckerAllocationListInput(settings.clickupTimeCheckerAllocationList ?? "");
       setClickupSalesHandoffServicesInput(
         settings.clickupSalesHandoffServices ?? DEFAULT_SALES_HANDOFF_SERVICES.join("\n"),
       );
@@ -451,6 +454,7 @@ function SettingsPanelInner() {
       );
       const selectedNames = selectedMembers.map((member) => member.username || member.email);
       const listIdToSave = clickupSalesHandoffListIdInput.trim();
+      const timeCheckerAllocationListToSave = clickupTimeCheckerAllocationListInput.trim();
 
       const res = await fetch("/api/settings", {
         method: "PATCH",
@@ -458,6 +462,7 @@ function SettingsPanelInner() {
         body: JSON.stringify({
           clickupApiToken: tokenToSave,
           clickupSalesHandoffListId: listIdToSave,
+          clickupTimeCheckerAllocationList: timeCheckerAllocationListToSave,
           clickupSalesHandoffServices: normaliseMultilineList(
             clickupSalesHandoffServicesInput,
             DEFAULT_SALES_HANDOFF_SERVICES,
@@ -483,6 +488,7 @@ function SettingsPanelInner() {
       setClickupApiToken(tokenToSave);
       setClickupApiTokenInput(tokenToSave ? "pk_…redacted" : "");
       setClickupSalesHandoffListIdInput(listIdToSave);
+      setClickupTimeCheckerAllocationListInput(timeCheckerAllocationListToSave);
       setClickupSalesHandoffServicesInput((prev) =>
         normaliseMultilineList(prev, DEFAULT_SALES_HANDOFF_SERVICES),
       );
@@ -1482,8 +1488,8 @@ function SettingsPanelInner() {
           <div>
             <h2 className="card-title">ClickUp Integration</h2>
             <p className="card-subtitle">
-              Used to automatically create go-live checklists and sales handoff tasks in ClickUp.
-              Get your personal API token from{" "}
+              Used to automatically create go-live checklists, sales handoff tasks, and set the
+              default allocation list for Time Checker. Get your personal API token from{" "}
               <a
                 href="https://app.clickup.com/settings/apps"
                 target="_blank"
@@ -1522,6 +1528,28 @@ function SettingsPanelInner() {
             />
             <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 4 }}>
               Sales handoff tasks are created in this list.
+            </p>
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <label
+              style={{
+                display: "block",
+                fontSize: 12,
+                fontWeight: 600,
+                color: "var(--text-2)",
+                marginBottom: 4,
+              }}
+            >
+              Time checker allocation list (URL or ID)
+            </label>
+            <Input
+              className="font-mono text-[13px]"
+              value={clickupTimeCheckerAllocationListInput}
+              onChange={(e) => setClickupTimeCheckerAllocationListInput(e.target.value)}
+              placeholder="https://app.clickup.com/.../v/l/... or 9012..."
+            />
+            <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 4 }}>
+              This is the default prescribed-hours list used by the Time Checker tool for everyone.
             </p>
           </div>
           <div style={{ marginBottom: 12, display: "grid", gap: 8 }}>
