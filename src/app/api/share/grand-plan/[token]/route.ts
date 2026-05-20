@@ -6,6 +6,42 @@ import type { GrandPlanData } from "@/lib/grand-plan-generator";
 import { renderPresentationHtml } from "@/lib/grand-plan-presentation-template";
 import type { PresentationData } from "@/lib/grand-plan-presentation-generator";
 
+const SHARE_PASSWORD_VERSION = "s2";
+
+function timingSafeHexEqual(a: string, b: string): boolean {
+  const left = Buffer.from(a, "hex");
+  const right = Buffer.from(b, "hex");
+  if (left.length !== right.length) return false;
+  return crypto.timingSafeEqual(left, right);
+}
+
+function hashLegacySha256(password: string): string {
+  return crypto.createHash("sha256").update(password).digest("hex");
+}
+
+function hashSharePasswordV2(password: string): string {
+  const salt = crypto.randomBytes(16).toString("hex");
+  const hash = crypto.scryptSync(password, salt, 64).toString("hex");
+  return `${SHARE_PASSWORD_VERSION}:${salt}:${hash}`;
+}
+
+function verifySharePassword(
+  password: string,
+  stored: string,
+): { valid: boolean; needsUpgrade: boolean } {
+  const parts = stored.split(":");
+  if (parts.length === 3 && parts[0] === SHARE_PASSWORD_VERSION) {
+    const [, salt, expectedHash] = parts;
+    if (!salt || !expectedHash) return { valid: false, needsUpgrade: false };
+    const actualHash = crypto.scryptSync(password, salt, 64).toString("hex");
+    return { valid: timingSafeHexEqual(actualHash, expectedHash), needsUpgrade: false };
+  }
+
+  const legacyHash = hashLegacySha256(password);
+  const valid = timingSafeHexEqual(legacyHash, stored);
+  return { valid, needsUpgrade: valid };
+}
+
 type SharePlanFields = {
   planDataJson: string | null;
   generatedHtml: string | null;
@@ -13,25 +49,75 @@ type SharePlanFields = {
   presentationHtml: string | null;
 };
 
+const STRIP_CLASS_TOKENS = new Set(["gp-edit", "editable-inline", "gp-saving", "gp-saved"]);
+
+function stripPublicEditUi(html: string): string {
+  if (!html) return "";
+
+  // Keep embedded runtime JS untouched; only sanitise rendered markup.
+  const scriptStart = html.search(/<script[\s>]/i);
+  const markup = scriptStart === -1 ? html : html.slice(0, scriptStart);
+  const script = scriptStart === -1 ? "" : html.slice(scriptStart);
+
+  let cleaned = markup;
+
+  // Internal-only floating undo toolbar.
+  cleaned = cleaned.replace(/<div[^>]*id="gp-edit-toolbar"[\s\S]*?<\/div>/gi, "");
+
+  // Generic delete buttons and section-specific delete affordances.
+  cleaned = cleaned.replace(/<button[^>]*data-delete-path="[^"]*"[^>]*>[\s\S]*?<\/button>/gi, "");
+  cleaned = cleaned.replace(
+    /<button[^>]*class="[^"]*(?:subsection-delete-btn|kw-remove-btn|ag-delete-btn|seed-delete-btn|kw-save-btn)[^"]*"[^>]*>[\s\S]*?<\/button>/gi,
+    "",
+  );
+
+  // Inline "add" rows used by the editor.
+  cleaned = cleaned.replace(/<div[^>]*class="[^"]*kw-add-row[^"]*"[^>]*>[\s\S]*?<\/div>/gi, "");
+
+  // Remove edit-specific attributes so public viewers cannot edit text.
+  cleaned = cleaned
+    .replace(/\scontenteditable="true"/gi, "")
+    .replace(/\sspellcheck="false"/gi, "")
+    .replace(/\sdata-edit-path="[^"]*"/gi, "")
+    .replace(/\sdata-delete-path="[^"]*"/gi, "")
+    .replace(/\sdata-delete-label="[^"]*"/gi, "");
+
+  // Drop edit styling classes while preserving all other classes.
+  cleaned = cleaned.replace(/class="([^"]*)"/gi, (_match, className: string) => {
+    const tokens = className
+      .split(/\s+/)
+      .map((token) => token.trim())
+      .filter(Boolean)
+      .filter((token) => !STRIP_CLASS_TOKENS.has(token));
+    return tokens.length ? `class="${tokens.join(" ")}"` : "";
+  });
+
+  return cleaned + script;
+}
+
 function buildPublicHtml(plan: SharePlanFields, view: "plan" | "presentation"): string {
   if (view === "presentation") {
     if (plan.presentationDataJson) {
       try {
-        return renderPresentationHtml(JSON.parse(plan.presentationDataJson) as PresentationData, true);
+        return stripPublicEditUi(
+          renderPresentationHtml(JSON.parse(plan.presentationDataJson) as PresentationData, true),
+        );
       } catch {
         // fall through to stored HTML on parse error
       }
     }
-    return plan.presentationHtml ?? "";
+    return stripPublicEditUi(plan.presentationHtml ?? "");
   }
   if (plan.planDataJson) {
     try {
-      return renderGrandPlanHtml(JSON.parse(plan.planDataJson) as GrandPlanData, true);
+      return stripPublicEditUi(
+        renderGrandPlanHtml(JSON.parse(plan.planDataJson) as GrandPlanData, true),
+      );
     } catch {
       // fall through to stored HTML on parse error
     }
   }
-  return plan.generatedHtml ?? "";
+  return stripPublicEditUi(plan.generatedHtml ?? "");
 }
 
 function parseView(req: NextRequest): "plan" | "presentation" {
@@ -39,10 +125,7 @@ function parseView(req: NextRequest): "plan" | "presentation" {
   return v === "presentation" ? "presentation" : "plan";
 }
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ token: string }> }
-) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
   if (!token || token.length < 10) {
     return NextResponse.json({ error: "Invalid token" }, { status: 400 });
@@ -109,7 +192,7 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ token: string }> }
+  { params }: { params: Promise<{ token: string }> },
 ) {
   const { token } = await params;
   if (!token || token.length < 10) {
@@ -156,14 +239,22 @@ export async function POST(
     });
   }
 
-  const { password } = await request.json();
-  if (!password) {
+  const payload = (await request.json().catch(() => ({}))) as { password?: string };
+  const password = payload.password;
+  if (typeof password !== "string" || !password) {
     return NextResponse.json({ error: "Password required" }, { status: 401 });
   }
 
-  const hash = crypto.createHash("sha256").update(password).digest("hex");
-  if (hash !== plan.sharePassword) {
+  const verification = verifySharePassword(password, plan.sharePassword);
+  if (!verification.valid) {
     return NextResponse.json({ error: "Incorrect password" }, { status: 401 });
+  }
+
+  if (verification.needsUpgrade) {
+    await prisma.grandPlan.update({
+      where: { id: plan.id },
+      data: { sharePassword: hashSharePasswordV2(password) },
+    });
   }
 
   await prisma.grandPlan.update({

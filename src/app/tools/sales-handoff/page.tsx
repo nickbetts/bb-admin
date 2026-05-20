@@ -1,7 +1,12 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { ClipboardList, ExternalLink, Loader2, Sparkles } from "lucide-react";
+import { ClipboardList, ExternalLink, Loader2 } from "lucide-react";
+
+import {
+  SalesHandoffPipelineBoard,
+  type SalesHandoffStatus,
+} from "@/components/sales-handoff/SalesHandoffPipelineBoard";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 
@@ -13,81 +18,6 @@ interface SalesHandoffForm {
   interestedServices: string[];
   budgetRange: string;
   otherInformation: string;
-}
-
-const DEFAULT_SERVICE_OPTIONS = [
-  "Google PPC",
-  "Paid Meta",
-  "Organic Social",
-  "Website Design",
-  "SEO",
-  "Custom Landing Pages",
-  "Email marketing",
-];
-
-const INITIAL_FORM: SalesHandoffForm = {
-  prospectName: "",
-  website: "",
-  targetAudienceSummary: "",
-  secondCallAt: "",
-  interestedServices: [],
-  budgetRange: "",
-  otherInformation: "",
-};
-
-interface ConfettiPiece {
-  id: number;
-  left: number;
-  size: number;
-  delayMs: number;
-  durationMs: number;
-  rotateDeg: number;
-  color: string;
-  shape: "rect" | "pill";
-}
-
-const CHAOS_CONFETTI_COLOURS = [
-  "#ef4444",
-  "#f97316",
-  "#facc15",
-  "#22c55e",
-  "#3b82f6",
-  "#a855f7",
-  "#ec4899",
-];
-
-function createChaosConfettiPieces(count = 84): ConfettiPiece[] {
-  return Array.from({ length: count }, (_, id) => ({
-    id,
-    left: Math.random() * 100,
-    size: 6 + Math.random() * 8,
-    delayMs: Math.random() * 420,
-    durationMs: 1500 + Math.random() * 1600,
-    rotateDeg: Math.random() * 360,
-    color: CHAOS_CONFETTI_COLOURS[Math.floor(Math.random() * CHAOS_CONFETTI_COLOURS.length)],
-    shape: Math.random() > 0.5 ? "pill" : "rect",
-  }));
-}
-
-function looksLikeUrl(value: string): boolean {
-  if (!value.trim()) return false;
-  const candidate =
-    value.startsWith("http://") || value.startsWith("https://") ? value : `https://${value}`;
-  try {
-    const parsed = new URL(candidate);
-    return Boolean(parsed.hostname);
-  } catch {
-    return false;
-  }
-}
-
-function parseBooleanSetting(value: boolean | string | undefined, fallback: boolean): boolean {
-  if (typeof value === "boolean") return value;
-  if (typeof value !== "string") return fallback;
-  const normalised = value.trim().toLowerCase();
-  if (["1", "true", "yes", "on"].includes(normalised)) return true;
-  if (["0", "false", "no", "off"].includes(normalised)) return false;
-  return fallback;
 }
 
 interface SalesHandoffConfigResponse {
@@ -104,7 +34,7 @@ interface SalesHandoffHistoryItem {
   secondCallAt: string;
   interestedServices: string[];
   budgetRange: string;
-  status: string;
+  status: SalesHandoffStatus;
   noticeStatus?: string | null;
   urgentOverride: boolean;
   urgentReason?: string | null;
@@ -137,18 +67,50 @@ interface SalesHandoffSyncResponse {
   };
 }
 
-function formatDateTime(value: string): string {
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value;
+interface SalesHandoffPatchResponse {
+  error?: string;
+  warning?: string;
+}
 
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(parsed);
+const DEFAULT_SERVICE_OPTIONS = [
+  "Google PPC",
+  "Paid Meta",
+  "Organic Social",
+  "Website Design",
+  "SEO",
+  "Custom Landing Pages",
+  "Email marketing",
+];
+
+const INITIAL_FORM: SalesHandoffForm = {
+  prospectName: "",
+  website: "",
+  targetAudienceSummary: "",
+  secondCallAt: "",
+  interestedServices: [],
+  budgetRange: "",
+  otherInformation: "",
+};
+
+function looksLikeUrl(value: string): boolean {
+  if (!value.trim()) return false;
+  const candidate =
+    value.startsWith("http://") || value.startsWith("https://") ? value : `https://${value}`;
+  try {
+    const parsed = new URL(candidate);
+    return Boolean(parsed.hostname);
+  } catch {
+    return false;
+  }
+}
+
+function parseBooleanSetting(value: boolean | string | undefined, fallback: boolean): boolean {
+  if (typeof value === "boolean") return value;
+  if (typeof value !== "string") return fallback;
+  const normalised = value.trim().toLowerCase();
+  if (["1", "true", "yes", "on"].includes(normalised)) return true;
+  if (["0", "false", "no", "off"].includes(normalised)) return false;
+  return fallback;
 }
 
 function formatStatusLabel(status: string): string {
@@ -156,54 +118,6 @@ function formatStatusLabel(status: string): string {
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
-}
-
-function getStatusBadgeStyle(status: string) {
-  if (status === "completed" || status === "ready_for_meeting") {
-    return {
-      background: "var(--success-bg)",
-      color: "var(--success-text)",
-      border: "1px solid var(--success-border)",
-    };
-  }
-
-  if (status === "blocked" || status === "cancelled") {
-    return {
-      background: "var(--danger-bg)",
-      color: "var(--danger-text)",
-      border: "1px solid var(--danger-border)",
-    };
-  }
-
-  return {
-    background: "var(--warning-bg)",
-    color: "var(--warning-text)",
-    border: "1px solid var(--warning-border)",
-  };
-}
-
-function getSyncBadgeStyle(syncStatus: string | null | undefined) {
-  if (syncStatus === "synced") {
-    return {
-      background: "var(--success-bg)",
-      color: "var(--success-text)",
-      border: "1px solid var(--success-border)",
-    };
-  }
-
-  if (syncStatus === "failed") {
-    return {
-      background: "var(--danger-bg)",
-      color: "var(--danger-text)",
-      border: "1px solid var(--danger-border)",
-    };
-  }
-
-  return {
-    background: "var(--border-subtle)",
-    color: "var(--text-3)",
-    border: "1px solid var(--border)",
-  };
 }
 
 export default function SalesHandoffPage() {
@@ -214,27 +128,26 @@ export default function SalesHandoffPage() {
   const [submitting, setSubmitting] = useState(false);
   const [createdTaskUrl, setCreatedTaskUrl] = useState<string | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [confettiRunId, setConfettiRunId] = useState(0);
-  const [confettiPieces, setConfettiPieces] = useState<ConfettiPiece[]>(() =>
-    createChaosConfettiPieces(84),
-  );
+
   const [serviceOptions, setServiceOptions] = useState<string[]>(DEFAULT_SERVICE_OPTIONS);
   const [enforce48HourNotice, setEnforce48HourNotice] = useState(true);
   const [allowUrgentOverride, setAllowUrgentOverride] = useState(true);
   const [clickupListConfigured, setClickupListConfigured] = useState(true);
   const [urgentOverride, setUrgentOverride] = useState(false);
   const [urgentReason, setUrgentReason] = useState("");
+
   const [handoffHistory, setHandoffHistory] = useState<SalesHandoffHistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [historySyncing, setHistorySyncing] = useState(false);
+  const [historyUpdatingId, setHistoryUpdatingId] = useState<string | null>(null);
 
   const loadHistory = useCallback(async () => {
     setHistoryLoading(true);
     setHistoryError(null);
 
     try {
-      const res = await fetch("/api/tools/sales-handoff?limit=8");
+      const res = await fetch("/api/tools/sales-handoff?limit=120");
       const data = (await res.json()) as SalesHandoffHistoryResponse & { error?: string };
 
       if (!res.ok) {
@@ -257,7 +170,7 @@ export default function SalesHandoffPage() {
       const res = await fetch("/api/tools/sales-handoff/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ limit: 25 }),
+        body: JSON.stringify({ limit: 120 }),
       });
 
       const data = (await res.json()) as SalesHandoffSyncResponse;
@@ -284,6 +197,42 @@ export default function SalesHandoffPage() {
     }
   }, [loadHistory, toast]);
 
+  const updateHandoffStatus = useCallback(
+    async (handoffId: string, status: SalesHandoffStatus) => {
+      setHistoryUpdatingId(handoffId);
+
+      try {
+        const res = await fetch(`/api/tools/sales-handoff/${handoffId}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ status }),
+        });
+
+        const data = (await res.json()) as SalesHandoffPatchResponse;
+        if (!res.ok) {
+          throw new Error(data.error ?? "Failed to update sales handoff status");
+        }
+
+        if (data.warning) {
+          toast(data.warning, "warning");
+        } else {
+          toast(`Moved handoff to ${formatStatusLabel(status)}`, "success");
+        }
+
+        await loadHistory();
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Failed to update sales handoff status";
+        toast(message, "error");
+      } finally {
+        setHistoryUpdatingId(null);
+      }
+    },
+    [loadHistory, toast],
+  );
+
   useEffect(() => {
     async function loadConfig() {
       try {
@@ -298,7 +247,7 @@ export default function SalesHandoffPage() {
         setAllowUrgentOverride(parseBooleanSetting(data.allowUrgentOverride, true));
         setClickupListConfigured(parseBooleanSetting(data.clickupListConfigured, true));
       } catch {
-        // Keep default options when config is unavailable.
+        // Keep defaults when config cannot be read.
       }
     }
 
@@ -450,8 +399,6 @@ export default function SalesHandoffPage() {
       }
 
       setCreatedTaskUrl(data.taskUrl ?? null);
-      setConfettiPieces(createChaosConfettiPieces(84));
-      setConfettiRunId((prev) => prev + 1);
       setShowSuccessModal(true);
       setForm(INITIAL_FORM);
       setUrgentOverride(false);
@@ -468,441 +415,214 @@ export default function SalesHandoffPage() {
   }
 
   return (
-    <div className="page" style={{ maxWidth: 960 }}>
-      <div style={{ marginBottom: 24 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
-          <div
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 12,
-              background: "var(--gradient-accent)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <ClipboardList style={{ width: 20, height: 20, color: "white" }} />
-          </div>
-          <div>
-            <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", lineHeight: 1 }}>
-              Sales Handoff
-            </h1>
-            <p style={{ fontSize: 13, color: "var(--text-3)", marginTop: 4 }}>
-              Capture first-call context and create a ClickUp prep task for marketing.
-            </p>
-          </div>
+    <div className="page max-w-350">
+      <div className="mb-6 flex items-center gap-3">
+        <div className="grid h-10 w-10 place-items-center rounded-xl bg-linear-to-br from-indigo-600 to-violet-500 text-white">
+          <ClipboardList className="h-5 w-5" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Sales Handoff</h1>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Capture first-call context and manage pipeline handoffs to marketing.
+          </p>
         </div>
       </div>
 
-      <div
-        style={{
-          marginBottom: 16,
-          border: "1px solid var(--warning-border)",
-          background: "var(--warning-bg)",
-          color: "var(--warning-text)",
-          borderRadius: "var(--r)",
-          padding: "12px 14px",
-          fontSize: 13,
-          fontWeight: 500,
-        }}
-      >
-        {enforce48HourNotice
-          ? "Marketing needs at least 48 hours' notice to prepare a plan for a potential client."
-          : "Marketing usually prefers 48 hours' notice, but this is currently set as guidance only."}
+      <div className="space-y-3">
+        <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
+          {enforce48HourNotice
+            ? "Marketing needs at least 48 hours notice to prepare a plan for a potential client."
+            : "Marketing usually prefers 48 hours notice, but this is currently guidance only."}
+        </div>
+
+        {!clickupListConfigured ? (
+          <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
+            Sales handoff list ID is not configured. Tasks will use the default list until an admin
+            sets this in settings.
+          </div>
+        ) : null}
+
+        {fieldError ? (
+          <div className="rounded-lg border border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300">
+            {fieldError}
+          </div>
+        ) : null}
       </div>
 
-      {!clickupListConfigured && (
-        <div
-          style={{
-            marginBottom: 16,
-            border: "1px solid var(--warning-border)",
-            background: "var(--warning-bg)",
-            color: "var(--warning-text)",
-            borderRadius: "var(--r)",
-            padding: "12px 14px",
-            fontSize: 13,
-          }}
-        >
-          Sales handoff list ID is not configured. Tasks will use the default list until an admin
-          sets this in settings.
-        </div>
-      )}
-
-      {fieldError && (
-        <div
-          style={{
-            marginBottom: 16,
-            border: "1px solid var(--danger-border)",
-            background: "var(--danger-bg)",
-            color: "var(--danger-text)",
-            borderRadius: "var(--r)",
-            padding: "12px 14px",
-            fontSize: 13,
-          }}
-        >
-          {fieldError}
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit} className="card">
-        <div className="card-body" style={{ display: "grid", gap: 16 }}>
-          <div style={{ display: "grid", gap: 6 }}>
-            <label className="form-label">Prospect or Company Name</label>
-            <input
-              className="form-input"
-              value={form.prospectName}
-              onChange={(e) => update("prospectName", e.target.value)}
-              placeholder="Acme Sportswear"
-              required
-            />
+      <div className="mt-5 grid gap-6 xl:grid-cols-[420px_minmax(0,1fr)]">
+        <form onSubmit={handleSubmit} className="card h-fit">
+          <div className="card-header">
+            <h2 className="card-title">Create New Handoff</h2>
+            <p className="card-subtitle">Turn first-call notes into a tracked delivery workflow.</p>
           </div>
 
-          <div style={{ display: "grid", gap: 6 }}>
-            <label className="form-label">Website URL</label>
-            <input
-              className="form-input"
-              value={form.website}
-              onChange={(e) => update("website", e.target.value)}
-              placeholder="https://www.example.com"
-              required
-            />
-          </div>
+          <div className="card-body grid gap-4">
+            <div className="grid gap-1.5">
+              <label className="form-label">Prospect or Company Name</label>
+              <input
+                className="form-input"
+                value={form.prospectName}
+                onChange={(event) => update("prospectName", event.target.value)}
+                placeholder="Acme Sportswear"
+                required
+              />
+            </div>
 
-          <div style={{ display: "grid", gap: 6 }}>
-            <label className="form-label">Target Audience Summary</label>
-            <textarea
-              className="form-input"
-              value={form.targetAudienceSummary}
-              onChange={(e) => update("targetAudienceSummary", e.target.value)}
-              placeholder="Who are they selling to, and what pain points came up on the call?"
-              rows={4}
-              required
-            />
-          </div>
+            <div className="grid gap-1.5">
+              <label className="form-label">Website URL</label>
+              <input
+                className="form-input"
+                value={form.website}
+                onChange={(event) => update("website", event.target.value)}
+                placeholder="https://www.example.com"
+                required
+              />
+            </div>
 
-          <div style={{ display: "grid", gap: 6 }}>
-            <label className="form-label">Second Call Date and Time</label>
-            <input
-              type="datetime-local"
-              className="form-input"
-              value={form.secondCallAt}
-              onChange={(e) => update("secondCallAt", e.target.value)}
-              required
-            />
-            {noticeHours !== null && (
-              <p
-                style={{
-                  fontSize: 12,
-                  color:
+            <div className="grid gap-1.5">
+              <label className="form-label">Target Audience Summary</label>
+              <textarea
+                className="form-input"
+                value={form.targetAudienceSummary}
+                onChange={(event) => update("targetAudienceSummary", event.target.value)}
+                placeholder="Who are they selling to, and what pain points came up on the call?"
+                rows={4}
+                required
+              />
+            </div>
+
+            <div className="grid gap-1.5">
+              <label className="form-label">Second Call Date and Time</label>
+              <input
+                type="datetime-local"
+                className="form-input"
+                value={form.secondCallAt}
+                onChange={(event) => update("secondCallAt", event.target.value)}
+                required
+              />
+              {noticeHours !== null ? (
+                <p
+                  className={
                     secondCallInPast || violatesNoticeWindow
-                      ? "var(--danger-text)"
-                      : "var(--success-text)",
-                }}
-              >
-                {secondCallInPast
-                  ? "Second call must be in the future."
-                  : `Notice window: ${noticeHours.toFixed(1)} hours before the second call.`}
-              </p>
-            )}
-            {enforce48HourNotice && violatesNoticeWindow && (
-              <p style={{ fontSize: 12, color: "var(--danger-text)", marginTop: -2 }}>
-                This is below the 48-hour minimum notice policy.
-              </p>
-            )}
-          </div>
-
-          {enforce48HourNotice && violatesNoticeWindow && allowUrgentOverride && (
-            <div
-              style={{
-                display: "grid",
-                gap: 8,
-                border: "1px solid var(--warning-border)",
-                background: "var(--warning-bg)",
-                borderRadius: "var(--r)",
-                padding: 12,
-              }}
-            >
-              <label
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  fontSize: 13,
-                  color: "var(--warning-text)",
-                  fontWeight: 600,
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={urgentOverride}
-                  onChange={(e) => setUrgentOverride(e.target.checked)}
-                />
-                Mark as urgent override
-              </label>
-              <p style={{ fontSize: 12, color: "var(--warning-text)", marginTop: -2 }}>
-                Use this only when the second call timing cannot be moved.
-              </p>
-              {urgentOverride && (
-                <div style={{ display: "grid", gap: 6 }}>
-                  <label className="form-label" style={{ marginBottom: 0 }}>
-                    Urgent reason
-                  </label>
-                  <textarea
-                    className="form-input"
-                    value={urgentReason}
-                    onChange={(e) => setUrgentReason(e.target.value)}
-                    placeholder="Why does this need to proceed with less than 48 hours notice?"
-                    rows={3}
-                    required={requiresUrgentReason}
-                  />
-                </div>
-              )}
-            </div>
-          )}
-
-          {enforce48HourNotice && violatesNoticeWindow && !allowUrgentOverride && (
-            <div
-              style={{
-                border: "1px solid var(--danger-border)",
-                background: "var(--danger-bg)",
-                color: "var(--danger-text)",
-                borderRadius: "var(--r)",
-                padding: "10px 12px",
-                fontSize: 12,
-              }}
-            >
-              Urgent override is disabled by policy. Move the second call to at least 48 hours from
-              now.
-            </div>
-          )}
-
-          <div style={{ display: "grid", gap: 6 }}>
-            <label className="form-label">Budget Range</label>
-            <input
-              className="form-input"
-              value={form.budgetRange}
-              onChange={(e) => update("budgetRange", e.target.value)}
-              placeholder="e.g. GBP 3,000 to 5,000 per month"
-              required
-            />
-          </div>
-
-          <div style={{ display: "grid", gap: 8 }}>
-            <label className="form-label">Services They Might Be Interested In</label>
-            <div style={{ display: "grid", gap: 8 }}>
-              {serviceOptions.map((service) => {
-                const checked = form.interestedServices.includes(service);
-                return (
-                  <label
-                    key={service}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      fontSize: 13,
-                      color: "var(--text-2)",
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => toggleService(service)}
-                    />
-                    <span>{service}</span>
-                  </label>
-                );
-              })}
-            </div>
-          </div>
-
-          <div style={{ display: "grid", gap: 6 }}>
-            <label className="form-label">Other Information</label>
-            <textarea
-              className="form-input"
-              value={form.otherInformation}
-              onChange={(e) => update("otherInformation", e.target.value)}
-              placeholder="Add anything useful from the call: goals, timelines, blockers, decision-makers."
-              rows={4}
-            />
-          </div>
-
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, paddingTop: 4 }}>
-            <button
-              type="submit"
-              className="btn btn-primary"
-              disabled={submitting || !canSubmit}
-              style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
-            >
-              {submitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" /> Creating task...
-                </>
-              ) : (
-                "Create ClickUp Task"
-              )}
-            </button>
-          </div>
-        </div>
-      </form>
-
-      <div className="card" style={{ marginTop: 20 }}>
-        <div
-          className="card-header"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 12,
-          }}
-        >
-          <div>
-            <h2 className="card-title">Recent Handoffs</h2>
-            <p className="card-subtitle">
-              Latest submitted handoffs with local lifecycle and ClickUp sync status.
-            </p>
-          </div>
-          <div style={{ display: "inline-flex", gap: 8 }}>
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm"
-              onClick={() => {
-                void syncHistory();
-              }}
-              disabled={historySyncing || historyLoading}
-              style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
-            >
-              {historySyncing ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Sync with ClickUp
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm"
-              onClick={() => {
-                void loadHistory();
-              }}
-              disabled={historyLoading || historySyncing}
-              style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
-            >
-              {historyLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Refresh
-            </button>
-          </div>
-        </div>
-        <div className="card-body">
-          {historyLoading ? (
-            <p style={{ fontSize: 13, color: "var(--text-3)" }}>Loading handoff history…</p>
-          ) : historyError ? (
-            <p style={{ fontSize: 13, color: "var(--danger-text)" }}>{historyError}</p>
-          ) : handoffHistory.length === 0 ? (
-            <p style={{ fontSize: 13, color: "var(--text-3)" }}>No handoffs submitted yet.</p>
-          ) : (
-            <div style={{ display: "grid", gap: 10 }}>
-              {handoffHistory.map((handoff) => (
-                <div
-                  key={handoff.id}
-                  style={{
-                    border: "1px solid var(--border-subtle)",
-                    borderRadius: "var(--r)",
-                    padding: "12px 14px",
-                    background: "var(--surface)",
-                  }}
+                      ? "text-xs text-rose-600 dark:text-rose-300"
+                      : "text-xs text-emerald-600 dark:text-emerald-300"
+                  }
                 >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      gap: 16,
-                      flexWrap: "wrap",
-                    }}
-                  >
-                    <div style={{ minWidth: 240, flex: 1 }}>
-                      <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "var(--text)" }}>
-                        {handoff.prospectName}
-                      </p>
-                      <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--text-3)" }}>
-                        Created {formatDateTime(handoff.createdAt)} · Second call{" "}
-                        {formatDateTime(handoff.secondCallAt)}
-                      </p>
-                      <a
-                        href={handoff.website}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          marginTop: 6,
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 6,
-                          fontSize: 12,
-                          color: "var(--accent)",
-                        }}
-                      >
-                        {handoff.website} <ExternalLink style={{ width: 12, height: 12 }} />
-                      </a>
-                    </div>
-
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: 6,
-                        flexWrap: "wrap",
-                        alignItems: "flex-start",
-                        justifyContent: "flex-end",
-                      }}
-                    >
-                      <span
-                        style={{
-                          ...getStatusBadgeStyle(handoff.status),
-                          borderRadius: 999,
-                          padding: "4px 10px",
-                          fontSize: 11,
-                          fontWeight: 700,
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {formatStatusLabel(handoff.status)}
-                      </span>
-                      <span
-                        style={{
-                          ...getSyncBadgeStyle(handoff.clickupSyncStatus),
-                          borderRadius: 999,
-                          padding: "4px 10px",
-                          fontSize: 11,
-                          fontWeight: 700,
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        ClickUp {formatStatusLabel(handoff.clickupSyncStatus ?? "not_synced")}
-                      </span>
-                      {handoff.clickupTaskUrl && (
-                        <a
-                          href={handoff.clickupTaskUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="btn btn-ghost btn-sm"
-                          style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
-                        >
-                          Open task <ExternalLink style={{ width: 12, height: 12 }} />
-                        </a>
-                      )}
-                    </div>
-                  </div>
-
-                  {handoff.noticeStatus && (
-                    <p style={{ margin: "8px 0 0", fontSize: 12, color: "var(--text-3)" }}>
-                      {handoff.noticeStatus}
-                    </p>
-                  )}
-                  {handoff.clickupLastSyncedAt && (
-                    <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--text-3)" }}>
-                      Last synced {formatDateTime(handoff.clickupLastSyncedAt)}
-                    </p>
-                  )}
-                </div>
-              ))}
+                  {secondCallInPast
+                    ? "Second call must be in the future."
+                    : `Notice window: ${noticeHours.toFixed(1)} hours before the second call.`}
+                </p>
+              ) : null}
             </div>
-          )}
-        </div>
+
+            {enforce48HourNotice && violatesNoticeWindow && allowUrgentOverride ? (
+              <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-900 dark:bg-amber-950/40">
+                <label className="inline-flex items-center gap-2 text-sm font-medium text-amber-700 dark:text-amber-300">
+                  <input
+                    type="checkbox"
+                    checked={urgentOverride}
+                    onChange={(event) => setUrgentOverride(event.target.checked)}
+                  />
+                  Mark as urgent override
+                </label>
+                <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+                  Use this only when the second call timing cannot be moved.
+                </p>
+
+                {urgentOverride ? (
+                  <div className="mt-2 grid gap-1.5">
+                    <label className="form-label">Urgent reason</label>
+                    <textarea
+                      className="form-input"
+                      value={urgentReason}
+                      onChange={(event) => setUrgentReason(event.target.value)}
+                      placeholder="Why does this need to proceed with less than 48 hours notice?"
+                      rows={3}
+                      required={requiresUrgentReason}
+                    />
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
+            {enforce48HourNotice && violatesNoticeWindow && !allowUrgentOverride ? (
+              <div className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-xs text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300">
+                Urgent override is disabled by policy. Move the second call to at least 48 hours
+                from now.
+              </div>
+            ) : null}
+
+            <div className="grid gap-1.5">
+              <label className="form-label">Budget Range</label>
+              <input
+                className="form-input"
+                value={form.budgetRange}
+                onChange={(event) => update("budgetRange", event.target.value)}
+                placeholder="e.g. GBP 3,000 to 5,000 per month"
+                required
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <label className="form-label">Services They Might Be Interested In</label>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {serviceOptions.map((service) => {
+                  const checked = form.interestedServices.includes(service);
+                  return (
+                    <label
+                      key={service}
+                      className="inline-flex items-center gap-2 rounded-md border border-zinc-200 px-3 py-2 text-sm text-zinc-700 dark:border-zinc-800 dark:text-zinc-300"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleService(service)}
+                      />
+                      {service}
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="grid gap-1.5">
+              <label className="form-label">Other Information</label>
+              <textarea
+                className="form-input"
+                value={form.otherInformation}
+                onChange={(event) => update("otherInformation", event.target.value)}
+                placeholder="Add goals, timelines, blockers, and decision-makers from the call."
+                rows={4}
+              />
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                type="submit"
+                className="btn btn-primary inline-flex items-center gap-2"
+                disabled={submitting || !canSubmit}
+              >
+                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                {submitting ? "Creating task..." : "Create ClickUp Task"}
+              </button>
+            </div>
+          </div>
+        </form>
+
+        <SalesHandoffPipelineBoard
+          handoffs={handoffHistory}
+          loading={historyLoading}
+          error={historyError}
+          syncing={historySyncing}
+          updatingId={historyUpdatingId}
+          onSync={() => {
+            void syncHistory();
+          }}
+          onRefresh={() => {
+            void loadHistory();
+          }}
+          onStatusChange={updateHandoffStatus}
+        />
       </div>
 
       <Modal
@@ -920,123 +640,22 @@ export default function SalesHandoffPage() {
             >
               Close
             </button>
-            {createdTaskUrl && (
+            {createdTaskUrl ? (
               <a
                 href={createdTaskUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn btn-primary"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 8,
-                  whiteSpace: "nowrap",
-                }}
+                className="btn btn-primary inline-flex items-center gap-2"
               >
-                Open ClickUp Task <ExternalLink style={{ width: 14, height: 14 }} />
+                Open ClickUp Task <ExternalLink className="h-4 w-4" />
               </a>
-            )}
+            ) : null}
           </>
         }
       >
-        <div
-          style={{
-            position: "relative",
-            minHeight: 250,
-            border: "1px solid var(--border-subtle)",
-            borderRadius: "var(--r-lg)",
-            background:
-              "linear-gradient(160deg, rgba(239,68,68,0.08), rgba(59,130,246,0.06) 45%, rgba(250,204,21,0.08))",
-            overflow: "hidden",
-            display: "grid",
-            placeItems: "center",
-            padding: "24px 16px",
-          }}
-        >
-          <div
-            aria-hidden="true"
-            style={{
-              position: "absolute",
-              inset: 0,
-              overflow: "hidden",
-              pointerEvents: "none",
-            }}
-          >
-            {confettiPieces.map((piece) => (
-              <span
-                key={`${confettiRunId}-${piece.id}`}
-                style={{
-                  position: "absolute",
-                  top: -24,
-                  left: `${piece.left}%`,
-                  width: piece.size,
-                  height: piece.shape === "pill" ? Math.max(4, piece.size * 0.45) : piece.size,
-                  borderRadius: piece.shape === "pill" ? 999 : 2,
-                  background: piece.color,
-                  opacity: 0.95,
-                  transform: `rotate(${piece.rotateDeg}deg)`,
-                  animation: `salesHandoffConfettiFall ${piece.durationMs}ms cubic-bezier(0.18, 0.82, 0.35, 1) ${piece.delayMs}ms forwards`,
-                }}
-              />
-            ))}
-          </div>
-
-          <div style={{ position: "relative", zIndex: 1, textAlign: "center", maxWidth: 420 }}>
-            <div
-              style={{
-                width: 72,
-                height: 72,
-                borderRadius: 999,
-                margin: "0 auto 14px",
-                display: "grid",
-                placeItems: "center",
-                color: "white",
-                background: "linear-gradient(135deg, #ef4444, #f97316 52%, #facc15)",
-                boxShadow: "0 14px 32px rgba(239, 68, 68, 0.38)",
-                animation: "salesHandoffChaosPulse 1.4s ease-in-out infinite",
-              }}
-            >
-              <Sparkles style={{ width: 30, height: 30 }} />
-            </div>
-
-            <h3
-              style={{
-                margin: "0 0 8px",
-                fontSize: 22,
-                fontWeight: 800,
-                color: "var(--text)",
-                lineHeight: 1.2,
-              }}
-            >
-              Sales Handoff Created
-            </h3>
-
-            <p style={{ margin: 0, fontSize: 14, color: "var(--text-2)", lineHeight: 1.55 }}>
-              Marketing has everything they need. Open the task to see the brief and track checklist
-              progress.
-            </p>
-          </div>
-
-          <style>{`
-            @keyframes salesHandoffConfettiFall {
-              0% {
-                transform: translateY(-18px) rotate(0deg);
-                opacity: 1;
-              }
-              100% {
-                transform: translateY(330px) rotate(520deg);
-                opacity: 0;
-              }
-            }
-            @keyframes salesHandoffChaosPulse {
-              0%, 100% {
-                transform: scale(1);
-              }
-              50% {
-                transform: scale(1.08);
-              }
-            }
-          `}</style>
+        <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300">
+          Task created successfully. Marketing can now track prep activity and sync status from the
+          pipeline board.
         </div>
       </Modal>
     </div>
