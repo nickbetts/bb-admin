@@ -547,8 +547,8 @@ export default function SalesHandoffPage() {
 
             {enforce48HourNotice && violatesNoticeWindow && !allowUrgentOverride ? (
               <div className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-xs text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300">
-                Urgent override is disabled by policy. Move the second call to at least 48 hours
-                from now.
+                Urgent override is disabled by policy. Move the second call to at least 48 hours from
+                now.
               </div>
             ) : null}
 

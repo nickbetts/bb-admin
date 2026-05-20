@@ -1,15 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  DndContext,
-  PointerSensor,
-  useDraggable,
-  useDroppable,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core";
+import { DndContext, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import {
   AlertTriangle,
@@ -167,7 +159,13 @@ function getSyncBadgeClasses(syncStatus: string | null | undefined): string {
   return "border border-zinc-300 bg-zinc-50 text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300";
 }
 
-function DragCard({ handoff, disabled }: { handoff: SalesHandoffPipelineItem; disabled: boolean }) {
+function DragCard({
+  handoff,
+  disabled,
+}: {
+  handoff: SalesHandoffPipelineItem;
+  disabled: boolean;
+}) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: handoff.id,
     data: {
@@ -198,15 +196,11 @@ function DragCard({ handoff, disabled }: { handoff: SalesHandoffPipelineItem; di
     >
       <div className="flex items-start justify-between gap-2">
         <div>
-          <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-            {handoff.prospectName}
-          </h3>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">
-            Second call {formatDateTime(handoff.secondCallAt)}
-          </p>
+          <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{handoff.prospectName}</h3>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">Second call {formatDateTime(handoff.secondCallAt)}</p>
         </div>
         {handoff.urgentOverride ? (
-          <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-amber-700 uppercase dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+          <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
             <AlertTriangle className="h-3 w-3" /> Urgent
           </span>
         ) : null}
@@ -215,26 +209,22 @@ function DragCard({ handoff, disabled }: { handoff: SalesHandoffPipelineItem; di
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         <span
           className={cn(
-            "inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase",
+            "inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
             getSyncBadgeClasses(handoff.clickupSyncStatus),
           )}
         >
           {handoff.clickupSyncStatus ?? "not_synced"}
         </span>
-        <span className="inline-flex rounded-full border border-zinc-300 bg-zinc-50 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-zinc-700 uppercase dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
+        <span className="inline-flex rounded-full border border-zinc-300 bg-zinc-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
           {formatStatusLabel(handoff.status)}
         </span>
       </div>
 
       <div className="mt-3 space-y-1">
         <p className="line-clamp-1 text-xs text-zinc-700 dark:text-zinc-300">{handoff.website}</p>
-        <p className="text-xs text-zinc-500 dark:text-zinc-400">
-          {handoff.owner?.name ?? handoff.owner?.email ?? "Unassigned"}
-        </p>
+        <p className="text-xs text-zinc-500 dark:text-zinc-400">{handoff.owner?.name ?? handoff.owner?.email ?? "Unassigned"}</p>
         {handoff.clickupLastSyncedAt ? (
-          <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
-            Synced {formatDateTime(handoff.clickupLastSyncedAt)}
-          </p>
+          <p className="text-[11px] text-zinc-500 dark:text-zinc-400">Synced {formatDateTime(handoff.clickupLastSyncedAt)}</p>
         ) : null}
       </div>
 
@@ -253,11 +243,7 @@ function DragCard({ handoff, disabled }: { handoff: SalesHandoffPipelineItem; di
           <span className="text-xs text-zinc-400">No ClickUp URL</span>
         )}
 
-        {disabled ? (
-          <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />
-        ) : (
-          <CircleDashed className="h-4 w-4 text-zinc-400" />
-        )}
+        {disabled ? <Loader2 className="h-4 w-4 animate-spin text-zinc-400" /> : <CircleDashed className="h-4 w-4 text-zinc-400" />}
       </div>
     </article>
   );
@@ -409,9 +395,7 @@ export function SalesHandoffPipelineBoard({
       const callAt = new Date(handoff.secondCallAt).getTime();
       return callAt >= nowMs && callAt <= in48Hours && isOpenStatus(handoff.status);
     }).length;
-    const syncFailed = filteredHandoffs.filter(
-      (handoff) => handoff.clickupSyncStatus === "failed",
-    ).length;
+    const syncFailed = filteredHandoffs.filter((handoff) => handoff.clickupSyncStatus === "failed").length;
 
     return { openPipeline, urgent, dueSoon, syncFailed };
   }, [filteredHandoffs, nowMs]);
@@ -438,12 +422,8 @@ export function SalesHandoffPipelineBoard({
       <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-              Sales Pipeline
-            </h2>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              Drag cards across columns to move work from discovery to ready-to-close.
-            </p>
+            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Sales Pipeline</h2>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">Drag cards across columns to move work from discovery to ready-to-close.</p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -466,21 +446,16 @@ export function SalesHandoffPipelineBoard({
               disabled={loading || syncing}
               className="inline-flex items-center gap-1 rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900"
             >
-              {loading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Filter className="h-4 w-4" />
-              )}{" "}
-              Refresh
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Filter className="h-4 w-4" />} Refresh
             </button>
           </div>
         </div>
 
         <div className="mt-4 grid gap-2 md:grid-cols-[minmax(0,2fr),minmax(0,1fr),auto,auto]">
           <label className="relative block">
-            <Search className="pointer-events-none absolute top-2.5 left-2.5 h-4 w-4 text-zinc-400" />
+            <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-zinc-400" />
             <input
-              className="h-10 w-full rounded-md border border-zinc-300 bg-white pr-3 pl-9 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-500 focus:ring-2 focus:ring-zinc-200 focus:outline-none dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-zinc-500 dark:focus:ring-zinc-800"
+              className="h-10 w-full rounded-md border border-zinc-300 bg-white pl-9 pr-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-200 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-zinc-500 dark:focus:ring-zinc-800"
               placeholder="Search company, website, owner…"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
@@ -488,7 +463,7 @@ export function SalesHandoffPipelineBoard({
           </label>
 
           <select
-            className="h-10 rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-900 focus:border-zinc-500 focus:ring-2 focus:ring-zinc-200 focus:outline-none dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-500 dark:focus:ring-zinc-800"
+            className="h-10 rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-900 focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-200 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-500 dark:focus:ring-zinc-800"
             value={ownerFilter}
             onChange={(event) => setOwnerFilter(event.target.value)}
           >
@@ -536,9 +511,7 @@ export function SalesHandoffPipelineBoard({
           cta="View cards"
           Icon={Target}
           className="md:col-span-1"
-          background={
-            <div className="absolute inset-0 bg-linear-to-br from-sky-500/10 via-transparent to-transparent" />
-          }
+          background={<div className="absolute inset-0 bg-linear-to-br from-sky-500/10 via-transparent to-transparent" />}
         />
         <BentoCard
           name={`${metrics.urgent} urgent override${metrics.urgent === 1 ? "" : "s"}`}
@@ -547,9 +520,7 @@ export function SalesHandoffPipelineBoard({
           cta="Review urgent"
           Icon={ShieldAlert}
           className="md:col-span-1"
-          background={
-            <div className="absolute inset-0 bg-linear-to-br from-amber-500/10 via-transparent to-transparent" />
-          }
+          background={<div className="absolute inset-0 bg-linear-to-br from-amber-500/10 via-transparent to-transparent" />}
         />
         <BentoCard
           name={`${metrics.dueSoon} call${metrics.dueSoon === 1 ? "" : "s"} due in 48h`}
@@ -558,9 +529,7 @@ export function SalesHandoffPipelineBoard({
           cta="Prioritise"
           Icon={Clock3}
           className="md:col-span-1"
-          background={
-            <div className="absolute inset-0 bg-linear-to-br from-indigo-500/10 via-transparent to-transparent" />
-          }
+          background={<div className="absolute inset-0 bg-linear-to-br from-indigo-500/10 via-transparent to-transparent" />}
         />
         <BentoCard
           name={`${metrics.syncFailed} sync issue${metrics.syncFailed === 1 ? "" : "s"}`}
@@ -569,9 +538,7 @@ export function SalesHandoffPipelineBoard({
           cta="Fix sync"
           Icon={Sparkles}
           className="md:col-span-1"
-          background={
-            <div className="absolute inset-0 bg-linear-to-br from-rose-500/10 via-transparent to-transparent" />
-          }
+          background={<div className="absolute inset-0 bg-linear-to-br from-rose-500/10 via-transparent to-transparent" />}
         />
       </BentoGrid>
 
