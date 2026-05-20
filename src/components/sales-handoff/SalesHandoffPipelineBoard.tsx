@@ -1,25 +1,30 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { DndContext, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import {
+  DndContext,
+  PointerSensor,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import {
   AlertTriangle,
   CheckCircle2,
-  CircleDashed,
   Clock3,
   ExternalLink,
-  Filter,
   Loader2,
+  RefreshCw,
   Search,
   ShieldAlert,
-  Sparkles,
   Target,
+  Zap,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { BentoCard, BentoGrid } from "@/components/ui/shadcn/bento-grid";
-import { ShinyButton } from "@/components/ui/shadcn/shiny-button";
 
 export type SalesHandoffStatus =
   | "draft"
@@ -62,71 +67,113 @@ interface SalesHandoffPipelineBoardProps {
   onStatusChange: (handoffId: string, status: SalesHandoffStatus) => Promise<void>;
 }
 
+// Logical pipeline order — draft first, terminal states last
 const STATUS_COLUMNS: Array<{
   status: SalesHandoffStatus;
   label: string;
-  toneClass: string;
-  borderClass: string;
+  dotClass: string;
+  accentBorderClass: string;
+  bgClass: string;
+  labelClass: string;
 }> = [
+  {
+    status: "draft",
+    label: "Draft",
+    dotClass: "bg-amber-400",
+    accentBorderClass: "border-t-amber-400",
+    bgClass: "bg-amber-50/40 dark:bg-amber-950/10",
+    labelClass: "text-amber-700 dark:text-amber-400",
+  },
   {
     status: "submitted",
     label: "New",
-    toneClass: "text-sky-700 dark:text-sky-300",
-    borderClass: "border-sky-300/80 dark:border-sky-800/70",
+    dotClass: "bg-sky-500",
+    accentBorderClass: "border-t-sky-500",
+    bgClass: "bg-sky-50/40 dark:bg-sky-950/10",
+    labelClass: "text-sky-700 dark:text-sky-400",
   },
   {
     status: "in_progress",
     label: "In Progress",
-    toneClass: "text-indigo-700 dark:text-indigo-300",
-    borderClass: "border-indigo-300/80 dark:border-indigo-800/70",
+    dotClass: "bg-indigo-500",
+    accentBorderClass: "border-t-indigo-500",
+    bgClass: "bg-indigo-50/40 dark:bg-indigo-950/10",
+    labelClass: "text-indigo-700 dark:text-indigo-400",
   },
   {
     status: "ready_for_meeting",
     label: "Ready",
-    toneClass: "text-emerald-700 dark:text-emerald-300",
-    borderClass: "border-emerald-300/80 dark:border-emerald-800/70",
+    dotClass: "bg-emerald-500",
+    accentBorderClass: "border-t-emerald-500",
+    bgClass: "bg-emerald-50/40 dark:bg-emerald-950/10",
+    labelClass: "text-emerald-700 dark:text-emerald-400",
   },
   {
     status: "blocked",
     label: "Blocked",
-    toneClass: "text-rose-700 dark:text-rose-300",
-    borderClass: "border-rose-300/80 dark:border-rose-800/70",
+    dotClass: "bg-rose-500",
+    accentBorderClass: "border-t-rose-500",
+    bgClass: "bg-rose-50/40 dark:bg-rose-950/10",
+    labelClass: "text-rose-700 dark:text-rose-400",
   },
   {
     status: "completed",
     label: "Completed",
-    toneClass: "text-green-700 dark:text-green-300",
-    borderClass: "border-green-300/80 dark:border-green-800/70",
+    dotClass: "bg-green-500",
+    accentBorderClass: "border-t-green-500",
+    bgClass: "bg-green-50/40 dark:bg-green-950/10",
+    labelClass: "text-green-700 dark:text-green-400",
   },
   {
     status: "cancelled",
     label: "Cancelled",
-    toneClass: "text-zinc-600 dark:text-zinc-300",
-    borderClass: "border-zinc-300/80 dark:border-zinc-700/70",
-  },
-  {
-    status: "draft",
-    label: "Draft",
-    toneClass: "text-amber-700 dark:text-amber-300",
-    borderClass: "border-amber-300/80 dark:border-amber-800/70",
+    dotClass: "bg-zinc-400",
+    accentBorderClass: "border-t-zinc-400",
+    bgClass: "bg-zinc-50/40 dark:bg-zinc-900/20",
+    labelClass: "text-zinc-500 dark:text-zinc-400",
   },
 ];
 
-interface StatusColumnConfig {
-  status: SalesHandoffStatus;
-  label: string;
-  toneClass: string;
-  borderClass: string;
-}
+type StatusColumnConfig = (typeof STATUS_COLUMNS)[number];
+
+const STAT_CARDS = [
+  {
+    key: "openPipeline" as const,
+    label: "Open in pipeline",
+    icon: Target,
+    accentText: "text-indigo-600 dark:text-indigo-400",
+    iconBg: "bg-indigo-50 dark:bg-indigo-950/40",
+  },
+  {
+    key: "urgent" as const,
+    label: "Urgent overrides",
+    icon: ShieldAlert,
+    accentText: "text-amber-600 dark:text-amber-400",
+    iconBg: "bg-amber-50 dark:bg-amber-950/40",
+  },
+  {
+    key: "dueSoon" as const,
+    label: "Calls in next 48h",
+    icon: Clock3,
+    accentText: "text-sky-600 dark:text-sky-400",
+    iconBg: "bg-sky-50 dark:bg-sky-950/40",
+  },
+  {
+    key: "syncFailed" as const,
+    label: "Sync issues",
+    icon: Zap,
+    accentText: "text-rose-600 dark:text-rose-400",
+    iconBg: "bg-rose-50 dark:bg-rose-950/40",
+  },
+] as const;
 
 function isKnownSalesHandoffStatus(value: string): value is SalesHandoffStatus {
-  return STATUS_COLUMNS.some((column) => column.status === value);
+  return STATUS_COLUMNS.some((col) => col.status === value);
 }
 
 function formatDateTime(value: string): string {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
-
   return new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",
     month: "short",
@@ -136,114 +183,92 @@ function formatDateTime(value: string): string {
   }).format(parsed);
 }
 
-function formatStatusLabel(status: SalesHandoffStatus): string {
-  return status
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
 function isOpenStatus(status: SalesHandoffStatus): boolean {
   return status !== "completed" && status !== "cancelled";
 }
 
-function getSyncBadgeClasses(syncStatus: string | null | undefined): string {
-  if (syncStatus === "synced") {
-    return "border border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300";
-  }
-
-  if (syncStatus === "failed") {
-    return "border border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300";
-  }
-
-  return "border border-zinc-300 bg-zinc-50 text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300";
-}
-
-function DragCard({
-  handoff,
-  disabled,
-}: {
-  handoff: SalesHandoffPipelineItem;
-  disabled: boolean;
-}) {
+function DragCard({ handoff, disabled }: { handoff: SalesHandoffPipelineItem; disabled: boolean }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: handoff.id,
-    data: {
-      type: "handoff-card",
-      status: handoff.status,
-    },
+    data: { type: "handoff-card", status: handoff.status },
     disabled,
   });
 
-  const style = transform
-    ? {
-        transform: CSS.Translate.toString(transform),
-      }
-    : undefined;
+  const style = transform ? { transform: CSS.Translate.toString(transform) } : undefined;
+  const isSyncFailed = handoff.clickupSyncStatus === "failed";
+  const isSynced = handoff.clickupSyncStatus === "synced";
 
   return (
     <article
       ref={setNodeRef}
       style={style}
       className={cn(
-        "rounded-lg border border-zinc-200 bg-white p-3 shadow-sm transition dark:border-zinc-800 dark:bg-zinc-950",
-        !disabled && "cursor-grab hover:border-zinc-300 dark:hover:border-zinc-700",
-        isDragging && "opacity-60",
-        disabled && "cursor-not-allowed opacity-60",
+        "group rounded-lg border bg-white shadow-sm transition-all dark:bg-zinc-900",
+        !disabled && "cursor-grab active:cursor-grabbing",
+        isDragging ? "opacity-50 shadow-xl ring-2 ring-indigo-400/40" : "hover:shadow-md",
+        disabled && "cursor-not-allowed opacity-50",
+        isSyncFailed
+          ? "border-rose-200 dark:border-rose-800/50"
+          : "border-zinc-200 hover:border-zinc-300 dark:border-zinc-800 dark:hover:border-zinc-700",
       )}
       {...attributes}
       {...listeners}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{handoff.prospectName}</h3>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">Second call {formatDateTime(handoff.secondCallAt)}</p>
+      <div className="p-3">
+        {/* Name + urgent badge */}
+        <div className="flex items-start gap-2">
+          <div className="min-w-0 flex-1">
+            <h3 className="truncate text-sm leading-tight font-semibold text-zinc-900 dark:text-zinc-100">
+              {handoff.prospectName}
+            </h3>
+            <p className="mt-0.5 truncate text-[11px] text-zinc-500 dark:text-zinc-400">
+              {handoff.website}
+            </p>
+          </div>
+          {handoff.urgentOverride ? (
+            <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+              <AlertTriangle className="h-2.5 w-2.5" />
+              Urgent
+            </span>
+          ) : null}
         </div>
-        {handoff.urgentOverride ? (
-          <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-            <AlertTriangle className="h-3 w-3" /> Urgent
-          </span>
-        ) : null}
-      </div>
 
-      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-        <span
-          className={cn(
-            "inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
-            getSyncBadgeClasses(handoff.clickupSyncStatus),
-          )}
-        >
-          {handoff.clickupSyncStatus ?? "not_synced"}
-        </span>
-        <span className="inline-flex rounded-full border border-zinc-300 bg-zinc-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
-          {formatStatusLabel(handoff.status)}
-        </span>
-      </div>
+        {/* Second call + owner + sync state */}
+        <div className="mt-2.5 flex items-end justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-[11px] font-medium text-zinc-700 dark:text-zinc-300">
+              {formatDateTime(handoff.secondCallAt)}
+            </p>
+            <p className="truncate text-[11px] text-zinc-400 dark:text-zinc-500">
+              {handoff.owner?.name ?? handoff.owner?.email ?? "Unassigned"}
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
+            {isSyncFailed ? (
+              <span className="rounded-full bg-rose-100 px-1.5 py-0.5 text-[10px] font-medium text-rose-600 dark:bg-rose-900/40 dark:text-rose-300">
+                Sync failed
+              </span>
+            ) : isSynced ? (
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 dark:text-emerald-400" />
+            ) : null}
+            {disabled ? <Loader2 className="h-3.5 w-3.5 animate-spin text-zinc-400" /> : null}
+          </div>
+        </div>
 
-      <div className="mt-3 space-y-1">
-        <p className="line-clamp-1 text-xs text-zinc-700 dark:text-zinc-300">{handoff.website}</p>
-        <p className="text-xs text-zinc-500 dark:text-zinc-400">{handoff.owner?.name ?? handoff.owner?.email ?? "Unassigned"}</p>
-        {handoff.clickupLastSyncedAt ? (
-          <p className="text-[11px] text-zinc-500 dark:text-zinc-400">Synced {formatDateTime(handoff.clickupLastSyncedAt)}</p>
-        ) : null}
-      </div>
-
-      <div className="mt-3 flex items-center justify-between">
+        {/* ClickUp link — reveals on card hover */}
         {handoff.clickupTaskUrl ? (
           <a
             href={handoff.clickupTaskUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-300 dark:hover:text-indigo-200"
+            className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-indigo-500 opacity-0 transition-opacity group-hover:opacity-100 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300"
             onPointerDown={(event) => event.stopPropagation()}
           >
-            ClickUp <ExternalLink className="h-3 w-3" />
+            Open in ClickUp <ExternalLink className="h-2.5 w-2.5" />
           </a>
         ) : (
-          <span className="text-xs text-zinc-400">No ClickUp URL</span>
+          <div className="mt-2 h-4.5" />
         )}
-
-        {disabled ? <Loader2 className="h-4 w-4 animate-spin text-zinc-400" /> : <CircleDashed className="h-4 w-4 text-zinc-400" />}
       </div>
     </article>
   );
@@ -264,24 +289,28 @@ function StatusColumn({
     <section
       ref={setNodeRef}
       className={cn(
-        "flex min-h-90 flex-col rounded-xl border bg-zinc-50/50 dark:bg-zinc-900/40",
-        column.borderClass,
-        isOver && "ring-2 ring-indigo-400/60",
+        "flex min-h-40 flex-col rounded-xl border border-t-2 border-zinc-200 dark:border-zinc-800",
+        column.accentBorderClass,
+        column.bgClass,
+        isOver && "ring-2 ring-indigo-400/40 dark:ring-indigo-500/30",
       )}
     >
-      <header className="border-b border-zinc-200 px-3 py-2 dark:border-zinc-800">
-        <div className="flex items-center justify-between gap-2">
-          <h3 className={cn("text-sm font-semibold", column.toneClass)}>{column.label}</h3>
-          <span className="rounded-full bg-zinc-200 px-2 py-0.5 text-[11px] font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-            {handoffs.length}
-          </span>
+      <header className="flex items-center justify-between px-3 pt-2.5 pb-1.5">
+        <div className="flex items-center gap-1.5">
+          <span className={cn("h-2 w-2 shrink-0 rounded-full", column.dotClass)} />
+          <h3 className={cn("text-xs font-semibold tracking-wide uppercase", column.labelClass)}>
+            {column.label}
+          </h3>
         </div>
+        <span className="rounded-full bg-zinc-200/80 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-600 dark:bg-zinc-700 dark:text-zinc-400">
+          {handoffs.length}
+        </span>
       </header>
 
-      <div className="flex flex-1 flex-col gap-2 p-2">
+      <div className="flex flex-1 flex-col gap-2 p-2 pt-1">
         {handoffs.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-zinc-300 px-2 py-4 text-center text-xs text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-            Drop a card here
+          <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed border-zinc-300/60 py-6 text-[11px] text-zinc-400 dark:border-zinc-700/50 dark:text-zinc-500">
+            Drop here
           </div>
         ) : (
           handoffs.map((handoff) => (
@@ -395,7 +424,9 @@ export function SalesHandoffPipelineBoard({
       const callAt = new Date(handoff.secondCallAt).getTime();
       return callAt >= nowMs && callAt <= in48Hours && isOpenStatus(handoff.status);
     }).length;
-    const syncFailed = filteredHandoffs.filter((handoff) => handoff.clickupSyncStatus === "failed").length;
+    const syncFailed = filteredHandoffs.filter(
+      (handoff) => handoff.clickupSyncStatus === "failed",
+    ).length;
 
     return { openPipeline, urgent, dueSoon, syncFailed };
   }, [filteredHandoffs, nowMs]);
@@ -419,43 +450,78 @@ export function SalesHandoffPipelineBoard({
 
   return (
     <section id="sales-handoff-pipeline" className="space-y-4">
-      <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+      {/* KPI stat strip */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {STAT_CARDS.map(({ key, label, icon: Icon, accentText, iconBg }) => (
+          <div
+            key={key}
+            className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-3.5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950"
+          >
+            <div
+              className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-lg", iconBg)}
+            >
+              <Icon className={cn("h-5 w-5", accentText)} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-2xl leading-none font-bold text-zinc-900 dark:text-zinc-100">
+                {metrics[key]}
+              </p>
+              <p className="mt-0.5 truncate text-[11px] text-zinc-500 dark:text-zinc-400">
+                {label}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Board header + filters */}
+      <div className="rounded-xl border border-zinc-200 bg-white px-4 py-3.5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Sales Pipeline</h2>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">Drag cards across columns to move work from discovery to ready-to-close.</p>
+            <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
+              Pipeline board
+            </h2>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              Drag cards across stages · status changes sync to ClickUp automatically
+            </p>
           </div>
-
           <div className="flex items-center gap-2">
-            <ShinyButton
-              className={cn(
-                "rounded-md border-zinc-300 px-4 py-2 normal-case dark:border-zinc-700",
-                (loading || syncing) && "cursor-not-allowed opacity-50",
-              )}
+            <button
+              type="button"
               onClick={() => {
-                if (loading || syncing) return;
-                onSync();
+                if (!loading && !syncing) onSync();
               }}
-              aria-disabled={loading || syncing}
+              disabled={loading || syncing}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-indigo-500 dark:hover:bg-indigo-600"
             >
-              {syncing ? "Syncing…" : "Sync with ClickUp"}
-            </ShinyButton>
+              {syncing ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Zap className="h-3.5 w-3.5" />
+              )}
+              {syncing ? "Syncing…" : "Sync ClickUp"}
+            </button>
             <button
               type="button"
               onClick={onRefresh}
               disabled={loading || syncing}
-              className="inline-flex items-center gap-1 rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900"
             >
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Filter className="h-4 w-4" />} Refresh
+              {loading ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3.5 w-3.5" />
+              )}
+              Refresh
             </button>
           </div>
         </div>
 
-        <div className="mt-4 grid gap-2 md:grid-cols-[minmax(0,2fr),minmax(0,1fr),auto,auto]">
-          <label className="relative block">
-            <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-zinc-400" />
+        <div className="mt-3 flex flex-wrap gap-2">
+          <label className="relative min-w-48 flex-1">
+            <Search className="pointer-events-none absolute top-2 left-2.5 h-4 w-4 text-zinc-400" />
             <input
-              className="h-10 w-full rounded-md border border-zinc-300 bg-white pl-9 pr-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-200 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-zinc-500 dark:focus:ring-zinc-800"
+              className="h-9 w-full rounded-lg border border-zinc-300 bg-white pr-3 pl-9 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 focus:outline-none dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:ring-indigo-900/30"
               placeholder="Search company, website, owner…"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
@@ -463,7 +529,7 @@ export function SalesHandoffPipelineBoard({
           </label>
 
           <select
-            className="h-10 rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-900 focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-200 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-500 dark:focus:ring-zinc-800"
+            className="h-9 rounded-lg border border-zinc-300 bg-white px-3 text-sm text-zinc-900 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 focus:outline-none dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:ring-indigo-900/30"
             value={ownerFilter}
             onChange={(event) => setOwnerFilter(event.target.value)}
           >
@@ -479,10 +545,10 @@ export function SalesHandoffPipelineBoard({
             type="button"
             onClick={() => setUrgentOnly((prev) => !prev)}
             className={cn(
-              "h-10 rounded-md border px-3 text-sm font-medium",
+              "h-9 rounded-lg border px-3 text-sm font-medium transition-colors",
               urgentOnly
                 ? "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
-                : "border-zinc-300 text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900",
+                : "border-zinc-300 text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-900",
             )}
           >
             Urgent only
@@ -492,10 +558,10 @@ export function SalesHandoffPipelineBoard({
             type="button"
             onClick={() => setSyncFailedOnly((prev) => !prev)}
             className={cn(
-              "h-10 rounded-md border px-3 text-sm font-medium",
+              "h-9 rounded-lg border px-3 text-sm font-medium transition-colors",
               syncFailedOnly
                 ? "border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-700 dark:bg-rose-950/40 dark:text-rose-300"
-                : "border-zinc-300 text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900",
+                : "border-zinc-300 text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-900",
             )}
           >
             Sync failed
@@ -503,63 +569,20 @@ export function SalesHandoffPipelineBoard({
         </div>
       </div>
 
-      <BentoGrid className="auto-rows-[13rem] grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <BentoCard
-          name={`${metrics.openPipeline} open handoff${metrics.openPipeline === 1 ? "" : "s"}`}
-          description="Active opportunities currently in motion."
-          href="#sales-handoff-pipeline"
-          cta="View cards"
-          Icon={Target}
-          className="md:col-span-1"
-          background={<div className="absolute inset-0 bg-linear-to-br from-sky-500/10 via-transparent to-transparent" />}
-        />
-        <BentoCard
-          name={`${metrics.urgent} urgent override${metrics.urgent === 1 ? "" : "s"}`}
-          description="Deals that need marketing turnaround inside policy window."
-          href="#sales-handoff-pipeline"
-          cta="Review urgent"
-          Icon={ShieldAlert}
-          className="md:col-span-1"
-          background={<div className="absolute inset-0 bg-linear-to-br from-amber-500/10 via-transparent to-transparent" />}
-        />
-        <BentoCard
-          name={`${metrics.dueSoon} call${metrics.dueSoon === 1 ? "" : "s"} due in 48h`}
-          description="Upcoming sales calls that need prep right now."
-          href="#sales-handoff-pipeline"
-          cta="Prioritise"
-          Icon={Clock3}
-          className="md:col-span-1"
-          background={<div className="absolute inset-0 bg-linear-to-br from-indigo-500/10 via-transparent to-transparent" />}
-        />
-        <BentoCard
-          name={`${metrics.syncFailed} sync issue${metrics.syncFailed === 1 ? "" : "s"}`}
-          description="Items that need attention because ClickUp sync failed."
-          href="#sales-handoff-pipeline"
-          cta="Fix sync"
-          Icon={Sparkles}
-          className="md:col-span-1"
-          background={<div className="absolute inset-0 bg-linear-to-br from-rose-500/10 via-transparent to-transparent" />}
-        />
-      </BentoGrid>
-
+      {/* Kanban board */}
       {loading ? (
-        <div className="rounded-xl border border-zinc-200 bg-white p-6 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400">
-          <div className="inline-flex items-center gap-2">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading pipeline…
-          </div>
+        <div className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white p-6 text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading pipeline…
         </div>
       ) : error ? (
-        <div className="rounded-xl border border-rose-300 bg-rose-50 p-4 text-sm text-rose-700 dark:border-rose-800 dark:bg-rose-950/30 dark:text-rose-300">
+        <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 dark:border-rose-800 dark:bg-rose-950/30 dark:text-rose-300">
           {error}
-        </div>
-      ) : filteredHandoffs.length === 0 ? (
-        <div className="rounded-xl border border-zinc-200 bg-white p-6 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400">
-          No handoffs match your current filters.
         </div>
       ) : (
         <div className="overflow-x-auto pb-2">
           <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-            <div className="grid min-w-345 grid-cols-7 gap-3">
+            <div className="grid min-w-7xl grid-cols-7 gap-3">
               {STATUS_COLUMNS.map((column) => (
                 <StatusColumn
                   key={column.status}
@@ -573,12 +596,16 @@ export function SalesHandoffPipelineBoard({
         </div>
       )}
 
-      <div className="rounded-xl border border-zinc-200 bg-white px-4 py-3 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400">
-        <div className="inline-flex items-center gap-2">
-          <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-          Drag any card to a new column to update status in Stratos and push the change to ClickUp.
-        </div>
-      </div>
+      {!loading && filteredHandoffs.length === 0 && !error ? (
+        <p className="py-2 text-center text-sm text-zinc-400 dark:text-zinc-500">
+          No handoffs match your current filters.
+        </p>
+      ) : null}
+
+      <p className="flex items-center gap-1.5 text-[11px] text-zinc-400 dark:text-zinc-500">
+        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+        Drag any card to update its status — changes push to ClickUp automatically.
+      </p>
     </section>
   );
 }
