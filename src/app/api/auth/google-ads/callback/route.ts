@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { invalidateApiCache } from "@/lib/api-cache";
 
 export const dynamic = "force-dynamic";
 
@@ -11,15 +12,13 @@ export async function GET(request: NextRequest) {
 
   if (oauthError) {
     return NextResponse.redirect(
-      new URL(`/settings?error=${encodeURIComponent(oauthError)}`, request.url)
+      new URL(`/settings?error=${encodeURIComponent(oauthError)}`, request.url),
     );
   }
 
   const cookieState = request.cookies.get("gads_oauth_state")?.value;
   if (!code || !state || state !== cookieState) {
-    return NextResponse.redirect(
-      new URL("/settings?error=oauth_state_mismatch", request.url)
-    );
+    return NextResponse.redirect(new URL("/settings?error=oauth_state_mismatch", request.url));
   }
 
   const canonicalOrigin = process.env.NEXT_PUBLIC_APP_URL ?? origin;
@@ -40,20 +39,16 @@ export async function GET(request: NextRequest) {
 
   if (!tokenRes.ok) {
     console.error("Google Ads OAuth token exchange failed:", await tokenRes.text());
-    return NextResponse.redirect(
-      new URL("/settings?error=token_exchange_failed", request.url)
-    );
+    return NextResponse.redirect(new URL("/settings?error=token_exchange_failed", request.url));
   }
 
-  const tokenData = await tokenRes.json() as { refresh_token?: string; access_token?: string };
+  const tokenData = (await tokenRes.json()) as { refresh_token?: string; access_token?: string };
   const { refresh_token, access_token } = tokenData;
 
   if (!refresh_token) {
     // This can happen if the user had already authorised and revocation wasn't done.
     // We forced consent, so this is unexpected — surface it clearly.
-    return NextResponse.redirect(
-      new URL("/settings?error=no_refresh_token", request.url)
-    );
+    return NextResponse.redirect(new URL("/settings?error=no_refresh_token", request.url));
   }
 
   // Fetch the Google account email for display
@@ -64,7 +59,7 @@ export async function GET(request: NextRequest) {
         headers: { Authorization: `Bearer ${access_token}` },
       });
       if (userRes.ok) {
-        const userInfo = await userRes.json() as { email?: string };
+        const userInfo = (await userRes.json()) as { email?: string };
         email = userInfo.email ?? email;
       }
     } catch {
@@ -74,20 +69,25 @@ export async function GET(request: NextRequest) {
 
   // Upsert: update token if this email is already connected, otherwise create
   const existing = await prisma.googleConnection.findFirst({ where: { email } });
+  let connectionId = "";
   if (existing) {
-    await prisma.googleConnection.update({
+    const updated = await prisma.googleConnection.update({
       where: { id: existing.id },
       data: { refreshToken: refresh_token },
     });
+    connectionId = updated.id;
   } else {
-    await prisma.googleConnection.create({
+    const created = await prisma.googleConnection.create({
       data: { label: email, email, refreshToken: refresh_token },
     });
+    connectionId = created.id;
   }
 
-  const response = NextResponse.redirect(
-    new URL("/settings?connected=1", request.url)
-  );
+  if (connectionId) {
+    await invalidateApiCache(`google-connection-status:${connectionId}`);
+  }
+
+  const response = NextResponse.redirect(new URL("/settings?connected=1", request.url));
   response.cookies.delete("gads_oauth_state");
   return response;
 }
