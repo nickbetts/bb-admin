@@ -287,6 +287,8 @@ interface MetaCampaign {
   budget: string;
   placements: string;
   bidding: string;
+  /** Exact strategist audience names this campaign targets (1-3). */
+  namedAudiences?: string[];
   audienceTargeting: {
     interests: string[];
     customAudiences: string[];
@@ -1850,7 +1852,10 @@ function buildCustomerVoiceBlock(sources: GrandPlanSources): string {
     parts.push(
       `Verbatim customer phrasing to echo:\n- ${cv.quotes
         .slice(0, 6)
-        .map((q) => `"${q}"`)
+        .map((q) => {
+          const source = q.source ? ` (${q.source})` : "";
+          return `"${q.text}"${source}`;
+        })
         .join("\n- ")}`,
     );
   }
@@ -2234,6 +2239,7 @@ Return a JSON object with key "campaigns" containing an array of campaign object
 - budget: string (monthly budget recommendation)
 - placements: string (e.g., "Facebook Feed, Instagram Feed, Instagram Reels, Stories")
 - bidding: string (e.g., "Lowest Cost" or "Cost Cap")
+- namedAudiences: string[] (1-3 exact audience names from the strategist list below)
 - audienceTargeting: { interests: string[], customAudiences: string[], lookalikes: string[] }
 - adCreatives: array of { format: "feed"|"reel"|"story", headline: string, primaryText: string, description?: string, cta: string, previewMockup: string }
 - captionCopyBank: string[] (5-8 ready-to-use captions — POLISHED ad copy only, no compliance/strategy notes)
@@ -2242,6 +2248,7 @@ Return a JSON object with key "campaigns" containing an array of campaign object
 
 Rules:
 - Create 2-3 campaigns based on the keyword themes provided AND the target audiences below. Each campaign should clearly map to one or more named audiences.
+- namedAudiences MUST contain the exact audience labels used in the target audience block. Do not rename, paraphrase, or invent new audience names.
 - AD CREATIVE BUILD: each campaign needs 2-3 adCreatives. Mix formats (at least one reel or story alongside feed). Each creative MUST have all six fields populated.
 - HARD CHARACTER LIMITS (Meta enforced — count every character including spaces): headline ≤ 40, primaryText 80–125, description ≤ 30. If you cannot fit the message inside these limits, rewrite it shorter, do not exceed.
 - CTA enum (use the exact label, capitalised as shown): "Learn More", "Shop Now", "Sign Up", "Book Now", "Get Quote", "Contact Us", "Apply Now", "Download", "Subscribe", "Get Offer". No invented CTAs.
@@ -2298,7 +2305,114 @@ ${context}${buildSharedContextBlocks(sources, "meta")}`,
   if (!Array.isArray(campaigns) || campaigns.length === 0) {
     return buildFallbackMetaCampaigns(sources, ranked.slice(0, 3));
   }
-  return campaigns;
+  return alignMetaCampaignAudienceNames(campaigns, sources);
+}
+
+function normaliseAudienceReference(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/["'`]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function audienceReferenceMatches(reference: string, audienceName: string): boolean {
+  const ref = normaliseAudienceReference(reference);
+  const target = normaliseAudienceReference(audienceName);
+  if (!ref || !target) return false;
+  if (ref === target || ref.includes(target) || target.includes(ref)) return true;
+
+  const refTokens = new Set(ref.split(" ").filter((token) => token.length > 2));
+  const targetTokens = target.split(" ").filter((token) => token.length > 2);
+  if (!refTokens.size || targetTokens.length === 0) return false;
+
+  const overlap = targetTokens.filter((token) => refTokens.has(token)).length;
+  return overlap >= Math.min(2, targetTokens.length);
+}
+
+function dedupeTrimmed(values: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of values) {
+    const value = String(raw ?? "").trim();
+    if (!value) continue;
+    const key = value.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(value);
+  }
+  return out;
+}
+
+function alignMetaCampaignAudienceNames(
+  campaigns: MetaCampaign[],
+  sources: GrandPlanSources,
+): MetaCampaign[] {
+  const strategistAudienceNames = parseStrategistAudienceNames(sources.targetAudiences, 12);
+  if (strategistAudienceNames.length === 0) return campaigns;
+
+  let fallbackIndex = 0;
+
+  return campaigns.map((campaign) => {
+    const explicitNamed = Array.isArray(campaign.namedAudiences)
+      ? campaign.namedAudiences.filter(
+          (entry): entry is string => typeof entry === "string" && entry.trim().length > 0,
+        )
+      : [];
+    const targetingInterests = Array.isArray(campaign.audienceTargeting?.interests)
+      ? campaign.audienceTargeting.interests
+      : [];
+    const targetingCustom = Array.isArray(campaign.audienceTargeting?.customAudiences)
+      ? campaign.audienceTargeting.customAudiences
+      : [];
+    const targetingLookalikes = Array.isArray(campaign.audienceTargeting?.lookalikes)
+      ? campaign.audienceTargeting.lookalikes
+      : [];
+    const creativeRefs = Array.isArray(campaign.adCreatives)
+      ? campaign.adCreatives.flatMap((creative) => [
+          creative.headline,
+          creative.primaryText,
+          creative.description,
+          creative.previewMockup,
+        ])
+      : [];
+
+    const evidenceStrings = [
+      campaign.campaignName,
+      ...explicitNamed,
+      ...targetingInterests,
+      ...targetingCustom,
+      ...targetingLookalikes,
+      ...(Array.isArray(campaign.captionCopyBank) ? campaign.captionCopyBank : []),
+      ...creativeRefs,
+    ].filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0);
+
+    let namedAudiences = strategistAudienceNames.filter((name) =>
+      evidenceStrings.some((entry) => audienceReferenceMatches(entry, name)),
+    );
+
+    if (namedAudiences.length === 0) {
+      const primary = strategistAudienceNames[fallbackIndex % strategistAudienceNames.length];
+      const secondary =
+        strategistAudienceNames.length > 1
+          ? strategistAudienceNames[(fallbackIndex + 1) % strategistAudienceNames.length]
+          : undefined;
+      namedAudiences = secondary ? [primary, secondary] : [primary];
+      fallbackIndex += 1;
+    }
+
+    namedAudiences = dedupeTrimmed(namedAudiences).slice(0, 3);
+
+    return {
+      ...campaign,
+      namedAudiences,
+      audienceTargeting: {
+        interests: dedupeTrimmed([...namedAudiences, ...targetingInterests]).slice(0, 12),
+        customAudiences: dedupeTrimmed(targetingCustom).slice(0, 10),
+        lookalikes: dedupeTrimmed(targetingLookalikes).slice(0, 6),
+      },
+    };
+  });
 }
 
 function buildFallbackMetaCampaigns(
@@ -2306,17 +2420,28 @@ function buildFallbackMetaCampaigns(
   topGroups: AdGroup[],
 ): MetaCampaign[] {
   const client = sources.clientName;
+  const strategistAudienceNames = parseStrategistAudienceNames(sources.targetAudiences, 6);
   const themes = topGroups.length
     ? topGroups
     : [{ name: "General awareness", keywords: [] } as AdGroup];
   return themes.slice(0, 2).map((g, i) => ({
+    namedAudiences: strategistAudienceNames.length
+      ? [strategistAudienceNames[i % strategistAudienceNames.length]]
+      : undefined,
     campaignName: `${client} — ${g.name}${i === 0 ? " (Lead Gen)" : " (Awareness)"}`,
     objective: i === 0 ? "leads" : "awareness",
     budget: "£500–£1,000/month",
     placements: "Facebook Feed, Instagram Feed, Instagram Reels, Stories",
     bidding: "Lowest Cost",
     audienceTargeting: {
-      interests: [g.name, `${client} customers`, "UK audience"],
+      interests: dedupeTrimmed([
+        ...(strategistAudienceNames.length
+          ? [strategistAudienceNames[i % strategistAudienceNames.length]]
+          : []),
+        g.name,
+        `${client} customers`,
+        "UK audience",
+      ]),
       customAudiences: ["Website visitors (90 days)", "Email list"],
       lookalikes: ["1% lookalike of converters"],
     },

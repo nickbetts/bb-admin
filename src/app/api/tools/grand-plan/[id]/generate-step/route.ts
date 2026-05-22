@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createHash } from "node:crypto";
 import { getSession } from "@/lib/auth";
 import { prisma, withDbRetry } from "@/lib/prisma";
 import { logActivity } from "@/lib/activity-logger";
@@ -146,6 +147,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const body = (await request.json()) as {
     step: string;
     overrides?: { clientBrief?: string; campaignFocusPeriods?: CampaignFocusPeriod[] };
+    forceRefresh?: boolean;
   };
 
   const { step } = body;
@@ -294,6 +296,33 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         });
 
         return NextResponse.json({ ok: true, step: "start" });
+      }
+
+      // ─── STEP: preflight-inputs ─────────────────────────────────────────────
+      // Lightweight quality recompute used by warning-level auto-fix actions.
+      if (step === "preflight-inputs") {
+        const preflight = evaluateInputQuality(
+          plan.purpose,
+          body.overrides?.clientBrief ?? brief,
+          plan.targetAudiences ?? undefined,
+        );
+
+        await updateStepQuality(id, "preflight-inputs", {
+          status: preflight.status,
+          critical: preflight.status === "failed",
+          reason: preflight.reason,
+          warnings: preflight.warnings,
+          blockers: preflight.blockers,
+          signals: preflight.signals,
+        });
+
+        return NextResponse.json({
+          ok: true,
+          step,
+          status: preflight.status,
+          warnings: preflight.warnings ?? [],
+          blockers: preflight.blockers ?? [],
+        });
       }
 
       // ─── STEP: prepare-keywords ──────────────────────────────────────────────
@@ -1401,20 +1430,40 @@ Return ONLY valid JSON, no markdown fences.`,
           }
         }
 
-        const cacheKey = `gp-customer-voice:${plan.clientId ?? id}:${config.sector ?? "unknown"}:${services.slice(0, 3).join(",")}`;
+        const audienceNames = parseAudienceNames(plan.targetAudiences ?? "", 12);
+        const voiceSignature = createHash("sha256")
+          .update(
+            [
+              clientName,
+              config.sector ?? "unknown",
+              brief.slice(0, 2000),
+              audienceNames.join("|"),
+              services.slice(0, 6).join("|"),
+              competitors.join("|"),
+            ].join("::"),
+          )
+          .digest("hex")
+          .slice(0, 18);
+
+        const cacheKey = `gp-customer-voice:${plan.clientId ?? id}:${voiceSignature}`;
         let voice: CustomerVoiceData;
         let voiceError: string | null = null;
-        try {
-          voice = await withApiCache(cacheKey, 24 * 7, async () => {
-            const anthropic = await getAnthropicClient();
-            return runWebSearchResearch(anthropic, {
-              clientName,
-              sector: config.sector,
-              services,
-              competitors,
-              brief,
-            });
+
+        const fetchVoice = async (): Promise<CustomerVoiceData> => {
+          const anthropic = await getAnthropicClient();
+          return runWebSearchResearch(anthropic, {
+            clientName,
+            sector: config.sector,
+            services,
+            competitors,
+            brief,
           });
+        };
+
+        try {
+          voice = body.forceRefresh
+            ? await fetchVoice()
+            : await withApiCache(cacheKey, 24 * 7, fetchVoice);
         } catch (err) {
           console.error(`[grand-plan:${id}] customer voice failed:`, err);
           voiceError = err instanceof Error ? err.message : "Unknown customer voice error";
@@ -1431,6 +1480,9 @@ Return ONLY valid JSON, no markdown fences.`,
           voiceSignals.painPoints === 0 &&
           voiceSignals.complaints === 0 &&
           voiceSignals.quotes === 0;
+        const thinVoiceEvidence =
+          !noVoiceEvidence &&
+          (voiceSignals.painPoints < 2 || voiceSignals.quotes < 2 || voiceSignals.queries < 2);
         const voiceWarnings: string[] = [];
         if (voiceError) {
           voiceWarnings.push(`Customer voice fallback triggered: ${voiceError}`);
@@ -1438,7 +1490,13 @@ Return ONLY valid JSON, no markdown fences.`,
         if (noVoiceEvidence) {
           voiceWarnings.push("Customer voice produced no pain points, complaints, or quotes.");
         }
-        const voiceStatus: QualityStepStatus = voiceError || noVoiceEvidence ? "degraded" : "ok";
+        if (thinVoiceEvidence) {
+          voiceWarnings.push(
+            "Customer voice evidence is thin (few pain points, quotes, or source queries) and should be refreshed.",
+          );
+        }
+        const voiceStatus: QualityStepStatus =
+          voiceError || noVoiceEvidence || thinVoiceEvidence ? "degraded" : "ok";
 
         if (planData) {
           planData._customerVoice = voice;
@@ -2211,6 +2269,40 @@ function parseAudienceNames(raw: string | null | undefined, limit = 20): string[
     .slice(0, limit);
 }
 
+function normaliseAudienceLabel(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/["'`]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function audienceNameMatches(reference: string, audienceName: string): boolean {
+  const referenceNorm = normaliseAudienceLabel(reference);
+  const audienceNorm = normaliseAudienceLabel(audienceName);
+  if (!referenceNorm || !audienceNorm) return false;
+  if (referenceNorm === audienceNorm) return true;
+  if (referenceNorm.includes(audienceNorm) || audienceNorm.includes(referenceNorm)) return true;
+
+  const referenceTokens = new Set(referenceNorm.split(" ").filter((token) => token.length > 2));
+  const audienceTokens = audienceNorm.split(" ").filter((token) => token.length > 2);
+  if (!referenceTokens.size || audienceTokens.length === 0) return false;
+
+  const overlap = audienceTokens.filter((token) => referenceTokens.has(token)).length;
+  return overlap >= Math.min(2, audienceTokens.length);
+}
+
+function audienceMentionedInText(normalisedText: string, audienceName: string): boolean {
+  const audienceNorm = normaliseAudienceLabel(audienceName);
+  if (!audienceNorm) return false;
+  if (normalisedText.includes(audienceNorm)) return true;
+
+  const tokens = audienceNorm.split(" ").filter((token) => token.length > 2);
+  if (!tokens.length) return false;
+  const overlap = tokens.filter((token) => normalisedText.includes(token)).length;
+  return overlap >= Math.min(2, tokens.length);
+}
+
 function countWords(value: string | undefined): number {
   if (!value) return 0;
   return value.trim().split(/\s+/).filter(Boolean).length;
@@ -2304,6 +2396,7 @@ function evaluateSectionSpecificity(
 
   const rawText = flattenSectionText(output);
   const text = rawText.toLowerCase();
+  const normalisedText = normaliseAudienceLabel(rawText);
   const genericPhrases = [
     "general digital marketing",
     "increase brand awareness",
@@ -2380,7 +2473,9 @@ function evaluateSectionSpecificity(
           isRecord(item) && typeof item.name === "string" ? item.name.toLowerCase() : "",
         )
         .filter(Boolean);
-      const missing = audienceNames.filter((name) => !producedNames.includes(name.toLowerCase()));
+      const missing = audienceNames.filter(
+        (name) => !producedNames.some((producedName) => audienceNameMatches(producedName, name)),
+      );
       mentionedAudienceCount = audienceNames.length - missing.length;
       if (missing.length > 0) {
         const msg = `Audience section omitted ${missing.length} strategist-supplied audience name(s).`;
@@ -2388,9 +2483,37 @@ function evaluateSectionSpecificity(
         else warnings.push(msg);
       }
     } else {
-      mentionedAudienceCount = audienceNames.filter((name) =>
-        text.includes(name.toLowerCase()),
-      ).length;
+      if (step === "metaCampaigns" && Array.isArray(output)) {
+        const structuredAudienceRefs = output.flatMap((item) => {
+          if (!isRecord(item)) return [];
+          const named = Array.isArray(item.namedAudiences)
+            ? item.namedAudiences.filter(
+                (entry): entry is string => typeof entry === "string" && entry.trim().length > 0,
+              )
+            : [];
+          const targeting = isRecord(item.audienceTargeting) ? item.audienceTargeting : undefined;
+          const interests =
+            targeting && Array.isArray(targeting.interests)
+              ? targeting.interests.filter(
+                  (entry): entry is string => typeof entry === "string" && entry.trim().length > 0,
+                )
+              : [];
+          return [...named, ...interests];
+        });
+
+        if (structuredAudienceRefs.length > 0) {
+          mentionedAudienceCount = audienceNames.filter((name) =>
+            structuredAudienceRefs.some((reference) => audienceNameMatches(reference, name)),
+          ).length;
+        }
+      }
+
+      if (mentionedAudienceCount === 0) {
+        mentionedAudienceCount = audienceNames.filter((name) =>
+          audienceMentionedInText(normalisedText, name),
+        ).length;
+      }
+
       if (mentionedAudienceCount === 0) {
         const msg = `${labelForStep(step)} does not reference any named target audiences.`;
         if (strict) blockers.push(msg);

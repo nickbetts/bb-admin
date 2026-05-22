@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use, useRef, useMemo } from "react";
+import { useState, useEffect, use, useRef, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
@@ -267,6 +267,20 @@ interface QualityManifest {
   steps?: Record<string, QualityStepRecord>;
 }
 
+type WarningFixActionId =
+  | "refine-brief-site"
+  | "regen-failed"
+  | "auto-fix-all"
+  | `regen-section:${string}`
+  | `run-step:${string}`;
+
+interface WarningLine {
+  id: string;
+  text: string;
+  actionId?: WarningFixActionId;
+  actionLabel?: string;
+}
+
 // ─── Page ───────────────────────────────────────────────────────────────────
 
 export default function GrandPlanViewPage({ params }: Props) {
@@ -286,6 +300,8 @@ export default function GrandPlanViewPage({ params }: Props) {
   const [deleting, setDeleting] = useState(false);
   const [exportingActions, setExportingActions] = useState(false);
   const [importingContext, setImportingContext] = useState(false);
+  const [refiningBriefFromSite, setRefiningBriefFromSite] = useState(false);
+  const [warningFixing, setWarningFixing] = useState<WarningFixActionId | null>(null);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [iframeLoaded, setIframeLoaded] = useState(false);
@@ -900,7 +916,7 @@ export default function GrandPlanViewPage({ params }: Props) {
     }
   }
 
-  async function handleRegenerateSection(sectionKey: string) {
+  async function handleRegenerateSection(sectionKey: string, options?: { silent?: boolean }) {
     setRegeneratingSection(sectionKey);
     try {
       const res = await fetch(`/api/tools/grand-plan/${id}/regenerate-section`, {
@@ -912,16 +928,16 @@ export default function GrandPlanViewPage({ params }: Props) {
         const data = await res.json();
         updateBlobUrl(data.html);
         await loadPlan();
-        toast(`Regenerated: ${labelFor(sectionKey)}`, "success");
+        if (!options?.silent) toast(`Regenerated: ${labelFor(sectionKey)}`, "success");
       } else {
-        toast(`Failed to regenerate ${labelFor(sectionKey)}`, "error");
+        if (!options?.silent) toast(`Failed to regenerate ${labelFor(sectionKey)}`, "error");
       }
     } finally {
       setRegeneratingSection(null);
     }
   }
 
-  async function handleRegenerateFailed() {
+  async function handleRegenerateFailed(options?: { silent?: boolean }) {
     if (!plan) return;
     try {
       const data = JSON.parse(plan.planDataJson || "{}") as {
@@ -942,7 +958,7 @@ export default function GrandPlanViewPage({ params }: Props) {
 
       const failed = Array.from(new Set([...failedFromManifest, ...failedFromLegacy]));
       if (!failed.length) {
-        toast("No failed sections found to regenerate", "info");
+        if (!options?.silent) toast("No failed sections found to regenerate", "info");
         return;
       }
 
@@ -973,9 +989,11 @@ export default function GrandPlanViewPage({ params }: Props) {
       }
 
       if (failedCount === 0) {
-        toast(`Regenerated ${succeeded} failed section${succeeded === 1 ? "" : "s"}`, "success");
+        if (!options?.silent) {
+          toast(`Regenerated ${succeeded} failed section${succeeded === 1 ? "" : "s"}`, "success");
+        }
       } else {
-        toast(`Regenerated ${succeeded}, ${failedCount} failed`, "error");
+        if (!options?.silent) toast(`Regenerated ${succeeded}, ${failedCount} failed`, "error");
       }
     } finally {
       setRegeneratingSection(null);
@@ -1284,6 +1302,193 @@ export default function GrandPlanViewPage({ params }: Props) {
     }
   }
 
+  async function runGenerateStepForFix(step: string, options?: { forceRefresh?: boolean }) {
+    const res = await fetch(`/api/tools/grand-plan/${id}/generate-step`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        step,
+        ...(options?.forceRefresh ? { forceRefresh: true } : {}),
+      }),
+    });
+    const payload = (await res.json().catch(() => ({}))) as {
+      error?: string;
+      blockers?: string[];
+    };
+    if (!res.ok) {
+      const blockerText = payload.blockers?.length
+        ? ` ${payload.blockers.slice(0, 2).join(" ")}`
+        : "";
+      throw new Error(payload.error ?? `Failed to run ${labelFor(step)}.${blockerText}`.trim());
+    }
+  }
+
+  async function refineBriefFromSite(options?: { silent?: boolean }) {
+    setRefiningBriefFromSite(true);
+    try {
+      const res = await fetch(`/api/tools/grand-plan/${id}/refine-brief-site`, { method: "POST" });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        throw new Error(data.error ?? "Failed to refine brief from website context");
+      }
+
+      // Re-run preflight so warning state reflects improved brief quality.
+      await runGenerateStepForFix("preflight-inputs");
+      await loadPlan();
+
+      if (!options?.silent) toast("Brief refined from website crawl", "success");
+    } finally {
+      setRefiningBriefFromSite(false);
+    }
+  }
+
+  const resolveWarningAction = useCallback(
+    (line: string): { actionId: WarningFixActionId; actionLabel: string } | null => {
+      const lower = line.toLowerCase();
+      const separatorIndex = line.indexOf(":");
+      const prefix = separatorIndex >= 0 ? line.slice(0, separatorIndex).trim().toLowerCase() : "";
+
+      const sectionMatch = ALL_SECTIONS.find((section) => section.label.toLowerCase() === prefix);
+      if (sectionMatch) {
+        return {
+          actionId: `regen-section:${sectionMatch.key}`,
+          actionLabel: `Regenerate ${sectionMatch.label}`,
+        };
+      }
+
+      const pipelineMatch = PIPELINE_STEPS.find(
+        (pipelineStep) => pipelineStep.label.toLowerCase() === prefix,
+      );
+      if (pipelineMatch) {
+        return {
+          actionId: `run-step:${pipelineMatch.key}`,
+          actionLabel:
+            pipelineMatch.key === "prepare-customer-voice"
+              ? "Refresh customer voice"
+              : `Rerun ${pipelineMatch.label}`,
+        };
+      }
+
+      if (
+        prefix === "input preflight" ||
+        prefix === "preflight-inputs" ||
+        lower.includes("client brief") ||
+        lower.includes("target audiences")
+      ) {
+        return {
+          actionId: "refine-brief-site",
+          actionLabel: "Refine brief from site",
+        };
+      }
+
+      if (lower.includes("customer voice")) {
+        return {
+          actionId: "run-step:prepare-customer-voice",
+          actionLabel: "Refresh customer voice",
+        };
+      }
+
+      if (lower.includes("failed quality check")) {
+        return {
+          actionId: "regen-failed",
+          actionLabel: "Regenerate failed sections",
+        };
+      }
+
+      return null;
+    },
+    [],
+  );
+
+  async function applyWarningFixAction(
+    actionId: WarningFixActionId,
+    options?: { silent?: boolean },
+  ) {
+    if (actionId === "refine-brief-site") {
+      await refineBriefFromSite({ silent: options?.silent });
+      return;
+    }
+
+    if (actionId === "regen-failed") {
+      await handleRegenerateFailed({ silent: options?.silent });
+      return;
+    }
+
+    if (actionId.startsWith("regen-section:")) {
+      const sectionKey = actionId.slice("regen-section:".length);
+      await handleRegenerateSection(sectionKey, { silent: options?.silent });
+      return;
+    }
+
+    if (actionId.startsWith("run-step:")) {
+      const step = actionId.slice("run-step:".length);
+      await runGenerateStepForFix(step, {
+        forceRefresh: step === "prepare-customer-voice",
+      });
+      await loadPlan();
+      if (!options?.silent) toast(`Reran ${labelFor(step)}`, "success");
+      return;
+    }
+
+    if (actionId === "auto-fix-all") {
+      const availableActions = Array.from(
+        new Set(
+          warningLines
+            .map((line) => line.actionId)
+            .filter((id): id is WarningFixActionId => !!id && id !== "auto-fix-all"),
+        ),
+      );
+
+      if (!availableActions.length) {
+        if (!options?.silent) toast("No actionable warning fixes found", "info");
+        return;
+      }
+
+      for (const nextAction of availableActions) {
+        try {
+          await applyWarningFixAction(nextAction, { silent: true });
+        } catch {
+          // Best-effort run: continue applying remaining fixes.
+        }
+      }
+
+      // Final preflight refresh to ensure warning card state is current.
+      try {
+        await runGenerateStepForFix("preflight-inputs");
+      } catch {
+        /* ignore */
+      }
+      await loadPlan();
+
+      if (!options?.silent) toast("Applied all available warning fixes", "success");
+    }
+  }
+
+  async function handleWarningFix(actionId: WarningFixActionId) {
+    setWarningFixing(actionId);
+    try {
+      await applyWarningFixAction(actionId);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to apply warning fix";
+      toast(message, "error");
+    } finally {
+      setWarningFixing(null);
+    }
+  }
+
+  async function handleRefineBriefFromSiteButton() {
+    setWarningFixing("refine-brief-site");
+    try {
+      await refineBriefFromSite();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to refine brief from website context";
+      toast(message, "error");
+    } finally {
+      setWarningFixing(null);
+    }
+  }
+
   function handleDownload() {
     if (!plan?.generatedHtml) return;
     const blob = new Blob([plan.generatedHtml], { type: "text/html" });
@@ -1469,6 +1674,47 @@ export default function GrandPlanViewPage({ params }: Props) {
       failureCount: failureSummary.failures.length,
     };
   }, [failureSummary]);
+
+  const warningLines = useMemo(() => {
+    const lines = new globalThis.Map<string, WarningLine>();
+
+    const addLine = (
+      text: string,
+      forcedAction?: { actionId: WarningFixActionId; actionLabel: string },
+    ) => {
+      const trimmed = text.trim();
+      if (!trimmed || lines.has(trimmed)) return;
+      const resolved = forcedAction ?? resolveWarningAction(trimmed) ?? undefined;
+      lines.set(trimmed, {
+        id: `warning-${lines.size + 1}`,
+        text: trimmed,
+        actionId: resolved?.actionId,
+        actionLabel: resolved?.actionLabel,
+      });
+    };
+
+    if (failureSummary.preflightRecord && failureSummary.preflightRecord.status !== "ok") {
+      const preflightMessage =
+        failureSummary.preflightRecord.reason ??
+        failureSummary.preflightRecord.error ??
+        "Inputs are present but quality is reduced.";
+      addLine(`Input preflight: ${preflightMessage}`, {
+        actionId: "refine-brief-site",
+        actionLabel: "Refine brief from site",
+      });
+    }
+
+    if (failureSummary.degradedSteps.length > 0) {
+      addLine(`Degraded steps: ${failureSummary.degradedSteps.length}`, {
+        actionId: "auto-fix-all",
+        actionLabel: "Run all fixes",
+      });
+    }
+
+    for (const warning of failureSummary.warnings) addLine(warning);
+
+    return Array.from(lines.values());
+  }, [failureSummary, resolveWarningAction]);
 
   const sectionData = useMemo(() => {
     if (!plan?.planDataJson) return {} as Record<string, unknown>;
@@ -2236,6 +2482,19 @@ export default function GrandPlanViewPage({ params }: Props) {
               disabled={importingContext}
             />
           </label>
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={handleRefineBriefFromSiteButton}
+            disabled={refiningBriefFromSite || warningFixing === "refine-brief-site"}
+            title="Crawl website pages and append refined context to the brief"
+          >
+            {refiningBriefFromSite || warningFixing === "refine-brief-site" ? (
+              <Loader2 style={{ width: 14, height: 14 }} className="animate-spin" aria-hidden />
+            ) : (
+              <RefreshCw style={{ width: 14, height: 14 }} aria-hidden />
+            )}{" "}
+            Refine brief
+          </button>
           <button className="btn btn-ghost btn-sm" onClick={handleClone} title="Clone plan">
             <Copy style={{ width: 14, height: 14 }} aria-hidden /> Clone
           </button>
@@ -2401,7 +2660,9 @@ export default function GrandPlanViewPage({ params }: Props) {
             <button
               className="btn btn-primary btn-sm"
               style={{ marginLeft: "auto", gap: 5, fontSize: 11 }}
-              onClick={handleRegenerateFailed}
+              onClick={() => {
+                void handleRegenerateFailed();
+              }}
               disabled={regeneratingSection !== null || failureSummary.failedSections.length === 0}
               title={
                 failureSummary.failedSections.length === 0
@@ -2429,7 +2690,7 @@ export default function GrandPlanViewPage({ params }: Props) {
           </ul>
         </div>
       )}
-      {isComplete && failureSummary.warnings.length > 0 && (
+      {isComplete && warningLines.length > 0 && (
         <div
           className="card"
           style={{
@@ -2455,24 +2716,56 @@ export default function GrandPlanViewPage({ params }: Props) {
               Warnings
             </p>
           </div>
-          {failureSummary.preflightRecord && failureSummary.preflightRecord.status !== "ok" && (
-            <p style={{ fontSize: 12, color: "var(--warning)", marginBottom: 4 }}>
-              • <strong>Input preflight:</strong>{" "}
-              {failureSummary.preflightRecord.reason ??
-                failureSummary.preflightRecord.error ??
-                "Inputs are present but quality is reduced."}
-            </p>
-          )}
-          {failureSummary.degradedSteps.length > 0 && (
-            <p style={{ fontSize: 12, color: "var(--warning)", marginBottom: 4 }}>
-              • <strong>Degraded steps:</strong> {failureSummary.degradedSteps.length}
-            </p>
-          )}
-          {failureSummary.warnings.map((w, i) => (
-            <p key={`w-${i}`} style={{ fontSize: 12, color: "var(--warning)", marginBottom: 2 }}>
-              • {w}
-            </p>
-          ))}
+          <div style={{ display: "grid", gap: 6 }}>
+            {warningLines.map((line) => {
+              const fixing = warningFixing === line.actionId;
+              const disableFix =
+                !line.actionId ||
+                warningFixing !== null ||
+                generating ||
+                refiningBriefFromSite ||
+                regeneratingSection !== null;
+
+              return (
+                <div
+                  key={line.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    justifyContent: "space-between",
+                    gap: 10,
+                  }}
+                >
+                  <p style={{ fontSize: 12, color: "var(--warning)", margin: 0 }}>• {line.text}</p>
+                  {line.actionId && line.actionLabel && (
+                    <button
+                      className="btn btn-ghost btn-sm"
+                      style={{
+                        whiteSpace: "nowrap",
+                        minWidth: 124,
+                        justifyContent: "center",
+                        borderColor: "var(--warning)",
+                        color: "var(--warning)",
+                      }}
+                      disabled={disableFix}
+                      onClick={() => handleWarningFix(line.actionId!)}
+                    >
+                      {fixing ? (
+                        <Loader2
+                          style={{ width: 12, height: 12 }}
+                          className="animate-spin"
+                          aria-hidden
+                        />
+                      ) : (
+                        <CircleCheck style={{ width: 12, height: 12 }} aria-hidden />
+                      )}
+                      {line.actionLabel}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
