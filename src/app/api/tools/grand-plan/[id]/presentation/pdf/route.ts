@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getBrowser } from "@/lib/puppeteer";
+import { checkPresentationFreshness } from "@/lib/grand-plan-presentation-freshness";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -10,10 +11,7 @@ export const maxDuration = 60;
 // GET /api/tools/grand-plan/[id]/presentation/pdf
 // Renders the presentation in print mode through a headless browser and
 // returns a PDF: one slide per page at 1920x1080.
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getSession();
     if (!session) {
@@ -26,16 +24,34 @@ export async function GET(
       select: {
         title: true,
         userId: true,
+        planDataJson: true,
         presentationDataJson: true,
         client: { select: { name: true } },
       },
     });
     if (!plan) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    if (plan.userId !== session.user.id && !session.user.permissions.includes("grand_plan.edit_any")) {
+    if (
+      plan.userId !== session.user.id &&
+      !session.user.permissions.includes("grand_plan.edit_any")
+    ) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     if (!plan.presentationDataJson) {
       return NextResponse.json({ error: "Presentation not generated" }, { status: 404 });
+    }
+
+    const freshness = checkPresentationFreshness({
+      planDataJson: plan.planDataJson,
+      presentationDataJson: plan.presentationDataJson,
+    });
+    if (!freshness.fresh) {
+      return NextResponse.json(
+        {
+          error:
+            freshness.reason ?? "Presentation is out of date. Regenerate before downloading PDF.",
+        },
+        { status: 409 },
+      );
     }
 
     // Forward the auth cookie to the headless browser so it can hit our

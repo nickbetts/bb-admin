@@ -5,9 +5,11 @@ import { getAnthropicClient } from "@/lib/anthropic-client";
 import { jsonrepair } from "jsonrepair";
 import {
   type PresentationData,
+  resolvePresentationSlideBounds,
   summariseSourcePlan,
 } from "@/lib/grand-plan-presentation-generator";
 import { renderPresentationHtml } from "@/lib/grand-plan-presentation-template";
+import { computePlanDataHash } from "@/lib/grand-plan-presentation-freshness";
 import type { GrandPlanData } from "@/lib/grand-plan-generator";
 
 export const dynamic = "force-dynamic";
@@ -16,10 +18,7 @@ export const maxDuration = 120;
 // POST /api/tools/grand-plan/[id]/presentation/refine-all
 // Body: { prompt: string }
 // Uses Claude to improve the whole deck based on a single instruction.
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -27,7 +26,7 @@ export async function POST(
 
   let body: { prompt?: string };
   try {
-    body = await request.json() as { prompt?: string };
+    body = (await request.json()) as { prompt?: string };
   } catch {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
@@ -41,7 +40,10 @@ export async function POST(
     select: { userId: true, presentationDataJson: true, planDataJson: true },
   });
   if (!plan) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (plan.userId !== session.user.id && !session.user.permissions.includes("grand_plan.edit_any")) {
+  if (
+    plan.userId !== session.user.id &&
+    !session.user.permissions.includes("grand_plan.edit_any")
+  ) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   if (!plan.presentationDataJson) {
@@ -56,9 +58,10 @@ export async function POST(
   }
 
   let planContext = "";
+  let planData: GrandPlanData | null = null;
   if (plan.planDataJson) {
     try {
-      const planData = JSON.parse(plan.planDataJson) as GrandPlanData;
+      planData = JSON.parse(plan.planDataJson) as GrandPlanData;
       planContext = summariseSourcePlan(planData);
     } catch {
       /* fall through with empty context */
@@ -82,6 +85,7 @@ RULES:
 - Top-level shape must be: { cover: {...}, slides: [...] }
 - KEEP existing slide ids for slides you retain (edited or unchanged).
 - NEW slides you create must have a unique descriptive id slug (e.g. "slide-google-strategy", "slide-meta-audiences-2").
+- Keep total slide count between 8 and 16.
 - British English. No em dashes. No semicolons.
 - Concise copy — this is a presentation, not a document.
 
@@ -150,7 +154,10 @@ Return the complete updated presentation JSON only.`;
     .map((b: any) => b.text as string)
     .join("");
 
-  const cleaned = rawText.replace(/^```(?:json)?\n?/i, "").replace(/\n?```$/i, "").trim();
+  const cleaned = rawText
+    .replace(/^```(?:json)?\n?/i, "")
+    .replace(/\n?```$/i, "")
+    .trim();
 
   let updatedPres: PresentationData;
   try {
@@ -167,13 +174,62 @@ Return the complete updated presentation JSON only.`;
     return NextResponse.json({ error: "AI returned no slides — try again" }, { status: 422 });
   }
 
-  const VALID_KINDS = new Set(["headline", "pillars", "outcome", "channels", "timeline", "investment", "audience", "next-steps", "content", "bullets"]);
+  const bounds = planData
+    ? resolvePresentationSlideBounds(planData)
+    : {
+        minSlides: 8,
+        maxSlides:
+          presData.meta?.maxSlides && presData.meta.maxSlides > 8 ? presData.meta.maxSlides : 12,
+        dataRich: Boolean(presData.meta?.dataRich),
+      };
+
+  if (updatedPres.slides.length < bounds.minSlides) {
+    return NextResponse.json(
+      {
+        error: `Refined deck returned ${updatedPres.slides.length} slides. Minimum is ${bounds.minSlides}.`,
+      },
+      { status: 422 },
+    );
+  }
+  if (updatedPres.slides.length > bounds.maxSlides) {
+    updatedPres.slides = updatedPres.slides.slice(0, bounds.maxSlides);
+  }
+
+  const sourcePlanHash = computePlanDataHash(plan.planDataJson);
+  updatedPres.meta = {
+    ...presData.meta,
+    ...updatedPres.meta,
+    sourcePlanHash: sourcePlanHash ?? presData.meta?.sourcePlanHash,
+    generatedAt:
+      presData.meta?.generatedAt ?? updatedPres.meta?.generatedAt ?? new Date().toISOString(),
+    maxSlides: bounds.maxSlides,
+    dataRich: bounds.dataRich,
+  };
+
+  const VALID_KINDS = new Set([
+    "headline",
+    "pillars",
+    "outcome",
+    "channels",
+    "timeline",
+    "investment",
+    "audience",
+    "next-steps",
+    "content",
+    "bullets",
+  ]);
 
   // Build lookups of existing images keyed by slide id so we can preserve
   // them and reject any AI-invented image URLs.
   const existingImagesById = new Map<string, PresentationData["slides"][number]["image"]>();
-  const existingGalleryById = new Map<string, NonNullable<PresentationData["slides"][number]["images"]>>();
-  const existingPositionById = new Map<string, NonNullable<PresentationData["slides"][number]["imagesPosition"]>>();
+  const existingGalleryById = new Map<
+    string,
+    NonNullable<PresentationData["slides"][number]["images"]>
+  >();
+  const existingPositionById = new Map<
+    string,
+    NonNullable<PresentationData["slides"][number]["imagesPosition"]>
+  >();
   for (const slide of presData.slides) {
     if (!slide.id) continue;
     if (slide.image) existingImagesById.set(slide.id, slide.image);
@@ -190,7 +246,11 @@ Return the complete updated presentation JSON only.`;
     const existing = existingImagesById.get(id);
     if (image && existing && image.url !== existing.url) {
       // AI tried to swap the URL — keep the original asset, accept any new alt/position
-      image = { ...existing, alt: image.alt ?? existing.alt, position: image.position ?? existing.position };
+      image = {
+        ...existing,
+        alt: image.alt ?? existing.alt,
+        position: image.position ?? existing.position,
+      };
     } else if (image && !existing) {
       // AI invented an image on a slide that didn't have one — reject the URL
       delete (s as PresentationData["slides"][number]).image;

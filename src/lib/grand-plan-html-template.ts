@@ -423,7 +423,7 @@ ${
 
 // ─── Chapter layout builder ─────────────────────────────────────────────────
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+/* eslint-disable @typescript-eslint/no-explicit-any */
 function buildChapteredSections(
   s: any,
   clientName: string,
@@ -544,6 +544,7 @@ function buildChapteredSections(
 
   return parts.join("\n");
 }
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 function chapterPanel(num: number, title: string, sub: string): string {
   const numStr = String(num).padStart(2, "0");
@@ -881,7 +882,7 @@ function renderQuickWins(
 
 // renderKpis removed — KPIs section deleted.
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+/* eslint-disable @typescript-eslint/no-explicit-any */
 function renderGoogleAdsCampaigns(
   data: any,
   clientWebsite?: string,
@@ -1205,6 +1206,7 @@ function renderGoogleAdsCampaigns(
       </div>
     </section>`;
 }
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function renderMetaCampaigns(campaigns: any[], clientWebsite?: string, intro?: string): string {
@@ -1402,7 +1404,7 @@ function formatBriefBlock(raw: string): string {
   return chunks.map(renderChunk).join("");
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+/* eslint-disable @typescript-eslint/no-explicit-any */
 function renderContentStrategy(
   data: any,
   intro?: string,
@@ -1888,6 +1890,7 @@ function renderContentStrategy(
       </div>
     </section>`;
 }
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 // ─── SEO Foundations renderer ───────────────────────────────────────────────
 // Renders the three SEO pieces that sit alongside the content cluster:
@@ -2594,12 +2597,12 @@ function renderEmailMarketing(data: any): string {
       ${delBtn(`sections.emailMarketing.flows.${i}`, `flow "${flow.name}"`)}
       <div class="em-flow-header" onclick="if(event.target.closest('[data-edit-path],[data-delete-path]'))return;this.parentElement.classList.toggle('open')">
         <span class="ag-num">${i + 1}</span>
-        <span class="ag-name">${ed(flow.name, `sections.emailMarketing.flows.${i}.name`, { placeholder: "Flow name" })}</span>
+        <span class="ag-name">${ed(flow.name?.trim() ? flow.name : `Lifecycle flow ${i + 1}`, `sections.emailMarketing.flows.${i}.name`, { placeholder: "Flow name" })}</span>
         <span class="ag-count">${(flow.emails ?? []).length} emails</span>
         <span class="ag-chevron">+</span>
       </div>
       <div class="em-flow-body">
-        <p class="em-trigger"><strong>Trigger:</strong> ${ed(flow.trigger, `sections.emailMarketing.flows.${i}.trigger`, { multiline: true, placeholder: "Trigger" })}</p>
+        <p class="em-trigger"><strong>Trigger:</strong> ${ed(flow.trigger?.trim() ? flow.trigger : "Behaviour-based lifecycle trigger to be refined by strategist.", `sections.emailMarketing.flows.${i}.trigger`, { multiline: true, placeholder: "Trigger" })}</p>
         <div class="em-emails">
           ${(flow.emails ?? [])
             .map(
@@ -2629,12 +2632,12 @@ function renderEmailMarketing(data: any): string {
       ) => `
     <div class="em-campaign-card gp-deletable" data-deletable-host="1">
       ${delBtn(`sections.emailMarketing.campaigns.${i}`, `campaign "${c.name}"`)}
-      <h4>${ed(c.name, `sections.emailMarketing.campaigns.${i}.name`, { placeholder: "Name" })}</h4>
+      <h4>${ed(c.name?.trim() ? c.name : `Campaign ${i + 1}`, `sections.emailMarketing.campaigns.${i}.name`, { placeholder: "Name" })}</h4>
       <div class="em-campaign-meta">
-        <span class="em-tag">${ed(c.frequency, `sections.emailMarketing.campaigns.${i}.frequency`, { placeholder: "Frequency" })}</span>
-        <span class="em-tag">${ed(c.audience, `sections.emailMarketing.campaigns.${i}.audience`, { placeholder: "Audience" })}</span>
+        <span class="em-tag">${ed(c.frequency?.trim() ? c.frequency : "Cadence to define", `sections.emailMarketing.campaigns.${i}.frequency`, { placeholder: "Frequency" })}</span>
+        <span class="em-tag">${ed(c.audience?.trim() ? c.audience : "Audience to define", `sections.emailMarketing.campaigns.${i}.audience`, { placeholder: "Audience" })}</span>
       </div>
-      <p>${ed(c.objectiveText, `sections.emailMarketing.campaigns.${i}.objectiveText`, { multiline: true, placeholder: "Objective" })}</p>
+      <p>${ed(c.objectiveText?.trim() ? c.objectiveText : "Campaign objective to define based on this audience's blockers and next step.", `sections.emailMarketing.campaigns.${i}.objectiveText`, { multiline: true, placeholder: "Objective" })}</p>
     </div>`,
     )
     .join("\n");
@@ -2644,9 +2647,9 @@ function renderEmailMarketing(data: any): string {
       (s: { name: string; criteria: string; purpose: string }, i: number) => `
     <div class="em-segment gp-deletable" data-deletable-host="1">
       ${delBtn(`sections.emailMarketing.segmentation.segments.${i}`, `segment "${s.name}"`, { inline: true })}
-      <strong>${ed(s.name, `sections.emailMarketing.segmentation.segments.${i}.name`, { placeholder: "Segment" })}</strong>
-      <span class="em-criteria">${ed(s.criteria, `sections.emailMarketing.segmentation.segments.${i}.criteria`, { multiline: true, placeholder: "Criteria" })}</span>
-      <span class="em-seg-purpose">${ed(s.purpose, `sections.emailMarketing.segmentation.segments.${i}.purpose`, { multiline: true, placeholder: "Purpose" })}</span>
+      <strong>${ed(s.name?.trim() ? s.name : `Audience segment ${i + 1}`, `sections.emailMarketing.segmentation.segments.${i}.name`, { placeholder: "Segment" })}</strong>
+      <span class="em-criteria">${ed(s.criteria?.trim() ? s.criteria : "Criteria to define from engagement and audience traits.", `sections.emailMarketing.segmentation.segments.${i}.criteria`, { multiline: true, placeholder: "Criteria" })}</span>
+      <span class="em-seg-purpose">${ed(s.purpose?.trim() ? s.purpose : "Purpose to define for tailored lifecycle messaging.", `sections.emailMarketing.segmentation.segments.${i}.purpose`, { multiline: true, placeholder: "Purpose" })}</span>
     </div>`,
     )
     .join("\n");
@@ -2860,19 +2863,31 @@ function renderCompetitorIntel(competitors: any[], grounding?: string): string {
   const detailCards = competitors
     .map((c, idx) => {
       const base = `sections.competitorIntel.${idx}`;
+      const strengthsArr =
+        Array.isArray(c.strengths) && c.strengths.length
+          ? c.strengths
+          : [
+              "Insufficient structured evidence was saved for strengths in this snapshot, so review manually.",
+            ];
+      const weaknessesArr =
+        Array.isArray(c.weaknesses) && c.weaknesses.length
+          ? c.weaknesses
+          : [
+              "Insufficient structured evidence was saved for weaknesses in this snapshot, so review manually.",
+            ];
       const topKeywords = (c.topKeywords ?? [])
         .map(
           (k: string, ki: number) =>
             `<span class="comp-kw-chip gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(k, `${base}.topKeywords.${ki}`, { placeholder: "Keyword" })}${delBtn(`${base}.topKeywords.${ki}`, "keyword", { inline: true })}</span>`,
         )
         .join(" ");
-      const strengths = (c.strengths ?? [])
+      const strengths = strengthsArr
         .map(
           (s: string, si: number) =>
             `<li class="gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(s, `${base}.strengths.${si}`, { multiline: true, placeholder: "Strength" })}${delBtn(`${base}.strengths.${si}`, "strength", { inline: true })}</li>`,
         )
         .join("");
-      const weaknesses = (c.weaknesses ?? [])
+      const weaknesses = weaknessesArr
         .map(
           (w: string, wi: number) =>
             `<li class="gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(w, `${base}.weaknesses.${wi}`, { multiline: true, placeholder: "Weakness" })}${delBtn(`${base}.weaknesses.${wi}`, "weakness", { inline: true })}</li>`,
@@ -2901,15 +2916,15 @@ function renderCompetitorIntel(competitors: any[], grounding?: string): string {
         <span class="comp-sw-title comp-opportunity">Opportunities for us</span>
         <ul>${opportunities}</ul>
       </div>`
-          : (c.strengths ?? []).length
+          : strengthsArr.length
             ? `
       <div class="comp-opportunities">
         <span class="comp-sw-title comp-opportunity">Opportunities for us</span>
-        <ul>${(c.strengths as string[])
+        <ul>${(strengthsArr as string[])
           .slice(0, 2)
           .map(
             (s: string) =>
-              `<li>They perform well here — we should match and differentiate: <em>${esc(s)}</em></li>`,
+              `<li>They perform well here, so we should match and differentiate: <em>${esc(s)}</em></li>`,
           )
           .join("")}</ul>
       </div>`

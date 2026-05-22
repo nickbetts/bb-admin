@@ -1107,7 +1107,8 @@ export default function GrandPlanViewPage({ params }: Props) {
         setSharePassword("");
         toast("Share link created", "success");
       } else {
-        toast("Failed to create share link", "error");
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        toast(data.error || "Failed to create share link", "error");
       }
     } finally {
       setSharingBusy(false);
@@ -1168,6 +1169,55 @@ export default function GrandPlanViewPage({ params }: Props) {
       toast("Failed to generate presentation", "error");
     } finally {
       setPresentationBusy(false);
+    }
+  }
+
+  function getPresentationDownloadBasename(): string {
+    if (!plan) return "strategy-deck";
+    const seed = `${plan.client?.name ?? plan.prospectName ?? "deck"}-${plan.title}`;
+    const slug = seed
+      .toLowerCase()
+      .replace(/\s+/g, "-")
+      .replace(/[^a-z0-9._-]/g, "");
+    return slug || "strategy-deck";
+  }
+
+  async function downloadPresentationFile(kind: "pdf" | "html") {
+    if (!plan) return;
+
+    const endpoint =
+      kind === "pdf"
+        ? `/api/tools/grand-plan/${id}/presentation/pdf`
+        : `/api/tools/grand-plan/${id}/presentation?ts=${presentationCacheBust}`;
+
+    try {
+      const res = await fetch(endpoint);
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(
+          data.error ||
+            (kind === "pdf" ? "Failed to download PDF" : "Failed to download presentation HTML"),
+        );
+      }
+
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = `${getPresentationDownloadBasename()}.${kind}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch (err) {
+      toast(
+        err instanceof Error
+          ? err.message
+          : kind === "pdf"
+            ? "Failed to download PDF"
+            : "Failed to download presentation HTML",
+        "error",
+      );
     }
   }
 
@@ -2637,14 +2687,28 @@ export default function GrandPlanViewPage({ params }: Props) {
                       <ArrowUpRight style={{ width: 13, height: 13 }} aria-hidden /> Open
                       full-screen
                     </a>
-                    <a
-                      href={`/api/tools/grand-plan/${plan.id}/presentation/pdf`}
+                    <button
+                      type="button"
                       className="btn btn-ghost btn-sm"
                       style={{ gap: 5 }}
                       title="Download the deck as a 16:9 PDF"
+                      onClick={() => {
+                        void downloadPresentationFile("pdf");
+                      }}
                     >
                       <Download style={{ width: 13, height: 13 }} aria-hidden /> Download PDF
-                    </a>
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      style={{ gap: 5 }}
+                      title="Download the deck as standalone HTML"
+                      onClick={() => {
+                        void downloadPresentationFile("html");
+                      }}
+                    >
+                      <Download style={{ width: 13, height: 13 }} aria-hidden /> Download HTML
+                    </button>
                   </>
                 )}
               </div>
@@ -2927,6 +2991,7 @@ export default function GrandPlanViewPage({ params }: Props) {
           refineAllSlides={refineAllSlides}
           savePresField={savePresField}
           uploadSlideImage={uploadSlideImage}
+          downloadPresentationFile={downloadPresentationFile}
         />
       )}
 
@@ -3646,6 +3711,7 @@ interface PresentationEditorModalProps {
   refineAllSlides: (prompt: string) => Promise<void> | void;
   savePresField: (action: string, payload: Record<string, unknown>) => Promise<void>;
   uploadSlideImage: (slideIndex: number, file: File, position?: ImagePosition) => Promise<void>;
+  downloadPresentationFile: (kind: "pdf" | "html") => Promise<void>;
 }
 
 function PresentationEditorModal(props: PresentationEditorModalProps) {
@@ -3675,6 +3741,7 @@ function PresentationEditorModal(props: PresentationEditorModalProps) {
     refineAllSlides,
     savePresField,
     uploadSlideImage,
+    downloadPresentationFile,
   } = props;
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -3874,14 +3941,28 @@ function PresentationEditorModal(props: PresentationEditorModalProps) {
               <Loader2 style={{ width: 11, height: 11 }} className="spin" aria-hidden /> Saving…
             </span>
           )}
-          <a
-            href={`/api/tools/grand-plan/${plan.id}/presentation/pdf`}
+          <button
+            type="button"
             className="btn btn-ghost btn-sm"
             style={{ gap: 5 }}
             title="Download the deck as a 16:9 PDF"
+            onClick={() => {
+              void downloadPresentationFile("pdf");
+            }}
           >
             <Download style={{ width: 13, height: 13 }} aria-hidden /> Download PDF
-          </a>
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            style={{ gap: 5 }}
+            title="Download the deck as standalone HTML"
+            onClick={() => {
+              void downloadPresentationFile("html");
+            }}
+          >
+            <Download style={{ width: 13, height: 13 }} aria-hidden /> Download HTML
+          </button>
           <button
             type="button"
             className="btn btn-ghost btn-sm"

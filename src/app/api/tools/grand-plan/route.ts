@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/activity-logger";
+import { checkPresentationFreshness } from "@/lib/grand-plan-presentation-freshness";
 import crypto from "crypto";
 
 const SHARE_PASSWORD_VERSION = "s2";
@@ -99,14 +100,40 @@ export async function POST(request: NextRequest) {
       clientBrief?: string;
       targetAudiences?: string;
       sector?: string;
-      campaignFocusPeriods?: { startMonth: number; endMonth: number; label: string; description?: string }[];
+      campaignFocusPeriods?: {
+        startMonth: number;
+        endMonth: number;
+        label: string;
+        description?: string;
+      }[];
       competitors?: {
         domain: string;
         commonKeywords?: number;
-        pageContext?: { headings?: string[]; description?: string; ctaTexts?: string[]; h1?: string };
+        pageContext?: {
+          headings?: string[];
+          description?: string;
+          ctaTexts?: string[];
+          h1?: string;
+        };
         source?: "manual" | "auto";
       }[];
-      config?: { sections?: string[]; postsPerMonth?: number; socialPostsPerMonth?: number; socialPostsPerWeek?: number; channelBudgets?: { googleAds?: number; metaAds?: number; linkedInAds?: number }; manualPageUrls?: string[]; contentLimits?: { pillarPages?: number; pageOptimisations?: number; landingPages?: number; blogPosts?: number; linkTargets?: number }; planMode?: "annual" | "sprint90"; previousPlanId?: string };
+      config?: {
+        sections?: string[];
+        postsPerMonth?: number;
+        socialPostsPerMonth?: number;
+        socialPostsPerWeek?: number;
+        channelBudgets?: { googleAds?: number; metaAds?: number; linkedInAds?: number };
+        manualPageUrls?: string[];
+        contentLimits?: {
+          pillarPages?: number;
+          pageOptimisations?: number;
+          landingPages?: number;
+          blogPosts?: number;
+          linkTargets?: number;
+        };
+        planMode?: "annual" | "sprint90";
+        previousPlanId?: string;
+      };
       previousPlanId?: string;
       period?: string;
       cloneFromId?: string;
@@ -120,7 +147,6 @@ export async function POST(request: NextRequest) {
     if (body.cloneFromId) {
       const source = await prisma.grandPlan.findUnique({ where: { id: body.cloneFromId } });
       if (!source) return NextResponse.json({ error: "Source plan not found" }, { status: 404 });
-
 
       const cloned = await prisma.grandPlan.create({
         data: {
@@ -158,27 +184,50 @@ export async function POST(request: NextRequest) {
     // Validate that linked source records exist and belong to the same client
     const clientId = body.clientId || null;
     if (body.proposalId) {
-      const p = await prisma.proposal.findUnique({ where: { id: body.proposalId }, select: { clientId: true } });
+      const p = await prisma.proposal.findUnique({
+        where: { id: body.proposalId },
+        select: { clientId: true },
+      });
       if (!p) return NextResponse.json({ error: "Linked proposal not found" }, { status: 400 });
-      if (clientId && p.clientId && p.clientId !== clientId) return NextResponse.json({ error: "Proposal belongs to a different client" }, { status: 400 });
+      if (clientId && p.clientId && p.clientId !== clientId)
+        return NextResponse.json(
+          { error: "Proposal belongs to a different client" },
+          { status: 400 },
+        );
     }
     if (body.keywordResearchId) {
-      const kr = await prisma.keywordPlannerResearch.findUnique({ where: { id: body.keywordResearchId }, select: { clientId: true } });
-      if (!kr) return NextResponse.json({ error: "Linked keyword research not found" }, { status: 400 });
-      if (clientId && kr.clientId && kr.clientId !== clientId) return NextResponse.json({ error: "Keyword research belongs to a different client" }, { status: 400 });
+      const kr = await prisma.keywordPlannerResearch.findUnique({
+        where: { id: body.keywordResearchId },
+        select: { clientId: true },
+      });
+      if (!kr)
+        return NextResponse.json({ error: "Linked keyword research not found" }, { status: 400 });
+      if (clientId && kr.clientId && kr.clientId !== clientId)
+        return NextResponse.json(
+          { error: "Keyword research belongs to a different client" },
+          { status: 400 },
+        );
     }
     if (body.contentStrategyId) {
-      const cs = await prisma.contentStrategy.findUnique({ where: { id: body.contentStrategyId }, select: { clientId: true } });
-      if (!cs) return NextResponse.json({ error: "Linked content strategy not found" }, { status: 400 });
-      if (clientId && cs.clientId && cs.clientId !== clientId) return NextResponse.json({ error: "Content strategy belongs to a different client" }, { status: 400 });
+      const cs = await prisma.contentStrategy.findUnique({
+        where: { id: body.contentStrategyId },
+        select: { clientId: true },
+      });
+      if (!cs)
+        return NextResponse.json({ error: "Linked content strategy not found" }, { status: 400 });
+      if (clientId && cs.clientId && cs.clientId !== clientId)
+        return NextResponse.json(
+          { error: "Content strategy belongs to a different client" },
+          { status: 400 },
+        );
     }
 
     const grandPlan = await prisma.grandPlan.create({
       data: {
         userId: session.user.id,
         clientId: body.clientId || null,
-        prospectName: body.clientId ? null : (body.prospectName?.trim() || null),
-        prospectWebsite: body.clientId ? null : (body.prospectWebsite?.trim() || null),
+        prospectName: body.clientId ? null : body.prospectName?.trim() || null,
+        prospectWebsite: body.clientId ? null : body.prospectWebsite?.trim() || null,
         title: body.title,
         purpose: body.purpose || "pitch",
         proposalId: body.proposalId || null,
@@ -189,7 +238,10 @@ export async function POST(request: NextRequest) {
         targetAudiences: body.targetAudiences || null,
         campaignFocusPeriodsJson: JSON.stringify(body.campaignFocusPeriods ?? []),
         competitorsJson: JSON.stringify(body.competitors ?? []),
-        configJson: JSON.stringify({ ...(body.config ?? {}), ...(body.sector ? { sector: body.sector } : {}) }),
+        configJson: JSON.stringify({
+          ...(body.config ?? {}),
+          ...(body.sector ? { sector: body.sector } : {}),
+        }),
         period: body.period?.trim() || null,
         ...(body.previousPlanId ? { previousPlanId: body.previousPlanId } : {}),
       },
@@ -236,14 +288,38 @@ export async function PATCH(request: NextRequest) {
 
     const existing = await prisma.grandPlan.findUnique({ where: { id } });
     if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (
+      existing.userId !== session.user.id &&
+      !session.user.permissions.includes("grand_plan.edit_any")
+    ) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     if (action === "share") {
+      if (existing.presentationDataJson) {
+        const freshness = checkPresentationFreshness({
+          planDataJson: existing.planDataJson,
+          presentationDataJson: existing.presentationDataJson,
+        });
+        if (!freshness.fresh) {
+          return NextResponse.json(
+            {
+              error:
+                freshness.reason ??
+                "Presentation is out of date. Regenerate it before sharing this plan.",
+            },
+            { status: 409 },
+          );
+        }
+      }
+
       const shareToken = existing.shareToken || crypto.randomBytes(24).toString("hex");
       const normalizedPassword = typeof password === "string" ? password : "";
       const sharePassword = normalizedPassword ? hashSharePassword(normalizedPassword) : null;
-      const shareExpiresAt = expiresInDays && expiresInDays > 0
-        ? new Date(Date.now() + expiresInDays * 86_400_000)
-        : null;
+      const shareExpiresAt =
+        expiresInDays && expiresInDays > 0
+          ? new Date(Date.now() + expiresInDays * 86_400_000)
+          : null;
 
       const updated = await prisma.grandPlan.update({
         where: { id },
@@ -259,7 +335,10 @@ export async function PATCH(request: NextRequest) {
         description: `Shared grand plan "${existing.title}"`,
       });
 
-      return NextResponse.json({ shareToken: updated.shareToken, shareExpiresAt: updated.shareExpiresAt });
+      return NextResponse.json({
+        shareToken: updated.shareToken,
+        shareExpiresAt: updated.shareExpiresAt,
+      });
     }
 
     // unshare

@@ -3,10 +3,12 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
   generatePresentation,
+  resolvePresentationSlideBounds,
   type PresentationData,
   type PresentationSlide,
 } from "@/lib/grand-plan-presentation-generator";
 import { renderPresentationHtml } from "@/lib/grand-plan-presentation-template";
+import { computePlanDataHash } from "@/lib/grand-plan-presentation-freshness";
 import type { GrandPlanData } from "@/lib/grand-plan-generator";
 
 export const dynamic = "force-dynamic";
@@ -20,10 +22,7 @@ export const maxDuration = 120; // single Anthropic call, ~10–25s typical
  * - `print=1` — re-render from `presentationDataJson` in print mode (no nav,
  *   one slide per page at 1920x1080) so headless browsers can produce a clean PDF.
  */
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -32,9 +31,15 @@ export async function GET(
 
   const plan = await prisma.grandPlan.findUnique({
     where: { id },
-    select: { presentationHtml: true, presentationDataJson: true },
+    select: { userId: true, presentationHtml: true, presentationDataJson: true },
   });
   if (!plan) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (
+    plan.userId !== session.user.id &&
+    !session.user.permissions.includes("grand_plan.edit_any")
+  ) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   if (isPrint) {
     if (!plan.presentationDataJson) {
@@ -65,10 +70,7 @@ export async function GET(
  * Reads `planDataJson`, distils to a PresentationData object via Anthropic,
  * renders the HTML and persists both alongside a generation timestamp.
  */
-export async function POST(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -77,6 +79,7 @@ export async function POST(
     where: { id },
     select: {
       id: true,
+      userId: true,
       title: true,
       status: true,
       planDataJson: true,
@@ -84,16 +87,22 @@ export async function POST(
     },
   });
   if (!plan) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (
+    plan.userId !== session.user.id &&
+    !session.user.permissions.includes("grand_plan.edit_any")
+  ) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   if (plan.status !== "complete") {
     return NextResponse.json(
       { error: "Plan must be complete before generating a presentation" },
-      { status: 400 }
+      { status: 400 },
     );
   }
   if (!plan.planDataJson) {
     return NextResponse.json(
       { error: "Plan has no structured data — regenerate the plan first" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -116,6 +125,15 @@ export async function POST(
   try {
     const startedAt = Date.now();
     const presentation: PresentationData = await generatePresentation(planData, { planMode });
+    const bounds = resolvePresentationSlideBounds(planData);
+    const sourcePlanHash = computePlanDataHash(plan.planDataJson);
+    presentation.meta = {
+      ...presentation.meta,
+      sourcePlanHash: sourcePlanHash ?? undefined,
+      generatedAt: new Date().toISOString(),
+      maxSlides: bounds.maxSlides,
+      dataRich: bounds.dataRich,
+    };
     const html = renderPresentationHtml(presentation);
     const elapsedMs = Date.now() - startedAt;
 
@@ -148,25 +166,25 @@ export async function POST(
  * Actions: cover | slide-field | slide-delete | slide-move |
  *          item-update | item-add | item-delete
  */
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const body = await request.json() as Record<string, unknown>;
+  const body = (await request.json()) as Record<string, unknown>;
   const { action } = body;
-  if (typeof action !== "string") return NextResponse.json({ error: "action required" }, { status: 400 });
+  if (typeof action !== "string")
+    return NextResponse.json({ error: "action required" }, { status: 400 });
 
   const plan = await prisma.grandPlan.findUnique({
     where: { id },
     select: { userId: true, presentationDataJson: true },
   });
   if (!plan) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (plan.userId !== session.user.id && !session.user.permissions.includes("grand_plan.edit_any")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  if (!plan.presentationDataJson) return NextResponse.json({ error: "No presentation data" }, { status: 400 });
+  if (plan.userId !== session.user.id && !session.user.permissions.includes("grand_plan.edit_any"))
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!plan.presentationDataJson)
+    return NextResponse.json({ error: "No presentation data" }, { status: 400 });
 
   let presData: PresentationData;
   try {
@@ -202,7 +220,8 @@ export async function PATCH(
     }
     case "slide-delete": {
       const idx = body.slideIndex as number;
-      if (idx < 0 || idx >= presData.slides.length) return NextResponse.json({ error: "Slide not found" }, { status: 404 });
+      if (idx < 0 || idx >= presData.slides.length)
+        return NextResponse.json({ error: "Slide not found" }, { status: 404 });
       presData.slides.splice(idx, 1);
       break;
     }
@@ -211,11 +230,15 @@ export async function PATCH(
       const dir = body.direction as string;
       const newIdx = dir === "up" ? idx - 1 : idx + 1;
       if (newIdx < 0 || newIdx >= presData.slides.length) break;
-      [presData.slides[idx], presData.slides[newIdx]] = [presData.slides[newIdx], presData.slides[idx]];
+      [presData.slides[idx], presData.slides[newIdx]] = [
+        presData.slides[newIdx],
+        presData.slides[idx],
+      ];
       break;
     }
     case "slide-add": {
-      const afterIndex = typeof body.afterIndex === "number" ? body.afterIndex : presData.slides.length - 1;
+      const afterIndex =
+        typeof body.afterIndex === "number" ? body.afterIndex : presData.slides.length - 1;
       const kind = (body.kind as PresentationSlide["kind"]) ?? "headline";
       const title = (body.title as string) ?? "New slide";
       const newSlide: PresentationSlide = {
@@ -228,7 +251,11 @@ export async function PATCH(
       if (kind === "content" || kind === "bullets") {
         newSlide.bullets = ["First point", "Second point", "Third point"];
       } else if (kind === "pillars") {
-        newSlide.pillars = [{ title: "Pillar one", body: "" }, { title: "Pillar two", body: "" }, { title: "Pillar three", body: "" }];
+        newSlide.pillars = [
+          { title: "Pillar one", body: "" },
+          { title: "Pillar two", body: "" },
+          { title: "Pillar three", body: "" },
+        ];
       } else if (kind === "audience") {
         newSlide.audiences = [{ name: "Audience name", insight: "" }];
       } else if (kind === "channels") {
@@ -246,7 +273,7 @@ export async function PATCH(
       const source = presData.slides[idx];
       if (!source) return NextResponse.json({ error: "Slide not found" }, { status: 404 });
       const duplicate: PresentationSlide = {
-        ...JSON.parse(JSON.stringify(source)) as PresentationSlide,
+        ...(JSON.parse(JSON.stringify(source)) as PresentationSlide),
         id: `slide-${Date.now()}`,
         title: `${source.title} (copy)`,
       };
@@ -305,7 +332,7 @@ export async function PATCH(
       const positionRaw = body.position as string | undefined;
       const allowed = ["left", "right", "top", "background"] as const;
       const position = (allowed as readonly string[]).includes(positionRaw ?? "")
-        ? (positionRaw as typeof allowed[number])
+        ? (positionRaw as (typeof allowed)[number])
         : "right";
       const slide = presData.slides[idx];
       if (!slide) return NextResponse.json({ error: "Slide not found" }, { status: 404 });
@@ -334,9 +361,7 @@ export async function PATCH(
       if (!slide) return NextResponse.json({ error: "Slide not found" }, { status: 404 });
       // Migrate the legacy single-image field into the gallery on first add.
       if (!Array.isArray(slide.images) || slide.images.length === 0) {
-        slide.images = slide.image
-          ? [{ url: slide.image.url, alt: slide.image.alt }]
-          : [];
+        slide.images = slide.image ? [{ url: slide.image.url, alt: slide.image.alt }] : [];
         if (slide.image && !slide.imagesPosition) slide.imagesPosition = slide.image.position;
         delete slide.image;
       }
@@ -371,7 +396,10 @@ export async function PATCH(
       }
       const toIndex = direction === "up" ? fromIndex - 1 : fromIndex + 1;
       if (toIndex < 0 || toIndex >= slide.images.length) break;
-      [slide.images[fromIndex], slide.images[toIndex]] = [slide.images[toIndex], slide.images[fromIndex]];
+      [slide.images[fromIndex], slide.images[toIndex]] = [
+        slide.images[toIndex],
+        slide.images[fromIndex],
+      ];
       break;
     }
     case "images-alt": {
@@ -390,7 +418,7 @@ export async function PATCH(
       const positionRaw = body.position as string | undefined;
       const allowed = ["left", "right", "top", "background"] as const;
       const position = (allowed as readonly string[]).includes(positionRaw ?? "")
-        ? (positionRaw as typeof allowed[number])
+        ? (positionRaw as (typeof allowed)[number])
         : "right";
       const slide = presData.slides[idx];
       if (!slide) return NextResponse.json({ error: "Slide not found" }, { status: 404 });
@@ -406,7 +434,8 @@ export async function PATCH(
       const slide = presData.slides[idx];
       if (!slide) return NextResponse.json({ error: "Slide not found" }, { status: 404 });
       if (!slide.bullets) slide.bullets = [];
-      if (bulletIndex >= 0 && bulletIndex < slide.bullets.length) slide.bullets[bulletIndex] = value;
+      if (bulletIndex >= 0 && bulletIndex < slide.bullets.length)
+        slide.bullets[bulletIndex] = value;
       break;
     }
     case "bullet-add": {

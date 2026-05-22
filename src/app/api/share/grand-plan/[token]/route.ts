@@ -5,6 +5,7 @@ import { renderGrandPlanHtml } from "@/lib/grand-plan-html-template";
 import type { GrandPlanData } from "@/lib/grand-plan-generator";
 import { renderPresentationHtml } from "@/lib/grand-plan-presentation-template";
 import type { PresentationData } from "@/lib/grand-plan-presentation-generator";
+import { checkPresentationFreshness } from "@/lib/grand-plan-presentation-freshness";
 
 const SHARE_PASSWORD_VERSION = "s2";
 
@@ -25,7 +26,10 @@ function hashSharePasswordV2(password: string): string {
   return `${SHARE_PASSWORD_VERSION}:${salt}:${hash}`;
 }
 
-function verifySharePassword(password: string, stored: string): { valid: boolean; needsUpgrade: boolean } {
+function verifySharePassword(
+  password: string,
+  stored: string,
+): { valid: boolean; needsUpgrade: boolean } {
   const parts = stored.split(":");
   if (parts.length === 3 && parts[0] === SHARE_PASSWORD_VERSION) {
     const [, salt, expectedHash] = parts;
@@ -63,7 +67,10 @@ function stripPublicEditUi(html: string): string {
 
   // Generic delete buttons and section-specific delete affordances.
   cleaned = cleaned.replace(/<button[^>]*data-delete-path="[^"]*"[^>]*>[\s\S]*?<\/button>/gi, "");
-  cleaned = cleaned.replace(/<button[^>]*class="[^"]*(?:subsection-delete-btn|kw-remove-btn|ag-delete-btn|seed-delete-btn|kw-save-btn)[^"]*"[^>]*>[\s\S]*?<\/button>/gi, "");
+  cleaned = cleaned.replace(
+    /<button[^>]*class="[^"]*(?:subsection-delete-btn|kw-remove-btn|ag-delete-btn|seed-delete-btn|kw-save-btn)[^"]*"[^>]*>[\s\S]*?<\/button>/gi,
+    "",
+  );
 
   // Inline "add" rows used by the editor.
   cleaned = cleaned.replace(/<div[^>]*class="[^"]*kw-add-row[^"]*"[^>]*>[\s\S]*?<\/div>/gi, "");
@@ -94,7 +101,7 @@ function buildPublicHtml(plan: SharePlanFields, view: "plan" | "presentation"): 
     if (plan.presentationDataJson) {
       try {
         return stripPublicEditUi(
-          renderPresentationHtml(JSON.parse(plan.presentationDataJson) as PresentationData, true)
+          renderPresentationHtml(JSON.parse(plan.presentationDataJson) as PresentationData, true),
         );
       } catch {
         // fall through to stored HTML on parse error
@@ -105,7 +112,7 @@ function buildPublicHtml(plan: SharePlanFields, view: "plan" | "presentation"): 
   if (plan.planDataJson) {
     try {
       return stripPublicEditUi(
-        renderGrandPlanHtml(JSON.parse(plan.planDataJson) as GrandPlanData, true)
+        renderGrandPlanHtml(JSON.parse(plan.planDataJson) as GrandPlanData, true),
       );
     } catch {
       // fall through to stored HTML on parse error
@@ -119,10 +126,7 @@ function parseView(req: NextRequest): "plan" | "presentation" {
   return v === "presentation" ? "presentation" : "plan";
 }
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ token: string }> }
-) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
   if (!token || token.length < 10) {
     return NextResponse.json({ error: "Invalid token" }, { status: 400 });
@@ -152,6 +156,22 @@ export async function GET(
 
   if (plan.shareExpiresAt && new Date(plan.shareExpiresAt) < new Date()) {
     return NextResponse.json({ error: "This share link has expired" }, { status: 410 });
+  }
+
+  if (view === "presentation") {
+    const freshness = checkPresentationFreshness({
+      planDataJson: plan.planDataJson,
+      presentationDataJson: plan.presentationDataJson,
+    });
+    if (!freshness.fresh) {
+      return NextResponse.json(
+        {
+          error:
+            "This presentation is being updated and is not available yet. Please ask your strategist to regenerate it.",
+        },
+        { status: 409 },
+      );
+    }
   }
 
   const displayName = plan.client?.name ?? plan.prospectName ?? null;
@@ -189,7 +209,7 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ token: string }> }
+  { params }: { params: Promise<{ token: string }> },
 ) {
   const { token } = await params;
   if (!token || token.length < 10) {
@@ -222,6 +242,22 @@ export async function POST(
     return NextResponse.json({ error: "This share link has expired" }, { status: 410 });
   }
 
+  if (view === "presentation") {
+    const freshness = checkPresentationFreshness({
+      planDataJson: plan.planDataJson,
+      presentationDataJson: plan.presentationDataJson,
+    });
+    if (!freshness.fresh) {
+      return NextResponse.json(
+        {
+          error:
+            "This presentation is being updated and is not available yet. Please ask your strategist to regenerate it.",
+        },
+        { status: 409 },
+      );
+    }
+  }
+
   const displayName = plan.client?.name ?? plan.prospectName ?? null;
 
   if (!plan.sharePassword) {
@@ -236,7 +272,7 @@ export async function POST(
     });
   }
 
-  const payload = await request.json().catch(() => ({})) as { password?: string };
+  const payload = (await request.json().catch(() => ({}))) as { password?: string };
   const password = payload.password;
   if (typeof password !== "string" || !password) {
     return NextResponse.json({ error: "Password required" }, { status: 401 });

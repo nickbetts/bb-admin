@@ -13,7 +13,13 @@ function isTransientError(err: unknown): boolean {
   if (anyErr.status && TRANSIENT_ERROR_CODES.has(Number(anyErr.status))) return true;
   if (typeof anyErr.message === "string") {
     const msg = anyErr.message.toLowerCase();
-    if (msg.includes("rate limit") || msg.includes("timeout") || msg.includes("overloaded") || msg.includes("econnreset")) return true;
+    if (
+      msg.includes("rate limit") ||
+      msg.includes("timeout") ||
+      msg.includes("overloaded") ||
+      msg.includes("econnreset")
+    )
+      return true;
   }
   return false;
 }
@@ -27,7 +33,9 @@ async function withRetry<T>(label: string, fn: () => Promise<T>): Promise<T> {
     } catch (err) {
       lastErr = err;
       if (attempt === delays.length || !isTransientError(err)) throw err;
-      console.warn(`[grand-plan-presentation] ${label} attempt ${attempt + 1} failed (${(err as Error).message}). Retrying in ${delays[attempt]}ms...`);
+      console.warn(
+        `[grand-plan-presentation] ${label} attempt ${attempt + 1} failed (${(err as Error).message}). Retrying in ${delays[attempt]}ms...`,
+      );
       await new Promise((r) => setTimeout(r, delays[attempt]));
     }
   }
@@ -47,7 +55,14 @@ function safeJsonParse<T>(json: string, fallback: T): T {
 }
 
 function cleanEmDashes(text: string): string {
-  return text.replace(/—/g, " — ").replace(/–/g, "-").replace(/\s+—\s+/g, " — ");
+  return text
+    .replace(/—/g, " - ")
+    .replace(/–/g, "-")
+    .replace(/;/g, ",")
+    .replace(/\s+,/g, ",")
+    .replace(/,\s*,+/g, ", ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
 }
 
 // ─── Public types ───────────────────────────────────────────────────────────
@@ -115,6 +130,16 @@ export interface PresentationSlide {
 }
 
 export interface PresentationData {
+  meta?: {
+    /** SHA-256 hash of planDataJson at generation time. */
+    sourcePlanHash?: string;
+    /** ISO timestamp of the latest full presentation generation. */
+    generatedAt?: string;
+    /** Dynamic max slide cap applied during generation. */
+    maxSlides?: number;
+    /** Whether the source plan had enough distinct data to expand the deck. */
+    dataRich?: boolean;
+  };
   cover: {
     title: string;
     subtitle: string;
@@ -125,6 +150,78 @@ export interface PresentationData {
   slides: PresentationSlide[];
 }
 
+interface PresentationSlideBounds {
+  minSlides: number;
+  maxSlides: number;
+  dataRich: boolean;
+}
+
+function hasSeoFoundationsData(
+  seo: GrandPlanData["sections"]["seoFoundations"] | undefined,
+): boolean {
+  if (!seo) return false;
+  return Boolean(
+    seo.quickWins?.length ||
+    seo.internalLinking?.hubs?.length ||
+    seo.linkBuilding?.targets?.length ||
+    seo.linkBuilding?.outreachChannels?.length,
+  );
+}
+
+function hasEmailMarketingData(
+  email: GrandPlanData["sections"]["emailMarketing"] | undefined,
+): boolean {
+  if (!email) return false;
+  return Boolean(
+    email.flows?.length || email.campaigns?.length || email.segmentation?.segments?.length,
+  );
+}
+
+export function resolvePresentationSlideBounds(plan: GrandPlanData): PresentationSlideBounds {
+  const sections = plan.sections;
+  const audiencesCount = sections.audiences?.length ?? 0;
+  const quickWinsCount = sections.quickWins?.length ?? 0;
+  const channelCount = plan.strategyBrain?.channelStrategy?.length ?? 0;
+  const servicesCount = sections.servicesInvestment?.services?.length ?? 0;
+  const allocationCount = sections.servicesInvestment?.investmentAllocation?.byChannel?.length ?? 0;
+  const whyUsCount = sections.servicesInvestment?.whyUs?.length ?? 0;
+  const contentEntryCount =
+    (sections.contentStrategy?.pageOptimisations?.length ?? 0) +
+    (sections.contentStrategy?.landingPages?.length ?? 0) +
+    (sections.contentStrategy?.blogPosts?.length ?? 0);
+  const competitorCount = sections.competitorIntel?.length ?? 0;
+  const groundingCount = Object.keys(plan.grounding ?? {}).length;
+  const forecastSignals = (sections.googleAdsCampaigns ?? []).filter(
+    (campaign) =>
+      Boolean(campaign.forecast?.intelligence?.summary) ||
+      Boolean(campaign.forecast?.intelligence?.assumptions?.length) ||
+      Boolean(campaign.forecast?.intelligence?.optimisationLevers?.length),
+  ).length;
+
+  const richnessScore = [
+    audiencesCount >= 4,
+    quickWinsCount >= 6,
+    channelCount >= 5,
+    servicesCount >= 6,
+    allocationCount >= 4,
+    whyUsCount >= 3,
+    contentEntryCount >= 10,
+    competitorCount >= 3,
+    groundingCount >= 6,
+    forecastSignals >= 1,
+    hasSeoFoundationsData(sections.seoFoundations),
+    hasEmailMarketingData(sections.emailMarketing),
+  ].filter(Boolean).length;
+
+  const dataRich = richnessScore >= 6;
+
+  return {
+    minSlides: 8,
+    maxSlides: dataRich ? 16 : 12,
+    dataRich,
+  };
+}
+
 // ─── Generator ──────────────────────────────────────────────────────────────
 
 export function summariseSourcePlan(plan: GrandPlanData): string {
@@ -132,9 +229,15 @@ export function summariseSourcePlan(plan: GrandPlanData): string {
   const services = plan.sections.servicesInvestment;
   const audiences = plan.sections.audiences ?? [];
   const quickWins = plan.sections.quickWins ?? [];
+  const seo = plan.sections.seoFoundations;
+  const email = plan.sections.emailMarketing;
+  const competitors = plan.sections.competitorIntel ?? [];
 
   const servicesSummary = services?.services
-    ? services.services.slice(0, 12).map((s) => `- ${s.name}${s.price ? ` (${s.price})` : ""}`).join("\n")
+    ? services.services
+        .slice(0, 12)
+        .map((s) => `- ${s.name}${s.price ? ` (${s.price})` : ""}`)
+        .join("\n")
     : "";
   const allocationSummary = services?.investmentAllocation?.byChannel
     ? services.investmentAllocation.byChannel
@@ -156,12 +259,97 @@ export function summariseSourcePlan(plan: GrandPlanData): string {
     .filter((l) => l.trim().length > 2)
     .join("\n");
 
+  const seoQuickWins = seo?.quickWins
+    ? seo.quickWins
+        .slice(0, 8)
+        .map((win) => `- ${win.pageTitle}: ${win.recommendation}`)
+        .join("\n")
+    : "";
+  const seoInternalHubs = seo?.internalLinking?.hubs
+    ? seo.internalLinking.hubs
+        .slice(0, 6)
+        .map((hub) => `- ${hub.topicHub}: ${hub.targetPages.join(", ")}`)
+        .join("\n")
+    : "";
+  const seoLinkTargets = seo?.linkBuilding?.targets
+    ? seo.linkBuilding.targets
+        .slice(0, 6)
+        .map((target) => `- ${target.targetPageTitle ?? target.targetUrl}: ${target.rationale}`)
+        .join("\n")
+    : "";
+
+  const emailFlowLines = email?.flows
+    ? email.flows
+        .slice(0, 8)
+        .map((flow) => `- ${flow.name} (trigger: ${flow.trigger}, emails: ${flow.emails.length})`)
+        .join("\n")
+    : "";
+  const emailCampaignLines = email?.campaigns
+    ? email.campaigns
+        .slice(0, 8)
+        .map(
+          (campaign) =>
+            `- ${campaign.name}: ${campaign.objectiveText} (audience: ${campaign.audience}, cadence: ${campaign.frequency})`,
+        )
+        .join("\n")
+    : "";
+  const emailSegmentationLines = email?.segmentation?.segments
+    ? email.segmentation.segments
+        .slice(0, 8)
+        .map((segment) => `- ${segment.name}: ${segment.criteria}`)
+        .join("\n")
+    : "";
+
+  const competitorLines = competitors
+    .slice(0, 8)
+    .map(
+      (competitor) =>
+        `- ${competitor.domain}: strengths ${competitor.strengths.slice(0, 2).join(" | ")} | weaknesses ${competitor.weaknesses.slice(0, 2).join(" | ")}`,
+    )
+    .join("\n");
+
+  const whyUsLines = services?.whyUs
+    ? services.whyUs
+        .slice(0, 6)
+        .map((point) => `- ${point.title}: ${point.description ?? ""}`)
+        .join("\n")
+    : "";
+
+  const forecastIntelligenceLines = (plan.sections.googleAdsCampaigns ?? [])
+    .map((campaign) => {
+      const forecast = campaign.forecast;
+      if (!forecast?.intelligence) return "";
+      const assumptions = forecast.intelligence.assumptions?.slice(0, 2).join(" | ") ?? "";
+      const levers = forecast.intelligence.optimisationLevers?.slice(0, 2).join(" | ") ?? "";
+      return `- ${campaign.campaignName}: ${forecast.intelligence.summary} (confidence: ${forecast.intelligence.confidence}, assumptions: ${assumptions}, levers: ${levers})`;
+    })
+    .filter(Boolean)
+    .slice(0, 6)
+    .join("\n");
+
+  const groundingLines = Object.entries(plan.grounding ?? {})
+    .map(
+      ([sectionKey, info]) =>
+        `- ${sectionKey}: ${info.grounding} (${info.sourceLabels.slice(0, 4).join(" | ")})`,
+    )
+    .slice(0, 12)
+    .join("\n");
+
   const channelStrategy = sb?.channelStrategy
-    ? sb.channelStrategy.map((c) => `- ${c.channel}: ${c.role} (audience: ${c.primaryAudience}, success: ${c.successMetric})`).join("\n")
+    ? sb.channelStrategy
+        .map(
+          (c) =>
+            `- ${c.channel}: ${c.role} (audience: ${c.primaryAudience}, success: ${c.successMetric})`,
+        )
+        .join("\n")
     : "";
 
   const exec = plan.sections.executiveSummary
-    ? plan.sections.executiveSummary.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 2800)
+    ? plan.sections.executiveSummary
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 2800)
     : "";
 
   return `
@@ -196,17 +384,52 @@ INVESTMENT ALLOCATION:
 ${allocationSummary || "(none)"}
 Total monthly investment: ${totalInvestment || "(none)"}
 
+WHY US PROOF POINTS:
+${whyUsLines || "(none)"}
+
 PRIORITY QUICK WINS:
 ${quickWinLines || "(none)"}
+
+SEO FOUNDATIONS QUICK WINS:
+${seoQuickWins || "(none)"}
+
+SEO INTERNAL LINKING HUBS:
+${seoInternalHubs || "(none)"}
+
+SEO LINK-BUILDING TARGETS:
+${seoLinkTargets || "(none)"}
+
+EMAIL FLOWS:
+${emailFlowLines || "(none)"}
+
+EMAIL CAMPAIGNS:
+${emailCampaignLines || "(none)"}
+
+EMAIL SEGMENTATION:
+${emailSegmentationLines || "(none)"}
+
+COMPETITOR INSIGHTS:
+${competitorLines || "(none)"}
+
+GOOGLE ADS FORECAST INTELLIGENCE:
+${forecastIntelligenceLines || "(none)"}
+
+DATA GROUNDING SNAPSHOT:
+${groundingLines || "(none)"}
 
 EXECUTIVE SUMMARY EXTRACT (cleaned):
 ${exec || "(none)"}
 `.trim();
 }
 
-function buildPresentationPrompt(plan: GrandPlanData, planMode: "annual" | "sprint90"): string {
+function buildPresentationPrompt(
+  plan: GrandPlanData,
+  planMode: "annual" | "sprint90",
+  bounds: PresentationSlideBounds,
+): string {
   const summary = summariseSourcePlan(plan);
-  const windowLabel = planMode === "sprint90" ? "the next 90-day sprint" : "the period covered by this plan";
+  const windowLabel =
+    planMode === "sprint90" ? "the next 90-day sprint" : "the period covered by this plan";
 
   return `You are a senior strategist at i3media. You have just produced a detailed Grand Plan for a client. Your job now is to distil it into a TOP-LEVEL CLIENT-FACING PRESENTATION DECK that the account team can present in a 20-minute meeting.
 
@@ -243,8 +466,8 @@ OUTPUT — a single JSON object matching this exact shape:
 }
 
 REQUIREMENTS:
-- Exactly 8 to 12 slides total.
-- The 9 slide IDs above are the recommended spine. You may add 1–3 extra slides if there is genuinely distinct content (e.g. a "creative" pillars slide). You may drop a slide if the source has no data for it (e.g. drop "investment" if no allocation exists). Never invent data to fill a slide.
+- Exactly ${bounds.minSlides} to ${bounds.maxSlides} slides total.
+- The 9 slide IDs above are the recommended spine. You may add extra slides only when the source has genuinely distinct data and evidence. You may drop a slide if the source has no data for it (e.g. drop "investment" if no allocation exists). Never invent data to fill a slide.
 - Pillars slides: 3–5 pillars. Each pillar body is 1–2 sentences.
 - Audience slide: up to 6 audiences. Use audience NAMES from the source verbatim.
 - Channels slide: up to 8 channels. Pull from the source channel strategy.
@@ -258,8 +481,8 @@ ${summary}
 Return ONLY the JSON object. No prose, no code fences, no commentary.`;
 }
 
-function clampSlides(data: PresentationData): PresentationData {
-  const slides = (data.slides ?? []).slice(0, 12);
+function clampSlides(data: PresentationData, maxSlides: number): PresentationData {
+  const slides = (data.slides ?? []).slice(0, maxSlides);
   // Clamp pillars / audiences / channels / steps to spec
   for (const s of slides) {
     if (s.pillars) s.pillars = s.pillars.slice(0, 5);
@@ -269,19 +492,43 @@ function clampSlides(data: PresentationData): PresentationData {
     if (s.steps) s.steps = s.steps.slice(0, 6);
     if (s.investment?.breakdown) s.investment.breakdown = s.investment.breakdown.slice(0, 8);
     if (s.bullets) s.bullets = s.bullets.slice(0, 10).map(cleanEmDashes);
-    if (s.images) s.images = s.images.slice(0, 5).map((img) => ({ url: img.url, alt: img.alt ? cleanEmDashes(img.alt) : undefined }));
+    if (s.images)
+      s.images = s.images
+        .slice(0, 5)
+        .map((img) => ({ url: img.url, alt: img.alt ? cleanEmDashes(img.alt) : undefined }));
     // Clean copy
     if (s.headline) s.headline = cleanEmDashes(s.headline);
     if (s.subhead) s.subhead = cleanEmDashes(s.subhead);
     if (s.title) s.title = cleanEmDashes(s.title);
-    if (s.pillars) s.pillars.forEach((p) => { p.title = cleanEmDashes(p.title); p.body = cleanEmDashes(p.body); });
-    if (s.steps) s.steps.forEach((p) => { p.title = cleanEmDashes(p.title); p.detail = cleanEmDashes(p.detail); });
-    if (s.audiences) s.audiences.forEach((a) => { a.name = cleanEmDashes(a.name); a.insight = cleanEmDashes(a.insight); });
-    if (s.channels) s.channels.forEach((c) => { c.name = cleanEmDashes(c.name); c.role = cleanEmDashes(c.role); });
-    if (s.phases) s.phases.forEach((p) => { p.label = cleanEmDashes(p.label); p.items = p.items.map(cleanEmDashes); });
+    if (s.pillars)
+      s.pillars.forEach((p) => {
+        p.title = cleanEmDashes(p.title);
+        p.body = cleanEmDashes(p.body);
+      });
+    if (s.steps)
+      s.steps.forEach((p) => {
+        p.title = cleanEmDashes(p.title);
+        p.detail = cleanEmDashes(p.detail);
+      });
+    if (s.audiences)
+      s.audiences.forEach((a) => {
+        a.name = cleanEmDashes(a.name);
+        a.insight = cleanEmDashes(a.insight);
+      });
+    if (s.channels)
+      s.channels.forEach((c) => {
+        c.name = cleanEmDashes(c.name);
+        c.role = cleanEmDashes(c.role);
+      });
+    if (s.phases)
+      s.phases.forEach((p) => {
+        p.label = cleanEmDashes(p.label);
+        p.items = p.items.map(cleanEmDashes);
+      });
     if (s.image && s.image.alt) s.image.alt = cleanEmDashes(s.image.alt);
   }
   return {
+    meta: data.meta,
     cover: {
       title: cleanEmDashes(data.cover?.title ?? ""),
       subtitle: cleanEmDashes(data.cover?.subtitle ?? ""),
@@ -299,17 +546,20 @@ function clampSlides(data: PresentationData): PresentationData {
  */
 export async function generatePresentation(
   plan: GrandPlanData,
-  options: { planMode?: "annual" | "sprint90" } = {}
+  options: { planMode?: "annual" | "sprint90" } = {},
 ): Promise<PresentationData> {
   const planMode = options.planMode ?? "annual";
+  const bounds = resolvePresentationSlideBounds(plan);
   const anthropic: Anthropic = await getAnthropicClient();
-  const prompt = buildPresentationPrompt(plan, planMode);
+  const prompt = buildPresentationPrompt(plan, planMode, bounds);
 
-  const res = await withRetry("generatePresentation", () => anthropic.messages.create({
-    model: PRESENTATION_MODEL,
-    max_tokens: 4000,
-    messages: [{ role: "user", content: prompt }],
-  }));
+  const res = await withRetry("generatePresentation", () =>
+    anthropic.messages.create({
+      model: PRESENTATION_MODEL,
+      max_tokens: 4000,
+      messages: [{ role: "user", content: prompt }],
+    }),
+  );
 
   const block = res.content[0];
   const raw = block && block.type === "text" ? block.text : "";
@@ -327,9 +577,11 @@ export async function generatePresentation(
   if (!parsed.slides || parsed.slides.length === 0) {
     throw new Error("Presentation generation returned no slides. Try again.");
   }
-  if (parsed.slides.length < 6) {
-    throw new Error(`Presentation generation returned only ${parsed.slides.length} slides (need 8–12). Try again.`);
+  if (parsed.slides.length < bounds.minSlides) {
+    throw new Error(
+      `Presentation generation returned only ${parsed.slides.length} slides (need ${bounds.minSlides}-${bounds.maxSlides}). Try again.`,
+    );
   }
 
-  return clampSlides(parsed);
+  return clampSlides(parsed, bounds.maxSlides);
 }

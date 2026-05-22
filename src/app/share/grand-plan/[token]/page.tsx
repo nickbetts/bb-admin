@@ -3,11 +3,7 @@
 import { useState, useEffect, use, useRef } from "react";
 import { Loader2, Lock, Download, Calendar, Printer, MessageSquare, X } from "lucide-react";
 
-export default function GrandPlanSharePage({
-  params,
-}: {
-  params: Promise<{ token: string }>;
-}) {
+export default function GrandPlanSharePage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -19,11 +15,17 @@ export default function GrandPlanSharePage({
   const [submitting, setSubmitting] = useState(false);
   const [enquiryFormEnabled, setEnquiryFormEnabled] = useState(false);
   const [enquiryOpen, setEnquiryOpen] = useState(false);
+  const [isPresentationView, setIsPresentationView] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
   useEffect(() => {
-    const viewParam = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("view") : null;
-    const qs = viewParam === "presentation" ? "?view=presentation" : "";
+    const viewParam =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("view")
+        : null;
+    const presentationView = viewParam === "presentation";
+    setIsPresentationView(presentationView);
+    const qs = presentationView ? "?view=presentation" : "";
     fetch(`/api/share/grand-plan/${token}${qs}`)
       .then((r) => r.json())
       .then((data) => {
@@ -63,7 +65,10 @@ export default function GrandPlanSharePage({
     setSubmitting(true);
     setError("");
     try {
-      const viewParam = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("view") : null;
+      const viewParam =
+        typeof window !== "undefined"
+          ? new URLSearchParams(window.location.search).get("view")
+          : null;
       const qs = viewParam === "presentation" ? "?view=presentation" : "";
       const res = await fetch(`/api/share/grand-plan/${token}${qs}`, {
         method: "POST",
@@ -86,7 +91,7 @@ export default function GrandPlanSharePage({
     }
   }
 
-  function handleDownload() {
+  function handleDownloadHtml() {
     const blob = new Blob([html], { type: "text/html" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -102,9 +107,9 @@ export default function GrandPlanSharePage({
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-slate-700 mx-auto mb-3" aria-hidden />
+          <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-slate-700" aria-hidden />
           <p className="text-sm text-slate-500">Loading plan…</p>
         </div>
       </div>
@@ -113,11 +118,12 @@ export default function GrandPlanSharePage({
 
   if (error && !passwordRequired) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-xl border border-slate-200 p-8 max-w-md w-full text-center shadow-sm">
-          <p className="text-red-600 font-medium">{error}</p>
-          <p className="text-sm text-slate-500 mt-2">
-            If you believe this is a mistake, please contact the i3media account manager who shared this link with you.
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
+        <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+          <p className="font-medium text-red-600">{error}</p>
+          <p className="mt-2 text-sm text-slate-500">
+            If you believe this is a mistake, please contact the i3media account manager who shared
+            this link with you.
           </p>
         </div>
       </div>
@@ -126,22 +132,23 @@ export default function GrandPlanSharePage({
 
   if (passwordRequired) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-2xl p-10 max-w-md w-full">
-          <div className="text-center mb-8">
-            <I3Logo className="h-7 w-auto mx-auto text-slate-900 mb-6" />
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-indigo-50 mb-4">
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 p-4">
+        <div className="w-full max-w-md rounded-2xl bg-white p-10 shadow-2xl">
+          <div className="mb-8 text-center">
+            <I3Logo className="mx-auto mb-6 h-7 w-auto text-slate-900" />
+            <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-indigo-50">
               <Lock className="h-5 w-5 text-indigo-600" aria-hidden />
             </div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-indigo-600 mb-2">
+            <p className="mb-2 text-xs font-semibold tracking-[0.18em] text-indigo-600 uppercase">
               Confidential pitch document
             </p>
-            <h1 className="text-2xl font-bold text-slate-900 leading-tight">{title}</h1>
+            <h1 className="text-2xl leading-tight font-bold text-slate-900">{title}</h1>
             {clientName && (
-              <p className="text-sm text-slate-500 mt-1.5">Prepared for {clientName}</p>
+              <p className="mt-1.5 text-sm text-slate-500">Prepared for {clientName}</p>
             )}
-            <p className="text-sm text-slate-600 mt-4">
-              This plan is password protected. Enter the password your i3media contact shared with you.
+            <p className="mt-4 text-sm text-slate-600">
+              This plan is password protected. Enter the password your i3media contact shared with
+              you.
             </p>
           </div>
           <form onSubmit={handlePasswordSubmit} className="space-y-3">
@@ -154,20 +161,20 @@ export default function GrandPlanSharePage({
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter password"
-              className="w-full px-4 py-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full rounded-lg border border-slate-200 px-4 py-3 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
               autoFocus
               autoComplete="off"
             />
-            {error && <p className="text-red-600 text-sm">{error}</p>}
+            {error && <p className="text-sm text-red-600">{error}</p>}
             <button
               type="submit"
               disabled={submitting || !password}
-              className="w-full py-3 bg-slate-900 text-white rounded-lg text-sm font-semibold hover:bg-slate-800 disabled:opacity-50 transition-colors"
+              className="w-full rounded-lg bg-slate-900 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800 disabled:opacity-50"
             >
               {submitting ? "Verifying…" : "View plan"}
             </button>
           </form>
-          <p className="text-xs text-center text-slate-400 mt-6">
+          <p className="mt-6 text-center text-xs text-slate-400">
             Powered by <span className="font-semibold text-slate-500">i3media</span>
           </p>
         </div>
@@ -176,14 +183,14 @@ export default function GrandPlanSharePage({
   }
 
   return (
-    <div className="min-h-screen relative">
+    <div className="relative min-h-screen">
       {/* Desktop CTA bar (top-right) — hidden on small screens */}
-      <div className="hidden md:flex fixed top-3 right-3 z-[200] items-center gap-2">
+      <div className="fixed top-3 right-3 z-[200] hidden items-center gap-2 md:flex">
         <a
           href="https://calendly.com/i3media"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-2 px-4 py-2 bg-white text-slate-900 border border-slate-200 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors shadow-lg"
+          className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-900 shadow-lg transition-colors hover:bg-slate-50"
         >
           <Calendar className="h-4 w-4" aria-hidden />
           Book a call
@@ -191,7 +198,7 @@ export default function GrandPlanSharePage({
         {enquiryFormEnabled && (
           <button
             onClick={() => setEnquiryOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-white text-slate-900 border border-slate-200 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors shadow-lg"
+            className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-900 shadow-lg transition-colors hover:bg-slate-50"
           >
             <MessageSquare className="h-4 w-4" aria-hidden />
             Get in touch
@@ -199,26 +206,26 @@ export default function GrandPlanSharePage({
         )}
         <button
           onClick={handlePrint}
-          className="flex items-center gap-2 px-4 py-2 bg-white text-slate-900 border border-slate-200 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors shadow-lg"
-          aria-label="Print or save as PDF"
-          title="Print or save as PDF"
+          className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-900 shadow-lg transition-colors hover:bg-slate-50"
+          aria-label={isPresentationView ? "Download PDF" : "Print"}
+          title={isPresentationView ? "Download PDF" : "Print"}
         >
           <Printer className="h-4 w-4" aria-hidden />
-          Print
+          {isPresentationView ? "Download PDF" : "Print"}
         </button>
         <button
-          onClick={handleDownload}
-          className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors shadow-lg"
+          onClick={handleDownloadHtml}
+          className="flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-lg transition-colors hover:bg-slate-800"
         >
           <Download className="h-4 w-4" aria-hidden />
-          Download
+          Download HTML
         </button>
       </div>
 
       <iframe
         ref={iframeRef}
         srcDoc={html}
-        className="w-full min-h-screen border-0 block"
+        className="block min-h-screen w-full border-0"
         title={title}
         sandbox="allow-scripts"
         style={{ height: "100vh" }}
@@ -235,12 +242,12 @@ export default function GrandPlanSharePage({
       />
 
       {/* Mobile bottom action bar — avoids colliding with the in-document sticky nav */}
-      <div className="md:hidden fixed bottom-0 inset-x-0 z-[200] bg-white/95 backdrop-blur border-t border-slate-200 px-3 py-2 flex items-center gap-2 shadow-[0_-8px_24px_-12px_rgba(15,23,42,0.25)]">
+      <div className="fixed inset-x-0 bottom-0 z-[200] flex items-center gap-2 border-t border-slate-200 bg-white/95 px-3 py-2 shadow-[0_-8px_24px_-12px_rgba(15,23,42,0.25)] backdrop-blur md:hidden">
         <a
           href="https://calendly.com/i3media"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-white text-slate-900 border border-slate-200 rounded-lg text-sm font-medium"
+          className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white py-2.5 text-sm font-medium text-slate-900"
         >
           <Calendar className="h-4 w-4" aria-hidden />
           Book a call
@@ -248,7 +255,7 @@ export default function GrandPlanSharePage({
         {enquiryFormEnabled && (
           <button
             onClick={() => setEnquiryOpen(true)}
-            className="flex items-center justify-center gap-2 px-3 py-2.5 bg-white text-slate-900 border border-slate-200 rounded-lg text-sm font-medium"
+            className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-900"
             aria-label="Get in touch"
           >
             <MessageSquare className="h-4 w-4" aria-hidden />
@@ -256,14 +263,14 @@ export default function GrandPlanSharePage({
         )}
         <button
           onClick={handlePrint}
-          className="flex items-center justify-center gap-2 px-3 py-2.5 bg-white text-slate-900 border border-slate-200 rounded-lg text-sm font-medium"
-          aria-label="Print or save as PDF"
+          className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-900"
+          aria-label={isPresentationView ? "Download PDF" : "Print"}
         >
           <Printer className="h-4 w-4" aria-hidden />
         </button>
         <button
-          onClick={handleDownload}
-          className="flex items-center justify-center gap-2 px-3 py-2.5 bg-slate-900 text-white rounded-lg text-sm font-medium"
+          onClick={handleDownloadHtml}
+          className="flex items-center justify-center gap-2 rounded-lg bg-slate-900 px-3 py-2.5 text-sm font-medium text-white"
           aria-label="Download HTML"
         >
           <Download className="h-4 w-4" aria-hidden />
@@ -328,46 +335,47 @@ function EnquiryModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
         <div className="flex items-start justify-between px-6 pt-6 pb-2">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-indigo-600 mb-1">
+            <p className="mb-1 text-xs font-semibold tracking-[0.18em] text-indigo-600 uppercase">
               Get in touch
             </p>
-            <h2 className="text-lg font-bold text-slate-900 leading-tight">
+            <h2 className="text-lg leading-tight font-bold text-slate-900">
               {clientName ? `Reply to ${clientName.split(" ")[0]}'s plan` : title}
             </h2>
           </div>
           <button
             onClick={onClose}
             aria-label="Close"
-            className="text-slate-400 hover:text-slate-700 transition-colors"
+            className="text-slate-400 transition-colors hover:text-slate-700"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
         {done ? (
-          <div className="px-6 pb-6 pt-2 text-center">
-            <p className="text-slate-700 text-sm leading-relaxed">
-              Thanks — your message is on its way to the i3media team. We&apos;ll be in touch shortly.
+          <div className="px-6 pt-2 pb-6 text-center">
+            <p className="text-sm leading-relaxed text-slate-700">
+              Thanks — your message is on its way to the i3media team. We&apos;ll be in touch
+              shortly.
             </p>
             <button
               onClick={onClose}
-              className="mt-5 w-full py-3 bg-slate-900 text-white rounded-lg text-sm font-semibold hover:bg-slate-800 transition-colors"
+              className="mt-5 w-full rounded-lg bg-slate-900 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
             >
               Close
             </button>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="px-6 pb-6 pt-2 space-y-3">
+          <form onSubmit={handleSubmit} className="space-y-3 px-6 pt-2 pb-6">
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Your name"
               required
-              className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
             />
             <input
               type="email"
@@ -375,14 +383,14 @@ function EnquiryModal({
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Email"
               required
-              className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
             />
             <input
               type="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="Phone (optional)"
-              className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
             />
             <textarea
               value={message}
@@ -390,13 +398,13 @@ function EnquiryModal({
               placeholder="What would you like to discuss?"
               required
               rows={4}
-              className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
             />
-            {err && <p className="text-red-600 text-sm">{err}</p>}
+            {err && <p className="text-sm text-red-600">{err}</p>}
             <button
               type="submit"
               disabled={submitting || !name || !email || !message}
-              className="w-full py-3 bg-slate-900 text-white rounded-lg text-sm font-semibold hover:bg-slate-800 disabled:opacity-50 transition-colors"
+              className="w-full rounded-lg bg-slate-900 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800 disabled:opacity-50"
             >
               {submitting ? "Sending…" : "Send message"}
             </button>

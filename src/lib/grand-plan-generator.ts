@@ -2956,8 +2956,8 @@ function extractText(response: Anthropic.Message): string {
 }
 
 /**
- * Post-processes AI output to remove em-dashes (and en-dashes used as em-dashes).
- * Claude follows the "no em-dash" prompt rule only ~70% of the time, so we enforce it here.
+ * Post-processes AI output to remove disallowed punctuation in copy.
+ * Claude follows punctuation rules inconsistently, so we enforce them here.
  * Preserves number ranges like "10–20" or "9-5" by only replacing dashes surrounded by spaces
  * or where a sentence pause is clearly intended.
  */
@@ -2971,6 +2971,10 @@ export function cleanEmDashes(text: string): string {
       .replace(/([a-zA-Z]),?\s*[—]\s*([a-zA-Z])/g, "$1, $2")
       // Stray em-dashes left over → ", "
       .replace(/—/g, ", ")
+      // Semicolons in prose → ", " (normalise spacing to avoid double spaces)
+      .replace(/\s*;\s*/g, ", ")
+      // Clean up accidental duplicate commas produced by chained replacements
+      .replace(/,\s*,+/g, ", ")
   );
 }
 
@@ -4124,6 +4128,266 @@ ${intelLines.join("\n")}`;
 
 // ─── Email Marketing generator ──────────────────────────────────────────────
 
+function getEmailAudienceNames(sources: GrandPlanSources): string[] {
+  const strategistNames = parseStrategistAudienceNames(sources.targetAudiences, 10)
+    .map((name) => cleanEmDashes(name.trim()))
+    .filter(Boolean);
+  if (strategistNames.length > 0) return strategistNames;
+
+  return (sources.strategyBrain?.audiences ?? [])
+    .map((audience) => cleanEmDashes(String(audience.name ?? "").trim()))
+    .filter(Boolean)
+    .slice(0, 10);
+}
+
+function buildFallbackEmailMarketingPlan(sources: GrandPlanSources): EmailMarketingPlan {
+  const audienceNames = getEmailAudienceNames(sources);
+  const primaryAudience = audienceNames[0] ?? "Priority decision-makers";
+  const secondaryAudience = audienceNames[1] ?? "Warm leads";
+  const tertiaryAudience = audienceNames[2] ?? "High-intent return visitors";
+
+  return {
+    flows: [
+      {
+        name: "Welcome & onboarding flow",
+        trigger: "New signup or first enquiry captured from website form.",
+        emails: [
+          {
+            subject: "Welcome to a simpler way to run this",
+            purpose:
+              "Set expectations, show first-step value, and guide the reader to one clear action.",
+            delay: "Immediately",
+          },
+          {
+            subject: "How teams like yours get results quickly",
+            purpose:
+              "Use one proof-led example aligned to audience pain points and remove first-week objections.",
+            delay: "2 days later",
+          },
+        ],
+      },
+      {
+        name: "Abandoned enquiry recovery",
+        trigger: "Started but did not complete an enquiry or booking action.",
+        emails: [
+          {
+            subject: "Still considering options",
+            purpose:
+              "Recover intent with a short reminder, one reassurance point, and a direct path back.",
+            delay: "1 day later",
+          },
+        ],
+      },
+      {
+        name: "Re-engagement sequence",
+        trigger: "No opens or clicks for 45 days.",
+        emails: [
+          {
+            subject: "Quick update you may have missed",
+            purpose:
+              "Rebuild relevance with one practical update tailored to segment needs and known objections.",
+            delay: "Immediately",
+          },
+        ],
+      },
+    ],
+    campaigns: [
+      {
+        name: "Monthly priority update",
+        frequency: "Monthly",
+        audience: primaryAudience,
+        objectiveText:
+          "Keep this segment informed with practical updates tied to current pain points and a clear next action.",
+      },
+      {
+        name: "Proof-led case study digest",
+        frequency: "Every 3 weeks",
+        audience: secondaryAudience,
+        objectiveText:
+          "Build confidence with concise proof, outcomes, and implementation detail that match buyer concerns.",
+      },
+      {
+        name: "Feature and service spotlight",
+        frequency: "Fortnightly",
+        audience: tertiaryAudience,
+        objectiveText:
+          "Show how specific features solve day-to-day friction and move warm leads towards an enquiry.",
+      },
+      {
+        name: "Seasonal planning bulletin",
+        frequency: "Monthly",
+        audience: primaryAudience,
+        objectiveText:
+          "Anchor planning windows with timely recommendations and reminders that reduce operational stress.",
+      },
+    ],
+    segmentation: {
+      segments: [
+        {
+          name: primaryAudience,
+          criteria:
+            "Contacts matching this audience profile with at least one meaningful site interaction.",
+          purpose:
+            "Deliver messaging tuned to their specific operational blockers and decision triggers.",
+        },
+        {
+          name: secondaryAudience,
+          criteria: "Engaged contacts with repeated content views across related pages.",
+          purpose:
+            "Nurture consideration-stage readers with proof, clarity, and low-friction next steps.",
+        },
+      ],
+    },
+  };
+}
+
+function normaliseEmailMarketingPlan(raw: unknown, sources: GrandPlanSources): EmailMarketingPlan {
+  const input =
+    raw && typeof raw === "object"
+      ? (raw as {
+          flows?: unknown;
+          campaigns?: unknown;
+          segmentation?: { segments?: unknown };
+        })
+      : {};
+
+  const fallback = buildFallbackEmailMarketingPlan(sources);
+  const audienceNames = getEmailAudienceNames(sources);
+  const primaryAudience = audienceNames[0] ?? "Priority decision-makers";
+  const cadenceFallbacks = ["Monthly", "Every 3 weeks", "Fortnightly", "Monthly", "Every 4 weeks"];
+
+  const flows = Array.isArray(input.flows)
+    ? input.flows
+        .filter(
+          (flow): flow is { name?: unknown; trigger?: unknown; emails?: unknown } =>
+            !!flow && typeof flow === "object",
+        )
+        .map((flow, index) => {
+          const name =
+            cleanEmDashes(String(flow.name ?? "").trim()) || `Lifecycle flow ${index + 1}`;
+          const trigger =
+            cleanEmDashes(String(flow.trigger ?? "").trim()) ||
+            "Behaviour-based trigger from site activity and lifecycle stage.";
+
+          const emails = Array.isArray(flow.emails)
+            ? flow.emails
+                .filter(
+                  (email): email is { subject?: unknown; purpose?: unknown; delay?: unknown } =>
+                    !!email && typeof email === "object",
+                )
+                .map((email, emailIndex) => {
+                  const subject =
+                    cleanEmDashes(String(email.subject ?? "").trim()) ||
+                    `Email ${emailIndex + 1} for ${name.toLowerCase()}`;
+                  const purpose =
+                    cleanEmDashes(String(email.purpose ?? "").trim()) ||
+                    "Move the reader to one clear next action with relevant proof and practical clarity.";
+                  const delayRaw = cleanEmDashes(String(email.delay ?? "").trim());
+                  return {
+                    subject,
+                    purpose,
+                    delay: delayRaw || undefined,
+                  };
+                })
+                .slice(0, 8)
+            : [];
+
+          return {
+            name,
+            trigger,
+            emails:
+              emails.length > 0
+                ? emails
+                : [
+                    {
+                      subject: `Core message for ${name.toLowerCase()}`,
+                      purpose:
+                        "Deliver one practical message that addresses the main blocker and gives a direct next step.",
+                      delay: "Immediately",
+                    },
+                  ],
+          };
+        })
+        .slice(0, 6)
+    : [];
+
+  const campaignsBase = Array.isArray(input.campaigns)
+    ? input.campaigns
+        .filter(
+          (
+            campaign,
+          ): campaign is {
+            name?: unknown;
+            frequency?: unknown;
+            audience?: unknown;
+            objectiveText?: unknown;
+          } => !!campaign && typeof campaign === "object",
+        )
+        .map((campaign, index) => {
+          const name = cleanEmDashes(String(campaign.name ?? "").trim()) || `Campaign ${index + 1}`;
+          const frequency =
+            cleanEmDashes(String(campaign.frequency ?? "").trim()) ||
+            cadenceFallbacks[index % cadenceFallbacks.length];
+          const audience =
+            cleanEmDashes(String(campaign.audience ?? "").trim()) ||
+            audienceNames[index % Math.max(1, audienceNames.length)] ||
+            primaryAudience;
+          const objectiveText =
+            cleanEmDashes(String(campaign.objectiveText ?? "").trim()) ||
+            `Give ${audience.toLowerCase()} practical guidance that resolves blockers and encourages a clear next step.`;
+          return { name, frequency, audience, objectiveText };
+        })
+        .slice(0, 8)
+    : [];
+
+  const campaigns = [...campaignsBase];
+  for (const fallbackCampaign of fallback.campaigns) {
+    if (campaigns.length >= 4) break;
+    campaigns.push(fallbackCampaign);
+  }
+
+  const segmentsBase =
+    input.segmentation && Array.isArray(input.segmentation.segments)
+      ? input.segmentation.segments
+          .filter(
+            (segment): segment is { name?: unknown; criteria?: unknown; purpose?: unknown } =>
+              !!segment && typeof segment === "object",
+          )
+          .map((segment, index) => {
+            const segmentName =
+              cleanEmDashes(String(segment.name ?? "").trim()) ||
+              audienceNames[index % Math.max(1, audienceNames.length)] ||
+              `Audience segment ${index + 1}`;
+            const criteria =
+              cleanEmDashes(String(segment.criteria ?? "").trim()) ||
+              "Contacts grouped by engagement level, content behaviour, and lifecycle stage.";
+            const purpose =
+              cleanEmDashes(String(segment.purpose ?? "").trim()) ||
+              "Deliver audience-specific messaging that improves relevance and response rates.";
+            return { name: segmentName, criteria, purpose };
+          })
+          .slice(0, 8)
+      : [];
+
+  const segments = [...segmentsBase];
+  for (const fallbackSegment of fallback.segmentation.segments) {
+    if (segments.length >= 4) break;
+    if (
+      segments.some((segment) => segment.name.toLowerCase() === fallbackSegment.name.toLowerCase())
+    )
+      continue;
+    segments.push(fallbackSegment);
+  }
+
+  return {
+    flows: flows.length > 0 ? flows : fallback.flows,
+    campaigns: campaigns.length > 0 ? campaigns : fallback.campaigns,
+    segmentation: {
+      segments: segments.length > 0 ? segments : fallback.segmentation.segments,
+    },
+  };
+}
+
 async function generateEmailMarketing(
   anthropic: Anthropic,
   context: string,
@@ -4170,7 +4434,7 @@ Rules:
 - ${hasCustomerVoice ? "Subject lines and email purposes MUST echo the real customer pain points listed in the context. Use the actual frustrations as hooks." : ""}
 - ${hasChannelData ? "Anchor your campaign cadence in the actual conversion volume from GA4 — do not promise more activity than the data supports." : ""}
 - ${sources.sector === "ecommerce" ? "Include post-purchase, browse abandonment, VIP/loyalty flows" : sources.sector === "charities" ? "Include donation receipt, Ramadan series, impact updates" : "Include lead nurture, case study digest, service update flows"}
-- British English, no AI jargon
+- British English, no AI jargon, no em dashes, no semicolons
 - Return ONLY valid JSON, no markdown fences
 
 Client: ${sources.clientName}
@@ -4182,18 +4446,21 @@ ${context}${buildSharedContextBlocks(sources, "email")}`,
     );
 
     return {
-      value: safeJsonParse(extractText(res), {
-        flows: [],
-        campaigns: [],
-        segmentation: { segments: [] },
-      }),
+      value: normaliseEmailMarketingPlan(
+        safeJsonParse(extractText(res), {
+          flows: [],
+          campaigns: [],
+          segmentation: { segments: [] },
+        }),
+        sources,
+      ),
       grounding,
       sourceLabels,
     };
   } catch (err) {
     console.error("[grand-plan] emailMarketing generation failed; using fallback:", err);
     return {
-      value: { flows: [], campaigns: [], segmentation: { segments: [] } },
+      value: buildFallbackEmailMarketingPlan(sources),
       grounding,
       sourceLabels,
     };
@@ -4446,7 +4713,7 @@ ${competitorBlock}${complaintBlock}
 Client context:
 ${context}${buildSharedContextBlocks(sources, "competitorIntel")}
 
-Rules: British English, no AI jargon, no fluff. Each strength/weakness must reference a specific number, keyword, complaint, or scraped messaging signal — no platitudes. Return ONLY valid JSON, no markdown fences.`,
+Rules: British English, no AI jargon, no fluff, no em dashes, no semicolons. Each strength/weakness must reference a specific number, keyword, complaint, or scraped messaging signal — no platitudes. Return ONLY valid JSON, no markdown fences.`,
             },
           ],
         }),
@@ -4468,28 +4735,74 @@ Rules: British English, no AI jargon, no fluff. Each strength/weakness must refe
     }
 
     const enriched = parsed.competitors ?? [];
+    const cleanList = (value: unknown, max = 8): string[] =>
+      Array.isArray(value)
+        ? value
+            .map((item) => cleanEmDashes(String(item ?? "").trim()))
+            .filter(Boolean)
+            .slice(0, max)
+        : [];
+
     const value: CompetitorInsight[] = merged.map((m) => {
       const match = enriched.find((e) => e.domain && norm(e.domain) === norm(m.domain));
+      const semrushTopKeywords = cleanList(m.semrush?.topKeywords, 8);
+      const topKeywords = cleanList(match?.topKeywords, 8);
+      const strengths = cleanList(match?.strengths, 4);
+      const weaknesses = cleanList(match?.weaknesses, 4);
+      const opportunities = cleanList(match?.opportunities, 4);
+      const primaryKeywordSignal =
+        topKeywords[0] ||
+        semrushTopKeywords[0] ||
+        cleanEmDashes(String(m.pageContext?.h1 ?? "").trim()) ||
+        "core buyer intent terms";
+
+      const fallbackStrengths = m.semrush
+        ? [
+            cleanEmDashes(
+              `Visible footprint across ${m.semrush.organicKeywords.toLocaleString()} ranking keywords and ${m.semrush.organicTraffic.toLocaleString()} estimated monthly organic visits.`,
+            ),
+          ]
+        : [
+            cleanEmDashes(
+              m.pageContext?.h1
+                ? `Homepage positioning is clear around "${m.pageContext.h1}", which helps this brand frame relevance quickly.`
+                : "Public positioning appears credible, but deeper validation needs a manual competitor review.",
+            ),
+          ];
+
+      const fallbackWeaknesses = m.semrush
+        ? [
+            "Evidence for conversion messaging depth and trust proof is limited in this snapshot, so a manual page audit is recommended.",
+          ]
+        : [
+            "Insufficient public data was found for reliable weakness analysis, so manual research is required before acting.",
+          ];
+
+      const fallbackOpportunities = [
+        cleanEmDashes(
+          `They attract interest around "${primaryKeywordSignal}", so we should build stronger intent-matched pages and ads around that demand.`,
+        ),
+      ];
+
       return {
-        domain: m.domain,
+        domain: cleanEmDashes(m.domain.trim()),
         organicTraffic: m.semrush?.organicTraffic,
         organicKeywords: m.semrush?.organicKeywords,
         paidKeywords: m.semrush?.paidKeywords,
         backlinks: m.semrush?.backlinks,
-        topKeywords:
-          Array.isArray(match?.topKeywords) && match!.topKeywords.length
-            ? match!.topKeywords.slice(0, 8)
-            : (m.semrush?.topKeywords?.slice(0, 8) ?? []),
-        strengths: Array.isArray(match?.strengths) ? match!.strengths : [],
-        weaknesses: Array.isArray(match?.weaknesses) ? match!.weaknesses : [],
-        opportunities: Array.isArray(match?.opportunities) ? match!.opportunities : [],
+        topKeywords: topKeywords.length ? topKeywords : semrushTopKeywords,
+        strengths: strengths.length ? strengths : fallbackStrengths,
+        weaknesses: weaknesses.length ? weaknesses : fallbackWeaknesses,
+        opportunities: opportunities.length ? opportunities : fallbackOpportunities,
         commonKeywords: m.commonKeywords,
         source: m.source,
         pageContext: m.pageContext
           ? {
-              h1: m.pageContext.h1,
-              description: m.pageContext.description,
-              ctaTexts: m.pageContext.ctaTexts,
+              h1: m.pageContext.h1 ? cleanEmDashes(m.pageContext.h1) : undefined,
+              description: m.pageContext.description
+                ? cleanEmDashes(m.pageContext.description)
+                : undefined,
+              ctaTexts: cleanList(m.pageContext.ctaTexts, 6),
             }
           : undefined,
       };
@@ -4535,7 +4848,7 @@ Rules:
 - Identify REAL competitors in this sector and geography (UK market)
 - If you genuinely do not know likely competitors, return fewer entries rather than fabricating
 - Strengths, weaknesses, and opportunities should be actionable — things the client can actually exploit
-- British English, no AI jargon
+- British English, no AI jargon, no em dashes, no semicolons
 - Return ONLY valid JSON, no markdown fences
 
 Client: ${sources.clientName}
@@ -4554,7 +4867,45 @@ ${context}${buildSharedContextBlocks(sources, "audiences")}`,
     console.error("[grand-plan] competitorIntel generation failed; using fallback:", err);
   }
 
-  const value = (parsed.competitors ?? []).map((c) => ({ ...c, source: "inferred" as const }));
+  const cleanList = (value: unknown, max = 8): string[] =>
+    Array.isArray(value)
+      ? value
+          .map((item) => cleanEmDashes(String(item ?? "").trim()))
+          .filter(Boolean)
+          .slice(0, max)
+      : [];
+
+  const value = (parsed.competitors ?? []).map((c) => {
+    const topKeywords = cleanList(c.topKeywords, 8);
+    const strengths = cleanList(c.strengths, 4);
+    const weaknesses = cleanList(c.weaknesses, 4);
+    const opportunities = cleanList(c.opportunities, 4);
+    const keywordSignal = topKeywords[0] ?? "priority service intent";
+    return {
+      ...c,
+      domain: cleanEmDashes(String(c.domain ?? "").trim()),
+      topKeywords,
+      strengths:
+        strengths.length > 0
+          ? strengths
+          : ["Public competitor evidence is limited in this run, so validate strengths manually."],
+      weaknesses:
+        weaknesses.length > 0
+          ? weaknesses
+          : [
+              "Insufficient verified evidence to state weaknesses confidently, so use this as a prompt for manual review.",
+            ],
+      opportunities:
+        opportunities.length > 0
+          ? opportunities
+          : [
+              cleanEmDashes(
+                `Use this profile as a directional signal and test demand around "${keywordSignal}" before committing budget.`,
+              ),
+            ],
+      source: "inferred" as const,
+    };
+  });
   if (value.length === 0) {
     const domainHint = website
       .replace(/^https?:\/\//, "")
