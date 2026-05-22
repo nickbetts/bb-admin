@@ -151,7 +151,16 @@ function isMetaSource(value: string): boolean {
 }
 
 function detectSourceFromText(rawValue: string, detail: string): LeadSource | null {
-  const normalised = rawValue.toLowerCase();
+  const normalised = rawValue.toLowerCase().trim();
+  const compact = normalised.replace(/[^a-z0-9]/g, "");
+
+  if (compact === "an" || compact.includes("audiencenetwork")) {
+    return { label: "Audience Network", detail, platform: "meta" };
+  }
+  if (compact === "fb" || compact === "ig" || compact === "metaads" || compact === "facebookads") {
+    return { label: "Meta", detail, platform: "meta" };
+  }
+
   if (isGoogleSource(normalised)) return { label: "Google", detail, platform: "google" };
   if (isMetaSource(normalised)) return { label: "Meta", detail, platform: "meta" };
   if (normalised.includes("linkedin")) return { label: "LinkedIn", detail, platform: "other" };
@@ -308,6 +317,7 @@ function getExtraFields(lead: Lead): Array<{ key: string; value: string }> {
 function sourceBadgeStyle(label: string) {
   if (label === "Google") return { background: "#E8F0FE", color: "#1A73E8" };
   if (label === "Meta") return { background: "#EEF3FF", color: "#4A4CE0" };
+  if (label === "Audience Network") return { background: "#EEF3FF", color: "#4A4CE0" };
   if (label === "Facebook") return { background: "#EAF2FF", color: "#1877F2" };
   if (label === "Instagram") return { background: "#FCEAF6", color: "#C13584" };
   if (label === "LinkedIn") return { background: "#EAF4FE", color: "#0A66C2" };
