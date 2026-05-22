@@ -35,7 +35,10 @@ function MODEL_LIGHT_FN(): string {
 }
 
 /** Wraps a generation run so MODEL_PRIMARY()/MODEL_LIGHT_FN() see the overrides. */
-export function runWithGrandPlanModelOverride<T>(choice: GrandPlanModelChoice | undefined, fn: () => Promise<T>): Promise<T> {
+export function runWithGrandPlanModelOverride<T>(
+  choice: GrandPlanModelChoice | undefined,
+  fn: () => Promise<T>,
+): Promise<T> {
   if (!choice) return fn();
   const primary = MODEL_BY_CHOICE[choice];
   // Light model stays as Haiku unless caller picked Haiku for everything.
@@ -54,7 +57,13 @@ function isTransientError(err: unknown): boolean {
   if (anyErr.status && TRANSIENT_ERROR_CODES.has(Number(anyErr.status))) return true;
   if (typeof anyErr.message === "string") {
     const msg = anyErr.message.toLowerCase();
-    if (msg.includes("rate limit") || msg.includes("timeout") || msg.includes("overloaded") || msg.includes("econnreset")) return true;
+    if (
+      msg.includes("rate limit") ||
+      msg.includes("timeout") ||
+      msg.includes("overloaded") ||
+      msg.includes("econnreset")
+    )
+      return true;
   }
   return false;
 }
@@ -69,7 +78,9 @@ async function withAnthropicRetry<T>(label: string, fn: () => Promise<T>): Promi
     } catch (err) {
       lastErr = err;
       if (attempt === delays.length || !isTransientError(err)) throw err;
-      console.warn(`[grand-plan] ${label} attempt ${attempt + 1} failed (${(err as Error).message}). Retrying in ${delays[attempt]}ms...`);
+      console.warn(
+        `[grand-plan] ${label} attempt ${attempt + 1} failed (${(err as Error).message}). Retrying in ${delays[attempt]}ms...`,
+      );
       await new Promise((r) => setTimeout(r, delays[attempt]));
     }
   }
@@ -308,7 +319,11 @@ interface ContentCalendarMonth {
 }
 
 interface EmailMarketingPlan {
-  flows: { name: string; trigger: string; emails: { subject: string; purpose: string; delay?: string }[] }[];
+  flows: {
+    name: string;
+    trigger: string;
+    emails: { subject: string; purpose: string; delay?: string }[];
+  }[];
   campaigns: { name: string; frequency: string; audience: string; objectiveText: string }[];
   segmentation: { segments: { name: string; criteria: string; purpose: string }[] };
 }
@@ -318,7 +333,12 @@ interface LinkedInCampaign {
   objective: string;
   budget: string;
   format: string;
-  audienceTargeting: { jobTitles: string[]; industries: string[]; companySize: string; seniority: string[] };
+  audienceTargeting: {
+    jobTitles: string[];
+    industries: string[];
+    companySize: string;
+    seniority: string[];
+  };
   adCreatives: { headline: string; introText: string; description?: string; cta: string }[];
   /** True when synthesised deterministically because the AI returned nothing. */
   isFallback?: boolean;
@@ -396,7 +416,13 @@ export interface GroundedSection<T> {
 export interface AccountResearchData {
   ga4?: {
     propertyId: string;
-    overview?: { sessions: number; users: number; bounceRate: number; conversionRate: number; avgSessionDuration: number };
+    overview?: {
+      sessions: number;
+      users: number;
+      bounceRate: number;
+      conversionRate: number;
+      avgSessionDuration: number;
+    };
     topPages?: { path: string; sessions: number; bounceRate: number }[];
     trafficSources?: { source: string; medium: string; sessions: number; conversions: number }[];
     devices?: { device: string; sessions: number; bounceRate: number }[];
@@ -407,7 +433,13 @@ export interface AccountResearchData {
   };
   searchConsole?: {
     siteUrl: string;
-    topQueries?: { query: string; clicks: number; impressions: number; ctr: number; position: number }[];
+    topQueries?: {
+      query: string;
+      clicks: number;
+      impressions: number;
+      ctr: number;
+      position: number;
+    }[];
     topPages?: { page: string; clicks: number; impressions: number; ctr: number }[];
   };
   competitorData?: {
@@ -553,7 +585,12 @@ export interface GrandPlanData {
   strategyBrain?: StrategyBrain;
   /** Issues raised by the coherence validator after assembly. Surfaced in a
    * "Strategist Review" panel so the strategist can fix or accept them. */
-  coherenceIssues?: Array<{ section: string; issue: string; suggestedFix: string; severity: "low" | "medium" | "high" }>;
+  coherenceIssues?: Array<{
+    section: string;
+    issue: string;
+    suggestedFix: string;
+    severity: "low" | "medium" | "high";
+  }>;
   sections: {
     audiences?: AudienceItem[];
     executiveSummary?: string;
@@ -564,7 +601,12 @@ export interface GrandPlanData {
       negativeKeywords: string[];
       aiNegativesWithReason?: { keyword: string; reason: string }[];
       suggestedLocations?: string[];
-      adGroups: { name: string; keywords: AdGroupKeyword[]; audience?: string; adGroupNegatives?: string[] }[];
+      adGroups: {
+        name: string;
+        keywords: AdGroupKeyword[];
+        audience?: string;
+        adGroupNegatives?: string[];
+      }[];
       /** PPC seed-phrase variants (alternative names, spellings, synonyms,
        *  abbreviations, regional terms) for the team to research with the
        *  Keyword Planner. Surfaced as a panel under the ad groups. */
@@ -608,7 +650,9 @@ export interface GrandPlanData {
   /** Per-section grounding flags + source labels — used by the renderer to
    * surface badges next to each section heading. Keyed by the same keys as
    * `sections`. Optional so legacy plans render unchanged. */
-  grounding?: Partial<Record<keyof GrandPlanData["sections"], { grounding: DataGrounding; sourceLabels: string[] }>>;
+  grounding?: Partial<
+    Record<keyof GrandPlanData["sections"], { grounding: DataGrounding; sourceLabels: string[] }>
+  >;
   /** Aggregate list of every real source consulted across the run. */
   dataSources?: { label: string; detail?: string }[];
   generationReport?: Record<string, { status: "ok" | "skipped" | "failed"; error?: string }>;
@@ -737,11 +781,13 @@ export async function runWebSearchResearch(
     services?: string[];
     competitors?: string[];
     brief?: string;
-  }
+  },
 ): Promise<CustomerVoiceData> {
   const sectorLabel = options.sector ? options.sector.replace(/_/g, " ") : "their industry";
   const servicesLine = options.services?.length ? options.services.slice(0, 4).join(", ") : "";
-  const competitorLine = options.competitors?.length ? options.competitors.slice(0, 4).join(", ") : "";
+  const competitorLine = options.competitors?.length
+    ? options.competitors.slice(0, 4).join(", ")
+    : "";
 
   const prompt = `You are a qualitative researcher. Use the web_search tool (max 5 searches) to find REAL customer pain points, frustrations, and verbatim quotes about ${sectorLabel}${servicesLine ? ` and specifically ${servicesLine}` : ""}.
 
@@ -768,12 +814,20 @@ Be ruthless about authenticity — drop anything that sounds like marketing copy
 
   let res;
   try {
-    res = await withAnthropicRetry("customerVoice", () => anthropic.messages.create({
-      model: MODEL_PRIMARY(),
-      max_tokens: 3500,
-      tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 5 } as unknown as Anthropic.Tool],
-      messages: [{ role: "user", content: prompt }],
-    }));
+    res = await withAnthropicRetry("customerVoice", () =>
+      anthropic.messages.create({
+        model: MODEL_PRIMARY(),
+        max_tokens: 3500,
+        tools: [
+          {
+            type: "web_search_20250305",
+            name: "web_search",
+            max_uses: 5,
+          } as unknown as Anthropic.Tool,
+        ],
+        messages: [{ role: "user", content: prompt }],
+      }),
+    );
   } catch (err) {
     console.error("[grand-plan] customer voice web search failed:", err);
     return { painPoints: [], competitorComplaints: [], quotes: [], queriesFired: [] };
@@ -781,28 +835,49 @@ Be ruthless about authenticity — drop anything that sounds like marketing copy
 
   // Extract the final text block (after any tool use) and parse JSON
   const text = extractText(res);
-  const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+  const cleaned = text
+    .replace(/```json\n?/g, "")
+    .replace(/```\n?/g, "")
+    .trim();
   // Find the first { ... } block in case the model added prose around it
   const match = cleaned.match(/\{[\s\S]*\}/);
   const jsonStr = match ? match[0] : cleaned;
-  try {
-    const parsed = JSON.parse(jsonStr) as Partial<CustomerVoiceData>;
-    return {
-      painPoints: Array.isArray(parsed.painPoints) ? parsed.painPoints.map(String).slice(0, 12) : [],
-      competitorComplaints: Array.isArray(parsed.competitorComplaints) ? parsed.competitorComplaints.map(String).slice(0, 10) : [],
-      quotes: Array.isArray(parsed.quotes)
-        ? (parsed.quotes as unknown[])
-            .filter((q): q is { text: unknown; source?: unknown } => !!q && typeof q === "object")
-            .map((q) => ({ text: String((q as { text?: unknown }).text ?? ""), source: String((q as { source?: unknown }).source ?? "") }))
-            .filter((q) => q.text)
-            .slice(0, 10)
-        : [],
-      queriesFired: Array.isArray(parsed.queriesFired) ? parsed.queriesFired.map(String).slice(0, 8) : [],
-    };
-  } catch (err) {
-    console.error("[grand-plan] customer voice JSON parse failed:", err);
-    return { painPoints: [], competitorComplaints: [], quotes: [], queriesFired: [] };
+  const parsed = safeJsonParse<Partial<CustomerVoiceData>>(jsonStr, {});
+
+  // Some model responses start with prose such as "I'll search..." and
+  // include no JSON payload. Treat this as an empty result, not an error.
+  const hasStructuredPayload =
+    Array.isArray(parsed.painPoints) ||
+    Array.isArray(parsed.competitorComplaints) ||
+    Array.isArray(parsed.quotes) ||
+    Array.isArray(parsed.queriesFired);
+  if (!hasStructuredPayload) {
+    const preview = cleaned.replace(/\s+/g, " ").slice(0, 140);
+    console.warn(
+      "[grand-plan] customer voice response was not valid JSON; using empty fallback:",
+      preview,
+    );
   }
+
+  return {
+    painPoints: Array.isArray(parsed.painPoints) ? parsed.painPoints.map(String).slice(0, 12) : [],
+    competitorComplaints: Array.isArray(parsed.competitorComplaints)
+      ? parsed.competitorComplaints.map(String).slice(0, 10)
+      : [],
+    quotes: Array.isArray(parsed.quotes)
+      ? (parsed.quotes as unknown[])
+          .filter((q): q is { text: unknown; source?: unknown } => !!q && typeof q === "object")
+          .map((q) => ({
+            text: String((q as { text?: unknown }).text ?? ""),
+            source: String((q as { source?: unknown }).source ?? ""),
+          }))
+          .filter((q) => q.text)
+          .slice(0, 10)
+      : [],
+    queriesFired: Array.isArray(parsed.queriesFired)
+      ? parsed.queriesFired.map(String).slice(0, 8)
+      : [],
+  };
 }
 
 // ─── Strategy Brain ─────────────────────────────────────────────────────────
@@ -820,49 +895,92 @@ export async function synthesiseStrategyBrain(sources: GrandPlanSources): Promis
     ? safeJsonParse(sources.keywordResearch.adGroups, [])
     : [];
   const contentData = sources.contentStrategy
-    ? safeJsonParse<{ blogPosts?: { title?: string; keyword?: string }[] }>(sources.contentStrategy.spreadsheetData, {})
+    ? safeJsonParse<{ blogPosts?: { title?: string; keyword?: string }[] }>(
+        sources.contentStrategy.spreadsheetData,
+        {},
+      )
     : null;
   const competitors = sources.accountData?.competitorData ?? [];
   const formCompetitors = sources.competitors ?? [];
-  const ga4 = sources.accountData?.ga4 as { topPages?: { url: string; sessions: number }[]; topAudiences?: string[]; deviceMix?: Record<string, number> } | undefined;
+  const ga4 = sources.accountData?.ga4 as
+    | {
+        topPages?: { url: string; sessions: number }[];
+        topAudiences?: string[];
+        deviceMix?: Record<string, number>;
+      }
+    | undefined;
   const customerVoice = sources.customerVoice;
 
-  const adGroupNames = adGroups.slice(0, 12).map((g) => g.name).filter(Boolean).join(", ");
-  const blogTopics = (contentData?.blogPosts ?? []).slice(0, 8).map((b: { title?: string }) => b.title).filter(Boolean).join(", ");
+  const adGroupNames = adGroups
+    .slice(0, 12)
+    .map((g) => g.name)
+    .filter(Boolean)
+    .join(", ");
+  const blogTopics = (contentData?.blogPosts ?? [])
+    .slice(0, 8)
+    .map((b: { title?: string }) => b.title)
+    .filter(Boolean)
+    .join(", ");
   // Merge form-supplied competitors with auto-harvested SEMrush snapshots
   // so the strategist sees both. Form list comes first (those are what the
   // client/account team explicitly told us to consider).
-  const norm = (d: string) => d.toLowerCase().replace(/^www\./, "").replace(/\/$/, "");
+  const norm = (d: string) =>
+    d
+      .toLowerCase()
+      .replace(/^www\./, "")
+      .replace(/\/$/, "");
   const competitorLines: string[] = [];
   for (const fc of formCompetitors.slice(0, 6)) {
     const semrush = competitors.find((c) => norm(c.domain) === norm(fc.domain));
     if (semrush) {
-      competitorLines.push(`${fc.domain} [client-named, ${fc.commonKeywords ?? 0} common KWs] — ${semrush.organicTraffic} org traffic, ${semrush.organicKeywords} kws`);
+      competitorLines.push(
+        `${fc.domain} [client-named, ${fc.commonKeywords ?? 0} common KWs] — ${semrush.organicTraffic} org traffic, ${semrush.organicKeywords} kws`,
+      );
     } else if (fc.pageContext) {
       const ctx = fc.pageContext;
-      const summary = [ctx.h1 ? `H1: "${ctx.h1}"` : "", ctx.description ? `desc: "${ctx.description.slice(0, 120)}"` : ""].filter(Boolean).join("; ");
-      competitorLines.push(`${fc.domain} [client-named, no SEMrush overlap] — ${summary || "site scraped"}`);
+      const summary = [
+        ctx.h1 ? `H1: "${ctx.h1}"` : "",
+        ctx.description ? `desc: "${ctx.description.slice(0, 120)}"` : "",
+      ]
+        .filter(Boolean)
+        .join("; ");
+      competitorLines.push(
+        `${fc.domain} [client-named, no SEMrush overlap] — ${summary || "site scraped"}`,
+      );
     } else {
       competitorLines.push(`${fc.domain} [client-named, no SEMrush data]`);
     }
   }
   for (const c of competitors.slice(0, 5)) {
     if (formCompetitors.some((fc) => norm(fc.domain) === norm(c.domain))) continue;
-    competitorLines.push(`${c.domain} [auto] (${c.organicTraffic ?? 0} org. traffic, ${c.organicKeywords ?? 0} kws)`);
+    competitorLines.push(
+      `${c.domain} [auto] (${c.organicTraffic ?? 0} org. traffic, ${c.organicKeywords ?? 0} kws)`,
+    );
   }
   const competitorList = competitorLines.join("\n");
-  const painList = (customerVoice?.painPoints ?? []).slice(0, 8).map((p) => `- ${p}`).join("\n");
-  const compComplaints = (customerVoice?.competitorComplaints ?? []).slice(0, 6).map((c) => `- ${c}`).join("\n");
+  const painList = (customerVoice?.painPoints ?? [])
+    .slice(0, 8)
+    .map((p) => `- ${p}`)
+    .join("\n");
+  const compComplaints = (customerVoice?.competitorComplaints ?? [])
+    .slice(0, 6)
+    .map((c) => `- ${c}`)
+    .join("\n");
   const focusPeriods = sources.campaignFocusPeriods.length
-    ? sources.campaignFocusPeriods.map((p) => `${MONTH_NAMES[p.startMonth - 1]}–${MONTH_NAMES[p.endMonth - 1]}: ${p.label}`).join("; ")
+    ? sources.campaignFocusPeriods
+        .map((p) => `${MONTH_NAMES[p.startMonth - 1]}–${MONTH_NAMES[p.endMonth - 1]}: ${p.label}`)
+        .join("; ")
     : "none";
 
   const channelBudgets = sources.channelBudgets ?? {};
-  const budgetLine = [
-    channelBudgets.googleAds ? `Google Ads £${channelBudgets.googleAds}/mo` : "",
-    channelBudgets.metaAds ? `Meta £${channelBudgets.metaAds}/mo` : "",
-    channelBudgets.linkedInAds ? `LinkedIn £${channelBudgets.linkedInAds}/mo` : "",
-  ].filter(Boolean).join(", ") || "not specified";
+  const budgetLine =
+    [
+      channelBudgets.googleAds ? `Google Ads £${channelBudgets.googleAds}/mo` : "",
+      channelBudgets.metaAds ? `Meta £${channelBudgets.metaAds}/mo` : "",
+      channelBudgets.linkedInAds ? `LinkedIn £${channelBudgets.linkedInAds}/mo` : "",
+    ]
+      .filter(Boolean)
+      .join(", ") || "not specified";
 
   const enabledPlatforms = sources.enabledPlatforms?.join(", ") || "not specified";
 
@@ -909,17 +1027,26 @@ Inputs:
 ${adGroupNames ? `- Keyword ad groups (top 12): ${adGroupNames}` : ""}
 ${blogTopics ? `- Planned blog topics (top 8): ${blogTopics}` : ""}
 ${competitorList ? `- Competitor data:\n${competitorList}` : ""}
-${ga4?.topPages?.length ? `- Top GA4 pages: ${ga4.topPages.slice(0, 5).map(p => `${p.url} (${p.sessions} sess)`).join("; ")}` : ""}
+${
+  ga4?.topPages?.length
+    ? `- Top GA4 pages: ${ga4.topPages
+        .slice(0, 5)
+        .map((p) => `${p.url} (${p.sessions} sess)`)
+        .join("; ")}`
+    : ""
+}
 ${ga4?.topAudiences?.length ? `- GA4 top audience signals: ${ga4.topAudiences.slice(0, 5).join(", ")}` : ""}
 ${painList ? `- Real customer pain points (use this language):\n${painList}` : ""}
 ${compComplaints ? `- What customers complain about competitors:\n${compComplaints}` : ""}
 `;
 
-  const res = await withAnthropicRetry("strategyBrain", () => anthropic.messages.create({
-    model: MODEL_PRIMARY(),
-    max_tokens: 4000,
-    messages: [{ role: "user", content: prompt }],
-  }));
+  const res = await withAnthropicRetry("strategyBrain", () =>
+    anthropic.messages.create({
+      model: MODEL_PRIMARY(),
+      max_tokens: 4000,
+      messages: [{ role: "user", content: prompt }],
+    }),
+  );
   const raw = extractText(res);
   const fallback: StrategyBrain = {
     positioning: { statement: "", proofPoints: [] },
@@ -937,8 +1064,18 @@ ${compComplaints ? `- What customers complain about competitors:\n${compComplain
 // ─── Main generator ─────────────────────────────────────────────────────────
 
 const MONTH_NAMES = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ];
 
 export async function generateGrandPlan(
@@ -958,15 +1095,9 @@ export async function generateGrandPlan(
   const contentData = sources.contentStrategy
     ? safeJsonParse(sources.contentStrategy.spreadsheetData, {})
     : null;
-  const services = sources.proposal
-    ? safeJsonParse(sources.proposal.servicesJson, [])
-    : [];
-  const timeline = sources.proposal
-    ? safeJsonParse(sources.proposal.timelineJson, [])
-    : [];
-  const mediaChannels = sources.mediaPlan
-    ? safeJsonParse(sources.mediaPlan.channels, [])
-    : [];
+  const services = sources.proposal ? safeJsonParse(sources.proposal.servicesJson, []) : [];
+  const timeline = sources.proposal ? safeJsonParse(sources.proposal.timelineJson, []) : [];
+  const mediaChannels = sources.mediaPlan ? safeJsonParse(sources.mediaPlan.channels, []) : [];
 
   // Build context summary for AI prompts
   const contextSummary = buildContextSummary(sources, adGroups, contentData, services);
@@ -978,7 +1109,11 @@ export async function generateGrandPlan(
   const enabledPlatforms = sources.enabledPlatforms?.length
     ? sources.enabledPlatforms.filter((k) => k in PLATFORM_CHANNEL_MAP)
     : deriveEnabledPlatforms(enabledSections);
-  const paidOnly = enabledPlatforms.length > 0 && enabledPlatforms.every((p) => PAID_PLATFORM_IDS.includes(p as typeof PAID_PLATFORM_IDS[number]));
+  const paidOnly =
+    enabledPlatforms.length > 0 &&
+    enabledPlatforms.every((p) =>
+      PAID_PLATFORM_IDS.includes(p as (typeof PAID_PLATFORM_IDS)[number]),
+    );
 
   // Generate sections in parallel where possible, with per-section progress tracking
   const sectionNames: string[] = [];
@@ -988,17 +1123,25 @@ export async function generateGrandPlan(
   if (isEnabled("seoFoundations")) sectionNames.push("SEO Foundations");
   if (isEnabled("metaCampaigns") && sources.keywordResearch) sectionNames.push("Meta Campaigns");
   if (isEnabled("contentCalendar")) sectionNames.push("Content Calendar");
-  if (isEnabled("googleAdsCampaigns") && sources.keywordResearch && adGroups.length > 0) sectionNames.push("Ad Copy");
-  if (isEnabled("googleAdsCampaigns") && sources.keywordResearch && adGroups.length > 0) sectionNames.push("Negative Keywords");
+  if (isEnabled("googleAdsCampaigns") && sources.keywordResearch && adGroups.length > 0)
+    sectionNames.push("Ad Copy");
+  if (isEnabled("googleAdsCampaigns") && sources.keywordResearch && adGroups.length > 0)
+    sectionNames.push("Negative Keywords");
   if (isEnabled("emailMarketing")) sectionNames.push("Email Marketing");
   if (isEnabled("linkedInAds")) sectionNames.push("LinkedIn Ads");
-  if (isEnabled("competitorIntel") && sources.keywordResearch) sectionNames.push("Competitor Intel");
+  if (isEnabled("competitorIntel") && sources.keywordResearch)
+    sectionNames.push("Competitor Intel");
 
   let completedCount = 0;
   const total = sectionNames.length;
-  const generationReport: Record<string, { status: "ok" | "skipped" | "failed"; error?: string }> = {};
+  const generationReport: Record<string, { status: "ok" | "skipped" | "failed"; error?: string }> =
+    {};
 
-  const runSection = async <T>(label: string, key: string, fn: () => Promise<T>): Promise<T | undefined> => {
+  const runSection = async <T>(
+    label: string,
+    key: string,
+    fn: () => Promise<T>,
+  ): Promise<T | undefined> => {
     if (onProgress) await onProgress(`Generating ${label} (${completedCount + 1}/${total})...`);
     try {
       const result = await fn();
@@ -1020,24 +1163,34 @@ export async function generateGrandPlan(
   const [executiveSummary, metaCampaigns, contentCalendar, , aiNegatives, aiContentClusters] =
     await Promise.all([
       isEnabled("executiveSummary")
-        ? runSection("Executive Summary", "executiveSummary", () => generateExecutiveSummary(anthropic, contextSummary, sources))
+        ? runSection("Executive Summary", "executiveSummary", () =>
+            generateExecutiveSummary(anthropic, contextSummary, sources),
+          )
         : Promise.resolve(undefined),
       isEnabled("metaCampaigns") && sources.keywordResearch
-        ? runSection("Meta Campaigns", "metaCampaigns", () => generateMetaCampaigns(anthropic, contextSummary, adGroups, sources))
+        ? runSection("Meta Campaigns", "metaCampaigns", () =>
+            generateMetaCampaigns(anthropic, contextSummary, adGroups, sources),
+          )
         : Promise.resolve(undefined),
       isEnabled("contentCalendar")
-        ? runSection("Content Calendar", "contentCalendar", () => generateContentCalendar(anthropic, contextSummary, contentData, sources))
+        ? runSection("Content Calendar", "contentCalendar", () =>
+            generateContentCalendar(anthropic, contextSummary, contentData, sources),
+          )
         : Promise.resolve(undefined),
       // Ad copy generation removed — Google Ads is now research-only (keywords +
       // negatives + ad-group structure). The PPC team writes the actual copy.
       Promise.resolve(undefined),
       isEnabled("googleAdsCampaigns") && sources.keywordResearch && adGroups.length > 0
-        ? runSection("Negative Keywords", "googleAdsNegatives", () => generateNegativeKeywords(anthropic, adGroups, contextSummary, sources))
+        ? runSection("Negative Keywords", "googleAdsNegatives", () =>
+            generateNegativeKeywords(anthropic, adGroups, contextSummary, sources),
+          )
         : Promise.resolve(undefined),
       // Brain-driven content clusters — only run when no spreadsheet contentData
       // is supplied. Replaces the legacy SEMrush spreadsheet upload pathway.
       isEnabled("contentStrategy") && !contentData
-        ? runSection("Content Clusters", "contentClusters", () => generateContentClusters(anthropic, contextSummary, sources))
+        ? runSection("Content Clusters", "contentClusters", () =>
+            generateContentClusters(anthropic, contextSummary, sources),
+          )
         : Promise.resolve(undefined),
     ]);
 
@@ -1045,19 +1198,29 @@ export async function generateGrandPlan(
   const [emailMarketing, linkedInAds, competitorIntel, audiences, seoFoundations] =
     await Promise.all([
       isEnabled("emailMarketing")
-        ? runSection("Email Marketing", "emailMarketing", () => generateEmailMarketing(anthropic, contextSummary, sources))
+        ? runSection("Email Marketing", "emailMarketing", () =>
+            generateEmailMarketing(anthropic, contextSummary, sources),
+          )
         : Promise.resolve(undefined),
       isEnabled("linkedInAds")
-        ? runSection("LinkedIn Ads", "linkedInAds", () => generateLinkedInAds(anthropic, contextSummary, sources))
+        ? runSection("LinkedIn Ads", "linkedInAds", () =>
+            generateLinkedInAds(anthropic, contextSummary, sources),
+          )
         : Promise.resolve(undefined),
       isEnabled("competitorIntel") && sources.keywordResearch
-        ? runSection("Competitor Intel", "competitorIntel", () => generateCompetitorIntel(anthropic, contextSummary, sources))
+        ? runSection("Competitor Intel", "competitorIntel", () =>
+            generateCompetitorIntel(anthropic, contextSummary, sources),
+          )
         : Promise.resolve(undefined),
       isEnabled("audiences")
-        ? runSection("Audiences", "audiences", () => generateAudiences(anthropic, contextSummary, sources))
+        ? runSection("Audiences", "audiences", () =>
+            generateAudiences(anthropic, contextSummary, sources),
+          )
         : Promise.resolve(undefined),
       isEnabled("seoFoundations")
-        ? runSection("SEO Foundations", "seoFoundations", () => generateSeoFoundations(anthropic, contextSummary, sources))
+        ? runSection("SEO Foundations", "seoFoundations", () =>
+            generateSeoFoundations(anthropic, contextSummary, sources),
+          )
         : Promise.resolve(undefined),
     ]);
 
@@ -1070,18 +1233,31 @@ export async function generateGrandPlan(
     : undefined;
 
   // Build Google Ads campaigns from keyword research (structured data + AI targeting)
-  const googleAdsTargeting = isEnabled("googleAdsCampaigns") && sources.keywordResearch && adGroups.length > 0
-    ? await runSection("Google Ads Targeting", "googleAdsTargeting", () => generateGoogleAdsTargeting(anthropic, sources, adGroups))
-    : undefined;
+  const googleAdsTargeting =
+    isEnabled("googleAdsCampaigns") && sources.keywordResearch && adGroups.length > 0
+      ? await runSection("Google Ads Targeting", "googleAdsTargeting", () =>
+          generateGoogleAdsTargeting(anthropic, sources, adGroups),
+        )
+      : undefined;
   // PPC seed-phrase research suggestions — alternative names, spellings,
   // synonyms, abbreviations, regional terms — for the team to plug into
   // Keyword Planner / Search Term reports.
-  const googleAdsSeedSuggestions = isEnabled("googleAdsCampaigns") && sources.keywordResearch && adGroups.length > 0
-    ? await runSection("Google Ads Seed Suggestions", "googleAdsSeedSuggestions", () => generateGoogleAdsSeedSuggestions(anthropic, sources, adGroups))
-    : undefined;
-  const googleAdsCampaigns = isEnabled("googleAdsCampaigns") && sources.keywordResearch
-    ? buildGoogleAdsCampaigns(adGroups, sources, aiNegatives, googleAdsTargeting, googleAdsSeedSuggestions)
-    : undefined;
+  const googleAdsSeedSuggestions =
+    isEnabled("googleAdsCampaigns") && sources.keywordResearch && adGroups.length > 0
+      ? await runSection("Google Ads Seed Suggestions", "googleAdsSeedSuggestions", () =>
+          generateGoogleAdsSeedSuggestions(anthropic, sources, adGroups),
+        )
+      : undefined;
+  const googleAdsCampaigns =
+    isEnabled("googleAdsCampaigns") && sources.keywordResearch
+      ? buildGoogleAdsCampaigns(
+          adGroups,
+          sources,
+          aiNegatives,
+          googleAdsTargeting,
+          googleAdsSeedSuggestions,
+        )
+      : undefined;
 
   // Build content strategy section: prefer AI clusters (form-driven), fall back
   // to legacy spreadsheet data when a ContentStrategy record is linked.
@@ -1094,15 +1270,19 @@ export async function generateGrandPlan(
   // (kept for backwards compatibility, no longer wired in the new form).
   const servicesInvestment = servicesInvestmentGenerated
     ? servicesInvestmentGenerated
-    : (isEnabled("servicesInvestment") && sources.proposal
-        ? { services, timeline }
-        : undefined);
+    : isEnabled("servicesInvestment") && sources.proposal
+      ? { services, timeline }
+      : undefined;
 
   // Unpack grounded sections (audiences, emailMarketing, linkedInAds, competitorIntel)
   // — these now return { value, grounding, sourceLabels } so we can surface badges.
   const grounding: NonNullable<GrandPlanData["grounding"]> = {};
   const recordGrounding = <K extends string>(key: K, gs: GroundedSection<unknown> | undefined) => {
-    if (gs) grounding[key as keyof NonNullable<GrandPlanData["grounding"]>] = { grounding: gs.grounding, sourceLabels: gs.sourceLabels ?? [] };
+    if (gs)
+      grounding[key as keyof NonNullable<GrandPlanData["grounding"]>] = {
+        grounding: gs.grounding,
+        sourceLabels: gs.sourceLabels ?? [],
+      };
   };
   recordGrounding("audiences", audiences);
   recordGrounding("emailMarketing", emailMarketing);
@@ -1112,12 +1292,27 @@ export async function generateGrandPlan(
   // Aggregate the data sources actually consulted across the plan, for the
   // "Data Sources Used" panel rendered near the top of the report.
   const dataSources: NonNullable<GrandPlanData["dataSources"]> = [];
-  if (sources.accountData?.ga4) dataSources.push({ label: "Google Analytics 4", detail: "Last 30 days, audiences, devices, conversions" });
-  if (sources.accountData?.searchConsole) dataSources.push({ label: "Search Console", detail: "Top queries and pages" });
-  if (sources.accountData?.competitorData?.length) dataSources.push({ label: "SEMrush", detail: `${sources.accountData.competitorData.length} competitor snapshot(s)` });
-  if (sources.customerVoice?.queriesFired?.length) dataSources.push({ label: "Customer voice (web search)", detail: `${sources.customerVoice.queriesFired.length} research queries` });
-  if (sources.keywordResearch) dataSources.push({ label: "Keyword Planner", detail: sources.keywordResearch.title });
-  if (sources.contentStrategy) dataSources.push({ label: "Content Strategy", detail: "Saved strategy doc" });
+  if (sources.accountData?.ga4)
+    dataSources.push({
+      label: "Google Analytics 4",
+      detail: "Last 30 days, audiences, devices, conversions",
+    });
+  if (sources.accountData?.searchConsole)
+    dataSources.push({ label: "Search Console", detail: "Top queries and pages" });
+  if (sources.accountData?.competitorData?.length)
+    dataSources.push({
+      label: "SEMrush",
+      detail: `${sources.accountData.competitorData.length} competitor snapshot(s)`,
+    });
+  if (sources.customerVoice?.queriesFired?.length)
+    dataSources.push({
+      label: "Customer voice (web search)",
+      detail: `${sources.customerVoice.queriesFired.length} research queries`,
+    });
+  if (sources.keywordResearch)
+    dataSources.push({ label: "Keyword Planner", detail: sources.keywordResearch.title });
+  if (sources.contentStrategy)
+    dataSources.push({ label: "Content Strategy", detail: "Saved strategy doc" });
   if (sources.proposal) dataSources.push({ label: "Proposal", detail: "Services, hours, pricing" });
 
   if (onProgress) await onProgress("Assembling final document...");
@@ -1128,7 +1323,8 @@ export async function generateGrandPlan(
     purpose: sources.purpose,
     generatedAt: new Date().toISOString(),
     brief: sources.clientBrief,
-    campaignPeriods: sources.campaignFocusPeriods.length > 0 ? sources.campaignFocusPeriods : undefined,
+    campaignPeriods:
+      sources.campaignFocusPeriods.length > 0 ? sources.campaignFocusPeriods : undefined,
     sections: {
       audiences: audiences?.value,
       executiveSummary,
@@ -1157,11 +1353,13 @@ function buildContextSummary(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   contentData: any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  services: any[]
+  services: any[],
 ): string {
   const parts: string[] = [];
   parts.push(`Client: ${sources.clientName}`);
-  parts.push(`Purpose: ${sources.purpose === "pitch" ? "Pre-sale pitch — persuasive tone" : sources.purpose === "onboarding" ? "Post-sale onboarding — operational tone" : "Strategy refresh — analytical tone"}`);
+  parts.push(
+    `Purpose: ${sources.purpose === "pitch" ? "Pre-sale pitch — persuasive tone" : sources.purpose === "onboarding" ? "Post-sale onboarding — operational tone" : "Strategy refresh — analytical tone"}`,
+  );
 
   if (sources.sector) {
     parts.push(`Sector: ${sources.sector}`);
@@ -1191,7 +1389,9 @@ function buildContextSummary(
     if (cb.metaAds) budgetLines.push(`  Meta Ads: £${cb.metaAds}/month`);
     if (cb.linkedInAds) budgetLines.push(`  LinkedIn Ads: £${cb.linkedInAds}/month`);
     if (budgetLines.length > 0) {
-      parts.push(`Channel budgets (use these to calibrate campaign scale and ad group count):\n${budgetLines.join("\n")}`);
+      parts.push(
+        `Channel budgets (use these to calibrate campaign scale and ad group count):\n${budgetLines.join("\n")}`,
+      );
     }
   }
 
@@ -1199,21 +1399,32 @@ function buildContextSummary(
     const pageOpts = contentData.pageOptimisations?.length ?? 0;
     const blogPosts = contentData.blogPosts?.length ?? 0;
     const landingPages = contentData.landingPages?.length ?? 0;
-    parts.push(`Content strategy: ${pageOpts} page optimisations, ${landingPages} landing pages, ${blogPosts} blog posts`);
+    parts.push(
+      `Content strategy: ${pageOpts} page optimisations, ${landingPages} landing pages, ${blogPosts} blog posts`,
+    );
   }
 
   if (services.length > 0) {
-    parts.push(`Proposed services: ${services.map((s: { name?: string }) => s.name).filter(Boolean).join(", ")}`);
+    parts.push(
+      `Proposed services: ${services
+        .map((s: { name?: string }) => s.name)
+        .filter(Boolean)
+        .join(", ")}`,
+    );
   }
 
   if (sources.mediaPlan) {
-    parts.push(`Media plan: ${sources.mediaPlan.objective}, £${sources.mediaPlan.totalBudget} budget`);
+    parts.push(
+      `Media plan: ${sources.mediaPlan.objective}, £${sources.mediaPlan.totalBudget} budget`,
+    );
   }
 
   if (sources.campaignFocusPeriods.length > 0) {
     parts.push("Campaign focus periods:");
     for (const p of sources.campaignFocusPeriods) {
-      parts.push(`  ${MONTH_NAMES[p.startMonth - 1]}–${MONTH_NAMES[p.endMonth - 1]}: ${p.label}${p.description ? ` (${p.description})` : ""}`);
+      parts.push(
+        `  ${MONTH_NAMES[p.startMonth - 1]}–${MONTH_NAMES[p.endMonth - 1]}: ${p.label}${p.description ? ` (${p.description})` : ""}`,
+      );
     }
   }
 
@@ -1260,7 +1471,10 @@ function buildContentLimitsBlock(sources: GrandPlanSources): string {
   if (l.linkTargets) parts.push(`link targets: max ${l.linkTargets}`);
   // Pillar pages explicitly disabled — landing pages cover the same ground.
   const noPillars = l.pillarPages === 0;
-  if (noPillars) parts.push(`pillar pages: NONE — do not produce any pillar/mega-guide pages; landing pages cover dedicated topic pushes`);
+  if (noPillars)
+    parts.push(
+      `pillar pages: NONE — do not produce any pillar/mega-guide pages; landing pages cover dedicated topic pushes`,
+    );
   else if (l.pillarPages) parts.push(`pillar pages: max ${l.pillarPages}`);
   if (!parts.length) return "";
   return `\n\nCONTENT OUTPUT CAPS (contracted scope \u2014 DO NOT exceed): ${parts.join(", ")}.`;
@@ -1296,12 +1510,30 @@ function buildPriorSprintBlock(sources: GrandPlanSources): string {
   const lines: string[] = [];
   if (prior.title) lines.push(`Prior sprint: "${prior.title}"`);
   if (prior.headlineOutcome) lines.push(`Prior outcome commitment: ${prior.headlineOutcome}`);
-  if (prior.quickWinTitles?.length) lines.push(`Prior quick wins (do NOT repeat):\n- ${prior.quickWinTitles.slice(0, 20).join("\n- ")}`);
-  if (prior.seoQuickWinUrls?.length) lines.push(`Prior SEO quick win URLs (already optimised):\n- ${prior.seoQuickWinUrls.slice(0, 20).join("\n- ")}`);
-  if (prior.pageOptimisationUrls?.length) lines.push(`Prior page optimisation URLs (already rewritten):\n- ${prior.pageOptimisationUrls.slice(0, 20).join("\n- ")}`);
-  if (prior.pillarTitles?.length) lines.push(`Prior pillar topics (already in flight):\n- ${prior.pillarTitles.slice(0, 10).join("\n- ")}`);
-  if (prior.landingPageTitles?.length) lines.push(`Prior landing pages (already shipped):\n- ${prior.landingPageTitles.slice(0, 15).join("\n- ")}`);
-  if (prior.blogPostTitles?.length) lines.push(`Prior blog topics (already covered):\n- ${prior.blogPostTitles.slice(0, 25).join("\n- ")}`);
+  if (prior.quickWinTitles?.length)
+    lines.push(
+      `Prior quick wins (do NOT repeat):\n- ${prior.quickWinTitles.slice(0, 20).join("\n- ")}`,
+    );
+  if (prior.seoQuickWinUrls?.length)
+    lines.push(
+      `Prior SEO quick win URLs (already optimised):\n- ${prior.seoQuickWinUrls.slice(0, 20).join("\n- ")}`,
+    );
+  if (prior.pageOptimisationUrls?.length)
+    lines.push(
+      `Prior page optimisation URLs (already rewritten):\n- ${prior.pageOptimisationUrls.slice(0, 20).join("\n- ")}`,
+    );
+  if (prior.pillarTitles?.length)
+    lines.push(
+      `Prior pillar topics (already in flight):\n- ${prior.pillarTitles.slice(0, 10).join("\n- ")}`,
+    );
+  if (prior.landingPageTitles?.length)
+    lines.push(
+      `Prior landing pages (already shipped):\n- ${prior.landingPageTitles.slice(0, 15).join("\n- ")}`,
+    );
+  if (prior.blogPostTitles?.length)
+    lines.push(
+      `Prior blog topics (already covered):\n- ${prior.blogPostTitles.slice(0, 25).join("\n- ")}`,
+    );
   if (!lines.length) return "";
   return `\n\n<prior_sprint>
 PRIOR SPRINT — these items have already been shipped or recommended in the previous 90-day sprint. Do NOT propose any of them again unless you are MATERIALLY upgrading them. Lead this sprint's recommendations with NEW initiatives that build on what was done. Where you reference prior work, frame it as "now that X is live, the next move is Y".
@@ -1313,7 +1545,8 @@ ${lines.join("\n\n")}
 function buildCampaignPeriodsBlock(sources: GrandPlanSources): string {
   if (!sources.campaignFocusPeriods.length) return "";
   const lines = sources.campaignFocusPeriods.map(
-    (p) => `- ${MONTH_NAMES[p.startMonth - 1]}–${MONTH_NAMES[p.endMonth - 1]}: ${p.label}${p.description ? ` (${p.description})` : ""}`,
+    (p) =>
+      `- ${MONTH_NAMES[p.startMonth - 1]}–${MONTH_NAMES[p.endMonth - 1]}: ${p.label}${p.description ? ` (${p.description})` : ""}`,
   );
   return `\n\nKey campaign focus periods (the plan must reflect these — emphasise relevant messaging, creative, and offers in these windows):\n${lines.join("\n")}`;
 }
@@ -1324,32 +1557,66 @@ function buildAccountDataBlock(sources: GrandPlanSources): string {
   const parts: string[] = [];
   if (a.ga4?.overview) {
     const o = a.ga4.overview;
-    parts.push(`GA4 (last 30 days): ${o.sessions.toLocaleString()} sessions, ${o.users.toLocaleString()} users, ${o.bounceRate.toFixed(1)}% bounce, ${o.conversionRate.toFixed(2)}% conversion rate.`);
+    parts.push(
+      `GA4 (last 30 days): ${o.sessions.toLocaleString()} sessions, ${o.users.toLocaleString()} users, ${o.bounceRate.toFixed(1)}% bounce, ${o.conversionRate.toFixed(2)}% conversion rate.`,
+    );
   }
   if (a.ga4?.trafficSources?.length) {
-    const top = a.ga4.trafficSources.slice(0, 5).map((s) => `${s.source}/${s.medium} (${s.sessions.toLocaleString()} sess${s.conversions ? `, ${s.conversions} conv` : ""})`).join("; ");
+    const top = a.ga4.trafficSources
+      .slice(0, 5)
+      .map(
+        (s) =>
+          `${s.source}/${s.medium} (${s.sessions.toLocaleString()} sess${s.conversions ? `, ${s.conversions} conv` : ""})`,
+      )
+      .join("; ");
     parts.push(`Top traffic sources: ${top}.`);
   }
   if (a.ga4?.demographics?.length) {
-    const top = a.ga4.demographics.slice(0, 5).map((d) => `${d.country} (${d.sessions.toLocaleString()})`).join("; ");
+    const top = a.ga4.demographics
+      .slice(0, 5)
+      .map((d) => `${d.country} (${d.sessions.toLocaleString()})`)
+      .join("; ");
     parts.push(`Geography: ${top}.`);
   }
   if (a.ga4?.devices?.length) {
-    const top = a.ga4.devices.map((d) => `${d.device} ${d.sessions.toLocaleString()} (${d.bounceRate.toFixed(0)}% bounce)`).join("; ");
+    const top = a.ga4.devices
+      .map((d) => `${d.device} ${d.sessions.toLocaleString()} (${d.bounceRate.toFixed(0)}% bounce)`)
+      .join("; ");
     parts.push(`Device mix: ${top}.`);
   }
   if (a.ga4?.weakPages?.length) {
-    parts.push(`Underperforming pages (high bounce, decent traffic): ${a.ga4.weakPages.slice(0, 5).map((p) => `${p.path} (${p.bounceRate.toFixed(0)}% bounce, ${p.sessions} sess)`).join("; ")}.`);
+    parts.push(
+      `Underperforming pages (high bounce, decent traffic): ${a.ga4.weakPages
+        .slice(0, 5)
+        .map((p) => `${p.path} (${p.bounceRate.toFixed(0)}% bounce, ${p.sessions} sess)`)
+        .join("; ")}.`,
+    );
   }
   if (a.ga4?.conversionsByChannel?.length) {
-    parts.push(`Conversions by channel: ${a.ga4.conversionsByChannel.slice(0, 6).map((c) => `${c.channel} ${c.conversions} (${c.conversionRate.toFixed(2)}% CR)`).join("; ")}.`);
+    parts.push(
+      `Conversions by channel: ${a.ga4.conversionsByChannel
+        .slice(0, 6)
+        .map((c) => `${c.channel} ${c.conversions} (${c.conversionRate.toFixed(2)}% CR)`)
+        .join("; ")}.`,
+    );
   }
   if (a.searchConsole?.topQueries?.length) {
-    const top = a.searchConsole.topQueries.slice(0, 8).map((q) => `"${q.query}" (${q.clicks} clicks, ${q.impressions} impr, pos ${q.position.toFixed(1)})`).join("; ");
+    const top = a.searchConsole.topQueries
+      .slice(0, 8)
+      .map(
+        (q) =>
+          `"${q.query}" (${q.clicks} clicks, ${q.impressions} impr, pos ${q.position.toFixed(1)})`,
+      )
+      .join("; ");
     parts.push(`Search Console top converting queries: ${top}.`);
   }
   if (a.competitorData?.length) {
-    const lines = a.competitorData.slice(0, 5).map((c) => `${c.domain}: ${c.organicTraffic.toLocaleString()} organic visits/mo, ${c.organicKeywords.toLocaleString()} keywords, ${c.backlinks.toLocaleString()} backlinks`);
+    const lines = a.competitorData
+      .slice(0, 5)
+      .map(
+        (c) =>
+          `${c.domain}: ${c.organicTraffic.toLocaleString()} organic visits/mo, ${c.organicKeywords.toLocaleString()} keywords, ${c.backlinks.toLocaleString()} backlinks`,
+      );
     parts.push(`SEMrush competitor snapshot:\n${lines.join("\n")}`);
   }
   if (parts.length === 0) return "";
@@ -1358,32 +1625,47 @@ function buildAccountDataBlock(sources: GrandPlanSources): string {
 
 function buildCustomerVoiceBlock(sources: GrandPlanSources): string {
   const cv = sources.customerVoice;
-  if (!cv || (!cv.painPoints?.length && !cv.competitorComplaints?.length && !cv.quotes?.length)) return "";
+  if (!cv || (!cv.painPoints?.length && !cv.competitorComplaints?.length && !cv.quotes?.length))
+    return "";
   const parts: string[] = [];
   if (cv.painPoints?.length) {
-    parts.push(`Real customer pain points (from review sites, forums, Reddit — use this language and these frustrations in audience profiles, ad copy, and content):\n- ${cv.painPoints.slice(0, 10).join("\n- ")}`);
+    parts.push(
+      `Real customer pain points (from review sites, forums, Reddit — use this language and these frustrations in audience profiles, ad copy, and content):\n- ${cv.painPoints.slice(0, 10).join("\n- ")}`,
+    );
   }
   if (cv.quotes?.length) {
-    parts.push(`Verbatim customer phrasing to echo:\n- ${cv.quotes.slice(0, 6).map((q) => `"${q}"`).join("\n- ")}`);
+    parts.push(
+      `Verbatim customer phrasing to echo:\n- ${cv.quotes
+        .slice(0, 6)
+        .map((q) => `"${q}"`)
+        .join("\n- ")}`,
+    );
   }
   if (cv.competitorComplaints?.length) {
-    parts.push(`Common complaints customers raise about competitors in this sector (these are positioning opportunities):\n- ${cv.competitorComplaints.slice(0, 8).join("\n- ")}`);
+    parts.push(
+      `Common complaints customers raise about competitors in this sector (these are positioning opportunities):\n- ${cv.competitorComplaints.slice(0, 8).join("\n- ")}`,
+    );
   }
   return `\n\n${parts.join("\n\n")}`;
 }
 
-function buildSharedContextBlocks(sources: GrandPlanSources, directiveKey?: keyof StrategyBrain["directives"]): string {
-  return buildStrategyBrainBlock(sources, directiveKey)
-    + buildGeographyBlock(sources)
-    + buildAudienceBlock(sources)
-    + buildSectorBlock(sources)
-    + buildPeriodBlock(sources)
-    + buildContentLimitsBlock(sources)
-    + buildCampaignPeriodsBlock(sources)
-    + buildAccountDataBlock(sources)
-    + buildManualPageIntelBlock(sources)
-    + buildPriorSprintBlock(sources)
-    + buildCustomerVoiceBlock(sources);
+function buildSharedContextBlocks(
+  sources: GrandPlanSources,
+  directiveKey?: keyof StrategyBrain["directives"],
+): string {
+  return (
+    buildStrategyBrainBlock(sources, directiveKey) +
+    buildGeographyBlock(sources) +
+    buildAudienceBlock(sources) +
+    buildSectorBlock(sources) +
+    buildPeriodBlock(sources) +
+    buildContentLimitsBlock(sources) +
+    buildCampaignPeriodsBlock(sources) +
+    buildAccountDataBlock(sources) +
+    buildManualPageIntelBlock(sources) +
+    buildPriorSprintBlock(sources) +
+    buildCustomerVoiceBlock(sources)
+  );
 }
 
 /**
@@ -1396,22 +1678,30 @@ function buildSharedContextBlocks(sources: GrandPlanSources, directiveKey?: keyo
 function buildManualPageIntelBlock(sources: GrandPlanSources): string {
   const pages = sources.accountData?.manualPageIntel ?? [];
   if (!pages.length) return "";
-  const lines = pages.map((p, i) => {
-    const meta: string[] = [`URL: ${p.url}`];
-    if (p.title) meta.push(`Title tag: "${p.title}"`);
-    if (p.h1) meta.push(`H1: "${p.h1}"`);
-    if (p.metaDescription) meta.push(`Meta description: "${p.metaDescription}"`);
-    if (p.bodySnippet) meta.push(`Body snippet: ${p.bodySnippet.slice(0, 240)}`);
-    if (p.organicKeywords?.length) {
-      const kws = p.organicKeywords.slice(0, 12).map((k) => `"${k.keyword}" (pos ${k.position}, vol ${k.volume.toLocaleString()}, CPC £${k.cpc.toFixed(2)})`).join("; ");
-      meta.push(`Currently ranks for: ${kws}`);
-    } else if (p.fetchError) {
-      meta.push(`(scrape error: ${p.fetchError})`);
-    } else {
-      meta.push(`(no organic keyword data found)`);
-    }
-    return `Page ${i + 1}: ${meta.join("\n  ")}`;
-  }).join("\n\n");
+  const lines = pages
+    .map((p, i) => {
+      const meta: string[] = [`URL: ${p.url}`];
+      if (p.title) meta.push(`Title tag: "${p.title}"`);
+      if (p.h1) meta.push(`H1: "${p.h1}"`);
+      if (p.metaDescription) meta.push(`Meta description: "${p.metaDescription}"`);
+      if (p.bodySnippet) meta.push(`Body snippet: ${p.bodySnippet.slice(0, 240)}`);
+      if (p.organicKeywords?.length) {
+        const kws = p.organicKeywords
+          .slice(0, 12)
+          .map(
+            (k) =>
+              `"${k.keyword}" (pos ${k.position}, vol ${k.volume.toLocaleString()}, CPC £${k.cpc.toFixed(2)})`,
+          )
+          .join("; ");
+        meta.push(`Currently ranks for: ${kws}`);
+      } else if (p.fetchError) {
+        meta.push(`(scrape error: ${p.fetchError})`);
+      } else {
+        meta.push(`(no organic keyword data found)`);
+      }
+      return `Page ${i + 1}: ${meta.join("\n  ")}`;
+    })
+    .join("\n\n");
   return `\n\n<priority_pages>
 PRIORITY PAGES — the client explicitly asked us to optimise these URLs (paste-in list from the brief). Treat these as the FIRST priority for any SEO Quick Wins and Page Optimisations work. Recommendations for these pages MUST:
 - Use the actual title / H1 / meta / body content shown below as the rewrite anchor (do not invent page content).
@@ -1423,17 +1713,33 @@ ${lines}
 </priority_pages>`;
 }
 
-function buildStrategyBrainBlock(sources: GrandPlanSources, directiveKey?: keyof StrategyBrain["directives"]): string {
+function buildStrategyBrainBlock(
+  sources: GrandPlanSources,
+  directiveKey?: keyof StrategyBrain["directives"],
+): string {
   const brain = sources.strategyBrain;
   if (!brain) return "";
   const audienceList = brain.audiences.length
-    ? brain.audiences.map((a) => `- ${a.name}: ${a.coreInsight} (lead pain: ${a.primaryPain}; trigger: ${a.decisionTrigger}; channels: ${a.channels.join(", ")})`).join("\n")
+    ? brain.audiences
+        .map(
+          (a) =>
+            `- ${a.name}: ${a.coreInsight} (lead pain: ${a.primaryPain}; trigger: ${a.decisionTrigger}; channels: ${a.channels.join(", ")})`,
+        )
+        .join("\n")
     : "(none)";
   const channelStrategy = brain.channelStrategy.length
-    ? brain.channelStrategy.map((c) => `- ${c.channel} → ${c.role} (audience: ${c.primaryAudience}; success: ${c.successMetric})`).join("\n")
+    ? brain.channelStrategy
+        .map(
+          (c) =>
+            `- ${c.channel} → ${c.role} (audience: ${c.primaryAudience}; success: ${c.successMetric})`,
+        )
+        .join("\n")
     : "(none)";
-  const messages = [brain.messageHierarchy.primary, ...(brain.messageHierarchy.secondary ?? [])].filter(Boolean).join(" | ");
-  const directive = directiveKey && brain.directives[directiveKey] ? brain.directives[directiveKey] : "";
+  const messages = [brain.messageHierarchy.primary, ...(brain.messageHierarchy.secondary ?? [])]
+    .filter(Boolean)
+    .join(" | ");
+  const directive =
+    directiveKey && brain.directives[directiveKey] ? brain.directives[directiveKey] : "";
   return `\n\n<strategy_brain>
 The agency strategist has already produced an upstream brief that this section MUST follow. Treat the brain as the source of truth — do not introduce new audiences, contradict the positioning, or invent a different message hierarchy.
 
@@ -1463,14 +1769,19 @@ function buildGeographyBlock(sources: GrandPlanSources): string {
 
 // ─── AI generation functions ────────────────────────────────────────────────
 
-async function generateExecutiveSummary(anthropic: Anthropic, context: string, sources: GrandPlanSources): Promise<string> {
-  const res = await withAnthropicRetry("executiveSummary", () => anthropic.messages.create({
-    model: MODEL_PRIMARY(),
-    max_tokens: 1400,
-    messages: [
-      {
-        role: "user",
-        content: `You are a senior digital marketing strategist at i3media, a specialist UK digital marketing agency. You are writing a strategic memo DIRECTLY TO the client's decision-maker — not a report about them. Write in second person throughout ("your business", "you are", "your customers").
+async function generateExecutiveSummary(
+  anthropic: Anthropic,
+  context: string,
+  sources: GrandPlanSources,
+): Promise<string> {
+  const res = await withAnthropicRetry("executiveSummary", () =>
+    anthropic.messages.create({
+      model: MODEL_PRIMARY(),
+      max_tokens: 1400,
+      messages: [
+        {
+          role: "user",
+          content: `You are a senior digital marketing strategist at i3media, a specialist UK digital marketing agency. You are writing a strategic memo DIRECTLY TO the client's decision-maker — not a report about them. Write in second person throughout ("your business", "you are", "your customers").
 
 Structure the memo using a situation → complication → resolution framework:
 1. SITUATION: What is true about their market and position right now (specific facts, no generics)
@@ -1494,9 +1805,10 @@ ${sources.planMode === "sprint90" ? "\n- THIS IS A 90-DAY SPRINT executive memo.
 Write the executive summary for this plan:
 
 ${context}${buildSharedContextBlocks(sources)}`,
-      },
-    ],
-  }));
+        },
+      ],
+    }),
+  );
   return extractText(res);
 }
 
@@ -1519,21 +1831,26 @@ async function generateServicesInvestment(
 }> {
   const cb = sources.channelBudgets ?? {};
   const totalChannelBudget = (cb.googleAds ?? 0) + (cb.metaAds ?? 0) + (cb.linkedInAds ?? 0);
-  const monthlyBudgetHint = totalChannelBudget > 0 ? totalChannelBudget : (sources.keywordResearch?.monthlyBudget ?? 0);
+  const monthlyBudgetHint =
+    totalChannelBudget > 0 ? totalChannelBudget : (sources.keywordResearch?.monthlyBudget ?? 0);
   const platformList = enabledPlatforms.length > 0 ? enabledPlatforms.join(", ") : "(unspecified)";
-  const channelBudgetSummary = [
-    cb.googleAds ? `Google Ads: \u00a3${cb.googleAds}/mo` : "",
-    cb.metaAds ? `Meta Ads: \u00a3${cb.metaAds}/mo` : "",
-    cb.linkedInAds ? `LinkedIn Ads: \u00a3${cb.linkedInAds}/mo` : "",
-  ].filter(Boolean).join(", ") || "no per-channel splits supplied";
+  const channelBudgetSummary =
+    [
+      cb.googleAds ? `Google Ads: \u00a3${cb.googleAds}/mo` : "",
+      cb.metaAds ? `Meta Ads: \u00a3${cb.metaAds}/mo` : "",
+      cb.linkedInAds ? `LinkedIn Ads: \u00a3${cb.linkedInAds}/mo` : "",
+    ]
+      .filter(Boolean)
+      .join(", ") || "no per-channel splits supplied";
 
-  const res = await withAnthropicRetry("servicesInvestment", () => anthropic.messages.create({
-    model: MODEL_PRIMARY(),
-    max_tokens: 2200,
-    messages: [
-      {
-        role: "user",
-        content: `You are a senior account director at i3media, a UK digital marketing agency. Build a Services & Investment block for the client below.
+  const res = await withAnthropicRetry("servicesInvestment", () =>
+    anthropic.messages.create({
+      model: MODEL_PRIMARY(),
+      max_tokens: 2200,
+      messages: [
+        {
+          role: "user",
+          content: `You are a senior account director at i3media, a UK digital marketing agency. Build a Services & Investment block for the client below.
 
 Inputs:
 - Sector: ${sources.sector ?? "(not specified)"}
@@ -1563,9 +1880,10 @@ Return STRICT JSON only \u2014 no prose, no markdown, no code fences. Schema:
 
 Plan context:
 ${context}${buildSharedContextBlocks(sources)}`,
-      },
-    ],
-  }));
+        },
+      ],
+    }),
+  );
 
   const raw = extractText(res).trim();
   const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "");
@@ -1591,14 +1909,19 @@ ${context}${buildSharedContextBlocks(sources)}`,
   };
 }
 
-async function generateStrategyPlan(anthropic: Anthropic, context: string, sources: GrandPlanSources): Promise<string> {
-  const res = await withAnthropicRetry("strategyPlan", () => anthropic.messages.create({
-    model: MODEL_PRIMARY(),
-    max_tokens: 1600,
-    messages: [
-      {
-        role: "user",
-        content: `You are a senior digital marketing strategist at i3media. Write a phased strategy plan with three phases: Month 1 (Foundation), Months 2-3 (Growth), Months 4+ (Scale).
+async function generateStrategyPlan(
+  anthropic: Anthropic,
+  context: string,
+  sources: GrandPlanSources,
+): Promise<string> {
+  const res = await withAnthropicRetry("strategyPlan", () =>
+    anthropic.messages.create({
+      model: MODEL_PRIMARY(),
+      max_tokens: 1600,
+      messages: [
+        {
+          role: "user",
+          content: `You are a senior digital marketing strategist at i3media. Write a phased strategy plan with three phases: Month 1 (Foundation), Months 2-3 (Growth), Months 4+ (Scale).
 
 Rules:
 - British English, no em dashes, no semicolons, no AI jargon
@@ -1617,13 +1940,19 @@ Rules:
 Write the phased strategy plan:
 
 ${context}${buildSharedContextBlocks(sources)}`,
-      },
-    ],
-  }));
+        },
+      ],
+    }),
+  );
   return extractText(res);
 }
 
-async function generateMetaCampaigns(anthropic: Anthropic, context: string, adGroups: AdGroup[], sources: GrandPlanSources): Promise<MetaCampaign[]> {
+async function generateMetaCampaigns(
+  anthropic: Anthropic,
+  context: string,
+  adGroups: AdGroup[],
+  sources: GrandPlanSources,
+): Promise<MetaCampaign[]> {
   // Rank ad groups by total search volume so themes reflect commercial weight,
   // not arbitrary storage order.
   const ranked = [...adGroups].sort((a, b) => {
@@ -1631,15 +1960,19 @@ async function generateMetaCampaigns(anthropic: Anthropic, context: string, adGr
     const vb = b.keywords.reduce((s, k) => s + (k.volume ?? 0), 0);
     return vb - va;
   });
-  const topThemes = ranked.slice(0, 4).map((g) => g.name).join(", ");
+  const topThemes = ranked
+    .slice(0, 4)
+    .map((g) => g.name)
+    .join(", ");
 
-  const res = await withAnthropicRetry("metaCampaigns", () => anthropic.messages.create({
-    model: MODEL_PRIMARY(),
-    max_tokens: 5000,
-    messages: [
-      {
-        role: "user",
-        content: `You are a Meta Ads specialist at i3media. Generate Meta (Facebook/Instagram) campaign structures.
+  const res = await withAnthropicRetry("metaCampaigns", () =>
+    anthropic.messages.create({
+      model: MODEL_PRIMARY(),
+      max_tokens: 5000,
+      messages: [
+        {
+          role: "user",
+          content: `You are a Meta Ads specialist at i3media. Generate Meta (Facebook/Instagram) campaign structures.
 
 Return a JSON object with key "campaigns" containing an array of campaign objects. Each campaign should have:
 - campaignName: string
@@ -1693,9 +2026,10 @@ Brief: ${sources.clientBrief || sources.keywordResearch?.brief || "General digit
 
 Context:
 ${context}${buildSharedContextBlocks(sources, "meta")}`,
-      },
-    ],
-  }));
+        },
+      ],
+    }),
+  );
 
   const raw = extractText(res);
   const parsed = safeJsonParse(raw, { campaigns: [] });
@@ -1709,9 +2043,14 @@ ${context}${buildSharedContextBlocks(sources, "meta")}`,
   return campaigns;
 }
 
-function buildFallbackMetaCampaigns(sources: GrandPlanSources, topGroups: AdGroup[]): MetaCampaign[] {
+function buildFallbackMetaCampaigns(
+  sources: GrandPlanSources,
+  topGroups: AdGroup[],
+): MetaCampaign[] {
   const client = sources.clientName;
-  const themes = topGroups.length ? topGroups : [{ name: "General awareness", keywords: [] } as AdGroup];
+  const themes = topGroups.length
+    ? topGroups
+    : [{ name: "General awareness", keywords: [] } as AdGroup];
   return themes.slice(0, 2).map((g, i) => ({
     campaignName: `${client} — ${g.name}${i === 0 ? " (Lead Gen)" : " (Awareness)"}`,
     objective: i === 0 ? "leads" : "awareness",
@@ -1741,18 +2080,27 @@ function buildFallbackMetaCampaigns(sources: GrandPlanSources, topGroups: AdGrou
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function generateContentCalendar(anthropic: Anthropic, context: string, contentData: any, sources: GrandPlanSources): Promise<ContentCalendarMonth[]> {
-  const focusPeriodText = sources.campaignFocusPeriods.length > 0
-    ? `\n\nCampaign focus periods (MUST be reflected in the calendar):\n${sources.campaignFocusPeriods.map((p) => `${MONTH_NAMES[p.startMonth - 1]}–${MONTH_NAMES[p.endMonth - 1]}: ${p.label}${p.description ? ` — ${p.description}` : ""}`).join("\n")}`
-    : "";
+async function generateContentCalendar(
+  anthropic: Anthropic,
+  context: string,
+  contentData: any,
+  sources: GrandPlanSources,
+): Promise<ContentCalendarMonth[]> {
+  const focusPeriodText =
+    sources.campaignFocusPeriods.length > 0
+      ? `\n\nCampaign focus periods (MUST be reflected in the calendar):\n${sources.campaignFocusPeriods.map((p) => `${MONTH_NAMES[p.startMonth - 1]}–${MONTH_NAMES[p.endMonth - 1]}: ${p.label}${p.description ? ` — ${p.description}` : ""}`).join("\n")}`
+      : "";
 
   const blogTopics = contentData?.blogPosts
-    ? contentData.blogPosts.slice(0, 25).map((b: { title?: string; keyword?: string }) => b.title || b.keyword).filter(Boolean).join(", ")
+    ? contentData.blogPosts
+        .slice(0, 25)
+        .map((b: { title?: string; keyword?: string }) => b.title || b.keyword)
+        .filter(Boolean)
+        .join(", ")
     : "";
 
   const postsPerMonth = sources.postsPerMonth ?? 4;
-  const socialPerMonth = sources.socialPostsPerMonth
-    ?? ((sources.socialPostsPerWeek ?? 2) * 4);
+  const socialPerMonth = sources.socialPostsPerMonth ?? (sources.socialPostsPerWeek ?? 2) * 4;
   const socialPerWeek = Math.max(1, Math.round(socialPerMonth / 4));
 
   // Sprint mode forces a 3-month calendar regardless of any explicit
@@ -1777,17 +2125,18 @@ async function generateContentCalendar(anthropic: Anthropic, context: string, co
 
   async function generateHalf(label: string, months: string[]): Promise<ContentCalendarMonth[]> {
     if (months.length === 0) return [];
-    const res = await withAnthropicRetry(`contentCalendar:${label}`, () => anthropic.messages.create({
-      model: MODEL_LIGHT_FN(),
-      max_tokens: 3500,
-      messages: [
-        {
-          role: "user",
-          content: `${STYLE_RULES}
+    const res = await withAnthropicRetry(`contentCalendar:${label}`, () =>
+      anthropic.messages.create({
+        model: MODEL_LIGHT_FN(),
+        max_tokens: 3500,
+        messages: [
+          {
+            role: "user",
+            content: `${STYLE_RULES}
 
 You are a content strategist at i3media. Generate the ${label} of a ${sprint ? "12-week sprint calendar (3 months)" : `${monthCount}-month content calendar`}.
 
-Months you must cover (use these EXACT labels, in order): ${months.map(m => `"${m}"`).join(", ")}
+Months you must cover (use these EXACT labels, in order): ${months.map((m) => `"${m}"`).join(", ")}
 
 Return a JSON object with key "months" containing an array of month objects:
 - month: string (one of the labels above)
@@ -1805,9 +2154,10 @@ Rules:
 Client: ${sources.clientName}
 ${blogTopics ? `Available blog topics: ${blogTopics}\n` : ""}Context:
 ${context}${buildSharedContextBlocks(sources, "calendar")}`,
-        },
-      ],
-    }));
+          },
+        ],
+      }),
+    );
     const raw = extractText(res);
     const parsed = safeJsonParse<{ months?: ContentCalendarMonth[] }>(raw, { months: [] });
     return parsed.months ?? [];
@@ -1845,7 +2195,12 @@ ${context}${buildSharedContextBlocks(sources, "calendar")}`,
     topic: "[PLACEHOLDER] Assign a social post topic before scheduling",
   });
   const padded: ContentCalendarMonth[] = monthLabels.map((label) => {
-    const m = byLabel.get(label) ?? { month: label, focusLabel: null, blogPosts: [], socialPosts: [] };
+    const m = byLabel.get(label) ?? {
+      month: label,
+      focusLabel: null,
+      blogPosts: [],
+      socialPosts: [],
+    };
     const blogs = [...(m.blogPosts ?? [])];
     while (blogs.length < postsPerMonth) blogs.push(evergreenBlog());
     const socials = [...(m.socialPosts ?? [])];
@@ -1860,7 +2215,6 @@ ${context}${buildSharedContextBlocks(sources, "calendar")}`,
   return padded;
 }
 
-
 // ─── Google Ads ad copy generator ───────────────────────────────────────────
 
 async function generateGoogleAdsAdCopy(
@@ -1868,7 +2222,18 @@ async function generateGoogleAdsAdCopy(
   adGroups: AdGroup[],
   context: string,
   sources: GrandPlanSources,
-): Promise<{ name: string; adCopy: { headlines: string[]; descriptions: string[]; sitelinks?: string[]; urlPaths?: string[]; isFallback?: boolean } }[]> {
+): Promise<
+  {
+    name: string;
+    adCopy: {
+      headlines: string[];
+      descriptions: string[];
+      sitelinks?: string[];
+      urlPaths?: string[];
+      isFallback?: boolean;
+    };
+  }[]
+> {
   // Pick the highest-volume keywords per group so the AI gets meaningful
   // commercial intent signals rather than whatever was stored first.
   const groupList = adGroups
@@ -1880,7 +2245,11 @@ async function generateGoogleAdsAdCopy(
       // Fallback to whatever exists if every keyword is zero-volume
       const list = top.length > 0 ? top : g.keywords.slice(0, 5);
       const formatted = list
-        .map((k) => k.volume ? `${k.keyword} (${k.volume.toLocaleString()}/mo${k.cpc ? `, £${k.cpc.toFixed(2)} CPC` : ""})` : k.keyword)
+        .map((k) =>
+          k.volume
+            ? `${k.keyword} (${k.volume.toLocaleString()}/mo${k.cpc ? `, £${k.cpc.toFixed(2)} CPC` : ""})`
+            : k.keyword,
+        )
         .join(", ");
       return `${g.name}: ${formatted}`;
     })
@@ -1894,7 +2263,9 @@ async function generateGoogleAdsAdCopy(
   // doesn't use prohibited language in copy (e.g. "no scholarship language").
   const briefNegatives = parseBriefNegatives(sources.clientBrief ?? "");
 
-  const buildPrompt = (feedback?: string) => `You are a Google Ads specialist at i3media. Write Responsive Search Ad copy for each ad group below.
+  const buildPrompt = (
+    feedback?: string,
+  ) => `You are a Google Ads specialist at i3media. Write Responsive Search Ad copy for each ad group below.
 
 Return a JSON object with key "adGroups" containing an array. Each item:
 - name: string (must match the ad group name exactly)
@@ -1921,8 +2292,12 @@ ${(() => {
   const gBudget = sources.channelBudgets?.googleAds;
   if (!gBudget) return "";
   let rule = `- BUDGET CALIBRATION: This client has £${gBudget}/month for Google Ads. Scale your ad groups accordingly:\n`;
-  if (gBudget < 300) rule += "  Under £300/mo — write ad copy for a MAXIMUM of 1 ad group. Focus on the single highest-intent group only.";
-  else if (gBudget < 800) rule += "  £300–800/mo — write ad copy for a MAXIMUM of 2 ad groups. Prioritise the two highest-intent groups.";
+  if (gBudget < 300)
+    rule +=
+      "  Under £300/mo — write ad copy for a MAXIMUM of 1 ad group. Focus on the single highest-intent group only.";
+  else if (gBudget < 800)
+    rule +=
+      "  £300–800/mo — write ad copy for a MAXIMUM of 2 ad groups. Prioritise the two highest-intent groups.";
   else if (gBudget < 2000) rule += "  £800–2000/mo — write ad copy for up to 3-4 ad groups.";
   else rule += "  Over £2000/mo — write ad copy for all ad groups provided.";
   rule += "\n  Do NOT write ad copy for more groups than the budget allows to run simultaneously.";
@@ -1946,7 +2321,12 @@ ${context}${buildSharedContextBlocks(sources, "googleAds")}`;
     descriptions?: unknown;
     sitelinks?: unknown;
     urlPaths?: unknown;
-    adCopy?: { headlines?: unknown; descriptions?: unknown; sitelinks?: unknown; urlPaths?: unknown };
+    adCopy?: {
+      headlines?: unknown;
+      descriptions?: unknown;
+      sitelinks?: unknown;
+      urlPaths?: unknown;
+    };
   };
 
   const toStringArray = (v: unknown): string[] =>
@@ -1965,7 +2345,13 @@ ${context}${buildSharedContextBlocks(sources, "googleAds")}`;
     });
 
   const collectViolations = (
-    groups: { name: string; headlines: string[]; descriptions: string[]; sitelinks: string[]; urlPaths: string[] }[],
+    groups: {
+      name: string;
+      headlines: string[];
+      descriptions: string[];
+      sitelinks: string[];
+      urlPaths: string[];
+    }[],
   ) => {
     const issues: string[] = [];
     for (const g of groups) {
@@ -1973,23 +2359,43 @@ ${context}${buildSharedContextBlocks(sources, "googleAds")}`;
       const overD = g.descriptions.filter((d) => d.length > DESC_LIMIT);
       const overS = g.sitelinks.filter((s) => s.length > SITELINK_LIMIT);
       const overP = g.urlPaths.filter((p) => p.length > URL_PATH_LIMIT);
-      if (overH.length) issues.push(`Ad group "${g.name}": ${overH.length} headline(s) exceed ${HEADLINE_LIMIT} chars: ${overH.map((h) => `"${h}" (${h.length})`).join(", ")}`);
-      if (overD.length) issues.push(`Ad group "${g.name}": ${overD.length} description(s) exceed ${DESC_LIMIT} chars`);
-      if (overS.length) issues.push(`Ad group "${g.name}": ${overS.length} sitelink(s) exceed ${SITELINK_LIMIT} chars`);
-      if (overP.length) issues.push(`Ad group "${g.name}": ${overP.length} URL path(s) exceed ${URL_PATH_LIMIT} chars`);
+      if (overH.length)
+        issues.push(
+          `Ad group "${g.name}": ${overH.length} headline(s) exceed ${HEADLINE_LIMIT} chars: ${overH.map((h) => `"${h}" (${h.length})`).join(", ")}`,
+        );
+      if (overD.length)
+        issues.push(
+          `Ad group "${g.name}": ${overD.length} description(s) exceed ${DESC_LIMIT} chars`,
+        );
+      if (overS.length)
+        issues.push(
+          `Ad group "${g.name}": ${overS.length} sitelink(s) exceed ${SITELINK_LIMIT} chars`,
+        );
+      if (overP.length)
+        issues.push(
+          `Ad group "${g.name}": ${overP.length} URL path(s) exceed ${URL_PATH_LIMIT} chars`,
+        );
     }
     return issues;
   };
 
-  let lastNormalised: { name: string; headlines: string[]; descriptions: string[]; sitelinks: string[]; urlPaths: string[] }[] = [];
+  let lastNormalised: {
+    name: string;
+    headlines: string[];
+    descriptions: string[];
+    sitelinks: string[];
+    urlPaths: string[];
+  }[] = [];
   let feedback: string | undefined;
 
   for (let attempt = 0; attempt < 2; attempt++) {
-    const res = await withAnthropicRetry(`googleAdsAdCopy:${attempt}`, () => anthropic.messages.create({
-      model: MODEL_LIGHT_FN(),
-      max_tokens: 3000,
-      messages: [{ role: "user", content: buildPrompt(feedback) }],
-    }));
+    const res = await withAnthropicRetry(`googleAdsAdCopy:${attempt}`, () =>
+      anthropic.messages.create({
+        model: MODEL_LIGHT_FN(),
+        max_tokens: 3000,
+        messages: [{ role: "user", content: buildPrompt(feedback) }],
+      }),
+    );
 
     const parsed = safeJsonParse<{ adGroups?: RawGroup[] }>(extractText(res), { adGroups: [] });
     lastNormalised = normalise(parsed.adGroups ?? []);
@@ -1997,7 +2403,9 @@ ${context}${buildSharedContextBlocks(sources, "googleAds")}`;
 
     if (violations.length === 0) break;
     feedback = violations.join("\n");
-    console.warn(`[grand-plan] Ad copy attempt ${attempt + 1} had ${violations.length} validation issue(s); retrying.`);
+    console.warn(
+      `[grand-plan] Ad copy attempt ${attempt + 1} had ${violations.length} validation issue(s); retrying.`,
+    );
   }
 
   // Final safety net: hard-truncate anything still over limit. If a group
@@ -2020,7 +2428,10 @@ ${context}${buildSharedContextBlocks(sources, "googleAds")}`;
     }
     // Fallback: build placeholder copy from the ad group name and top keyword
     const adGroup = adGroups.find((ag) => ag.name === name);
-    const topKw = adGroup?.keywords.find((k) => (k.volume ?? 0) > 0)?.keyword ?? adGroup?.keywords[0]?.keyword ?? name;
+    const topKw =
+      adGroup?.keywords.find((k) => (k.volume ?? 0) > 0)?.keyword ??
+      adGroup?.keywords[0]?.keyword ??
+      name;
     const client = sources.clientName;
     const fallback = buildFallbackAdCopy(name, topKw, client);
     return {
@@ -2034,8 +2445,12 @@ ${context}${buildSharedContextBlocks(sources, "googleAds")}`;
 }
 
 /** Deterministic ad copy scaffold used when the AI returns nothing usable. */
-function buildFallbackAdCopy(adGroupName: string, topKeyword: string, clientName: string): { headlines: string[]; descriptions: string[]; sitelinks: string[] } {
-  const cap = (s: string, n: number) => s.length <= n ? s : s.slice(0, n - 1).trimEnd() + "…";
+function buildFallbackAdCopy(
+  adGroupName: string,
+  topKeyword: string,
+  clientName: string,
+): { headlines: string[]; descriptions: string[]; sitelinks: string[] } {
+  const cap = (s: string, n: number) => (s.length <= n ? s : s.slice(0, n - 1).trimEnd() + "…");
   const kw = cap(topKeyword, 24);
   const brand = cap(clientName, 18);
   const headlines = [
@@ -2056,12 +2471,29 @@ function buildFallbackAdCopy(adGroupName: string, topKeyword: string, clientName
     cap(`Talk To A Specialist`, 30),
   ];
   const descriptions = [
-    cap(`Looking for ${kw}? ${brand} delivers a clear, professional service. Get in touch today for a free quote.`, 90),
-    cap(`Friendly, expert ${kw} from ${brand}. Trusted for quality work and transparent pricing.`, 90),
-    cap(`Need help with ${kw}? Our team is ready to talk. Quick response, no pressure, honest advice.`, 90),
-    cap(`${brand} makes ${kw} simple. Tell us what you need and we will come back with a tailored plan.`, 90),
+    cap(
+      `Looking for ${kw}? ${brand} delivers a clear, professional service. Get in touch today for a free quote.`,
+      90,
+    ),
+    cap(
+      `Friendly, expert ${kw} from ${brand}. Trusted for quality work and transparent pricing.`,
+      90,
+    ),
+    cap(
+      `Need help with ${kw}? Our team is ready to talk. Quick response, no pressure, honest advice.`,
+      90,
+    ),
+    cap(
+      `${brand} makes ${kw} simple. Tell us what you need and we will come back with a tailored plan.`,
+      90,
+    ),
   ];
-  const sitelinks = [cap("Get a Quote", 25), cap("About Us", 25), cap("Contact", 25), cap("How It Works", 25)];
+  const sitelinks = [
+    cap("Get a Quote", 25),
+    cap("About Us", 25),
+    cap("Contact", 25),
+    cap("How It Works", 25),
+  ];
   return { headlines, descriptions, sitelinks };
 }
 
@@ -2080,15 +2512,17 @@ const PAID_PLATFORM_IDS = ["googleAdsCampaigns", "metaCampaigns", "linkedInAds"]
 
 /** UK-market CPL benchmarks used to ground media-plan AI suggestions. */
 const SECTOR_CHANNEL_BENCHMARKS: Record<string, string> = {
-  dental:                "Google Search CPL £25-£60, Meta CPL £15-£40, LinkedIn limited reach for consumer dental",
-  ecommerce:             "Google Shopping/Search ROAS 3-6x, Meta CPA £20-£60, TikTok CPA £15-£45 for younger SKUs",
-  industrial:            "Google Search CPL £40-£120, LinkedIn CPL £80-£250, Meta less effective for B2B specs",
-  charities:             "Meta CPL £8-£25 for donor acquisition, Google Grants for free search where eligible",
-  healthcare:            "Google Search CPL £35-£90, Meta CPL £20-£50, regulated copy required",
-  hospitality:           "Meta CPA £8-£25 for bookings, Google Search strong for branded + intent terms",
+  dental: "Google Search CPL £25-£60, Meta CPL £15-£40, LinkedIn limited reach for consumer dental",
+  ecommerce:
+    "Google Shopping/Search ROAS 3-6x, Meta CPA £20-£60, TikTok CPA £15-£45 for younger SKUs",
+  industrial:
+    "Google Search CPL £40-£120, LinkedIn CPL £80-£250, Meta less effective for B2B specs",
+  charities: "Meta CPL £8-£25 for donor acquisition, Google Grants for free search where eligible",
+  healthcare: "Google Search CPL £35-£90, Meta CPL £20-£50, regulated copy required",
+  hospitality: "Meta CPA £8-£25 for bookings, Google Search strong for branded + intent terms",
   professional_services: "LinkedIn CPL £100-£300, Google Search CPL £40-£150",
-  saas:                  "LinkedIn CPL £80-£250, Google Search CPL £30-£120, retargeting essential",
-  education:             "Meta CPL £10-£40, Google Search CPL £20-£70 for course terms",
+  saas: "LinkedIn CPL £80-£250, Google Search CPL £30-£120, retargeting essential",
+  education: "Meta CPL £10-£40, Google Search CPL £20-£70 for course terms",
 };
 
 /** Derive the list of enabled platform section keys from the user's selection. */
@@ -2103,7 +2537,8 @@ function buildFallbackMediaPlan(
   enabledPlatforms: string[],
   forecast?: { cost: number; conversions: number; avgCpa: number; monthlyBudget: number },
 ): { name: string; budget: number; percentage: number; strategy: string }[] {
-  const platforms = enabledPlatforms.length > 0 ? enabledPlatforms : Object.keys(PLATFORM_CHANNEL_MAP);
+  const platforms =
+    enabledPlatforms.length > 0 ? enabledPlatforms : Object.keys(PLATFORM_CHANNEL_MAP);
   // Default weights — Google Ads gets the largest share when available because
   // it's the only channel we have a real forecast for.
   const WEIGHTS: Record<string, number> = {
@@ -2120,9 +2555,10 @@ function buildFallbackMediaPlan(
       name: PLATFORM_CHANNEL_MAP[p],
       budget,
       percentage: Math.round((w / totalWeight) * 100),
-      strategy: p === "googleAdsCampaigns" && forecast && forecast.cost > 0
-        ? `Anchored on the keyword forecast: ~${forecast.conversions} conversions/month at ~£${Math.round(forecast.avgCpa)} CPA on a £${forecast.monthlyBudget.toLocaleString()} budget. Capture in-market demand first.`
-        : "Allocation derived from default weighting. Review with a strategist before committing budget.",
+      strategy:
+        p === "googleAdsCampaigns" && forecast && forecast.cost > 0
+          ? `Anchored on the keyword forecast: ~${forecast.conversions} conversions/month at ~£${Math.round(forecast.avgCpa)} CPA on a £${forecast.monthlyBudget.toLocaleString()} budget. Capture in-market demand first.`
+          : "Allocation derived from default weighting. Review with a strategist before committing budget.",
     };
   });
   return channels;
@@ -2135,7 +2571,15 @@ async function generateMediaPlanChannels(
   options: {
     enabledPlatforms: string[];
     paidOnly: boolean;
-    googleAdsForecast?: { cost: number; conversions: number; avgCpa: number; monthlyBudget: number; clicks: number; ctr: number; avgCpc: number };
+    googleAdsForecast?: {
+      cost: number;
+      conversions: number;
+      avgCpa: number;
+      monthlyBudget: number;
+      clicks: number;
+      ctr: number;
+      avgCpc: number;
+    };
   },
 ): Promise<{ name: string; budget: number; percentage: number; strategy: string }[]> {
   const totalBudget = sources.mediaPlan?.totalBudget ?? 10000;
@@ -2143,9 +2587,13 @@ async function generateMediaPlanChannels(
   const { enabledPlatforms, paidOnly, googleAdsForecast } = options;
 
   const allowedChannelNames = enabledPlatforms.map((p) => PLATFORM_CHANNEL_MAP[p]).filter(Boolean);
-  const benchmarks = SECTOR_CHANNEL_BENCHMARKS[sources.sector ?? ""] ?? "Use prevailing UK market benchmarks for the objective.";
+  const benchmarks =
+    SECTOR_CHANNEL_BENCHMARKS[sources.sector ?? ""] ??
+    "Use prevailing UK market benchmarks for the objective.";
 
-  const forecastBlock = googleAdsForecast && googleAdsForecast.cost > 0 ? `
+  const forecastBlock =
+    googleAdsForecast && googleAdsForecast.cost > 0
+      ? `
 
 Google Ads forecast (already computed from the keyword research — use this to anchor the Google Ads line):
 - Modelled monthly spend: £${googleAdsForecast.cost.toLocaleString()}
@@ -2154,7 +2602,8 @@ Google Ads forecast (already computed from the keyword research — use this to 
 - Modelled CPA: £${Math.round(googleAdsForecast.avgCpa).toLocaleString()}
 - Avg CPC: £${googleAdsForecast.avgCpc.toFixed(2)}
 - Forecast budget cap: £${googleAdsForecast.monthlyBudget.toLocaleString()}/month
-The Google Ads line MUST sit between £${Math.round(googleAdsForecast.cost * 0.85).toLocaleString()} and £${Math.round(googleAdsForecast.monthlyBudget * 1.1).toLocaleString()} unless you justify deviating in the strategy text.` : "";
+The Google Ads line MUST sit between £${Math.round(googleAdsForecast.cost * 0.85).toLocaleString()} and £${Math.round(googleAdsForecast.monthlyBudget * 1.1).toLocaleString()} unless you justify deviating in the strategy text.`
+      : "";
 
   const modeBlock = paidOnly
     ? "\n\nMODE: paid-only. The strategist has explicitly requested PAID channels only. Do NOT include SEO, organic social, email, content marketing or any other earned/owned line."
@@ -2165,13 +2614,14 @@ The Google Ads line MUST sit between £${Math.round(googleAdsForecast.cost * 0.8
 Allowed channels (you MUST choose ONLY from this list — the strategist has unticked anything not listed):
 ${allowedChannelNames.map((c) => `- ${c}`).join("\n")}`;
 
-  const res = await withAnthropicRetry("mediaPlanChannels", () => anthropic.messages.create({
-    model: MODEL_LIGHT_FN(),
-    max_tokens: 2200,
-    messages: [
-      {
-        role: "user",
-        content: `You are a senior media planner at i3media. Generate a channel allocation for a digital marketing media plan.
+  const res = await withAnthropicRetry("mediaPlanChannels", () =>
+    anthropic.messages.create({
+      model: MODEL_LIGHT_FN(),
+      max_tokens: 2200,
+      messages: [
+        {
+          role: "user",
+          content: `You are a senior media planner at i3media. Generate a channel allocation for a digital marketing media plan.
 
 Total monthly budget: £${totalBudget.toLocaleString()}
 Objective: ${objective.replace(/_/g, " ")}
@@ -2193,9 +2643,10 @@ Rules:
 
 Context:
 ${context}${buildSharedContextBlocks(sources)}`,
-      },
-    ],
-  }));
+        },
+      ],
+    }),
+  );
 
   try {
     const parsed = JSON.parse(extractText(res));
@@ -2212,7 +2663,9 @@ ${context}${buildSharedContextBlocks(sources)}`,
       .filter((ch: { name: string }) => allowed.size === 0 || allowed.has(ch.name));
 
     if (channels.length === 0) {
-      console.warn("[grand-plan] Media plan AI returned no usable channels; using deterministic fallback.");
+      console.warn(
+        "[grand-plan] Media plan AI returned no usable channels; using deterministic fallback.",
+      );
       return buildFallbackMediaPlan(totalBudget, enabledPlatforms, googleAdsForecast);
     }
     return channels;
@@ -2240,13 +2693,15 @@ function extractText(response: Anthropic.Message): string {
  */
 export function cleanEmDashes(text: string): string {
   if (!text) return text;
-  return text
-    // " — " or " – " (em/en-dash with surrounding spaces) → ", "
-    .replace(/\s+[—–]\s+/g, ", ")
-    // Em-dash with no spaces between words (e.g. "fast—reliable") → ", "
-    .replace(/([a-zA-Z]),?\s*[—]\s*([a-zA-Z])/g, "$1, $2")
-    // Stray em-dashes left over → ", "
-    .replace(/—/g, ", ");
+  return (
+    text
+      // " — " or " – " (em/en-dash with surrounding spaces) → ", "
+      .replace(/\s+[—–]\s+/g, ", ")
+      // Em-dash with no spaces between words (e.g. "fast—reliable") → ", "
+      .replace(/([a-zA-Z]),?\s*[—]\s*([a-zA-Z])/g, "$1, $2")
+      // Stray em-dashes left over → ", "
+      .replace(/—/g, ", ")
+  );
 }
 
 /**
@@ -2287,13 +2742,14 @@ export async function generateHeroTagline(
     .trim()
     .slice(0, 600);
 
-  const res = await withAnthropicRetry("heroTagline", () => anthropic.messages.create({
-    model: MODEL_PRIMARY(),
-    max_tokens: 220,
-    messages: [
-      {
-        role: "user",
-        content: `${STYLE_RULES}
+  const res = await withAnthropicRetry("heroTagline", () =>
+    anthropic.messages.create({
+      model: MODEL_PRIMARY(),
+      max_tokens: 220,
+      messages: [
+        {
+          role: "user",
+          content: `${STYLE_RULES}
 
 You are writing the cover-page subtitle for ${data.clientName}'s ${data.purpose === "pitch" ? "pitch deck" : data.purpose === "onboarding" ? "onboarding plan" : "strategy document"}.
 
@@ -2306,10 +2762,15 @@ Return PLAIN TEXT only. No quotes around the answer. No HTML. No "Tagline:" pref
 
 Client: ${data.clientName}
 ${audienceLines ? `Audiences:\n${audienceLines}\n` : ""}${briefSnippet ? `Brief: ${briefSnippet}\n` : ""}${execSnippet ? `Executive summary excerpt: ${execSnippet}` : ""}`,
-      },
-    ],
-  }));
-  return cleanEmDashes(extractText(res).trim().replace(/^["'`]|["'`]$/g, ""));
+        },
+      ],
+    }),
+  );
+  return cleanEmDashes(
+    extractText(res)
+      .trim()
+      .replace(/^["'`]|["'`]$/g, ""),
+  );
 }
 
 /**
@@ -2326,7 +2787,9 @@ export async function generateSectionIntros(
     metaCampaigns: !!data.sections.metaCampaigns?.length,
     googleAdsCampaigns: !!data.sections.googleAdsCampaigns,
   };
-  const wanted = Object.entries(want).filter(([, v]) => v).map(([k]) => k);
+  const wanted = Object.entries(want)
+    .filter(([, v]) => v)
+    .map(([k]) => k);
   if (wanted.length === 0) return {};
 
   const audienceLines = (data.sections.audiences ?? [])
@@ -2334,13 +2797,14 @@ export async function generateSectionIntros(
     .map((a) => `- ${a.name}${a.description ? `: ${a.description}` : ""}`)
     .join("\n");
 
-  const res = await withAnthropicRetry("sectionIntros", () => anthropic.messages.create({
-    model: MODEL_LIGHT_FN(),
-    max_tokens: 800,
-    messages: [
-      {
-        role: "user",
-        content: `${STYLE_RULES}
+  const res = await withAnthropicRetry("sectionIntros", () =>
+    anthropic.messages.create({
+      model: MODEL_LIGHT_FN(),
+      max_tokens: 800,
+      messages: [
+        {
+          role: "user",
+          content: `${STYLE_RULES}
 
 You are writing introduction paragraphs for ${data.clientName}'s strategy document. Each intro is the first thing the reader sees under the section heading.
 
@@ -2353,9 +2817,10 @@ ${want.contentStrategy ? '- contentStrategy: "Topic-cluster SEO content plan: pi
 
 Client: ${data.clientName}
 ${audienceLines ? `Audiences:\n${audienceLines}` : ""}`,
-      },
-    ],
-  }));
+        },
+      ],
+    }),
+  );
   const raw = extractText(res);
   const parsed = safeJsonParse<Record<string, string>>(raw, {});
   const out: NonNullable<GrandPlanData["sectionIntros"]> = {};
@@ -2390,27 +2855,34 @@ export function buildAudienceRationales(
 // ─── Sector-aware settings ───────────────────────────────────────────────────
 
 const SECTOR_NEGATIVES: Record<string, string[]> = {
-  dental:                ["NHS", "NHS dentist", "free dental", "dental school", "dental nurse", "dental hygienist jobs"],
-  ecommerce:             ["wholesale", "dropshipping", "alibaba", "sample"],
-  industrial:            ["training", "apprenticeship", "course", "certification"],
-  charities:             ["volunteering", "intern", "work experience"],
-  healthcare:            ["NHS waiting list", "NHS referral", "free treatment", "GP referral"],
-  hospitality:           ["jobs", "work", "employment", "training course"],
+  dental: [
+    "NHS",
+    "NHS dentist",
+    "free dental",
+    "dental school",
+    "dental nurse",
+    "dental hygienist jobs",
+  ],
+  ecommerce: ["wholesale", "dropshipping", "alibaba", "sample"],
+  industrial: ["training", "apprenticeship", "course", "certification"],
+  charities: ["volunteering", "intern", "work experience"],
+  healthcare: ["NHS waiting list", "NHS referral", "free treatment", "GP referral"],
+  hospitality: ["jobs", "work", "employment", "training course"],
   professional_services: ["course", "certification", "how to become"],
-  saas:                  ["open source", "free alternative", "vs", "comparison"],
-  education:             ["free course", "YouTube", "reddit"],
+  saas: ["open source", "free alternative", "vs", "comparison"],
+  education: ["free course", "YouTube", "reddit"],
 };
 
 const SECTOR_AD_SCHEDULE: Record<string, string> = {
-  dental:                "Mon-Sat, 8am-8pm",
-  ecommerce:             "All week, 7am-11pm",
-  industrial:            "Mon-Fri, 7am-6pm",
-  charities:             "All week, 6am-11pm",
-  healthcare:            "Mon-Sat, 7am-9pm",
-  hospitality:           "All week, 8am-10pm",
+  dental: "Mon-Sat, 8am-8pm",
+  ecommerce: "All week, 7am-11pm",
+  industrial: "Mon-Fri, 7am-6pm",
+  charities: "All week, 6am-11pm",
+  healthcare: "Mon-Sat, 7am-9pm",
+  hospitality: "All week, 8am-10pm",
   professional_services: "Mon-Fri, 8am-7pm",
-  saas:                  "Mon-Fri, 8am-8pm",
-  education:             "All week, 8am-10pm",
+  saas: "Mon-Fri, 8am-8pm",
+  education: "All week, 8am-10pm",
 };
 
 // Note: previously held a hardcoded universal-negatives list ("free","jobs","career","salary","reddit").
@@ -2444,11 +2916,12 @@ function parseBriefNegatives(brief: string): string[] {
  * common prompt-instruction phrases.
  */
 function sanitiseNegativeTerms(terms: string[]): string[] {
-  const INSTRUCTION_RE = /^(focus on|avoid|note[:\s]|use |do not|consider|tip[:\s]|rationale|exclude|reminder)/i;
+  const INSTRUCTION_RE =
+    /^(focus on|avoid|note[:\s]|use |do not|consider|tip[:\s]|rationale|exclude|reminder)/i;
   return terms
-    .map((t) => t.split("\n")[0].trim())            // drop multiline instruction leakage
-    .filter((t) => t.length > 0 && t.length <= 60)  // drop over-long strings
-    .filter((t) => !INSTRUCTION_RE.test(t));         // drop instruction-phrase prefixes
+    .map((t) => t.split("\n")[0].trim()) // drop multiline instruction leakage
+    .filter((t) => t.length > 0 && t.length <= 60) // drop over-long strings
+    .filter((t) => !INSTRUCTION_RE.test(t)); // drop instruction-phrase prefixes
 }
 
 /**
@@ -2461,18 +2934,42 @@ function detectLocations(brief?: string): string {
   const l = brief.toLowerCase();
 
   // Multi-country first
-  if (l.includes("uk and ireland") || l.includes("uk & ireland")) return "United Kingdom, Republic of Ireland";
-  if (l.includes("united states") || /\busa?\b/.test(l) || l.includes("north america")) return "United States";
+  if (l.includes("uk and ireland") || l.includes("uk & ireland"))
+    return "United Kingdom, Republic of Ireland";
+  if (l.includes("united states") || /\busa?\b/.test(l) || l.includes("north america"))
+    return "United States";
   if (l.includes("canada")) return "Canada";
   if (l.includes("australia")) return "Australia";
   if (l.includes("ireland") && !l.includes("northern ireland")) return "Republic of Ireland";
   if (l.includes("europe") && !l.includes("uk only")) return "Europe";
-  if (l.includes("international") || l.includes("worldwide") || l.includes("global")) return "International";
+  if (l.includes("international") || l.includes("worldwide") || l.includes("global"))
+    return "International";
 
   // UK regional / city scoping → "United Kingdom (X)"
-  const ukRegions = ["london", "manchester", "birmingham", "leeds", "liverpool", "bristol", "glasgow", "edinburgh", "cardiff", "belfast", "scotland", "wales", "northern ireland", "yorkshire", "midlands", "south west", "south east", "north east", "north west"];
+  const ukRegions = [
+    "london",
+    "manchester",
+    "birmingham",
+    "leeds",
+    "liverpool",
+    "bristol",
+    "glasgow",
+    "edinburgh",
+    "cardiff",
+    "belfast",
+    "scotland",
+    "wales",
+    "northern ireland",
+    "yorkshire",
+    "midlands",
+    "south west",
+    "south east",
+    "north east",
+    "north west",
+  ];
   const matches = ukRegions.filter((r) => l.includes(r));
-  if (matches.length === 1) return `United Kingdom (${matches[0].replace(/\b\w/g, (c) => c.toUpperCase())})`;
+  if (matches.length === 1)
+    return `United Kingdom (${matches[0].replace(/\b\w/g, (c) => c.toUpperCase())})`;
   if (matches.length > 1) return "United Kingdom (regional)";
 
   return "United Kingdom";
@@ -2481,8 +2978,14 @@ function detectLocations(brief?: string): string {
 function buildGoogleAdsCampaigns(
   adGroups: AdGroup[],
   sources: GrandPlanSources,
-  aiNegatives?: { campaignLevel: { keyword: string; reason: string }[]; byAdGroup: { name: string; negatives: string[] }[] },
-  targeting?: { suggestedLocations: string[]; adGroupAudiences: { name: string; audience: string }[] },
+  aiNegatives?: {
+    campaignLevel: { keyword: string; reason: string }[];
+    byAdGroup: { name: string; negatives: string[] }[];
+  },
+  targeting?: {
+    suggestedLocations: string[];
+    adGroupAudiences: { name: string; audience: string }[];
+  },
   seedSuggestions?: { theme: string; phrases: string[] }[],
 ) {
   const adGroupNegMap = new Map((aiNegatives?.byAdGroup ?? []).map((g) => [g.name, g.negatives]));
@@ -2490,15 +2993,21 @@ function buildGoogleAdsCampaigns(
   const sector = sources.sector ?? "";
   const sectorNegs = SECTOR_NEGATIVES[sector] ?? [];
   const briefNegs = parseBriefNegatives(sources.clientBrief ?? "");
-  const aiCampaignNegs = sanitiseNegativeTerms((aiNegatives?.campaignLevel ?? []).map((n) => n.keyword));
+  const aiCampaignNegs = sanitiseNegativeTerms(
+    (aiNegatives?.campaignLevel ?? []).map((n) => n.keyword),
+  );
   const allNegatives = [...new Set([...sectorNegs, ...briefNegs, ...aiCampaignNegs])];
-  const aiNegativesWithReason = (aiNegatives?.campaignLevel ?? []).filter((n) => n.keyword && n.reason);
+  const aiNegativesWithReason = (aiNegatives?.campaignLevel ?? []).filter(
+    (n) => n.keyword && n.reason,
+  );
 
-  const suggestedLocations = (targeting?.suggestedLocations?.length
-    ? targeting.suggestedLocations
-    : (sources.strategyBrain?.targetGeographies?.length
+  const suggestedLocations = (
+    targeting?.suggestedLocations?.length
+      ? targeting.suggestedLocations
+      : sources.strategyBrain?.targetGeographies?.length
         ? sources.strategyBrain.targetGeographies
-        : [detectLocations(sources.clientBrief)])).filter(Boolean);
+        : [detectLocations(sources.clientBrief)]
+  ).filter(Boolean);
 
   return {
     campaignName: `${sources.clientName} — Search`,
@@ -2521,7 +3030,7 @@ function buildGoogleAdsCampaigns(
           name: g.name,
           keywords: filtered.map((k) => ({
             keyword: k.keyword,
-            matchType: k.matchType || "broad" as const,
+            matchType: k.matchType || ("broad" as const),
             volume: k.volume,
             cpc: k.cpc,
           })),
@@ -2546,7 +3055,10 @@ async function generateGoogleAdsTargeting(
   anthropic: Anthropic,
   sources: GrandPlanSources,
   adGroups: AdGroup[],
-): Promise<{ suggestedLocations: string[]; adGroupAudiences: { name: string; audience: string }[] }> {
+): Promise<{
+  suggestedLocations: string[];
+  adGroupAudiences: { name: string; audience: string }[];
+}> {
   const audiences = (sources.strategyBrain?.audiences ?? []).map((a) => a.name).filter(Boolean);
   const adGroupNames = adGroups.map((g) => g.name).slice(0, 20);
   const brainGeos = (sources.strategyBrain?.targetGeographies ?? []).join(", ");
@@ -2574,24 +3086,38 @@ Rules:
 - British English. No commentary.`;
 
   try {
-    const res = await withAnthropicRetry("googleAdsTargeting", () => anthropic.messages.create({
-      model: MODEL_PRIMARY(),
-      max_tokens: 1500,
-      messages: [{ role: "user", content: prompt }],
-    }));
-    const parsed = safeJsonParse<{ suggestedLocations?: unknown; adGroupAudiences?: unknown }>(extractText(res), {});
+    const res = await withAnthropicRetry("googleAdsTargeting", () =>
+      anthropic.messages.create({
+        model: MODEL_PRIMARY(),
+        max_tokens: 1500,
+        messages: [{ role: "user", content: prompt }],
+      }),
+    );
+    const parsed = safeJsonParse<{ suggestedLocations?: unknown; adGroupAudiences?: unknown }>(
+      extractText(res),
+      {},
+    );
     const locs = Array.isArray(parsed.suggestedLocations)
-      ? parsed.suggestedLocations.map((l) => String(l).trim()).filter(Boolean).slice(0, 8)
+      ? parsed.suggestedLocations
+          .map((l) => String(l).trim())
+          .filter(Boolean)
+          .slice(0, 8)
       : [];
     const map = Array.isArray(parsed.adGroupAudiences)
       ? parsed.adGroupAudiences
           .filter((g): g is { name?: unknown; audience?: unknown } => !!g && typeof g === "object")
-          .map((g) => ({ name: String(g.name ?? "").trim(), audience: String(g.audience ?? "").trim() }))
+          .map((g) => ({
+            name: String(g.name ?? "").trim(),
+            audience: String(g.audience ?? "").trim(),
+          }))
           .filter((g) => g.name && g.audience)
       : [];
     return { suggestedLocations: locs, adGroupAudiences: map };
   } catch (err) {
-    console.warn("[grand-plan] googleAdsTargeting failed:", err instanceof Error ? err.message : err);
+    console.warn(
+      "[grand-plan] googleAdsTargeting failed:",
+      err instanceof Error ? err.message : err,
+    );
     return { suggestedLocations: [], adGroupAudiences: [] };
   }
 }
@@ -2616,7 +3142,10 @@ async function generateGoogleAdsSeedSuggestions(
       return top ? `${g.name} → "${top.keyword}"` : `${g.name}`;
     })
     .join("\n");
-  const geos = (sources.strategyBrain?.targetGeographies ?? []).join(", ") || detectLocations(sources.clientBrief) || "United Kingdom";
+  const geos =
+    (sources.strategyBrain?.targetGeographies ?? []).join(", ") ||
+    detectLocations(sources.clientBrief) ||
+    "United Kingdom";
 
   const prompt = `You are a senior PPC strategist at i3media. Generate seed-phrase research suggestions for the team to plug into Google Keyword Planner and Search Term reports.
 
@@ -2645,11 +3174,13 @@ Rules:
 - No commentary, no markdown.`;
 
   try {
-    const res = await withAnthropicRetry("googleAdsSeedSuggestions", () => anthropic.messages.create({
-      model: MODEL_PRIMARY(),
-      max_tokens: 2200,
-      messages: [{ role: "user", content: prompt }],
-    }));
+    const res = await withAnthropicRetry("googleAdsSeedSuggestions", () =>
+      anthropic.messages.create({
+        model: MODEL_PRIMARY(),
+        max_tokens: 2200,
+        messages: [{ role: "user", content: prompt }],
+      }),
+    );
     const parsed = safeJsonParse<{ themes?: unknown }>(extractText(res), { themes: [] });
     if (!Array.isArray(parsed.themes)) return [];
     return parsed.themes
@@ -2663,7 +3194,10 @@ Rules:
       .filter((t) => t.theme && t.phrases.length > 0)
       .slice(0, 8);
   } catch (err) {
-    console.warn("[grand-plan] googleAdsSeedSuggestions failed:", err instanceof Error ? err.message : err);
+    console.warn(
+      "[grand-plan] googleAdsSeedSuggestions failed:",
+      err instanceof Error ? err.message : err,
+    );
     return [];
   }
 }
@@ -2679,19 +3213,29 @@ async function generateNegativeKeywords(
   adGroups: AdGroup[],
   context: string,
   sources: GrandPlanSources,
-): Promise<{ campaignLevel: { keyword: string; reason: string }[]; byAdGroup: { name: string; negatives: string[] }[] }> {
+): Promise<{
+  campaignLevel: { keyword: string; reason: string }[];
+  byAdGroup: { name: string; negatives: string[] }[];
+}> {
   const groupSummary = adGroups
     .slice(0, 8)
-    .map((g) => `- ${g.name}: ${g.keywords.slice(0, 5).map((k) => k.keyword).join(", ")}`)
+    .map(
+      (g) =>
+        `- ${g.name}: ${g.keywords
+          .slice(0, 5)
+          .map((k) => k.keyword)
+          .join(", ")}`,
+    )
     .join("\n");
 
-  const res = await withAnthropicRetry("googleAdsNegatives", () => anthropic.messages.create({
-    model: MODEL_LIGHT_FN(),
-    max_tokens: 1500,
-    messages: [
-      {
-        role: "user",
-        content: `You are a Google Ads PPC specialist at i3media. Suggest negative keywords for this client's Search campaign so we don't burn budget on irrelevant clicks.
+  const res = await withAnthropicRetry("googleAdsNegatives", () =>
+    anthropic.messages.create({
+      model: MODEL_LIGHT_FN(),
+      max_tokens: 1500,
+      messages: [
+        {
+          role: "user",
+          content: `You are a Google Ads PPC specialist at i3media. Suggest negative keywords for this client's Search campaign so we don't burn budget on irrelevant clicks.
 
 Client: ${sources.clientName}
 Sector: ${sources.sector ?? "general"}
@@ -2720,28 +3264,41 @@ Rules:
 
 Context:
 ${context}${buildSharedContextBlocks(sources, "googleAds")}`,
-      },
-    ],
-  }));
+        },
+      ],
+    }),
+  );
 
   const parsed = safeJsonParse(extractText(res), { campaignLevel: [], byAdGroup: [] });
   const campaignLevel = Array.isArray(parsed.campaignLevel)
     ? parsed.campaignLevel
-        .filter((n: unknown): n is { keyword?: unknown; reason?: unknown } => !!n && typeof n === "object")
+        .filter(
+          (n: unknown): n is { keyword?: unknown; reason?: unknown } =>
+            !!n && typeof n === "object",
+        )
         .map((n: { keyword?: unknown; reason?: unknown }) => ({
           keyword: cleanEmDashes(String(n.keyword ?? "").trim()),
           reason: cleanEmDashes(String(n.reason ?? "").trim()),
         }))
-        .filter((n: { keyword: string; reason: string }) => n.keyword.length > 0 && n.keyword.length <= 60)
+        .filter(
+          (n: { keyword: string; reason: string }) =>
+            n.keyword.length > 0 && n.keyword.length <= 60,
+        )
         .slice(0, 25)
     : [];
   const byAdGroup = Array.isArray(parsed.byAdGroup)
     ? parsed.byAdGroup
-        .filter((g: unknown): g is { name?: unknown; negatives?: unknown } => !!g && typeof g === "object")
+        .filter(
+          (g: unknown): g is { name?: unknown; negatives?: unknown } =>
+            !!g && typeof g === "object",
+        )
         .map((g: { name?: unknown; negatives?: unknown }) => ({
           name: String(g.name ?? "").trim(),
           negatives: Array.isArray(g.negatives)
-            ? g.negatives.map((n) => cleanEmDashes(String(n).trim())).filter((n: string) => n.length > 0 && n.length <= 60).slice(0, 10)
+            ? g.negatives
+                .map((n) => cleanEmDashes(String(n).trim()))
+                .filter((n: string) => n.length > 0 && n.length <= 60)
+                .slice(0, 10)
             : [],
         }))
         .filter((g: { name: string; negatives: string[] }) => g.name && g.negatives.length > 0)
@@ -2757,16 +3314,36 @@ function buildContentStrategySection(contentData: any, aiClusters?: AiContentClu
     if (typeof raw !== "string") return undefined;
     const v = raw.toLowerCase();
     if (v.includes("decis")) return "decision";
-    if (v.includes("transact") || v.includes("convers") || v.includes("purchase") || v.includes("buy")) return "transactional";
-    if (v.includes("comm") || v.includes("consider") || v.includes("eval") || v.includes("compar")) return "commercial";
-    if (v.includes("info") || v.includes("how to") || v.includes("educat") || v.includes("learn") || v.includes("guide")) return "informational";
+    if (
+      v.includes("transact") ||
+      v.includes("convers") ||
+      v.includes("purchase") ||
+      v.includes("buy")
+    )
+      return "transactional";
+    if (v.includes("comm") || v.includes("consider") || v.includes("eval") || v.includes("compar"))
+      return "commercial";
+    if (
+      v.includes("info") ||
+      v.includes("how to") ||
+      v.includes("educat") ||
+      v.includes("learn") ||
+      v.includes("guide")
+    )
+      return "informational";
     if (v.includes("aware") || v.includes("brand")) return "awareness";
     return undefined;
   };
-  const enrich = (entry: ContentStrategyEntry, tier: ContentStrategyEntry["tier"]): ContentStrategyEntry => ({
+  const enrich = (
+    entry: ContentStrategyEntry,
+    tier: ContentStrategyEntry["tier"],
+  ): ContentStrategyEntry => ({
     ...entry,
     tier,
-    intent: entry.intent ?? normaliseIntent(entry.keywords?.[0]?.intent) ?? (tier === "pillar" ? "decision" : tier === "mega" ? "informational" : "commercial"),
+    intent:
+      entry.intent ??
+      normaliseIntent(entry.keywords?.[0]?.intent) ??
+      (tier === "pillar" ? "decision" : tier === "mega" ? "informational" : "commercial"),
     brief: entry.brief ?? entry.summary ?? entry.notes,
   });
 
@@ -2776,41 +3353,62 @@ function buildContentStrategySection(contentData: any, aiClusters?: AiContentClu
     const blogPosts: ContentStrategyEntry[] = [];
     aiClusters.pillars.forEach((p, pi) => {
       // Pillar entry
-      landingPages.push(enrich({
-        title: p.pillar.title,
-        primaryKeyword: p.pillar.primaryKeyword,
-        secondaryKeywords: p.pillar.secondaryKeywords ?? [],
-        longTailKeywords: p.pillar.longTailKeywords ?? [],
-        intent: normaliseIntent(p.pillar.intent),
-        summary: p.pillar.summary,
-        brief: p.pillar.summary,
-        targetAudiences: p.pillar.targetAudiences ?? [],
-        keywords: p.pillar.primaryKeyword ? [{ keyword: p.pillar.primaryKeyword, intent: p.pillar.intent }] : [],
-      }, pi === 0 ? "pillar" : "mega"));
+      landingPages.push(
+        enrich(
+          {
+            title: p.pillar.title,
+            primaryKeyword: p.pillar.primaryKeyword,
+            secondaryKeywords: p.pillar.secondaryKeywords ?? [],
+            longTailKeywords: p.pillar.longTailKeywords ?? [],
+            intent: normaliseIntent(p.pillar.intent),
+            summary: p.pillar.summary,
+            brief: p.pillar.summary,
+            targetAudiences: p.pillar.targetAudiences ?? [],
+            keywords: p.pillar.primaryKeyword
+              ? [{ keyword: p.pillar.primaryKeyword, intent: p.pillar.intent }]
+              : [],
+          },
+          pi === 0 ? "pillar" : "mega",
+        ),
+      );
       // Mega guide entries
-      (p.megaGuides ?? []).forEach((m) => landingPages.push(enrich({
-        title: m.title,
-        primaryKeyword: m.primaryKeyword,
-        secondaryKeywords: m.secondaryKeywords ?? [],
-        longTailKeywords: m.longTailKeywords ?? [],
-        intent: normaliseIntent(m.intent),
-        summary: m.summary,
-        brief: m.summary,
-        targetAudiences: m.targetAudiences ?? [],
-        keywords: m.primaryKeyword ? [{ keyword: m.primaryKeyword, intent: m.intent }] : [],
-      }, "mega")));
+      (p.megaGuides ?? []).forEach((m) =>
+        landingPages.push(
+          enrich(
+            {
+              title: m.title,
+              primaryKeyword: m.primaryKeyword,
+              secondaryKeywords: m.secondaryKeywords ?? [],
+              longTailKeywords: m.longTailKeywords ?? [],
+              intent: normaliseIntent(m.intent),
+              summary: m.summary,
+              brief: m.summary,
+              targetAudiences: m.targetAudiences ?? [],
+              keywords: m.primaryKeyword ? [{ keyword: m.primaryKeyword, intent: m.intent }] : [],
+            },
+            "mega",
+          ),
+        ),
+      );
       // Articles
-      (p.articles ?? []).forEach((a) => blogPosts.push(enrich({
-        title: a.title,
-        primaryKeyword: a.primaryKeyword,
-        secondaryKeywords: a.secondaryKeywords ?? [],
-        longTailKeywords: a.longTailKeywords ?? [],
-        intent: normaliseIntent(a.intent),
-        summary: a.summary,
-        brief: a.summary,
-        targetAudiences: a.targetAudiences ?? [],
-        keywords: a.primaryKeyword ? [{ keyword: a.primaryKeyword, intent: a.intent }] : [],
-      }, "article")));
+      (p.articles ?? []).forEach((a) =>
+        blogPosts.push(
+          enrich(
+            {
+              title: a.title,
+              primaryKeyword: a.primaryKeyword,
+              secondaryKeywords: a.secondaryKeywords ?? [],
+              longTailKeywords: a.longTailKeywords ?? [],
+              intent: normaliseIntent(a.intent),
+              summary: a.summary,
+              brief: a.summary,
+              targetAudiences: a.targetAudiences ?? [],
+              keywords: a.primaryKeyword ? [{ keyword: a.primaryKeyword, intent: a.intent }] : [],
+            },
+            "article",
+          ),
+        ),
+      );
     });
     return {
       pageOptimisations: aiClusters.pageOptimisations ?? [],
@@ -2828,7 +3426,9 @@ function buildContentStrategySection(contentData: any, aiClusters?: AiContentClu
     pageOptimisations,
     landingPages: landingPages.map((p, i) => enrich(p, i === 0 ? "pillar" : "mega")),
     blogPosts: blogPosts.map((p) => enrich(p, "article")),
-    ...(contentData.linkTargets ? { linkTargets: contentData.linkTargets as LinkTargetEntry[] } : {}),
+    ...(contentData.linkTargets
+      ? { linkTargets: contentData.linkTargets as LinkTargetEntry[] }
+      : {}),
   };
 }
 
@@ -2862,8 +3462,13 @@ async function generateContentClusters(
   sources: GrandPlanSources,
 ): Promise<AiContentClusters> {
   const brain = sources.strategyBrain;
-  const audienceLines = (brain?.audiences ?? []).map((a) => `- ${a.name}: ${a.coreInsight} (lead pain: ${a.primaryPain})`).join("\n") || "(no brain audiences)";
-  const messageLines = brain ? `Primary message: ${brain.messageHierarchy?.primary ?? ""}\nMessages to own: ${(brain.competitorAngle?.messagesToOwn ?? []).join("; ")}` : "";
+  const audienceLines =
+    (brain?.audiences ?? [])
+      .map((a) => `- ${a.name}: ${a.coreInsight} (lead pain: ${a.primaryPain})`)
+      .join("\n") || "(no brain audiences)";
+  const messageLines = brain
+    ? `Primary message: ${brain.messageHierarchy?.primary ?? ""}\nMessages to own: ${(brain.competitorAngle?.messagesToOwn ?? []).join("; ")}`
+    : "";
   const directive = brain?.directives?.content ?? "";
   const limits = sources.contentLimits ?? {};
   const optsCap = limits.pageOptimisations ?? 12;
@@ -2917,11 +3522,13 @@ ${messageLines ? `\n${messageLines}` : ""}
 Context:
 ${context}${buildSharedContextBlocks(sources, "content")}`;
 
-  const res = await withAnthropicRetry("contentClusters", () => anthropic.messages.create({
-    model: MODEL_PRIMARY(),
-    max_tokens: 6000,
-    messages: [{ role: "user", content: prompt }],
-  }));
+  const res = await withAnthropicRetry("contentClusters", () =>
+    anthropic.messages.create({
+      model: MODEL_PRIMARY(),
+      max_tokens: 6000,
+      messages: [{ role: "user", content: prompt }],
+    }),
+  );
   const fallback: AiContentClusters = { pillars: [], pageOptimisations: [] };
   return safeJsonParse<AiContentClusters>(extractText(res), fallback);
 }
@@ -2938,7 +3545,9 @@ async function generateSeoFoundations(
   sources: GrandPlanSources,
 ): Promise<SeoFoundations> {
   const brain = sources.strategyBrain;
-  const audienceLines = (brain?.audiences ?? []).map((a) => `- ${a.name}: ${a.coreInsight}`).join("\n") || "(no brain audiences)";
+  const audienceLines =
+    (brain?.audiences ?? []).map((a) => `- ${a.name}: ${a.coreInsight}`).join("\n") ||
+    "(no brain audiences)";
   const website = sources.keywordResearch?.website ?? "the client's website";
   const geos = (brain?.targetGeographies ?? []).join(", ") || "United Kingdom";
 
@@ -2948,7 +3557,11 @@ async function generateSeoFoundations(
   const ga4Pages = sources.accountData?.ga4?.topPages ?? [];
   const manualUrls = (sources.accountData?.manualPageIntel ?? []).map((p) => p.url);
   const cleanWebsite = website.replace(/\/$/, "");
-  const ga4Paths = ga4Pages.map((p) => p.path.startsWith("http") ? p.path : `${cleanWebsite}${p.path.startsWith("/") ? p.path : `/${p.path}`}`);
+  const ga4Paths = ga4Pages.map((p) =>
+    p.path.startsWith("http")
+      ? p.path
+      : `${cleanWebsite}${p.path.startsWith("/") ? p.path : `/${p.path}`}`,
+  );
   // Manual-only mode: when the strategist supplies pages, those are the
   // ONLY quick wins we want — do not let the AI suggest extras from the
   // sitemap. Internal linking / link building still draw on the broader
@@ -2956,9 +3569,10 @@ async function generateSeoFoundations(
   const manualOnly = manualUrls.length > 0;
   // Manual URLs go first so they survive the slice cap and are clearly the priority list.
   const knownPages = [...new Set([...manualUrls, ...sitemapUrls, ...ga4Paths])].slice(0, 80);
-  const knownPagesBlock = knownPages.length > 0
-    ? `KNOWN PAGES (the ONLY URLs you may use anywhere in the response):\n${knownPages.map((u) => `- ${u}${manualUrls.includes(u) ? "  ← PRIORITY (client requested)" : ""}`).join("\n")}`
-    : `KNOWN PAGES: none available — DO NOT INVENT URLs. Return empty quickWins, empty internalLinking.hubs and empty linkBuilding.targets rather than fabricate URLs.`;
+  const knownPagesBlock =
+    knownPages.length > 0
+      ? `KNOWN PAGES (the ONLY URLs you may use anywhere in the response):\n${knownPages.map((u) => `- ${u}${manualUrls.includes(u) ? "  ← PRIORITY (client requested)" : ""}`).join("\n")}`
+      : `KNOWN PAGES: none available — DO NOT INVENT URLs. Return empty quickWins, empty internalLinking.hubs and empty linkBuilding.targets rather than fabricate URLs.`;
 
   const prompt = `${STYLE_RULES}
 
@@ -3055,17 +3669,23 @@ Strategic foundation:
 
 ${knownPagesBlock}
 
-${manualOnly ? `QUICK WIN URLS (produce one quickWins entry for EACH, in this order — no others):
-${manualUrls.map((u) => `- ${u}`).join("\n")}` : `QUICK WIN URLS: choose UP TO 6 commercial / service / category pages from KNOWN PAGES (do not pick blog posts).`}
+${
+  manualOnly
+    ? `QUICK WIN URLS (produce one quickWins entry for EACH, in this order — no others):
+${manualUrls.map((u) => `- ${u}`).join("\n")}`
+    : `QUICK WIN URLS: choose UP TO 6 commercial / service / category pages from KNOWN PAGES (do not pick blog posts).`
+}
 
 Context:
 ${context}${buildSharedContextBlocks(sources, "content")}`;
 
-  const res = await withAnthropicRetry("seoFoundations", () => anthropic.messages.create({
-    model: MODEL_PRIMARY(),
-    max_tokens: manualOnly ? Math.min(16000, 2200 + manualUrls.length * 1100) : 6000,
-    messages: [{ role: "user", content: prompt }],
-  }));
+  const res = await withAnthropicRetry("seoFoundations", () =>
+    anthropic.messages.create({
+      model: MODEL_PRIMARY(),
+      max_tokens: manualOnly ? Math.min(16000, 2200 + manualUrls.length * 1100) : 6000,
+      messages: [{ role: "user", content: prompt }],
+    }),
+  );
 
   const fallback: SeoFoundations = {
     quickWins: [],
@@ -3078,19 +3698,28 @@ ${context}${buildSharedContextBlocks(sources, "content")}`;
   // omitted any (truncation, hallucinated different URL, etc.), retry just
   // those URLs one-by-one in parallel rather than show an empty stub.
   if (manualUrls.length > 0) {
-    const present = new Set((parsed.quickWins ?? []).map((q) => (q.url || "").trim().toLowerCase()));
+    const present = new Set(
+      (parsed.quickWins ?? []).map((q) => (q.url || "").trim().toLowerCase()),
+    );
     const missing = manualUrls.filter((u) => !present.has(u.trim().toLowerCase()));
     if (missing.length > 0) {
       const intelByUrl = new Map(
         (sources.accountData?.manualPageIntel ?? []).map((p) => [p.url.trim().toLowerCase(), p]),
       );
-      const retried = await Promise.all(missing.map(async (url) => {
-        try {
-          return await generateQuickWinForUrl(anthropic, url, intelByUrl.get(url.trim().toLowerCase()), sources);
-        } catch {
-          return null;
-        }
-      }));
+      const retried = await Promise.all(
+        missing.map(async (url) => {
+          try {
+            return await generateQuickWinForUrl(
+              anthropic,
+              url,
+              intelByUrl.get(url.trim().toLowerCase()),
+              sources,
+            );
+          } catch {
+            return null;
+          }
+        }),
+      );
       const recovered = retried.filter((q): q is SeoQuickWinPage => q !== null);
       // Priority pages (manual) come first — interleave so manual order is preserved.
       const manualOrder = new Map(manualUrls.map((u, i) => [u.trim().toLowerCase(), i]));
@@ -3098,9 +3727,14 @@ ${context}${buildSharedContextBlocks(sources, "content")}`;
       const rest: SeoQuickWinPage[] = [];
       for (const q of [...(parsed.quickWins ?? []), ...recovered]) {
         const key = (q.url || "").trim().toLowerCase();
-        if (manualOrder.has(key)) priority.push(q); else rest.push(q);
+        if (manualOrder.has(key)) priority.push(q);
+        else rest.push(q);
       }
-      priority.sort((a, b) => (manualOrder.get((a.url || "").trim().toLowerCase()) ?? 0) - (manualOrder.get((b.url || "").trim().toLowerCase()) ?? 0));
+      priority.sort(
+        (a, b) =>
+          (manualOrder.get((a.url || "").trim().toLowerCase()) ?? 0) -
+          (manualOrder.get((b.url || "").trim().toLowerCase()) ?? 0),
+      );
       parsed.quickWins = [...priority, ...rest];
     } else {
       // All manual URLs present — still enforce manual ordering.
@@ -3109,9 +3743,14 @@ ${context}${buildSharedContextBlocks(sources, "content")}`;
       const rest: SeoQuickWinPage[] = [];
       for (const q of parsed.quickWins ?? []) {
         const key = (q.url || "").trim().toLowerCase();
-        if (manualOrder.has(key)) priority.push(q); else rest.push(q);
+        if (manualOrder.has(key)) priority.push(q);
+        else rest.push(q);
       }
-      priority.sort((a, b) => (manualOrder.get((a.url || "").trim().toLowerCase()) ?? 0) - (manualOrder.get((b.url || "").trim().toLowerCase()) ?? 0));
+      priority.sort(
+        (a, b) =>
+          (manualOrder.get((a.url || "").trim().toLowerCase()) ?? 0) -
+          (manualOrder.get((b.url || "").trim().toLowerCase()) ?? 0),
+      );
       // Manual-only mode: drop the AI's extras. Otherwise keep them.
       parsed.quickWins = manualOnly ? priority : [...priority, ...rest];
     }
@@ -3134,10 +3773,17 @@ async function generateQuickWinForUrl(
   const intelLines: string[] = [`URL: ${url}`];
   if (intel?.title) intelLines.push(`Current title tag: "${intel.title}"`);
   if (intel?.h1) intelLines.push(`Current H1: "${intel.h1}"`);
-  if (intel?.metaDescription) intelLines.push(`Current meta description: "${intel.metaDescription}"`);
+  if (intel?.metaDescription)
+    intelLines.push(`Current meta description: "${intel.metaDescription}"`);
   if (intel?.bodySnippet) intelLines.push(`Body snippet: ${intel.bodySnippet.slice(0, 400)}`);
   if (intel?.organicKeywords?.length) {
-    const kws = intel.organicKeywords.slice(0, 12).map((k) => `"${k.keyword}" (pos ${k.position}, vol ${k.volume.toLocaleString()}, CPC \u00a3${k.cpc.toFixed(2)})`).join("; ");
+    const kws = intel.organicKeywords
+      .slice(0, 12)
+      .map(
+        (k) =>
+          `"${k.keyword}" (pos ${k.position}, vol ${k.volume.toLocaleString()}, CPC \u00a3${k.cpc.toFixed(2)})`,
+      )
+      .join("; ");
     intelLines.push(`Currently ranks for: ${kws}`);
   }
 
@@ -3182,11 +3828,13 @@ Brief: ${(sources.clientBrief ?? "").slice(0, 800) || "(none)"}
 Page intel:
 ${intelLines.join("\n")}`;
 
-  const res = await withAnthropicRetry(`seoQuickWin:${url}`, () => anthropic.messages.create({
-    model: MODEL_PRIMARY(),
-    max_tokens: 2400,
-    messages: [{ role: "user", content: prompt }],
-  }));
+  const res = await withAnthropicRetry(`seoQuickWin:${url}`, () =>
+    anthropic.messages.create({
+      model: MODEL_PRIMARY(),
+      max_tokens: 2400,
+      messages: [{ role: "user", content: prompt }],
+    }),
+  );
   const parsed = safeJsonParse<SeoQuickWinPage | null>(extractText(res), null);
   if (!parsed || !parsed.url) return null;
   parsed.url = url; // enforce exact match
@@ -3195,25 +3843,37 @@ ${intelLines.join("\n")}`;
 
 // ─── Email Marketing generator ──────────────────────────────────────────────
 
-async function generateEmailMarketing(anthropic: Anthropic, context: string, sources: GrandPlanSources): Promise<GroundedSection<EmailMarketingPlan>> {
+async function generateEmailMarketing(
+  anthropic: Anthropic,
+  context: string,
+  sources: GrandPlanSources,
+): Promise<GroundedSection<EmailMarketingPlan>> {
   const a = sources.accountData;
   const cv = sources.customerVoice;
   // Derive grounding: real if we have GA4 conversion-by-channel data showing
   // email/owned activity OR customer voice; partial if just one; ai-only otherwise.
-  const hasChannelData = !!a?.ga4?.conversionsByChannel?.some((c) => /email|newsletter|mailchimp|klaviyo|hubspot/i.test(c.channel));
+  const hasChannelData = !!a?.ga4?.conversionsByChannel?.some((c) =>
+    /email|newsletter|mailchimp|klaviyo|hubspot/i.test(c.channel),
+  );
   const hasCustomerVoice = !!cv?.painPoints?.length;
-  const grounding: DataGrounding = hasChannelData && hasCustomerVoice ? "real" : hasChannelData || hasCustomerVoice ? "partial" : "ai-only";
+  const grounding: DataGrounding =
+    hasChannelData && hasCustomerVoice
+      ? "real"
+      : hasChannelData || hasCustomerVoice
+        ? "partial"
+        : "ai-only";
   const sourceLabels: string[] = [];
   if (hasChannelData) sourceLabels.push("GA4 channel conversions");
   if (hasCustomerVoice) sourceLabels.push("Customer voice (web search)");
 
-  const res = await withAnthropicRetry("emailMarketing", () => anthropic.messages.create({
-    model: MODEL_PRIMARY(),
-    max_tokens: 2500,
-    messages: [
-      {
-        role: "user",
-        content: `You are an email marketing strategist at i3media. Create an email marketing plan for this client.
+  const res = await withAnthropicRetry("emailMarketing", () =>
+    anthropic.messages.create({
+      model: MODEL_PRIMARY(),
+      max_tokens: 2500,
+      messages: [
+        {
+          role: "user",
+          content: `You are an email marketing strategist at i3media. Create an email marketing plan for this client.
 
 Return a JSON object:
 - flows: array of { name: string, trigger: string, emails: [{ subject: string, purpose: string, delay: string }] } — 3-5 automated flows
@@ -3234,9 +3894,10 @@ Rules:
 Client: ${sources.clientName}
 Context:
 ${context}${buildSharedContextBlocks(sources, "email")}`,
-      },
-    ],
-  }));
+        },
+      ],
+    }),
+  );
 
   return {
     value: safeJsonParse(extractText(res), {
@@ -3251,22 +3912,32 @@ ${context}${buildSharedContextBlocks(sources, "email")}`,
 
 // ─── LinkedIn Ads generator ─────────────────────────────────────────────────
 
-async function generateLinkedInAds(anthropic: Anthropic, context: string, sources: GrandPlanSources): Promise<GroundedSection<LinkedInCampaign[]>> {
+async function generateLinkedInAds(
+  anthropic: Anthropic,
+  context: string,
+  sources: GrandPlanSources,
+): Promise<GroundedSection<LinkedInCampaign[]>> {
   const a = sources.accountData;
   const hasLinkedInTraffic = !!a?.ga4?.trafficSources?.some((s) => /linkedin/i.test(s.source));
   const hasAudienceJobTitles = !!sources.targetAudiences;
-  const grounding: DataGrounding = hasLinkedInTraffic && hasAudienceJobTitles ? "real" : hasLinkedInTraffic || hasAudienceJobTitles ? "partial" : "ai-only";
+  const grounding: DataGrounding =
+    hasLinkedInTraffic && hasAudienceJobTitles
+      ? "real"
+      : hasLinkedInTraffic || hasAudienceJobTitles
+        ? "partial"
+        : "ai-only";
   const sourceLabels: string[] = [];
   if (hasLinkedInTraffic) sourceLabels.push("GA4 LinkedIn referral data");
   if (hasAudienceJobTitles) sourceLabels.push("Strategist-supplied audiences");
 
-  const res = await withAnthropicRetry("linkedInAds", () => anthropic.messages.create({
-    model: MODEL_PRIMARY(),
-    max_tokens: 2500,
-    messages: [
-      {
-        role: "user",
-        content: `You are a LinkedIn Ads specialist at i3media. Create LinkedIn advertising campaign structures.
+  const res = await withAnthropicRetry("linkedInAds", () =>
+    anthropic.messages.create({
+      model: MODEL_PRIMARY(),
+      max_tokens: 2500,
+      messages: [
+        {
+          role: "user",
+          content: `You are a LinkedIn Ads specialist at i3media. Create LinkedIn advertising campaign structures.
 
 Return a JSON object with key "campaigns" containing an array of 2-3 campaign objects:
 - campaignName: string
@@ -3305,9 +3976,10 @@ ${(() => {
 Client: ${sources.clientName}
 Context:
 ${context}${buildSharedContextBlocks(sources, "linkedIn")}`,
-      },
-    ],
-  }));
+        },
+      ],
+    }),
+  );
 
   const parsed = safeJsonParse(extractText(res), { campaigns: [] });
   const campaigns = (parsed.campaigns ?? []) as LinkedInCampaign[];
@@ -3376,7 +4048,11 @@ function buildFallbackLinkedInCampaigns(sources: GrandPlanSources): LinkedInCamp
 
 // ─── Competitor Intelligence generator ──────────────────────────────────────
 
-async function generateCompetitorIntel(anthropic: Anthropic, context: string, sources: GrandPlanSources): Promise<GroundedSection<CompetitorInsight[]>> {
+async function generateCompetitorIntel(
+  anthropic: Anthropic,
+  context: string,
+  sources: GrandPlanSources,
+): Promise<GroundedSection<CompetitorInsight[]>> {
   const website = sources.keywordResearch?.website ?? "";
   const brief = sources.clientBrief ?? sources.keywordResearch?.brief ?? "";
   const realCompetitors = sources.accountData?.competitorData ?? [];
@@ -3389,13 +4065,17 @@ async function generateCompetitorIntel(anthropic: Anthropic, context: string, so
   // scraped pageContext as qualitative messaging signal instead.
   type Merged = {
     domain: string;
-    semrush?: typeof realCompetitors[number];
+    semrush?: (typeof realCompetitors)[number];
     pageContext?: { headings?: string[]; description?: string; ctaTexts?: string[]; h1?: string };
     commonKeywords?: number;
     source: "manual" | "auto" | "inferred";
   };
 
-  const norm = (d: string) => d.toLowerCase().replace(/^www\./, "").replace(/\/$/, "");
+  const norm = (d: string) =>
+    d
+      .toLowerCase()
+      .replace(/^www\./, "")
+      .replace(/\/$/, "");
   const merged: Merged[] = [];
 
   if (formCompetitors.length > 0) {
@@ -3430,7 +4110,8 @@ async function generateCompetitorIntel(anthropic: Anthropic, context: string, so
         const lines = [`${m.domain} [${m.source}, no SEMrush overlap]`];
         if (ctx?.h1) lines.push(`  H1: ${ctx.h1}`);
         if (ctx?.description) lines.push(`  Meta description: ${ctx.description.slice(0, 200)}`);
-        if (ctx?.headings?.length) lines.push(`  Page headings: ${ctx.headings.slice(0, 8).join(" | ")}`);
+        if (ctx?.headings?.length)
+          lines.push(`  Page headings: ${ctx.headings.slice(0, 8).join(" | ")}`);
         if (ctx?.ctaTexts?.length) lines.push(`  CTAs: ${ctx.ctaTexts.slice(0, 5).join(", ")}`);
         return lines.join("\n");
       })
@@ -3438,13 +4119,14 @@ async function generateCompetitorIntel(anthropic: Anthropic, context: string, so
     const complaintBlock = customerComplaints.length
       ? `\n\nReal customer complaints about competitors in this sector (use these to seed the weaknesses fields):\n- ${customerComplaints.slice(0, 8).join("\n- ")}`
       : "";
-    const res = await withAnthropicRetry("competitorIntel:enrich", () => anthropic.messages.create({
-      model: MODEL_PRIMARY(),
-      max_tokens: 2200,
-      messages: [
-        {
-          role: "user",
-          content: `You are a competitive intelligence analyst at i3media. The competitor list below is a mix of (a) competitors named on the brief by ${sources.clientName} (source: manual), (b) competitors auto-detected from SEMrush keyword overlap (source: auto), and (c) where no SEMrush data was available, scraped homepage signals (h1, headings, CTAs). Your job is ONLY to add the strengths, weaknesses, and opportunities commentary plus topKeywords (where missing). Do NOT change the numeric fields.
+    const res = await withAnthropicRetry("competitorIntel:enrich", () =>
+      anthropic.messages.create({
+        model: MODEL_PRIMARY(),
+        max_tokens: 2200,
+        messages: [
+          {
+            role: "user",
+            content: `You are a competitive intelligence analyst at i3media. The competitor list below is a mix of (a) competitors named on the brief by ${sources.clientName} (source: manual), (b) competitors auto-detected from SEMrush keyword overlap (source: auto), and (c) where no SEMrush data was available, scraped homepage signals (h1, headings, CTAs). Your job is ONLY to add the strengths, weaknesses, and opportunities commentary plus topKeywords (where missing). Do NOT change the numeric fields.
 
 Return a JSON object with key "competitors" containing one entry per competitor below, in the same order. Each entry:
 - domain: string (must match exactly)
@@ -3460,10 +4142,19 @@ Client context:
 ${context}${buildSharedContextBlocks(sources, "competitorIntel")}
 
 Rules: British English, no AI jargon, no fluff. Each strength/weakness must reference a specific number, keyword, complaint, or scraped messaging signal — no platitudes. Return ONLY valid JSON, no markdown fences.`,
-        },
-      ],
-    }));
-    const parsed = safeJsonParse<{ competitors?: { domain?: string; topKeywords?: string[]; strengths?: string[]; weaknesses?: string[]; opportunities?: string[] }[] }>(extractText(res), { competitors: [] });
+          },
+        ],
+      }),
+    );
+    const parsed = safeJsonParse<{
+      competitors?: {
+        domain?: string;
+        topKeywords?: string[];
+        strengths?: string[];
+        weaknesses?: string[];
+        opportunities?: string[];
+      }[];
+    }>(extractText(res), { competitors: [] });
     const enriched = parsed.competitors ?? [];
     const value: CompetitorInsight[] = merged.map((m) => {
       const match = enriched.find((e) => e.domain && norm(e.domain) === norm(m.domain));
@@ -3473,23 +4164,28 @@ Rules: British English, no AI jargon, no fluff. Each strength/weakness must refe
         organicKeywords: m.semrush?.organicKeywords,
         paidKeywords: m.semrush?.paidKeywords,
         backlinks: m.semrush?.backlinks,
-        topKeywords: Array.isArray(match?.topKeywords) && match!.topKeywords.length
-          ? match!.topKeywords.slice(0, 8)
-          : (m.semrush?.topKeywords?.slice(0, 8) ?? []),
+        topKeywords:
+          Array.isArray(match?.topKeywords) && match!.topKeywords.length
+            ? match!.topKeywords.slice(0, 8)
+            : (m.semrush?.topKeywords?.slice(0, 8) ?? []),
         strengths: Array.isArray(match?.strengths) ? match!.strengths : [],
         weaknesses: Array.isArray(match?.weaknesses) ? match!.weaknesses : [],
         opportunities: Array.isArray(match?.opportunities) ? match!.opportunities : [],
         commonKeywords: m.commonKeywords,
         source: m.source,
         pageContext: m.pageContext
-          ? { h1: m.pageContext.h1, description: m.pageContext.description, ctaTexts: m.pageContext.ctaTexts }
+          ? {
+              h1: m.pageContext.h1,
+              description: m.pageContext.description,
+              ctaTexts: m.pageContext.ctaTexts,
+            }
           : undefined,
       };
     });
     const semrushCount = merged.filter((m) => m.semrush).length;
     return {
       value,
-      grounding: semrushCount > 0 ? "real" : (formCompetitors.length > 0 ? "partial" : "ai-only"),
+      grounding: semrushCount > 0 ? "real" : formCompetitors.length > 0 ? "partial" : "ai-only",
       sourceLabels: [
         formCompetitors.length > 0 ? `Client-supplied competitors (${formCompetitors.length})` : "",
         semrushCount > 0 ? "SEMrush domain overview" : "",
@@ -3499,13 +4195,14 @@ Rules: British English, no AI jargon, no fluff. Each strength/weakness must refe
   }
 
   // No real or form data — fall back to AI estimates (renderer surfaces the disclaimer).
-  const res = await withAnthropicRetry("competitorIntel", () => anthropic.messages.create({
-    model: MODEL_PRIMARY(),
-    max_tokens: 2500,
-    messages: [
-      {
-        role: "user",
-        content: `You are a competitive intelligence analyst at i3media. Identify and analyse the top competitors for this client.
+  const res = await withAnthropicRetry("competitorIntel", () =>
+    anthropic.messages.create({
+      model: MODEL_PRIMARY(),
+      max_tokens: 2500,
+      messages: [
+        {
+          role: "user",
+          content: `You are a competitive intelligence analyst at i3media. Identify and analyse the top competitors for this client.
 
 Return a JSON object with key "competitors" containing an array of 4-6 competitor objects:
 - domain: string (competitor website URL)
@@ -3532,11 +4229,14 @@ Website: ${website}
 Brief: ${brief}
 Context:
 ${context}${buildSharedContextBlocks(sources, "audiences")}`,
-      },
-    ],
-  }));
+        },
+      ],
+    }),
+  );
 
-  const parsed = safeJsonParse<{ competitors?: CompetitorInsight[] }>(extractText(res), { competitors: [] });
+  const parsed = safeJsonParse<{ competitors?: CompetitorInsight[] }>(extractText(res), {
+    competitors: [],
+  });
   const value = (parsed.competitors ?? []).map((c) => ({ ...c, source: "inferred" as const }));
   return {
     value,
@@ -3550,7 +4250,7 @@ ${context}${buildSharedContextBlocks(sources, "audiences")}`,
 async function generateAudiences(
   anthropic: Anthropic,
   context: string,
-  sources: GrandPlanSources
+  sources: GrandPlanSources,
 ): Promise<GroundedSection<AudienceItem[]>> {
   const cv = sources.customerVoice;
   const a = sources.accountData;
@@ -3563,8 +4263,13 @@ async function generateAudiences(
   if (hasGscIntent) sourceLabels.push("Search Console intent signals");
   if (hasCustomerVoice) sourceLabels.push("Customer voice (web search)");
   // Need at least 2 real signals for "real"; 1 for "partial"; else "ai-only".
-  const signalCount = (sources.targetAudiences ? 1 : 0) + (hasGa4Audience ? 1 : 0) + (hasGscIntent ? 1 : 0) + (hasCustomerVoice ? 1 : 0);
-  const grounding: DataGrounding = signalCount >= 2 ? "real" : signalCount === 1 ? "partial" : "ai-only";
+  const signalCount =
+    (sources.targetAudiences ? 1 : 0) +
+    (hasGa4Audience ? 1 : 0) +
+    (hasGscIntent ? 1 : 0) +
+    (hasCustomerVoice ? 1 : 0);
+  const grounding: DataGrounding =
+    signalCount >= 2 ? "real" : signalCount === 1 ? "partial" : "ai-only";
 
   // Parse strategist-supplied audience NAMES so the AI is constrained to them
   // (rather than inventing audiences). Pain points, descriptions, persona
@@ -3589,16 +4294,17 @@ async function generateAudiences(
       .slice(0, 6);
   }
 
-  const res = await withAnthropicRetry("audiences", () => anthropic.messages.create({
-    model: MODEL_LIGHT_FN(),
-    // Scale token budget with the number of audiences. Each audience needs
-    // ~600 tokens for description + 4-6 painPoints + sectorPreview JSON.
-    // Floor at 2200 (covers the default 3-5 audiences).
-    max_tokens: Math.max(2200, (strategistAudienceNames.length || 5) * 600),
-    messages: [
-      {
-        role: "user",
-        content: `You are a senior digital strategist at i3media. Define the target audiences for this client's digital marketing plan.
+  const res = await withAnthropicRetry("audiences", () =>
+    anthropic.messages.create({
+      model: MODEL_LIGHT_FN(),
+      // Scale token budget with the number of audiences. Each audience needs
+      // ~600 tokens for description + 4-6 painPoints + sectorPreview JSON.
+      // Floor at 2200 (covers the default 3-5 audiences).
+      max_tokens: Math.max(2200, (strategistAudienceNames.length || 5) * 600),
+      messages: [
+        {
+          role: "user",
+          content: `You are a senior digital strategist at i3media. Define the target audiences for this client's digital marketing plan.
 
 Rules:
 - British English only
@@ -3635,7 +4341,9 @@ Return JSON in this exact format:
 ]
 - 3-5 keywordGroups per audience
 - 2-3 campaignTeasers per audience (only include channels actually relevant to this client)
-${strategistAudienceNames.length ? `
+${
+  strategistAudienceNames.length
+    ? `
 MANDATORY — the strategist has specified the audiences for this client. You MUST produce exactly one entry per name below, in the order given. Do NOT add, rename, merge or omit any. Use the names verbatim:
 ${strategistAudienceNames.map((n, i) => `  ${i + 1}. ${n}`).join("\n")}
 
@@ -3646,54 +4354,74 @@ For each audience, write the description, painPoints, personaQuote and sectorPre
   - Drawn from the customer-voice block below where it fits, but rewritten and trimmed — do NOT paste raw scraped text.
   - Distinct: never repeat the same pain across two audiences.
 Produce 4-6 painPoints per audience.
-` : ""}
+`
+    : ""
+}
 Client context:
 ${context}${buildSharedContextBlocks(sources)}`,
-      },
-    ],
-  }));
+        },
+      ],
+    }),
+  );
 
   const raw = extractText(res);
-  const cleaned = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+  const cleaned = raw
+    .replace(/```json\n?/g, "")
+    .replace(/```\n?/g, "")
+    .trim();
   try {
     const parsed = JSON.parse(cleaned);
     if (!Array.isArray(parsed)) return { value: [], grounding, sourceLabels };
     const value = parsed
       .filter((a) => a && typeof a.name === "string")
-      .map((a, idx): AudienceItem => ({
-        // If the strategist specified names, enforce them slot-for-slot
-        // so the AI can't quietly rename or reorder audiences.
-        name: strategistAudienceNames[idx] ?? String(a.name).trim(),
-        description: cleanEmDashes(String(a.description ?? "").trim()),
-        painPoints: Array.isArray(a.painPoints)
-          ? a.painPoints
-              .map((p: unknown) => cleanEmDashes(String(p).trim()))
-              .filter((p: string) => p.length > 0 && p.length <= 220)
-              .slice(0, 6)
-          : [],
-        channels: Array.isArray(a.channels) ? a.channels.map(String) : [],
-        personaQuote: typeof a.personaQuote === "string" ? cleanEmDashes(a.personaQuote.trim().slice(0, 240)) : undefined,
-        sectorPreview: a.sectorPreview && typeof a.sectorPreview === "object" ? {
-          keywordGroups: Array.isArray(a.sectorPreview.keywordGroups)
-            ? a.sectorPreview.keywordGroups
-                .filter((g: unknown): g is { label?: unknown; samples?: unknown } => !!g && typeof g === "object")
-                .map((g: { label?: unknown; samples?: unknown }) => ({
-                  label: String(g.label ?? "").trim(),
-                  samples: String(g.samples ?? "").trim(),
-                }))
-                .filter((g: { label: string; samples: string }) => g.label && g.samples)
+      .map(
+        (a, idx): AudienceItem => ({
+          // If the strategist specified names, enforce them slot-for-slot
+          // so the AI can't quietly rename or reorder audiences.
+          name: strategistAudienceNames[idx] ?? String(a.name).trim(),
+          description: cleanEmDashes(String(a.description ?? "").trim()),
+          painPoints: Array.isArray(a.painPoints)
+            ? a.painPoints
+                .map((p: unknown) => cleanEmDashes(String(p).trim()))
+                .filter((p: string) => p.length > 0 && p.length <= 220)
+                .slice(0, 6)
             : [],
-          campaignTeasers: Array.isArray(a.sectorPreview.campaignTeasers)
-            ? a.sectorPreview.campaignTeasers
-                .filter((t: unknown): t is { channel?: unknown; focus?: unknown } => !!t && typeof t === "object")
-                .map((t: { channel?: unknown; focus?: unknown }) => ({
-                  channel: String(t.channel ?? "").trim(),
-                  focus: String(t.focus ?? "").trim(),
-                }))
-                .filter((t: { channel: string; focus: string }) => t.channel && t.focus)
-            : [],
-        } : undefined,
-      }));
+          channels: Array.isArray(a.channels) ? a.channels.map(String) : [],
+          personaQuote:
+            typeof a.personaQuote === "string"
+              ? cleanEmDashes(a.personaQuote.trim().slice(0, 240))
+              : undefined,
+          sectorPreview:
+            a.sectorPreview && typeof a.sectorPreview === "object"
+              ? {
+                  keywordGroups: Array.isArray(a.sectorPreview.keywordGroups)
+                    ? a.sectorPreview.keywordGroups
+                        .filter(
+                          (g: unknown): g is { label?: unknown; samples?: unknown } =>
+                            !!g && typeof g === "object",
+                        )
+                        .map((g: { label?: unknown; samples?: unknown }) => ({
+                          label: String(g.label ?? "").trim(),
+                          samples: String(g.samples ?? "").trim(),
+                        }))
+                        .filter((g: { label: string; samples: string }) => g.label && g.samples)
+                    : [],
+                  campaignTeasers: Array.isArray(a.sectorPreview.campaignTeasers)
+                    ? a.sectorPreview.campaignTeasers
+                        .filter(
+                          (t: unknown): t is { channel?: unknown; focus?: unknown } =>
+                            !!t && typeof t === "object",
+                        )
+                        .map((t: { channel?: unknown; focus?: unknown }) => ({
+                          channel: String(t.channel ?? "").trim(),
+                          focus: String(t.focus ?? "").trim(),
+                        }))
+                        .filter((t: { channel: string; focus: string }) => t.channel && t.focus)
+                    : [],
+                }
+              : undefined,
+        }),
+      );
     return { value, grounding, sourceLabels };
   } catch {
     return { value: [], grounding, sourceLabels };
@@ -3702,25 +4430,32 @@ ${context}${buildSharedContextBlocks(sources)}`,
 
 // ─── Quick Wins (priority actions) generator ────────────────────────────────
 
-async function generateQuickWins(anthropic: Anthropic, context: string, sources: GrandPlanSources): Promise<QuickWinAction[]> {
+async function generateQuickWins(
+  anthropic: Anthropic,
+  context: string,
+  sources: GrandPlanSources,
+): Promise<QuickWinAction[]> {
   const sprint = sources.planMode === "sprint90";
-  const res = await withAnthropicRetry("quickWins", () => anthropic.messages.create({
-    model: MODEL_PRIMARY(),
-    max_tokens: 1500,
-    messages: [
-      {
-        role: "user",
-        content: `You are a senior strategist at i3media. Distil the plan below into a prioritised action list — what should be done first, then second, then ongoing.
+  const res = await withAnthropicRetry("quickWins", () =>
+    anthropic.messages.create({
+      model: MODEL_PRIMARY(),
+      max_tokens: 1500,
+      messages: [
+        {
+          role: "user",
+          content: `You are a senior strategist at i3media. Distil the plan below into a prioritised action list — what should be done first, then second, then ongoing.
 
 Return ONLY a JSON array (no markdown fences, no commentary) of ${sprint ? "8" : "8-10"} objects:
-{ "title": string, "description": string, "priority": ${sprint ? "\"high\" | \"medium-high\" | \"medium\"" : "\"high\" | \"medium-high\" | \"medium\" | \"ongoing\" | \"long-term\""} }
+{ "title": string, "description": string, "priority": ${sprint ? '"high" | "medium-high" | "medium"' : '"high" | "medium-high" | "medium" | "ongoing" | "long-term"'} }
 
 Rules:
 - Title is 4-8 words, action-led ("Launch brand search campaign", "Rebuild homepage hero section").
 - Description is one short sentence (max 22 words) explaining why and the expected outcome.
-${sprint
-  ? "- This is a 90-DAY SPRINT plan. Mix MUST be: at least 4 \"high\" (weeks 1-4), 2 \"medium-high\" (weeks 5-8), 2 \"medium\" (weeks 9-12). Do NOT use \"ongoing\" or \"long-term\" — anything beyond week 12 does not belong in a sprint plan."
-  : "- Mix: at least 2 \"high\" (do first 30 days), 2 \"medium-high\", 2 \"medium\", 1-2 \"ongoing\", 1-2 \"long-term\"."}
+${
+  sprint
+    ? '- This is a 90-DAY SPRINT plan. Mix MUST be: at least 4 "high" (weeks 1-4), 2 "medium-high" (weeks 5-8), 2 "medium" (weeks 9-12). Do NOT use "ongoing" or "long-term" — anything beyond week 12 does not belong in a sprint plan.'
+    : '- Mix: at least 2 "high" (do first 30 days), 2 "medium-high", 2 "medium", 1-2 "ongoing", 1-2 "long-term".'
+}
 - Cover paid media, content/SEO, conversion/landing-page, measurement, organic social where relevant.
 - Each action must be concrete and reference real assets, channels, or audiences from the plan — no platitudes.
 - British English. No AI jargon ("harness", "leverage", "supercharge", "elevate", "craft", "tailored", "seamlessly", "robust", "cutting-edge").
@@ -3728,9 +4463,10 @@ ${sprint
 Client: ${sources.clientName}
 Context:
 ${context}${buildSharedContextBlocks(sources, "quickWins")}`,
-      },
-    ],
-  }));
+        },
+      ],
+    }),
+  );
 
   const parsed = safeJsonParse<QuickWinAction[]>(extractText(res), []);
   if (!Array.isArray(parsed)) return [];
@@ -3749,7 +4485,7 @@ ${context}${buildSharedContextBlocks(sources, "quickWins")}`,
 // ─── Google Ads Forecast builder (computed, no AI) ──────────────────────────
 
 function buildGoogleAdsForecast(adGroups: AdGroup[], sources: GrandPlanSources): GoogleAdsForecast {
-  const ideas = adGroups.flatMap(g => g.keywords.filter(k => k.volume && k.cpc));
+  const ideas = adGroups.flatMap((g) => g.keywords.filter((k) => k.volume && k.cpc));
   const budgetPounds = parseFloat(sources.keywordResearch?.monthlyBudget ?? "0") || 2000;
   const maxCpcPounds = parseFloat(sources.keywordResearch?.maxCpc ?? "0");
   const overrideRate = parseFloat(sources.keywordResearch?.conversionRate ?? "");
@@ -3759,13 +4495,25 @@ function buildGoogleAdsForecast(adGroups: AdGroup[], sources: GrandPlanSources):
   const disclaimer = `Forecast is a planning estimate based on keyword volume, market CPC and ${overridden ? `your supplied conversion rate of ${convRatePct}%` : `an industry-standard ${convRatePct}% conversion rate`}. Actual performance depends on landing-page quality, ad relevance and seasonality. Treat figures as a directional range, not a guarantee.`;
 
   if (ideas.length === 0 || budgetPounds <= 0) {
-    return { clicks: 0, impressions: 0, conversions: 0, cost: 0, avgCpa: 0, ctr: 0, avgCpc: 0, monthlyBudget: budgetPounds, conversionRate: convRatePct, conversionRateOverridden: overridden, disclaimer };
+    return {
+      clicks: 0,
+      impressions: 0,
+      conversions: 0,
+      cost: 0,
+      avgCpa: 0,
+      ctr: 0,
+      avgCpc: 0,
+      monthlyBudget: budgetPounds,
+      conversionRate: convRatePct,
+      conversionRateOverridden: overridden,
+      disclaimer,
+    };
   }
 
   // Bid-aware, position-adjusted forecast model (matches keyword planner logic)
   const BASE_CTR: Record<string, number> = { HIGH: 0.02, MEDIUM: 0.03, LOW: 0.04 };
 
-  const perKw = ideas.map(kw => {
+  const perKw = ideas.map((kw) => {
     const marketCpc = kw.cpc ?? 1;
     const effectiveMax = maxCpcPounds > 0 ? maxCpcPounds : marketCpc;
     const isEst = Math.min(1, effectiveMax / (marketCpc * 1.5)); // impression share estimate
@@ -3805,7 +4553,20 @@ function buildGoogleAdsForecast(adGroups: AdGroup[], sources: GrandPlanSources):
     avgCpa: { low: avgCpa * 0.8, high: avgCpa * 1.25 },
   };
 
-  return { clicks, impressions, conversions, cost, avgCpa, ctr, avgCpc, monthlyBudget: budgetPounds, conversionRate: convRatePct, conversionRateOverridden: overridden, range, disclaimer };
+  return {
+    clicks,
+    impressions,
+    conversions,
+    cost,
+    avgCpa,
+    ctr,
+    avgCpc,
+    monthlyBudget: budgetPounds,
+    conversionRate: convRatePct,
+    conversionRateOverridden: overridden,
+    range,
+    disclaimer,
+  };
 }
 
 // ─── Utils ──────────────────────────────────────────────────────────────────

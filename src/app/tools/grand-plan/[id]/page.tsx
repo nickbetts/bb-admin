@@ -45,18 +45,78 @@ import {
 // ─── Section configuration ─────────────────────────────────────────────────
 
 const ALL_SECTIONS: { key: string; label: string; description: string; aiPowered: boolean }[] = [
-  { key: "executiveSummary", label: "Executive Summary", description: "AI-generated overview of the strategy", aiPowered: true },
-  { key: "audiences", label: "Audiences", description: "Target audience profiles, pain points and channel mapping", aiPowered: true },
-  { key: "googleAdsCampaigns", label: "Google Ads Campaigns", description: "Campaign structure from keyword research", aiPowered: false },
-  { key: "googleAdsForecast", label: "Google Ads Forecast", description: "Estimated clicks, conversions, CPA from keyword data", aiPowered: false },
-  { key: "metaCampaigns", label: "Meta Campaigns", description: "AI-generated Facebook/Instagram campaigns", aiPowered: true },
-  { key: "linkedInAds", label: "LinkedIn Ads", description: "AI-generated LinkedIn campaign structures", aiPowered: true },
-  { key: "contentStrategy", label: "Content Strategy", description: "Page optimisations, landing pages, blog posts", aiPowered: false },
-  { key: "contentCalendar", label: "Content Calendar", description: "12-month blog and social posting schedule", aiPowered: true },
-  { key: "emailMarketing", label: "Email Marketing", description: "Automated flows, campaigns, segmentation", aiPowered: true },
-  { key: "competitorIntel", label: "Competitor Intelligence", description: "AI-generated competitive analysis", aiPowered: true },
-  { key: "seoFoundations", label: "SEO Foundations", description: "Quick wins on existing pages, internal linking structure, and link-building plan", aiPowered: true },
-  { key: "servicesInvestment", label: "Services & Investment", description: "Pricing and timeline from proposal", aiPowered: false },
+  {
+    key: "executiveSummary",
+    label: "Executive Summary",
+    description: "AI-generated overview of the strategy",
+    aiPowered: true,
+  },
+  {
+    key: "audiences",
+    label: "Audiences",
+    description: "Target audience profiles, pain points and channel mapping",
+    aiPowered: true,
+  },
+  {
+    key: "googleAdsCampaigns",
+    label: "Google Ads Campaigns",
+    description: "Campaign structure from keyword research",
+    aiPowered: false,
+  },
+  {
+    key: "googleAdsForecast",
+    label: "Google Ads Forecast",
+    description: "Estimated clicks, conversions, CPA from keyword data",
+    aiPowered: false,
+  },
+  {
+    key: "metaCampaigns",
+    label: "Meta Campaigns",
+    description: "AI-generated Facebook/Instagram campaigns",
+    aiPowered: true,
+  },
+  {
+    key: "linkedInAds",
+    label: "LinkedIn Ads",
+    description: "AI-generated LinkedIn campaign structures",
+    aiPowered: true,
+  },
+  {
+    key: "contentStrategy",
+    label: "Content Strategy",
+    description: "Page optimisations, landing pages, blog posts",
+    aiPowered: false,
+  },
+  {
+    key: "contentCalendar",
+    label: "Content Calendar",
+    description: "12-month blog and social posting schedule",
+    aiPowered: true,
+  },
+  {
+    key: "emailMarketing",
+    label: "Email Marketing",
+    description: "Automated flows, campaigns, segmentation",
+    aiPowered: true,
+  },
+  {
+    key: "competitorIntel",
+    label: "Competitor Intelligence",
+    description: "AI-generated competitive analysis",
+    aiPowered: true,
+  },
+  {
+    key: "seoFoundations",
+    label: "SEO Foundations",
+    description: "Quick wins on existing pages, internal linking structure, and link-building plan",
+    aiPowered: true,
+  },
+  {
+    key: "servicesInvestment",
+    label: "Services & Investment",
+    description: "Pricing and timeline from proposal",
+    aiPowered: false,
+  },
 ];
 
 const REMOVABLE_SUBSECTIONS: Record<string, { path: string; label: string }[]> = {
@@ -111,7 +171,10 @@ function hasRemovableValue(value: unknown): boolean {
   return true;
 }
 
-function removableSubsectionsForSection(sectionKey: string, sectionValue: unknown): { path: string; label: string }[] {
+function removableSubsectionsForSection(
+  sectionKey: string,
+  sectionValue: unknown,
+): { path: string; label: string }[] {
   const options = REMOVABLE_SUBSECTIONS[sectionKey] ?? [];
   return options.filter((opt) => hasRemovableValue(nestedValue(sectionValue, opt.path)));
 }
@@ -128,9 +191,21 @@ function removableSubsectionsForSection(sectionKey: string, sectionValue: unknow
 const PIPELINE_STEPS: { key: string; label: string; estSeconds: number }[] = [
   { key: "start", label: "Initialising", estSeconds: 2 },
   { key: "prepare-keywords", label: "Researching keywords", estSeconds: 30 },
-  { key: "prepare-research", label: "Harvesting account data (GA4 / GSC / SEMrush)", estSeconds: 60 },
-  { key: "prepare-customer-voice", label: "Researching customer voice (web search)", estSeconds: 60 },
-  { key: "prepare-strategy-brain", label: "Synthesising strategy brain (positioning, audiences, messaging)", estSeconds: 45 },
+  {
+    key: "prepare-research",
+    label: "Harvesting account data (GA4 / GSC / SEMrush)",
+    estSeconds: 60,
+  },
+  {
+    key: "prepare-customer-voice",
+    label: "Researching customer voice (web search)",
+    estSeconds: 60,
+  },
+  {
+    key: "prepare-strategy-brain",
+    label: "Synthesising strategy brain (positioning, audiences, messaging)",
+    estSeconds: 45,
+  },
 ];
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -174,6 +249,22 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
+type QualityStepStatus = "ok" | "skipped" | "failed" | "degraded";
+
+interface QualityStepRecord {
+  status?: QualityStepStatus;
+  critical?: boolean;
+  reason?: string;
+  error?: string;
+  warnings?: string[];
+  blockers?: string[];
+}
+
+interface QualityManifest {
+  version?: number;
+  steps?: Record<string, QualityStepRecord>;
+}
+
 // ─── Page ───────────────────────────────────────────────────────────────────
 
 export default function GrandPlanViewPage({ params }: Props) {
@@ -204,7 +295,9 @@ export default function GrandPlanViewPage({ params }: Props) {
   const [presentationBusy, setPresentationBusy] = useState(false);
   const [presentationCacheBust, setPresentationCacheBust] = useState(0);
   const [presentationEditMode, setPresentationEditMode] = useState(false);
-  const [presentationData, setPresentationData] = useState<import("@/lib/grand-plan-presentation-generator").PresentationData | null>(null);
+  const [presentationData, setPresentationData] = useState<
+    import("@/lib/grand-plan-presentation-generator").PresentationData | null
+  >(null);
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const [presEditTab, setPresEditTab] = useState<"refine" | "fields" | "manage">("refine");
   const [slideRefinePrompt, setSlideRefinePrompt] = useState("");
@@ -227,9 +320,15 @@ export default function GrandPlanViewPage({ params }: Props) {
 
   // Generation
   const [generating, setGenerating] = useState(false);
-  const [stepStatus, setStepStatus] = useState<Record<string, "pending" | "running" | "done" | "skipped" | "failed">>({});
+  const [stepStatus, setStepStatus] = useState<
+    Record<string, "pending" | "running" | "done" | "skipped" | "failed">
+  >({});
   const [currentStepLabel, setCurrentStepLabel] = useState<string>("");
-  const [activeSectionStep, setActiveSectionStep] = useState<{ key: string; index: number; total: number } | null>(null);
+  const [activeSectionStep, setActiveSectionStep] = useState<{
+    key: string;
+    index: number;
+    total: number;
+  } | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // UwU chaos mode (off by default; opt-in via overflow menu)
@@ -237,7 +336,9 @@ export default function GrandPlanViewPage({ params }: Props) {
   const funMessage = useGrandPlanUwu(generating && funMode);
 
   // Section toggles
-  const [enabledSections, setEnabledSections] = useState<Set<string>>(new Set(ALL_SECTIONS.map((s) => s.key)));
+  const [enabledSections, setEnabledSections] = useState<Set<string>>(
+    new Set(ALL_SECTIONS.map((s) => s.key)),
+  );
   const [showSectionConfig, setShowSectionConfig] = useState(false);
   const [savingSections, setSavingSections] = useState(false);
   const [removingPath, setRemovingPath] = useState<string | null>(null);
@@ -316,13 +417,26 @@ export default function GrandPlanViewPage({ params }: Props) {
         setActiveSlideIndex(data.index);
       }
       if (data.type === "gp:save-keywords") {
-        handleSaveKeywords(data.agIndex as number, data.agName as string, data.keywords as string[]);
+        handleSaveKeywords(
+          data.agIndex as number,
+          data.agName as string,
+          data.keywords as string[],
+        );
       }
       const googleAdsEditTypes = [
-        "gp:save-campaign-name", "gp:save-budget", "gp:save-locations",
-        "gp:save-negatives", "gp:ag-rename", "gp:ag-audience",
-        "gp:ag-negatives", "gp:ag-add", "gp:ag-delete", "gp:save-seeds",
-        "gp:save-intro", "gp:subsection-hide", "gp:subsection-restore",
+        "gp:save-campaign-name",
+        "gp:save-budget",
+        "gp:save-locations",
+        "gp:save-negatives",
+        "gp:ag-rename",
+        "gp:ag-audience",
+        "gp:ag-negatives",
+        "gp:ag-add",
+        "gp:ag-delete",
+        "gp:save-seeds",
+        "gp:save-intro",
+        "gp:subsection-hide",
+        "gp:subsection-restore",
       ];
       if (googleAdsEditTypes.includes(data.type)) {
         handleGoogleAdsEdit(data as Record<string, unknown>);
@@ -348,7 +462,7 @@ export default function GrandPlanViewPage({ params }: Props) {
   // URL on every successful save.
   async function handleGenericEdit(
     action: "set" | "delete" | "undo",
-    payload: { id?: string; path?: string; value?: unknown }
+    payload: { id?: string; path?: string; value?: unknown },
   ) {
     const target = iframeRef.current?.contentWindow;
     try {
@@ -425,7 +539,9 @@ export default function GrandPlanViewPage({ params }: Props) {
   function enterPresentationEditMode(gp: GrandPlanFull) {
     if (!gp.presentationDataJson) return;
     try {
-      const parsed = JSON.parse(gp.presentationDataJson) as import("@/lib/grand-plan-presentation-generator").PresentationData;
+      const parsed = JSON.parse(
+        gp.presentationDataJson,
+      ) as import("@/lib/grand-plan-presentation-generator").PresentationData;
       setPresentationData(parsed);
       setPresentationEditMode(true);
       setPresentationEditExpanded(true);
@@ -436,7 +552,11 @@ export default function GrandPlanViewPage({ params }: Props) {
     }
   }
 
-  async function uploadSlideImage(slideIndex: number, file: File, _position: "left" | "right" | "top" | "background" = "right") {
+  async function uploadSlideImage(
+    slideIndex: number,
+    file: File,
+    _position: "left" | "right" | "top" | "background" = "right",
+  ) {
     void _position;
     setUploadingImageForSlide(slideIndex);
     try {
@@ -447,11 +567,15 @@ export default function GrandPlanViewPage({ params }: Props) {
         body: fd,
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({})) as { error?: string };
+        const err = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(err.error ?? "Upload failed");
       }
-      const { url } = await res.json() as { url: string };
-      await savePresField("images-add", { slideIndex, url, alt: file.name.replace(/\.[a-z0-9]+$/i, "") });
+      const { url } = (await res.json()) as { url: string };
+      await savePresField("images-add", {
+        slideIndex,
+        url,
+        alt: file.name.replace(/\.[a-z0-9]+$/i, ""),
+      });
       toast("Image added", "success");
     } catch (err) {
       toast(err instanceof Error ? err.message : "Image upload failed", "error");
@@ -470,7 +594,9 @@ export default function GrandPlanViewPage({ params }: Props) {
       });
       if (!res.ok) throw new Error("Save failed");
       const result = await res.json();
-      const updated = JSON.parse(result.presentationDataJson) as import("@/lib/grand-plan-presentation-generator").PresentationData;
+      const updated = JSON.parse(
+        result.presentationDataJson,
+      ) as import("@/lib/grand-plan-presentation-generator").PresentationData;
       setPresentationData(updated);
       setPresentationCacheBust((n) => n + 1);
     } catch {
@@ -490,11 +616,13 @@ export default function GrandPlanViewPage({ params }: Props) {
         body: JSON.stringify({ prompt }),
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({})) as { error?: string };
+        const err = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(err.error ?? "Refine failed");
       }
       const result = await res.json();
-      const updated = JSON.parse(result.presentationDataJson) as import("@/lib/grand-plan-presentation-generator").PresentationData;
+      const updated = JSON.parse(
+        result.presentationDataJson,
+      ) as import("@/lib/grand-plan-presentation-generator").PresentationData;
       setPresentationData(updated);
       setPresentationCacheBust((n) => n + 1);
       setPresRefineAllPrompt("");
@@ -516,11 +644,13 @@ export default function GrandPlanViewPage({ params }: Props) {
         body: JSON.stringify({ slideIndex, prompt }),
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({})) as { error?: string };
+        const err = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(err.error ?? "Refine failed");
       }
       const result = await res.json();
-      const updated = JSON.parse(result.presentationDataJson) as import("@/lib/grand-plan-presentation-generator").PresentationData;
+      const updated = JSON.parse(
+        result.presentationDataJson,
+      ) as import("@/lib/grand-plan-presentation-generator").PresentationData;
       setPresentationData(updated);
       setPresentationCacheBust((n) => n + 1);
       setSlideRefinePrompt("");
@@ -653,7 +783,11 @@ export default function GrandPlanViewPage({ params }: Props) {
       // leash so we still surface a clean error if the function silently dies.
       const STEP_TIMEOUT_MS = 820_000;
       const timeoutId = setTimeout(() => {
-        try { abortRef.current?.abort(); } catch { /* noop */ }
+        try {
+          abortRef.current?.abort();
+        } catch {
+          /* noop */
+        }
       }, STEP_TIMEOUT_MS);
 
       try {
@@ -690,7 +824,7 @@ export default function GrandPlanViewPage({ params }: Props) {
         if (err instanceof DOMException && err.name === "AbortError") {
           setStepStatus((prev) => ({ ...prev, [sk]: "failed" }));
           throw new Error(
-            `Step "${label}" timed out after ${Math.round(STEP_TIMEOUT_MS / 1000)}s. The server may have hit its function timeout — retrying will resume from where it stopped.`
+            `Step "${label}" timed out after ${Math.round(STEP_TIMEOUT_MS / 1000)}s. The server may have hit its function timeout — retrying will resume from where it stopped.`,
           );
         }
         throw err;
@@ -731,7 +865,11 @@ export default function GrandPlanViewPage({ params }: Props) {
 
   function handleCancelGeneration() {
     cancelledRef.current = true;
-    try { abortRef.current?.abort(); } catch { /* noop */ }
+    try {
+      abortRef.current?.abort();
+    } catch {
+      /* noop */
+    }
     toast("Cancelling\u2026 the current step will stop shortly.", "info");
   }
 
@@ -784,13 +922,28 @@ export default function GrandPlanViewPage({ params }: Props) {
   async function handleRegenerateFailed() {
     if (!plan) return;
     try {
-      const data = JSON.parse(plan.planDataJson || "{}");
-      const report = data.generationReport as Record<string, { status: string }> | undefined;
-      if (!report) return;
-      const failed = Object.entries(report)
-        .filter(([, r]) => r.status === "failed")
-        .map(([k]) => k);
-      if (!failed.length) return;
+      const data = JSON.parse(plan.planDataJson || "{}") as {
+        qualityManifest?: QualityManifest;
+        generationReport?: Record<string, { status: string }>;
+      };
+
+      const sectionKeys = new Set(ALL_SECTIONS.map((section) => section.key));
+      const manifestSteps = data.qualityManifest?.steps ?? {};
+      const failedFromManifest = Object.entries(manifestSteps)
+        .filter(([key, record]) => sectionKeys.has(key) && record?.status === "failed")
+        .map(([key]) => key);
+
+      const legacyReport = data.generationReport ?? {};
+      const failedFromLegacy = Object.entries(legacyReport)
+        .filter(([key, record]) => sectionKeys.has(key) && record.status === "failed")
+        .map(([key]) => key);
+
+      const failed = Array.from(new Set([...failedFromManifest, ...failedFromLegacy]));
+      if (!failed.length) {
+        toast("No failed sections found to regenerate", "info");
+        return;
+      }
+
       setRegeneratingSection("__batch__");
 
       const results = await Promise.allSettled(
@@ -801,14 +954,16 @@ export default function GrandPlanViewPage({ params }: Props) {
             body: JSON.stringify({ sectionKey: key }),
           });
           if (!res.ok) {
-            const err = await res.json().catch(() => ({})) as { error?: string };
+            const err = (await res.json().catch(() => ({}))) as { error?: string };
             throw new Error(err.error ?? `Failed to regenerate ${labelFor(key)}`);
           }
           return key;
-        })
+        }),
       );
 
-      const succeeded = results.filter((r): r is PromiseFulfilledResult<string> => r.status === "fulfilled").length;
+      const succeeded = results.filter(
+        (r): r is PromiseFulfilledResult<string> => r.status === "fulfilled",
+      ).length;
       const failedCount = results.length - succeeded;
 
       if (succeeded > 0) {
@@ -828,7 +983,8 @@ export default function GrandPlanViewPage({ params }: Props) {
   async function handleRemovePath(path: string, label: string) {
     const ok = await confirm({
       title: `Remove ${label}?`,
-      description: "This will remove it from the current plan output. You can restore via version history.",
+      description:
+        "This will remove it from the current plan output. You can restore via version history.",
       confirmLabel: "Remove",
       danger: true,
     });
@@ -841,7 +997,7 @@ export default function GrandPlanViewPage({ params }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "delete", path }),
       });
-      const result = await res.json().catch(() => ({})) as { error?: string; html?: string };
+      const result = (await res.json().catch(() => ({}))) as { error?: string; html?: string };
       if (!res.ok) {
         throw new Error(result.error ?? `Failed to remove ${label}`);
       }
@@ -993,7 +1149,12 @@ export default function GrandPlanViewPage({ params }: Props) {
 
   async function handleExportActions() {
     if (!plan?.clientId) return;
-    if (!(window.confirm("Export plan recommendations as action items? This will create new tasks in the client's action plan."))) return;
+    if (
+      !window.confirm(
+        "Export plan recommendations as action items? This will create new tasks in the client's action plan.",
+      )
+    )
+      return;
     setExportingActions(true);
     try {
       const res = await fetch(`/api/tools/grand-plan/${id}/export-actions`, { method: "POST" });
@@ -1012,7 +1173,10 @@ export default function GrandPlanViewPage({ params }: Props) {
     try {
       const form = new FormData();
       form.append("file", file);
-      const res = await fetch(`/api/tools/grand-plan/${id}/import-context`, { method: "POST", body: form });
+      const res = await fetch(`/api/tools/grand-plan/${id}/import-context`, {
+        method: "POST",
+        body: form,
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Import failed");
       // Refresh plan so the brief textarea reflects the appended context
@@ -1070,7 +1234,8 @@ export default function GrandPlanViewPage({ params }: Props) {
   async function handleRestoreVersion(version: { id: string; versionNumber: number }) {
     const ok = await confirm({
       title: `Restore version v${version.versionNumber}?`,
-      description: "The current document will be archived as a new version, so you can always undo.",
+      description:
+        "The current document will be archived as a new version, so you can always undo.",
       confirmLabel: "Restore",
     });
     if (!ok) return;
@@ -1101,21 +1266,78 @@ export default function GrandPlanViewPage({ params }: Props) {
 
   // ─── Derived ─────────────────────────────────────────────────────────────
 
-  const isGenerating = (plan?.status === "generating") || generating;
+  const isGenerating = plan?.status === "generating" || generating;
   const isComplete = plan?.status === "complete" && !!plan?.generatedHtml;
 
   const failureSummary = useMemo(() => {
-    if (!plan?.planDataJson) return { failures: [] as { key: string; error?: string }[], warnings: [] as string[] };
+    const empty = {
+      failures: [] as { key: string; error?: string }[],
+      warnings: [] as string[],
+      failedSections: [] as string[],
+    };
+    if (!plan?.planDataJson) return empty;
     try {
-      const data = JSON.parse(plan.planDataJson || "{}");
-      const warnings = (data.pipelineWarnings as string[] | undefined) ?? [];
-      const report = (data.generationReport as Record<string, { status: string; error?: string }> | undefined) ?? {};
-      const failures = Object.entries(report)
-        .filter(([, r]) => r.status === "failed")
-        .map(([key, r]) => ({ key, error: r.error }));
-      return { failures, warnings };
+      const data = JSON.parse(plan.planDataJson || "{}") as {
+        qualityManifest?: QualityManifest;
+        pipelineWarnings?: string[];
+        generationReport?: Record<string, { status: string; error?: string }>;
+      };
+
+      const warnings = new Set(
+        ((data.pipelineWarnings as string[] | undefined) ?? []).filter(
+          (warning): warning is string => typeof warning === "string" && warning.trim().length > 0,
+        ),
+      );
+      const failuresByKey = new Map<string, { key: string; error?: string }>();
+      const sectionKeys = new Set(ALL_SECTIONS.map((section) => section.key));
+      const failedSections = new Set<string>();
+
+      const steps = data.qualityManifest?.steps ?? {};
+      for (const [key, record] of Object.entries(steps)) {
+        const status = record?.status;
+        const label = labelFor(key);
+
+        if (status === "failed") {
+          failuresByKey.set(key, { key, error: record.error ?? record.reason });
+          if (sectionKeys.has(key)) failedSections.add(key);
+          continue;
+        }
+
+        if (status === "degraded" || (status === "skipped" && record.critical)) {
+          const details = [
+            ...((record.warnings as string[] | undefined) ?? []),
+            ...((record.blockers as string[] | undefined) ?? []),
+          ].filter((line): line is string => typeof line === "string" && line.trim().length > 0);
+
+          if (details.length > 0) {
+            for (const detail of details) warnings.add(`${label}: ${detail}`);
+          } else if (record.reason || record.error) {
+            warnings.add(`${label}: ${record.reason ?? record.error}`);
+          } else if (status === "degraded") {
+            warnings.add(`${label}: completed with degraded quality.`);
+          } else {
+            warnings.add(`${label}: skipped but marked critical.`);
+          }
+        }
+      }
+
+      const report = data.generationReport ?? {};
+      for (const [key, result] of Object.entries(report)) {
+        if (result.status === "failed") {
+          if (!failuresByKey.has(key)) {
+            failuresByKey.set(key, { key, error: result.error });
+          }
+          if (sectionKeys.has(key)) failedSections.add(key);
+        }
+      }
+
+      return {
+        failures: Array.from(failuresByKey.values()),
+        warnings: Array.from(warnings),
+        failedSections: Array.from(failedSections),
+      };
     } catch {
-      return { failures: [], warnings: [] };
+      return empty;
     }
   }, [plan?.planDataJson]);
 
@@ -1130,16 +1352,19 @@ export default function GrandPlanViewPage({ params }: Props) {
   }, [plan?.planDataJson]);
 
   const removableSections = useMemo(() => {
-    return ALL_SECTIONS.reduce((acc, section) => {
-      const value = sectionData[section.key];
-      if (!hasRemovableValue(value)) return acc;
-      acc.push({
-        key: section.key,
-        label: section.label,
-        subsections: removableSubsectionsForSection(section.key, value),
-      });
-      return acc;
-    }, [] as { key: string; label: string; subsections: { path: string; label: string }[] }[]);
+    return ALL_SECTIONS.reduce(
+      (acc, section) => {
+        const value = sectionData[section.key];
+        if (!hasRemovableValue(value)) return acc;
+        acc.push({
+          key: section.key,
+          label: section.label,
+          subsections: removableSubsectionsForSection(section.key, value),
+        });
+        return acc;
+      },
+      [] as { key: string; label: string; subsections: { path: string; label: string }[] }[],
+    );
   }, [sectionData]);
 
   const selectedQuickRemoveSection = useMemo(() => {
@@ -1162,7 +1387,9 @@ export default function GrandPlanViewPage({ params }: Props) {
       if (quickRemoveSubPath) setQuickRemoveSubPath("");
       return;
     }
-    const exists = selectedQuickRemoveSection.subsections.some((sub) => sub.path === quickRemoveSubPath);
+    const exists = selectedQuickRemoveSection.subsections.some(
+      (sub) => sub.path === quickRemoveSubPath,
+    );
     if (!exists) {
       setQuickRemoveSubPath(selectedQuickRemoveSection.subsections[0]?.path ?? "");
     }
@@ -1211,10 +1438,7 @@ export default function GrandPlanViewPage({ params }: Props) {
       </Link>
 
       {/* Header */}
-      <header
-        className="flex items-start justify-between"
-        style={{ gap: 16, marginBottom: 18 }}
-      >
+      <header className="flex items-start justify-between" style={{ gap: 16, marginBottom: 18 }}>
         <div className="flex items-start" style={{ gap: 14, flex: 1, minWidth: 0 }}>
           <div
             style={{
@@ -1302,14 +1526,9 @@ export default function GrandPlanViewPage({ params }: Props) {
                 </button>
               </div>
             )}
-            <div
-              className="flex items-center flex-wrap"
-              style={{ gap: 8, marginTop: 6 }}
-            >
+            <div className="flex flex-wrap items-center" style={{ gap: 8, marginTop: 6 }}>
               {plan.client && (
-                <span style={{ fontSize: 12, color: "var(--text-3)" }}>
-                  {plan.client.name}
-                </span>
+                <span style={{ fontSize: 12, color: "var(--text-3)" }}>{plan.client.name}</span>
               )}
               <StatusBadge status={plan.status} />
               <PurposeBadge purpose={plan.purpose} />
@@ -1512,10 +1731,7 @@ export default function GrandPlanViewPage({ params }: Props) {
                             aria-label={`Regenerate ${s.label}`}
                           >
                             {regeneratingSection === s.key ? (
-                              <Loader2
-                                style={{ width: 11, height: 11 }}
-                                className="animate-spin"
-                              />
+                              <Loader2 style={{ width: 11, height: 11 }} className="animate-spin" />
                             ) : (
                               <RefreshCw style={{ width: 11, height: 11 }} aria-hidden />
                             )}
@@ -1526,36 +1742,41 @@ export default function GrandPlanViewPage({ params }: Props) {
                       <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>
                         {s.description}
                       </p>
-                      {plan?.status === "complete" && sectionExists && removableSubsections.length > 0 && (
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 6 }}>
-                          {removableSubsections.map((sub) => {
-                            const path = `sections.${s.key}.${sub.path}`;
-                            const removing = removingPath === path;
-                            return (
-                              <button
-                                key={path}
-                                className="btn btn-ghost btn-sm"
-                                style={{ fontSize: 10, padding: "2px 6px", gap: 3 }}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  handleRemovePath(path, `${s.label}: ${sub.label}`);
-                                }}
-                                disabled={removingPath !== null || regeneratingSection !== null}
-                                title={`Remove ${sub.label}`}
-                                aria-label={`Remove ${sub.label}`}
-                              >
-                                {removing ? (
-                                  <Loader2 style={{ width: 11, height: 11 }} className="animate-spin" />
-                                ) : (
-                                  <X style={{ width: 11, height: 11 }} aria-hidden />
-                                )}
-                                {sub.label}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
+                      {plan?.status === "complete" &&
+                        sectionExists &&
+                        removableSubsections.length > 0 && (
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 6 }}>
+                            {removableSubsections.map((sub) => {
+                              const path = `sections.${s.key}.${sub.path}`;
+                              const removing = removingPath === path;
+                              return (
+                                <button
+                                  key={path}
+                                  className="btn btn-ghost btn-sm"
+                                  style={{ fontSize: 10, padding: "2px 6px", gap: 3 }}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    handleRemovePath(path, `${s.label}: ${sub.label}`);
+                                  }}
+                                  disabled={removingPath !== null || regeneratingSection !== null}
+                                  title={`Remove ${sub.label}`}
+                                  aria-label={`Remove ${sub.label}`}
+                                >
+                                  {removing ? (
+                                    <Loader2
+                                      style={{ width: 11, height: 11 }}
+                                      className="animate-spin"
+                                    />
+                                  ) : (
+                                    <X style={{ width: 11, height: 11 }} aria-hidden />
+                                  )}
+                                  {sub.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
                     </div>
                   </label>
                 );
@@ -1597,14 +1818,10 @@ export default function GrandPlanViewPage({ params }: Props) {
 
       {/* ── Action toolbar — grouped ──────────────────────────────────────── */}
       <div className="card" style={{ padding: "10px 14px", marginBottom: 14 }}>
-        <div className="flex items-center flex-wrap" style={{ gap: 6 }}>
+        <div className="flex flex-wrap items-center" style={{ gap: 6 }}>
           {/* Primary group */}
           {!isGenerating && (
-            <button
-              className="btn btn-primary btn-sm"
-              style={{ gap: 6 }}
-              onClick={handleGenerate}
-            >
+            <button className="btn btn-primary btn-sm" style={{ gap: 6 }} onClick={handleGenerate}>
               {isComplete ? (
                 <RefreshCw style={{ width: 13, height: 13 }} aria-hidden />
               ) : (
@@ -1656,11 +1873,17 @@ export default function GrandPlanViewPage({ params }: Props) {
                 style={{ gap: 5 }}
                 onClick={handleGeneratePresentation}
                 disabled={presentationBusy}
-                title={plan.presentationGeneratedAt ? "Regenerate the client-facing presentation deck" : "Create a top-level client-facing presentation deck"}
+                title={
+                  plan.presentationGeneratedAt
+                    ? "Regenerate the client-facing presentation deck"
+                    : "Create a top-level client-facing presentation deck"
+                }
               >
-                {presentationBusy
-                  ? <Loader2 style={{ width: 13, height: 13 }} className="animate-spin" aria-hidden />
-                  : <Presentation style={{ width: 13, height: 13 }} aria-hidden />}
+                {presentationBusy ? (
+                  <Loader2 style={{ width: 13, height: 13 }} className="animate-spin" aria-hidden />
+                ) : (
+                  <Presentation style={{ width: 13, height: 13 }} aria-hidden />
+                )}
                 {plan.presentationGeneratedAt ? "Regenerate Presentation" : "Create Presentation"}
               </button>
               {!plan.shareToken && (
@@ -1699,7 +1922,8 @@ export default function GrandPlanViewPage({ params }: Props) {
                       onClick={handleCopyPresentationLink}
                       title="Copy public link to the presentation deck"
                     >
-                      <Presentation style={{ width: 13, height: 13 }} aria-hidden /> Copy presentation link
+                      <Presentation style={{ width: 13, height: 13 }} aria-hidden /> Copy
+                      presentation link
                     </button>
                   )}
                   {plan.shareExpiresAt && (
@@ -1760,15 +1984,20 @@ export default function GrandPlanViewPage({ params }: Props) {
                     selectedQuickRemoveSection.label,
                   );
                 }}
-                disabled={!selectedQuickRemoveSection || removingPath !== null || regeneratingSection !== null}
+                disabled={
+                  !selectedQuickRemoveSection ||
+                  removingPath !== null ||
+                  regeneratingSection !== null
+                }
                 title="Remove selected section"
               >
-                {selectedQuickRemoveSection && removingPath === `sections.${selectedQuickRemoveSection.key}` ? (
+                {selectedQuickRemoveSection &&
+                removingPath === `sections.${selectedQuickRemoveSection.key}` ? (
                   <Loader2 style={{ width: 14, height: 14 }} className="animate-spin" aria-hidden />
                 ) : (
                   <Trash2 style={{ width: 14, height: 14 }} aria-hidden />
-                )}
-                {" "}Remove section
+                )}{" "}
+                Remove section
               </button>
               {selectedQuickRemoveSection && selectedQuickRemoveSection.subsections.length > 0 && (
                 <>
@@ -1790,22 +2019,33 @@ export default function GrandPlanViewPage({ params }: Props) {
                     className="btn btn-ghost btn-sm"
                     onClick={() => {
                       if (!selectedQuickRemoveSection || !quickRemoveSubPath) return;
-                      const sub = selectedQuickRemoveSection.subsections.find((item) => item.path === quickRemoveSubPath);
+                      const sub = selectedQuickRemoveSection.subsections.find(
+                        (item) => item.path === quickRemoveSubPath,
+                      );
                       if (!sub) return;
                       handleRemovePath(
                         `sections.${selectedQuickRemoveSection.key}.${quickRemoveSubPath}`,
                         `${selectedQuickRemoveSection.label}: ${sub.label}`,
                       );
                     }}
-                    disabled={!quickRemoveSubPath || removingPath !== null || regeneratingSection !== null}
+                    disabled={
+                      !quickRemoveSubPath || removingPath !== null || regeneratingSection !== null
+                    }
                     title="Remove selected subsection"
                   >
-                    {selectedQuickRemoveSection && quickRemoveSubPath && removingPath === `sections.${selectedQuickRemoveSection.key}.${quickRemoveSubPath}` ? (
-                      <Loader2 style={{ width: 14, height: 14 }} className="animate-spin" aria-hidden />
+                    {selectedQuickRemoveSection &&
+                    quickRemoveSubPath &&
+                    removingPath ===
+                      `sections.${selectedQuickRemoveSection.key}.${quickRemoveSubPath}` ? (
+                      <Loader2
+                        style={{ width: 14, height: 14 }}
+                        className="animate-spin"
+                        aria-hidden
+                      />
                     ) : (
                       <X style={{ width: 14, height: 14 }} aria-hidden />
-                    )}
-                    {" "}Remove subsection
+                    )}{" "}
+                    Remove subsection
                   </button>
                 </>
               )}
@@ -1818,8 +2058,12 @@ export default function GrandPlanViewPage({ params }: Props) {
               disabled={exportingActions}
               title="Export recommendations as action items"
             >
-              {exportingActions ? <Loader2 style={{ width: 14, height: 14 }} className="animate-spin" aria-hidden /> : <Download style={{ width: 14, height: 14 }} aria-hidden />}
-              {" "}Actions
+              {exportingActions ? (
+                <Loader2 style={{ width: 14, height: 14 }} className="animate-spin" aria-hidden />
+              ) : (
+                <Download style={{ width: 14, height: 14 }} aria-hidden />
+              )}{" "}
+              Actions
             </button>
           )}
           {/* Import context: hidden file input triggered by button */}
@@ -1828,23 +2072,27 @@ export default function GrandPlanViewPage({ params }: Props) {
             style={{ cursor: importingContext ? "wait" : "pointer" }}
             title="Import a document to append to the client brief"
           >
-            {importingContext
-              ? <Loader2 style={{ width: 14, height: 14 }} className="animate-spin" aria-hidden />
-              : <Upload style={{ width: 14, height: 14 }} aria-hidden />}
-            {" "}Import
+            {importingContext ? (
+              <Loader2 style={{ width: 14, height: 14 }} className="animate-spin" aria-hidden />
+            ) : (
+              <Upload style={{ width: 14, height: 14 }} aria-hidden />
+            )}{" "}
+            Import
             <input
               type="file"
               accept=".xlsx,.xls,.csv,.docx,.txt"
               style={{ display: "none" }}
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) { e.target.value = ""; handleImportContext(f); } }}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) {
+                  e.target.value = "";
+                  handleImportContext(f);
+                }
+              }}
               disabled={importingContext}
             />
           </label>
-          <button
-            className="btn btn-ghost btn-sm"
-            onClick={handleClone}
-            title="Clone plan"
-          >
+          <button className="btn btn-ghost btn-sm" onClick={handleClone} title="Clone plan">
             <Copy style={{ width: 14, height: 14 }} aria-hidden /> Clone
           </button>
           {plan.shareToken && (
@@ -1896,9 +2144,22 @@ export default function GrandPlanViewPage({ params }: Props) {
             }
           />
           {!funMode && (
-            <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 10, marginBottom: 0, display: "flex", alignItems: "center", gap: 5 }}>
+            <p
+              style={{
+                fontSize: 11,
+                color: "var(--text-3)",
+                marginTop: 10,
+                marginBottom: 0,
+                display: "flex",
+                alignItems: "center",
+                gap: 5,
+              }}
+            >
               <span style={{ fontSize: 13 }}>⚠️</span>
-              <span>Keep this tab open — closing or navigating away will pause generation. Completed steps are saved and will not re-run.</span>
+              <span>
+                Keep this tab open — closing or navigating away will pause generation. Completed
+                steps are saved and will not re-run.
+              </span>
             </p>
           )}
           <div style={{ marginTop: 14 }}>
@@ -1960,7 +2221,8 @@ export default function GrandPlanViewPage({ params }: Props) {
             </button>
           </div>
           <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 6 }}>
-            Tip: be specific about which section and the change you want. Each refinement creates a new version you can roll back to.
+            Tip: be specific about which section and the change you want. Each refinement creates a
+            new version you can roll back to.
           </p>
         </div>
       )}
@@ -1989,20 +2251,28 @@ export default function GrandPlanViewPage({ params }: Props) {
                 margin: 0,
               }}
             >
-              {failureSummary.failures.length} section{failureSummary.failures.length === 1 ? "" : "s"} failed
+              {failureSummary.failures.length} pipeline step
+              {failureSummary.failures.length === 1 ? "" : "s"} failed
             </p>
             <button
               className="btn btn-primary btn-sm"
               style={{ marginLeft: "auto", gap: 5, fontSize: 11 }}
               onClick={handleRegenerateFailed}
-              disabled={regeneratingSection !== null}
+              disabled={regeneratingSection !== null || failureSummary.failedSections.length === 0}
+              title={
+                failureSummary.failedSections.length === 0
+                  ? "No section-level failures to regenerate"
+                  : "Regenerate failed sections"
+              }
             >
               {regeneratingSection ? (
                 <Loader2 style={{ width: 11, height: 11 }} className="animate-spin" />
               ) : (
                 <RefreshCw style={{ width: 11, height: 11 }} aria-hidden />
               )}
-              Regenerate failed sections
+              {failureSummary.failedSections.length > 0
+                ? "Regenerate failed sections"
+                : "No failed sections to regenerate"}
             </button>
           </div>
           <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
@@ -2169,7 +2439,13 @@ export default function GrandPlanViewPage({ params }: Props) {
                         }}
                         aria-hidden
                       />
-                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <span
+                        style={{
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
                         {s.label}
                       </span>
                     </button>
@@ -2221,7 +2497,13 @@ export default function GrandPlanViewPage({ params }: Props) {
                 {viewMode === "presentation" && (
                   <>
                     <span style={{ fontSize: 11, color: "var(--text-3)", marginLeft: 8 }}>
-                      Updated {new Date(plan.presentationGeneratedAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                      Updated{" "}
+                      {new Date(plan.presentationGeneratedAt).toLocaleString("en-GB", {
+                        day: "numeric",
+                        month: "short",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
                     </span>
                     <div style={{ flex: 1 }} />
                     <button
@@ -2247,7 +2529,8 @@ export default function GrandPlanViewPage({ params }: Props) {
                       style={{ gap: 5 }}
                       title="Open presentation in a new tab for full-screen presenting"
                     >
-                      <ArrowUpRight style={{ width: 13, height: 13 }} aria-hidden /> Open full-screen
+                      <ArrowUpRight style={{ width: 13, height: 13 }} aria-hidden /> Open
+                      full-screen
                     </a>
                     <a
                       href={`/api/tools/grand-plan/${plan.id}/presentation/pdf`}
@@ -2265,9 +2548,11 @@ export default function GrandPlanViewPage({ params }: Props) {
             <div style={viewMode === "presentation" ? { display: "flex", height: "80vh" } : {}}>
               <iframe
                 ref={iframeRef}
-                src={viewMode === "presentation" && plan.presentationGeneratedAt
-                  ? `/api/tools/grand-plan/${plan.id}/presentation?ts=${presentationCacheBust}`
-                  : blobUrl ?? undefined}
+                src={
+                  viewMode === "presentation" && plan.presentationGeneratedAt
+                    ? `/api/tools/grand-plan/${plan.id}/presentation?ts=${presentationCacheBust}`
+                    : (blobUrl ?? undefined)
+                }
                 style={{
                   flex: "1 1 100%",
                   height: viewMode === "presentation" ? "100%" : undefined,
@@ -2277,7 +2562,11 @@ export default function GrandPlanViewPage({ params }: Props) {
                   transition: "flex-basis .25s",
                 }}
                 title={viewMode === "presentation" ? `${plan.title} (Presentation)` : plan.title}
-                sandbox={viewMode === "presentation" ? "allow-scripts allow-same-origin" : "allow-scripts allow-modals allow-same-origin"}
+                sandbox={
+                  viewMode === "presentation"
+                    ? "allow-scripts allow-same-origin"
+                    : "allow-scripts allow-modals allow-same-origin"
+                }
                 onLoad={() => {
                   try {
                     const body = iframeRef.current?.contentDocument?.body;
@@ -2315,7 +2604,8 @@ export default function GrandPlanViewPage({ params }: Props) {
               margin: "6px auto 0",
             }}
           >
-            Click <strong>Generate plan</strong> above to create the full document from your linked sources.
+            Click <strong>Generate plan</strong> above to create the full document from your linked
+            sources.
           </p>
         </div>
       ) : null}
@@ -2340,7 +2630,12 @@ export default function GrandPlanViewPage({ params }: Props) {
           </div>
           <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
             {plan.versions.map((v, idx) => (
-              <li key={v.id} style={{ borderBottom: idx < plan.versions.length - 1 ? "1px solid var(--border)" : "none" }}>
+              <li
+                key={v.id}
+                style={{
+                  borderBottom: idx < plan.versions.length - 1 ? "1px solid var(--border)" : "none",
+                }}
+              >
                 <div className="flex items-center" style={{ gap: 8, padding: "6px 0" }}>
                   <span
                     style={{
@@ -2596,10 +2891,22 @@ function PipelineStepper({
   statusMap: Record<string, "pending" | "running" | "done" | "skipped" | "failed">;
   activeSection: { key: string; index: number; total: number } | null;
 }) {
-  const allRows: { key: string; statusKey: string; label: string; group: "prep" | "section" | "assemble" }[] = [];
-  for (const s of steps) allRows.push({ key: s.key, statusKey: s.key, label: s.label, group: "prep" });
-  for (const k of sectionKeys) allRows.push({ key: k, statusKey: `section:${k}`, label: labelFor(k), group: "section" });
-  allRows.push({ key: "assemble", statusKey: "assemble", label: "Assembling final document", group: "assemble" });
+  const allRows: {
+    key: string;
+    statusKey: string;
+    label: string;
+    group: "prep" | "section" | "assemble";
+  }[] = [];
+  for (const s of steps)
+    allRows.push({ key: s.key, statusKey: s.key, label: s.label, group: "prep" });
+  for (const k of sectionKeys)
+    allRows.push({ key: k, statusKey: `section:${k}`, label: labelFor(k), group: "section" });
+  allRows.push({
+    key: "assemble",
+    statusKey: "assemble",
+    label: "Assembling final document",
+    group: "assemble",
+  });
 
   const completed = allRows.filter((r) => {
     const st = statusMap[r.statusKey];
@@ -2659,20 +2966,20 @@ function StepperRow({
     status === "done"
       ? "var(--success)"
       : status === "running"
-      ? "var(--accent)"
-      : status === "failed"
-      ? "var(--danger)"
-      : status === "skipped"
-      ? "var(--text-4)"
-      : "var(--text-4)";
+        ? "var(--accent)"
+        : status === "failed"
+          ? "var(--danger)"
+          : status === "skipped"
+            ? "var(--text-4)"
+            : "var(--text-4)";
   const Icon =
     status === "done"
       ? CircleCheck
       : status === "running"
-      ? Loader2
-      : status === "failed"
-      ? CircleAlert
-      : Circle;
+        ? Loader2
+        : status === "failed"
+          ? CircleAlert
+          : Circle;
   return (
     <div
       className="flex items-center"
@@ -2724,10 +3031,43 @@ function DocumentSkeleton() {
       }}
     >
       <div style={{ height: 36, background: "var(--bg-2)", borderRadius: 8, width: "60%" }} />
-      <div style={{ height: 12, background: "var(--bg-2)", borderRadius: 4, width: "40%", opacity: 0.7 }} />
-      <div style={{ height: 12, background: "var(--bg-2)", borderRadius: 4, width: "85%", opacity: 0.5, marginTop: 12 }} />
-      <div style={{ height: 12, background: "var(--bg-2)", borderRadius: 4, width: "75%", opacity: 0.5 }} />
-      <div style={{ height: 12, background: "var(--bg-2)", borderRadius: 4, width: "80%", opacity: 0.5 }} />
+      <div
+        style={{
+          height: 12,
+          background: "var(--bg-2)",
+          borderRadius: 4,
+          width: "40%",
+          opacity: 0.7,
+        }}
+      />
+      <div
+        style={{
+          height: 12,
+          background: "var(--bg-2)",
+          borderRadius: 4,
+          width: "85%",
+          opacity: 0.5,
+          marginTop: 12,
+        }}
+      />
+      <div
+        style={{
+          height: 12,
+          background: "var(--bg-2)",
+          borderRadius: 4,
+          width: "75%",
+          opacity: 0.5,
+        }}
+      />
+      <div
+        style={{
+          height: 12,
+          background: "var(--bg-2)",
+          borderRadius: 4,
+          width: "80%",
+          opacity: 0.5,
+        }}
+      />
       <div
         style={{
           display: "grid",
@@ -2737,7 +3077,10 @@ function DocumentSkeleton() {
         }}
       >
         {[...Array(6)].map((_, i) => (
-          <div key={i} style={{ height: 80, background: "var(--bg-2)", borderRadius: 10, opacity: 0.55 }} />
+          <div
+            key={i}
+            style={{ height: 80, background: "var(--bg-2)", borderRadius: 10, opacity: 0.55 }}
+          />
         ))}
       </div>
     </div>
@@ -2791,7 +3134,11 @@ function PurposeBadge({ purpose }: { purpose: string }) {
 
 function labelFor(key: string): string {
   const found = ALL_SECTIONS.find((s) => s.key === key);
-  return found?.label ?? key;
+  if (found) return found.label;
+  const pipeline = PIPELINE_STEPS.find((step) => step.key === key);
+  if (pipeline) return pipeline.label;
+  if (key === "assemble") return "Assembling final document";
+  return key;
 }
 
 function formatRelativeFuture(iso: string): string {
@@ -2877,13 +3224,17 @@ function playChaosBleep() {
     gain.connect(ctx.destination);
     const FREQS = [261, 329, 392, 523, 659, 784, 1046, 1318];
     osc.frequency.value = FREQS[Math.floor(Math.random() * FREQS.length)];
-    osc.type = (["square", "sawtooth", "triangle"] as OscillatorType[])[Math.floor(Math.random() * 3)];
+    osc.type = (["square", "sawtooth", "triangle"] as OscillatorType[])[
+      Math.floor(Math.random() * 3)
+    ];
     gain.gain.setValueAtTime(0.08, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.18);
     osc.start(ctx.currentTime);
     osc.stop(ctx.currentTime + 0.18);
     osc.onended = () => ctx.close();
-  } catch { /* AudioContext blocked — silent fail */ }
+  } catch {
+    /* AudioContext blocked — silent fail */
+  }
 }
 
 function GrandPlanChaosOverlay({ active, message }: { active: boolean; message?: string }) {
@@ -2974,10 +3325,13 @@ function GrandPlanChaosOverlay({ active, message }: { active: boolean; message?:
     playChaosBleep();
     let timeoutId: ReturnType<typeof setTimeout>;
     function scheduleNext() {
-      timeoutId = setTimeout(() => {
-        playChaosBleep();
-        scheduleNext();
-      }, 600 + Math.random() * 1200);
+      timeoutId = setTimeout(
+        () => {
+          playChaosBleep();
+          scheduleNext();
+        },
+        600 + Math.random() * 1200,
+      );
     }
     scheduleNext();
     return () => clearTimeout(timeoutId);
@@ -2990,10 +3344,50 @@ function GrandPlanChaosOverlay({ active, message }: { active: boolean; message?:
       return;
     }
     const EMOJIS = [
-      "✨","💖","🌸","⭐","🎀","💫","🦄","🌈","😻","💕","🎪","🚀",
-      "📊","📈","🎯","💅","✌️","🔥","👑","🎉","💣","🤯","🫠","😱",
-      "UwU","OwO",">.<",":3","rawr","xD","nyan~","BAKA","W","T","F",
-      "brrrr","404","ERROR","NaN","null","undefined","😈","🧨","💥",
+      "✨",
+      "💖",
+      "🌸",
+      "⭐",
+      "🎀",
+      "💫",
+      "🦄",
+      "🌈",
+      "😻",
+      "💕",
+      "🎪",
+      "🚀",
+      "📊",
+      "📈",
+      "🎯",
+      "💅",
+      "✌️",
+      "🔥",
+      "👑",
+      "🎉",
+      "💣",
+      "🤯",
+      "🫠",
+      "😱",
+      "UwU",
+      "OwO",
+      ">.<",
+      ":3",
+      "rawr",
+      "xD",
+      "nyan~",
+      "BAKA",
+      "W",
+      "T",
+      "F",
+      "brrrr",
+      "404",
+      "ERROR",
+      "NaN",
+      "null",
+      "undefined",
+      "😈",
+      "🧨",
+      "💥",
     ];
     const initial = Array.from({ length: 55 }, (_, i) => ({
       id: i,
@@ -3016,7 +3410,7 @@ function GrandPlanChaosOverlay({ active, message }: { active: boolean; message?:
           rotation: p.rotation + (Math.random() - 0.5) * 25,
           opacity: 0.15 + Math.random() * 0.45,
           scale: 0.5 + Math.random() * 1.4,
-        }))
+        })),
       );
     }, 300);
     return () => clearInterval(id);
@@ -3074,9 +3468,10 @@ function GrandPlanChaosOverlay({ active, message }: { active: boolean; message?:
             userSelect: "none",
             lineHeight: 1,
             willChange: "transform, opacity",
-            filter: p.size > 32
-              ? "drop-shadow(0 0 12px rgba(249,168,212,0.95)) drop-shadow(0 0 4px #f0f)"
-              : "none",
+            filter:
+              p.size > 32
+                ? "drop-shadow(0 0 12px rgba(249,168,212,0.95)) drop-shadow(0 0 4px #f0f)"
+                : "none",
             animation: `gpChaosFloat ${2 + p.delay}s ease-in-out infinite`,
             animationDelay: `${p.delay}s`,
           }}
@@ -3125,19 +3520,40 @@ interface PresentationEditorModalProps {
 
 function PresentationEditorModal(props: PresentationEditorModalProps) {
   const {
-    plan, presentationData, activeSlideIndex, setActiveSlideIndex,
-    presEditTab, setPresEditTab, slideRefinePrompt, setSlideRefinePrompt, slideRefining,
-    presRefineAllPrompt, setPresRefineAllPrompt, presRefineAllBusy, presSaving,
-    newSlideKind, setNewSlideKind, presentationCacheBust, uploadingImageForSlide,
-    editorIframeRef, expanded, setExpanded, onClose,
-    refineSlide, refineAllSlides, savePresField, uploadSlideImage,
+    plan,
+    presentationData,
+    activeSlideIndex,
+    setActiveSlideIndex,
+    presEditTab,
+    setPresEditTab,
+    slideRefinePrompt,
+    setSlideRefinePrompt,
+    slideRefining,
+    presRefineAllPrompt,
+    setPresRefineAllPrompt,
+    presRefineAllBusy,
+    presSaving,
+    newSlideKind,
+    setNewSlideKind,
+    presentationCacheBust,
+    uploadingImageForSlide,
+    editorIframeRef,
+    expanded,
+    setExpanded,
+    onClose,
+    refineSlide,
+    refineAllSlides,
+    savePresField,
+    uploadSlideImage,
   } = props;
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   // Mirror activeSlideIndex into a ref so the iframe onLoad handler always
   // posts the latest value, regardless of when its closure was created.
   const activeSlideIndexRef = useRef(activeSlideIndex);
-  useEffect(() => { activeSlideIndexRef.current = activeSlideIndex; }, [activeSlideIndex]);
+  useEffect(() => {
+    activeSlideIndexRef.current = activeSlideIndex;
+  }, [activeSlideIndex]);
 
   // Listen for escape to close
   useEffect(() => {
@@ -3157,7 +3573,9 @@ function PresentationEditorModal(props: PresentationEditorModalProps) {
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = prev; };
+    return () => {
+      document.body.style.overflow = prev;
+    };
   }, []);
 
   const iscover = activeSlideIndex === 0;
@@ -3166,7 +3584,10 @@ function PresentationEditorModal(props: PresentationEditorModalProps) {
 
   function gotoSlide(newIdx: number) {
     setActiveSlideIndex(newIdx);
-    editorIframeRef.current?.contentWindow?.postMessage({ type: "pres:goto-slide", index: newIdx }, "*");
+    editorIframeRef.current?.contentWindow?.postMessage(
+      { type: "pres:goto-slide", index: newIdx },
+      "*",
+    );
   }
 
   const tabBtn = (tab: PresEditTab, label: string) => (
@@ -3175,53 +3596,151 @@ function PresentationEditorModal(props: PresentationEditorModalProps) {
       type="button"
       onClick={() => setPresEditTab(tab)}
       style={{
-        padding: "6px 12px", fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer", borderRadius: 6,
+        padding: "6px 12px",
+        fontSize: 12,
+        fontWeight: 600,
+        border: "none",
+        cursor: "pointer",
+        borderRadius: 6,
         background: presEditTab === tab ? "var(--accent)" : "transparent",
         color: presEditTab === tab ? "#fff" : "var(--text-3)",
       }}
-    >{label}</button>
+    >
+      {label}
+    </button>
   );
 
-  const fieldInput = (label: string, value: string | undefined, onSave: (v: string) => void, rows = 2, htmlHint = false) => (
+  const fieldInput = (
+    label: string,
+    value: string | undefined,
+    onSave: (v: string) => void,
+    rows = 2,
+    htmlHint = false,
+  ) => (
     <label key={label} style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-      <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: ".05em" }}>{label}</span>
+      <span
+        style={{
+          fontSize: 11,
+          fontWeight: 600,
+          color: "var(--text-3)",
+          textTransform: "uppercase",
+          letterSpacing: ".05em",
+        }}
+      >
+        {label}
+      </span>
       <textarea
         defaultValue={value ?? ""}
         rows={rows}
-        style={{ fontSize: 13, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", resize: "vertical", fontFamily: "inherit" }}
-        onBlur={(e) => { const v = e.currentTarget.value.trim(); if (v !== (value ?? "")) onSave(v); }}
+        style={{
+          fontSize: 13,
+          padding: "6px 8px",
+          borderRadius: 6,
+          border: "1px solid var(--border)",
+          background: "var(--bg)",
+          color: "var(--text)",
+          resize: "vertical",
+          fontFamily: "inherit",
+        }}
+        onBlur={(e) => {
+          const v = e.currentTarget.value.trim();
+          if (v !== (value ?? "")) onSave(v);
+        }}
       />
-      {htmlHint && <span style={{ fontSize: 10, color: "var(--text-4)" }}>HTML supported — e.g. &lt;br&gt;, &lt;strong&gt;</span>}
+      {htmlHint && (
+        <span style={{ fontSize: 10, color: "var(--text-4)" }}>
+          HTML supported — e.g. &lt;br&gt;, &lt;strong&gt;
+        </span>
+      )}
     </label>
   );
 
   // Main panel positioning — near-fullscreen (24px inset on desktop)
   const overlayStyle: React.CSSProperties = expanded
-    ? { position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "stretch", justifyContent: "stretch" }
-    : { position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "flex-end", justifyContent: "flex-end" };
+    ? {
+        position: "fixed",
+        inset: 0,
+        zIndex: 9999,
+        display: "flex",
+        alignItems: "stretch",
+        justifyContent: "stretch",
+      }
+    : {
+        position: "fixed",
+        inset: 0,
+        zIndex: 9999,
+        display: "flex",
+        alignItems: "flex-end",
+        justifyContent: "flex-end",
+      };
 
   const panelStyle: React.CSSProperties = expanded
-    ? { position: "absolute", inset: 24, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, boxShadow: "0 25px 50px -12px rgba(0,0,0,0.45)", display: "flex", flexDirection: "column", overflow: "hidden" }
-    : { position: "absolute", right: 16, bottom: 16, width: "min(96vw, 1200px)", height: "min(80vh, 760px)", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, boxShadow: "0 25px 50px -12px rgba(0,0,0,0.45)", display: "flex", flexDirection: "column", overflow: "hidden" };
+    ? {
+        position: "absolute",
+        inset: 24,
+        background: "var(--surface)",
+        border: "1px solid var(--border)",
+        borderRadius: 12,
+        boxShadow: "0 25px 50px -12px rgba(0,0,0,0.45)",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+      }
+    : {
+        position: "absolute",
+        right: 16,
+        bottom: 16,
+        width: "min(96vw, 1200px)",
+        height: "min(80vh, 760px)",
+        background: "var(--surface)",
+        border: "1px solid var(--border)",
+        borderRadius: 12,
+        boxShadow: "0 25px 50px -12px rgba(0,0,0,0.45)",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+      };
 
   return (
     <div role="dialog" aria-modal="true" aria-label="Presentation editor" style={overlayStyle}>
       {/* Backdrop */}
       <div
         onClick={onClose}
-        style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(2px)" }}
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: "rgba(0,0,0,0.55)",
+          backdropFilter: "blur(2px)",
+        }}
         aria-hidden
       />
       {/* Panel */}
       <div style={panelStyle}>
         {/* Header */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            padding: "12px 16px",
+            borderBottom: "1px solid var(--border)",
+            flexShrink: 0,
+          }}
+        >
           <Pencil style={{ width: 14, height: 14, color: "var(--accent)" }} aria-hidden />
           <strong style={{ fontSize: 13, color: "var(--text)" }}>Edit presentation</strong>
           <span style={{ fontSize: 12, color: "var(--text-3)" }}>{plan.title}</span>
           <div style={{ flex: 1 }} />
           {presSaving && (
-            <span style={{ fontSize: 11, color: "var(--text-4)", display: "flex", alignItems: "center", gap: 6 }}>
+            <span
+              style={{
+                fontSize: 11,
+                color: "var(--text-4)",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
               <Loader2 style={{ width: 11, height: 11 }} className="spin" aria-hidden /> Saving…
             </span>
           )}
@@ -3240,11 +3759,22 @@ function PresentationEditorModal(props: PresentationEditorModalProps) {
             title={expanded ? "Minimise editor" : "Maximise editor"}
             style={{ gap: 5 }}
           >
-            {expanded
-              ? <><Minimize2 style={{ width: 13, height: 13 }} aria-hidden /> Minimise</>
-              : <><Maximize2 style={{ width: 13, height: 13 }} aria-hidden /> Maximise</>}
+            {expanded ? (
+              <>
+                <Minimize2 style={{ width: 13, height: 13 }} aria-hidden /> Minimise
+              </>
+            ) : (
+              <>
+                <Maximize2 style={{ width: 13, height: 13 }} aria-hidden /> Maximise
+              </>
+            )}
           </button>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={onClose} style={{ gap: 5 }}>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={onClose}
+            style={{ gap: 5 }}
+          >
             <X style={{ width: 13, height: 13 }} aria-hidden /> Done
           </button>
         </div>
@@ -3252,7 +3782,9 @@ function PresentationEditorModal(props: PresentationEditorModalProps) {
         {/* Body — 2 columns: preview (large) + sidebar (right) */}
         <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
           {/* Iframe preview */}
-          <div style={{ flex: "1 1 auto", minWidth: 0, background: "#0b1020", position: "relative" }}>
+          <div
+            style={{ flex: "1 1 auto", minWidth: 0, background: "#0b1020", position: "relative" }}
+          >
             <iframe
               ref={editorIframeRef}
               src={`/api/tools/grand-plan/${plan.id}/presentation?ts=${presentationCacheBust}`}
@@ -3264,47 +3796,121 @@ function PresentationEditorModal(props: PresentationEditorModalProps) {
                 // Read from the ref so we always send the current value, even
                 // if React has scheduled state updates we haven't seen yet.
                 setTimeout(() => {
-                  editorIframeRef.current?.contentWindow?.postMessage({ type: "pres:goto-slide", index: activeSlideIndexRef.current }, "*");
+                  editorIframeRef.current?.contentWindow?.postMessage(
+                    { type: "pres:goto-slide", index: activeSlideIndexRef.current },
+                    "*",
+                  );
                 }, 80);
               }}
             />
           </div>
           {/* Sidebar */}
-          <aside style={{ flex: "0 0 380px", maxWidth: "40vw", borderLeft: "1px solid var(--border)", background: "var(--bg)", overflowY: "auto", display: "flex", flexDirection: "column" }}>
+          <aside
+            style={{
+              flex: "0 0 380px",
+              maxWidth: "40vw",
+              borderLeft: "1px solid var(--border)",
+              background: "var(--bg)",
+              overflowY: "auto",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
             {/* Slide nav */}
-            <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-              <button type="button" className="btn btn-ghost btn-sm" style={{ padding: "2px 8px" }}
+            <div
+              style={{
+                padding: "10px 14px",
+                borderBottom: "1px solid var(--border)",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                flexShrink: 0,
+              }}
+            >
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                style={{ padding: "2px 8px" }}
                 disabled={activeSlideIndex === 0}
-                onClick={() => gotoSlide(activeSlideIndex - 1)}>←</button>
-              <span style={{ fontSize: 12, color: "var(--text-2)", flex: 1, textAlign: "center", fontWeight: 600 }}>
+                onClick={() => gotoSlide(activeSlideIndex - 1)}
+              >
+                ←
+              </button>
+              <span
+                style={{
+                  fontSize: 12,
+                  color: "var(--text-2)",
+                  flex: 1,
+                  textAlign: "center",
+                  fontWeight: 600,
+                }}
+              >
                 {iscover ? "Cover slide" : `Slide ${activeSlideIndex} of ${totalSlides - 1}`}
                 {slide && ` · ${slide.title}`}
               </span>
-              <button type="button" className="btn btn-ghost btn-sm" style={{ padding: "2px 8px" }}
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                style={{ padding: "2px 8px" }}
                 disabled={activeSlideIndex === totalSlides - 1}
-                onClick={() => gotoSlide(activeSlideIndex + 1)}>→</button>
+                onClick={() => gotoSlide(activeSlideIndex + 1)}
+              >
+                →
+              </button>
             </div>
             {/* Tabs */}
-            <div style={{ padding: "8px 14px", borderBottom: "1px solid var(--border)", display: "flex", gap: 4, flexShrink: 0 }}>
+            <div
+              style={{
+                padding: "8px 14px",
+                borderBottom: "1px solid var(--border)",
+                display: "flex",
+                gap: 4,
+                flexShrink: 0,
+              }}
+            >
               {tabBtn("refine", "✦ Refine AI")}
               {tabBtn("fields", "Edit fields")}
               {!iscover && tabBtn("manage", "Manage")}
             </div>
 
             {/* Tab content */}
-            <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 12, flex: 1 }}>
+            <div
+              style={{ padding: 14, display: "flex", flexDirection: "column", gap: 12, flex: 1 }}
+            >
               {presEditTab === "refine" && (
                 <>
                   <p style={{ fontSize: 12, color: "var(--text-3)", margin: 0 }}>
-                    Describe what you want changed on {iscover ? "the cover" : "this slide"} and Claude will rewrite it. The AI can add bullet points, restructure copy, set densities, and choose suitable layouts when you describe the content you want.
+                    Describe what you want changed on {iscover ? "the cover" : "this slide"} and
+                    Claude will rewrite it. The AI can add bullet points, restructure copy, set
+                    densities, and choose suitable layouts when you describe the content you want.
                   </p>
                   <textarea
                     value={slideRefinePrompt}
                     onChange={(e) => setSlideRefinePrompt(e.target.value)}
                     rows={5}
-                    placeholder={iscover ? "e.g. Change the subtitle to focus on summer campaigns…" : "e.g. Turn this into bullet points and use compact density…"}
-                    style={{ fontSize: 13, padding: "8px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--surface,var(--bg))", color: "var(--text)", resize: "vertical", fontFamily: "inherit" }}
-                    onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { refineSlide(activeSlideIndex === 0 ? -1 : activeSlideIndex - 1, slideRefinePrompt); } }}
+                    placeholder={
+                      iscover
+                        ? "e.g. Change the subtitle to focus on summer campaigns…"
+                        : "e.g. Turn this into bullet points and use compact density…"
+                    }
+                    style={{
+                      fontSize: 13,
+                      padding: "8px 10px",
+                      borderRadius: 6,
+                      border: "1px solid var(--border)",
+                      background: "var(--surface,var(--bg))",
+                      color: "var(--text)",
+                      resize: "vertical",
+                      fontFamily: "inherit",
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                        refineSlide(
+                          activeSlideIndex === 0 ? -1 : activeSlideIndex - 1,
+                          slideRefinePrompt,
+                        );
+                      }
+                    }}
                   />
                   <button
                     type="button"
@@ -3313,22 +3919,58 @@ function PresentationEditorModal(props: PresentationEditorModalProps) {
                     onClick={() => refineSlide(activeSlideIndex - 1, slideRefinePrompt)}
                     style={{ alignSelf: "flex-start", gap: 6 }}
                   >
-                    {slideRefining ? <><Loader2 style={{ width: 13, height: 13 }} className="spin" aria-hidden /> Refining…</> : <><Sparkles style={{ width: 13, height: 13 }} aria-hidden /> Refine slide</>}
+                    {slideRefining ? (
+                      <>
+                        <Loader2 style={{ width: 13, height: 13 }} className="spin" aria-hidden />{" "}
+                        Refining…
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles style={{ width: 13, height: 13 }} aria-hidden /> Refine slide
+                      </>
+                    )}
                   </button>
-                  {iscover && <p style={{ fontSize: 11, color: "var(--text-4)", margin: 0 }}>AI refine is not available for the cover — use Edit fields to update the title and subtitle.</p>}
+                  {iscover && (
+                    <p style={{ fontSize: 11, color: "var(--text-4)", margin: 0 }}>
+                      AI refine is not available for the cover — use Edit fields to update the title
+                      and subtitle.
+                    </p>
+                  )}
 
-                  <hr style={{ border: "none", borderTop: "1px solid var(--border)", margin: "4px 0" }} />
-                  <p style={{ fontSize: 12, fontWeight: 600, margin: 0, color: "var(--text-2)" }}>Refine whole deck</p>
+                  <hr
+                    style={{
+                      border: "none",
+                      borderTop: "1px solid var(--border)",
+                      margin: "4px 0",
+                    }}
+                  />
+                  <p style={{ fontSize: 12, fontWeight: 600, margin: 0, color: "var(--text-2)" }}>
+                    Refine whole deck
+                  </p>
                   <p style={{ fontSize: 12, color: "var(--text-3)", margin: 0 }}>
-                    Claude can edit copy, add or remove slides, and restructure the whole deck. Existing image assets are preserved.
+                    Claude can edit copy, add or remove slides, and restructure the whole deck.
+                    Existing image assets are preserved.
                   </p>
                   <textarea
                     value={presRefineAllPrompt}
                     onChange={(e) => setPresRefineAllPrompt(e.target.value)}
                     rows={4}
                     placeholder="e.g. Add a bullets slide listing our content pillars and make all copy more outcome-focused…"
-                    style={{ fontSize: 13, padding: "8px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--surface,var(--bg))", color: "var(--text)", resize: "vertical", fontFamily: "inherit" }}
-                    onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { refineAllSlides(presRefineAllPrompt); } }}
+                    style={{
+                      fontSize: 13,
+                      padding: "8px 10px",
+                      borderRadius: 6,
+                      border: "1px solid var(--border)",
+                      background: "var(--surface,var(--bg))",
+                      color: "var(--text)",
+                      resize: "vertical",
+                      fontFamily: "inherit",
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                        refineAllSlides(presRefineAllPrompt);
+                      }
+                    }}
                   />
                   <button
                     type="button"
@@ -3337,171 +3979,432 @@ function PresentationEditorModal(props: PresentationEditorModalProps) {
                     onClick={() => refineAllSlides(presRefineAllPrompt)}
                     style={{ alignSelf: "flex-start", gap: 6 }}
                   >
-                    {presRefineAllBusy ? <><Loader2 style={{ width: 13, height: 13 }} className="spin" aria-hidden /> Refining deck…</> : <><Sparkles style={{ width: 13, height: 13 }} aria-hidden /> Refine all slides</>}
+                    {presRefineAllBusy ? (
+                      <>
+                        <Loader2 style={{ width: 13, height: 13 }} className="spin" aria-hidden />{" "}
+                        Refining deck…
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles style={{ width: 13, height: 13 }} aria-hidden /> Refine all slides
+                      </>
+                    )}
                   </button>
                 </>
               )}
 
               {presEditTab === "fields" && iscover && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {fieldInput("Title", presentationData.cover.title, (v) => savePresField("cover", { field: "title", value: v }))}
-                  {fieldInput("Subtitle", presentationData.cover.subtitle, (v) => savePresField("cover", { field: "subtitle", value: v }))}
-                  {fieldInput("Client name", presentationData.cover.clientName, (v) => savePresField("cover", { field: "clientName", value: v }))}
-                  {fieldInput("Period", presentationData.cover.period, (v) => savePresField("cover", { field: "period", value: v }))}
+                  {fieldInput("Title", presentationData.cover.title, (v) =>
+                    savePresField("cover", { field: "title", value: v }),
+                  )}
+                  {fieldInput("Subtitle", presentationData.cover.subtitle, (v) =>
+                    savePresField("cover", { field: "subtitle", value: v }),
+                  )}
+                  {fieldInput("Client name", presentationData.cover.clientName, (v) =>
+                    savePresField("cover", { field: "clientName", value: v }),
+                  )}
+                  {fieldInput("Period", presentationData.cover.period, (v) =>
+                    savePresField("cover", { field: "period", value: v }),
+                  )}
                 </div>
               )}
 
-              {presEditTab === "fields" && !iscover && slide && (() => {
-                const s = slide as PresentationSlideT;
-                const si = activeSlideIndex - 1;
-                const sf = (label: string, field: string, value: string | undefined, rows = 2, htmlHint = false) =>
-                  fieldInput(label, value, (v) => savePresField("slide-field", { slideIndex: si, field, value: v }), rows, htmlHint);
+              {presEditTab === "fields" &&
+                !iscover &&
+                slide &&
+                (() => {
+                  const s = slide as PresentationSlideT;
+                  const si = activeSlideIndex - 1;
+                  const sf = (
+                    label: string,
+                    field: string,
+                    value: string | undefined,
+                    rows = 2,
+                    htmlHint = false,
+                  ) =>
+                    fieldInput(
+                      label,
+                      value,
+                      (v) => savePresField("slide-field", { slideIndex: si, field, value: v }),
+                      rows,
+                      htmlHint,
+                    );
 
-                const isContentLike = s.kind === "content" || s.kind === "bullets";
+                  const isContentLike = s.kind === "content" || s.kind === "bullets";
 
-                return (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                    {sf("Title", "title", s.title)}
-                    {sf("Eyebrow", "eyebrow", s.eyebrow)}
-                    {(s.kind === "headline" || s.kind === "outcome" || s.kind === "content") && sf("Headline", "headline", s.headline)}
-                    {(s.kind === "headline" || s.kind === "outcome" || s.kind === "content" || s.kind === "bullets" || s.kind === "pillars") && sf("Sub-headline", "subhead", s.subhead, 2, true)}
-                    {s.kind === "outcome" && sf("Metric value", "metric.value", s.metric?.value)}
-                    {s.kind === "outcome" && sf("Metric label", "metric.label", s.metric?.label)}
-                    {s.kind === "investment" && sf("Headline figure", "investment.headlineFigure", s.investment?.headlineFigure)}
+                  return (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                      {sf("Title", "title", s.title)}
+                      {sf("Eyebrow", "eyebrow", s.eyebrow)}
+                      {(s.kind === "headline" || s.kind === "outcome" || s.kind === "content") &&
+                        sf("Headline", "headline", s.headline)}
+                      {(s.kind === "headline" ||
+                        s.kind === "outcome" ||
+                        s.kind === "content" ||
+                        s.kind === "bullets" ||
+                        s.kind === "pillars") &&
+                        sf("Sub-headline", "subhead", s.subhead, 2, true)}
+                      {s.kind === "outcome" && sf("Metric value", "metric.value", s.metric?.value)}
+                      {s.kind === "outcome" && sf("Metric label", "metric.label", s.metric?.label)}
+                      {s.kind === "investment" &&
+                        sf(
+                          "Headline figure",
+                          "investment.headlineFigure",
+                          s.investment?.headlineFigure,
+                        )}
 
-                    {/* Bullets section — primary for content/bullets, supplementary for others */}
-                    <BulletsEditor slide={s} si={si} primary={isContentLike} savePresField={savePresField} presSaving={presSaving} />
+                      {/* Bullets section — primary for content/bullets, supplementary for others */}
+                      <BulletsEditor
+                        slide={s}
+                        si={si}
+                        primary={isContentLike}
+                        savePresField={savePresField}
+                        presSaving={presSaving}
+                      />
 
-                    {/* Image section */}
-                    <ImageEditor
-                      slide={s}
-                      si={si}
-                      savePresField={savePresField}
-                      uploadSlideImage={uploadSlideImage}
-                      uploading={uploadingImageForSlide === si}
-                      fileInputRef={fileInputRef}
-                    />
+                      {/* Image section */}
+                      <ImageEditor
+                        slide={s}
+                        si={si}
+                        savePresField={savePresField}
+                        uploadSlideImage={uploadSlideImage}
+                        uploading={uploadingImageForSlide === si}
+                        fileInputRef={fileInputRef}
+                      />
 
-                    {/* Density */}
-                    <label style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                      <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: ".05em" }}>Density</span>
-                      <select
-                        value={s.density ?? "regular"}
-                        onChange={(e) => savePresField("density-set", { slideIndex: si, density: e.target.value })}
-                        style={{ fontSize: 12, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--surface,var(--bg))", color: "var(--text)" }}
-                      >
-                        <option value="regular">Regular</option>
-                        <option value="compact">Compact (smaller type)</option>
-                      </select>
-                    </label>
+                      {/* Density */}
+                      <label style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                        <span
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 600,
+                            color: "var(--text-3)",
+                            textTransform: "uppercase",
+                            letterSpacing: ".05em",
+                          }}
+                        >
+                          Density
+                        </span>
+                        <select
+                          value={s.density ?? "regular"}
+                          onChange={(e) =>
+                            savePresField("density-set", {
+                              slideIndex: si,
+                              density: e.target.value,
+                            })
+                          }
+                          style={{
+                            fontSize: 12,
+                            padding: "6px 8px",
+                            borderRadius: 6,
+                            border: "1px solid var(--border)",
+                            background: "var(--surface,var(--bg))",
+                            color: "var(--text)",
+                          }}
+                        >
+                          <option value="regular">Regular</option>
+                          <option value="compact">Compact (smaller type)</option>
+                        </select>
+                      </label>
 
-                    {/* Existing array items (pillars/steps/audiences/channels) */}
-                    {(["pillars", "steps", "audiences", "channels"] as const).map((itemType) => {
-                      const items = (s as unknown as Record<string, unknown>)[itemType] as { [k: string]: string }[] | undefined;
-                      if (!items) return null;
-                      const fieldDefs: Record<string, string[]> = {
-                        pillars: ["title", "body"],
-                        steps: ["title", "detail"],
-                        audiences: ["name", "insight"],
-                        channels: ["name", "role"],
-                      };
-                      const fields = fieldDefs[itemType] ?? ["label"];
-                      return (
-                        <div key={itemType}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                            <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: ".05em" }}>{itemType}</span>
-                            <button type="button" className="btn btn-ghost btn-sm" style={{ fontSize: 11, padding: "2px 8px" }}
-                              onClick={() => savePresField("item-add", { slideIndex: si, itemType })}>+ Add</button>
-                          </div>
-                          {items.map((item, ii) => (
-                            <div key={ii} style={{ background: "var(--surface,rgba(0,0,0,.04))", borderRadius: 8, padding: "8px 10px", marginBottom: 8, border: "1px solid var(--border)" }}>
-                              <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 4 }}>
-                                <button type="button" style={{ fontSize: 11, color: "var(--text-4)", background: "none", border: "none", cursor: "pointer" }}
-                                  onClick={() => savePresField("item-delete", { slideIndex: si, itemType, itemIndex: ii })}>Remove</button>
-                              </div>
-                              {fields.map((f) => (
-                                <label key={f} style={{ display: "flex", flexDirection: "column", gap: 2, marginBottom: 6 }}>
-                                  <span style={{ fontSize: 10, fontWeight: 600, color: "var(--text-4)", textTransform: "uppercase" }}>{f}</span>
-                                  <textarea
-                                    defaultValue={item[f] ?? ""}
-                                    rows={f === "body" || f === "detail" || f === "insight" || f === "role" ? 3 : 1}
-                                    style={{ fontSize: 12, padding: "4px 6px", borderRadius: 4, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", resize: "vertical", fontFamily: "inherit" }}
-                                    onBlur={(e) => {
-                                      const v = e.currentTarget.value.trim();
-                                      if (v !== (item[f] ?? "")) savePresField("item-update", { slideIndex: si, itemType, itemIndex: ii, field: f, value: v });
-                                    }}
-                                  />
-                                  {(f === "body" || f === "detail" || f === "insight" || f === "role") && <span style={{ fontSize: 10, color: "var(--text-4)" }}>HTML supported — e.g. &lt;br&gt;, &lt;strong&gt;</span>}
-                                </label>
-                              ))}
+                      {/* Existing array items (pillars/steps/audiences/channels) */}
+                      {(["pillars", "steps", "audiences", "channels"] as const).map((itemType) => {
+                        const items = (s as unknown as Record<string, unknown>)[itemType] as
+                          | { [k: string]: string }[]
+                          | undefined;
+                        if (!items) return null;
+                        const fieldDefs: Record<string, string[]> = {
+                          pillars: ["title", "body"],
+                          steps: ["title", "detail"],
+                          audiences: ["name", "insight"],
+                          channels: ["name", "role"],
+                        };
+                        const fields = fieldDefs[itemType] ?? ["label"];
+                        return (
+                          <div key={itemType}>
+                            <div
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                marginBottom: 6,
+                              }}
+                            >
+                              <span
+                                style={{
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  color: "var(--text-3)",
+                                  textTransform: "uppercase",
+                                  letterSpacing: ".05em",
+                                }}
+                              >
+                                {itemType}
+                              </span>
+                              <button
+                                type="button"
+                                className="btn btn-ghost btn-sm"
+                                style={{ fontSize: 11, padding: "2px 8px" }}
+                                onClick={() =>
+                                  savePresField("item-add", { slideIndex: si, itemType })
+                                }
+                              >
+                                + Add
+                              </button>
                             </div>
-                          ))}
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })()}
+                            {items.map((item, ii) => (
+                              <div
+                                key={ii}
+                                style={{
+                                  background: "var(--surface,rgba(0,0,0,.04))",
+                                  borderRadius: 8,
+                                  padding: "8px 10px",
+                                  marginBottom: 8,
+                                  border: "1px solid var(--border)",
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    justifyContent: "flex-end",
+                                    marginBottom: 4,
+                                  }}
+                                >
+                                  <button
+                                    type="button"
+                                    style={{
+                                      fontSize: 11,
+                                      color: "var(--text-4)",
+                                      background: "none",
+                                      border: "none",
+                                      cursor: "pointer",
+                                    }}
+                                    onClick={() =>
+                                      savePresField("item-delete", {
+                                        slideIndex: si,
+                                        itemType,
+                                        itemIndex: ii,
+                                      })
+                                    }
+                                  >
+                                    Remove
+                                  </button>
+                                </div>
+                                {fields.map((f) => (
+                                  <label
+                                    key={f}
+                                    style={{
+                                      display: "flex",
+                                      flexDirection: "column",
+                                      gap: 2,
+                                      marginBottom: 6,
+                                    }}
+                                  >
+                                    <span
+                                      style={{
+                                        fontSize: 10,
+                                        fontWeight: 600,
+                                        color: "var(--text-4)",
+                                        textTransform: "uppercase",
+                                      }}
+                                    >
+                                      {f}
+                                    </span>
+                                    <textarea
+                                      defaultValue={item[f] ?? ""}
+                                      rows={
+                                        f === "body" ||
+                                        f === "detail" ||
+                                        f === "insight" ||
+                                        f === "role"
+                                          ? 3
+                                          : 1
+                                      }
+                                      style={{
+                                        fontSize: 12,
+                                        padding: "4px 6px",
+                                        borderRadius: 4,
+                                        border: "1px solid var(--border)",
+                                        background: "var(--bg)",
+                                        color: "var(--text)",
+                                        resize: "vertical",
+                                        fontFamily: "inherit",
+                                      }}
+                                      onBlur={(e) => {
+                                        const v = e.currentTarget.value.trim();
+                                        if (v !== (item[f] ?? ""))
+                                          savePresField("item-update", {
+                                            slideIndex: si,
+                                            itemType,
+                                            itemIndex: ii,
+                                            field: f,
+                                            value: v,
+                                          });
+                                      }}
+                                    />
+                                    {(f === "body" ||
+                                      f === "detail" ||
+                                      f === "insight" ||
+                                      f === "role") && (
+                                      <span style={{ fontSize: 10, color: "var(--text-4)" }}>
+                                        HTML supported — e.g. &lt;br&gt;, &lt;strong&gt;
+                                      </span>
+                                    )}
+                                  </label>
+                                ))}
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
 
-              {presEditTab === "manage" && !iscover && slide && (() => {
-                const si = activeSlideIndex - 1;
-                const totalContent = presentationData.slides.length;
-                const slideKinds = ["headline", "content", "bullets", "pillars", "outcome", "channels", "timeline", "investment", "audience", "next-steps"] as const;
-                return (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    <p style={{ fontSize: 11, fontWeight: 600, color: "var(--text-4)", margin: 0, textTransform: "uppercase", letterSpacing: "0.05em" }}>Reorder</p>
-                    <button type="button" className="btn btn-ghost btn-sm" style={{ justifyContent: "flex-start", gap: 8 }}
-                      disabled={si === 0 || presSaving}
-                      onClick={() => savePresField("slide-move", { slideIndex: si, direction: "up" }).then(() => setActiveSlideIndex(activeSlideIndex - 1))}>
-                      ↑ Move slide up
-                    </button>
-                    <button type="button" className="btn btn-ghost btn-sm" style={{ justifyContent: "flex-start", gap: 8 }}
-                      disabled={si === totalContent - 1 || presSaving}
-                      onClick={() => savePresField("slide-move", { slideIndex: si, direction: "down" }).then(() => setActiveSlideIndex(activeSlideIndex + 1))}>
-                      ↓ Move slide down
-                    </button>
+              {presEditTab === "manage" &&
+                !iscover &&
+                slide &&
+                (() => {
+                  const si = activeSlideIndex - 1;
+                  const totalContent = presentationData.slides.length;
+                  const slideKinds = [
+                    "headline",
+                    "content",
+                    "bullets",
+                    "pillars",
+                    "outcome",
+                    "channels",
+                    "timeline",
+                    "investment",
+                    "audience",
+                    "next-steps",
+                  ] as const;
+                  return (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      <p
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 600,
+                          color: "var(--text-4)",
+                          margin: 0,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.05em",
+                        }}
+                      >
+                        Reorder
+                      </p>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        style={{ justifyContent: "flex-start", gap: 8 }}
+                        disabled={si === 0 || presSaving}
+                        onClick={() =>
+                          savePresField("slide-move", { slideIndex: si, direction: "up" }).then(
+                            () => setActiveSlideIndex(activeSlideIndex - 1),
+                          )
+                        }
+                      >
+                        ↑ Move slide up
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        style={{ justifyContent: "flex-start", gap: 8 }}
+                        disabled={si === totalContent - 1 || presSaving}
+                        onClick={() =>
+                          savePresField("slide-move", { slideIndex: si, direction: "down" }).then(
+                            () => setActiveSlideIndex(activeSlideIndex + 1),
+                          )
+                        }
+                      >
+                        ↓ Move slide down
+                      </button>
 
-                    <div style={{ borderTop: "1px solid var(--border)", margin: "4px 0" }} />
-                    <p style={{ fontSize: 11, fontWeight: 600, color: "var(--text-4)", margin: 0, textTransform: "uppercase", letterSpacing: "0.05em" }}>Add slide</p>
-                    <select
-                      value={newSlideKind}
-                      onChange={(e) => setNewSlideKind(e.target.value)}
-                      style={{ fontSize: 12, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--surface,var(--bg))", color: "var(--text)" }}
-                    >
-                      {slideKinds.map((k) => (
-                        <option key={k} value={k}>{k.charAt(0).toUpperCase() + k.slice(1).replace("-", " ")}</option>
-                      ))}
-                    </select>
-                    <button type="button" className="btn btn-ghost btn-sm" style={{ justifyContent: "flex-start", gap: 8 }}
-                      disabled={presSaving}
-                      onClick={async () => {
-                        await savePresField("slide-add", { afterIndex: si, kind: newSlideKind, title: "New slide" });
-                        setActiveSlideIndex(activeSlideIndex + 1);
-                      }}>
-                      <Plus style={{ width: 12, height: 12 }} aria-hidden /> Add {newSlideKind} slide after this one
-                    </button>
-                    <button type="button" className="btn btn-ghost btn-sm" style={{ justifyContent: "flex-start", gap: 8 }}
-                      disabled={presSaving}
-                      onClick={async () => {
-                        await savePresField("slide-duplicate", { slideIndex: si });
-                        setActiveSlideIndex(activeSlideIndex + 1);
-                      }}>
-                      ⧉ Duplicate this slide
-                    </button>
+                      <div style={{ borderTop: "1px solid var(--border)", margin: "4px 0" }} />
+                      <p
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 600,
+                          color: "var(--text-4)",
+                          margin: 0,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.05em",
+                        }}
+                      >
+                        Add slide
+                      </p>
+                      <select
+                        value={newSlideKind}
+                        onChange={(e) => setNewSlideKind(e.target.value)}
+                        style={{
+                          fontSize: 12,
+                          padding: "6px 8px",
+                          borderRadius: 6,
+                          border: "1px solid var(--border)",
+                          background: "var(--surface,var(--bg))",
+                          color: "var(--text)",
+                        }}
+                      >
+                        {slideKinds.map((k) => (
+                          <option key={k} value={k}>
+                            {k.charAt(0).toUpperCase() + k.slice(1).replace("-", " ")}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        style={{ justifyContent: "flex-start", gap: 8 }}
+                        disabled={presSaving}
+                        onClick={async () => {
+                          await savePresField("slide-add", {
+                            afterIndex: si,
+                            kind: newSlideKind,
+                            title: "New slide",
+                          });
+                          setActiveSlideIndex(activeSlideIndex + 1);
+                        }}
+                      >
+                        <Plus style={{ width: 12, height: 12 }} aria-hidden /> Add {newSlideKind}{" "}
+                        slide after this one
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        style={{ justifyContent: "flex-start", gap: 8 }}
+                        disabled={presSaving}
+                        onClick={async () => {
+                          await savePresField("slide-duplicate", { slideIndex: si });
+                          setActiveSlideIndex(activeSlideIndex + 1);
+                        }}
+                      >
+                        ⧉ Duplicate this slide
+                      </button>
 
-                    <div style={{ borderTop: "1px solid var(--border)", margin: "4px 0" }} />
-                    <button type="button" className="btn btn-sm" style={{ justifyContent: "flex-start", gap: 8, color: "#ef4444", background: "rgba(239,68,68,.08)", border: "1px solid rgba(239,68,68,.2)" }}
-                      disabled={presSaving}
-                      onClick={async () => {
-                        if (!window.confirm("Delete this slide?")) return;
-                        await savePresField("slide-delete", { slideIndex: si });
-                        setActiveSlideIndex(Math.max(0, activeSlideIndex - 1));
-                      }}>
-                      <Trash2 style={{ width: 13, height: 13 }} aria-hidden /> Delete slide
-                    </button>
-                  </div>
-                );
-              })()}
+                      <div style={{ borderTop: "1px solid var(--border)", margin: "4px 0" }} />
+                      <button
+                        type="button"
+                        className="btn btn-sm"
+                        style={{
+                          justifyContent: "flex-start",
+                          gap: 8,
+                          color: "#ef4444",
+                          background: "rgba(239,68,68,.08)",
+                          border: "1px solid rgba(239,68,68,.2)",
+                        }}
+                        disabled={presSaving}
+                        onClick={async () => {
+                          if (!window.confirm("Delete this slide?")) return;
+                          await savePresField("slide-delete", { slideIndex: si });
+                          setActiveSlideIndex(Math.max(0, activeSlideIndex - 1));
+                        }}
+                      >
+                        <Trash2 style={{ width: 13, height: 13 }} aria-hidden /> Delete slide
+                      </button>
+                    </div>
+                  );
+                })()}
             </div>
           </aside>
         </div>
@@ -3513,7 +4416,11 @@ function PresentationEditorModal(props: PresentationEditorModalProps) {
 // ─── Bullets editor ────────────────────────────────────────────────────────
 
 function BulletsEditor({
-  slide, si, primary, savePresField, presSaving,
+  slide,
+  si,
+  primary,
+  savePresField,
+  presSaving,
 }: {
   slide: PresentationSlideT;
   si: number;
@@ -3524,8 +4431,23 @@ function BulletsEditor({
   const bullets = slide.bullets ?? [];
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-        <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: ".05em" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 6,
+        }}
+      >
+        <span
+          style={{
+            fontSize: 11,
+            fontWeight: 700,
+            color: "var(--text-3)",
+            textTransform: "uppercase",
+            letterSpacing: ".05em",
+          }}
+        >
           Bullets {primary ? "" : "(optional)"}
         </span>
         <button
@@ -3534,7 +4456,9 @@ function BulletsEditor({
           style={{ fontSize: 11, padding: "2px 8px" }}
           disabled={presSaving}
           onClick={() => savePresField("bullet-add", { slideIndex: si, value: "New bullet" })}
-        >+ Add bullet</button>
+        >
+          + Add bullet
+        </button>
       </div>
       {bullets.length === 0 && (
         <p style={{ fontSize: 11, color: "var(--text-4)", margin: "0 0 6px" }}>
@@ -3544,21 +4468,49 @@ function BulletsEditor({
         </p>
       )}
       {bullets.map((b, bi) => (
-        <div key={bi} style={{ background: "var(--surface,rgba(0,0,0,.04))", borderRadius: 8, padding: "8px 10px", marginBottom: 8, border: "1px solid var(--border)" }}>
+        <div
+          key={bi}
+          style={{
+            background: "var(--surface,rgba(0,0,0,.04))",
+            borderRadius: 8,
+            padding: "8px 10px",
+            marginBottom: 8,
+            border: "1px solid var(--border)",
+          }}
+        >
           <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 4 }}>
             <button
               type="button"
-              style={{ fontSize: 11, color: "var(--text-4)", background: "none", border: "none", cursor: "pointer" }}
+              style={{
+                fontSize: 11,
+                color: "var(--text-4)",
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+              }}
               onClick={() => savePresField("bullet-delete", { slideIndex: si, bulletIndex: bi })}
-            >Remove</button>
+            >
+              Remove
+            </button>
           </div>
           <textarea
             defaultValue={b}
             rows={2}
-            style={{ fontSize: 12, padding: "4px 6px", borderRadius: 4, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", resize: "vertical", fontFamily: "inherit", width: "100%" }}
+            style={{
+              fontSize: 12,
+              padding: "4px 6px",
+              borderRadius: 4,
+              border: "1px solid var(--border)",
+              background: "var(--bg)",
+              color: "var(--text)",
+              resize: "vertical",
+              fontFamily: "inherit",
+              width: "100%",
+            }}
             onBlur={(e) => {
               const v = e.currentTarget.value.trim();
-              if (v !== b) savePresField("bullet-update", { slideIndex: si, bulletIndex: bi, value: v });
+              if (v !== b)
+                savePresField("bullet-update", { slideIndex: si, bulletIndex: bi, value: v });
             }}
           />
         </div>
@@ -3572,7 +4524,12 @@ function BulletsEditor({
 const MAX_IMAGES_PER_SLIDE = 5;
 
 function ImageEditor({
-  slide, si, savePresField, uploadSlideImage, uploading, fileInputRef,
+  slide,
+  si,
+  savePresField,
+  uploadSlideImage,
+  uploading,
+  fileInputRef,
 }: {
   slide: PresentationSlideT;
   si: number;
@@ -3582,74 +4539,177 @@ function ImageEditor({
   fileInputRef: React.RefObject<HTMLInputElement | null>;
 }) {
   // Effective gallery: prefer the array, otherwise fall back to the legacy single image.
-  const gallery: { url: string; alt?: string }[] = slide.images && slide.images.length > 0
-    ? slide.images
-    : slide.image
-      ? [{ url: slide.image.url, alt: slide.image.alt }]
-      : [];
+  const gallery: { url: string; alt?: string }[] =
+    slide.images && slide.images.length > 0
+      ? slide.images
+      : slide.image
+        ? [{ url: slide.image.url, alt: slide.image.alt }]
+        : [];
   const position = slide.imagesPosition ?? slide.image?.position ?? "right";
   const positions: ImagePosition[] = ["right", "left", "top", "background"];
   const canAddMore = gallery.length < MAX_IMAGES_PER_SLIDE;
 
   return (
-    <div style={{ border: "1px solid var(--border)", borderRadius: 8, padding: 10, display: "flex", flexDirection: "column", gap: 10, background: "var(--surface,rgba(0,0,0,.02))" }}>
+    <div
+      style={{
+        border: "1px solid var(--border)",
+        borderRadius: 8,
+        padding: 10,
+        display: "flex",
+        flexDirection: "column",
+        gap: 10,
+        background: "var(--surface,rgba(0,0,0,.02))",
+      }}
+    >
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
         <ImageIcon style={{ width: 13, height: 13, color: "var(--text-3)" }} aria-hidden />
-        <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: ".05em" }}>
+        <span
+          style={{
+            fontSize: 11,
+            fontWeight: 700,
+            color: "var(--text-3)",
+            textTransform: "uppercase",
+            letterSpacing: ".05em",
+          }}
+        >
           Images {gallery.length > 0 && `(${gallery.length}/${MAX_IMAGES_PER_SLIDE})`}
         </span>
         {gallery.length > 0 && (
           <button
             type="button"
-            style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-4)", background: "none", border: "none", cursor: "pointer" }}
+            style={{
+              marginLeft: "auto",
+              fontSize: 11,
+              color: "var(--text-4)",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+            }}
             onClick={() => savePresField("image-clear", { slideIndex: si })}
-          >Remove all</button>
+          >
+            Remove all
+          </button>
         )}
       </div>
 
       {gallery.length === 0 && (
         <p style={{ fontSize: 11, color: "var(--text-4)", margin: 0 }}>
-          Add up to {MAX_IMAGES_PER_SLIDE} images. The renderer auto-arranges them into a showcase grid and the AI preserves them when refining text.
+          Add up to {MAX_IMAGES_PER_SLIDE} images. The renderer auto-arranges them into a showcase
+          grid and the AI preserves them when refining text.
         </p>
       )}
 
       {gallery.map((img, ii) => (
-        <div key={`${img.url}-${ii}`} style={{ display: "grid", gridTemplateColumns: "80px 1fr", gap: 8, padding: 6, border: "1px solid var(--border)", borderRadius: 6, background: "var(--bg)" }}>
-          <div style={{ position: "relative", borderRadius: 4, overflow: "hidden", aspectRatio: "1/1", background: "#0b1020" }}>
+        <div
+          key={`${img.url}-${ii}`}
+          style={{
+            display: "grid",
+            gridTemplateColumns: "80px 1fr",
+            gap: 8,
+            padding: 6,
+            border: "1px solid var(--border)",
+            borderRadius: 6,
+            background: "var(--bg)",
+          }}
+        >
+          <div
+            style={{
+              position: "relative",
+              borderRadius: 4,
+              overflow: "hidden",
+              aspectRatio: "1/1",
+              background: "#0b1020",
+            }}
+          >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={img.url} alt={img.alt ?? ""} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            <img
+              src={img.url}
+              alt={img.alt ?? ""}
+              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+            />
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
             <input
               defaultValue={img.alt ?? ""}
               placeholder="Alt text"
-              style={{ fontSize: 12, padding: "4px 6px", borderRadius: 4, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)" }}
+              style={{
+                fontSize: 12,
+                padding: "4px 6px",
+                borderRadius: 4,
+                border: "1px solid var(--border)",
+                background: "var(--bg)",
+                color: "var(--text)",
+              }}
               onBlur={(e) => {
                 const v = e.currentTarget.value.trim();
-                if (v !== (img.alt ?? "")) savePresField("images-alt", { slideIndex: si, imageIndex: ii, alt: v });
+                if (v !== (img.alt ?? ""))
+                  savePresField("images-alt", { slideIndex: si, imageIndex: ii, alt: v });
               }}
             />
             <div style={{ display: "flex", gap: 4 }}>
               <button
                 type="button"
                 disabled={ii === 0}
-                onClick={() => savePresField("images-reorder", { slideIndex: si, fromIndex: ii, direction: "up" })}
-                style={{ fontSize: 11, padding: "2px 6px", border: "1px solid var(--border)", background: "transparent", color: "var(--text-2)", borderRadius: 4, cursor: ii === 0 ? "not-allowed" : "pointer", opacity: ii === 0 ? 0.4 : 1 }}
+                onClick={() =>
+                  savePresField("images-reorder", {
+                    slideIndex: si,
+                    fromIndex: ii,
+                    direction: "up",
+                  })
+                }
+                style={{
+                  fontSize: 11,
+                  padding: "2px 6px",
+                  border: "1px solid var(--border)",
+                  background: "transparent",
+                  color: "var(--text-2)",
+                  borderRadius: 4,
+                  cursor: ii === 0 ? "not-allowed" : "pointer",
+                  opacity: ii === 0 ? 0.4 : 1,
+                }}
                 title="Move up"
-              >↑</button>
+              >
+                ↑
+              </button>
               <button
                 type="button"
                 disabled={ii === gallery.length - 1}
-                onClick={() => savePresField("images-reorder", { slideIndex: si, fromIndex: ii, direction: "down" })}
-                style={{ fontSize: 11, padding: "2px 6px", border: "1px solid var(--border)", background: "transparent", color: "var(--text-2)", borderRadius: 4, cursor: ii === gallery.length - 1 ? "not-allowed" : "pointer", opacity: ii === gallery.length - 1 ? 0.4 : 1 }}
+                onClick={() =>
+                  savePresField("images-reorder", {
+                    slideIndex: si,
+                    fromIndex: ii,
+                    direction: "down",
+                  })
+                }
+                style={{
+                  fontSize: 11,
+                  padding: "2px 6px",
+                  border: "1px solid var(--border)",
+                  background: "transparent",
+                  color: "var(--text-2)",
+                  borderRadius: 4,
+                  cursor: ii === gallery.length - 1 ? "not-allowed" : "pointer",
+                  opacity: ii === gallery.length - 1 ? 0.4 : 1,
+                }}
                 title="Move down"
-              >↓</button>
+              >
+                ↓
+              </button>
               <div style={{ flex: 1 }} />
               <button
                 type="button"
                 onClick={() => savePresField("images-remove", { slideIndex: si, imageIndex: ii })}
-                style={{ fontSize: 11, padding: "2px 6px", border: "none", background: "transparent", color: "var(--text-4)", cursor: "pointer" }}
-              >Remove</button>
+                style={{
+                  fontSize: 11,
+                  padding: "2px 6px",
+                  border: "none",
+                  background: "transparent",
+                  color: "var(--text-4)",
+                  cursor: "pointer",
+                }}
+              >
+                Remove
+              </button>
             </div>
           </div>
         </div>
@@ -3657,14 +4717,35 @@ function ImageEditor({
 
       {gallery.length > 0 && (
         <label style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: ".05em" }}>Gallery position</span>
+          <span
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              color: "var(--text-3)",
+              textTransform: "uppercase",
+              letterSpacing: ".05em",
+            }}
+          >
+            Gallery position
+          </span>
           <select
             value={position}
-            onChange={(e) => savePresField("images-position", { slideIndex: si, position: e.target.value })}
-            style={{ fontSize: 12, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)" }}
+            onChange={(e) =>
+              savePresField("images-position", { slideIndex: si, position: e.target.value })
+            }
+            style={{
+              fontSize: 12,
+              padding: "6px 8px",
+              borderRadius: 6,
+              border: "1px solid var(--border)",
+              background: "var(--bg)",
+              color: "var(--text)",
+            }}
           >
             {positions.map((p) => (
-              <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
+              <option key={p} value={p}>
+                {p.charAt(0).toUpperCase() + p.slice(1)}
+              </option>
             ))}
           </select>
         </label>
@@ -3690,9 +4771,18 @@ function ImageEditor({
         style={{ alignSelf: "flex-start", gap: 6 }}
         title={canAddMore ? "" : `Maximum of ${MAX_IMAGES_PER_SLIDE} images per slide`}
       >
-        {uploading
-          ? <><Loader2 style={{ width: 13, height: 13 }} className="spin" aria-hidden /> Uploading…</>
-          : <><Upload style={{ width: 13, height: 13 }} aria-hidden /> {gallery.length === 0 ? "Upload image" : `Add image (${gallery.length}/${MAX_IMAGES_PER_SLIDE})`}</>}
+        {uploading ? (
+          <>
+            <Loader2 style={{ width: 13, height: 13 }} className="spin" aria-hidden /> Uploading…
+          </>
+        ) : (
+          <>
+            <Upload style={{ width: 13, height: 13 }} aria-hidden />{" "}
+            {gallery.length === 0
+              ? "Upload image"
+              : `Add image (${gallery.length}/${MAX_IMAGES_PER_SLIDE})`}
+          </>
+        )}
       </button>
     </div>
   );
