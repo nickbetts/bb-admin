@@ -1887,20 +1887,30 @@ ${context}${buildSharedContextBlocks(sources)}`,
 
   const raw = extractText(res).trim();
   const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "");
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(cleaned);
-  } catch {
-    const match = cleaned.match(/\{[\s\S]*\}/);
-    if (!match) throw new Error("servicesInvestment: AI did not return JSON");
-    parsed = JSON.parse(match[0]);
-  }
-  const obj = parsed as {
+  const match = cleaned.match(/\{[\s\S]*\}/);
+  const jsonCandidate = match?.[0] ?? cleaned;
+  const parsed = safeJsonParse<{
     services?: ServiceItem[];
     timeline?: { phase: string; items: string[] }[];
     investmentAllocation?: InvestmentAllocation;
     whyUs?: WhyUsPoint[];
+  } | null>(jsonCandidate, null);
+
+  if (!parsed) {
+    const preview = cleaned.replace(/\s+/g, " ").slice(0, 160);
+    console.warn(
+      "[grand-plan] servicesInvestment response was not valid JSON; using empty fallback:",
+      preview,
+    );
+  }
+
+  const obj = parsed ?? {
+    services: [],
+    timeline: [],
+    investmentAllocation: { totalMonthly: 0, byChannel: [] },
+    whyUs: [],
   };
+
   return {
     services: Array.isArray(obj.services) ? obj.services : [],
     timeline: Array.isArray(obj.timeline) ? obj.timeline : [],
