@@ -179,6 +179,11 @@ function hasEmailMarketingData(
 
 export function resolvePresentationSlideBounds(plan: GrandPlanData): PresentationSlideBounds {
   const sections = plan.sections;
+  const googleAdsCampaigns = Array.isArray(sections.googleAdsCampaigns)
+    ? sections.googleAdsCampaigns
+    : sections.googleAdsCampaigns
+      ? [sections.googleAdsCampaigns]
+      : [];
   const audiencesCount = sections.audiences?.length ?? 0;
   const quickWinsCount = sections.quickWins?.length ?? 0;
   const channelCount = plan.strategyBrain?.channelStrategy?.length ?? 0;
@@ -191,7 +196,7 @@ export function resolvePresentationSlideBounds(plan: GrandPlanData): Presentatio
     (sections.contentStrategy?.blogPosts?.length ?? 0);
   const competitorCount = sections.competitorIntel?.length ?? 0;
   const groundingCount = Object.keys(plan.grounding ?? {}).length;
-  const forecastSignals = (sections.googleAdsCampaigns ?? []).filter(
+  const forecastSignals = googleAdsCampaigns.filter(
     (campaign) =>
       Boolean(campaign.forecast?.intelligence?.summary) ||
       Boolean(campaign.forecast?.intelligence?.assumptions?.length) ||
@@ -229,6 +234,11 @@ export function summariseSourcePlan(plan: GrandPlanData): string {
   const services = plan.sections.servicesInvestment;
   const audiences = plan.sections.audiences ?? [];
   const quickWins = plan.sections.quickWins ?? [];
+  const googleAdsCampaigns = Array.isArray(plan.sections.googleAdsCampaigns)
+    ? plan.sections.googleAdsCampaigns
+    : plan.sections.googleAdsCampaigns
+      ? [plan.sections.googleAdsCampaigns]
+      : [];
   const seo = plan.sections.seoFoundations;
   const email = plan.sections.emailMarketing;
   const competitors = plan.sections.competitorIntel ?? [];
@@ -262,13 +272,19 @@ export function summariseSourcePlan(plan: GrandPlanData): string {
   const seoQuickWins = seo?.quickWins
     ? seo.quickWins
         .slice(0, 8)
-        .map((win) => `- ${win.pageTitle}: ${win.recommendation}`)
+        .map((win) => `- ${win.pageTitle ?? win.url}: ${win.rationale}`)
         .join("\n")
     : "";
   const seoInternalHubs = seo?.internalLinking?.hubs
     ? seo.internalLinking.hubs
         .slice(0, 6)
-        .map((hub) => `- ${hub.topicHub}: ${hub.targetPages.join(", ")}`)
+        .map(
+          (hub) =>
+            `- ${hub.hubTitle ?? hub.hubUrl}: links from ${hub.inboundLinks
+              .slice(0, 4)
+              .map((link) => link.fromUrl)
+              .join(", ")}`,
+        )
         .join("\n")
     : "";
   const seoLinkTargets = seo?.linkBuilding?.targets
@@ -315,7 +331,7 @@ export function summariseSourcePlan(plan: GrandPlanData): string {
         .join("\n")
     : "";
 
-  const forecastIntelligenceLines = (plan.sections.googleAdsCampaigns ?? [])
+  const forecastIntelligenceLines = googleAdsCampaigns
     .map((campaign) => {
       const forecast = campaign.forecast;
       if (!forecast?.intelligence) return "";

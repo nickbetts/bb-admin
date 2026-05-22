@@ -215,6 +215,8 @@ interface GrandPlanFull {
   title: string;
   status: string;
   purpose: string;
+  prospectName: string | null;
+  prospectWebsite: string | null;
   generatedHtml: string | null;
   planDataJson: string | null;
   presentationGeneratedAt: string | null;
