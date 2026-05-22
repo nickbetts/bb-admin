@@ -1288,7 +1288,7 @@ export default function GrandPlanViewPage({ params }: Props) {
           (warning): warning is string => typeof warning === "string" && warning.trim().length > 0,
         ),
       );
-      const failuresByKey = new Map<string, { key: string; error?: string }>();
+      const failuresByKey = new globalThis.Map<string, { key: string; error?: string }>();
       const sectionKeys = new Set(ALL_SECTIONS.map((section) => section.key));
       const failedSections = new Set<string>();
 
