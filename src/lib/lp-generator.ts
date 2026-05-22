@@ -533,6 +533,30 @@ export function getFormCaptureScript(shareToken: string | null, turnstileSiteKey
         data[k] = v;
       });
 
+      var addIfMissing = function(key, value) {
+        if (!key || !value) return;
+        var existing = data[key];
+        if (typeof existing === 'string' && existing.trim()) return;
+        data[key] = value;
+      };
+
+      var qs = new URLSearchParams(window.location.search || '');
+      ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'gclid', 'wbraid', 'gbraid', 'fbclid', 'msclkid', 'ttclid'].forEach(function(key) {
+        var value = qs.get(key);
+        if (value) addIfMissing(key, value);
+      });
+
+      if (!data.utm_source) {
+        if (qs.get('gclid') || qs.get('wbraid') || qs.get('gbraid')) {
+          addIfMissing('utm_source', 'google');
+        } else if (qs.get('fbclid')) {
+          addIfMissing('utm_source', 'meta');
+        }
+      }
+
+      addIfMissing('__lp_url', window.location.href);
+      if (document.referrer) addIfMissing('__lp_document_referrer', document.referrer);
+
       var setError = function(message) {
         var existing = form.querySelector('.lp-submit-error');
         if (!existing) {

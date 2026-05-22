@@ -106,10 +106,10 @@ function LeadSourceBadgeIcon({ source }: { source: LeadSource }) {
   return null;
 }
 
-function getReferrerHost(referrer: string | null): string | null {
-  if (!referrer) return null;
+function parseUrlSafely(rawUrl: string | null | undefined): URL | null {
+  if (!rawUrl) return null;
   try {
-    return new URL(referrer).hostname.toLowerCase();
+    return new URL(rawUrl);
   } catch {
     return null;
   }
@@ -150,39 +150,119 @@ function isMetaSource(value: string): boolean {
   );
 }
 
-function detectLeadSource(lead: Lead): LeadSource {
-  const fields = parseFormData(lead.formData);
+function detectSourceFromText(rawValue: string, detail: string): LeadSource | null {
+  const normalised = rawValue.toLowerCase();
+  if (isGoogleSource(normalised)) return { label: "Google", detail, platform: "google" };
+  if (isMetaSource(normalised)) return { label: "Meta", detail, platform: "meta" };
+  if (normalised.includes("linkedin")) return { label: "LinkedIn", detail, platform: "other" };
+  if (normalised.includes("tiktok")) return { label: "TikTok", detail, platform: "other" };
+  if (normalised.includes("bing") || normalised.includes("msclkid")) {
+    return { label: "Bing", detail, platform: "other" };
+  }
+  if (normalised.includes("youtube")) return { label: "YouTube", detail, platform: "other" };
+  if (
+    normalised.includes("x.com") ||
+    normalised.includes("twitter") ||
+    normalised.includes("t.co")
+  ) {
+    return { label: "X", detail, platform: "other" };
+  }
+  return null;
+}
+
+function detectSourceFromSearchParams(searchParams: URLSearchParams): LeadSource | null {
   const utmSource =
-    fields.utm_source || fields.utmSource || fields.source || fields.channel || fields.platform;
+    searchParams.get("utm_source") ||
+    searchParams.get("utmSource") ||
+    searchParams.get("source") ||
+    searchParams.get("channel") ||
+    searchParams.get("platform");
 
   if (utmSource) {
-    const normalised = utmSource.toLowerCase();
-    if (isGoogleSource(normalised))
-      return { label: "Google", detail: utmSource, platform: "google" };
-    if (isMetaSource(normalised)) {
-      return { label: "Meta", detail: utmSource, platform: "meta" };
-    }
-    if (normalised.includes("linkedin"))
-      return { label: "LinkedIn", detail: utmSource, platform: "other" };
-    if (normalised.includes("tiktok"))
-      return { label: "TikTok", detail: utmSource, platform: "other" };
+    const detected = detectSourceFromText(utmSource, utmSource);
+    if (detected) return detected;
     return { label: utmSource, detail: "UTM source", platform: "other" };
   }
 
-  const host = getReferrerHost(lead.referrer);
-  if (!host) return { label: "Direct", detail: "No referrer", platform: "other" };
-  if (isGoogleSource(host)) return { label: "Google", detail: host, platform: "google" };
-  if (isMetaSource(host) || host.includes("fb.")) {
-    return { label: "Meta", detail: host, platform: "meta" };
+  if (searchParams.has("gclid") || searchParams.has("wbraid") || searchParams.has("gbraid")) {
+    return { label: "Google", detail: "gclid/wbraid detected", platform: "google" };
   }
-  if (host.includes("linkedin.")) return { label: "LinkedIn", detail: host, platform: "other" };
-  if (host.includes("tiktok.")) return { label: "TikTok", detail: host, platform: "other" };
-  if (host.includes("bing.")) return { label: "Bing", detail: host, platform: "other" };
-  if (host.includes("youtube.")) return { label: "YouTube", detail: host, platform: "other" };
-  if (host.includes("x.com") || host.includes("twitter.com") || host.includes("t.co")) {
-    return { label: "X", detail: host, platform: "other" };
+  if (searchParams.has("fbclid")) {
+    return { label: "Meta", detail: "fbclid detected", platform: "meta" };
   }
-  return { label: "Referral", detail: host, platform: "other" };
+
+  return null;
+}
+
+function detectLeadSource(lead: Lead): LeadSource {
+  const fields = parseFormData(lead.formData);
+
+  const explicitSourceValues = [
+    fields.utm_source,
+    fields.utmSource,
+    fields.source,
+    fields.channel,
+    fields.platform,
+    fields.traffic_source,
+    fields.trafficSource,
+  ].filter(Boolean) as string[];
+
+  for (const sourceValue of explicitSourceValues) {
+    const detected = detectSourceFromText(sourceValue, sourceValue);
+    if (detected) return detected;
+    return { label: sourceValue, detail: "UTM source", platform: "other" };
+  }
+
+  if (fields.gclid || fields.wbraid || fields.gbraid) {
+    return { label: "Google", detail: "gclid/wbraid in form data", platform: "google" };
+  }
+  if (fields.fbclid) {
+    return { label: "Meta", detail: "fbclid in form data", platform: "meta" };
+  }
+
+  const urlCandidates = [
+    { rawUrl: fields.__lp_url, detailPrefix: "Landing URL" },
+    { rawUrl: fields.__lp_document_referrer, detailPrefix: "Document referrer" },
+    { rawUrl: lead.referrer, detailPrefix: "Request referrer" },
+  ];
+
+  for (const candidate of urlCandidates) {
+    const parsed = parseUrlSafely(candidate.rawUrl);
+    if (!parsed) continue;
+
+    const fromParams = detectSourceFromSearchParams(parsed.searchParams);
+    if (fromParams) return fromParams;
+
+    const host = parsed.hostname.toLowerCase();
+    if (host.includes("fb.")) {
+      return { label: "Meta", detail: `${candidate.detailPrefix}: ${host}`, platform: "meta" };
+    }
+
+    const fromHost = detectSourceFromText(host, `${candidate.detailPrefix}: ${host}`);
+    if (fromHost) return fromHost;
+
+    if (host.includes("linkedin.")) {
+      return { label: "LinkedIn", detail: `${candidate.detailPrefix}: ${host}`, platform: "other" };
+    }
+    if (host.includes("tiktok.")) {
+      return { label: "TikTok", detail: `${candidate.detailPrefix}: ${host}`, platform: "other" };
+    }
+    if (host.includes("bing.")) {
+      return { label: "Bing", detail: `${candidate.detailPrefix}: ${host}`, platform: "other" };
+    }
+    if (host.includes("youtube.")) {
+      return { label: "YouTube", detail: `${candidate.detailPrefix}: ${host}`, platform: "other" };
+    }
+    if (host.includes("x.com") || host.includes("twitter.com") || host.includes("t.co")) {
+      return { label: "X", detail: `${candidate.detailPrefix}: ${host}`, platform: "other" };
+    }
+
+    if (candidate.rawUrl === lead.referrer) {
+      return { label: "Referral", detail: host, platform: "other" };
+    }
+  }
+
+  return { label: "Direct", detail: "No referrer", platform: "other" };
 }
 
 function getExtraFields(lead: Lead): Array<{ key: string; value: string }> {
@@ -204,6 +284,20 @@ function getExtraFields(lead: Lead): Array<{ key: string; value: string }> {
     "comment",
     "enquiry",
     "cf-turnstile-response",
+    "utm_source",
+    "utm_medium",
+    "utm_campaign",
+    "utm_term",
+    "utm_content",
+    "utmSource",
+    "gclid",
+    "wbraid",
+    "gbraid",
+    "fbclid",
+    "msclkid",
+    "ttclid",
+    "__lp_url",
+    "__lp_document_referrer",
   ]);
 
   return Object.entries(data)
