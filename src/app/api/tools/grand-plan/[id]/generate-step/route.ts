@@ -1616,11 +1616,6 @@ Return ONLY valid JSON, no markdown fences.`,
         if (!freshPlan) return NextResponse.json({ error: "Plan not found" }, { status: 404 });
 
         const sources = buildSources(freshPlan, config, brief);
-
-        // Generate just this one section
-        const partial = await generateGrandPlan(sources, undefined, [step]);
-
-        // Merge into existing planDataJson
         const existingData = safeJsonParse<PlanDataWithQuality>(freshPlan.planDataJson, {
           title: `${clientName} — Go-To-Market Plan`,
           clientName,
@@ -1628,6 +1623,27 @@ Return ONLY valid JSON, no markdown fences.`,
           generatedAt: new Date().toISOString(),
           sections: {},
         });
+
+        const sectionSkipReason = getSectionPrerequisiteSkipReason(step, sources);
+        if (sectionSkipReason) {
+          applyStepQuality(existingData, step, {
+            status: "skipped",
+            critical: false,
+            reason: sectionSkipReason,
+            warnings: [`${labelForStep(step)} skipped: ${sectionSkipReason}`],
+            signals: {
+              keywordResearchAvailable: !!sources.keywordResearch,
+            },
+          });
+          await prisma.grandPlan.update({
+            where: { id },
+            data: { planDataJson: JSON.stringify(existingData) },
+          });
+          return NextResponse.json({ ok: true, step, skipped: true, reason: sectionSkipReason });
+        }
+
+        // Generate just this one section
+        const partial = await generateGrandPlan(sources, undefined, [step]);
 
         const sectionKey = step as keyof typeof existingData.sections;
         const newValue = partial.sections[sectionKey];
@@ -1718,7 +1734,10 @@ Return ONLY valid JSON, no markdown fences.`,
 
         const qualityManifest = ensureQualityManifest(planData);
         const expectedSections = getExpectedGeneratedSections(config.sections);
-        const missingSections = expectedSections.filter(
+        const requiredSections = expectedSections.filter(
+          (key) => qualityManifest.steps[key]?.status !== "skipped",
+        );
+        const missingSections = requiredSections.filter(
           (key) => !hasSectionOutput(planData.sections[key as keyof GrandPlanData["sections"]]),
         );
         const unresolvedCritical = Object.entries(qualityManifest.steps)
@@ -1746,6 +1765,7 @@ Return ONLY valid JSON, no markdown fences.`,
 
         const assembleSignals: Record<string, unknown> = {
           expectedSections: expectedSections.length,
+          requiredSections: requiredSections.length,
           missingSections: missingSections.length,
           unresolvedCritical: unresolvedCritical.length,
           ...brainSignals,
@@ -2048,6 +2068,35 @@ async function updateStepQuality(
     where: { id },
     data: { planDataJson: JSON.stringify(planData) },
   });
+}
+
+function labelForStep(step: string): string {
+  const labels: Record<string, string> = {
+    executiveSummary: "Executive Summary",
+    audiences: "Audiences",
+    googleAdsCampaigns: "Google Ads Campaigns",
+    metaCampaigns: "Meta Campaigns",
+    contentStrategy: "Content Strategy",
+    contentCalendar: "Content Calendar",
+    servicesInvestment: "Services & Investment",
+    emailMarketing: "Email Marketing",
+    linkedInAds: "LinkedIn Ads",
+    competitorIntel: "Competitor Intelligence",
+    seoFoundations: "SEO Foundations",
+  };
+  return labels[step] ?? step;
+}
+
+function getSectionPrerequisiteSkipReason(
+  step: string,
+  sources: GrandPlanSources,
+): string | null {
+  const requiresKeywordResearch =
+    step === "googleAdsCampaigns" || step === "metaCampaigns" || step === "competitorIntel";
+  if (requiresKeywordResearch && !sources.keywordResearch) {
+    return "Keyword research is unavailable for this section.";
+  }
+  return null;
 }
 
 function hasSectionOutput(value: unknown): boolean {

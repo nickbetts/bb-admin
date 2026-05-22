@@ -1774,14 +1774,15 @@ async function generateExecutiveSummary(
   context: string,
   sources: GrandPlanSources,
 ): Promise<string> {
-  const res = await withAnthropicRetry("executiveSummary", () =>
-    anthropic.messages.create({
-      model: MODEL_PRIMARY(),
-      max_tokens: 1400,
-      messages: [
-        {
-          role: "user",
-          content: `You are a senior digital marketing strategist at i3media, a specialist UK digital marketing agency. You are writing a strategic memo DIRECTLY TO the client's decision-maker — not a report about them. Write in second person throughout ("your business", "you are", "your customers").
+  try {
+    const res = await withAnthropicRetry("executiveSummary", () =>
+      anthropic.messages.create({
+        model: MODEL_PRIMARY(),
+        max_tokens: 1400,
+        messages: [
+          {
+            role: "user",
+            content: `You are a senior digital marketing strategist at i3media, a specialist UK digital marketing agency. You are writing a strategic memo DIRECTLY TO the client's decision-maker — not a report about them. Write in second person throughout ("your business", "you are", "your customers").
 
 Structure the memo using a situation → complication → resolution framework:
 1. SITUATION: What is true about their market and position right now (specific facts, no generics)
@@ -1805,11 +1806,20 @@ ${sources.planMode === "sprint90" ? "\n- THIS IS A 90-DAY SPRINT executive memo.
 Write the executive summary for this plan:
 
 ${context}${buildSharedContextBlocks(sources)}`,
-        },
-      ],
-    }),
-  );
-  return extractText(res);
+          },
+        ],
+      }),
+    );
+
+    const summary = extractText(res).trim();
+    if (summary.length > 0) return summary;
+
+    console.warn("[grand-plan] executive summary response was empty; using fallback summary.");
+  } catch (err) {
+    console.error("[grand-plan] executive summary generation failed; using fallback summary:", err);
+  }
+
+  return `<p><strong>Why this matters:</strong> Your strategy has been assembled from the available data, and this section needs a manual polish before client delivery.</p><p><strong>Outcome:</strong> Baseline to be set in month 1 once tracking and channel setup are confirmed, with a target agreed from that point.</p><p><strong>Risk:</strong> If this executive summary is not manually reviewed before sending, strategic context may be underspecified. Mitigation: Regenerate or edit this section before publishing.</p>`;
 }
 
 /**
@@ -1843,14 +1853,16 @@ async function generateServicesInvestment(
       .filter(Boolean)
       .join(", ") || "no per-channel splits supplied";
 
-  const res = await withAnthropicRetry("servicesInvestment", () =>
-    anthropic.messages.create({
-      model: MODEL_PRIMARY(),
-      max_tokens: 2200,
-      messages: [
-        {
-          role: "user",
-          content: `You are a senior account director at i3media, a UK digital marketing agency. Build a Services & Investment block for the client below.
+  let cleaned = "";
+  try {
+    const res = await withAnthropicRetry("servicesInvestment", () =>
+      anthropic.messages.create({
+        model: MODEL_PRIMARY(),
+        max_tokens: 2200,
+        messages: [
+          {
+            role: "user",
+            content: `You are a senior account director at i3media, a UK digital marketing agency. Build a Services & Investment block for the client below.
 
 Inputs:
 - Sector: ${sources.sector ?? "(not specified)"}
@@ -1880,13 +1892,30 @@ Return STRICT JSON only \u2014 no prose, no markdown, no code fences. Schema:
 
 Plan context:
 ${context}${buildSharedContextBlocks(sources)}`,
+          },
+        ],
+      }),
+    );
+    cleaned = extractText(res)
+      .trim()
+      .replace(/^```(?:json)?\s*/i, "")
+      .replace(/\s*```\s*$/i, "");
+  } catch (err) {
+    console.error("[grand-plan] servicesInvestment generation failed; using fallback:", err);
+    return {
+      services: [],
+      timeline: [],
+      investmentAllocation: { totalMonthly: 0, byChannel: [] },
+      whyUs: [
+        {
+          title: "Manual review required",
+          description:
+            "Automatic Services and Investment generation failed in this run. Regenerate or complete this section manually before client delivery.",
         },
       ],
-    }),
-  );
+    };
+  }
 
-  const raw = extractText(res).trim();
-  const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "");
   const match = cleaned.match(/\{[\s\S]*\}/);
   const jsonCandidate = match?.[0] ?? cleaned;
   const parsed = safeJsonParse<{
@@ -1975,14 +2004,16 @@ async function generateMetaCampaigns(
     .map((g) => g.name)
     .join(", ");
 
-  const res = await withAnthropicRetry("metaCampaigns", () =>
-    anthropic.messages.create({
-      model: MODEL_PRIMARY(),
-      max_tokens: 5000,
-      messages: [
-        {
-          role: "user",
-          content: `You are a Meta Ads specialist at i3media. Generate Meta (Facebook/Instagram) campaign structures.
+  let raw = "";
+  try {
+    const res = await withAnthropicRetry("metaCampaigns", () =>
+      anthropic.messages.create({
+        model: MODEL_PRIMARY(),
+        max_tokens: 5000,
+        messages: [
+          {
+            role: "user",
+            content: `You are a Meta Ads specialist at i3media. Generate Meta (Facebook/Instagram) campaign structures.
 
 Return a JSON object with key "campaigns" containing an array of campaign objects. Each campaign should have:
 - campaignName: string
@@ -2036,12 +2067,16 @@ Brief: ${sources.clientBrief || sources.keywordResearch?.brief || "General digit
 
 Context:
 ${context}${buildSharedContextBlocks(sources, "meta")}`,
-        },
-      ],
-    }),
-  );
+          },
+        ],
+      }),
+    );
+    raw = extractText(res);
+  } catch (err) {
+    console.error("[grand-plan] metaCampaigns generation failed; using fallback campaigns:", err);
+    return buildFallbackMetaCampaigns(sources, ranked.slice(0, 3));
+  }
 
-  const raw = extractText(res);
   const parsed = safeJsonParse(raw, { campaigns: [] });
   const campaigns = (parsed.campaigns ?? parsed ?? []) as MetaCampaign[];
   // If the model returned nothing usable, synthesise a deterministic fallback
@@ -2135,14 +2170,15 @@ async function generateContentCalendar(
 
   async function generateHalf(label: string, months: string[]): Promise<ContentCalendarMonth[]> {
     if (months.length === 0) return [];
-    const res = await withAnthropicRetry(`contentCalendar:${label}`, () =>
-      anthropic.messages.create({
-        model: MODEL_LIGHT_FN(),
-        max_tokens: 3500,
-        messages: [
-          {
-            role: "user",
-            content: `${STYLE_RULES}
+    try {
+      const res = await withAnthropicRetry(`contentCalendar:${label}`, () =>
+        anthropic.messages.create({
+          model: MODEL_LIGHT_FN(),
+          max_tokens: 3500,
+          messages: [
+            {
+              role: "user",
+              content: `${STYLE_RULES}
 
 You are a content strategist at i3media. Generate the ${label} of a ${sprint ? "12-week sprint calendar (3 months)" : `${monthCount}-month content calendar`}.
 
@@ -2164,13 +2200,17 @@ Rules:
 Client: ${sources.clientName}
 ${blogTopics ? `Available blog topics: ${blogTopics}\n` : ""}Context:
 ${context}${buildSharedContextBlocks(sources, "calendar")}`,
-          },
-        ],
-      }),
-    );
-    const raw = extractText(res);
-    const parsed = safeJsonParse<{ months?: ContentCalendarMonth[] }>(raw, { months: [] });
-    return parsed.months ?? [];
+            },
+          ],
+        }),
+      );
+      const raw = extractText(res);
+      const parsed = safeJsonParse<{ months?: ContentCalendarMonth[] }>(raw, { months: [] });
+      return parsed.months ?? [];
+    } catch (err) {
+      console.error(`[grand-plan] content calendar half "${label}" failed; using placeholder month slots:`, err);
+      return [];
+    }
   }
 
   // For 12+ months, split in two parallel Haiku calls (faster, lighter).
@@ -3358,7 +3398,7 @@ function buildContentStrategySection(contentData: any, aiClusters?: AiContentClu
   });
 
   // ── AI clusters preferred (Strategy Brain drives this when no spreadsheet is linked) ──
-  if (aiClusters && (aiClusters.pillars?.length || aiClusters.pageOptimisations?.length)) {
+  if (aiClusters) {
     const landingPages: ContentStrategyEntry[] = [];
     const blogPosts: ContentStrategyEntry[] = [];
     aiClusters.pillars.forEach((p, pi) => {
@@ -3532,15 +3572,20 @@ ${messageLines ? `\n${messageLines}` : ""}
 Context:
 ${context}${buildSharedContextBlocks(sources, "content")}`;
 
-  const res = await withAnthropicRetry("contentClusters", () =>
-    anthropic.messages.create({
-      model: MODEL_PRIMARY(),
-      max_tokens: 6000,
-      messages: [{ role: "user", content: prompt }],
-    }),
-  );
   const fallback: AiContentClusters = { pillars: [], pageOptimisations: [] };
-  return safeJsonParse<AiContentClusters>(extractText(res), fallback);
+  try {
+    const res = await withAnthropicRetry("contentClusters", () =>
+      anthropic.messages.create({
+        model: MODEL_PRIMARY(),
+        max_tokens: 6000,
+        messages: [{ role: "user", content: prompt }],
+      }),
+    );
+    return safeJsonParse<AiContentClusters>(extractText(res), fallback);
+  } catch (err) {
+    console.error("[grand-plan] contentClusters generation failed; using empty fallback:", err);
+    return fallback;
+  }
 }
 
 // ─── SEO Foundations generator ──────────────────────────────────────────────
@@ -3689,20 +3734,24 @@ ${manualUrls.map((u) => `- ${u}`).join("\n")}`
 Context:
 ${context}${buildSharedContextBlocks(sources, "content")}`;
 
-  const res = await withAnthropicRetry("seoFoundations", () =>
-    anthropic.messages.create({
-      model: MODEL_PRIMARY(),
-      max_tokens: manualOnly ? Math.min(16000, 2200 + manualUrls.length * 1100) : 6000,
-      messages: [{ role: "user", content: prompt }],
-    }),
-  );
-
   const fallback: SeoFoundations = {
     quickWins: [],
     internalLinking: { overview: "", hubs: [] },
     linkBuilding: { overallStrategy: "", targets: [], outreachChannels: [] },
   };
-  const parsed = safeJsonParse<SeoFoundations>(extractText(res), fallback);
+  let parsed = fallback;
+  try {
+    const res = await withAnthropicRetry("seoFoundations", () =>
+      anthropic.messages.create({
+        model: MODEL_PRIMARY(),
+        max_tokens: manualOnly ? Math.min(16000, 2200 + manualUrls.length * 1100) : 6000,
+        messages: [{ role: "user", content: prompt }],
+      }),
+    );
+    parsed = safeJsonParse<SeoFoundations>(extractText(res), fallback);
+  } catch (err) {
+    console.error("[grand-plan] seoFoundations generation failed; using fallback:", err);
+  }
 
   // Backfill: every manually-entered URL MUST appear in quickWins. If the AI
   // omitted any (truncation, hallucinated different URL, etc.), retry just
@@ -3876,14 +3925,15 @@ async function generateEmailMarketing(
   if (hasChannelData) sourceLabels.push("GA4 channel conversions");
   if (hasCustomerVoice) sourceLabels.push("Customer voice (web search)");
 
-  const res = await withAnthropicRetry("emailMarketing", () =>
-    anthropic.messages.create({
-      model: MODEL_PRIMARY(),
-      max_tokens: 2500,
-      messages: [
-        {
-          role: "user",
-          content: `You are an email marketing strategist at i3media. Create an email marketing plan for this client.
+  try {
+    const res = await withAnthropicRetry("emailMarketing", () =>
+      anthropic.messages.create({
+        model: MODEL_PRIMARY(),
+        max_tokens: 2500,
+        messages: [
+          {
+            role: "user",
+            content: `You are an email marketing strategist at i3media. Create an email marketing plan for this client.
 
 Return a JSON object:
 - flows: array of { name: string, trigger: string, emails: [{ subject: string, purpose: string, delay: string }] } — 3-5 automated flows
@@ -3904,20 +3954,28 @@ Rules:
 Client: ${sources.clientName}
 Context:
 ${context}${buildSharedContextBlocks(sources, "email")}`,
-        },
-      ],
-    }),
-  );
+          },
+        ],
+      }),
+    );
 
-  return {
-    value: safeJsonParse(extractText(res), {
-      flows: [],
-      campaigns: [],
-      segmentation: { segments: [] },
-    }),
-    grounding,
-    sourceLabels,
-  };
+    return {
+      value: safeJsonParse(extractText(res), {
+        flows: [],
+        campaigns: [],
+        segmentation: { segments: [] },
+      }),
+      grounding,
+      sourceLabels,
+    };
+  } catch (err) {
+    console.error("[grand-plan] emailMarketing generation failed; using fallback:", err);
+    return {
+      value: { flows: [], campaigns: [], segmentation: { segments: [] } },
+      grounding,
+      sourceLabels,
+    };
+  }
 }
 
 // ─── LinkedIn Ads generator ─────────────────────────────────────────────────
@@ -3940,14 +3998,16 @@ async function generateLinkedInAds(
   if (hasLinkedInTraffic) sourceLabels.push("GA4 LinkedIn referral data");
   if (hasAudienceJobTitles) sourceLabels.push("Strategist-supplied audiences");
 
-  const res = await withAnthropicRetry("linkedInAds", () =>
-    anthropic.messages.create({
-      model: MODEL_PRIMARY(),
-      max_tokens: 2500,
-      messages: [
-        {
-          role: "user",
-          content: `You are a LinkedIn Ads specialist at i3media. Create LinkedIn advertising campaign structures.
+  let parsed: { campaigns?: LinkedInCampaign[] } = { campaigns: [] };
+  try {
+    const res = await withAnthropicRetry("linkedInAds", () =>
+      anthropic.messages.create({
+        model: MODEL_PRIMARY(),
+        max_tokens: 2500,
+        messages: [
+          {
+            role: "user",
+            content: `You are a LinkedIn Ads specialist at i3media. Create LinkedIn advertising campaign structures.
 
 Return a JSON object with key "campaigns" containing an array of 2-3 campaign objects:
 - campaignName: string
@@ -3986,12 +4046,15 @@ ${(() => {
 Client: ${sources.clientName}
 Context:
 ${context}${buildSharedContextBlocks(sources, "linkedIn")}`,
-        },
-      ],
-    }),
-  );
+          },
+        ],
+      }),
+    );
+    parsed = safeJsonParse(extractText(res), { campaigns: [] });
+  } catch (err) {
+    console.error("[grand-plan] linkedInAds generation failed; using fallback campaigns:", err);
+  }
 
-  const parsed = safeJsonParse(extractText(res), { campaigns: [] });
   const campaigns = (parsed.campaigns ?? []) as LinkedInCampaign[];
   let value: LinkedInCampaign[];
   if (!Array.isArray(campaigns) || campaigns.length === 0) {
@@ -4129,14 +4192,24 @@ async function generateCompetitorIntel(
     const complaintBlock = customerComplaints.length
       ? `\n\nReal customer complaints about competitors in this sector (use these to seed the weaknesses fields):\n- ${customerComplaints.slice(0, 8).join("\n- ")}`
       : "";
-    const res = await withAnthropicRetry("competitorIntel:enrich", () =>
-      anthropic.messages.create({
-        model: MODEL_PRIMARY(),
-        max_tokens: 2200,
-        messages: [
-          {
-            role: "user",
-            content: `You are a competitive intelligence analyst at i3media. The competitor list below is a mix of (a) competitors named on the brief by ${sources.clientName} (source: manual), (b) competitors auto-detected from SEMrush keyword overlap (source: auto), and (c) where no SEMrush data was available, scraped homepage signals (h1, headings, CTAs). Your job is ONLY to add the strengths, weaknesses, and opportunities commentary plus topKeywords (where missing). Do NOT change the numeric fields.
+    let parsed: {
+      competitors?: {
+        domain?: string;
+        topKeywords?: string[];
+        strengths?: string[];
+        weaknesses?: string[];
+        opportunities?: string[];
+      }[];
+    } = { competitors: [] };
+    try {
+      const res = await withAnthropicRetry("competitorIntel:enrich", () =>
+        anthropic.messages.create({
+          model: MODEL_PRIMARY(),
+          max_tokens: 2200,
+          messages: [
+            {
+              role: "user",
+              content: `You are a competitive intelligence analyst at i3media. The competitor list below is a mix of (a) competitors named on the brief by ${sources.clientName} (source: manual), (b) competitors auto-detected from SEMrush keyword overlap (source: auto), and (c) where no SEMrush data was available, scraped homepage signals (h1, headings, CTAs). Your job is ONLY to add the strengths, weaknesses, and opportunities commentary plus topKeywords (where missing). Do NOT change the numeric fields.
 
 Return a JSON object with key "competitors" containing one entry per competitor below, in the same order. Each entry:
 - domain: string (must match exactly)
@@ -4152,19 +4225,23 @@ Client context:
 ${context}${buildSharedContextBlocks(sources, "competitorIntel")}
 
 Rules: British English, no AI jargon, no fluff. Each strength/weakness must reference a specific number, keyword, complaint, or scraped messaging signal — no platitudes. Return ONLY valid JSON, no markdown fences.`,
-          },
-        ],
-      }),
-    );
-    const parsed = safeJsonParse<{
-      competitors?: {
-        domain?: string;
-        topKeywords?: string[];
-        strengths?: string[];
-        weaknesses?: string[];
-        opportunities?: string[];
-      }[];
-    }>(extractText(res), { competitors: [] });
+            },
+          ],
+        }),
+      );
+      parsed = safeJsonParse<{
+        competitors?: {
+          domain?: string;
+          topKeywords?: string[];
+          strengths?: string[];
+          weaknesses?: string[];
+          opportunities?: string[];
+        }[];
+      }>(extractText(res), { competitors: [] });
+    } catch (err) {
+      console.error("[grand-plan] competitorIntel enrichment failed; using structural fallback:", err);
+    }
+
     const enriched = parsed.competitors ?? [];
     const value: CompetitorInsight[] = merged.map((m) => {
       const match = enriched.find((e) => e.domain && norm(e.domain) === norm(m.domain));
@@ -4205,14 +4282,16 @@ Rules: British English, no AI jargon, no fluff. Each strength/weakness must refe
   }
 
   // No real or form data — fall back to AI estimates (renderer surfaces the disclaimer).
-  const res = await withAnthropicRetry("competitorIntel", () =>
-    anthropic.messages.create({
-      model: MODEL_PRIMARY(),
-      max_tokens: 2500,
-      messages: [
-        {
-          role: "user",
-          content: `You are a competitive intelligence analyst at i3media. Identify and analyse the top competitors for this client.
+  let parsed: { competitors?: CompetitorInsight[] } = { competitors: [] };
+  try {
+    const res = await withAnthropicRetry("competitorIntel", () =>
+      anthropic.messages.create({
+        model: MODEL_PRIMARY(),
+        max_tokens: 2500,
+        messages: [
+          {
+            role: "user",
+            content: `You are a competitive intelligence analyst at i3media. Identify and analyse the top competitors for this client.
 
 Return a JSON object with key "competitors" containing an array of 4-6 competitor objects:
 - domain: string (competitor website URL)
@@ -4239,15 +4318,33 @@ Website: ${website}
 Brief: ${brief}
 Context:
 ${context}${buildSharedContextBlocks(sources, "audiences")}`,
-        },
-      ],
-    }),
-  );
+          },
+        ],
+      }),
+    );
+    parsed = safeJsonParse<{ competitors?: CompetitorInsight[] }>(extractText(res), {
+      competitors: [],
+    });
+  } catch (err) {
+    console.error("[grand-plan] competitorIntel generation failed; using fallback:", err);
+  }
 
-  const parsed = safeJsonParse<{ competitors?: CompetitorInsight[] }>(extractText(res), {
-    competitors: [],
-  });
   const value = (parsed.competitors ?? []).map((c) => ({ ...c, source: "inferred" as const }));
+  if (value.length === 0) {
+    const domainHint = website
+      .replace(/^https?:\/\//, "")
+      .replace(/^www\./, "")
+      .replace(/\/.*$/, "")
+      .trim();
+    value.push({
+      domain: domainHint || "Manual competitor research required",
+      topKeywords: [],
+      strengths: ["Insufficient third-party competitor data was returned in this run."],
+      weaknesses: ["A manual competitor review is required before acting on this section."],
+      opportunities: ["Run a manual SEMrush and market review, then regenerate this section."],
+      source: "inferred",
+    });
+  }
   return {
     value,
     grounding: customerComplaints.length ? "partial" : "ai-only",
@@ -4303,6 +4400,54 @@ async function generateAudiences(
       .filter(Boolean)
       .slice(0, 6);
   }
+
+  const buildFallbackAudiences = (): AudienceItem[] => {
+    const brainAudiences = sources.strategyBrain?.audiences ?? [];
+    const fallbackNames = strategistAudienceNames.length
+      ? strategistAudienceNames
+      : brainAudiences
+          .map((a) => String(a.name || "").trim())
+          .filter(Boolean)
+          .slice(0, 5);
+
+    const mapped = fallbackNames
+      .map((name, idx): AudienceItem | null => {
+        const byName = brainAudiences.find(
+          (a) => a.name.trim().toLowerCase() === name.trim().toLowerCase(),
+        );
+        const brain = byName ?? brainAudiences[idx];
+        const description = cleanEmDashes(
+          brain?.coreInsight?.trim() ||
+            "People in this segment who are actively evaluating solutions in your market.",
+        );
+        const painPoints = brain?.primaryPain
+          ? [cleanEmDashes(brain.primaryPain.trim())].filter((p) => p.length > 0)
+          : [];
+        const channels = Array.isArray(brain?.channels)
+          ? brain.channels.map((c) => String(c).trim()).filter(Boolean)
+          : [];
+
+        if (!name.trim()) return null;
+        return {
+          name: name.trim(),
+          description,
+          painPoints,
+          channels,
+        };
+      })
+      .filter((a): a is AudienceItem => !!a);
+
+    if (mapped.length > 0) return mapped;
+
+    return [
+      {
+        name: "Primary decision-makers",
+        description: "People with buying responsibility who are currently comparing options in your market.",
+        painPoints: [],
+        channels: ["Google Search"],
+      },
+    ];
+  };
 
   const res = await withAnthropicRetry("audiences", () =>
     anthropic.messages.create({
@@ -4379,63 +4524,75 @@ ${context}${buildSharedContextBlocks(sources)}`,
     .replace(/```json\n?/g, "")
     .replace(/```\n?/g, "")
     .trim();
-  try {
-    const parsed = JSON.parse(cleaned);
-    if (!Array.isArray(parsed)) return { value: [], grounding, sourceLabels };
-    const value = parsed
-      .filter((a) => a && typeof a.name === "string")
-      .map(
-        (a, idx): AudienceItem => ({
-          // If the strategist specified names, enforce them slot-for-slot
-          // so the AI can't quietly rename or reorder audiences.
-          name: strategistAudienceNames[idx] ?? String(a.name).trim(),
-          description: cleanEmDashes(String(a.description ?? "").trim()),
-          painPoints: Array.isArray(a.painPoints)
-            ? a.painPoints
-                .map((p: unknown) => cleanEmDashes(String(p).trim()))
-                .filter((p: string) => p.length > 0 && p.length <= 220)
-                .slice(0, 6)
-            : [],
-          channels: Array.isArray(a.channels) ? a.channels.map(String) : [],
-          personaQuote:
-            typeof a.personaQuote === "string"
-              ? cleanEmDashes(a.personaQuote.trim().slice(0, 240))
-              : undefined,
-          sectorPreview:
-            a.sectorPreview && typeof a.sectorPreview === "object"
-              ? {
-                  keywordGroups: Array.isArray(a.sectorPreview.keywordGroups)
-                    ? a.sectorPreview.keywordGroups
-                        .filter(
-                          (g: unknown): g is { label?: unknown; samples?: unknown } =>
-                            !!g && typeof g === "object",
-                        )
-                        .map((g: { label?: unknown; samples?: unknown }) => ({
-                          label: String(g.label ?? "").trim(),
-                          samples: String(g.samples ?? "").trim(),
-                        }))
-                        .filter((g: { label: string; samples: string }) => g.label && g.samples)
-                    : [],
-                  campaignTeasers: Array.isArray(a.sectorPreview.campaignTeasers)
-                    ? a.sectorPreview.campaignTeasers
-                        .filter(
-                          (t: unknown): t is { channel?: unknown; focus?: unknown } =>
-                            !!t && typeof t === "object",
-                        )
-                        .map((t: { channel?: unknown; focus?: unknown }) => ({
-                          channel: String(t.channel ?? "").trim(),
-                          focus: String(t.focus ?? "").trim(),
-                        }))
-                        .filter((t: { channel: string; focus: string }) => t.channel && t.focus)
-                    : [],
-                }
-              : undefined,
-        }),
-      );
-    return { value, grounding, sourceLabels };
-  } catch {
-    return { value: [], grounding, sourceLabels };
+  const arrayMatch = cleaned.match(/\[[\s\S]*\]/);
+  const jsonCandidate = arrayMatch?.[0] ?? cleaned;
+  const parsed = safeJsonParse<unknown>(jsonCandidate, null);
+
+  if (!Array.isArray(parsed)) {
+    const preview = cleaned.replace(/\s+/g, " ").slice(0, 160);
+    console.warn(
+      "[grand-plan] audiences response was not valid JSON array; using strategy-brain fallback:",
+      preview,
+    );
+    return { value: buildFallbackAudiences(), grounding, sourceLabels };
   }
+
+  const value = parsed
+    .filter((a) => a && typeof a.name === "string")
+    .map(
+      (a, idx): AudienceItem => ({
+        // If the strategist specified names, enforce them slot-for-slot
+        // so the AI can't quietly rename or reorder audiences.
+        name: strategistAudienceNames[idx] ?? String(a.name).trim(),
+        description: cleanEmDashes(String(a.description ?? "").trim()),
+        painPoints: Array.isArray(a.painPoints)
+          ? a.painPoints
+              .map((p: unknown) => cleanEmDashes(String(p).trim()))
+              .filter((p: string) => p.length > 0 && p.length <= 220)
+              .slice(0, 6)
+          : [],
+        channels: Array.isArray(a.channels) ? a.channels.map(String) : [],
+        personaQuote:
+          typeof a.personaQuote === "string"
+            ? cleanEmDashes(a.personaQuote.trim().slice(0, 240))
+            : undefined,
+        sectorPreview:
+          a.sectorPreview && typeof a.sectorPreview === "object"
+            ? {
+                keywordGroups: Array.isArray(a.sectorPreview.keywordGroups)
+                  ? a.sectorPreview.keywordGroups
+                      .filter(
+                        (g: unknown): g is { label?: unknown; samples?: unknown } =>
+                          !!g && typeof g === "object",
+                      )
+                      .map((g: { label?: unknown; samples?: unknown }) => ({
+                        label: String(g.label ?? "").trim(),
+                        samples: String(g.samples ?? "").trim(),
+                      }))
+                      .filter((g: { label: string; samples: string }) => g.label && g.samples)
+                  : [],
+                campaignTeasers: Array.isArray(a.sectorPreview.campaignTeasers)
+                  ? a.sectorPreview.campaignTeasers
+                      .filter(
+                        (t: unknown): t is { channel?: unknown; focus?: unknown } =>
+                          !!t && typeof t === "object",
+                      )
+                      .map((t: { channel?: unknown; focus?: unknown }) => ({
+                        channel: String(t.channel ?? "").trim(),
+                        focus: String(t.focus ?? "").trim(),
+                      }))
+                      .filter((t: { channel: string; focus: string }) => t.channel && t.focus)
+                  : [],
+              }
+            : undefined,
+      }),
+    );
+
+  return {
+    value: value.length > 0 ? value : buildFallbackAudiences(),
+    grounding,
+    sourceLabels,
+  };
 }
 
 // ─── Quick Wins (priority actions) generator ────────────────────────────────
