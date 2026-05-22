@@ -381,6 +381,12 @@ interface GoogleAdsForecast {
     avgCpa: { low: number; high: number };
   };
   disclaimer?: string;
+  intelligence?: {
+    confidence: "high" | "medium" | "low";
+    summary: string;
+    assumptions: string[];
+    optimisationLevers: string[];
+  };
 }
 
 export interface AudienceItem {
@@ -601,6 +607,8 @@ export interface GrandPlanData {
       negativeKeywords: string[];
       aiNegativesWithReason?: { keyword: string; reason: string }[];
       suggestedLocations?: string[];
+      /** Deterministic forecast metrics with AI interpretation for planners. */
+      forecast?: GoogleAdsForecast;
       adGroups: {
         name: string;
         keywords: AdGroupKeyword[];
@@ -1124,7 +1132,7 @@ export async function generateGrandPlan(
   if (isEnabled("metaCampaigns") && sources.keywordResearch) sectionNames.push("Meta Campaigns");
   if (isEnabled("contentCalendar")) sectionNames.push("Content Calendar");
   if (isEnabled("googleAdsCampaigns") && sources.keywordResearch && adGroups.length > 0)
-    sectionNames.push("Ad Copy");
+    sectionNames.push("Forecast Intelligence");
   if (isEnabled("googleAdsCampaigns") && sources.keywordResearch && adGroups.length > 0)
     sectionNames.push("Negative Keywords");
   if (isEnabled("emailMarketing")) sectionNames.push("Email Marketing");
@@ -1160,7 +1168,7 @@ export async function generateGrandPlan(
   if (onProgress) await onProgress(`Generating ${total} AI sections...`);
 
   // Batch 1: core sections (errors are isolated — one failure does not abort the rest)
-  const [executiveSummary, metaCampaigns, contentCalendar, , aiNegatives, aiContentClusters] =
+  const [executiveSummary, metaCampaigns, contentCalendar, aiNegatives, aiContentClusters] =
     await Promise.all([
       isEnabled("executiveSummary")
         ? runSection("Executive Summary", "executiveSummary", () =>
@@ -1177,9 +1185,6 @@ export async function generateGrandPlan(
             generateContentCalendar(anthropic, contextSummary, contentData, sources),
           )
         : Promise.resolve(undefined),
-      // Ad copy generation removed — Google Ads is now research-only (keywords +
-      // negatives + ad-group structure). The PPC team writes the actual copy.
-      Promise.resolve(undefined),
       isEnabled("googleAdsCampaigns") && sources.keywordResearch && adGroups.length > 0
         ? runSection("Negative Keywords", "googleAdsNegatives", () =>
             generateNegativeKeywords(anthropic, adGroups, contextSummary, sources),
@@ -1248,6 +1253,30 @@ export async function generateGrandPlan(
           generateGoogleAdsSeedSuggestions(anthropic, sources, adGroups),
         )
       : undefined;
+  const googleAdsForecastBase =
+    isEnabled("googleAdsCampaigns") && sources.keywordResearch
+      ? buildGoogleAdsForecast(adGroups, sources)
+      : undefined;
+  const googleAdsForecastIntelligence =
+    googleAdsForecastBase && adGroups.length > 0
+      ? await runSection("Forecast Intelligence", "googleAdsForecastIntelligence", () =>
+          generateGoogleAdsForecastIntelligence(
+            anthropic,
+            googleAdsForecastBase,
+            adGroups,
+            sources,
+            contextSummary,
+          ),
+        )
+      : undefined;
+  const googleAdsForecast = googleAdsForecastBase
+    ? {
+        ...googleAdsForecastBase,
+        intelligence:
+          googleAdsForecastIntelligence ??
+          buildFallbackGoogleAdsForecastIntelligence(googleAdsForecastBase),
+      }
+    : undefined;
   const googleAdsCampaigns =
     isEnabled("googleAdsCampaigns") && sources.keywordResearch
       ? buildGoogleAdsCampaigns(
@@ -1256,6 +1285,7 @@ export async function generateGrandPlan(
           aiNegatives,
           googleAdsTargeting,
           googleAdsSeedSuggestions,
+          googleAdsForecast,
         )
       : undefined;
 
@@ -1288,6 +1318,164 @@ export async function generateGrandPlan(
   recordGrounding("emailMarketing", emailMarketing);
   recordGrounding("linkedInAds", linkedInAds);
   recordGrounding("competitorIntel", competitorIntel);
+
+  const hasMeaningfulSectionValue = (value: unknown): boolean => {
+    if (value === null || value === undefined) return false;
+    if (typeof value === "string") return value.trim().length > 0;
+    if (Array.isArray(value)) return value.length > 0;
+    if (typeof value === "object") return Object.keys(value as Record<string, unknown>).length > 0;
+    return true;
+  };
+
+  const recordInferredGrounding = (
+    key: keyof GrandPlanData["sections"],
+    value: unknown,
+    inferredGrounding: DataGrounding,
+    sourceLabels: string[],
+  ) => {
+    if (grounding[key] || !hasMeaningfulSectionValue(value)) return;
+    const labels = Array.from(new Set(sourceLabels.map((label) => label.trim()).filter(Boolean)));
+    grounding[key] = {
+      grounding: inferredGrounding,
+      sourceLabels:
+        labels.length > 0 ? labels : inferredGrounding === "ai-only" ? ["AI synthesis"] : [],
+    };
+  };
+
+  const hasKeywordResearch = !!sources.keywordResearch;
+  const hasSavedContentStrategy = !!sources.contentStrategy;
+  const hasGa4 = !!sources.accountData?.ga4;
+  const hasSearchConsole = !!sources.accountData?.searchConsole;
+  const hasManualPageIntel = !!sources.accountData?.manualPageIntel?.length;
+  const hasSitemapPages = !!sources.accountData?.sitemapPages?.length;
+  const hasWeakPages = !!sources.accountData?.ga4?.weakPages?.length;
+  const hasCustomerVoiceSignals = !!sources.customerVoice?.painPoints?.length;
+  const hasAudienceSignals =
+    !!sources.targetAudiences?.trim() || !!sources.strategyBrain?.audiences?.length;
+  const hasStrategyChannels = !!sources.strategyBrain?.channelStrategy?.length;
+  const hasAiContentClusters = !!aiContentClusters?.pillars?.length;
+  const hasAnyBudget = Object.values(sources.channelBudgets ?? {}).some(
+    (value) => typeof value === "number" && value > 0,
+  );
+  const hasProposalInputs = !!sources.proposal;
+
+  recordInferredGrounding(
+    "executiveSummary",
+    executiveSummary,
+    (hasKeywordResearch || hasGa4 || hasSearchConsole) &&
+      (hasAudienceSignals || hasCustomerVoiceSignals)
+      ? "real"
+      : hasKeywordResearch ||
+          hasGa4 ||
+          hasSearchConsole ||
+          hasAudienceSignals ||
+          hasCustomerVoiceSignals
+        ? "partial"
+        : "ai-only",
+    [
+      hasKeywordResearch ? "Keyword Planner" : "",
+      hasGa4 ? "Google Analytics 4" : "",
+      hasSearchConsole ? "Search Console" : "",
+      hasCustomerVoiceSignals ? "Customer voice (web search)" : "",
+      hasAudienceSignals ? "Strategist audiences" : "",
+      hasStrategyChannels ? "Strategy brain" : "",
+    ],
+  );
+
+  recordInferredGrounding(
+    "googleAdsCampaigns",
+    googleAdsCampaigns,
+    hasKeywordResearch ? "real" : hasAudienceSignals ? "partial" : "ai-only",
+    [
+      hasKeywordResearch ? "Keyword Planner" : "",
+      googleAdsTargeting?.suggestedLocations?.length ? "AI location targeting" : "",
+      googleAdsForecast?.intelligence?.summary ? "AI forecast interpretation" : "",
+      aiNegatives?.campaignLevel?.length ? "AI negative keyword analysis" : "",
+      hasAudienceSignals ? "Strategist audiences" : "",
+    ],
+  );
+
+  recordInferredGrounding(
+    "metaCampaigns",
+    metaCampaigns,
+    hasKeywordResearch && hasAudienceSignals
+      ? "real"
+      : hasKeywordResearch || hasAudienceSignals || hasCustomerVoiceSignals
+        ? "partial"
+        : "ai-only",
+    [
+      hasKeywordResearch ? "Keyword Planner" : "",
+      hasAudienceSignals ? "Strategist audiences" : "",
+      hasCustomerVoiceSignals ? "Customer voice (web search)" : "",
+      hasStrategyChannels ? "Strategy brain" : "",
+    ],
+  );
+
+  recordInferredGrounding(
+    "contentStrategy",
+    contentStrategySection,
+    hasSavedContentStrategy
+      ? "real"
+      : hasSearchConsole || hasManualPageIntel || hasAudienceSignals || hasAiContentClusters
+        ? "partial"
+        : "ai-only",
+    [
+      hasSavedContentStrategy ? "Content strategy document" : "",
+      hasAiContentClusters ? "AI topic clustering" : "",
+      hasSearchConsole ? "Search Console" : "",
+      hasManualPageIntel ? "Page-level SEO audit" : "",
+      hasAudienceSignals ? "Strategist audiences" : "",
+    ],
+  );
+
+  recordInferredGrounding(
+    "seoFoundations",
+    seoFoundations,
+    hasSearchConsole || hasManualPageIntel || hasSitemapPages || hasWeakPages
+      ? "real"
+      : hasKeywordResearch || hasAudienceSignals
+        ? "partial"
+        : "ai-only",
+    [
+      hasSearchConsole ? "Search Console" : "",
+      hasManualPageIntel ? "Page-level SEO audit" : "",
+      hasSitemapPages ? "Sitemap crawl" : "",
+      hasWeakPages ? "GA4 weak-page data" : "",
+      hasKeywordResearch ? "Keyword Planner" : "",
+    ],
+  );
+
+  recordInferredGrounding(
+    "contentCalendar",
+    contentCalendar,
+    hasSavedContentStrategy && hasAudienceSignals
+      ? "real"
+      : hasSavedContentStrategy || hasAudienceSignals || hasAiContentClusters
+        ? "partial"
+        : "ai-only",
+    [
+      hasSavedContentStrategy ? "Content strategy document" : "",
+      hasAiContentClusters ? "AI topic clustering" : "",
+      hasAudienceSignals ? "Strategist audiences" : "",
+      hasStrategyChannels ? "Strategy brain" : "",
+    ],
+  );
+
+  recordInferredGrounding(
+    "servicesInvestment",
+    servicesInvestment,
+    hasProposalInputs || hasAnyBudget
+      ? "real"
+      : hasAudienceSignals || hasStrategyChannels
+        ? "partial"
+        : "ai-only",
+    [
+      hasProposalInputs ? "Proposal services and timeline" : "",
+      hasAnyBudget ? "Channel budget inputs" : "",
+      hasStrategyChannels ? "Strategy brain channel roles" : "",
+      hasAudienceSignals ? "Strategist audiences" : "",
+    ],
+  );
 
   // Aggregate the data sources actually consulted across the plan, for the
   // "Data Sources Used" panel rendered near the top of the report.
@@ -3069,6 +3257,7 @@ function buildGoogleAdsCampaigns(
     adGroupAudiences: { name: string; audience: string }[];
   },
   seedSuggestions?: { theme: string; phrases: string[] }[],
+  googleAdsForecast?: GoogleAdsForecast,
 ) {
   const adGroupNegMap = new Map((aiNegatives?.byAdGroup ?? []).map((g) => [g.name, g.negatives]));
   const audienceMap = new Map((targeting?.adGroupAudiences ?? []).map((a) => [a.name, a.audience]));
@@ -3100,6 +3289,7 @@ function buildGoogleAdsCampaigns(
           ? `£${sources.keywordResearch.monthlyBudget}/month`
           : "Custom",
     },
+    forecast: googleAdsForecast,
     suggestedLocations,
     negativeKeywords: allNegatives,
     aiNegativesWithReason,
@@ -4760,6 +4950,151 @@ function buildGoogleAdsForecast(adGroups: AdGroup[], sources: GrandPlanSources):
     range,
     disclaimer,
   };
+}
+
+function normaliseForecastConfidence(value: unknown): "high" | "medium" | "low" {
+  const raw = String(value ?? "")
+    .trim()
+    .toLowerCase();
+  if (raw === "high" || raw === "medium" || raw === "low") return raw;
+  return "medium";
+}
+
+function buildFallbackGoogleAdsForecastIntelligence(
+  forecast: GoogleAdsForecast,
+): NonNullable<GoogleAdsForecast["intelligence"]> {
+  const confidence: "high" | "medium" | "low" =
+    forecast.clicks >= 350 && forecast.conversions >= 12
+      ? "high"
+      : forecast.clicks >= 120 && forecast.conversions >= 4
+        ? "medium"
+        : "low";
+
+  const summary =
+    forecast.conversions > 0
+      ? `At the current assumptions, this budget is modelled to deliver about ${forecast.conversions.toLocaleString()} conversions monthly at roughly £${Math.round(forecast.avgCpa).toLocaleString()} CPA.`
+      : `The current keyword and budget mix models limited conversion volume, so we should treat this as a directional baseline before scaling spend.`;
+
+  const assumptions = [
+    `Conversion rate baseline is ${forecast.conversionRate}%${forecast.conversionRateOverridden ? " (manual override)" : " (industry default)"}.`,
+    "Forecast assumes landing-page quality and ad relevance remain stable through the month.",
+    "Search demand and CPCs can shift with seasonality and competitor bidding pressure.",
+  ];
+
+  const optimisationLevers = [
+    "Improve landing-page intent match to lift conversion rate before increasing budget.",
+    "Tighten query intent and negatives weekly to reduce wasted spend.",
+    "Reallocate spend towards ad groups with the strongest modelled CPA after two learning cycles.",
+  ];
+
+  return { confidence, summary, assumptions, optimisationLevers };
+}
+
+async function generateGoogleAdsForecastIntelligence(
+  anthropic: Anthropic,
+  forecast: GoogleAdsForecast,
+  adGroups: AdGroup[],
+  sources: GrandPlanSources,
+  contextSummary: string,
+): Promise<GoogleAdsForecast["intelligence"] | undefined> {
+  const topGroups = adGroups
+    .slice(0, 8)
+    .map((group) => {
+      const topKeywords = group.keywords
+        .slice(0, 4)
+        .map((keyword) => keyword.keyword)
+        .filter(Boolean)
+        .join(", ");
+      return `- ${group.name}: ${topKeywords || "(no keyword sample)"}`;
+    })
+    .join("\n");
+
+  const prompt = `You are a senior PPC strategist at i3media.
+
+Interpret this Google Ads forecast and return ONLY valid JSON (no markdown fences) with this schema:
+{
+  "confidence": "high" | "medium" | "low",
+  "summary": string,
+  "assumptions": string[],
+  "optimisationLevers": string[]
+}
+
+Rules:
+- summary: 1-2 sentences, under 55 words, plain British English, no hype.
+- assumptions: exactly 3 bullet-style strings describing the biggest planning assumptions.
+- optimisationLevers: exactly 3 specific optimisation actions for this account.
+- Do not invent integrations or data sources not present here.
+- No em dashes. No semicolons. No markdown.
+
+Client: ${sources.clientName}
+Sector: ${sources.sector ?? "general"}
+Monthly budget: £${forecast.monthlyBudget.toLocaleString()}
+Forecast metrics:
+- Clicks: ${forecast.clicks.toLocaleString()}
+- Impressions: ${forecast.impressions.toLocaleString()}
+- Conversions: ${forecast.conversions.toLocaleString()}
+- Cost: £${Math.round(forecast.cost).toLocaleString()}
+- Avg CPC: £${forecast.avgCpc.toFixed(2)}
+- Avg CPA: £${forecast.avgCpa.toFixed(2)}
+- CTR: ${forecast.ctr.toFixed(2)}%
+- Conversion rate assumption: ${forecast.conversionRate}%${forecast.conversionRateOverridden ? " (manual override)" : " (industry default)"}
+
+Top ad groups:
+${topGroups || "(none)"}
+
+Context:
+${contextSummary.slice(0, 1800)}`;
+
+  try {
+    const res = await withAnthropicRetry("googleAdsForecastIntelligence", () =>
+      anthropic.messages.create({
+        model: MODEL_LIGHT_FN(),
+        max_tokens: 900,
+        messages: [{ role: "user", content: prompt }],
+      }),
+    );
+    const parsed = safeJsonParse<{
+      confidence?: unknown;
+      summary?: unknown;
+      assumptions?: unknown;
+      optimisationLevers?: unknown;
+    }>(extractText(res), {});
+
+    const summary = cleanEmDashes(String(parsed.summary ?? "").trim());
+    const assumptions = Array.isArray(parsed.assumptions)
+      ? parsed.assumptions
+          .map((item) => cleanEmDashes(String(item).trim()))
+          .filter(Boolean)
+          .slice(0, 3)
+      : [];
+    const optimisationLevers = Array.isArray(parsed.optimisationLevers)
+      ? parsed.optimisationLevers
+          .map((item) => cleanEmDashes(String(item).trim()))
+          .filter(Boolean)
+          .slice(0, 3)
+      : [];
+
+    if (!summary) return undefined;
+
+    return {
+      confidence: normaliseForecastConfidence(parsed.confidence),
+      summary,
+      assumptions:
+        assumptions.length > 0
+          ? assumptions
+          : buildFallbackGoogleAdsForecastIntelligence(forecast).assumptions,
+      optimisationLevers:
+        optimisationLevers.length > 0
+          ? optimisationLevers
+          : buildFallbackGoogleAdsForecastIntelligence(forecast).optimisationLevers,
+    };
+  } catch (error) {
+    console.warn(
+      "[grand-plan] googleAdsForecastIntelligence failed:",
+      error instanceof Error ? error.message : error,
+    );
+    return undefined;
+  }
 }
 
 // ─── Utils ──────────────────────────────────────────────────────────────────

@@ -44,17 +44,26 @@ function escapeAttr(s: string | null | undefined): string {
 }
 
 /** Inject a grounding badge into the first <h2> tag of a rendered section. */
-function withGroundingBadge(html: string, g?: { grounding: string; sourceLabels: string[] }): string {
+function withGroundingBadge(
+  html: string,
+  g?: { grounding: string; sourceLabels: string[] },
+): string {
   if (!g) return html;
   const badge = renderGroundingBadge(g);
   if (!badge) return html;
   // Insert just before the closing </h2> of the first heading.
-  return html.replace(/(<h2\b[^>]*>[\s\S]*?)(<\/h2>)/, (_m, open, close) => `${open} ${badge}${close}`);
+  return html.replace(
+    /(<h2\b[^>]*>[\s\S]*?)(<\/h2>)/,
+    (_m, open, close) => `${open} ${badge}${close}`,
+  );
 }
 
 function renderDataSourcesPanel(sources: { label: string; detail?: string }[]): string {
   const items = sources
-    .map((s) => `<li><strong>${escapeAttr(s.label)}</strong>${s.detail ? `<span class="ds-detail">— ${escapeAttr(s.detail)}</span>` : ""}</li>`) 
+    .map(
+      (s) =>
+        `<li><strong>${escapeAttr(s.label)}</strong>${s.detail ? `<span class="ds-detail">— ${escapeAttr(s.detail)}</span>` : ""}</li>`,
+    )
     .join("");
   return `<div class="data-sources-panel"><h3>Data sources used in this plan</h3><ul class="data-sources-list">${items}</ul></div>`;
 }
@@ -71,14 +80,24 @@ function heroSubtext(raw: string): string {
   const noHeadings = nofence.replace(/<h[1-6][^>]*>[\s\S]*?<\/h[1-6]>/gi, " ");
   // Drop callout paragraphs (Why this matters / Outcome / Risk) so the hero
   // gets the narrative open paragraph rather than a bracketed risk note.
-  const noCallouts = noHeadings.replace(/<p[^>]*>\s*<strong>\s*(Why\s+(?:this\s+|it\s+)?matters|Outcome|Risk|Opportunity|Headline)\s*:?\s*<\/strong>[\s\S]*?<\/p>/gi, " ");
+  const noCallouts = noHeadings.replace(
+    /<p[^>]*>\s*<strong>\s*(Why\s+(?:this\s+|it\s+)?matters|Outcome|Risk|Opportunity|Headline)\s*:?\s*<\/strong>[\s\S]*?<\/p>/gi,
+    " ",
+  );
   // Strip all remaining HTML tags
-  const text = noCallouts.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+  const text = noCallouts
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
   if (!text) return "";
   if (text.length <= 340) return text;
   // Prefer the last full sentence inside the budget over a mid-word slice.
   const window = text.slice(0, 340);
-  const lastStop = Math.max(window.lastIndexOf(". "), window.lastIndexOf("! "), window.lastIndexOf("? "));
+  const lastStop = Math.max(
+    window.lastIndexOf(". "),
+    window.lastIndexOf("! "),
+    window.lastIndexOf("? "),
+  );
   if (lastStop > 200) return window.slice(0, lastStop + 1);
   const lastSpace = window.lastIndexOf(" ");
   return (lastSpace > 0 ? window.slice(0, lastSpace) : window) + "…";
@@ -93,12 +112,16 @@ function heroSubtext(raw: string): string {
 
 let gpEditMode = true;
 
-function ed(value: string | undefined | null, path: string, opts: {
-  tag?: string;
-  cls?: string;
-  placeholder?: string;
-  multiline?: boolean;
-} = {}): string {
+function ed(
+  value: string | undefined | null,
+  path: string,
+  opts: {
+    tag?: string;
+    cls?: string;
+    placeholder?: string;
+    multiline?: boolean;
+  } = {},
+): string {
   const tag = opts.tag ?? "span";
   const cls = opts.cls ? ` ${opts.cls}` : "";
   const text = value == null ? "" : String(value);
@@ -110,7 +133,11 @@ function ed(value: string | undefined | null, path: string, opts: {
   return `<${tag} class="gp-edit${cls}" contenteditable="true" spellcheck="false" data-edit-path="${escapeAttr(path)}"${ph}${ml}>${esc(text)}</${tag}>`;
 }
 
-function delBtn(path: string, label: string, opts: { dark?: boolean; inline?: boolean } = {}): string {
+function delBtn(
+  path: string,
+  label: string,
+  opts: { dark?: boolean; inline?: boolean } = {},
+): string {
   if (!gpEditMode) return "";
   const cls = ["gp-del-btn"];
   if (opts.dark) cls.push("gp-del-btn-dark");
@@ -144,6 +171,8 @@ export function renderGrandPlanHtml(plan: GrandPlanData, isPublicView = false): 
   if (hasPaidSearch) {
     addChapter("Paid Search");
     if (s.googleAdsCampaigns) navItems.push({ id: "google-ads", label: "Google Ads" });
+    if (s.googleAdsCampaigns?.forecast)
+      navItems.push({ id: "google-ads-forecast", label: "Forecast" });
   }
   if (hasPaidSocial) {
     addChapter("Paid Social");
@@ -154,11 +183,13 @@ export function renderGrandPlanHtml(plan: GrandPlanData, isPublicView = false): 
     addChapter("Content & SEO");
     if (s.contentStrategy) navItems.push({ id: "content-strategy", label: "Content Strategy" });
     if (s.seoFoundations) navItems.push({ id: "seo-foundations", label: "SEO Foundations" });
-    if (s.contentCalendar?.length) navItems.push({ id: "content-calendar", label: "Content Calendar" });
+    if (s.contentCalendar?.length)
+      navItems.push({ id: "content-calendar", label: "Content Calendar" });
   }
   if (hasResearch) {
     addChapter("Research");
-    if (s.competitorIntel?.length) navItems.push({ id: "competitor-intel", label: "Competitor Intel" });
+    if (s.competitorIntel?.length)
+      navItems.push({ id: "competitor-intel", label: "Competitor Intel" });
   }
   if (hasCommercial) {
     addChapter("Commercial");
@@ -172,26 +203,42 @@ export function renderGrandPlanHtml(plan: GrandPlanData, isPublicView = false): 
   type StatItem = { num: string; label: string };
   type StatGroup = { label: string; items: StatItem[] };
 
-  const fmt = (n: number) => n > 1000 ? `${Math.round(n / 100) / 10}k` : String(n);
+  const fmt = (n: number) => (n > 1000 ? `${Math.round(n / 100) / 10}k` : String(n));
 
   const strategyStats: StatItem[] = [];
-  const sectionCount = navItems.filter(n => !n.isChapter).length;
+  const sectionCount = navItems.filter((n) => !n.isChapter).length;
   if (sectionCount) strategyStats.push({ num: String(sectionCount), label: "Sections" });
-  if (s.audiences?.length) strategyStats.push({ num: String(s.audiences.length), label: "Audiences" });
-  if (s.quickWins?.length) strategyStats.push({ num: String(s.quickWins.length), label: "Quick Wins" });
-  if (plan.campaignPeriods?.length) strategyStats.push({ num: String(plan.campaignPeriods.length), label: "Focus Periods" });
+  if (s.audiences?.length)
+    strategyStats.push({ num: String(s.audiences.length), label: "Audiences" });
+  if (s.quickWins?.length)
+    strategyStats.push({ num: String(s.quickWins.length), label: "Quick Wins" });
+  if (plan.campaignPeriods?.length)
+    strategyStats.push({ num: String(plan.campaignPeriods.length), label: "Focus Periods" });
 
   const paidStats: StatItem[] = [];
   if (s.googleAdsCampaigns?.adGroups?.length) {
-    paidStats.push({ num: String(s.googleAdsCampaigns.adGroups.length), label: "Google Ad Groups" });
-    const totalKws = s.googleAdsCampaigns.adGroups.reduce((sum: number, g: { keywords: unknown[] }) => sum + (g.keywords?.length ?? 0), 0);
-    if (totalKws) paidStats.push({ num: totalKws > 100 ? `${Math.round(totalKws / 10) * 10}+` : String(totalKws), label: "Target Keywords" });
+    paidStats.push({
+      num: String(s.googleAdsCampaigns.adGroups.length),
+      label: "Google Ad Groups",
+    });
+    const totalKws = s.googleAdsCampaigns.adGroups.reduce(
+      (sum: number, g: { keywords: unknown[] }) => sum + (g.keywords?.length ?? 0),
+      0,
+    );
+    if (totalKws)
+      paidStats.push({
+        num: totalKws > 100 ? `${Math.round(totalKws / 10) * 10}+` : String(totalKws),
+        label: "Target Keywords",
+      });
   }
-  const negCount = (s.googleAdsCampaigns?.negativeKeywords?.length ?? 0)
-    + (s.googleAdsCampaigns?.aiNegativesWithReason?.length ?? 0);
+  const negCount =
+    (s.googleAdsCampaigns?.negativeKeywords?.length ?? 0) +
+    (s.googleAdsCampaigns?.aiNegativesWithReason?.length ?? 0);
   if (negCount) paidStats.push({ num: String(negCount), label: "Negative Keywords" });
-  if (s.metaCampaigns?.length) paidStats.push({ num: String(s.metaCampaigns.length), label: "Meta Campaigns" });
-  if (s.linkedInAds?.length) paidStats.push({ num: String(s.linkedInAds.length), label: "LinkedIn Campaigns" });
+  if (s.metaCampaigns?.length)
+    paidStats.push({ num: String(s.metaCampaigns.length), label: "Meta Campaigns" });
+  if (s.linkedInAds?.length)
+    paidStats.push({ num: String(s.linkedInAds.length), label: "LinkedIn Campaigns" });
 
   const contentStats: StatItem[] = [];
   if (s.contentStrategy) {
@@ -202,17 +249,24 @@ export function renderGrandPlanHtml(plan: GrandPlanData, isPublicView = false): 
     if (landing) contentStats.push({ num: String(landing), label: "Landing Pages" });
     if (blogs) contentStats.push({ num: String(blogs), label: "Blog Posts" });
   }
-  if (s.contentCalendar?.length) contentStats.push({ num: String(s.contentCalendar.length), label: "Calendar Months" });
+  if (s.contentCalendar?.length)
+    contentStats.push({ num: String(s.contentCalendar.length), label: "Calendar Months" });
 
   const organicStats: StatItem[] = [];
-  if (s.emailMarketing?.flows?.length) organicStats.push({ num: String(s.emailMarketing.flows.length), label: "Email Flows" });
+  if (s.emailMarketing?.flows?.length)
+    organicStats.push({ num: String(s.emailMarketing.flows.length), label: "Email Flows" });
   if (s.emailMarketing?.segmentation?.segments?.length) {
-    organicStats.push({ num: String(s.emailMarketing.segmentation.segments.length), label: "Email Segments" });
+    organicStats.push({
+      num: String(s.emailMarketing.segmentation.segments.length),
+      label: "Email Segments",
+    });
   }
-  if (s.emailMarketing?.campaigns?.length) organicStats.push({ num: String(s.emailMarketing.campaigns.length), label: "Email Campaigns" });
+  if (s.emailMarketing?.campaigns?.length)
+    organicStats.push({ num: String(s.emailMarketing.campaigns.length), label: "Email Campaigns" });
 
   const measurementStats: StatItem[] = [];
-  if (s.competitorIntel?.length) measurementStats.push({ num: String(s.competitorIntel.length), label: "Competitors Analysed" });
+  if (s.competitorIntel?.length)
+    measurementStats.push({ num: String(s.competitorIntel.length), label: "Competitors Analysed" });
   void fmt; // reserved for future formatting use
 
   const statGroups: StatGroup[] = [
@@ -221,7 +275,7 @@ export function renderGrandPlanHtml(plan: GrandPlanData, isPublicView = false): 
     { label: "Content & SEO", items: contentStats },
     { label: "Organic & Lifecycle", items: organicStats },
     { label: "Performance", items: measurementStats },
-  ].filter(g => g.items.length > 0);
+  ].filter((g) => g.items.length > 0);
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -248,10 +302,13 @@ export function renderGrandPlanHtml(plan: GrandPlanData, isPublicView = false): 
   </div>
   <div class="snav-dropdown">
     <div class="snav-dropdown-inner" id="snav-links">
-      ${navItems.map((n) => n.isChapter
-        ? `<span class="snav-chapter-label">${esc(n.label)}</span>`
-        : `<a href="#${n.id}" class="snav-link" data-section="${n.id}">${esc(n.label)}</a>`
-      ).join("\n      ")}
+      ${navItems
+        .map((n) =>
+          n.isChapter
+            ? `<span class="snav-chapter-label">${esc(n.label)}</span>`
+            : `<a href="#${n.id}" class="snav-link" data-section="${n.id}">${esc(n.label)}</a>`,
+        )
+        .join("\n      ")}
     </div>
   </div>
 </nav>
@@ -259,10 +316,13 @@ export function renderGrandPlanHtml(plan: GrandPlanData, isPublicView = false): 
 <!-- Desktop sidebar TOC (Lux plan.html sidebar pattern) -->
 <aside id="gp-toc" class="gp-toc" aria-label="Plan contents">
   <div class="gp-toc-title">Contents</div>
-  ${navItems.map((n) => n.isChapter
-    ? `<span class="snav-chapter-label">${esc(n.label)}</span>`
-    : `<a href="#${n.id}" class="snav-link" data-section="${n.id}">${esc(n.label)}</a>`
-  ).join("\n  ")}
+  ${navItems
+    .map((n) =>
+      n.isChapter
+        ? `<span class="snav-chapter-label">${esc(n.label)}</span>`
+        : `<a href="#${n.id}" class="snav-link" data-section="${n.id}">${esc(n.label)}</a>`,
+    )
+    .join("\n  ")}
 </aside>
 
 <!-- Hero -->
@@ -280,7 +340,10 @@ export function renderGrandPlanHtml(plan: GrandPlanData, isPublicView = false): 
       <div class="hero-meta-item"><strong>Client</strong><span>${esc(plan.clientName)}</span></div>
       <div class="hero-meta-item"><strong>Agency</strong><span>i3media</span></div>
       <div class="hero-meta-item"><strong>Date</strong><span>${new Date(plan.generatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</span></div>
-      <div class="hero-meta-item"><strong>Scope</strong><span>${navItems.filter(n => n.isChapter).map(n => n.label).join(", ")}</span></div>
+      <div class="hero-meta-item"><strong>Scope</strong><span>${navItems
+        .filter((n) => n.isChapter)
+        .map((n) => n.label)
+        .join(", ")}</span></div>
     </div>
   </div>
 </section>
@@ -288,11 +351,15 @@ export function renderGrandPlanHtml(plan: GrandPlanData, isPublicView = false): 
 <!-- Stats Band -->
 <div class="stats-band">
   <div class="stats-inner">
-    ${statGroups.map(g => `
+    ${statGroups
+      .map(
+        (g) => `
     <div class="stats-row" data-group="${esc(g.label)}">
       <div class="stats-row-label">${esc(g.label)}</div>
-      ${g.items.map(st => `<div class="stat-item"><span class="stat-num">${st.num}</span><span class="stat-label">${esc(st.label)}</span></div>`).join("")}
-    </div>`).join("")}
+      ${g.items.map((st) => `<div class="stat-item"><span class="stat-num">${st.num}</span><span class="stat-label">${esc(st.label)}</span></div>`).join("")}
+    </div>`,
+      )
+      .join("")}
   </div>
 </div>
 
@@ -306,12 +373,16 @@ ${buildChapteredSections(s, plan.clientName, plan.brief, plan.campaignPeriods, p
 ${renderCtaClose(plan.clientName)}
 
 <!-- Inline editor floating toolbar (Undo) \u2014 internal only -->
-${isPublicView ? "" : `<div id="gp-edit-toolbar" class="gp-edit-toolbar" aria-label="Editor toolbar">
+${
+  isPublicView
+    ? ""
+    : `<div id="gp-edit-toolbar" class="gp-edit-toolbar" aria-label="Editor toolbar">
   <button id="gp-undo-btn" class="gp-undo-btn" type="button" title="Undo last edit (\u2318Z)">
     <span class="gp-undo-icon" aria-hidden="true">\u21b6</span>
     <span class="gp-undo-label">Undo</span>
   </button>
-</div>`}
+</div>`
+}
 
 <!-- Watermark -->
 <div class="watermark">Confidential</div>
@@ -353,7 +424,19 @@ ${isPublicView ? "" : `<div id="gp-edit-toolbar" class="gp-edit-toolbar" aria-la
 // ─── Chapter layout builder ─────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function buildChapteredSections(s: any, clientName: string, brief?: string, campaignPeriods?: { label: string; startMonth: number; endMonth: number; description?: string }[], generationReport?: Record<string, { status: string; error?: string }>, grounding?: GrandPlanData["grounding"], dataSources?: GrandPlanData["dataSources"], clientWebsite?: string, sectionIntros?: GrandPlanData["sectionIntros"], audienceRationales?: GrandPlanData["audienceRationales"], isPublicView = false): string {
+function buildChapteredSections(
+  s: any,
+  clientName: string,
+  brief?: string,
+  campaignPeriods?: { label: string; startMonth: number; endMonth: number; description?: string }[],
+  generationReport?: Record<string, { status: string; error?: string }>,
+  grounding?: GrandPlanData["grounding"],
+  dataSources?: GrandPlanData["dataSources"],
+  clientWebsite?: string,
+  sectionIntros?: GrandPlanData["sectionIntros"],
+  audienceRationales?: GrandPlanData["audienceRationales"],
+  isPublicView = false,
+): string {
   let chapterNum = 0;
   const ch = (title: string, sub: string) => {
     chapterNum++;
@@ -380,32 +463,83 @@ function buildChapteredSections(s: any, clientName: string, brief?: string, camp
   void dataSources;
 
   if (hasPaidSearch) {
-    parts.push(ch("Paid Search", "Google Ads campaign structure, ad groups, and keyword targeting."));
-    if (s.googleAdsCampaigns) parts.push(renderGoogleAdsCampaigns(s.googleAdsCampaigns, clientWebsite, sectionIntros?.googleAdsCampaigns, isPublicView));
+    parts.push(
+      ch("Paid Search", "Google Ads campaign structure, ad groups, and keyword targeting."),
+    );
+    if (s.googleAdsCampaigns)
+      parts.push(
+        wb(
+          renderGoogleAdsCampaigns(
+            s.googleAdsCampaigns,
+            clientWebsite,
+            sectionIntros?.googleAdsCampaigns,
+            isPublicView,
+          ),
+          grounding?.googleAdsCampaigns,
+        ),
+      );
+    if (s.googleAdsCampaigns?.forecast)
+      parts.push(
+        wb(renderGoogleAdsForecast(s.googleAdsCampaigns.forecast), grounding?.googleAdsCampaigns),
+      );
   }
 
   if (hasPaidSocial) {
-    parts.push(ch("Paid Social", "Facebook, Instagram, and LinkedIn campaign structures with audience targeting and ad creative."));
-    if (s.metaCampaigns?.length) parts.push(renderMetaCampaigns(s.metaCampaigns, clientWebsite, sectionIntros?.metaCampaigns));
-    if (s.linkedInAds?.length) parts.push(wb(renderLinkedInAds(s.linkedInAds), grounding?.linkedInAds));
+    parts.push(
+      ch(
+        "Paid Social",
+        "Facebook, Instagram, and LinkedIn campaign structures with audience targeting and ad creative.",
+      ),
+    );
+    if (s.metaCampaigns?.length)
+      parts.push(
+        wb(
+          renderMetaCampaigns(s.metaCampaigns, clientWebsite, sectionIntros?.metaCampaigns),
+          grounding?.metaCampaigns,
+        ),
+      );
+    if (s.linkedInAds?.length)
+      parts.push(wb(renderLinkedInAds(s.linkedInAds), grounding?.linkedInAds));
   }
 
   if (hasContent) {
-    parts.push(ch("Content & SEO", "Content strategy, publishing calendar, and example content assets."));
-    if (s.contentStrategy) parts.push(renderContentStrategy(s.contentStrategy, sectionIntros?.contentStrategy, audienceRationales));
-    if (s.seoFoundations) parts.push(renderSeoFoundations(s.seoFoundations));
-    if (s.contentCalendar?.length) parts.push(renderContentCalendar(s.contentCalendar));
+    parts.push(
+      ch("Content & SEO", "Content strategy, publishing calendar, and example content assets."),
+    );
+    if (s.contentStrategy)
+      parts.push(
+        wb(
+          renderContentStrategy(
+            s.contentStrategy,
+            sectionIntros?.contentStrategy,
+            audienceRationales,
+          ),
+          grounding?.contentStrategy,
+        ),
+      );
+    if (s.seoFoundations)
+      parts.push(wb(renderSeoFoundations(s.seoFoundations), grounding?.seoFoundations));
+    if (s.contentCalendar?.length)
+      parts.push(wb(renderContentCalendar(s.contentCalendar), grounding?.contentCalendar));
   }
 
   if (hasResearch) {
     parts.push(ch("Research", "Competitor intelligence across all target areas."));
-    if (s.competitorIntel?.length) parts.push(wb(renderCompetitorIntel(s.competitorIntel, grounding?.competitorIntel?.grounding), grounding?.competitorIntel));
+    if (s.competitorIntel?.length)
+      parts.push(
+        wb(
+          renderCompetitorIntel(s.competitorIntel, grounding?.competitorIntel?.grounding),
+          grounding?.competitorIntel,
+        ),
+      );
   }
 
   if (hasCommercial) {
     parts.push(ch("Commercial", "Services, investment overview, and email lifecycle."));
-    if (s.servicesInvestment) parts.push(renderServicesInvestment(s.servicesInvestment));
-    if (s.emailMarketing) parts.push(wb(renderEmailMarketing(s.emailMarketing), grounding?.emailMarketing));
+    if (s.servicesInvestment)
+      parts.push(wb(renderServicesInvestment(s.servicesInvestment), grounding?.servicesInvestment));
+    if (s.emailMarketing)
+      parts.push(wb(renderEmailMarketing(s.emailMarketing), grounding?.emailMarketing));
   }
 
   return parts.join("\n");
@@ -448,72 +582,121 @@ function renderCtaClose(clientName: string): string {
 </section>`;
 }
 
-
-
 // ─── Section renderers ──────────────────────────────────────────────────────
 
 function renderContext(
   brief: string | undefined,
   audiences: AudienceItem[] | undefined,
-  periods: { label: string; startMonth: number; endMonth: number; description?: string }[] | undefined
+  periods:
+    | { label: string; startMonth: number; endMonth: number; description?: string }[]
+    | undefined,
 ): string {
-  const MONTH_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const MONTH_SHORT = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
 
-  const briefBlock = brief ? `
+  const briefBlock = brief
+    ? `
     <div class="ctx-brief">
       <div class="ctx-block-label">The Brief</div>
       <p class="ctx-brief-text">${esc(brief)}</p>
-    </div>` : "";
+    </div>`
+    : "";
 
-  const audiencesBlock = audiences?.length ? `
+  const audiencesBlock = audiences?.length
+    ? `
     <div class="ctx-block-label" style="margin-top:3rem">Target Audiences</div>
     <div class="ctx-audience-grid">
-      ${audiences.map((a, i) => `
+      ${audiences
+        .map(
+          (a, i) => `
       <div class="ctx-audience-card">
         <div class="ctx-audience-num">${String(i + 1).padStart(2, "0")}</div>
         <h4 class="ctx-audience-name">${esc(a.name)}</h4>
         <p class="ctx-audience-desc">${esc(a.description)}</p>
-        ${a.personaQuote ? `
+        ${
+          a.personaQuote
+            ? `
         <blockquote class="persona-quote">
           <span class="persona-quote-mark">&ldquo;</span>
           <p>${esc(a.personaQuote)}</p>
-        </blockquote>` : ""}
-        ${a.painPoints?.length ? `
+        </blockquote>`
+            : ""
+        }
+        ${
+          a.painPoints?.length
+            ? `
         <div class="ctx-pain-label">Pain Points</div>
         <ul class="ctx-pain-list">
-          ${a.painPoints.map(p => `<li>${esc(p)}</li>`).join("")}
-        </ul>` : ""}
-        ${a.channels?.length ? `
+          ${a.painPoints.map((p) => `<li>${esc(p)}</li>`).join("")}
+        </ul>`
+            : ""
+        }
+        ${
+          a.channels?.length
+            ? `
         <div class="ctx-channels">
-          ${a.channels.map(c => `<span class="ctx-channel-chip">${esc(c)}</span>`).join("")}
-        </div>` : ""}
-        ${a.sectorPreview && (a.sectorPreview.keywordGroups.length || a.sectorPreview.campaignTeasers.length) ? `
+          ${a.channels.map((c) => `<span class="ctx-channel-chip">${esc(c)}</span>`).join("")}
+        </div>`
+            : ""
+        }
+        ${
+          a.sectorPreview &&
+          (a.sectorPreview.keywordGroups.length || a.sectorPreview.campaignTeasers.length)
+            ? `
         <details class="sector-preview">
           <summary><i class="sp-toggle">+</i> Keyword &amp; campaign preview</summary>
           <div class="sp-body">
-            ${a.sectorPreview.keywordGroups.length ? `
+            ${
+              a.sectorPreview.keywordGroups.length
+                ? `
             <div class="sp-section">
               <div class="sp-col-label">Keyword Groups &amp; Sample Keywords</div>
               <ul class="sp-kw-list">
-                ${a.sectorPreview.keywordGroups.map(g => `<li><strong>${esc(g.label)}</strong> <span>${esc(g.samples)}</span></li>`).join("")}
+                ${a.sectorPreview.keywordGroups.map((g) => `<li><strong>${esc(g.label)}</strong> <span>${esc(g.samples)}</span></li>`).join("")}
               </ul>
-            </div>` : ""}
-            ${a.sectorPreview.campaignTeasers.length ? `
+            </div>`
+                : ""
+            }
+            ${
+              a.sectorPreview.campaignTeasers.length
+                ? `
             <div class="sp-section">
               <div class="sp-col-label">Campaign / Ad Group Teaser</div>
               <ul class="sp-kw-list">
-                ${a.sectorPreview.campaignTeasers.map(t => `<li><strong>${esc(t.channel)}:</strong> <span>${esc(t.focus)}</span></li>`).join("")}
+                ${a.sectorPreview.campaignTeasers.map((t) => `<li><strong>${esc(t.channel)}:</strong> <span>${esc(t.focus)}</span></li>`).join("")}
               </ul>
-            </div>` : ""}
+            </div>`
+                : ""
+            }
           </div>
-        </details>` : ""}
-      </div>`).join("\n")}
-    </div>` : "";
+        </details>`
+            : ""
+        }
+      </div>`,
+        )
+        .join("\n")}
+    </div>`
+    : "";
 
-  const periodsBlock = periods?.length ? `
+  const periodsBlock = periods?.length
+    ? `
     <div class="ctx-block-label" style="margin-top:3rem">Campaign Focus Periods</div>
     <div class="ctx-periods-list">
-      ${periods.map((p, i) => `
+      ${periods
+        .map(
+          (p, i) => `
       <div class="ctx-period-item">
         <div class="ctx-period-num">${String(i + 1).padStart(2, "0")}</div>
         <div class="ctx-period-content">
@@ -521,8 +704,11 @@ function renderContext(
           <div class="ctx-period-label">${esc(p.label)}</div>
           ${p.description ? `<div class="ctx-period-desc">${esc(p.description)}</div>` : ""}
         </div>
-      </div>`).join("\n")}
-    </div>` : "";
+      </div>`,
+        )
+        .join("\n")}
+    </div>`
+    : "";
 
   return `
     <section id="context" class="section dark">
@@ -591,11 +777,14 @@ function enhanceStrategyPlan(html: string): string {
 
 function detectPhaseBadge(heading: string, fallback: number): { label: string; cls: string } {
   const t = heading.toLowerCase();
-  if (/quick win|month\s*0|week\s*[0-4]\b|first 30/i.test(t)) return { label: "Quick Wins", cls: "phase-quick" };
-  if (/foundation|month\s*1\b|month\s*1[-–]2|first month/i.test(t)) return { label: "Foundations", cls: "phase-foundation" };
+  if (/quick win|month\s*0|week\s*[0-4]\b|first 30/i.test(t))
+    return { label: "Quick Wins", cls: "phase-quick" };
+  if (/foundation|month\s*1\b|month\s*1[-–]2|first month/i.test(t))
+    return { label: "Foundations", cls: "phase-foundation" };
   if (/phase\s*1\b/i.test(t)) return { label: "Phase 1", cls: "phase-foundation" };
   if (/phase\s*2\b|month\s*[3-6]/i.test(t)) return { label: "Phase 2", cls: "phase-build" };
-  if (/phase\s*3\b|month\s*[7-9]|long[-\s]?term|scale/i.test(t)) return { label: "Phase 3", cls: "phase-scale" };
+  if (/phase\s*3\b|month\s*[7-9]|long[-\s]?term|scale/i.test(t))
+    return { label: "Phase 3", cls: "phase-scale" };
   if (/optimis|test|iterate/i.test(t)) return { label: "Optimise", cls: "phase-build" };
   return { label: `Phase ${fallback}`, cls: "phase-build" };
 }
@@ -610,7 +799,11 @@ function enhanceExecutiveSummary(html: string): string {
   return html.replace(
     /<p>\s*<strong>\s*(Why (?:this |it )?matters|Outcome|Risk|Opportunity|Headline)\s*:?\s*<\/strong>\s*([\s\S]*?)<\/p>/gi,
     (_m, label: string, body: string) => {
-      const cls = /risk/i.test(label) ? "exec-risk" : /opport|matter/i.test(label) ? "exec-opportunity" : "exec-outcome";
+      const cls = /risk/i.test(label)
+        ? "exec-risk"
+        : /opport|matter/i.test(label)
+          ? "exec-opportunity"
+          : "exec-outcome";
       return `<aside class="exec-callout ${cls}"><div class="exec-callout-label">${esc(label.trim())}</div><div class="exec-callout-body">${body.trim()}</div></aside>`;
     },
   );
@@ -620,37 +813,61 @@ function stripTags(s: string): string {
   return (s ?? "").replace(/<[^>]+>/g, "").trim();
 }
 
-function renderQuickWins(items: { title: string; description: string; priority: string }[]): string {
+function renderQuickWins(
+  items: { title: string; description: string; priority: string }[],
+): string {
   if (!items?.length) return "";
   const priCls = (p: string) => {
     switch (p) {
-      case "high": return "pri-h";
-      case "medium-high": return "pri-mh";
-      case "medium": return "pri-m";
-      case "ongoing": return "pri-og";
-      case "long-term": return "pri-lt";
-      default: return "pri-m";
+      case "high":
+        return "pri-h";
+      case "medium-high":
+        return "pri-mh";
+      case "medium":
+        return "pri-m";
+      case "ongoing":
+        return "pri-og";
+      case "long-term":
+        return "pri-lt";
+      default:
+        return "pri-m";
     }
   };
   const priLabel = (p: string) => {
     switch (p) {
-      case "high": return "High Priority";
-      case "medium-high": return "Medium-High";
-      case "medium": return "Medium";
-      case "ongoing": return "Ongoing";
-      case "long-term": return "Long Term";
-      default: return p;
+      case "high":
+        return "High Priority";
+      case "medium-high":
+        return "Medium-High";
+      case "medium":
+        return "Medium";
+      case "ongoing":
+        return "Ongoing";
+      case "long-term":
+        return "Long Term";
+      default:
+        return p;
     }
   };
   // Sort by priority for visual flow.
-  const order: Record<string, number> = { "high": 0, "medium-high": 1, "medium": 2, "ongoing": 3, "long-term": 4 };
+  const order: Record<string, number> = {
+    high: 0,
+    "medium-high": 1,
+    medium: 2,
+    ongoing: 3,
+    "long-term": 4,
+  };
   const sorted = [...items].sort((a, b) => (order[a.priority] ?? 9) - (order[b.priority] ?? 9));
-  const cards = sorted.map((a) => `
+  const cards = sorted
+    .map(
+      (a) => `
     <div class="ac-card">
       <span class="pri ${priCls(a.priority)}">${esc(priLabel(a.priority))}</span>
       <h4>${esc(a.title)}</h4>
       <p>${esc(a.description)}</p>
-    </div>`).join("\n");
+    </div>`,
+    )
+    .join("\n");
   return `
     <section id="quick-wins" class="section alt">
       <div class="section-inner">
@@ -665,11 +882,17 @@ function renderQuickWins(items: { title: string; description: string; priority: 
 // renderKpis removed — KPIs section deleted.
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: string, isPublicView = false): string {
+function renderGoogleAdsCampaigns(
+  data: any,
+  clientWebsite?: string,
+  intro?: string,
+  isPublicView = false,
+): string {
   void clientWebsite;
   const hiddenSubs: string[] = Array.isArray(data.hiddenSubsections) ? data.hiddenSubsections : [];
   const isHidden = (key: string) => hiddenSubs.includes(key);
-  const monthlyBudget = (data.overview ?? {})["Monthly Budget"] ?? (data.overview ?? {})["Budget"] ?? "Custom";
+  const monthlyBudget =
+    (data.overview ?? {})["Monthly Budget"] ?? (data.overview ?? {})["Budget"] ?? "Custom";
   const suggestedLocations = Array.isArray(data.suggestedLocations) ? data.suggestedLocations : [];
   const showLocations = !isHidden("locations") && (suggestedLocations.length || !isPublicView);
   const locationsHtml = showLocations
@@ -679,49 +902,62 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
           ${!isPublicView ? `<button class="subsection-delete-btn" type="button" onclick="deleteSubsection('locations', 'Suggested Locations')" title="Delete this subsection">&#xD7;</button>` : ""}
         </div>
         <div class="loc-chips" id="loc-chips-list">
-          ${suggestedLocations.map((l: string) => isPublicView
-            ? `<span class="loc-chip">${esc(l)}</span>`
-            : `<span class="loc-chip loc-chip-edit" data-location="${esc(l)}">${esc(l)}<button class="loc-remove-btn" type="button" onclick="removeLocation(this)" title="Remove">&#xD7;</button></span>`
-          ).join("")}
+          ${suggestedLocations
+            .map((l: string) =>
+              isPublicView
+                ? `<span class="loc-chip">${esc(l)}</span>`
+                : `<span class="loc-chip loc-chip-edit" data-location="${esc(l)}">${esc(l)}<button class="loc-remove-btn" type="button" onclick="removeLocation(this)" title="Remove">&#xD7;</button></span>`,
+            )
+            .join("")}
         </div>
-        ${!isPublicView ? `<div class="kw-add-row" style="margin-top:8px">
+        ${
+          !isPublicView
+            ? `<div class="kw-add-row" style="margin-top:8px">
           <input class="kw-add-input" type="text" placeholder="Add location…" onkeydown="if(event.key==='Enter'){addLocation(this);event.preventDefault()}" />
           <button class="copy-btn kw-add-btn" type="button" onclick="addLocation(this.previousElementSibling)">Add</button>
           <button class="copy-btn kw-save-btn" type="button" onclick="saveLocations(this)" style="margin-top:0">Save</button>
-        </div>` : ""}
+        </div>`
+            : ""
+        }
       </div>`
     : "";
 
-  const aiNegReasoned = ((data.aiNegativesWithReason ?? []) as { keyword: string; reason: string }[])
-    .filter((n) => n.keyword && n.reason);
+  const aiNegReasoned = (
+    (data.aiNegativesWithReason ?? []) as { keyword: string; reason: string }[]
+  ).filter((n) => n.keyword && n.reason);
 
   // Build ONE consolidated negatives pill list from every source (campaign-level
   // reasoned, campaign-level extras, and every ad group's adGroupNegatives).
   // Dedup case-insensitively, preserving first-seen order. Reasoned ones go
   // first so the user gets the highest-context items at the top.
-  const adGroupsRaw = ((data.adGroups ?? []) as {
+  const adGroupsRaw = (data.adGroups ?? []) as {
     name: string;
     keywords: { keyword: string; matchType: string; volume?: number; cpc?: number }[];
     hiddenLowVolumeCount?: number;
     audience?: string;
     adGroupNegatives?: string[];
-  }[]);
+  }[];
   const negSeen = new Set<string>();
-  const consolidatedNegatives: { keyword: string; reason?: string; source: "campaign" | "group"; groupName?: string }[] = [];
+  const consolidatedNegatives: {
+    keyword: string;
+    reason?: string;
+    source: "campaign" | "group";
+    groupName?: string;
+  }[] = [];
   for (const n of aiNegReasoned) {
     const key = n.keyword.trim().toLowerCase();
     if (!key || negSeen.has(key)) continue;
     negSeen.add(key);
     consolidatedNegatives.push({ keyword: n.keyword, reason: n.reason, source: "campaign" });
   }
-  for (const k of ((data.negativeKeywords ?? []) as string[])) {
+  for (const k of (data.negativeKeywords ?? []) as string[]) {
     const key = (k || "").trim().toLowerCase();
     if (!key || negSeen.has(key)) continue;
     negSeen.add(key);
     consolidatedNegatives.push({ keyword: k, source: "campaign" });
   }
   for (const g of adGroupsRaw) {
-    for (const k of (g.adGroupNegatives ?? [])) {
+    for (const k of g.adGroupNegatives ?? []) {
       const key = (k || "").trim().toLowerCase();
       if (!key || negSeen.has(key)) continue;
       negSeen.add(key);
@@ -729,25 +965,35 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
     }
   }
 
-  const negChipsHtml = consolidatedNegatives.length > 0
-    ? `<div class="neg-chip-list">${consolidatedNegatives.map((n) => `<span class="neg-chip kw-text" title="${esc(n.reason ?? (n.source === "group" ? `Ad group: ${n.groupName ?? ""}` : "Campaign-level negative"))}">${esc(n.keyword)}</span>`).join(" ")}</div>`
-    : `<p class="section-intro" style="font-style:italic;color:var(--mid)">No negative keywords recommended for this account yet.</p>`;
+  const negChipsHtml =
+    consolidatedNegatives.length > 0
+      ? `<div class="neg-chip-list">${consolidatedNegatives.map((n) => `<span class="neg-chip kw-text" title="${esc(n.reason ?? (n.source === "group" ? `Ad group: ${n.groupName ?? ""}` : "Campaign-level negative"))}">${esc(n.keyword)}</span>`).join(" ")}</div>`
+      : `<p class="section-intro" style="font-style:italic;color:var(--mid)">No negative keywords recommended for this account yet.</p>`;
 
-  const reasonedListHtml = aiNegReasoned.length > 0 ? `
+  const reasonedListHtml =
+    aiNegReasoned.length > 0
+      ? `
         <details class="neg-reasoned-toggle">
           <summary>Show reasoning for ${aiNegReasoned.length} key negative${aiNegReasoned.length === 1 ? "" : "s"}</summary>
           <div class="neg-reasoned-list">
-            ${aiNegReasoned.map((n) => `
+            ${aiNegReasoned
+              .map(
+                (n) => `
               <div class="neg-reason-item">
                 <span class="neg-chip">${esc(n.keyword)}</span>
                 <span class="neg-reason-text">${esc(n.reason)}</span>
-              </div>`).join("")}
+              </div>`,
+              )
+              .join("")}
           </div>
-        </details>` : "";
+        </details>`
+      : "";
 
   const adGroupsHtml = adGroupsRaw
     .map((g, i) => {
-      const removeBtn = isPublicView ? "" : `<button class="kw-remove-btn" type="button" onclick="removeKw(this)" title="Remove keyword">&#xD7;</button>`;
+      const removeBtn = isPublicView
+        ? ""
+        : `<button class="kw-remove-btn" type="button" onclick="removeKw(this)" title="Remove keyword">&#xD7;</button>`;
       const kwChips = (g.keywords ?? [])
         .map((k) => {
           const volTitle = k.volume != null ? ` title="Volume: ${k.volume.toLocaleString()}"` : "";
@@ -755,26 +1001,37 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
         })
         .join(" ");
 
-      const hiddenNote = g.hiddenLowVolumeCount && g.hiddenLowVolumeCount > 0
-        ? `<p class="kw-hidden-note" style="font-size:12px;color:var(--mid);margin:.5rem 0 0">${g.hiddenLowVolumeCount} low/zero-volume keyword${g.hiddenLowVolumeCount === 1 ? "" : "s"} hidden from this view.</p>`
-        : "";
+      const hiddenNote =
+        g.hiddenLowVolumeCount && g.hiddenLowVolumeCount > 0
+          ? `<p class="kw-hidden-note" style="font-size:12px;color:var(--mid);margin:.5rem 0 0">${g.hiddenLowVolumeCount} low/zero-volume keyword${g.hiddenLowVolumeCount === 1 ? "" : "s"} hidden from this view.</p>`
+          : "";
 
-      const addRowHtml = isPublicView ? "" : `
+      const addRowHtml = isPublicView
+        ? ""
+        : `
           <div class="kw-add-row">
             <input class="kw-add-input" type="text" placeholder="Add keyword…" onkeydown="if(event.key==='Enter'){addKwFromInput(this);event.preventDefault()}" />
             <button class="copy-btn kw-add-btn" type="button" onclick="addKwFromInput(this.previousElementSibling)">Add</button>
           </div>`;
 
-      const saveBtn = isPublicView ? "" : `<button class="copy-btn kw-save-btn" type="button" onclick="saveAgKeywords(this)">Save keywords</button>`;
+      const saveBtn = isPublicView
+        ? ""
+        : `<button class="copy-btn kw-save-btn" type="button" onclick="saveAgKeywords(this)">Save keywords</button>`;
 
       const agNameHtml = isPublicView
         ? `<span class="ag-name">${esc(g.name) || `Ad Group ${i + 1}`}</span>`
         : `<span class="ag-name" contenteditable="true" spellcheck="false" onclick="event.stopPropagation()" onblur="saveAgName(this)" onkeydown="if(event.key==='Enter'){this.blur();event.preventDefault()}">${esc(g.name) || `Ad Group ${i + 1}`}</span>`;
       const agAudienceHtml = isPublicView
-        ? (g.audience ? `<span class="ag-audience">${esc(g.audience)}</span>` : "")
+        ? g.audience
+          ? `<span class="ag-audience">${esc(g.audience)}</span>`
+          : ""
         : `<span class="ag-audience${g.audience ? "" : " ag-audience-empty"}" contenteditable="true" spellcheck="false" onclick="event.stopPropagation()" onblur="saveAgAudience(this)" onkeydown="if(event.key==='Enter'){this.blur();event.preventDefault()}" data-placeholder="Add audience…">${g.audience ? esc(g.audience) : ""}</span>`;
-      const agDeleteBtn = isPublicView ? "" : `<button class="ag-delete-btn" type="button" onclick="event.stopPropagation();deleteAdGroup(this)" title="Delete ad group">&#xD7;</button>`;
-      const agNegPanel = isPublicView ? "" : `
+      const agDeleteBtn = isPublicView
+        ? ""
+        : `<button class="ag-delete-btn" type="button" onclick="event.stopPropagation();deleteAdGroup(this)" title="Delete ad group">&#xD7;</button>`;
+      const agNegPanel = isPublicView
+        ? ""
+        : `
         <div class="ag-neg-section">
           <h5>Ad Group Negatives</h5>
           <div class="ag-neg-chips">
@@ -815,9 +1072,12 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
       <div class="section-inner">
         <div class="section-kicker blue">Paid Search</div>
         <h2>Google Ads Campaigns</h2>
-        ${!isPublicView
-          ? `<p class="section-intro section-intro-ai editable-inline" contenteditable="true" spellcheck="false" onblur="saveGoogleAdsIntro(this)" data-placeholder="Add a description…">${intro ? esc(intro) : ""}</p>`
-          : intro ? `<p class="section-intro section-intro-ai">${esc(intro)}</p>` : ""
+        ${
+          !isPublicView
+            ? `<p class="section-intro section-intro-ai editable-inline" contenteditable="true" spellcheck="false" onblur="saveGoogleAdsIntro(this)" data-placeholder="Add a description…">${intro ? esc(intro) : ""}</p>`
+            : intro
+              ? `<p class="section-intro section-intro-ai">${esc(intro)}</p>`
+              : ""
         }
         <div class="campaign-hero">
           <h3 ${!isPublicView ? `contenteditable="true" spellcheck="false" onblur="saveCampaignName(this)" onkeydown="if(event.key==='Enter'){this.blur();event.preventDefault()}" class="editable-inline"` : ""}>${esc(data.campaignName)}</h3>
@@ -826,7 +1086,10 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
           <div class="loc-card"><div class="loc-card-label">Monthly Budget</div><div class="loc-budget" ${!isPublicView ? `contenteditable="true" spellcheck="false" onblur="saveBudget(this)" onkeydown="if(event.key==='Enter'){this.blur();event.preventDefault()}"` : ""}>${esc(monthlyBudget)}</div></div>
           ${locationsHtml}
         </div>
-        ${isHidden("negatives") ? "" : `<details class="neg-section" data-subsection="negatives">
+        ${
+          isHidden("negatives")
+            ? ""
+            : `<details class="neg-section" data-subsection="negatives">
           <summary class="neg-section-head">
             <h4>Negative Keywords <span class="neg-count-badge">${consolidatedNegatives.length || "none"}</span></h4>
             ${!isPublicView && consolidatedNegatives.length > 0 ? `<button class="copy-btn" onclick="event.stopPropagation();copyAllNegatives(this)">Copy all negatives</button>` : ""}
@@ -836,7 +1099,9 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
           <p class="section-intro" style="margin-top:.25rem">Single combined list across the campaign and every ad group. Click "Copy all negatives" to grab them in one go.</p>
           ${negChipsHtml}
           ${reasonedListHtml}
-          ${!isPublicView ? `
+          ${
+            !isPublicView
+              ? `
           <div class="neg-edit-section">
             <h5 style="margin:1.25rem 0 .5rem;font-size:.85rem;font-weight:700;color:var(--heading)">Edit campaign negatives</h5>
             <div class="neg-edit-chips" id="campaign-neg-chips">
@@ -847,29 +1112,40 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
               <button class="copy-btn kw-add-btn" type="button" onclick="addNegative(this.previousElementSibling)">Add</button>
               <button class="copy-btn kw-save-btn" type="button" onclick="saveNegatives(this)" style="margin-top:0">Save</button>
             </div>
-          </div>` : ""}
+          </div>`
+              : ""
+          }
           </div>
-        </details>`}
+        </details>`
+        }
         <div class="ag-heading-row">
           <h3 class="ag-heading">Ad Groups</h3>
           ${isPublicView ? "" : `<button class="copy-btn" onclick="copyAllCampaignKws(this)">Copy all valid keywords (every group)</button>`}
         </div>
         ${adGroupsHtml}
-        ${!isPublicView ? `
+        ${
+          !isPublicView
+            ? `
         <div class="ag-add-row">
           <input class="kw-add-input" type="text" placeholder="New ad group name\u2026" id="new-ag-input" onkeydown="if(event.key==='Enter'){addAdGroup();event.preventDefault()}" />
           <button class="copy-btn kw-add-btn" type="button" onclick="addAdGroup()">Add ad group</button>
-        </div>` : ""}
+        </div>`
+            : ""
+        }
         ${(() => {
           if (isHidden("seeds")) return "";
           const seeds = (data.seedSuggestions ?? []) as { theme: string; phrases: string[] }[];
           if (!seeds.length && isPublicView) return "";
-          const themesHtml = seeds.map((s, i) => {
-            const phrasesHtml = (s.phrases ?? []).map((p) => isPublicView
-              ? `<span class="seed-chip kw-text">${esc(p)}</span>`
-              : `<span class="seed-chip kw-text seed-chip-edit">${esc(p)}<button class="seed-remove-btn" type="button" onclick="removeSeedPhrase(this)" title="Remove phrase">&#xD7;</button></span>`
-            ).join(" ");
-            return `
+          const themesHtml = seeds
+            .map((s, i) => {
+              const phrasesHtml = (s.phrases ?? [])
+                .map((p) =>
+                  isPublicView
+                    ? `<span class="seed-chip kw-text">${esc(p)}</span>`
+                    : `<span class="seed-chip kw-text seed-chip-edit">${esc(p)}<button class="seed-remove-btn" type="button" onclick="removeSeedPhrase(this)" title="Remove phrase">&#xD7;</button></span>`,
+                )
+                .join(" ");
+              return `
               <details class="seed-theme">
                 <summary class="seed-theme-head">
                   <span class="seed-num">${i + 1}</span>
@@ -880,13 +1156,18 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
                 </summary>
                 <div class="seed-chip-list">
                   ${phrasesHtml}
-                  ${!isPublicView ? `<div class="kw-add-row seed-phrase-add-row" style="width:100%;margin-top:8px">
+                  ${
+                    !isPublicView
+                      ? `<div class="kw-add-row seed-phrase-add-row" style="width:100%;margin-top:8px">
                     <input class="kw-add-input" type="text" placeholder="Add phrase\u2026" onkeydown="if(event.key==='Enter'){addSeedPhrase(this);event.preventDefault()}" />
                     <button class="copy-btn kw-add-btn" type="button" onclick="addSeedPhrase(this.previousElementSibling)">Add</button>
-                  </div>` : ""}
+                  </div>`
+                      : ""
+                  }
                 </div>
               </details>`;
-          }).join("\n");
+            })
+            .join("\n");
           return `
         <div class="seed-section" data-subsection="seeds">
           <div class="seed-section-head">
@@ -902,19 +1183,25 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
           ${!isPublicView ? `<button class="copy-btn" id="add-seed-theme-btn" onclick="addSeedTheme()" style="margin-top:1rem">+ Add theme</button>` : ""}
         </div>`;
         })()}
-        ${!isPublicView && hiddenSubs.length > 0 ? `
+        ${
+          !isPublicView && hiddenSubs.length > 0
+            ? `
         <div class="subsection-restore-strip">
           <span class="subsection-restore-label">Hidden subsections:</span>
-          ${hiddenSubs.map((key) => {
-            const labels: Record<string, string> = {
-              locations: "Suggested Locations",
-              negatives: "Negative Keywords",
-              seeds: "Seed Phrase Suggestions",
-            };
-            const label = labels[key] ?? key;
-            return `<button class="copy-btn subsection-restore-btn" type="button" onclick="restoreSubsection('${esc(key)}')">+ Restore ${esc(label)}</button>`;
-          }).join("")}
-        </div>` : ""}
+          ${hiddenSubs
+            .map((key) => {
+              const labels: Record<string, string> = {
+                locations: "Suggested Locations",
+                negatives: "Negative Keywords",
+                seeds: "Seed Phrase Suggestions",
+              };
+              const label = labels[key] ?? key;
+              return `<button class="copy-btn subsection-restore-btn" type="button" onclick="restoreSubsection('${esc(key)}')">+ Restore ${esc(label)}</button>`;
+            })
+            .join("")}
+        </div>`
+            : ""
+        }
       </div>
     </section>`;
 }
@@ -925,16 +1212,33 @@ function renderMetaCampaigns(campaigns: any[], clientWebsite?: string, intro?: s
   const campaignsHtml = campaigns
     .map((c, idx) => {
       const base = `sections.metaCampaigns.${idx}`;
-      const interests = (c.audienceTargeting?.interests ?? []).map((i: string, ii: number) => `<span class="audience-chip interest gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(i, `${base}.audienceTargeting.interests.${ii}`, { placeholder: "Interest" })}${delBtn(`${base}.audienceTargeting.interests.${ii}`, "interest", { inline: true })}</span>`);
-      const custom = (c.audienceTargeting?.customAudiences ?? []).map((a: string, ai: number) => `<span class="audience-chip custom gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(a, `${base}.audienceTargeting.customAudiences.${ai}`, { placeholder: "Custom audience" })}${delBtn(`${base}.audienceTargeting.customAudiences.${ai}`, "custom audience", { inline: true })}</span>`);
-      const lookalikes = (c.audienceTargeting?.lookalikes ?? []).map((l: string, li: number) => `<span class="audience-chip lookalike gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(l, `${base}.audienceTargeting.lookalikes.${li}`, { placeholder: "Lookalike" })}${delBtn(`${base}.audienceTargeting.lookalikes.${li}`, "lookalike", { inline: true })}</span>`);
+      const interests = (c.audienceTargeting?.interests ?? []).map(
+        (i: string, ii: number) =>
+          `<span class="audience-chip interest gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(i, `${base}.audienceTargeting.interests.${ii}`, { placeholder: "Interest" })}${delBtn(`${base}.audienceTargeting.interests.${ii}`, "interest", { inline: true })}</span>`,
+      );
+      const custom = (c.audienceTargeting?.customAudiences ?? []).map(
+        (a: string, ai: number) =>
+          `<span class="audience-chip custom gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(a, `${base}.audienceTargeting.customAudiences.${ai}`, { placeholder: "Custom audience" })}${delBtn(`${base}.audienceTargeting.customAudiences.${ai}`, "custom audience", { inline: true })}</span>`,
+      );
+      const lookalikes = (c.audienceTargeting?.lookalikes ?? []).map(
+        (l: string, li: number) =>
+          `<span class="audience-chip lookalike gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(l, `${base}.audienceTargeting.lookalikes.${li}`, { placeholder: "Lookalike" })}${delBtn(`${base}.audienceTargeting.lookalikes.${li}`, "lookalike", { inline: true })}</span>`,
+      );
       const audiences = [...interests, ...custom, ...lookalikes].join(" ");
 
       const pillars = (c.contentPillars ?? [])
-        .map((p: string, pi: number) => `<li class="gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(p, `${base}.contentPillars.${pi}`, { multiline: true, placeholder: "Pillar" })}${delBtn(`${base}.contentPillars.${pi}`, "pillar", { inline: true })}</li>`)
+        .map(
+          (p: string, pi: number) =>
+            `<li class="gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(p, `${base}.contentPillars.${pi}`, { multiline: true, placeholder: "Pillar" })}${delBtn(`${base}.contentPillars.${pi}`, "pillar", { inline: true })}</li>`,
+        )
         .join("\n");
 
-      const compliance = (c.complianceNotes ?? []).map((n: string, ni: number) => `<li class="gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(n, `${base}.complianceNotes.${ni}`, { multiline: true, placeholder: "Compliance note" })}${delBtn(`${base}.complianceNotes.${ni}`, "note", { inline: true })}</li>`).join("");
+      const compliance = (c.complianceNotes ?? [])
+        .map(
+          (n: string, ni: number) =>
+            `<li class="gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(n, `${base}.complianceNotes.${ni}`, { multiline: true, placeholder: "Compliance note" })}${delBtn(`${base}.complianceNotes.${ni}`, "note", { inline: true })}</li>`,
+        )
+        .join("");
 
       return `
       <details class="meta-campaign gp-deletable" data-deletable-host="1">
@@ -983,12 +1287,36 @@ function formatBriefBlock(raw: string): string {
   // Section labels we recognise (case-insensitive). Anything matching becomes
   // its own heading + body. Order matters — longer labels first.
   const LABELS = [
-    "Hero headline", "Lead paragraph", "Lead", "Modules", "Sections",
-    "H2 headings", "H2s", "H3s", "Sub-headings", "FAQ", "FAQs",
-    "Internal linking", "Internal links", "Schema", "Schema markup",
-    "Tone", "Voice", "CTA", "Calls to action", "Notes", "Writer note",
-    "Word count", "Word-count", "Length", "Format", "Visuals",
-    "Trust signals", "Social proof", "Conversion", "Conversion goal",
+    "Hero headline",
+    "Lead paragraph",
+    "Lead",
+    "Modules",
+    "Sections",
+    "H2 headings",
+    "H2s",
+    "H3s",
+    "Sub-headings",
+    "FAQ",
+    "FAQs",
+    "Internal linking",
+    "Internal links",
+    "Schema",
+    "Schema markup",
+    "Tone",
+    "Voice",
+    "CTA",
+    "Calls to action",
+    "Notes",
+    "Writer note",
+    "Word count",
+    "Word-count",
+    "Length",
+    "Format",
+    "Visuals",
+    "Trust signals",
+    "Social proof",
+    "Conversion",
+    "Conversion goal",
   ];
   const labelRegex = new RegExp(`(?:^|\\.\\s+)(${LABELS.join("|")})\\s*:\\s*`, "gi");
 
@@ -1010,14 +1338,32 @@ function formatBriefBlock(raw: string): string {
     if (matches[0].idx > 0) chunks.push({ body: text.slice(0, matches[0].idx).trim() });
     matches.forEach((mt, i) => {
       const next = matches[i + 1];
-      const body = text.slice(mt.matchEnd, next?.idx ?? text.length).trim().replace(/\.\s*$/, "");
+      const body = text
+        .slice(mt.matchEnd, next?.idx ?? text.length)
+        .trim()
+        .replace(/\.\s*$/, "");
       if (body) chunks.push({ label: mt.label, body });
     });
   }
 
   // Render each chunk. If the body contains 'quoted items', or comma-separated
   // short items after a recognised list-style label, render as bullets.
-  const LIST_LABELS = new Set(["Modules", "Sections", "H2 headings", "H2s", "H3s", "Sub-headings", "FAQ", "FAQs", "Internal linking", "Internal links", "Visuals", "Trust signals", "CTA", "Calls to action"]);
+  const LIST_LABELS = new Set([
+    "Modules",
+    "Sections",
+    "H2 headings",
+    "H2s",
+    "H3s",
+    "Sub-headings",
+    "FAQ",
+    "FAQs",
+    "Internal linking",
+    "Internal links",
+    "Visuals",
+    "Trust signals",
+    "CTA",
+    "Calls to action",
+  ]);
 
   const renderChunk = (c: Chunk): string => {
     const labelHtml = c.label ? `<div class="cc-brief-label">${esc(c.label)}</div>` : "";
@@ -1027,12 +1373,18 @@ function formatBriefBlock(raw: string): string {
     const looksList = c.label && LIST_LABELS.has(c.label);
 
     if (quoted.length >= 2 && (looksList || quoted.length >= 3)) {
-      return `${labelHtml}<ul class="cc-brief-list">${quoted.slice(0, 12).map((q) => `<li>${esc(q)}</li>`).join("")}</ul>`;
+      return `${labelHtml}<ul class="cc-brief-list">${quoted
+        .slice(0, 12)
+        .map((q) => `<li>${esc(q)}</li>`)
+        .join("")}</ul>`;
     }
 
     // Comma-separated short items under a list-style label
     if (looksList) {
-      const items = c.body.split(/,(?![^()]*\))/g).map((s) => s.trim().replace(/^['"]|['"]$/g, "")).filter((s) => s.length > 1 && s.length <= 200);
+      const items = c.body
+        .split(/,(?![^()]*\))/g)
+        .map((s) => s.trim().replace(/^['"]|['"]$/g, ""))
+        .filter((s) => s.length > 1 && s.length <= 200);
       if (items.length >= 2) {
         return `${labelHtml}<ul class="cc-brief-list">${items.map((s) => `<li>${esc(s)}</li>`).join("")}</ul>`;
       }
@@ -1051,11 +1403,17 @@ function formatBriefBlock(raw: string): string {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function renderContentStrategy(data: any, intro?: string, audienceRationales?: Record<string, string>): string {
+function renderContentStrategy(
+  data: any,
+  intro?: string,
+  audienceRationales?: Record<string, string>,
+): string {
   type Entry = {
-    url?: string; title?: string;
+    url?: string;
+    title?: string;
     keywords?: { keyword: string; volume?: number }[];
-    notes?: string; brief?: string;
+    notes?: string;
+    brief?: string;
     summary?: string;
     primaryKeyword?: string;
     secondaryKeywords?: string[];
@@ -1117,28 +1475,55 @@ function renderContentStrategy(data: any, intro?: string, audienceRationales?: R
     if (!intent) return "";
     const v = intent.toLowerCase();
     if (v.startsWith("dec")) return "intent-dc";
-    if (v.includes("transact") || v.includes("convers") || v.includes("purchase")) return "intent-tr";
+    if (v.includes("transact") || v.includes("convers") || v.includes("purchase"))
+      return "intent-tr";
     if (v.startsWith("comm") || v.includes("consider") || v.includes("compar")) return "intent-cm";
-    if (v.includes("info") || v.includes("how to") || v.includes("educat") || v.includes("learn") || v.includes("guide")) return "intent-in";
+    if (
+      v.includes("info") ||
+      v.includes("how to") ||
+      v.includes("educat") ||
+      v.includes("learn") ||
+      v.includes("guide")
+    )
+      return "intent-in";
     return "intent-aw";
   };
   const intentLabel = (intent?: string): string => {
     if (!intent) return "";
     const v = intent.toLowerCase();
     if (v.startsWith("dec")) return "Decision";
-    if (v.includes("transact") || v.includes("convers") || v.includes("purchase")) return "Transactional";
+    if (v.includes("transact") || v.includes("convers") || v.includes("purchase"))
+      return "Transactional";
     if (v.startsWith("comm") || v.includes("consider") || v.includes("compar")) return "Commercial";
-    if (v.includes("info") || v.includes("how to") || v.includes("educat") || v.includes("learn") || v.includes("guide")) return "Informational";
+    if (
+      v.includes("info") ||
+      v.includes("how to") ||
+      v.includes("educat") ||
+      v.includes("learn") ||
+      v.includes("guide")
+    )
+      return "Informational";
     return "Awareness";
   };
 
-  const card = (entry: Entry, tier: "pillar" | "mega" | "article", typeLabel: string, path: string, deleteLabel: string): string => {
+  const card = (
+    entry: Entry,
+    tier: "pillar" | "mega" | "article",
+    typeLabel: string,
+    path: string,
+    deleteLabel: string,
+  ): string => {
     const primary = entry.primaryKeyword ?? entry.keywords?.[0]?.keyword;
     const intent = entry.intent;
     const secondary = entry.secondaryKeywords ?? [];
     const longTail = entry.longTailKeywords ?? [];
-    const audChips = (entry.targetAudiences ?? []).slice(0, 3)
-      .map((n, ni) => `<span class="audience-tag gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(n, `${path}.targetAudiences.${ni}`, { placeholder: "Audience" })}${delBtn(`${path}.targetAudiences.${ni}`, "audience", { inline: true })}</span>`).join(" ");
+    const audChips = (entry.targetAudiences ?? [])
+      .slice(0, 3)
+      .map(
+        (n, ni) =>
+          `<span class="audience-tag gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(n, `${path}.targetAudiences.${ni}`, { placeholder: "Audience" })}${delBtn(`${path}.targetAudiences.${ni}`, "audience", { inline: true })}</span>`,
+      )
+      .join(" ");
     return `
       <details class="cluster-card ${tier} gp-deletable" data-deletable-host="1">
         ${delBtn(path, deleteLabel)}
@@ -1150,25 +1535,51 @@ function renderContentStrategy(data: any, intro?: string, audienceRationales?: R
         <div class="cluster-card-body">
           ${ed(entry.title ?? entry.url ?? "", `${path}.title`, { tag: "div", cls: "cc-title", placeholder: "Title" })}
           ${entry.url != null ? `<div class="cc-kw-block"><div class="cc-kw-label">URL</div>${ed(entry.url, `${path}.url`, { placeholder: "URL" })}</div>` : ""}
-          ${entry.primaryKeyword != null ? `
+          ${
+            entry.primaryKeyword != null
+              ? `
           <div class="cc-kw-block">
             <div class="cc-kw-label">Primary keyword</div>
             ${ed(entry.primaryKeyword, `${path}.primaryKeyword`, { tag: "div", cls: "cc-kw-primary", placeholder: "Primary keyword" })}
-          </div>` : primary ? `
+          </div>`
+              : primary
+                ? `
           <div class="cc-kw-block">
             <div class="cc-kw-label">Primary keyword</div>
             <div class="cc-kw-primary">${esc(primary)}</div>
-          </div>` : ""}
-          ${secondary.length ? `
+          </div>`
+                : ""
+          }
+          ${
+            secondary.length
+              ? `
           <div class="cc-kw-block">
             <div class="cc-kw-label">Secondary keywords</div>
-            <div class="cc-kw-chips">${secondary.slice(0, 6).map((k, ki) => `<span class="kw-pill gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(k, `${path}.secondaryKeywords.${ki}`, { placeholder: "Keyword" })}${delBtn(`${path}.secondaryKeywords.${ki}`, "keyword", { inline: true })}</span>`).join(" ")}</div>
-          </div>` : ""}
-          ${longTail.length ? `
+            <div class="cc-kw-chips">${secondary
+              .slice(0, 6)
+              .map(
+                (k, ki) =>
+                  `<span class="kw-pill gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(k, `${path}.secondaryKeywords.${ki}`, { placeholder: "Keyword" })}${delBtn(`${path}.secondaryKeywords.${ki}`, "keyword", { inline: true })}</span>`,
+              )
+              .join(" ")}</div>
+          </div>`
+              : ""
+          }
+          ${
+            longTail.length
+              ? `
           <div class="cc-kw-block">
             <div class="cc-kw-label">Long-tail variants</div>
-            <div class="cc-kw-chips">${longTail.slice(0, 8).map((k, ki) => `<span class="kw-pill kw-pill-mute gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(k, `${path}.longTailKeywords.${ki}`, { placeholder: "Variant" })}${delBtn(`${path}.longTailKeywords.${ki}`, "variant", { inline: true })}</span>`).join(" ")}</div>
-          </div>` : ""}
+            <div class="cc-kw-chips">${longTail
+              .slice(0, 8)
+              .map(
+                (k, ki) =>
+                  `<span class="kw-pill kw-pill-mute gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(k, `${path}.longTailKeywords.${ki}`, { placeholder: "Variant" })}${delBtn(`${path}.longTailKeywords.${ki}`, "variant", { inline: true })}</span>`,
+              )
+              .join(" ")}</div>
+          </div>`
+              : ""
+          }
           ${audChips ? `<div class="cc-audiences-block"><div class="cc-audiences-label">Planned audience</div><div class="cc-audiences">${audChips}</div></div>` : ""}
         </div>
       </details>`;
@@ -1177,15 +1588,39 @@ function renderContentStrategy(data: any, intro?: string, audienceRationales?: R
   const clusterCards: string[] = [];
   if (pillar) {
     const pillarIdx = (data.landingPages ?? []).indexOf(pillar);
-    clusterCards.push(card(pillar, "pillar", "Pillar Page", `sections.contentStrategy.landingPages.${pillarIdx >= 0 ? pillarIdx : 0}`, "pillar page"));
+    clusterCards.push(
+      card(
+        pillar,
+        "pillar",
+        "Pillar Page",
+        `sections.contentStrategy.landingPages.${pillarIdx >= 0 ? pillarIdx : 0}`,
+        "pillar page",
+      ),
+    );
   }
   megas.forEach((m, i) => {
     const idx = (data.landingPages ?? []).indexOf(m);
-    clusterCards.push(card(m, "mega", megas.length === 1 ? "Mega Guide" : `Mega Guide ${i + 1}`, `sections.contentStrategy.landingPages.${idx >= 0 ? idx : i}`, `mega guide ${i + 1}`));
+    clusterCards.push(
+      card(
+        m,
+        "mega",
+        megas.length === 1 ? "Mega Guide" : `Mega Guide ${i + 1}`,
+        `sections.contentStrategy.landingPages.${idx >= 0 ? idx : i}`,
+        `mega guide ${i + 1}`,
+      ),
+    );
   });
   articles.forEach((a, i) => {
     const idx = (data.blogPosts ?? []).indexOf(a);
-    clusterCards.push(card(a, "article", `Article ${i + 1}`, `sections.contentStrategy.blogPosts.${idx >= 0 ? idx : i}`, `article ${i + 1}`));
+    clusterCards.push(
+      card(
+        a,
+        "article",
+        `Article ${i + 1}`,
+        `sections.contentStrategy.blogPosts.${idx >= 0 ? idx : i}`,
+        `article ${i + 1}`,
+      ),
+    );
   });
 
   const allInternalLinks = [
@@ -1210,66 +1645,103 @@ function renderContentStrategy(data: any, intro?: string, audienceRationales?: R
     seenLinks.add(key);
     return true;
   });
-  const internalLinkingHtml = dedupedLinks.length > 0 ? `
+  const internalLinkingHtml =
+    dedupedLinks.length > 0
+      ? `
     <div class="il-section">
       <h3>Internal Linking Recommendations</h3>
       <p class="cluster-block-sub" style="margin-bottom:.75rem">Link new content to these existing pages with the suggested anchor text to push authority through the cluster.</p>
       <div class="il-grid">
-        ${dedupedLinks.slice(0, 12).map((l) => {
-          const anchor = l.anchorText || l.url || "";
-          const linkHtml = l.url
-            ? `<a class="il-link" href="${esc(l.url.startsWith("http") ? l.url : `https://${l.url}`)}" target="_blank" rel="noopener">${esc(anchor)}</a>`
-            : `<span>${esc(anchor)}</span>`;
-          const urlSub = l.url && l.anchorText ? `<span class="il-url">${esc(l.url)}</span>` : "";
-          return `<div class="il-item"><span class="il-arrow">&#8594;</span><span class="il-text">${linkHtml}${urlSub}</span></div>`;
-        }).join("\n")}
+        ${dedupedLinks
+          .slice(0, 12)
+          .map((l) => {
+            const anchor = l.anchorText || l.url || "";
+            const linkHtml = l.url
+              ? `<a class="il-link" href="${esc(l.url.startsWith("http") ? l.url : `https://${l.url}`)}" target="_blank" rel="noopener">${esc(anchor)}</a>`
+              : `<span>${esc(anchor)}</span>`;
+            const urlSub = l.url && l.anchorText ? `<span class="il-url">${esc(l.url)}</span>` : "";
+            return `<div class="il-item"><span class="il-arrow">&#8594;</span><span class="il-text">${linkHtml}${urlSub}</span></div>`;
+          })
+          .join("\n")}
       </div>
-    </div>` : "";
+    </div>`
+      : "";
 
-  const clusterBlock = clusterCards.length > 0 ? `
+  const clusterBlock =
+    clusterCards.length > 0
+      ? `
     <div class="cluster-block">
       <h3 class="cluster-block-title">Topic Cluster</h3>
       <p class="cluster-block-sub">A pillar page anchors the topic, supported by a mega guide and themed articles. Each article has a target keyword, search intent and a writer brief.</p>
       <div class="cluster-grid">${clusterCards.join("\n")}</div>
       ${internalLinkingHtml}
-    </div>` : "";
+    </div>`
+      : "";
 
-  const pageOptsHtml = pageOpts.length > 0 ? `
+  const pageOptsHtml =
+    pageOpts.length > 0
+      ? `
     <h3 style="margin-top:2rem">On-Page Optimisations</h3>
     <p class="section-intro" style="margin-bottom:1rem">Existing pages that need a refresh — title tags, meta descriptions, content depth, internal links, and schema.</p>
     <div class="content-cards">
-      ${pageOpts.map((p) => {
-        const url = p.url || "";
-        const audChips = (p.targetAudiences ?? []).slice(0, 3)
-          .map((n) => `<span class="audience-tag">${esc(n)}</span>`).join(" ");
-        const internalLinksList = (p.internalLinks ?? [])
-          .map((l) => typeof l === "string" ? l : (l.anchorText ?? l.url ?? ""))
-          .filter(Boolean)
-          .slice(0, 5);
-        const hasStructured = !!(p.titleTag || p.metaDescription || (p.contentEnhancements && p.contentEnhancements.length) || internalLinksList.length || p.schema);
-        const structuredHtml = hasStructured ? `
+      ${pageOpts
+        .map((p) => {
+          const url = p.url || "";
+          const audChips = (p.targetAudiences ?? [])
+            .slice(0, 3)
+            .map((n) => `<span class="audience-tag">${esc(n)}</span>`)
+            .join(" ");
+          const internalLinksList = (p.internalLinks ?? [])
+            .map((l) => (typeof l === "string" ? l : (l.anchorText ?? l.url ?? "")))
+            .filter(Boolean)
+            .slice(0, 5);
+          const hasStructured = !!(
+            p.titleTag ||
+            p.metaDescription ||
+            (p.contentEnhancements && p.contentEnhancements.length) ||
+            internalLinksList.length ||
+            p.schema
+          );
+          const structuredHtml = hasStructured
+            ? `
           <div class="onpage-structured">
             ${p.titleTag ? `<div class="onpage-row"><span class="onpage-label">Title tag</span><div class="onpage-val">${esc(p.titleTag)} <span class="char-badge ${p.titleTag.length <= 60 ? "char-ok" : "char-over"}">${p.titleTag.length}/60</span></div></div>` : ""}
             ${p.metaDescription ? `<div class="onpage-row"><span class="onpage-label">Meta description</span><div class="onpage-val">${esc(p.metaDescription)} <span class="char-badge ${p.metaDescription.length <= 160 ? "char-ok" : "char-over"}">${p.metaDescription.length}/160</span></div></div>` : ""}
-            ${p.contentEnhancements?.length ? `<div class="onpage-row"><span class="onpage-label">Content enhancements</span><ul class="onpage-list">${p.contentEnhancements.slice(0, 6).map((e) => `<li>${esc(e)}</li>`).join("")}</ul></div>` : ""}
+            ${
+              p.contentEnhancements?.length
+                ? `<div class="onpage-row"><span class="onpage-label">Content enhancements</span><ul class="onpage-list">${p.contentEnhancements
+                    .slice(0, 6)
+                    .map((e) => `<li>${esc(e)}</li>`)
+                    .join("")}</ul></div>`
+                : ""
+            }
             ${internalLinksList.length ? `<div class="onpage-row"><span class="onpage-label">Internal links</span><div class="onpage-chips">${internalLinksList.map((l) => `<span class="kw-pill kw-pill-mute">${esc(l)}</span>`).join(" ")}</div></div>` : ""}
             ${p.schema ? `<div class="onpage-row"><span class="onpage-label">Schema</span><div class="onpage-val"><code>${esc(p.schema)}</code></div></div>` : ""}
-          </div>` : "";
+          </div>`
+            : "";
 
-        // ── Deep-enrichment "Now → Better" blocks ────────────────────────
-        const cs = p.currentState;
-        const hasCurrentState = !!(cs && (cs.title || cs.metaDescription || cs.h1 || (cs.schemaTypes?.length) || (cs.totalRankingKeywords ?? 0) > 0));
-        const charBadge = (text: string, max: number) => {
-          const len = text.length;
-          const cls = len === 0 ? "char-over" : len <= max ? "char-ok" : "char-over";
-          return `<span class="char-badge ${cls}">${len}/${max}</span>`;
-        };
-        const faqPill = cs?.hasFaqSchema
-          ? `<span class="status-chip status-chip-ok" title="FAQPage schema detected">FAQ schema \u2713</span>`
-          : cs?.hasFaqContent
-            ? `<span class="status-chip status-chip-warn" title="FAQ content detected but no schema">FAQ content (no schema)</span>`
-            : `<span class="status-chip status-chip-miss" title="No FAQ detected">No FAQ</span>`;
-        const currentStateHtml = hasCurrentState ? `
+          // ── Deep-enrichment "Now → Better" blocks ────────────────────────
+          const cs = p.currentState;
+          const hasCurrentState = !!(
+            cs &&
+            (cs.title ||
+              cs.metaDescription ||
+              cs.h1 ||
+              cs.schemaTypes?.length ||
+              (cs.totalRankingKeywords ?? 0) > 0)
+          );
+          const charBadge = (text: string, max: number) => {
+            const len = text.length;
+            const cls = len === 0 ? "char-over" : len <= max ? "char-ok" : "char-over";
+            return `<span class="char-badge ${cls}">${len}/${max}</span>`;
+          };
+          const faqPill = cs?.hasFaqSchema
+            ? `<span class="status-chip status-chip-ok" title="FAQPage schema detected">FAQ schema \u2713</span>`
+            : cs?.hasFaqContent
+              ? `<span class="status-chip status-chip-warn" title="FAQ content detected but no schema">FAQ content (no schema)</span>`
+              : `<span class="status-chip status-chip-miss" title="No FAQ detected">No FAQ</span>`;
+          const currentStateHtml = hasCurrentState
+            ? `
           <div class="page-state-block">
             <h5 class="page-state-heading">Current state</h5>
             <div class="page-state-grid">
@@ -1277,70 +1749,111 @@ function renderContentStrategy(data: any, intro?: string, audienceRationales?: R
               ${cs?.metaDescription ? `<div class="onpage-row"><span class="onpage-label">Meta description</span><div class="onpage-val">${esc(cs.metaDescription)} ${charBadge(cs.metaDescription, 160)}</div></div>` : `<div class="onpage-row"><span class="onpage-label">Meta description</span><div class="onpage-val onpage-missing">Missing</div></div>`}
               ${cs?.h1 ? `<div class="onpage-row"><span class="onpage-label">H1</span><div class="onpage-val">${esc(cs.h1)}</div></div>` : ""}
               ${cs?.schemaTypes?.length ? `<div class="onpage-row"><span class="onpage-label">Schema present</span><div class="onpage-chips">${cs.schemaTypes.map((s) => `<span class="kw-pill kw-pill-mute">${esc(s)}</span>`).join(" ")}</div></div>` : `<div class="onpage-row"><span class="onpage-label">Schema present</span><div class="onpage-val onpage-missing">None detected</div></div>`}
-              ${(cs?.totalRankingKeywords ?? 0) > 0 ? `<div class="onpage-row"><span class="onpage-label">Currently ranks for</span><div class="onpage-val"><strong>${cs!.totalRankingKeywords}</strong> keyword${cs!.totalRankingKeywords === 1 ? "" : "s"}${cs!.topCurrentKeywords?.length ? ` \u2014 top ${Math.min(5, cs!.topCurrentKeywords.length)}: ${cs!.topCurrentKeywords.slice(0, 5).map((k) => `<span class="kw-pill kw-pill-mute">${esc(k.keyword)} (#${k.position})</span>`).join(" ")}` : ""}</div></div>` : `<div class="onpage-row"><span class="onpage-label">Currently ranks for</span><div class="onpage-val onpage-missing">No SEMrush data</div></div>`}
+              ${
+                (cs?.totalRankingKeywords ?? 0) > 0
+                  ? `<div class="onpage-row"><span class="onpage-label">Currently ranks for</span><div class="onpage-val"><strong>${cs!.totalRankingKeywords}</strong> keyword${cs!.totalRankingKeywords === 1 ? "" : "s"}${
+                      cs!.topCurrentKeywords?.length
+                        ? ` \u2014 top ${Math.min(5, cs!.topCurrentKeywords.length)}: ${cs!.topCurrentKeywords
+                            .slice(0, 5)
+                            .map(
+                              (k) =>
+                                `<span class="kw-pill kw-pill-mute">${esc(k.keyword)} (#${k.position})</span>`,
+                            )
+                            .join(" ")}`
+                        : ""
+                    }</div></div>`
+                  : `<div class="onpage-row"><span class="onpage-label">Currently ranks for</span><div class="onpage-val onpage-missing">No SEMrush data</div></div>`
+              }
               <div class="onpage-row"><span class="onpage-label">FAQ status</span><div class="onpage-val">${faqPill}</div></div>
             </div>
-          </div>` : "";
+          </div>`
+            : "";
 
-        const hasRewrites = !!(p.suggestedTitle || p.suggestedMetaDescription);
-        const rewritesHtml = hasRewrites ? `
+          const hasRewrites = !!(p.suggestedTitle || p.suggestedMetaDescription);
+          const rewritesHtml = hasRewrites
+            ? `
           <div class="page-rewrite-block">
             <h5 class="page-state-heading">Recommended rewrites</h5>
             ${p.suggestedTitle ? `<div class="onpage-row"><span class="onpage-label">Title \u2192</span><div class="onpage-val onpage-suggest">${esc(p.suggestedTitle)} ${charBadge(p.suggestedTitle, 60)}</div></div>` : ""}
             ${p.suggestedMetaDescription ? `<div class="onpage-row"><span class="onpage-label">Meta \u2192</span><div class="onpage-val onpage-suggest">${esc(p.suggestedMetaDescription)} ${charBadge(p.suggestedMetaDescription, 160)}</div></div>` : ""}
-          </div>` : "";
+          </div>`
+            : "";
 
-        const sk = p.suggestedKeywords ?? [];
-        const suggestedKeywordsHtml = sk.length ? `
+          const sk = p.suggestedKeywords ?? [];
+          const suggestedKeywordsHtml = sk.length
+            ? `
           <div class="page-kw-block">
             <h5 class="page-state-heading">Suggested keywords (and where they could rank)</h5>
             <div class="kw-table-wrap">
               <table class="kw-table">
                 <thead><tr><th>Keyword</th><th>Vol</th><th>KD</th><th>Currently</th><th>Potential</th><th>Why</th></tr></thead>
                 <tbody>
-                  ${sk.map((k) => `<tr>
+                  ${sk
+                    .map(
+                      (k) => `<tr>
                     <td><strong>${esc(k.keyword)}</strong></td>
                     <td>${k.volume != null ? k.volume.toLocaleString() : "\u2013"}</td>
                     <td>${k.difficulty != null ? k.difficulty : "\u2013"}</td>
                     <td>${k.currentPosition != null ? `#${k.currentPosition}` : "Not ranking"}</td>
                     <td><span class="potential-band band-${esc(k.potentialBand.replace(/\s+/g, "-").toLowerCase())}">${esc(k.potentialBand)}</span></td>
                     <td class="kw-rationale">${esc(k.rationale)}</td>
-                  </tr>`).join("")}
+                  </tr>`,
+                    )
+                    .join("")}
                 </tbody>
               </table>
             </div>
-          </div>` : "";
+          </div>`
+            : "";
 
-        const recSchema = p.recommendedSchema ?? [];
-        const schemaGaps = new Set(p.schemaGaps ?? []);
-        const schemaHtml = recSchema.length ? `
+          const recSchema = p.recommendedSchema ?? [];
+          const schemaGaps = new Set(p.schemaGaps ?? []);
+          const schemaHtml = recSchema.length
+            ? `
           <div class="page-schema-block">
             <h5 class="page-state-heading">Recommended schema</h5>
             <div class="onpage-chips">
-              ${recSchema.map((s) => {
-                const missing = schemaGaps.has(s);
-                return `<span class="kw-pill ${missing ? "kw-pill-miss" : "kw-pill-ok"}" title="${missing ? "Currently missing" : "Already present"}">${esc(s)}${missing ? " \u2014 add" : " \u2713"}</span>`;
-              }).join(" ")}
+              ${recSchema
+                .map((s) => {
+                  const missing = schemaGaps.has(s);
+                  return `<span class="kw-pill ${missing ? "kw-pill-miss" : "kw-pill-ok"}" title="${missing ? "Currently missing" : "Already present"}">${esc(s)}${missing ? " \u2014 add" : " \u2713"}</span>`;
+                })
+                .join(" ")}
             </div>
-          </div>` : "";
+          </div>`
+            : "";
 
-        const faq = p.faq;
-        const faqHtml = faq && faq.recommendation !== "ok" && faq.items.length ? `
+          const faq = p.faq;
+          const faqHtml =
+            faq && faq.recommendation !== "ok" && faq.items.length
+              ? `
           <div class="page-faq-block">
             <h5 class="page-state-heading">${faq.recommendation === "expand" ? "Expand the FAQ" : "Add an FAQ section"} \u2014 draft Q+A</h5>
-            ${faq.items.map((it) => `<details class="faq-item">
+            ${faq.items
+              .map(
+                (it) => `<details class="faq-item">
               <summary>${esc(it.question)}</summary>
               <div class="faq-answer">${esc(it.answer)}</div>
-            </details>`).join("")}
-          </div>` : "";
+            </details>`,
+              )
+              .join("")}
+          </div>`
+              : "";
 
-        return `
+          return `
       <div class="content-card">
         <div class="content-url-row">
           <a class="content-url" href="${esc(url)}" target="_blank" rel="noopener" title="${esc(url)}">${esc(url)}</a>
           ${url ? `<button type="button" class="content-url-copy" data-copy="${esc(url)}" aria-label="Copy URL">Copy</button>` : ""}
         </div>
-        ${p.keywords?.length ? `<div class="content-kws">${p.keywords.slice(0, 5).map((k) => `<span class="kw-pill">${esc(k.keyword)}</span>`).join(" ")}</div>` : ""}
+        ${
+          p.keywords?.length
+            ? `<div class="content-kws">${p.keywords
+                .slice(0, 5)
+                .map((k) => `<span class="kw-pill">${esc(k.keyword)}</span>`)
+                .join(" ")}</div>`
+            : ""
+        }
         ${audChips ? `<div class="cc-audiences" style="margin-top:6px">${audChips}</div>` : ""}
         ${currentStateHtml}
         ${rewritesHtml}
@@ -1351,8 +1864,10 @@ function renderContentStrategy(data: any, intro?: string, audienceRationales?: R
         ${!hasStructured && !hasCurrentState && !hasRewrites && p.notes ? `<div class="content-notes">${formatBriefBlock(p.notes)}</div>` : ""}
         ${(hasCurrentState || hasRewrites) && p.notes ? `<div class="content-notes" style="margin-top:.75rem"><strong>Notes:</strong> ${formatBriefBlock(p.notes)}</div>` : ""}
       </div>`;
-      }).join("\n")}
-    </div>` : "";
+        })
+        .join("\n")}
+    </div>`
+      : "";
 
   // Audience Plays panel removed.
   void audienceRationales;
@@ -1453,34 +1968,38 @@ function renderSeoFoundations(data: SeoFoundationsData): string {
     return `https://${s}`;
   };
 
-  const quickWinsHtml = quickWins.length ? `
+  const quickWinsHtml = quickWins.length
+    ? `
     <h3 class="seo-sub-heading">Quick Wins on Existing Pages</h3>
     <p class="seo-sub-intro">Existing pages that can move within weeks: rewritten title tags, refreshed meta descriptions, and the cross-links to add inside the page body.</p>
     <div class="qw-grid">
-      ${quickWins.map((q, qi) => {
-        const title = q.newTitleTag ?? "";
-        const meta = q.newMetaDescription ?? "";
-        const cross = q.crossLinksToAdd ?? [];
-        const onPage = q.onPageSuggestions ?? [];
-        const kw = q.keywords ?? {};
-        const secondary = kw.secondary ?? [];
-        const longTail = kw.longTail ?? [];
-        const intentClass = (q.intent || "").toLowerCase();
-        const faqItems = (q as { suggestedFaq?: { question: string; answer: string }[] }).suggestedFaq ?? [];
-        const schemaItems = (q as { suggestedSchema?: { type: string; jsonLd: string }[] }).suggestedSchema ?? [];
-        // Embed payloads as inline <script type="application/json"> blocks keyed
-        // by id. Far more robust than base64 in attributes for nested JSON-LD.
-        const safeJsonForScript = (obj: unknown): string =>
-          JSON.stringify(obj).replace(/<\/(script)/gi, "<\\/$1");
-        const faqId = `qw-faq-data-${qi}`;
-        const schemaId = `qw-schema-data-${qi}`;
-        const faqDataScript = faqItems.length
-          ? `<script type="application/json" id="${faqId}">${safeJsonForScript({ url: q.url, items: faqItems })}</script>`
-          : "";
-        const schemaDataScript = schemaItems.length
-          ? `<script type="application/json" id="${schemaId}">${safeJsonForScript({ url: q.url, items: schemaItems })}</script>`
-          : "";
-        return `
+      ${quickWins
+        .map((q, qi) => {
+          const title = q.newTitleTag ?? "";
+          const meta = q.newMetaDescription ?? "";
+          const cross = q.crossLinksToAdd ?? [];
+          const onPage = q.onPageSuggestions ?? [];
+          const kw = q.keywords ?? {};
+          const secondary = kw.secondary ?? [];
+          const longTail = kw.longTail ?? [];
+          const intentClass = (q.intent || "").toLowerCase();
+          const faqItems =
+            (q as { suggestedFaq?: { question: string; answer: string }[] }).suggestedFaq ?? [];
+          const schemaItems =
+            (q as { suggestedSchema?: { type: string; jsonLd: string }[] }).suggestedSchema ?? [];
+          // Embed payloads as inline <script type="application/json"> blocks keyed
+          // by id. Far more robust than base64 in attributes for nested JSON-LD.
+          const safeJsonForScript = (obj: unknown): string =>
+            JSON.stringify(obj).replace(/<\/(script)/gi, "<\\/$1");
+          const faqId = `qw-faq-data-${qi}`;
+          const schemaId = `qw-schema-data-${qi}`;
+          const faqDataScript = faqItems.length
+            ? `<script type="application/json" id="${faqId}">${safeJsonForScript({ url: q.url, items: faqItems })}</script>`
+            : "";
+          const schemaDataScript = schemaItems.length
+            ? `<script type="application/json" id="${schemaId}">${safeJsonForScript({ url: q.url, items: schemaItems })}</script>`
+            : "";
+          return `
         <div class="qw-card gp-deletable" data-deletable-host="1" id="qw-card-${qi}">
           ${delBtn(`sections.seoFoundations.quickWins.${qi}`, `quick win for "${q.url}"`)}
           <div class="qw-head">
@@ -1491,7 +2010,9 @@ function renderSeoFoundations(data: SeoFoundationsData): string {
           </div>
           ${q.pageTitle != null ? `${ed(q.pageTitle, `sections.seoFoundations.quickWins.${qi}.pageTitle`, { tag: "div", cls: "qw-page-title", placeholder: "Page title" })}` : ""}
           ${q.rationale != null ? `${ed(q.rationale, `sections.seoFoundations.quickWins.${qi}.rationale`, { tag: "p", cls: "qw-rationale", multiline: true, placeholder: "Why this win matters…" })}` : ""}
-          ${kw.primary ? `
+          ${
+            kw.primary
+              ? `
           <div class="qw-row">
             <div class="qw-row-label">Target keywords</div>
             <div class="qw-row-val">
@@ -1499,58 +2020,93 @@ function renderSeoFoundations(data: SeoFoundationsData): string {
               ${secondary.length ? `<div class="qw-kw-line"><span class="qw-kw-label qw-kw-secondary">Secondary</span> ${secondary.map((k) => `<span class="qw-kw-chip">${esc(k)}</span>`).join(" ")}</div>` : ""}
               ${longTail.length ? `<div class="qw-kw-line"><span class="qw-kw-label qw-kw-longtail">Long-tail</span> ${longTail.map((k) => `<span class="qw-kw-chip qw-kw-chip-lt">${esc(k)}</span>`).join(" ")}</div>` : ""}
             </div>
-          </div>` : ""}
-          ${(title || meta || onPage.length || cross.length || faqItems.length || schemaItems.length) ? `
+          </div>`
+              : ""
+          }
+          ${
+            title || meta || onPage.length || cross.length || faqItems.length || schemaItems.length
+              ? `
           <details class="qw-optimisation-details">
             <summary>Optimisation details</summary>
             <div class="qw-optimisation-body">
-          ${title ? `
+          ${
+            title
+              ? `
           <div class="qw-row">
             <div class="qw-row-label">New title tag</div>
             <div class="qw-row-val">${ed(title, `sections.seoFoundations.quickWins.${qi}.newTitleTag`, { placeholder: "Title tag", multiline: true })} <span class="char-badge ${title.length <= 60 ? "char-ok" : "char-over"}">${title.length}/60</span></div>
-          </div>` : ""}
-          ${meta ? `
+          </div>`
+              : ""
+          }
+          ${
+            meta
+              ? `
           <div class="qw-row">
             <div class="qw-row-label">New meta description</div>
             <div class="qw-row-val">${ed(meta, `sections.seoFoundations.quickWins.${qi}.newMetaDescription`, { placeholder: "Meta description", multiline: true })} <span class="char-badge ${meta.length <= 160 ? "char-ok" : "char-over"}">${meta.length}/160</span></div>
-          </div>` : ""}
-          ${onPage.length ? `
+          </div>`
+              : ""
+          }
+          ${
+            onPage.length
+              ? `
           <div class="qw-row">
             <div class="qw-row-label">On-page suggestions</div>
             <ul class="qw-onpage-list">
               ${onPage.map((s, oi) => `<li class="gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(s, `sections.seoFoundations.quickWins.${qi}.onPageSuggestions.${oi}`, { multiline: true, placeholder: "Suggestion" })}${delBtn(`sections.seoFoundations.quickWins.${qi}.onPageSuggestions.${oi}`, "suggestion", { inline: true })}</li>`).join("")}
             </ul>
-          </div>` : ""}
-          ${cross.length ? `
+          </div>`
+              : ""
+          }
+          ${
+            cross.length
+              ? `
           <div class="qw-row">
             <div class="qw-row-label">Cross-links to add</div>
             <ul class="qw-cross-list">
-              ${cross.map((c) => `
+              ${cross
+                .map(
+                  (c) => `
                 <li>
                   <span class="qw-cross-anchor">"${esc(c.anchorText)}"</span>
                   <span class="qw-cross-arrow">&rarr;</span>
                   <a class="qw-cross-url" href="${esc(linkUrl(c.targetUrl))}" target="_blank" rel="noopener">${esc(c.targetUrl)}</a>
                   ${c.rationale ? `<div class="qw-cross-why">${esc(c.rationale)}</div>` : ""}
-                </li>`).join("")}
+                </li>`,
+                )
+                .join("")}
             </ul>
-          </div>` : ""}
-          ${(faqItems.length || schemaItems.length) ? `
+          </div>`
+              : ""
+          }
+          ${
+            faqItems.length || schemaItems.length
+              ? `
           <div class="qw-actions">
             ${faqItems.length ? `<button type="button" class="qw-action-btn qw-action-faq" data-qw-modal="faq" data-qw-target="${faqId}"><span class="qw-action-ico">&#x2753;</span>Suggested FAQs<span class="qw-action-count">${faqItems.length}</span></button>` : ""}
             ${schemaItems.length ? `<button type="button" class="qw-action-btn qw-action-schema" data-qw-modal="schema" data-qw-target="${schemaId}"><span class="qw-action-ico">&lt;/&gt;</span>Suggested schema<span class="qw-action-count">${schemaItems.length}</span></button>` : ""}
           </div>
-          ${faqDataScript}${schemaDataScript}` : ""}
+          ${faqDataScript}${schemaDataScript}`
+              : ""
+          }
             </div>
-          </details>` : ""}
+          </details>`
+              : ""
+          }
         </div>`;
-      }).join("\n")}
-    </div>` : "";
+        })
+        .join("\n")}
+    </div>`
+    : "";
 
-  const internalLinkingHtml = hubs.length ? `
+  const internalLinkingHtml = hubs.length
+    ? `
     <h3 class="seo-sub-heading">Internal Linking Structure</h3>
     ${linking.overview != null ? `${ed(linking.overview, "sections.seoFoundations.internalLinking.overview", { tag: "p", cls: "seo-sub-intro", multiline: true, placeholder: "Linking overview" })}` : ""}
     <div class="ils-grid">
-      ${hubs.map((h, hi) => `
+      ${hubs
+        .map(
+          (h, hi) => `
         <div class="ils-hub gp-deletable" data-deletable-host="1">
           ${delBtn(`sections.seoFoundations.internalLinking.hubs.${hi}`, `hub "${h.hubTitle || h.hubUrl}"`)}
           <div class="ils-hub-head">
@@ -1559,31 +2115,50 @@ function renderSeoFoundations(data: SeoFoundationsData): string {
           </div>
           ${h.hubUrl != null && h.hubTitle != null ? `<div class="ils-hub-sub">${esc(h.hubUrl)}</div>` : ""}
           ${h.hubRole != null ? `${ed(h.hubRole, `sections.seoFoundations.internalLinking.hubs.${hi}.hubRole`, { tag: "p", cls: "ils-hub-role", multiline: true, placeholder: "Hub role" })}` : ""}
-          ${h.inboundLinks?.length ? `
+          ${
+            h.inboundLinks?.length
+              ? `
           <div class="ils-inbound-label">Inbound links from</div>
           <ul class="ils-inbound-list">
-            ${h.inboundLinks.map((l, li) => `
+            ${h.inboundLinks
+              .map(
+                (l, li) => `
               <li class="gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">
                 ${delBtn(`sections.seoFoundations.internalLinking.hubs.${hi}.inboundLinks.${li}`, "inbound link", { inline: true })}
                 <a class="ils-from-url" href="${esc(linkUrl(l.fromUrl))}" target="_blank" rel="noopener">${esc(l.fromUrl)}</a>
                 <span class="ils-arrow">&rarr;</span>
                 <span class="ils-anchor">"${ed(l.anchorText, `sections.seoFoundations.internalLinking.hubs.${hi}.inboundLinks.${li}.anchorText`, { placeholder: "Anchor" })}"</span>
                 ${l.rationale != null ? `${ed(l.rationale, `sections.seoFoundations.internalLinking.hubs.${hi}.inboundLinks.${li}.rationale`, { tag: "div", cls: "ils-why", multiline: true, placeholder: "Why" })}` : ""}
-              </li>`).join("")}
-          </ul>` : ""}
-        </div>`).join("\n")}
-    </div>` : "";
+              </li>`,
+              )
+              .join("")}
+          </ul>`
+              : ""
+          }
+        </div>`,
+        )
+        .join("\n")}
+    </div>`
+    : "";
 
-  const linkBuildingHtml = (targets.length || lb.overallStrategy) ? `
+  const linkBuildingHtml =
+    targets.length || lb.overallStrategy
+      ? `
     <h3 class="seo-sub-heading">Outbound Link-Building Plan</h3>
     ${lb.overallStrategy != null ? `${ed(lb.overallStrategy, "sections.seoFoundations.linkBuilding.overallStrategy", { tag: "p", cls: "seo-sub-intro", multiline: true, placeholder: "Link-building strategy" })}` : ""}
-    ${channels.length ? `
+    ${
+      channels.length
+        ? `
     <div class="lb-channels">
       <span class="lb-channels-label">Outreach channels</span>
       ${channels.map((c, ci) => `<span class="lb-channel-chip gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(c, `sections.seoFoundations.linkBuilding.outreachChannels.${ci}`, { placeholder: "Channel" })}${delBtn(`sections.seoFoundations.linkBuilding.outreachChannels.${ci}`, "channel", { inline: true })}</span>`).join("")}
-    </div>` : ""}
+    </div>`
+        : ""
+    }
     <div class="lb-grid">
-      ${targets.map((t, ti) => `
+      ${targets
+        .map(
+          (t, ti) => `
         <div class="lb-target gp-deletable" data-deletable-host="1">
           ${delBtn(`sections.seoFoundations.linkBuilding.targets.${ti}`, `target "${t.targetUrl}"`)}
           <div class="lb-target-head">
@@ -1593,24 +2168,39 @@ function renderSeoFoundations(data: SeoFoundationsData): string {
           </div>
           ${t.targetPageTitle != null ? `<div class="lb-target-sub">${esc(t.targetUrl)}</div>` : ""}
           ${t.rationale != null ? `${ed(t.rationale, `sections.seoFoundations.linkBuilding.targets.${ti}.rationale`, { tag: "p", cls: "lb-rationale", multiline: true, placeholder: "Rationale" })}` : ""}
-          ${t.anchorMix?.length ? `
+          ${
+            t.anchorMix?.length
+              ? `
           <div class="lb-anchor-label">Anchor text mix</div>
           <table class="lb-anchor-table">
             <thead><tr><th>Anchor text</th><th>Type</th><th>Share</th></tr></thead>
             <tbody>
-              ${t.anchorMix.map((a, ai) => `
+              ${t.anchorMix
+                .map(
+                  (a, ai) => `
                 <tr>
                   <td class="lb-anchor-text">"${ed(a.anchorText, `sections.seoFoundations.linkBuilding.targets.${ti}.anchorMix.${ai}.anchorText`, { placeholder: "Anchor" })}"</td>
                   <td><span class="anchor-type-pill ${anchorTypeClass(a.anchorType)}">${esc(anchorTypeLabel(a.anchorType))}</span></td>
                   <td class="lb-anchor-share">${ed(a.suggestedShare ?? "", `sections.seoFoundations.linkBuilding.targets.${ti}.anchorMix.${ai}.suggestedShare`, { placeholder: "Share" })}${delBtn(`sections.seoFoundations.linkBuilding.targets.${ti}.anchorMix.${ai}`, "row", { inline: true })}</td>
-                </tr>`).join("")}
+                </tr>`,
+                )
+                .join("")}
             </tbody>
-          </table>` : ""}
-          ${t.outreachAngles?.length ? `
+          </table>`
+              : ""
+          }
+          ${
+            t.outreachAngles?.length
+              ? `
           <div class="lb-angles-label">Outreach angles</div>
-          <ul class="lb-angles">${t.outreachAngles.map((a, ai) => `<li class="gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(a, `sections.seoFoundations.linkBuilding.targets.${ti}.outreachAngles.${ai}`, { multiline: true, placeholder: "Angle" })}${delBtn(`sections.seoFoundations.linkBuilding.targets.${ti}.outreachAngles.${ai}`, "angle", { inline: true })}</li>`).join("")}</ul>` : ""}
-        </div>`).join("\n")}
-    </div>` : "";
+          <ul class="lb-angles">${t.outreachAngles.map((a, ai) => `<li class="gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(a, `sections.seoFoundations.linkBuilding.targets.${ti}.outreachAngles.${ai}`, { multiline: true, placeholder: "Angle" })}${delBtn(`sections.seoFoundations.linkBuilding.targets.${ti}.outreachAngles.${ai}`, "angle", { inline: true })}</li>`).join("")}</ul>`
+              : ""
+          }
+        </div>`,
+        )
+        .join("\n")}
+    </div>`
+      : "";
 
   return `
     <section id="seo-foundations" class="section">
@@ -1633,35 +2223,39 @@ function renderContentCalendar(months: any[]): string {
   type Slot = { type: string; label: string; topic: string; meta?: string; intent?: string };
   type RowDef = { key: string; label: string; cls: string };
   const ROWS: RowDef[] = [
-    { key: "pillar",    label: "Pillar Page", cls: "row-pillar" },
-    { key: "reel",      label: "Reel",        cls: "row-reel" },
-    { key: "carousel",  label: "Carousel",    cls: "row-carousel" },
-    { key: "static",    label: "Static Post", cls: "row-static" },
-    { key: "story",     label: "Story",       cls: "row-story" },
+    { key: "pillar", label: "Pillar Page", cls: "row-pillar" },
+    { key: "reel", label: "Reel", cls: "row-reel" },
+    { key: "carousel", label: "Carousel", cls: "row-carousel" },
+    { key: "static", label: "Static Post", cls: "row-static" },
+    { key: "story", label: "Story", cls: "row-story" },
   ];
 
   // Normalise each month into a list of typed slots, then split into 4 weeks.
   const monthBuckets: { label: string; focus?: string; weeks: Slot[][] }[] = months.map((m) => {
-    const blogs: Slot[] = (m.blogPosts ?? []).map((b: { title: string; intent: string; targetKeyword: string; angle?: string }) => {
-      const isPillar = /pillar/i.test(b.title || "");
-      return {
-        type: isPillar ? "pillar" : "blog",
-        label: isPillar ? "PILLAR" : "BLOG",
-        topic: b.title || "",
-        meta: b.angle || b.targetKeyword || "",
-        intent: b.intent,
-      };
-    });
-    const socials: Slot[] = (m.socialPosts ?? []).map((s: { platform: string; type: string; topic: string }) => {
-      const t = (s.type || "static").toLowerCase();
-      const key = ["reel", "carousel", "static", "story"].includes(t) ? t : "static";
-      return {
-        type: key,
-        label: key.toUpperCase(),
-        topic: s.topic || "",
-        meta: s.platform || "",
-      };
-    });
+    const blogs: Slot[] = (m.blogPosts ?? []).map(
+      (b: { title: string; intent: string; targetKeyword: string; angle?: string }) => {
+        const isPillar = /pillar/i.test(b.title || "");
+        return {
+          type: isPillar ? "pillar" : "blog",
+          label: isPillar ? "PILLAR" : "BLOG",
+          topic: b.title || "",
+          meta: b.angle || b.targetKeyword || "",
+          intent: b.intent,
+        };
+      },
+    );
+    const socials: Slot[] = (m.socialPosts ?? []).map(
+      (s: { platform: string; type: string; topic: string }) => {
+        const t = (s.type || "static").toLowerCase();
+        const key = ["reel", "carousel", "static", "story"].includes(t) ? t : "static";
+        return {
+          type: key,
+          label: key.toUpperCase(),
+          topic: s.topic || "",
+          meta: s.platform || "",
+        };
+      },
+    );
     // Spread items across 4 weeks. Blog/pillar first, then social — keeps the
     // hero asset early in the week and saturates social through the rest.
     const all = [...blogs, ...socials];
@@ -1683,67 +2277,130 @@ function renderContentCalendar(months: any[]): string {
   // Cell renderer: count + a few stacked chips with tooltip
   const renderCell = (slots: Slot[]): string => {
     if (!slots.length) return `<div class="cal-cell cal-cell-empty"></div>`;
-    const chips = slots.slice(0, 3).map((s) => `<span class="cal-pill cal-pill-${s.type}" title="${escAttr(s.topic + (s.meta ? ` — ${s.meta}` : ""))}">${esc(s.label)}</span>`).join("");
-    const more = slots.length > 3 ? `<span class="cal-pill cal-pill-more" title="${escAttr(slots.slice(3).map(s => s.topic).join(" • "))}">+${slots.length - 3}</span>` : "";
+    const chips = slots
+      .slice(0, 3)
+      .map(
+        (s) =>
+          `<span class="cal-pill cal-pill-${s.type}" title="${escAttr(s.topic + (s.meta ? ` — ${s.meta}` : ""))}">${esc(s.label)}</span>`,
+      )
+      .join("");
+    const more =
+      slots.length > 3
+        ? `<span class="cal-pill cal-pill-more" title="${escAttr(
+            slots
+              .slice(3)
+              .map((s) => s.topic)
+              .join(" • "),
+          )}">+${slots.length - 3}</span>`
+        : "";
     return `<div class="cal-cell">${chips}${more}</div>`;
   };
 
   // Build a row across all months, grouped by type. View switches between
   // monthly (one cell per month) and weekly (four cells per month).
-  const monthlyHeader = monthBuckets.map((m) => `<div class="cal-th"><div class="cal-th-month">${esc(m.label)}</div>${m.focus ? `<div class="cal-th-focus">${esc(m.focus)}</div>` : ""}</div>`).join("");
-  const weeklyHeader = monthBuckets.map((m) =>
-    [1,2,3,4].map((wk) => `<div class="cal-th cal-th-week"><div class="cal-th-week-num">W${wk}</div>${wk === 1 ? `<div class="cal-th-month-mini">${esc(m.label.split(" ")[0])}</div>` : ""}</div>`).join("")
-  ).join("");
+  const monthlyHeader = monthBuckets
+    .map(
+      (m) =>
+        `<div class="cal-th"><div class="cal-th-month">${esc(m.label)}</div>${m.focus ? `<div class="cal-th-focus">${esc(m.focus)}</div>` : ""}</div>`,
+    )
+    .join("");
+  const weeklyHeader = monthBuckets
+    .map((m) =>
+      [1, 2, 3, 4]
+        .map(
+          (wk) =>
+            `<div class="cal-th cal-th-week"><div class="cal-th-week-num">W${wk}</div>${wk === 1 ? `<div class="cal-th-month-mini">${esc(m.label.split(" ")[0])}</div>` : ""}</div>`,
+        )
+        .join(""),
+    )
+    .join("");
 
   const monthlyRows = ROWS.map((row) => {
-    const cells = monthBuckets.map((m) => {
-      const slots = m.weeks.flat().filter((s) => s.type === row.key);
-      return renderCell(slots);
-    }).join("");
-    const total = monthBuckets.reduce((sum, m) => sum + m.weeks.flat().filter((s) => s.type === row.key).length, 0);
+    const cells = monthBuckets
+      .map((m) => {
+        const slots = m.weeks.flat().filter((s) => s.type === row.key);
+        return renderCell(slots);
+      })
+      .join("");
+    const total = monthBuckets.reduce(
+      (sum, m) => sum + m.weeks.flat().filter((s) => s.type === row.key).length,
+      0,
+    );
     if (total === 0) return ""; // hide empty rows
     return `<div class="cal-row ${row.cls}"><div class="cal-row-label"><span class="cal-row-dot"></span>${esc(row.label)}<span class="cal-row-count">${total}</span></div>${cells}</div>`;
-  }).filter(Boolean).join("");
+  })
+    .filter(Boolean)
+    .join("");
 
   const weeklyRows = ROWS.map((row) => {
-    const cells = monthBuckets.map((m) =>
-      m.weeks.map((wk) => renderCell(wk.filter((s) => s.type === row.key))).join("")
-    ).join("");
-    const total = monthBuckets.reduce((sum, m) => sum + m.weeks.flat().filter((s) => s.type === row.key).length, 0);
+    const cells = monthBuckets
+      .map((m) => m.weeks.map((wk) => renderCell(wk.filter((s) => s.type === row.key))).join(""))
+      .join("");
+    const total = monthBuckets.reduce(
+      (sum, m) => sum + m.weeks.flat().filter((s) => s.type === row.key).length,
+      0,
+    );
     if (total === 0) return "";
     return `<div class="cal-row ${row.cls}"><div class="cal-row-label"><span class="cal-row-dot"></span>${esc(row.label)}<span class="cal-row-count">${total}</span></div>${cells}</div>`;
-  }).filter(Boolean).join("");
+  })
+    .filter(Boolean)
+    .join("");
 
   // Month cards view — each month as a card listing all content items
-  const monthCardsHtml = monthBuckets.map((m, monthIdx) => {
-    const month = months[monthIdx] ?? {};
-    const blogs = (month.blogPosts ?? []) as { title: string; angle?: string; targetKeyword?: string }[];
-    const socials = (month.socialPosts ?? []) as { platform: string; type: string; topic: string }[];
-    const blogItems = blogs.map((b, bi) => `<li class="cal-card-item cal-card-blog gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.6rem">${delBtn(`sections.contentCalendar.${monthIdx}.blogPosts.${bi}`, "blog post", { inline: true })}<span class="cal-card-dot cal-card-dot-blog"></span>${ed(b.title, `sections.contentCalendar.${monthIdx}.blogPosts.${bi}.title`, { placeholder: "Title" })}${b.angle != null ? `<span class="cal-card-meta">${ed(b.angle, `sections.contentCalendar.${monthIdx}.blogPosts.${bi}.angle`, { placeholder: "Angle" })}</span>` : ""}</li>`).join("");
-    const socialItems = socials.map((s, si) => `<li class="cal-card-item cal-card-social gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.6rem">${delBtn(`sections.contentCalendar.${monthIdx}.socialPosts.${si}`, "social post", { inline: true })}<span class="cal-card-dot cal-card-dot-social"></span><span class="cal-card-type">${ed(s.type, `sections.contentCalendar.${monthIdx}.socialPosts.${si}.type`, { placeholder: "Type" })}</span> ${ed(s.topic, `sections.contentCalendar.${monthIdx}.socialPosts.${si}.topic`, { placeholder: "Topic" })}</li>`).join("");
-    return `
+  const monthCardsHtml = monthBuckets
+    .map((m, monthIdx) => {
+      const month = months[monthIdx] ?? {};
+      const blogs = (month.blogPosts ?? []) as {
+        title: string;
+        angle?: string;
+        targetKeyword?: string;
+      }[];
+      const socials = (month.socialPosts ?? []) as {
+        platform: string;
+        type: string;
+        topic: string;
+      }[];
+      const blogItems = blogs
+        .map(
+          (b, bi) =>
+            `<li class="cal-card-item cal-card-blog gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.6rem">${delBtn(`sections.contentCalendar.${monthIdx}.blogPosts.${bi}`, "blog post", { inline: true })}<span class="cal-card-dot cal-card-dot-blog"></span>${ed(b.title, `sections.contentCalendar.${monthIdx}.blogPosts.${bi}.title`, { placeholder: "Title" })}${b.angle != null ? `<span class="cal-card-meta">${ed(b.angle, `sections.contentCalendar.${monthIdx}.blogPosts.${bi}.angle`, { placeholder: "Angle" })}</span>` : ""}</li>`,
+        )
+        .join("");
+      const socialItems = socials
+        .map(
+          (s, si) =>
+            `<li class="cal-card-item cal-card-social gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.6rem">${delBtn(`sections.contentCalendar.${monthIdx}.socialPosts.${si}`, "social post", { inline: true })}<span class="cal-card-dot cal-card-dot-social"></span><span class="cal-card-type">${ed(s.type, `sections.contentCalendar.${monthIdx}.socialPosts.${si}.type`, { placeholder: "Type" })}</span> ${ed(s.topic, `sections.contentCalendar.${monthIdx}.socialPosts.${si}.topic`, { placeholder: "Topic" })}</li>`,
+        )
+        .join("");
+      return `
     <div class="cal-month-card gp-deletable" data-deletable-host="1">
       ${delBtn(`sections.contentCalendar.${monthIdx}`, `month "${m.label}"`)}
       <div class="cal-month-card-head">
         ${ed(m.label ?? "", `sections.contentCalendar.${monthIdx}.month`, { tag: "span", cls: "cal-month-name", placeholder: "Month" })}
         ${m.focus != null ? `${ed(m.focus, `sections.contentCalendar.${monthIdx}.focusLabel`, { tag: "span", cls: "cal-month-focus", placeholder: "Focus" })}` : ""}
-        <span class="cal-month-count">${(blogs.length + socials.length)} piece${(blogs.length + socials.length) === 1 ? "" : "s"}</span>
+        <span class="cal-month-count">${blogs.length + socials.length} piece${blogs.length + socials.length === 1 ? "" : "s"}</span>
       </div>
       <ul class="cal-month-list">
         ${blogItems}
         ${socialItems}
       </ul>
     </div>`;
-  }).join("\n");
+    })
+    .join("\n");
 
   const monthCount = monthBuckets.length;
   const weekCount = monthCount * 4;
 
   // Cadence summary stays as a quick at-a-glance line under the toggle.
   const totals = ROWS.map((row) => {
-    const n = monthBuckets.reduce((sum, m) => sum + m.weeks.flat().filter((s) => s.type === row.key).length, 0);
+    const n = monthBuckets.reduce(
+      (sum, m) => sum + m.weeks.flat().filter((s) => s.type === row.key).length,
+      0,
+    );
     return n > 0 ? `${n} ${row.label}${n === 1 ? "" : "s"}` : "";
-  }).filter(Boolean).join(" · ");
+  })
+    .filter(Boolean)
+    .join(" · ");
 
   return `
     <section id="content-calendar" class="section alt">
@@ -1784,57 +2441,85 @@ function renderContentCalendar(months: any[]): string {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function renderServicesInvestment(data: any): string {
-  const DELIV_COLORS = ["c1","c2","c3","c4","c5","c6","c7","c8"];
+  const DELIV_COLORS = ["c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8"];
 
-  const delivGrid = (data.services ?? []).length > 0 ? `
+  const delivGrid =
+    (data.services ?? []).length > 0
+      ? `
     <div class="deliv-grid">
-      ${(data.services as { name: string; description?: string; price?: string }[]).map((s, i) => `
+      ${(data.services as { name: string; description?: string; price?: string }[])
+        .map(
+          (s, i) => `
       <div class="deliv-card gp-deletable" data-deletable-host="1">
         ${delBtn(`sections.servicesInvestment.services.${i}`, `service "${s.name}"`, { dark: true })}
         <div class="deliv-head ${DELIV_COLORS[i % DELIV_COLORS.length]}">${ed(s.name, `sections.servicesInvestment.services.${i}.name`, { placeholder: "Service" })}${s.price != null ? ` <span style="float:right;opacity:.8;font-weight:500">${ed(s.price, `sections.servicesInvestment.services.${i}.price`, { placeholder: "Price" })}</span>` : ""}</div>
         <div class="deliv-body">
           ${ed(s.description ?? "", `sections.servicesInvestment.services.${i}.description`, { tag: "div", cls: "deliv-row", multiline: true, placeholder: "Description" })}
         </div>
-      </div>`).join("\n")}
-    </div>` : "";
+      </div>`,
+        )
+        .join("\n")}
+    </div>`
+      : "";
 
   const timelineHtml = (data.timeline ?? [])
-    .map((t: { phase: string; items: string[] }, ti: number) => `
+    .map(
+      (t: { phase: string; items: string[] }, ti: number) => `
     <div class="timeline-phase gp-deletable" data-deletable-host="1">
       ${delBtn(`sections.servicesInvestment.timeline.${ti}`, `phase "${t.phase}"`)}
       <h4>${ed(t.phase, `sections.servicesInvestment.timeline.${ti}.phase`, { placeholder: "Phase" })}</h4>
       <ul>${(t.items ?? []).map((item: string, ii: number) => `<li class="gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(item, `sections.servicesInvestment.timeline.${ti}.items.${ii}`, { multiline: true, placeholder: "Item" })}${delBtn(`sections.servicesInvestment.timeline.${ti}.items.${ii}`, "item", { inline: true })}</li>`).join("\n")}</ul>
-    </div>`)
+    </div>`,
+    )
     .join("\n");
 
-  const ia = data.investmentAllocation as { totalMonthly?: number; byChannel?: { channel: string; amount: number; share: number; rationale: string }[] } | undefined;
-  const allocationHtml = ia && Array.isArray(ia.byChannel) && ia.byChannel.length > 0 ? `
+  const ia = data.investmentAllocation as
+    | {
+        totalMonthly?: number;
+        byChannel?: { channel: string; amount: number; share: number; rationale: string }[];
+      }
+    | undefined;
+  const allocationHtml =
+    ia && Array.isArray(ia.byChannel) && ia.byChannel.length > 0
+      ? `
     <h3 style="margin:2rem 0 1rem">Investment Allocation</h3>
     <p style="margin-bottom:1rem;color:#52525b">Recommended monthly media split across the channels in scope. Total monthly media spend: <strong>£${(ia.totalMonthly ?? 0).toLocaleString()}</strong>.</p>
     <table class="channel-table">
       <thead><tr><th>Channel</th><th>Monthly</th><th>Share</th><th>Rationale</th></tr></thead>
       <tbody>
-        ${ia.byChannel.map((row, ri) => `
+        ${ia.byChannel
+          .map(
+            (row, ri) => `
         <tr>
           <td style="font-weight:600;white-space:nowrap">${ed(row.channel, `sections.servicesInvestment.investmentAllocation.byChannel.${ri}.channel`, { placeholder: "Channel" })}</td>
           <td style="font-weight:600">£${(row.amount ?? 0).toLocaleString()}</td>
           <td>${row.share ?? 0}%</td>
           <td>${ed(row.rationale ?? "", `sections.servicesInvestment.investmentAllocation.byChannel.${ri}.rationale`, { multiline: true, placeholder: "Rationale" })}${delBtn(`sections.servicesInvestment.investmentAllocation.byChannel.${ri}`, `row "${row.channel}"`, { inline: true })}</td>
-        </tr>`).join("")}
+        </tr>`,
+          )
+          .join("")}
       </tbody>
-    </table>` : "";
+    </table>`
+      : "";
 
   const whyUs = (data.whyUs ?? []) as { title: string; description?: string }[];
-  const whyUsHtml = whyUs.length > 0 ? `
+  const whyUsHtml =
+    whyUs.length > 0
+      ? `
     <h3 style="margin:2rem 0 1rem">Why i3media</h3>
     <div class="deliv-grid">
-      ${whyUs.map((w, i) => `
+      ${whyUs
+        .map(
+          (w, i) => `
       <div class="deliv-card gp-deletable" data-deletable-host="1">
         ${delBtn(`sections.servicesInvestment.whyUs.${i}`, `point "${w.title}"`, { dark: true })}
         <div class="deliv-head ${DELIV_COLORS[i % DELIV_COLORS.length]}">${ed(w.title, `sections.servicesInvestment.whyUs.${i}.title`, { placeholder: "Title" })}</div>
         <div class="deliv-body"><div class="deliv-row"><div class="deliv-dot"></div><div>${ed(w.description ?? "", `sections.servicesInvestment.whyUs.${i}.description`, { multiline: true, placeholder: "Description" })}</div></div></div>
-      </div>`).join("")}
-    </div>` : "";
+      </div>`,
+        )
+        .join("")}
+    </div>`
+      : "";
 
   return `
     <section id="services" class="section">
@@ -1852,23 +2537,27 @@ function renderServicesInvestment(data: any): string {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function renderMediaPlan(data: any): string {
   const channelsHtml = (data.channels ?? [])
-    .map((ch: { name: string; budget: number; percentage: number; strategy: string }) => `
+    .map(
+      (ch: { name: string; budget: number; percentage: number; strategy: string }) => `
     <div class="channel-row">
       <span class="channel-name">${esc(ch.name)}</span>
       <div class="channel-bar"><div class="channel-fill" style="width:${ch.percentage}%"></div></div>
       <span class="channel-budget">£${(ch.budget ?? 0).toLocaleString()}</span>
       <span class="channel-pct">${ch.percentage}%</span>
-    </div>`)
+    </div>`,
+    )
     .join("\n");
 
   const tableRowsHtml = (data.channels ?? [])
-    .map((ch: { name: string; budget: number; percentage: number; strategy: string }) => `
+    .map(
+      (ch: { name: string; budget: number; percentage: number; strategy: string }) => `
     <tr>
       <td style="font-weight:600;white-space:nowrap">${esc(ch.name)}</td>
       <td style="font-weight:600">£${(ch.budget ?? 0).toLocaleString()}</td>
       <td>${ch.percentage}%</td>
       <td class="channel-strategy">${esc(ch.strategy)}</td>
-    </tr>`)
+    </tr>`,
+    )
     .join("\n");
 
   return `
@@ -1892,7 +2581,15 @@ function renderMediaPlan(data: any): string {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function renderEmailMarketing(data: any): string {
   const flowsHtml = (data.flows ?? [])
-    .map((flow: { name: string; trigger: string; emails: { subject: string; purpose: string; delay?: string }[] }, i: number) => `
+    .map(
+      (
+        flow: {
+          name: string;
+          trigger: string;
+          emails: { subject: string; purpose: string; delay?: string }[];
+        },
+        i: number,
+      ) => `
     <div class="em-flow gp-deletable" data-deletable-host="1">
       ${delBtn(`sections.emailMarketing.flows.${i}`, `flow "${flow.name}"`)}
       <div class="em-flow-header" onclick="if(event.target.closest('[data-edit-path],[data-delete-path]'))return;this.parentElement.classList.toggle('open')">
@@ -1904,7 +2601,9 @@ function renderEmailMarketing(data: any): string {
       <div class="em-flow-body">
         <p class="em-trigger"><strong>Trigger:</strong> ${ed(flow.trigger, `sections.emailMarketing.flows.${i}.trigger`, { multiline: true, placeholder: "Trigger" })}</p>
         <div class="em-emails">
-          ${(flow.emails ?? []).map((e: { subject: string; purpose: string; delay?: string }, j: number) => `
+          ${(flow.emails ?? [])
+            .map(
+              (e: { subject: string; purpose: string; delay?: string }, j: number) => `
           <div class="em-email-item gp-deletable" data-deletable-host="1">
             ${delBtn(`sections.emailMarketing.flows.${i}.emails.${j}`, "email", { inline: true })}
             <span class="em-email-num">${j + 1}</span>
@@ -1913,14 +2612,21 @@ function renderEmailMarketing(data: any): string {
               <div class="em-purpose">${ed(e.purpose, `sections.emailMarketing.flows.${i}.emails.${j}.purpose`, { multiline: true, placeholder: "Purpose" })}</div>
               ${e.delay != null ? `<span class="em-delay">${ed(e.delay, `sections.emailMarketing.flows.${i}.emails.${j}.delay`, { placeholder: "Delay" })}</span>` : ""}
             </div>
-          </div>`).join("\n")}
+          </div>`,
+            )
+            .join("\n")}
         </div>
       </div>
-    </div>`)
+    </div>`,
+    )
     .join("\n");
 
   const campaignsHtml = (data.campaigns ?? [])
-    .map((c: { name: string; frequency: string; audience: string; objectiveText: string }, i: number) => `
+    .map(
+      (
+        c: { name: string; frequency: string; audience: string; objectiveText: string },
+        i: number,
+      ) => `
     <div class="em-campaign-card gp-deletable" data-deletable-host="1">
       ${delBtn(`sections.emailMarketing.campaigns.${i}`, `campaign "${c.name}"`)}
       <h4>${ed(c.name, `sections.emailMarketing.campaigns.${i}.name`, { placeholder: "Name" })}</h4>
@@ -1929,17 +2635,20 @@ function renderEmailMarketing(data: any): string {
         <span class="em-tag">${ed(c.audience, `sections.emailMarketing.campaigns.${i}.audience`, { placeholder: "Audience" })}</span>
       </div>
       <p>${ed(c.objectiveText, `sections.emailMarketing.campaigns.${i}.objectiveText`, { multiline: true, placeholder: "Objective" })}</p>
-    </div>`)
+    </div>`,
+    )
     .join("\n");
 
   const segmentsHtml = (data.segmentation?.segments ?? [])
-    .map((s: { name: string; criteria: string; purpose: string }, i: number) => `
+    .map(
+      (s: { name: string; criteria: string; purpose: string }, i: number) => `
     <div class="em-segment gp-deletable" data-deletable-host="1">
       ${delBtn(`sections.emailMarketing.segmentation.segments.${i}`, `segment "${s.name}"`, { inline: true })}
       <strong>${ed(s.name, `sections.emailMarketing.segmentation.segments.${i}.name`, { placeholder: "Segment" })}</strong>
       <span class="em-criteria">${ed(s.criteria, `sections.emailMarketing.segmentation.segments.${i}.criteria`, { multiline: true, placeholder: "Criteria" })}</span>
       <span class="em-seg-purpose">${ed(s.purpose, `sections.emailMarketing.segmentation.segments.${i}.purpose`, { multiline: true, placeholder: "Purpose" })}</span>
-    </div>`)
+    </div>`,
+    )
     .join("\n");
 
   return `
@@ -1963,13 +2672,26 @@ function renderLinkedInAds(campaigns: any[]): string {
       const base = `sections.linkedInAds.${idx}`;
       const targeting = c.audienceTargeting ?? {};
       const targetingChips = [
-        ...(targeting.jobTitles ?? []).map((t: string, ti: number) => `<span class="audience-chip interest gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(t, `${base}.audienceTargeting.jobTitles.${ti}`, { placeholder: "Job title" })}${delBtn(`${base}.audienceTargeting.jobTitles.${ti}`, "job title", { inline: true })}</span>`),
-        ...(targeting.industries ?? []).map((i: string, ii: number) => `<span class="audience-chip custom gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(i, `${base}.audienceTargeting.industries.${ii}`, { placeholder: "Industry" })}${delBtn(`${base}.audienceTargeting.industries.${ii}`, "industry", { inline: true })}</span>`),
-        ...(targeting.seniority ?? []).map((s: string, si: number) => `<span class="audience-chip lookalike gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(s, `${base}.audienceTargeting.seniority.${si}`, { placeholder: "Seniority" })}${delBtn(`${base}.audienceTargeting.seniority.${si}`, "seniority", { inline: true })}</span>`),
+        ...(targeting.jobTitles ?? []).map(
+          (t: string, ti: number) =>
+            `<span class="audience-chip interest gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(t, `${base}.audienceTargeting.jobTitles.${ti}`, { placeholder: "Job title" })}${delBtn(`${base}.audienceTargeting.jobTitles.${ti}`, "job title", { inline: true })}</span>`,
+        ),
+        ...(targeting.industries ?? []).map(
+          (i: string, ii: number) =>
+            `<span class="audience-chip custom gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(i, `${base}.audienceTargeting.industries.${ii}`, { placeholder: "Industry" })}${delBtn(`${base}.audienceTargeting.industries.${ii}`, "industry", { inline: true })}</span>`,
+        ),
+        ...(targeting.seniority ?? []).map(
+          (s: string, si: number) =>
+            `<span class="audience-chip lookalike gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(s, `${base}.audienceTargeting.seniority.${si}`, { placeholder: "Seniority" })}${delBtn(`${base}.audienceTargeting.seniority.${si}`, "seniority", { inline: true })}</span>`,
+        ),
       ].join(" ");
 
       const creativesHtml = (c.adCreatives ?? [])
-        .map((cr: { headline: string; introText: string; description?: string; cta: string }, cri: number) => `
+        .map(
+          (
+            cr: { headline: string; introText: string; description?: string; cta: string },
+            cri: number,
+          ) => `
         <div class="ad-card gp-deletable" data-deletable-host="1">
           ${delBtn(`${base}.adCreatives.${cri}`, "creative")}
           <div class="ad-card-header"><span class="ad-badge linkedin">LinkedIn</span></div>
@@ -1982,13 +2704,14 @@ function renderLinkedInAds(campaigns: any[]): string {
             <div class="lad-image-wrap">
               <div class="lad-img-txt">${ed(cr.headline, `${base}.adCreatives.${cri}.headline`, { placeholder: "Headline" })}<span class="char-badge ${(cr.headline ?? "").length <= 70 ? "char-ok" : "char-over"}" style="margin-left:6px">${(cr.headline ?? "").length}/70</span></div>
             </div>
-            ${cr.description != null ? `<p style="font-size:12px;color:var(--text-light);margin-bottom:8px">${ed(cr.description, `${base}.adCreatives.${cri}.description`, { multiline: true, placeholder: "Description" })}<span class="char-badge ${(cr.description ?? '').length <= 100 ? 'char-ok' : 'char-over'}" style="margin-left:6px">${(cr.description ?? '').length}/100</span></p>` : ""}
+            ${cr.description != null ? `<p style="font-size:12px;color:var(--text-light);margin-bottom:8px">${ed(cr.description, `${base}.adCreatives.${cri}.description`, { multiline: true, placeholder: "Description" })}<span class="char-badge ${(cr.description ?? "").length <= 100 ? "char-ok" : "char-over"}" style="margin-left:6px">${(cr.description ?? "").length}/100</span></p>` : ""}
             <div class="lad-cta-row">
               <div class="lad-cta-btn">${ed(cr.cta, `${base}.adCreatives.${cri}.cta`, { placeholder: "CTA" })}</div>
               <div class="lad-stats">Sponsored</div>
             </div>
           </div>
-        </div>`)
+        </div>`,
+        )
         .join("\n");
 
       return `
@@ -2019,15 +2742,58 @@ function renderLinkedInAds(campaigns: any[]): string {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function renderGoogleAdsForecast(data: any): string {
-  const fmtNum = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}K` : n.toLocaleString();
-  const range = data.range as { clicks?: { low: number; high: number }; conversions?: { low: number; high: number }; avgCpa?: { low: number; high: number } } | undefined;
+  const fmtNum = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}K` : n.toLocaleString());
+  const range = data.range as
+    | {
+        clicks?: { low: number; high: number };
+        conversions?: { low: number; high: number };
+        avgCpa?: { low: number; high: number };
+      }
+    | undefined;
   const rateNote = data.conversionRateOverridden
     ? `${data.conversionRate}% conversion rate (your override)`
     : `${data.conversionRate ?? 3}% industry-standard conversion rate`;
+  const intelligence = data.intelligence as
+    | {
+        confidence?: string;
+        summary?: string;
+        assumptions?: string[];
+        optimisationLevers?: string[];
+      }
+    | undefined;
+  const confidence = String(intelligence?.confidence ?? "").toLowerCase();
+  const confidenceClass =
+    confidence === "high" ? "char-ok" : confidence === "low" ? "char-over" : "char-warn";
 
-  const clicksRange = range?.clicks ? `<div class="forecast-sub">Range: ${fmtNum(range.clicks.low)} – ${fmtNum(range.clicks.high)}</div>` : "";
-  const convRange = range?.conversions ? `<div class="forecast-sub">Range: ${range.conversions.low} – ${range.conversions.high}</div>` : "";
-  const cpaRange = range?.avgCpa ? `<div class="forecast-sub">Range: £${range.avgCpa.low.toFixed(0)} – £${range.avgCpa.high.toFixed(0)}</div>` : "";
+  const clicksRange = range?.clicks
+    ? `<div class="forecast-sub">Range: ${fmtNum(range.clicks.low)} – ${fmtNum(range.clicks.high)}</div>`
+    : "";
+  const convRange = range?.conversions
+    ? `<div class="forecast-sub">Range: ${range.conversions.low} – ${range.conversions.high}</div>`
+    : "";
+  const cpaRange = range?.avgCpa
+    ? `<div class="forecast-sub">Range: £${range.avgCpa.low.toFixed(0)} – £${range.avgCpa.high.toFixed(0)}</div>`
+    : "";
+
+  const confidenceChip = confidence
+    ? `<span class="char-badge ${confidenceClass}" style="margin-left:.5rem;vertical-align:middle">Confidence: ${esc(confidence)}</span>`
+    : "";
+
+  const assumptions = Array.isArray(intelligence?.assumptions)
+    ? intelligence.assumptions.filter(Boolean).slice(0, 3)
+    : [];
+  const optimisationLevers = Array.isArray(intelligence?.optimisationLevers)
+    ? intelligence.optimisationLevers.filter(Boolean).slice(0, 3)
+    : [];
+  const assumptionsHtml = assumptions.length
+    ? `<div style="margin-top:18px"><h3 class="subsection-title" style="margin-bottom:8px">Core assumptions</h3><ul class="li-list">${assumptions.map((item: string) => `<li>${esc(item)}</li>`).join("")}</ul></div>`
+    : "";
+  const optimisationHtml = optimisationLevers.length
+    ? `<div style="margin-top:16px"><h3 class="subsection-title" style="margin-bottom:8px">Optimisation levers</h3><ul class="li-list">${optimisationLevers.map((item: string) => `<li>${esc(item)}</li>`).join("")}</ul></div>`
+    : "";
+  const summaryHtml = intelligence?.summary
+    ? `<p class="section-intro" style="margin-top:16px">${esc(intelligence.summary)}</p>`
+    : "";
 
   const disclaimer = data.disclaimer
     ? `<p class="section-disclaimer" style="margin-top:16px;padding:12px 16px;background:rgba(245,158,11,0.08);border-left:3px solid #f59e0b;border-radius:4px;font-size:13px;color:#92400e;"><strong>Planning estimate:</strong> ${esc(String(data.disclaimer))}</p>`
@@ -2037,7 +2803,7 @@ function renderGoogleAdsForecast(data: any): string {
     <section id="google-ads-forecast" class="section">
       <div class="section-inner">
         <div class="section-kicker">Performance</div>
-        <h2>Google Ads Forecast</h2>
+        <h2>Google Ads Forecast ${confidenceChip}</h2>
       <p class="section-intro">Estimated monthly performance based on keyword volumes, CPCs, and a £${Number(data.monthlyBudget ?? 0).toLocaleString()}/month budget at ${rateNote}.</p>
       <div class="forecast-grid">
         <div class="forecast-card"><span class="forecast-value">${fmtNum(data.clicks ?? 0)}</span><span class="forecast-label">Est. Clicks</span>${clicksRange}</div>
@@ -2048,6 +2814,9 @@ function renderGoogleAdsForecast(data: any): string {
         <div class="forecast-card"><span class="forecast-value">£${Number(data.avgCpc ?? 0).toFixed(2)}</span><span class="forecast-label">Avg CPC</span></div>
         <div class="forecast-card accent"><span class="forecast-value">£${Number(data.avgCpa ?? 0).toFixed(2)}</span><span class="forecast-label">Est. CPA</span>${cpaRange}</div>
       </div>
+      ${summaryHtml}
+      ${assumptionsHtml}
+      ${optimisationHtml}
       ${disclaimer}
       </div>
     </section>`;
@@ -2062,9 +2831,12 @@ function renderCompetitorIntel(competitors: any[], grounding?: string): string {
   };
 
   const sourceBadge = (source?: string) => {
-    if (source === "manual") return `<span class="comp-source-badge comp-source-manual">Client-named</span>`;
-    if (source === "auto") return `<span class="comp-source-badge comp-source-auto">SEMrush auto</span>`;
-    if (source === "inferred") return `<span class="comp-source-badge comp-source-inferred">AI inferred</span>`;
+    if (source === "manual")
+      return `<span class="comp-source-badge comp-source-manual">Client-named</span>`;
+    if (source === "auto")
+      return `<span class="comp-source-badge comp-source-auto">SEMrush auto</span>`;
+    if (source === "inferred")
+      return `<span class="comp-source-badge comp-source-inferred">AI inferred</span>`;
     return "";
   };
   const overlapPill = (n?: number) =>
@@ -2073,24 +2845,46 @@ function renderCompetitorIntel(competitors: any[], grounding?: string): string {
       : "";
 
   const tableRows = competitors
-    .map((c, idx) => `
+    .map(
+      (c, idx) => `
     <tr>
       <td class="comp-domain">${ed(c.domain ?? "", `sections.competitorIntel.${idx}.domain`, { placeholder: "domain.com" })} ${sourceBadge(c.source)}</td>
       <td class="comp-num">${c.organicTraffic ? fmtNum(c.organicTraffic) : "—"}</td>
       <td class="comp-num">${c.organicKeywords ? fmtNum(c.organicKeywords) : "—"}</td>
       <td class="comp-num">${c.paidKeywords ? fmtNum(c.paidKeywords) : "—"}</td>
       <td class="comp-num">${c.backlinks ? fmtNum(c.backlinks) : "—"}</td>
-    </tr>`)
+    </tr>`,
+    )
     .join("\n");
 
   const detailCards = competitors
     .map((c, idx) => {
       const base = `sections.competitorIntel.${idx}`;
-      const topKeywords = (c.topKeywords ?? []).map((k: string, ki: number) => `<span class="comp-kw-chip gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(k, `${base}.topKeywords.${ki}`, { placeholder: "Keyword" })}${delBtn(`${base}.topKeywords.${ki}`, "keyword", { inline: true })}</span>`).join(" ");
-      const strengths = (c.strengths ?? []).map((s: string, si: number) => `<li class="gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(s, `${base}.strengths.${si}`, { multiline: true, placeholder: "Strength" })}${delBtn(`${base}.strengths.${si}`, "strength", { inline: true })}</li>`).join("");
-      const weaknesses = (c.weaknesses ?? []).map((w: string, wi: number) => `<li class="gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(w, `${base}.weaknesses.${wi}`, { multiline: true, placeholder: "Weakness" })}${delBtn(`${base}.weaknesses.${wi}`, "weakness", { inline: true })}</li>`).join("");
+      const topKeywords = (c.topKeywords ?? [])
+        .map(
+          (k: string, ki: number) =>
+            `<span class="comp-kw-chip gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(k, `${base}.topKeywords.${ki}`, { placeholder: "Keyword" })}${delBtn(`${base}.topKeywords.${ki}`, "keyword", { inline: true })}</span>`,
+        )
+        .join(" ");
+      const strengths = (c.strengths ?? [])
+        .map(
+          (s: string, si: number) =>
+            `<li class="gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(s, `${base}.strengths.${si}`, { multiline: true, placeholder: "Strength" })}${delBtn(`${base}.strengths.${si}`, "strength", { inline: true })}</li>`,
+        )
+        .join("");
+      const weaknesses = (c.weaknesses ?? [])
+        .map(
+          (w: string, wi: number) =>
+            `<li class="gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(w, `${base}.weaknesses.${wi}`, { multiline: true, placeholder: "Weakness" })}${delBtn(`${base}.weaknesses.${wi}`, "weakness", { inline: true })}</li>`,
+        )
+        .join("");
       const opportunitiesArr = (c.opportunities ?? []) as string[];
-      const opportunities = opportunitiesArr.map((o: string, oi: number) => `<li class="gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(o, `${base}.opportunities.${oi}`, { multiline: true, placeholder: "Opportunity" })}${delBtn(`${base}.opportunities.${oi}`, "opportunity", { inline: true })}</li>`).join("");
+      const opportunities = opportunitiesArr
+        .map(
+          (o: string, oi: number) =>
+            `<li class="gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(o, `${base}.opportunities.${oi}`, { multiline: true, placeholder: "Opportunity" })}${delBtn(`${base}.opportunities.${oi}`, "opportunity", { inline: true })}</li>`,
+        )
+        .join("");
       return `
     <div class="comp-detail-card gp-deletable" data-deletable-host="1">
       ${delBtn(base, `competitor "${c.domain ?? ""}"`)}
@@ -2100,15 +2894,27 @@ function renderCompetitorIntel(competitors: any[], grounding?: string): string {
         <div class="comp-sw-col"><span class="comp-sw-title comp-strength">Strengths</span><ul>${strengths}</ul></div>
         <div class="comp-sw-col"><span class="comp-sw-title comp-weakness">Weaknesses</span><ul>${weaknesses}</ul></div>
       </div>
-      ${opportunitiesArr.length ? `
+      ${
+        opportunitiesArr.length
+          ? `
       <div class="comp-opportunities">
         <span class="comp-sw-title comp-opportunity">Opportunities for us</span>
         <ul>${opportunities}</ul>
-      </div>` : (c.strengths ?? []).length ? `
+      </div>`
+          : (c.strengths ?? []).length
+            ? `
       <div class="comp-opportunities">
         <span class="comp-sw-title comp-opportunity">Opportunities for us</span>
-        <ul>${(c.strengths as string[]).slice(0, 2).map((s: string) => `<li>They perform well here — we should match and differentiate: <em>${esc(s)}</em></li>`).join("")}</ul>
-      </div>` : ""}
+        <ul>${(c.strengths as string[])
+          .slice(0, 2)
+          .map(
+            (s: string) =>
+              `<li>They perform well here — we should match and differentiate: <em>${esc(s)}</em></li>`,
+          )
+          .join("")}</ul>
+      </div>`
+            : ""
+      }
     </div>`;
     })
     .join("\n");
@@ -2118,11 +2924,12 @@ function renderCompetitorIntel(competitors: any[], grounding?: string): string {
       <div class="section-inner">
         <div class="section-kicker">Research</div>
         <h2>Competitor Intelligence</h2>
-      ${grounding === "real"
-        ? `<p class="section-disclaimer" style="margin-bottom:16px;padding:12px 16px;background:rgba(16,185,129,0.07);border-left:3px solid #10b981;border-radius:4px;font-size:13px;color:#065f46;"><strong>Verified data:</strong> Competitor metrics are live figures sourced from SEMrush domain overviews, keyword analysis and backlink data. Organic traffic and keyword counts reflect current SEMrush snapshots.</p>`
-        : grounding === "partial"
-        ? `<p class="section-disclaimer" style="margin-bottom:16px;padding:12px 16px;background:rgba(245,158,11,0.07);border-left:3px solid #f59e0b;border-radius:4px;font-size:13px;color:#92400e;"><strong>Partially verified:</strong> Competitors with SEMrush keyword overlap show live metrics. Manually-added competitors without overlap data show AI-estimated figures based on their homepage and industry context.</p>`
-        : `<p class="section-disclaimer" style="margin-bottom:16px;padding:12px 16px;background:rgba(59,130,246,0.06);border-left:3px solid #3b82f6;border-radius:4px;font-size:13px;color:#1e40af;"><strong>AI-generated estimates:</strong> No SEMrush domain data was available for these competitors. Metrics are AI approximations for directional planning only — run a SEMrush audit for verified figures.</p>`
+      ${
+        grounding === "real"
+          ? `<p class="section-disclaimer" style="margin-bottom:16px;padding:12px 16px;background:rgba(16,185,129,0.07);border-left:3px solid #10b981;border-radius:4px;font-size:13px;color:#065f46;"><strong>Verified data:</strong> Competitor metrics are live figures sourced from SEMrush domain overviews, keyword analysis and backlink data. Organic traffic and keyword counts reflect current SEMrush snapshots.</p>`
+          : grounding === "partial"
+            ? `<p class="section-disclaimer" style="margin-bottom:16px;padding:12px 16px;background:rgba(245,158,11,0.07);border-left:3px solid #f59e0b;border-radius:4px;font-size:13px;color:#92400e;"><strong>Partially verified:</strong> Competitors with SEMrush keyword overlap show live metrics. Manually-added competitors without overlap data show AI-estimated figures based on their homepage and industry context.</p>`
+            : `<p class="section-disclaimer" style="margin-bottom:16px;padding:12px 16px;background:rgba(59,130,246,0.06);border-left:3px solid #3b82f6;border-radius:4px;font-size:13px;color:#1e40af;"><strong>AI-generated estimates:</strong> No SEMrush domain data was available for these competitors. Metrics are AI approximations for directional planning only — run a SEMrush audit for verified figures.</p>`
       }
       <table class="channel-table">
         <thead><tr><th>Domain</th><th>Organic Traffic</th><th>Organic KWs</th><th>Paid KWs</th><th>Backlinks</th></tr></thead>
@@ -3398,7 +4205,6 @@ a{color:var(--accent);text-decoration:none}
 @media print{.gp-edit-toolbar,.gp-del-btn{display:none !important}.gp-edit{outline:none !important;background:none !important;box-shadow:none !important}}
 `;
 
-
 // ─── Inline JS ──────────────────────────────────────────────────────────────
 
 const JS = `
@@ -4192,7 +4998,10 @@ function renderStrategyBrainPanel(brain: StrategyBrain | undefined, _isPublicVie
   if (!brain || !brain.positioning?.statement) return "";
   void _isPublicView; // brain is now public-friendly and rendered in both views
 
-  const audiences = (brain.audiences ?? []).slice(0, 6).map((a, i) => `
+  const audiences = (brain.audiences ?? [])
+    .slice(0, 6)
+    .map(
+      (a, i) => `
     <details class="brain-audience gp-deletable" data-deletable-host="1">
       ${delBtn(`strategyBrain.audiences.${i}`, `audience "${a.name}"`)}
       <summary class="brain-audience-summary">
@@ -4204,21 +5013,52 @@ function renderStrategyBrainPanel(brain: StrategyBrain | undefined, _isPublicVie
         <div class="brain-audience-line"><strong>Trigger:</strong> ${ed(a.decisionTrigger, `strategyBrain.audiences.${i}.decisionTrigger`, { multiline: true, placeholder: "Decision trigger" })}</div>
         ${a.channels?.length ? `<div class="brain-audience-line"><strong>Channels:</strong> ${a.channels.map((c, ci) => ed(c, `strategyBrain.audiences.${i}.channels.${ci}`, { placeholder: "Channel" })).join(", ")}</div>` : ""}
       </div>
-    </details>`).join("");
+    </details>`,
+    )
+    .join("");
 
-  const channels = (brain.channelStrategy ?? []).map((c, i) => `
+  const channels = (brain.channelStrategy ?? [])
+    .map(
+      (c, i) => `
     <li class="gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.6rem">
       ${delBtn(`strategyBrain.channelStrategy.${i}`, `channel "${c.channel}"`, { inline: true })}
       <strong>${ed(c.channel, `strategyBrain.channelStrategy.${i}.channel`, { placeholder: "Channel" })}:</strong>
       ${ed(c.role, `strategyBrain.channelStrategy.${i}.role`, { multiline: true, placeholder: "Role" })}
       <span class="brain-meta">(audience: ${ed(c.primaryAudience, `strategyBrain.channelStrategy.${i}.primaryAudience`, { placeholder: "Audience" })} · success: ${ed(c.successMetric, `strategyBrain.channelStrategy.${i}.successMetric`, { placeholder: "Success metric" })})</span>
-    </li>`).join("");
+    </li>`,
+    )
+    .join("");
 
-  const messagesToOwn = (brain.competitorAngle?.messagesToOwn ?? []).map((m, i) => `<li class="gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(m, `strategyBrain.competitorAngle.messagesToOwn.${i}`, { multiline: true, placeholder: "Message" })}${delBtn(`strategyBrain.competitorAngle.messagesToOwn.${i}`, "message", { inline: true })}</li>`).join("");
-  const messagesToAvoid = (brain.competitorAngle?.messagesToAvoid ?? []).map((m, i) => `<li class="gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(m, `strategyBrain.competitorAngle.messagesToAvoid.${i}`, { multiline: true, placeholder: "Message" })}${delBtn(`strategyBrain.competitorAngle.messagesToAvoid.${i}`, "message", { inline: true })}</li>`).join("");
-  const supporting = (brain.messageHierarchy?.secondary ?? []).map((m, i) => `<li class="gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(m, `strategyBrain.messageHierarchy.secondary.${i}`, { multiline: true, placeholder: "Supporting message" })}${delBtn(`strategyBrain.messageHierarchy.secondary.${i}`, "message", { inline: true })}</li>`).join("");
-  const geos = (brain.targetGeographies ?? []).map((g, i) => `<span class="brain-geo-chip gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.5rem">${ed(g, `strategyBrain.targetGeographies.${i}`, { placeholder: "Market" })}${delBtn(`strategyBrain.targetGeographies.${i}`, "market", { inline: true })}</span>`).join("");
-  const proofPoints = (brain.positioning.proofPoints ?? []).map((p, i) => `<li class="gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(p, `strategyBrain.positioning.proofPoints.${i}`, { multiline: true, placeholder: "Proof point" })}${delBtn(`strategyBrain.positioning.proofPoints.${i}`, "proof point", { inline: true })}</li>`).join("");
+  const messagesToOwn = (brain.competitorAngle?.messagesToOwn ?? [])
+    .map(
+      (m, i) =>
+        `<li class="gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(m, `strategyBrain.competitorAngle.messagesToOwn.${i}`, { multiline: true, placeholder: "Message" })}${delBtn(`strategyBrain.competitorAngle.messagesToOwn.${i}`, "message", { inline: true })}</li>`,
+    )
+    .join("");
+  const messagesToAvoid = (brain.competitorAngle?.messagesToAvoid ?? [])
+    .map(
+      (m, i) =>
+        `<li class="gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(m, `strategyBrain.competitorAngle.messagesToAvoid.${i}`, { multiline: true, placeholder: "Message" })}${delBtn(`strategyBrain.competitorAngle.messagesToAvoid.${i}`, "message", { inline: true })}</li>`,
+    )
+    .join("");
+  const supporting = (brain.messageHierarchy?.secondary ?? [])
+    .map(
+      (m, i) =>
+        `<li class="gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(m, `strategyBrain.messageHierarchy.secondary.${i}`, { multiline: true, placeholder: "Supporting message" })}${delBtn(`strategyBrain.messageHierarchy.secondary.${i}`, "message", { inline: true })}</li>`,
+    )
+    .join("");
+  const geos = (brain.targetGeographies ?? [])
+    .map(
+      (g, i) =>
+        `<span class="brain-geo-chip gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.5rem">${ed(g, `strategyBrain.targetGeographies.${i}`, { placeholder: "Market" })}${delBtn(`strategyBrain.targetGeographies.${i}`, "market", { inline: true })}</span>`,
+    )
+    .join("");
+  const proofPoints = (brain.positioning.proofPoints ?? [])
+    .map(
+      (p, i) =>
+        `<li class="gp-deletable" data-deletable-host="1" style="position:relative;padding-right:1.4rem">${ed(p, `strategyBrain.positioning.proofPoints.${i}`, { multiline: true, placeholder: "Proof point" })}${delBtn(`strategyBrain.positioning.proofPoints.${i}`, "proof point", { inline: true })}</li>`,
+    )
+    .join("");
 
   return `
 <section class="section-block brain-panel" id="strategy-brain" data-snap>
@@ -4250,42 +5090,61 @@ function renderStrategyBrainPanel(brain: StrategyBrain | undefined, _isPublicVie
           ${ed(brain.messageHierarchy?.primary ?? "", "strategyBrain.messageHierarchy.primary", { tag: "p", cls: "brain-primary-msg", multiline: true, placeholder: "Primary message" })}
           ${supporting ? `<p><strong>Supporting:</strong></p><ul>${supporting}</ul>` : ""}
         </div>
-        ${geos ? `
+        ${
+          geos
+            ? `
         <div class="brain-cell brain-geos-cell">
           <h4>Markets we are targeting</h4>
           <div class="brain-geo-chips">${geos}</div>
-        </div>` : ""}
+        </div>`
+            : ""
+        }
         <div class="brain-cell brain-cell-wide">
           <h4>Channel strategy</h4>
           <ul class="brain-channels">${channels}</ul>
         </div>
       </div>
-      ${audiences ? `
+      ${
+        audiences
+          ? `
       <div class="brain-audiences">
         <h4>Audience definitions</h4>
         <p class="brain-audience-intro">These names appear verbatim across every channel below — ad copy, email segments, content briefs, social pillars.</p>
         <div class="brain-audience-grid">${audiences}</div>
-      </div>` : ""}
+      </div>`
+          : ""
+      }
     </div>
   </div>
 </section>`;
 }
 
 // ─── Coherence issues panel (Strategist Review) ─────────────────────────────
-function renderCoherencePanel(issues: GrandPlanData["coherenceIssues"], isPublicView = false): string {
+function renderCoherencePanel(
+  issues: GrandPlanData["coherenceIssues"],
+  isPublicView = false,
+): string {
   if (!issues?.length) return "";
   if (isPublicView) return "";
   const groups: Record<string, NonNullable<GrandPlanData["coherenceIssues"]>> = {};
   for (const i of issues) (groups[i.section] ??= []).push(i);
-  const blocks = Object.entries(groups).map(([section, list]) => `
+  const blocks = Object.entries(groups)
+    .map(
+      ([section, list]) => `
     <div class="coh-group">
       <div class="coh-section">${esc(section)}</div>
-      <ul>${list.map((i) => `
+      <ul>${list
+        .map(
+          (i) => `
         <li class="coh-item coh-${esc(i.severity)}">
           <span class="coh-issue">${esc(i.issue)}</span>
           <span class="coh-fix">→ ${esc(i.suggestedFix)}</span>
-        </li>`).join("")}</ul>
-    </div>`).join("");
+        </li>`,
+        )
+        .join("")}</ul>
+    </div>`,
+    )
+    .join("");
   return `
 <details class="coh-panel">
   <summary class="coh-summary">

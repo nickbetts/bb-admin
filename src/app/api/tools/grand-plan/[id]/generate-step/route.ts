@@ -220,7 +220,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     planMode?: "annual" | "sprint90";
   }>(plan.configJson, {});
 
-  const clientName = plan.client?.name || plan.proposal?.clientName || "Client";
+  const clientName =
+    plan.client?.name || plan.prospectName || plan.proposal?.clientName || "Client";
   const brief = body.overrides?.clientBrief ?? plan.clientBrief ?? "";
   const website =
     config.kwBrief?.website ?? plan.client?.website ?? plan.keywordResearch?.website ?? "";
@@ -2484,7 +2485,8 @@ function isStrategyBrainUsable(brain: StrategyBrain | undefined): boolean {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function buildSources(plan: any, config: any, brief: string): GrandPlanSources {
-  const clientName = plan.client?.name || plan.proposal?.clientName || "Client";
+  const clientName =
+    plan.client?.name || plan.prospectName || plan.proposal?.clientName || "Client";
 
   // Pull research / customer-voice stashes off planDataJson if the prepare-* steps
   // have run. These are stripped before the final assemble step renders the HTML.

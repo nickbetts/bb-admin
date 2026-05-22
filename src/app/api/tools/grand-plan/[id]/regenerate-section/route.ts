@@ -2,24 +2,33 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/activity-logger";
-import { generateGrandPlan, type GrandPlanSources, type GrandPlanData } from "@/lib/grand-plan-generator";
+import {
+  generateGrandPlan,
+  type GrandPlanSources,
+  type GrandPlanData,
+} from "@/lib/grand-plan-generator";
 import { renderGrandPlanHtml } from "@/lib/grand-plan-html-template";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 800;
 
 const VALID_SECTIONS = [
-  "executiveSummary", "googleAdsCampaigns", "metaCampaigns",
-  "contentStrategy", "contentCalendar",
-  "servicesInvestment", "mediaPlan", "emailMarketing",
-  "linkedInAds", "competitorIntel", "googleAdsForecast", "audiences",
+  "executiveSummary",
+  "googleAdsCampaigns",
+  "metaCampaigns",
+  "contentStrategy",
+  "contentCalendar",
+  "servicesInvestment",
+  "mediaPlan",
+  "emailMarketing",
+  "linkedInAds",
+  "competitorIntel",
+  "googleAdsForecast",
+  "audiences",
 ];
 
 // POST /api/tools/grand-plan/[id]/regenerate-section — regenerate a single section
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -31,15 +40,25 @@ export async function POST(
       client: { select: { id: true, name: true, slug: true, website: true } },
       proposal: {
         select: {
-          id: true, title: true, clientName: true,
-          servicesJson: true, timelineJson: true, proposalDataJson: true,
+          id: true,
+          title: true,
+          clientName: true,
+          servicesJson: true,
+          timelineJson: true,
+          proposalDataJson: true,
         },
       },
       keywordResearch: {
         select: {
-          id: true, title: true, website: true, brief: true,
-          adGroups: true, selectedKws: true, ideas: true,
-          maxCpc: true, monthlyBudget: true,
+          id: true,
+          title: true,
+          website: true,
+          brief: true,
+          adGroups: true,
+          selectedKws: true,
+          ideas: true,
+          maxCpc: true,
+          monthlyBudget: true,
         },
       },
       contentStrategy: {
@@ -47,8 +66,12 @@ export async function POST(
       },
       mediaPlan: {
         select: {
-          id: true, title: true, objective: true,
-          totalBudget: true, channels: true, forecast: true,
+          id: true,
+          title: true,
+          objective: true,
+          totalBudget: true,
+          channels: true,
+          forecast: true,
         },
       },
       versions: { orderBy: { versionNumber: "desc" }, take: 1 },
@@ -56,12 +79,17 @@ export async function POST(
   });
 
   if (!plan) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (plan.userId !== session.user.id && !session.user.permissions.includes("grand_plan.edit_any")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  if (!plan.planDataJson) return NextResponse.json({ error: "Plan has not been generated yet" }, { status: 400 });
+  if (plan.userId !== session.user.id && !session.user.permissions.includes("grand_plan.edit_any"))
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!plan.planDataJson)
+    return NextResponse.json({ error: "Plan has not been generated yet" }, { status: 400 });
 
-  const body = await request.json() as { sectionKey: string };
+  const body = (await request.json()) as { sectionKey: string };
   if (!body.sectionKey || !VALID_SECTIONS.includes(body.sectionKey)) {
-    return NextResponse.json({ error: `Invalid sectionKey. Must be one of: ${VALID_SECTIONS.join(", ")}` }, { status: 400 });
+    return NextResponse.json(
+      { error: `Invalid sectionKey. Must be one of: ${VALID_SECTIONS.join(", ")}` },
+      { status: 400 },
+    );
   }
 
   try {
@@ -75,7 +103,8 @@ export async function POST(
       socialPostsPerWeek?: number;
       calendarMonths?: number;
     }>(plan.configJson, {});
-    const clientName = plan.client?.name || plan.proposal?.clientName || "Client";
+    const clientName =
+      plan.client?.name || plan.prospectName || plan.proposal?.clientName || "Client";
 
     // Rebuild sources from linked records (same pattern as generate route)
     const sources: GrandPlanSources = {
@@ -87,10 +116,22 @@ export async function POST(
       enabledPlatforms: config.sections,
       campaignFocusPeriods: safeJsonParse(plan.campaignFocusPeriodsJson, []),
       strategyBrain: existingPlanData.strategyBrain,
-      postsPerMonth: typeof config.postsPerMonth === "number" && config.postsPerMonth > 0 ? config.postsPerMonth : undefined,
-      socialPostsPerMonth: typeof config.socialPostsPerMonth === "number" && config.socialPostsPerMonth >= 0 ? config.socialPostsPerMonth : undefined,
-      socialPostsPerWeek: typeof config.socialPostsPerWeek === "number" && config.socialPostsPerWeek > 0 ? config.socialPostsPerWeek : undefined,
-      calendarMonths: typeof config.calendarMonths === "number" && config.calendarMonths > 0 ? config.calendarMonths : undefined,
+      postsPerMonth:
+        typeof config.postsPerMonth === "number" && config.postsPerMonth > 0
+          ? config.postsPerMonth
+          : undefined,
+      socialPostsPerMonth:
+        typeof config.socialPostsPerMonth === "number" && config.socialPostsPerMonth >= 0
+          ? config.socialPostsPerMonth
+          : undefined,
+      socialPostsPerWeek:
+        typeof config.socialPostsPerWeek === "number" && config.socialPostsPerWeek > 0
+          ? config.socialPostsPerWeek
+          : undefined,
+      calendarMonths:
+        typeof config.calendarMonths === "number" && config.calendarMonths > 0
+          ? config.calendarMonths
+          : undefined,
       channelBudgets: config.channelBudgets ?? undefined,
       proposal: plan.proposal
         ? {
@@ -194,5 +235,9 @@ export async function POST(
 
 function safeJsonParse<T>(s: string | null | undefined, fallback: T): T {
   if (!s) return fallback;
-  try { return JSON.parse(s); } catch { return fallback; }
+  try {
+    return JSON.parse(s);
+  } catch {
+    return fallback;
+  }
 }

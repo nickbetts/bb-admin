@@ -3,7 +3,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/activity-logger";
-import { generateGrandPlan, type GrandPlanSources, type CampaignFocusPeriod } from "@/lib/grand-plan-generator";
+import {
+  generateGrandPlan,
+  type GrandPlanSources,
+  type CampaignFocusPeriod,
+} from "@/lib/grand-plan-generator";
 import { renderGrandPlanHtml } from "@/lib/grand-plan-html-template";
 import { suggestAdGroups, researchKeywords } from "@/lib/keyword-planner-pipeline";
 import { generateContentStrategy } from "@/lib/content-strategy-generator";
@@ -13,10 +17,7 @@ export const maxDuration = 800;
 export const dynamic = "force-dynamic";
 
 // POST /api/tools/grand-plan/[id]/generate — trigger generation
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -25,18 +26,30 @@ export async function POST(
   const plan = await prisma.grandPlan.findUnique({
     where: { id },
     include: {
-      client: { select: { id: true, name: true, slug: true, website: true, searchConsoleSiteUrl: true } },
+      client: {
+        select: { id: true, name: true, slug: true, website: true, searchConsoleSiteUrl: true },
+      },
       proposal: {
         select: {
-          id: true, title: true, clientName: true,
-          servicesJson: true, timelineJson: true, proposalDataJson: true,
+          id: true,
+          title: true,
+          clientName: true,
+          servicesJson: true,
+          timelineJson: true,
+          proposalDataJson: true,
         },
       },
       keywordResearch: {
         select: {
-          id: true, title: true, website: true, brief: true,
-          adGroups: true, selectedKws: true, ideas: true,
-          maxCpc: true, monthlyBudget: true,
+          id: true,
+          title: true,
+          website: true,
+          brief: true,
+          adGroups: true,
+          selectedKws: true,
+          ideas: true,
+          maxCpc: true,
+          monthlyBudget: true,
         },
       },
       contentStrategy: {
@@ -44,8 +57,12 @@ export async function POST(
       },
       mediaPlan: {
         select: {
-          id: true, title: true, objective: true,
-          totalBudget: true, channels: true, forecast: true,
+          id: true,
+          title: true,
+          objective: true,
+          totalBudget: true,
+          channels: true,
+          forecast: true,
         },
       },
     },
@@ -72,7 +89,8 @@ export async function POST(
 
   // Capture values for the after() closure
   const planId = plan.id;
-  const clientName = plan.client?.name || plan.proposal?.clientName || "Client";
+  const clientName =
+    plan.client?.name || plan.prospectName || plan.proposal?.clientName || "Client";
   const userId = session.user.id;
   const userEmail = session.user.email;
 
@@ -89,8 +107,8 @@ export async function POST(
     }
 
     try {
-      const focusPeriods: CampaignFocusPeriod[] = bodyOverrides.campaignFocusPeriods
-        ?? safeJsonParse(plan.campaignFocusPeriodsJson, []);
+      const focusPeriods: CampaignFocusPeriod[] =
+        bodyOverrides.campaignFocusPeriods ?? safeJsonParse(plan.campaignFocusPeriodsJson, []);
 
       const brief = bodyOverrides.clientBrief ?? plan.clientBrief ?? "";
       const targetAudiences = plan.targetAudiences ?? "";
@@ -110,7 +128,8 @@ export async function POST(
         calendarMonths?: number;
       }>(plan.configJson, {});
 
-      const website = config.kwBrief?.website ?? plan.client?.website ?? plan.keywordResearch?.website ?? "";
+      const website =
+        config.kwBrief?.website ?? plan.client?.website ?? plan.keywordResearch?.website ?? "";
       const clientId = plan.clientId;
 
       const enabledSections = config.sections?.length ? config.sections : undefined;
@@ -126,7 +145,9 @@ export async function POST(
         const suggestResult = await suggestAdGroups(website, kwBriefText);
 
         if (suggestResult.adGroups.length > 0) {
-          await setProgress(`Researching ${suggestResult.adGroups.reduce((s, g) => s + g.keywords.length, 0)} keywords via SEMrush...`);
+          await setProgress(
+            `Researching ${suggestResult.adGroups.reduce((s, g) => s + g.keywords.length, 0)} keywords via SEMrush...`,
+          );
           const ideas = await researchKeywords(suggestResult.adGroups);
 
           // Convert ad groups with volumes into the format the generator expects
@@ -139,7 +160,7 @@ export async function POST(
                 keyword: kw,
                 matchType: "broad" as const,
                 volume: idea?.avgMonthlySearches,
-                cpc: idea ? (idea.highTopOfPageBidMicros / 1_000_000) : undefined,
+                cpc: idea ? idea.highTopOfPageBidMicros / 1_000_000 : undefined,
               };
             }),
           }));
@@ -201,10 +222,22 @@ export async function POST(
         sector: config.sector || undefined,
         enabledPlatforms: enabledSections,
         campaignFocusPeriods: focusPeriods,
-        postsPerMonth: typeof config.postsPerMonth === "number" && config.postsPerMonth > 0 ? config.postsPerMonth : undefined,
-        socialPostsPerMonth: typeof config.socialPostsPerMonth === "number" && config.socialPostsPerMonth >= 0 ? config.socialPostsPerMonth : undefined,
-        socialPostsPerWeek: typeof config.socialPostsPerWeek === "number" && config.socialPostsPerWeek > 0 ? config.socialPostsPerWeek : undefined,
-        calendarMonths: typeof config.calendarMonths === "number" && config.calendarMonths > 0 ? config.calendarMonths : undefined,
+        postsPerMonth:
+          typeof config.postsPerMonth === "number" && config.postsPerMonth > 0
+            ? config.postsPerMonth
+            : undefined,
+        socialPostsPerMonth:
+          typeof config.socialPostsPerMonth === "number" && config.socialPostsPerMonth >= 0
+            ? config.socialPostsPerMonth
+            : undefined,
+        socialPostsPerWeek:
+          typeof config.socialPostsPerWeek === "number" && config.socialPostsPerWeek > 0
+            ? config.socialPostsPerWeek
+            : undefined,
+        calendarMonths:
+          typeof config.calendarMonths === "number" && config.calendarMonths > 0
+            ? config.calendarMonths
+            : undefined,
         channelBudgets: config.channelBudgets ?? undefined,
         proposal: plan.proposal
           ? {
@@ -330,5 +363,9 @@ export async function POST(
 
 function safeJsonParse<T>(s: string | null | undefined, fallback: T): T {
   if (!s) return fallback;
-  try { return JSON.parse(s); } catch { return fallback; }
+  try {
+    return JSON.parse(s);
+  } catch {
+    return fallback;
+  }
 }
