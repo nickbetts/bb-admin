@@ -47,6 +47,63 @@ interface LeadsViewerModalProps {
 interface LeadSource {
   label: string;
   detail: string;
+  platform: "google" | "meta" | "other";
+}
+
+function GoogleBadgeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden style={{ width: 12, height: 12, display: "block" }}>
+      <path
+        d="M22.001 12.245c0-.816-.073-1.6-.209-2.353H12v4.451h5.602a4.79 4.79 0 0 1-2.078 3.141v2.608h3.364c1.969-1.812 3.113-4.481 3.113-7.847z"
+        fill="#4285F4"
+      />
+      <path
+        d="M12 22.4c2.808 0 5.16-.931 6.88-2.519l-3.364-2.608c-.931.624-2.123.995-3.516.995-2.707 0-4.999-1.827-5.815-4.284H2.706v2.69A10.4 10.4 0 0 0 12 22.4z"
+        fill="#34A853"
+      />
+      <path
+        d="M6.185 13.984A6.26 6.26 0 0 1 5.86 12c0-.688.117-1.357.325-1.984v-2.69H2.706A10.4 10.4 0 0 0 1.6 12c0 1.664.4 3.24 1.106 4.674l3.479-2.69z"
+        fill="#FBBC05"
+      />
+      <path
+        d="M12 5.732c1.527 0 2.9.525 3.978 1.555l2.987-2.987C17.156 2.63 14.804 1.6 12 1.6a10.4 10.4 0 0 0-9.294 5.726l3.479 2.69c.816-2.457 3.108-4.284 5.815-4.284z"
+        fill="#EA4335"
+      />
+    </svg>
+  );
+}
+
+function MetaBadgeIcon() {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 2 }}>
+      <svg viewBox="0 0 24 24" aria-hidden style={{ width: 11, height: 11, display: "block" }}>
+        <path
+          fill="#1877F2"
+          d="M14 8h-2c-.552 0-1 .448-1 1v2h3l-.5 3H11v7H8v-7H5v-3h3V9a4 4 0 0 1 4-4h2v3z"
+        />
+      </svg>
+      <svg viewBox="0 0 24 24" aria-hidden style={{ width: 11, height: 11, display: "block" }}>
+        <rect
+          x="5"
+          y="5"
+          width="14"
+          height="14"
+          rx="4"
+          fill="none"
+          stroke="#C13584"
+          strokeWidth="2"
+        />
+        <circle cx="12" cy="12" r="3" fill="none" stroke="#C13584" strokeWidth="2" />
+        <circle cx="16.5" cy="7.5" r="1" fill="#C13584" />
+      </svg>
+    </span>
+  );
+}
+
+function LeadSourceBadgeIcon({ source }: { source: LeadSource }) {
+  if (source.platform === "google") return <GoogleBadgeIcon />;
+  if (source.platform === "meta") return <MetaBadgeIcon />;
+  return null;
 }
 
 function getReferrerHost(referrer: string | null): string | null {
@@ -73,36 +130,59 @@ function parseFormData(formData: string | null): Record<string, string> {
   }
 }
 
+function isGoogleSource(value: string): boolean {
+  const normalised = value.toLowerCase();
+  return (
+    normalised.includes("google") ||
+    normalised.includes("gclid") ||
+    normalised.includes("adwords") ||
+    normalised.includes("doubleclick")
+  );
+}
+
+function isMetaSource(value: string): boolean {
+  const normalised = value.toLowerCase();
+  return (
+    normalised.includes("facebook") ||
+    normalised.includes("meta") ||
+    normalised.includes("instagram") ||
+    normalised.includes("fbclid")
+  );
+}
+
 function detectLeadSource(lead: Lead): LeadSource {
   const fields = parseFormData(lead.formData);
   const utmSource =
-    fields.utm_source
-    || fields.utmSource
-    || fields.source
-    || fields.channel
-    || fields.platform;
+    fields.utm_source || fields.utmSource || fields.source || fields.channel || fields.platform;
 
   if (utmSource) {
     const normalised = utmSource.toLowerCase();
-    if (normalised.includes("google")) return { label: "Google", detail: utmSource };
-    if (normalised.includes("facebook") || normalised.includes("meta")) return { label: "Facebook", detail: utmSource };
-    if (normalised.includes("instagram")) return { label: "Instagram", detail: utmSource };
-    if (normalised.includes("linkedin")) return { label: "LinkedIn", detail: utmSource };
-    if (normalised.includes("tiktok")) return { label: "TikTok", detail: utmSource };
-    return { label: utmSource, detail: "UTM source" };
+    if (isGoogleSource(normalised))
+      return { label: "Google", detail: utmSource, platform: "google" };
+    if (isMetaSource(normalised)) {
+      return { label: "Meta", detail: utmSource, platform: "meta" };
+    }
+    if (normalised.includes("linkedin"))
+      return { label: "LinkedIn", detail: utmSource, platform: "other" };
+    if (normalised.includes("tiktok"))
+      return { label: "TikTok", detail: utmSource, platform: "other" };
+    return { label: utmSource, detail: "UTM source", platform: "other" };
   }
 
   const host = getReferrerHost(lead.referrer);
-  if (!host) return { label: "Direct", detail: "No referrer" };
-  if (host.includes("google.")) return { label: "Google", detail: host };
-  if (host.includes("facebook.") || host.includes("fb.")) return { label: "Facebook", detail: host };
-  if (host.includes("instagram.")) return { label: "Instagram", detail: host };
-  if (host.includes("linkedin.")) return { label: "LinkedIn", detail: host };
-  if (host.includes("tiktok.")) return { label: "TikTok", detail: host };
-  if (host.includes("bing.")) return { label: "Bing", detail: host };
-  if (host.includes("youtube.")) return { label: "YouTube", detail: host };
-  if (host.includes("x.com") || host.includes("twitter.com") || host.includes("t.co")) return { label: "X", detail: host };
-  return { label: "Referral", detail: host };
+  if (!host) return { label: "Direct", detail: "No referrer", platform: "other" };
+  if (isGoogleSource(host)) return { label: "Google", detail: host, platform: "google" };
+  if (isMetaSource(host) || host.includes("fb.")) {
+    return { label: "Meta", detail: host, platform: "meta" };
+  }
+  if (host.includes("linkedin.")) return { label: "LinkedIn", detail: host, platform: "other" };
+  if (host.includes("tiktok.")) return { label: "TikTok", detail: host, platform: "other" };
+  if (host.includes("bing.")) return { label: "Bing", detail: host, platform: "other" };
+  if (host.includes("youtube.")) return { label: "YouTube", detail: host, platform: "other" };
+  if (host.includes("x.com") || host.includes("twitter.com") || host.includes("t.co")) {
+    return { label: "X", detail: host, platform: "other" };
+  }
+  return { label: "Referral", detail: host, platform: "other" };
 }
 
 function getExtraFields(lead: Lead): Array<{ key: string; value: string }> {
@@ -133,6 +213,7 @@ function getExtraFields(lead: Lead): Array<{ key: string; value: string }> {
 
 function sourceBadgeStyle(label: string) {
   if (label === "Google") return { background: "#E8F0FE", color: "#1A73E8" };
+  if (label === "Meta") return { background: "#EEF3FF", color: "#4A4CE0" };
   if (label === "Facebook") return { background: "#EAF2FF", color: "#1877F2" };
   if (label === "Instagram") return { background: "#FCEAF6", color: "#C13584" };
   if (label === "LinkedIn") return { background: "#EAF4FE", color: "#0A66C2" };
@@ -140,12 +221,18 @@ function sourceBadgeStyle(label: string) {
   return { background: "var(--border-subtle)", color: "var(--text-3)" };
 }
 
-function normaliseDeliveryStatus(status: string | null | undefined): "sent" | "failed" | "skipped" | "unknown" {
+function normaliseDeliveryStatus(
+  status: string | null | undefined,
+): "sent" | "failed" | "skipped" | "unknown" {
   if (status === "sent" || status === "failed" || status === "skipped") return status;
   return "unknown";
 }
 
-function getLeadDeliverySummary(lead: Lead): { label: string; detail: string; style: { background: string; color: string } } {
+function getLeadDeliverySummary(lead: Lead): {
+  label: string;
+  detail: string;
+  style: { background: string; color: string };
+} {
   const emailStatus = normaliseDeliveryStatus(lead.emailStatus);
   const webhookStatus = normaliseDeliveryStatus(lead.webhookStatus);
   const sentCount = Number(emailStatus === "sent") + Number(webhookStatus === "sent");
@@ -213,7 +300,7 @@ export function LeadsViewerModal({ lpId, isOpen, onClose, onLeadDeleted }: Leads
     try {
       const res = await fetch(`/api/tools/landing-pages/${lpId}/leads?page=${page}&limit=${limit}`);
       if (!res.ok) throw new Error("Failed to fetch leads");
-      const data = await res.json() as { leads?: Lead[]; total?: number };
+      const data = (await res.json()) as { leads?: Lead[]; total?: number };
       setLeads(data.leads ?? []);
       setTotal(data.total ?? 0);
     } catch (err) {
@@ -313,7 +400,7 @@ export function LeadsViewerModal({ lpId, isOpen, onClose, onLeadDeleted }: Leads
         method: "POST",
       });
 
-      const data = await res.json().catch(() => ({})) as {
+      const data = (await res.json().catch(() => ({}))) as {
         error?: string;
         lead?: Lead;
       };
@@ -323,7 +410,9 @@ export function LeadsViewerModal({ lpId, isOpen, onClose, onLeadDeleted }: Leads
       }
 
       if (data.lead) {
-        setLeads((prev) => prev.map((item) => (item.id === lead.id ? { ...item, ...data.lead } : item)));
+        setLeads((prev) =>
+          prev.map((item) => (item.id === lead.id ? { ...item, ...data.lead } : item)),
+        );
       } else {
         void loadLeads();
       }
@@ -433,13 +522,15 @@ export function LeadsViewerModal({ lpId, isOpen, onClose, onLeadDeleted }: Leads
               })}
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {([
-                { id: "all", label: "All" },
-                { id: "failed", label: "Failed" },
-                { id: "partial", label: "Partial" },
-                { id: "delivered", label: "Delivered" },
-                { id: "not-configured", label: "Not configured" },
-              ] as Array<{ id: DeliveryFilter; label: string }>).map((item) => {
+              {(
+                [
+                  { id: "all", label: "All" },
+                  { id: "failed", label: "Failed" },
+                  { id: "partial", label: "Partial" },
+                  { id: "delivered", label: "Delivered" },
+                  { id: "not-configured", label: "Not configured" },
+                ] as Array<{ id: DeliveryFilter; label: string }>
+              ).map((item) => {
                 const active = deliveryFilter === item.id;
                 return (
                   <button
@@ -545,7 +636,9 @@ export function LeadsViewerModal({ lpId, isOpen, onClose, onLeadDeleted }: Leads
                 fontSize: 13,
               }}
             >
-              {deliveryFilter === "all" ? "No leads captured yet." : "No leads match this delivery filter."}
+              {deliveryFilter === "all"
+                ? "No leads captured yet."
+                : "No leads match this delivery filter."}
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 12 }}>
@@ -576,28 +669,58 @@ export function LeadsViewerModal({ lpId, isOpen, onClose, onLeadDeleted }: Leads
                         flexWrap: "wrap",
                       }}
                     >
-                      <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 220 }}>
+                      <div
+                        style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 220 }}
+                      >
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <User style={{ width: 12, height: 12, color: "var(--text-3)", flexShrink: 0 }} />
-                          <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{lead.name || "Unknown"}</span>
+                          <User
+                            style={{ width: 12, height: 12, color: "var(--text-3)", flexShrink: 0 }}
+                          />
+                          <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>
+                            {lead.name || "Unknown"}
+                          </span>
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <Mail style={{ width: 12, height: 12, color: "var(--text-3)", flexShrink: 0 }} />
-                          <a href={`mailto:${lead.email}`} style={{ color: "var(--accent)", textDecoration: "none", fontSize: 12 }}>
+                          <Mail
+                            style={{ width: 12, height: 12, color: "var(--text-3)", flexShrink: 0 }}
+                          />
+                          <a
+                            href={`mailto:${lead.email}`}
+                            style={{ color: "var(--accent)", textDecoration: "none", fontSize: 12 }}
+                          >
                             {lead.email}
                           </a>
                         </div>
                         {lead.phone && (
                           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                            <Phone style={{ width: 12, height: 12, color: "var(--text-3)", flexShrink: 0 }} />
-                            <span style={{ color: "var(--text-2)", fontSize: 12 }}>{lead.phone}</span>
+                            <Phone
+                              style={{
+                                width: 12,
+                                height: 12,
+                                color: "var(--text-3)",
+                                flexShrink: 0,
+                              }}
+                            />
+                            <span style={{ color: "var(--text-2)", fontSize: 12 }}>
+                              {lead.phone}
+                            </span>
                           </div>
                         )}
                       </div>
 
-                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "flex-end",
+                          gap: 6,
+                        }}
+                      >
                         <span
                           style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 5,
                             fontSize: 10,
                             fontWeight: 700,
                             padding: "3px 8px",
@@ -607,6 +730,7 @@ export function LeadsViewerModal({ lpId, isOpen, onClose, onLeadDeleted }: Leads
                           }}
                           title={source.detail}
                         >
+                          <LeadSourceBadgeIcon source={source} />
                           {source.label}
                         </span>
                         <span
@@ -622,13 +746,25 @@ export function LeadsViewerModal({ lpId, isOpen, onClose, onLeadDeleted }: Leads
                         >
                           {delivery.label}
                         </span>
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "var(--text-4)", fontSize: 11 }}>
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4,
+                            color: "var(--text-4)",
+                            fontSize: 11,
+                          }}
+                        >
                           <Calendar style={{ width: 11, height: 11 }} />
                           {new Date(lead.createdAt).toLocaleString("en-GB")}
                         </span>
                         <button
                           onClick={() => handleRetryWebhook(lead)}
-                          disabled={retryingLeadId === lead.id || deletingLeadId === lead.id || normaliseDeliveryStatus(lead.webhookStatus) !== "failed"}
+                          disabled={
+                            retryingLeadId === lead.id ||
+                            deletingLeadId === lead.id ||
+                            normaliseDeliveryStatus(lead.webhookStatus) !== "failed"
+                          }
                           style={{
                             display: "inline-flex",
                             alignItems: "center",
@@ -640,14 +776,34 @@ export function LeadsViewerModal({ lpId, isOpen, onClose, onLeadDeleted }: Leads
                             color: "var(--accent)",
                             fontSize: 11,
                             fontWeight: 600,
-                            cursor: (retryingLeadId === lead.id || deletingLeadId === lead.id || normaliseDeliveryStatus(lead.webhookStatus) !== "failed") ? "not-allowed" : "pointer",
-                            opacity: (retryingLeadId === lead.id || deletingLeadId === lead.id || normaliseDeliveryStatus(lead.webhookStatus) !== "failed") ? 0.6 : 1,
+                            cursor:
+                              retryingLeadId === lead.id ||
+                              deletingLeadId === lead.id ||
+                              normaliseDeliveryStatus(lead.webhookStatus) !== "failed"
+                                ? "not-allowed"
+                                : "pointer",
+                            opacity:
+                              retryingLeadId === lead.id ||
+                              deletingLeadId === lead.id ||
+                              normaliseDeliveryStatus(lead.webhookStatus) !== "failed"
+                                ? 0.6
+                                : 1,
                             fontFamily: "inherit",
                           }}
-                          title={normaliseDeliveryStatus(lead.webhookStatus) === "failed" ? "Retry webhook delivery" : "Webhook retry not required"}
+                          title={
+                            normaliseDeliveryStatus(lead.webhookStatus) === "failed"
+                              ? "Retry webhook delivery"
+                              : "Webhook retry not required"
+                          }
                         >
                           {retryingLeadId === lead.id ? (
-                            <Loader2 style={{ width: 11, height: 11, animation: "spin 1s linear infinite" }} />
+                            <Loader2
+                              style={{
+                                width: 11,
+                                height: 11,
+                                animation: "spin 1s linear infinite",
+                              }}
+                            />
                           ) : (
                             <RotateCcw style={{ width: 11, height: 11 }} />
                           )}
@@ -674,7 +830,13 @@ export function LeadsViewerModal({ lpId, isOpen, onClose, onLeadDeleted }: Leads
                           title="Delete lead"
                         >
                           {deletingLeadId === lead.id ? (
-                            <Loader2 style={{ width: 11, height: 11, animation: "spin 1s linear infinite" }} />
+                            <Loader2
+                              style={{
+                                width: 11,
+                                height: 11,
+                                animation: "spin 1s linear infinite",
+                              }}
+                            />
                           ) : (
                             <Trash2 style={{ width: 11, height: 11 }} />
                           )}
@@ -684,13 +846,31 @@ export function LeadsViewerModal({ lpId, isOpen, onClose, onLeadDeleted }: Leads
                     </div>
 
                     {!!lead.message && (
-                      <div style={{ fontSize: 12, color: "var(--text-2)", lineHeight: 1.4, padding: "8px 10px", background: "var(--border-subtle)", borderRadius: 8 }}>
+                      <div
+                        style={{
+                          fontSize: 12,
+                          color: "var(--text-2)",
+                          lineHeight: 1.4,
+                          padding: "8px 10px",
+                          background: "var(--border-subtle)",
+                          borderRadius: 8,
+                        }}
+                      >
                         {lead.message}
                       </div>
                     )}
 
                     {lead.referrer && (
-                      <div style={{ fontSize: 11, color: "var(--text-3)", display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color: "var(--text-3)",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                          flexWrap: "wrap",
+                        }}
+                      >
                         <ExternalLink style={{ width: 11, height: 11 }} />
                         <a
                           href={lead.referrer}
@@ -730,7 +910,9 @@ export function LeadsViewerModal({ lpId, isOpen, onClose, onLeadDeleted }: Leads
                         title={lead.webhookError ?? undefined}
                       >
                         <strong>Webhook:</strong> {formatChannelStatus(lead.webhookStatus)}
-                        {typeof lead.webhookHttpStatus === "number" ? ` (${lead.webhookHttpStatus})` : ""}
+                        {typeof lead.webhookHttpStatus === "number"
+                          ? ` (${lead.webhookHttpStatus})`
+                          : ""}
                       </span>
                       {typeof lead.notificationAttempts === "number" && (
                         <span
@@ -764,7 +946,8 @@ export function LeadsViewerModal({ lpId, isOpen, onClose, onLeadDeleted }: Leads
                             }}
                             title={`${item.key}: ${item.value}`}
                           >
-                            <strong>{item.key}:</strong> {item.value.length > 56 ? `${item.value.slice(0, 56)}...` : item.value}
+                            <strong>{item.key}:</strong>{" "}
+                            {item.value.length > 56 ? `${item.value.slice(0, 56)}...` : item.value}
                           </span>
                         ))}
                       </div>
