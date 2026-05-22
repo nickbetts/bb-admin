@@ -1055,7 +1055,39 @@ export default function GrandPlanViewPage({ params }: Props) {
 
   // ─── Sharing ─────────────────────────────────────────────────────────────
 
+  async function confirmQualitySensitiveAction(
+    actionLabel: string,
+    confirmLabel: string,
+  ): Promise<boolean> {
+    if (!publishQualitySummary.hasIssues) return true;
+
+    const detailPreview = publishQualitySummary.lines
+      .slice(0, 4)
+      .map((line) => `• ${line}`)
+      .join("\n");
+    const moreCount = Math.max(0, publishQualitySummary.lines.length - 4);
+    const counts = [
+      publishQualitySummary.failureCount > 0
+        ? `${publishQualitySummary.failureCount} failed step${publishQualitySummary.failureCount === 1 ? "" : "s"}`
+        : "",
+      publishQualitySummary.degradedStepCount > 0
+        ? `${publishQualitySummary.degradedStepCount} degraded step${publishQualitySummary.degradedStepCount === 1 ? "" : "s"}`
+        : "",
+    ]
+      .filter(Boolean)
+      .join(" and ");
+
+    return confirm({
+      title: `Proceed and ${actionLabel}?`,
+      description: `Quality checks found ${counts || "warnings"}.\n\n${detailPreview}${moreCount > 0 ? `\n…plus ${moreCount} more warning${moreCount === 1 ? "" : "s"}.` : ""}`,
+      confirmLabel,
+    });
+  }
+
   async function handleShare() {
+    const shouldProceed = await confirmQualitySensitiveAction("share this plan", "Share anyway");
+    if (!shouldProceed) return;
+
     setSharingBusy(true);
     try {
       const res = await fetch("/api/tools/grand-plan", {
@@ -1113,6 +1145,13 @@ export default function GrandPlanViewPage({ params }: Props) {
 
   async function handleGeneratePresentation() {
     if (!plan) return;
+
+    const shouldProceed = await confirmQualitySensitiveAction(
+      "generate a presentation",
+      "Generate anyway",
+    );
+    if (!shouldProceed) return;
+
     setPresentationBusy(true);
     try {
       const res = await fetch(`/api/tools/grand-plan/${id}/presentation`, { method: "POST" });
@@ -1274,6 +1313,8 @@ export default function GrandPlanViewPage({ params }: Props) {
       failures: [] as { key: string; error?: string }[],
       warnings: [] as string[],
       failedSections: [] as string[],
+      degradedSteps: [] as string[],
+      preflightRecord: null as QualityStepRecord | null,
     };
     if (!plan?.planDataJson) return empty;
     try {
@@ -1291,8 +1332,10 @@ export default function GrandPlanViewPage({ params }: Props) {
       const failuresByKey = new globalThis.Map<string, { key: string; error?: string }>();
       const sectionKeys = new Set(ALL_SECTIONS.map((section) => section.key));
       const failedSections = new Set<string>();
+      const degradedSteps = new Set<string>();
 
       const steps = data.qualityManifest?.steps ?? {};
+      const preflightRecord = steps["preflight-inputs"] ?? null;
       for (const [key, record] of Object.entries(steps)) {
         const status = record?.status;
         const label = labelFor(key);
@@ -1304,6 +1347,7 @@ export default function GrandPlanViewPage({ params }: Props) {
         }
 
         if (status === "degraded" || (status === "skipped" && record.critical)) {
+          if (status === "degraded") degradedSteps.add(key);
           const details = [
             ...((record.warnings as string[] | undefined) ?? []),
             ...((record.blockers as string[] | undefined) ?? []),
@@ -1335,11 +1379,44 @@ export default function GrandPlanViewPage({ params }: Props) {
         failures: Array.from(failuresByKey.values()),
         warnings: Array.from(warnings),
         failedSections: Array.from(failedSections),
+        degradedSteps: Array.from(degradedSteps),
+        preflightRecord,
       };
     } catch {
       return empty;
     }
   }, [plan?.planDataJson]);
+
+  const publishQualitySummary = useMemo(() => {
+    const lines = new Set<string>();
+
+    const preflight = failureSummary.preflightRecord;
+    if (preflight && preflight.status && preflight.status !== "ok") {
+      const preflightDetails = [
+        ...((preflight.warnings ?? []).filter(Boolean) as string[]),
+        ...((preflight.blockers ?? []).filter(Boolean) as string[]),
+      ];
+      if (preflightDetails.length > 0) {
+        for (const detail of preflightDetails) {
+          lines.add(`Input preflight: ${detail}`);
+        }
+      } else if (preflight.reason || preflight.error) {
+        lines.add(`Input preflight: ${preflight.reason ?? preflight.error}`);
+      }
+    }
+
+    for (const warning of failureSummary.warnings) lines.add(warning);
+    for (const failure of failureSummary.failures) {
+      lines.add(`${labelFor(failure.key)}: ${failure.error ?? "Failed quality check."}`);
+    }
+
+    return {
+      hasIssues: lines.size > 0,
+      lines: Array.from(lines),
+      degradedStepCount: failureSummary.degradedSteps.length,
+      failureCount: failureSummary.failures.length,
+    };
+  }, [failureSummary]);
 
   const sectionData = useMemo(() => {
     if (!plan?.planDataJson) return {} as Record<string, unknown>;
@@ -1848,6 +1925,21 @@ export default function GrandPlanViewPage({ params }: Props) {
 
           {isComplete && (
             <>
+              {publishQualitySummary.hasIssues && (
+                <span
+                  className="inline-flex items-center"
+                  style={{
+                    gap: 5,
+                    fontSize: 11,
+                    color: "var(--warning)",
+                    fontWeight: 600,
+                  }}
+                  title="Quality warnings are present. Review before sharing or generating presentation."
+                >
+                  <AlertTriangle style={{ width: 12, height: 12 }} aria-hidden />
+                  Quality warnings
+                </span>
+              )}
               <span
                 aria-hidden
                 style={{ width: 1, height: 22, background: "var(--border)", margin: "0 4px" }}
@@ -2311,6 +2403,19 @@ export default function GrandPlanViewPage({ params }: Props) {
               Warnings
             </p>
           </div>
+          {failureSummary.preflightRecord && failureSummary.preflightRecord.status !== "ok" && (
+            <p style={{ fontSize: 12, color: "var(--warning)", marginBottom: 4 }}>
+              • <strong>Input preflight:</strong>{" "}
+              {failureSummary.preflightRecord.reason ??
+                failureSummary.preflightRecord.error ??
+                "Inputs are present but quality is reduced."}
+            </p>
+          )}
+          {failureSummary.degradedSteps.length > 0 && (
+            <p style={{ fontSize: 12, color: "var(--warning)", marginBottom: 4 }}>
+              • <strong>Degraded steps:</strong> {failureSummary.degradedSteps.length}
+            </p>
+          )}
           {failureSummary.warnings.map((w, i) => (
             <p key={`w-${i}`} style={{ fontSize: 12, color: "var(--warning)", marginBottom: 2 }}>
               • {w}
@@ -2729,6 +2834,31 @@ export default function GrandPlanViewPage({ params }: Props) {
         }
       >
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {publishQualitySummary.hasIssues && (
+            <div
+              style={{
+                padding: "8px 10px",
+                border: "1px solid var(--warning)",
+                background: "var(--warning-bg)",
+                borderRadius: 8,
+              }}
+            >
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "var(--warning)" }}>
+                Quality warnings detected
+              </p>
+              <p style={{ margin: "4px 0 0", fontSize: 11.5, color: "var(--warning)" }}>
+                You can still share this plan, but review these items first:
+              </p>
+              {publishQualitySummary.lines.slice(0, 3).map((line, idx) => (
+                <p
+                  key={`share-quality-${idx}`}
+                  style={{ margin: "3px 0 0", fontSize: 11.5, color: "var(--warning)" }}
+                >
+                  • {line}
+                </p>
+              ))}
+            </div>
+          )}
           <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>
               Password (optional)

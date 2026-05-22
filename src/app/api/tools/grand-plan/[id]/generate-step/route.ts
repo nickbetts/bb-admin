@@ -110,6 +110,22 @@ interface QualityStepUpdate {
   signals?: Record<string, unknown>;
 }
 
+interface InputQualityEvaluation {
+  status: QualityStepStatus;
+  warnings?: string[];
+  blockers?: string[];
+  reason?: string;
+  signals: Record<string, unknown>;
+}
+
+interface SectionQualityEvaluation {
+  status: "ok" | "degraded" | "failed";
+  warnings?: string[];
+  blockers?: string[];
+  reason?: string;
+  signals: Record<string, unknown>;
+}
+
 /**
  * POST /api/tools/grand-plan/[id]/generate-step
  *
@@ -235,6 +251,20 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             },
           },
         };
+
+        const preflight = evaluateInputQuality(
+          plan.purpose,
+          brief,
+          plan.targetAudiences ?? undefined,
+        );
+        applyStepQuality(initialData, "preflight-inputs", {
+          status: preflight.status,
+          critical: preflight.status === "failed",
+          reason: preflight.reason,
+          warnings: preflight.warnings,
+          blockers: preflight.blockers,
+          signals: preflight.signals,
+        });
 
         // Only unlink keyword research if prepare-keywords will be able to
         // regenerate it (needs both a website and a brief). If neither is
@@ -452,7 +482,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             return namePart.trim().slice(0, 120);
           })
           .filter(Boolean)
-          .slice(0, 6);
+          .slice(0, 20);
 
         // Pull the manual page intel (scraped + SEMrush) stashed by
         // prepare-research so the page optimisations call can prioritise the
@@ -1136,23 +1166,19 @@ Return ONLY valid JSON, no markdown fences.`,
                     }
                   : undefined,
                 topPages: Array.isArray(ga4TopPages)
-                  ? ga4TopPages
-                      .slice(0, 15)
-                      .map((p) => ({
-                        path: p.pagePath,
-                        sessions: p.sessions,
-                        bounceRate: p.bounceRate,
-                      }))
+                  ? ga4TopPages.slice(0, 15).map((p) => ({
+                      path: p.pagePath,
+                      sessions: p.sessions,
+                      bounceRate: p.bounceRate,
+                    }))
                   : undefined,
                 trafficSources: Array.isArray(ga4Traffic)
-                  ? ga4Traffic
-                      .slice(0, 12)
-                      .map((t) => ({
-                        source: t.source,
-                        medium: t.medium,
-                        sessions: t.sessions,
-                        conversions: t.conversions,
-                      }))
+                  ? ga4Traffic.slice(0, 12).map((t) => ({
+                      source: t.source,
+                      medium: t.medium,
+                      sessions: t.sessions,
+                      conversions: t.conversions,
+                    }))
                   : undefined,
                 devices: Array.isArray(ga4Devices)
                   ? ga4Devices.map((d) => ({
@@ -1178,13 +1204,11 @@ Return ONLY valid JSON, no markdown fences.`,
                     ].slice(0, 15)
                   : undefined,
                 conversionsByChannel: Array.isArray(ga4Convs)
-                  ? ga4Convs
-                      .slice(0, 12)
-                      .map((c) => ({
-                        channel: c.channel,
-                        conversions: c.conversions,
-                        conversionRate: c.sessions > 0 ? (c.conversions / c.sessions) * 100 : 0,
-                      }))
+                  ? ga4Convs.slice(0, 12).map((c) => ({
+                      channel: c.channel,
+                      conversions: c.conversions,
+                      conversionRate: c.sessions > 0 ? (c.conversions / c.sessions) * 100 : 0,
+                    }))
                   : undefined,
                 weakPages: Array.isArray(ga4TopPages)
                   ? ga4TopPages
@@ -1502,6 +1526,40 @@ Return ONLY valid JSON, no markdown fences.`,
 
         const sources = buildSources(freshPlan, config, brief);
 
+        const preflight = evaluateInputQuality(
+          freshPlan.purpose,
+          sources.clientBrief ?? "",
+          sources.targetAudiences,
+        );
+        await updateStepQuality(id, "preflight-inputs", {
+          status: preflight.status,
+          critical: preflight.status === "failed",
+          reason: preflight.reason,
+          warnings: preflight.warnings,
+          blockers: preflight.blockers,
+          signals: preflight.signals,
+        });
+
+        if (preflight.status === "failed") {
+          await updateStepQuality(id, step, {
+            status: "failed",
+            critical: true,
+            error: "Input quality gate failed",
+            blockers: preflight.blockers,
+            warnings: preflight.warnings,
+            signals: preflight.signals,
+          });
+          return NextResponse.json(
+            {
+              error: "Input quality gate failed",
+              blockers: preflight.blockers ?? [
+                "Brief and target audiences must be supplied for this plan type.",
+              ],
+            },
+            { status: 400 },
+          );
+        }
+
         let brain: StrategyBrain;
         try {
           brain = await synthesiseStrategyBrain(sources);
@@ -1671,6 +1729,39 @@ Return ONLY valid JSON, no markdown fences.`,
             { status: 500 },
           );
         }
+
+        const sectionQuality = evaluateSectionSpecificity(step, newValue, sources);
+        if (sectionQuality.status === "failed") {
+          applyStepQuality(existingData, step, {
+            status: "failed",
+            critical: true,
+            reason: sectionQuality.reason,
+            error: "Section specificity gate failed",
+            warnings: sectionQuality.warnings,
+            blockers: sectionQuality.blockers,
+            signals: {
+              outputType: Array.isArray(newValue) ? "array" : typeof newValue,
+              ...sectionQuality.signals,
+            },
+          });
+          await prisma.grandPlan.update({
+            where: { id },
+            data: {
+              status: "failed",
+              statusMessage: null,
+              generationError: sectionQuality.blockers?.[0] ?? "Section specificity gate failed",
+              planDataJson: JSON.stringify(existingData),
+            },
+          });
+          return NextResponse.json(
+            {
+              error: "Section specificity gate failed",
+              blockers: sectionQuality.blockers,
+            },
+            { status: 400 },
+          );
+        }
+
         // Merge grounding metadata for sections that surface it (audiences,
         // emailMarketing, linkedInAds, competitorIntel). Other sections leave
         // partial.grounding undefined and we leave existingData.grounding alone.
@@ -1685,11 +1776,14 @@ Return ONLY valid JSON, no markdown fences.`,
         }
 
         applyStepQuality(existingData, step, {
-          status: "ok",
-          critical: true,
+          status: sectionQuality.status,
+          critical: sectionQuality.status !== "degraded",
+          reason: sectionQuality.reason,
+          warnings: sectionQuality.warnings,
           signals: {
             hasGrounding: !!partialGrounding,
             outputType: Array.isArray(newValue) ? "array" : typeof newValue,
+            ...sectionQuality.signals,
           },
         });
 
@@ -2072,6 +2166,7 @@ async function updateStepQuality(
 
 function labelForStep(step: string): string {
   const labels: Record<string, string> = {
+    "preflight-inputs": "Input Preflight",
     executiveSummary: "Executive Summary",
     audiences: "Audiences",
     googleAdsCampaigns: "Google Ads Campaigns",
@@ -2087,10 +2182,255 @@ function labelForStep(step: string): string {
   return labels[step] ?? step;
 }
 
-function getSectionPrerequisiteSkipReason(
+function normalisePurpose(purpose: string | null | undefined): string {
+  return (purpose ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[_\s]+/g, "-");
+}
+
+function isStrictPurpose(purpose: string | null | undefined): boolean {
+  const p = normalisePurpose(purpose);
+  return p === "onboarding" || p === "strategy-refresh";
+}
+
+function parseAudienceNames(raw: string | null | undefined, limit = 20): string[] {
+  if (!raw) return [];
+  return raw
+    .split(/\n+/)
+    .map((line) => {
+      const trimmed = line.trim();
+      if (!trimmed) return "";
+      const cleaned = trimmed.replace(/^[-•*\d.)\s]+/, "");
+      const sepIdx = cleaned.search(/[:–—]/);
+      const name = sepIdx >= 0 ? cleaned.slice(0, sepIdx) : cleaned;
+      return name.trim().slice(0, 120);
+    })
+    .filter(Boolean)
+    .slice(0, limit);
+}
+
+function countWords(value: string | undefined): number {
+  if (!value) return 0;
+  return value.trim().split(/\s+/).filter(Boolean).length;
+}
+
+function evaluateInputQuality(
+  purpose: string | null | undefined,
+  brief: string | undefined,
+  targetAudiences: string | undefined,
+): InputQualityEvaluation {
+  const strict = isStrictPurpose(purpose);
+  const briefWordCount = countWords(brief);
+  const audienceNames = parseAudienceNames(targetAudiences, 20);
+  const warnings: string[] = [];
+  const blockers: string[] = [];
+
+  const briefLower = (brief ?? "").trim().toLowerCase();
+  const weakBriefMarkers = [
+    "general digital marketing",
+    "marketing strategy",
+    "n/a",
+    "tbc",
+    "to be confirmed",
+  ];
+  const hasWeakBriefMarker = weakBriefMarkers.some((marker) => briefLower.includes(marker));
+
+  if (briefWordCount === 0) {
+    const msg = "Client brief is missing.";
+    if (strict) blockers.push(msg);
+    else warnings.push(msg);
+  } else if (briefWordCount < 18 || hasWeakBriefMarker) {
+    warnings.push("Client brief is very short or generic and may produce weak section copy.");
+  }
+
+  if (audienceNames.length === 0) {
+    const msg = "Target audiences are missing.";
+    if (strict) blockers.push(msg);
+    else warnings.push(msg);
+  } else if (audienceNames.length === 1) {
+    warnings.push("Only one audience was supplied; sections may lack segmentation depth.");
+  }
+
+  const status: QualityStepStatus =
+    blockers.length > 0 ? "failed" : warnings.length > 0 ? "degraded" : "ok";
+
+  return {
+    status,
+    reason:
+      status === "failed"
+        ? "Required strategic inputs are missing for this plan type."
+        : status === "degraded"
+          ? "Strategic inputs are present but low-detail; copy quality may degrade."
+          : undefined,
+    warnings: warnings.length > 0 ? warnings : undefined,
+    blockers: blockers.length > 0 ? blockers : undefined,
+    signals: {
+      strictMode: strict,
+      briefWordCount,
+      audienceCount: audienceNames.length,
+      hasWeakBriefMarker,
+    },
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+function flattenSectionText(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (Array.isArray(value)) return value.map((item) => flattenSectionText(item)).join(" ");
+  if (isRecord(value)) {
+    return Object.values(value)
+      .map((item) => flattenSectionText(item))
+      .join(" ");
+  }
+  return "";
+}
+
+function evaluateSectionSpecificity(
   step: string,
+  output: unknown,
   sources: GrandPlanSources,
-): string | null {
+): SectionQualityEvaluation {
+  const strict = isStrictPurpose(sources.purpose);
+  const audienceNames = parseAudienceNames(sources.targetAudiences, 20);
+  const warnings: string[] = [];
+  const blockers: string[] = [];
+
+  const rawText = flattenSectionText(output);
+  const text = rawText.toLowerCase();
+  const genericPhrases = [
+    "general digital marketing",
+    "increase brand awareness",
+    "improve engagement",
+    "enhance online presence",
+    "best practices",
+    "industry-leading",
+    "tailored solutions",
+  ];
+  const genericHits = genericPhrases.filter((phrase) => text.includes(phrase));
+  if (genericHits.length >= 2) {
+    warnings.push("Section copy contains multiple generic marketing phrases.");
+  }
+
+  if (step === "contentCalendar" && text.includes("[placeholder]")) {
+    const msg =
+      "Content calendar contains placeholder entries and needs manual replacement before share.";
+    if (strict) blockers.push(msg);
+    else warnings.push(msg);
+  }
+
+  if (step === "executiveSummary" && typeof output === "string") {
+    const hasNumericSignal =
+      /£\s?\d|\b\d+(?:\.\d+)?%|\b\d+\s?(?:day|days|week|weeks|month|months)\b|\b\d+x\b/i.test(
+        output,
+      );
+    if (!hasNumericSignal) {
+      warnings.push("Executive summary lacks a clear numeric outcome or timeframe signal.");
+    }
+  }
+
+  if (step === "emailMarketing" && isRecord(output)) {
+    const flows = Array.isArray(output.flows) ? output.flows.length : 0;
+    const campaigns = Array.isArray(output.campaigns) ? output.campaigns.length : 0;
+    const segmentation = isRecord(output.segmentation) ? output.segmentation : undefined;
+    const segments =
+      segmentation && Array.isArray(segmentation.segments) ? segmentation.segments.length : 0;
+    if (flows + campaigns + segments === 0) {
+      const msg = "Email marketing output is structurally present but empty.";
+      if (strict) blockers.push(msg);
+      else warnings.push(msg);
+    }
+  }
+
+  if (
+    (step === "metaCampaigns" || step === "linkedInAds") &&
+    Array.isArray(output) &&
+    output.length > 0
+  ) {
+    const fallbackCount = output.filter(
+      (item) => isRecord(item) && item.isFallback === true,
+    ).length;
+    if (fallbackCount === output.length) {
+      warnings.push(
+        `${labelForStep(step)} is entirely fallback content and should be regenerated.`,
+      );
+    }
+  }
+
+  const requiresAudienceCoverage = [
+    "audiences",
+    "metaCampaigns",
+    "contentCalendar",
+    "emailMarketing",
+    "linkedInAds",
+    "contentStrategy",
+  ].includes(step);
+
+  let mentionedAudienceCount = 0;
+  if (audienceNames.length > 0 && requiresAudienceCoverage) {
+    if (step === "audiences" && Array.isArray(output)) {
+      const producedNames = output
+        .map((item) =>
+          isRecord(item) && typeof item.name === "string" ? item.name.toLowerCase() : "",
+        )
+        .filter(Boolean);
+      const missing = audienceNames.filter((name) => !producedNames.includes(name.toLowerCase()));
+      mentionedAudienceCount = audienceNames.length - missing.length;
+      if (missing.length > 0) {
+        const msg = `Audience section omitted ${missing.length} strategist-supplied audience name(s).`;
+        if (strict) blockers.push(msg);
+        else warnings.push(msg);
+      }
+    } else {
+      mentionedAudienceCount = audienceNames.filter((name) =>
+        text.includes(name.toLowerCase()),
+      ).length;
+      if (mentionedAudienceCount === 0) {
+        const msg = `${labelForStep(step)} does not reference any named target audiences.`;
+        if (strict) blockers.push(msg);
+        else warnings.push(msg);
+      } else if (mentionedAudienceCount < Math.min(2, audienceNames.length)) {
+        warnings.push(
+          `${labelForStep(step)} references only ${mentionedAudienceCount} named audience(s); expected broader coverage.`,
+        );
+      }
+    }
+  }
+
+  const status: SectionQualityEvaluation["status"] =
+    blockers.length > 0
+      ? strict
+        ? "failed"
+        : "degraded"
+      : warnings.length > 0
+        ? "degraded"
+        : "ok";
+
+  return {
+    status,
+    reason:
+      status === "failed"
+        ? "Section failed specificity and audience coverage checks."
+        : status === "degraded"
+          ? "Section passed structural checks but is low-specificity and should be reviewed."
+          : undefined,
+    warnings: warnings.length > 0 ? warnings : undefined,
+    blockers: blockers.length > 0 ? blockers : undefined,
+    signals: {
+      strictMode: strict,
+      audienceCount: audienceNames.length,
+      mentionedAudienceCount,
+      genericPhraseHits: genericHits.length,
+    },
+  };
+}
+
+function getSectionPrerequisiteSkipReason(step: string, sources: GrandPlanSources): string | null {
   const requiresKeywordResearch =
     step === "googleAdsCampaigns" || step === "metaCampaigns" || step === "competitorIntel";
   if (requiresKeywordResearch && !sources.keywordResearch) {
