@@ -59,9 +59,14 @@ interface FileAttachment {
 
 // Allowed MIME types for file attachments
 const ALLOWED_MIME_TYPES = new Set([
-  "image/png", "image/jpeg", "image/gif", "image/webp",
+  "image/png",
+  "image/jpeg",
+  "image/gif",
+  "image/webp",
   "application/pdf",
-  "text/plain", "text/csv", "text/markdown",
+  "text/plain",
+  "text/csv",
+  "text/markdown",
 ]);
 
 const IMAGE_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
@@ -87,14 +92,16 @@ async function parseOutputBlocks(
     // Reasoning summary
     if (item.type === "reasoning") {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const summaryText = (item.summary ?? []).map((s: any) => s.text ?? "").join("\n").trim();
+      const summaryText = (item.summary ?? [])
+        .map((s: any) => s.text ?? "")
+        .join("\n")
+        .trim();
       if (summaryText) blocks.push({ type: "reasoning", summary: summaryText });
       continue;
     }
 
     // Assistant message with text + citations
     if (item.type === "message") {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       for (const part of item.content ?? []) {
         if (part.type === "output_text") {
           const citations: Citation[] = (part.annotations ?? [])
@@ -127,10 +134,13 @@ async function parseOutputBlocks(
 
     // Code interpreter outputs
     if (item.type === "code_interpreter_call") {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       for (const output of item.outputs ?? []) {
         const text: string =
-          output.type === "logs" ? (output.logs ?? "") : output.type === "text" ? (output.text ?? "") : "";
+          output.type === "logs"
+            ? (output.logs ?? "")
+            : output.type === "text"
+              ? (output.text ?? "")
+              : "";
         if (text.trim()) blocks.push({ type: "code_output", text });
       }
       continue;
@@ -176,7 +186,11 @@ export async function POST(request: NextRequest) {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const body = (await request.json()) as { input?: string; sessionId?: string; files?: FileAttachment[] };
+    const body = (await request.json()) as {
+      input?: string;
+      sessionId?: string;
+      files?: FileAttachment[];
+    };
     const userMessage = (body.input ?? "").trim();
     if (!userMessage) return NextResponse.json({ error: "Input is required" }, { status: 400 });
     if (userMessage.length > 8000)
@@ -218,7 +232,7 @@ export async function POST(request: NextRequest) {
         // Inline image — no upload needed
         contentParts.push({
           type: "input_image",
-          image_url: { url: `data:${file.mimeType};base64,${file.base64}` },
+          image_url: `data:${file.mimeType};base64,${file.base64}`,
         });
       } else {
         // Upload to OpenAI Files API (PDFs, text, etc.)
@@ -310,7 +324,10 @@ export async function PATCH(request: NextRequest) {
   });
   if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  await prisma.adImageSession.update({ where: { id: body.id }, data: { title: body.title.trim().slice(0, 200) } });
+  await prisma.adImageSession.update({
+    where: { id: body.id },
+    data: { title: body.title.trim().slice(0, 200) },
+  });
   return NextResponse.json({ ok: true });
 }
 
