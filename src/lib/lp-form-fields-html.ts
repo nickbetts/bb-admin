@@ -20,31 +20,50 @@ export function applyConfiguredFormFields(
     if (!field.name) continue;
     const name = escapeRegex(field.name);
     const groupRe = new RegExp(
-      `(<div[^>]*class=("|')[^"']*form-group[^"']*\\2[^>]*>[\\s\\S]*?<label[^>]*>)([\\s\\S]*?)(</label>[\\s\\S]*?<(input|textarea|select)([^>]*\\bname=("|')${name}\\7[^>]*)(?:>[\\s\\S]*?</\\5>|\\s*/?>)[\\s\\S]*?</div>)`,
+      `(<div[^>]*class=("|')[^"']*form-group[^"']*\\2[^>]*>(?:(?!<div[^>]*class=[^>]*form-group|</div>)[\\s\\S])*?<label[^>]*>)((?:(?!</label>)[\\s\\S])*?)(</label>(?:(?!<div[^>]*class=[^>]*form-group|</div>)[\\s\\S])*?<(input|textarea|select)([^>]*\\bname=("|')${name}\\7[^>]*)(?:>[\\s\\S]*?</\\5>|\\s*/?>)(?:(?!<div[^>]*class=[^>]*form-group)[\\s\\S])*?</div>)`,
       "gi",
     );
 
-    nextHtml = nextHtml.replace(groupRe, (_, beforeLabel: string, __quote: string, _labelText: string, afterLabel: string, tagName: string, attrs: string) => {
-      matchedNames.add(field.name);
-      let nextAttrs = attrs;
-      nextAttrs = setBooleanAttribute(nextAttrs, "required", field.required);
+    const beforeReplace = nextHtml;
+    nextHtml = nextHtml.replace(
+      groupRe,
+      (
+        _,
+        beforeLabel: string,
+        __quote: string,
+        _labelText: string,
+        afterLabel: string,
+        tagName: string,
+        attrs: string,
+      ) => {
+        matchedNames.add(field.name);
+        let nextAttrs = attrs;
+        nextAttrs = setBooleanAttribute(nextAttrs, "required", field.required);
 
-      if (tagName.toLowerCase() !== "select") {
-        nextAttrs = setAttribute(nextAttrs, "placeholder", field.placeholder?.trim() || null);
-      }
+        if (tagName.toLowerCase() !== "select") {
+          nextAttrs = setAttribute(nextAttrs, "placeholder", field.placeholder?.trim() || null);
+        }
 
-      if (tagName.toLowerCase() === "input") {
-        nextAttrs = setAttribute(nextAttrs, "type", field.type || null);
-      }
+        if (tagName.toLowerCase() === "input") {
+          nextAttrs = setAttribute(nextAttrs, "type", field.type || null);
+        }
 
-      const labelText = `${escapeHtmlText(field.label)}${field.required ? " *" : ""}`;
-      const rebuiltControl = rebuildControl(tagName, nextAttrs, field);
-      return `${beforeLabel}${labelText}${replaceFirstControl(afterLabel, rebuiltControl)}`;
-    });
+        const labelText = `${escapeHtmlText(field.label)}${field.required ? " *" : ""}`;
+        const rebuiltControl = rebuildControl(tagName, nextAttrs, field);
+        return `${beforeLabel}${labelText}${replaceFirstControl(afterLabel, rebuiltControl)}`;
+      },
+    );
+
+    if (beforeReplace === nextHtml) {
+      console.log(`[DEBUG] Field: ${field.name} DID NOT change HTML with groupRe.`);
+    }
 
     if (matchedNames.has(field.name)) continue;
 
-    const controlRe = new RegExp(`<(input|textarea|select)([^>]*\\bname=("|')${name}\\3[^>]*)(?:>[\\s\\S]*?</\\1>|\\s*/?>)`, "gi");
+    const controlRe = new RegExp(
+      `<(input|textarea|select)([^>]*\\bname=("|')${name}\\3[^>]*)(?:>[\\s\\S]*?</\\1>|\\s*/?>)`,
+      "gi",
+    );
     nextHtml = nextHtml.replace(controlRe, (_, tagName: string, attrs: string) => {
       matchedNames.add(field.name);
       let nextAttrs = attrs;
@@ -84,15 +103,20 @@ function injectMissingFields(
 
   // Prefer inserting directly after the last existing form-group so new
   // fields inherit the same grid/container styling as neighbouring fields.
-  const lastFormGroupRe = /(<div[^>]*class=("|')[^"']*form-group[^"']*\2[^>]*>[\s\S]*?<\/div>)(?![\s\S]*<div[^>]*class=("|')[^"']*form-group[^"']*\3[^>]*>)/i;
+  const lastFormGroupRe =
+    /(<div[^>]*class=("|')[^"']*form-group[^"']*\2[^>]*>[\s\S]*?<\/div>)(?![\s\S]*<div[^>]*class=("|')[^"']*form-group[^"']*\3[^>]*>)/i;
   if (lastFormGroupRe.test(html)) {
     return html.replace(lastFormGroupRe, `$1\n${missingMarkup}`);
   }
 
-  const formRe = /<form[^>]*data-lp-form=("|')true\1[^>]*>[\s\S]*?<button[^>]*type=("|')submit\2[^>]*>[\s\S]*?<\/button>/i;
+  const formRe =
+    /<form[^>]*data-lp-form=("|')true\1[^>]*>[\s\S]*?<button[^>]*type=("|')submit\2[^>]*>[\s\S]*?<\/button>/i;
 
   if (formRe.test(html)) {
-    return html.replace(/(<button[^>]*type=("|')submit\2[^>]*>[\s\S]*?<\/button>)/i, `${missingMarkup}\n$1`);
+    return html.replace(
+      /(<button[^>]*type=("|')submit\2[^>]*>[\s\S]*?<\/button>)/i,
+      `${missingMarkup}\n$1`,
+    );
   }
 
   return html.replace(/(<\/form>)/i, `${missingMarkup}\n$1`);
@@ -103,15 +127,21 @@ function renderMissingField(field: LpFormField, template: LpFieldStyleTemplate):
   const label = `${escapeHtmlText(field.label)}${field.required ? " *" : ""}`;
   const placeholder = field.placeholder?.trim() || defaultPlaceholder(field);
   const wrapperClass = template.wrapperClass || "form-group";
-  const labelClassAttr = template.labelClass ? ` class="${escapeHtmlAttr(template.labelClass)}"` : "";
+  const labelClassAttr = template.labelClass
+    ? ` class="${escapeHtmlAttr(template.labelClass)}"`
+    : "";
 
   if (field.type === "textarea") {
-    const classAttr = template.textareaClass ? ` class="${escapeHtmlAttr(template.textareaClass)}"` : "";
+    const classAttr = template.textareaClass
+      ? ` class="${escapeHtmlAttr(template.textareaClass)}"`
+      : "";
     return `<div class="${escapeHtmlAttr(wrapperClass)}"><label${labelClassAttr}>${label}</label><textarea${classAttr} name="${escapeHtmlAttr(field.name)}" placeholder="${escapeHtmlAttr(placeholder)}"${requiredAttr}></textarea></div>`;
   }
 
   if (field.type === "select") {
-    const classAttr = template.selectClass ? ` class="${escapeHtmlAttr(template.selectClass)}"` : "";
+    const classAttr = template.selectClass
+      ? ` class="${escapeHtmlAttr(template.selectClass)}"`
+      : "";
     return `<div class="${escapeHtmlAttr(wrapperClass)}"><label${labelClassAttr}>${label}</label><select${classAttr} name="${escapeHtmlAttr(field.name)}"${requiredAttr}>${buildSelectOptions(field, placeholder)}</select></div>`;
   }
 
@@ -136,18 +166,26 @@ function buildSelectOptions(field: LpFormField, placeholder: string): string {
 
   return [
     placeholderOption,
-    ...options.map((option) => `<option value="${escapeHtmlAttr(option.value)}">${escapeHtmlText(option.label)}</option>`),
+    ...options.map(
+      (option) =>
+        `<option value="${escapeHtmlAttr(option.value)}">${escapeHtmlText(option.label)}</option>`,
+    ),
   ].join("");
 }
 
 function replaceFirstControl(fragment: string, rebuiltControl: string): string {
-  return fragment.replace(/<(input|textarea|select)([^>]*)(?:>[\s\S]*?<\/\1>|\s*\/?>)/i, rebuiltControl);
+  return fragment.replace(
+    /<(input|textarea|select)([^>]*)(?:>[\s\S]*?<\/\1>|\s*\/?>)/i,
+    rebuiltControl,
+  );
 }
 
 function extractFieldStyleTemplate(html: string): LpFieldStyleTemplate {
   const template: LpFieldStyleTemplate = {};
 
-  const groupMatch = html.match(/<div[^>]*class=("|')([^"']*form-group[^"']*)\1[^>]*>[\s\S]*?<label([^>]*)>[\s\S]*?<\/(?:label)>[\s\S]*?<(input|textarea|select)([^>]*)/i);
+  const groupMatch = html.match(
+    /<div[^>]*class=("|')([^"']*form-group[^"']*)\1[^>]*>[\s\S]*?<label([^>]*)>[\s\S]*?<\/(?:label)>[\s\S]*?<(input|textarea|select)([^>]*)/i,
+  );
   if (groupMatch) {
     template.wrapperClass = groupMatch[2]?.trim() || undefined;
 
@@ -179,10 +217,11 @@ function extractFieldStyleTemplate(html: string): LpFieldStyleTemplate {
   return template;
 }
 
-function removeFieldsNotInConfig(html: string, fields: LpFormField[]): string {
+export function removeFieldsNotInConfig(html: string, fields: LpFormField[]): string {
   const allowedNames = new Set(fields.map((field) => field.name).filter(Boolean));
   const namesInHtml = new Set<string>();
-  const controlsRe = /<(input|textarea|select)([^>]*\bname=("|')([^"']+)\3[^>]*)(?:>[\s\S]*?<\/\1>|\s*\/?>)/gi;
+  const controlsRe =
+    /<(input|textarea|select)([^>]*\bname=("|')([^"']+)\3[^>]*)(?:>[\s\S]*?<\/\1>|\s*\/?>)/gi;
   let controlMatch: RegExpExecArray | null;
 
   while ((controlMatch = controlsRe.exec(html)) !== null) {
@@ -202,19 +241,19 @@ function removeFieldsNotInConfig(html: string, fields: LpFormField[]): string {
     const escapedName = escapeRegex(name);
 
     const groupedFieldRe = new RegExp(
-      `<div[^>]*class=("|')[^"']*form-group[^"']*\\1[^>]*>[\\s\\S]*?<(input|textarea|select)[^>]*\\bname=("|')${escapedName}\\3[^>]*(?:>[\\s\\S]*?<\\/\\2>|\\s*\\/?>)[\\s\\S]*?<\\/div>`,
+      `<div[^>]*class=("|')[^"']*form-group[^"']*\\1[^>]*>(?:(?!<div[^>]*class=[^>]*form-group|</div>)[\\s\\S])*?<(input|textarea|select)[^>]*\\bname=("|')${escapedName}\\3[^>]*(?:>[\\s\\S]*?<\\/\\2>|\\s*\\/?>)(?:(?!<div[^>]*class=[^>]*form-group)[\\s\\S])*?<\\/div>`,
       "gi",
     );
     nextHtml = nextHtml.replace(groupedFieldRe, "");
 
     const labelAndControlRe = new RegExp(
-      `<label[^>]*>[\\s\\S]*?<\\/label>\\s*<(input|textarea|select)[^>]*\\bname=("|')${escapedName}\\2[^>]*(?:>[\\s\\S]*?<\\/\\1>|\\s*\\/?>)`,
+      `<label[^>]*>(?:(?!<label[^>]*>|<div[^>]*class=[^>]*form-group)[\\s\\S])*?<\\/label>\\s*<(input|textarea|select)[^>]*\\bname=("|')${escapedName}\\2[^>]*(?:>[\\s\\S]*?<\\/\\1>|\\s*\\/?>)`,
       "gi",
     );
     nextHtml = nextHtml.replace(labelAndControlRe, "");
 
     const controlRe = new RegExp(
-      `<(input|textarea|select)([^>]*\\bname=("|')${escapedName}\\3[^>]*)(?:>[\\s\\S]*?<\\/\\1>|\\s*\\/?>)`,
+      `<(input|textarea|select)([^>]*\\bname=("|')${escapedName}\\3[^>]*)(?:>(?:(?!<textarea|<input|<select)[\\s\\S])*?<\\/\\1>|\\s*\\/?>)`,
       "gi",
     );
     nextHtml = nextHtml.replace(controlRe, "");
@@ -270,8 +309,5 @@ function escapeHtmlAttr(value: string): string {
 }
 
 function escapeHtmlText(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
