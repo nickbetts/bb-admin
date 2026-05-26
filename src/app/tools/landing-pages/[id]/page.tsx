@@ -84,7 +84,7 @@ import {
   type LpFormConfig,
   type LpFormField,
 } from "@/lib/lp-form-config";
-import { applyConfiguredFormFields, replaceBuiltInForm } from "@/lib/lp-form-fields-html";
+import { applyConfiguredFormFields } from "@/lib/lp-form-fields-html";
 import { useToast } from "@/components/ui/Toast";
 
 // Public hosting domain for landing pages. Set via NEXT_PUBLIC_LP_DOMAIN at
@@ -1244,6 +1244,11 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
   // Preserves custom labels/placeholders, detects new fields, removes deleted ones.
   const formFieldReconcileTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
+    if (showTrackingSettings) {
+      if (formFieldReconcileTimerRef.current) clearTimeout(formFieldReconcileTimerRef.current);
+      return;
+    }
+
     // Debounce to avoid excessive reconciliation during rapid edits (e.g., code editor)
     if (formFieldReconcileTimerRef.current) clearTimeout(formFieldReconcileTimerRef.current);
 
@@ -1274,7 +1279,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
     return () => {
       if (formFieldReconcileTimerRef.current) clearTimeout(formFieldReconcileTimerRef.current);
     };
-  }, [previewHtml]);
+  }, [previewHtml, showTrackingSettings]);
 
   // ── NEW: Listen for text-edit / delete messages from iframe ─────────────
   useEffect(() => {
@@ -2294,12 +2299,13 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
 
       const savePromise = (async () => {
         const { showSaved = true, silent = true } = opts ?? {};
+        const shouldRunAiFieldSanity = !silent && (formConfig.fields?.length ?? 0) > 0;
         const requestId = ++trackingSaveRequestRef.current;
         setSavingAnalytics(true);
         if (showSaved) setAnalyticsSaved(false);
 
         let nextFormConfig: LpFormConfig = formConfig;
-        if ((formConfig.fields?.length ?? 0) > 0) {
+        if (shouldRunAiFieldSanity) {
           try {
             const sanityRes = await fetch(
               `/api/tools/landing-pages/${lp.id}/ai-email-field-sanity`,
@@ -2323,30 +2329,9 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
           }
         }
 
-        let htmlWithFormConfig = previewHtml;
-
-        try {
-          const aiRes = await fetch("/api/tools/landing-pages/rebuild-form", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              html: previewHtml,
-              fields: nextFormConfig.fields ?? [],
-            }),
-          });
-
-          if (aiRes.ok) {
-            const aiData = (await aiRes.json()) as { formHtml?: string };
-            if (aiData.formHtml?.trim()) {
-              htmlWithFormConfig = replaceBuiltInForm(previewHtml, aiData.formHtml);
-            }
-          }
-        } catch {
-          // Fall back to deterministic rewriting below.
-        }
-
-        htmlWithFormConfig = applyConfiguredFormFields(
-          htmlWithFormConfig,
+        // Keep form autosaves deterministic to prevent progressive field drift.
+        const htmlWithFormConfig = applyConfiguredFormFields(
+          previewHtml,
           nextFormConfig.fields ?? [],
         );
 

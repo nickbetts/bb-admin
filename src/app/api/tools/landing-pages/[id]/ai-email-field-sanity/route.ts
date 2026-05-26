@@ -9,15 +9,30 @@ interface RequestBody {
   fields?: LpFormField[];
 }
 
-const VALID_TYPES: Set<LpFormFieldType> = new Set(["text", "email", "tel", "textarea", "select", "date", "number", "url"]);
+const VALID_TYPES: Set<LpFormFieldType> = new Set([
+  "text",
+  "email",
+  "tel",
+  "textarea",
+  "select",
+  "date",
+  "number",
+  "url",
+]);
 
 function sanitiseOptions(options: unknown): LpFormFieldOption[] | undefined {
   if (!Array.isArray(options)) return undefined;
   const cleaned = options
     .map((option) => {
       if (!option || typeof option !== "object") return null;
-      const label = typeof (option as { label?: unknown }).label === "string" ? (option as { label: string }).label.trim() : "";
-      const value = typeof (option as { value?: unknown }).value === "string" ? (option as { value: string }).value.trim() : "";
+      const label =
+        typeof (option as { label?: unknown }).label === "string"
+          ? (option as { label: string }).label.trim()
+          : "";
+      const value =
+        typeof (option as { value?: unknown }).value === "string"
+          ? (option as { value: string }).value.trim()
+          : "";
       const fallback = label || value;
       if (!fallback) return null;
       return { label: label || fallback, value: value || fallback };
@@ -30,53 +45,56 @@ function sanitiseOptions(options: unknown): LpFormFieldOption[] | undefined {
 function sanitiseFields(rawFields: unknown, existingFields: LpFormField[]): LpFormField[] {
   if (!Array.isArray(rawFields)) return existingFields;
 
-  const existingById = new Map(existingFields.map((field) => [field.id, field]));
-  const existingByName = new Map(existingFields.map((field) => [field.name, field]));
-  const usedNames = new Set<string>();
-  const next: LpFormField[] = [];
+  const candidateById = new Map<string, Record<string, unknown>>();
+  const candidateByName = new Map<string, Record<string, unknown>>();
 
   for (const rawField of rawFields) {
     if (!rawField || typeof rawField !== "object") continue;
     const candidate = rawField as Record<string, unknown>;
+    const id = typeof candidate.id === "string" ? candidate.id.trim() : "";
     const name = typeof candidate.name === "string" ? candidate.name.trim() : "";
-    if (!name || usedNames.has(name) || !/^[a-zA-Z][a-zA-Z0-9_-]*$/.test(name)) continue;
 
-    const existing =
-      (typeof candidate.id === "string" ? existingById.get(candidate.id) : undefined)
-      ?? existingByName.get(name);
+    if (id) candidateById.set(id, candidate);
+    if (name && /^[a-zA-Z][a-zA-Z0-9_-]*$/.test(name)) candidateByName.set(name, candidate);
+  }
 
-    const typeCandidate = typeof candidate.type === "string"
-      ? candidate.type.trim().toLowerCase() as LpFormFieldType
-      : existing?.type ?? "text";
-    const type = VALID_TYPES.has(typeCandidate) ? typeCandidate : (existing?.type ?? "text");
+  const next = existingFields.map((existingField) => {
+    const candidate =
+      candidateById.get(existingField.id) ?? candidateByName.get(existingField.name);
 
-    const label = typeof candidate.label === "string" && candidate.label.trim()
-      ? candidate.label.trim()
-      : (existing?.label ?? name);
+    if (!candidate) return existingField;
 
-    const placeholder = typeof candidate.placeholder === "string"
-      ? candidate.placeholder.trim() || undefined
-      : existing?.placeholder;
+    const typeCandidate =
+      typeof candidate.type === "string"
+        ? (candidate.type.trim().toLowerCase() as LpFormFieldType)
+        : existingField.type;
+    const type = VALID_TYPES.has(typeCandidate) ? typeCandidate : existingField.type;
 
-    const required = typeof candidate.required === "boolean"
-      ? candidate.required
-      : (existing?.required ?? false);
+    const label =
+      typeof candidate.label === "string" && candidate.label.trim()
+        ? candidate.label.trim()
+        : existingField.label;
 
-    const options = type === "select"
-      ? sanitiseOptions(candidate.options) ?? existing?.options
-      : undefined;
+    const placeholder =
+      typeof candidate.placeholder === "string"
+        ? candidate.placeholder.trim() || undefined
+        : existingField.placeholder;
 
-    next.push({
-      id: existing?.id ?? crypto.randomUUID(),
-      name,
+    const required =
+      typeof candidate.required === "boolean" ? candidate.required : existingField.required;
+
+    const options =
+      type === "select" ? (sanitiseOptions(candidate.options) ?? existingField.options) : undefined;
+
+    return {
+      ...existingField,
       label,
       placeholder,
       type,
       required,
       options,
-    });
-    usedNames.add(name);
-  }
+    };
+  });
 
   return next.length > 0 ? next : existingFields;
 }
@@ -87,7 +105,7 @@ export async function POST(request: NextRequest) {
 
   let body: RequestBody;
   try {
-    body = await request.json() as RequestBody;
+    body = (await request.json()) as RequestBody;
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
@@ -102,7 +120,8 @@ export async function POST(request: NextRequest) {
       messages: [
         {
           role: "system",
-          content: "You improve landing page form field definitions for clear lead-notification emails. Return strict JSON only.",
+          content:
+            "You improve landing page form field definitions for clear lead-notification emails. Return strict JSON only.",
         },
         {
           role: "user",
@@ -113,7 +132,7 @@ export async function POST(request: NextRequest) {
             "Keep types unchanged unless a type is clearly invalid.",
             "Fix only: label wording, placeholder quality, and obvious select option labelling.",
             "Use British English.",
-            "Return the full array in JSON shape: {\"fields\":[...]}.",
+            'Return the full array in JSON shape: {"fields":[...]}.',
             "Fields:",
             JSON.stringify(fields),
           ].join("\n"),
