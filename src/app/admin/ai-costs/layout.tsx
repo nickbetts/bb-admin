@@ -1,9 +1,11 @@
+import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { AdminNav } from "@/components/admin/AdminNav";
 
 export default async function AdminAICostsLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
-  if (!session) return null;
+  if (!session) redirect("/login");
+  if (!session.user.permissions.includes("users")) redirect("/dashboard");
   return (
     <div className="page">
       <div className="mb-8">
@@ -12,7 +14,7 @@ export default async function AdminAICostsLayout({ children }: { children: React
           Track OpenAI/Anthropic usage and costs
         </p>
       </div>
-      <AdminNav active="ai-costs" />
+      <AdminNav active="ai-costs" permissions={session.user.permissions} />
       {children}
     </div>
   );

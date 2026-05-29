@@ -14,10 +14,11 @@ export default async function AdminTaskCategoriesPage() {
       <div className="mb-8">
         <h1 className="page-title">Task Categories</h1>
         <p style={{ color: "var(--text-3)", fontSize: 14, marginTop: 6 }}>
-          Manage the global list of kanban categories. Each client picks which to display in their settings.
+          Manage the global list of kanban categories. Each client picks which to display in their
+          settings.
         </p>
       </div>
-      <AdminNav active="task-categories" />
+      <AdminNav active="task-categories" permissions={session.user.permissions} />
       <TaskCategoryManager />
     </div>
   );

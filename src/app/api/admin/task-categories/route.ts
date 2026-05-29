@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { getSession, hasPermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-async function requireAdmin() {
+async function requireTaskCategoriesPermission() {
   const session = await getSession();
   if (!session) return null;
-  if (session.user.role !== "admin") return null;
+  if (!hasPermission(session, "admin.task_categories")) return null;
   return session;
 }
 
@@ -20,7 +20,7 @@ function slugify(input: string) {
 }
 
 export async function GET() {
-  const session = await requireAdmin();
+  const session = await requireTaskCategoriesPermission();
   if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const categories = await prisma.taskCategory.findMany({
@@ -30,11 +30,11 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await requireAdmin();
+  const session = await requireTaskCategoriesPermission();
   if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   try {
-    const body = await request.json() as {
+    const body = (await request.json()) as {
       name: string;
       slug?: string;
       color?: string;

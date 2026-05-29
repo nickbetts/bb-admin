@@ -16,10 +16,11 @@ export default async function LogsPage() {
       <div className="mb-8">
         <h1 className="page-title">Server Logs</h1>
         <p style={{ color: "var(--text-3)", fontSize: 14, marginTop: 6 }}>
-          Live console errors and warnings captured from API routes — no need to check the Vercel dashboard.
+          Live console errors and warnings captured from API routes — no need to check the Vercel
+          dashboard.
         </p>
       </div>
-      <AdminNav active="logs" />
+      <AdminNav active="logs" permissions={session.user.permissions} />
       <LogsDashboard />
     </div>
   );

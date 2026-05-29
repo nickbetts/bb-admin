@@ -16,10 +16,11 @@ export default async function ApiStatusPage() {
       <div className="mb-8">
         <h1 className="page-title">API Status</h1>
         <p style={{ color: "var(--text-3)", fontSize: 14, marginTop: 6 }}>
-          Live integration health, API unit balances, rate limits, and billing links across all connected platforms.
+          Live integration health, API unit balances, rate limits, and billing links across all
+          connected platforms.
         </p>
       </div>
-      <AdminNav active="api-status" />
+      <AdminNav active="api-status" permissions={session.user.permissions} />
       <ApiStatusDashboard />
     </div>
   );

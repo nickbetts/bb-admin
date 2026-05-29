@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { getSession, hasPermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +24,8 @@ export interface ClientSnapshotStatus {
 export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!hasPermission(session, "admin.cron"))
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const [clients, grouped] = await Promise.all([
     prisma.client.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
@@ -42,7 +44,12 @@ export async function GET() {
   for (const row of grouped) {
     const name = clientMap.get(row.clientId) ?? row.clientId;
     if (!byClient.has(row.clientId)) {
-      byClient.set(row.clientId, { clientId: row.clientId, clientName: name, totalSnapshots: 0, platforms: {} });
+      byClient.set(row.clientId, {
+        clientId: row.clientId,
+        clientName: name,
+        totalSnapshots: 0,
+        platforms: {},
+      });
     }
     const entry = byClient.get(row.clientId)!;
     const count = row._count.id;
@@ -55,8 +62,14 @@ export async function GET() {
   }
 
   // Return all clients (even those with zero snapshots)
-  const result: ClientSnapshotStatus[] = clients.map((c) =>
-    byClient.get(c.id) ?? { clientId: c.id, clientName: c.name, totalSnapshots: 0, platforms: {} }
+  const result: ClientSnapshotStatus[] = clients.map(
+    (c) =>
+      byClient.get(c.id) ?? {
+        clientId: c.id,
+        clientName: c.name,
+        totalSnapshots: 0,
+        platforms: {},
+      },
   );
 
   return NextResponse.json(result);

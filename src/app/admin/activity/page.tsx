@@ -19,7 +19,7 @@ export default async function ActivityLogPage() {
           Track who did what and when — report creation, AI generation, client management and more.
         </p>
       </div>
-      <AdminNav active="activity" />
+      <AdminNav active="activity" permissions={session.user.permissions} />
       <ActivityLogDashboard />
     </div>
   );

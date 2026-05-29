@@ -96,15 +96,35 @@ function normaliseSettingEntry(key: string, value: unknown): NormalisedSetting |
   }
 }
 
+// Settings keys that hold secrets. These are only returned to callers that
+// hold the `settings` permission. Other authenticated staff (e.g. tool pages
+// reading `pricingStrategy` or `accessRequester*`) receive everything else.
+const SENSITIVE_SETTING_KEYS = new Set<string>([
+  "openaiApiKey",
+  "anthropicApiKey",
+  "clickupApiToken",
+  "resendApiKey",
+  "turnstileSecretKey",
+]);
+
+// Defence-in-depth: also strip any key whose name implies a secret, so newly
+// added credential keys are protected without needing this list to be updated.
+function isSensitiveSettingKey(key: string): boolean {
+  if (SENSITIVE_SETTING_KEYS.has(key)) return true;
+  return /(secret|token|apikey|password|privatekey)/i.test(key);
+}
+
 export async function GET() {
   const session = await getSession();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const canReadSecrets = hasPermission(session, "settings");
   const rows = await prisma.appSetting.findMany();
   const settings: Record<string, string> = {};
   for (const row of rows) {
+    if (!canReadSecrets && isSensitiveSettingKey(row.key)) continue;
     settings[row.key] = row.value;
   }
   return NextResponse.json(settings);

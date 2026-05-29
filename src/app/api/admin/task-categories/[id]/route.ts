@@ -1,26 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { getSession, hasPermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-async function requireAdmin() {
+async function requireTaskCategoriesPermission() {
   const session = await getSession();
   if (!session) return null;
-  if (session.user.role !== "admin") return null;
+  if (!hasPermission(session, "admin.task_categories")) return null;
   return session;
 }
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const session = await requireAdmin();
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await requireTaskCategoriesPermission();
   if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   try {
     const { id } = await params;
-    const body = await request.json() as {
+    const body = (await request.json()) as {
       name?: string;
       color?: string | null;
       icon?: string | null;
@@ -47,9 +44,9 @@ export async function PATCH(
 
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  const session = await requireAdmin();
+  const session = await requireTaskCategoriesPermission();
   if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   try {
