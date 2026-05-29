@@ -6,6 +6,7 @@
  * can run keyword research automatically without HTTP round-trips.
  */
 
+import { jsonrepair } from "jsonrepair";
 import { getAnthropicClient } from "@/lib/anthropic-client";
 import { getKeywordVolumeMetrics, type KeywordVolumeResult } from "@/lib/semrush";
 import { crawlSiteForKeywordContext } from "@/lib/landing-page-analyzer";
@@ -31,10 +32,7 @@ export interface KeywordIdea extends KeywordVolumeResult {
 
 // ─── Suggest ad groups from website + brief (Claude) ────────────────────────
 
-export async function suggestAdGroups(
-  website: string,
-  brief: string,
-): Promise<SuggestResult> {
+export async function suggestAdGroups(website: string, brief: string): Promise<SuggestResult> {
   const anthropic = await getAnthropicClient();
 
   const siteCrawl = await crawlSiteForKeywordContext(website);
@@ -42,19 +40,24 @@ export async function suggestAdGroups(
 
   const userContent = [
     `Website URL: ${website}`,
-    siteCrawl.pagesCrawled.length > 1
-      ? `Pages crawled: ${siteCrawl.pagesCrawled.join(", ")}`
-      : "",
+    siteCrawl.pagesCrawled.length > 1 ? `Pages crawled: ${siteCrawl.pagesCrawled.join(", ")}` : "",
     pageContext.length
       ? `Website content (crawled):\n${pageContext.join("\n")}`
       : `(Website could not be crawled — use URL context only)`,
     ``,
     `Client brief: ${brief}`,
-  ].filter(Boolean).join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 
   const response = await anthropic.messages.create({
     model: "claude-haiku-4-5",
-    max_tokens: 4000,
+    // A BROAD brief asks for up to 6–12 ad groups × 40–70 keywords (~840
+    // keywords). At 4000 tokens the JSON was truncated mid-array, JSON.parse
+    // failed, and the step returned zero ad groups — which left Grand Plans
+    // with no keyword research (and therefore no Google Ads sections). Give the
+    // model enough room to emit the full structure.
+    max_tokens: 16000,
     messages: [
       {
         role: "user",
@@ -104,15 +107,22 @@ ${userContent}`,
   const textBlock = response.content.find((b) => b.type === "text");
   const raw = textBlock && textBlock.type === "text" ? textBlock.text.trim() : "{}";
 
-  let parsed: { adGroups?: AdGroupSeed[]; rationale?: string; briefScope?: string; briefAnalysis?: string };
+  let parsed: {
+    adGroups?: AdGroupSeed[];
+    rationale?: string;
+    briefScope?: string;
+    briefAnalysis?: string;
+  };
   try {
     parsed = JSON.parse(raw);
   } catch {
-    const match = raw.match(/\{[\s\S]*\}/);
-    if (match) {
-      try { parsed = JSON.parse(match[0]); }
-      catch { parsed = { adGroups: [], rationale: "Could not parse AI response." }; }
-    } else {
+    // jsonrepair recovers from common LLM JSON faults including truncation
+    // (unterminated arrays/strings), so a long ad-group list that ran up to the
+    // token ceiling can still be salvaged instead of yielding zero ad groups.
+    const candidate = raw.match(/\{[\s\S]*\}/)?.[0] ?? raw;
+    try {
+      parsed = JSON.parse(jsonrepair(candidate));
+    } catch {
       parsed = { adGroups: [], rationale: "Could not parse AI response." };
     }
   }
