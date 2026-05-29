@@ -3,7 +3,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { jsonrepair } from "jsonrepair";
 import type { GrandPlanData } from "@/lib/grand-plan-generator";
 
-const PRESENTATION_MODEL = "claude-opus-4-8";
+const PRESENTATION_MODEL = "claude-opus-4-7";
 
 const TRANSIENT_ERROR_CODES = new Set([408, 425, 429, 500, 502, 503, 504, 529]);
 function isTransientError(err: unknown): boolean {
@@ -168,54 +168,26 @@ function hasSeoFoundationsData(
   );
 }
 
-function hasEmailMarketingData(
-  email: GrandPlanData["sections"]["emailMarketing"] | undefined,
-): boolean {
-  if (!email) return false;
-  return Boolean(
-    email.flows?.length || email.campaigns?.length || email.segmentation?.segments?.length,
-  );
-}
-
 export function resolvePresentationSlideBounds(plan: GrandPlanData): PresentationSlideBounds {
   const sections = plan.sections;
-  const googleAdsCampaigns = Array.isArray(sections.googleAdsCampaigns)
-    ? sections.googleAdsCampaigns
-    : sections.googleAdsCampaigns
-      ? [sections.googleAdsCampaigns]
-      : [];
   const audiencesCount = sections.audiences?.length ?? 0;
   const quickWinsCount = sections.quickWins?.length ?? 0;
   const channelCount = plan.strategyBrain?.channelStrategy?.length ?? 0;
-  const servicesCount = sections.servicesInvestment?.services?.length ?? 0;
-  const allocationCount = sections.servicesInvestment?.investmentAllocation?.byChannel?.length ?? 0;
-  const whyUsCount = sections.servicesInvestment?.whyUs?.length ?? 0;
   const contentEntryCount =
     (sections.contentStrategy?.pageOptimisations?.length ?? 0) +
     (sections.contentStrategy?.landingPages?.length ?? 0) +
     (sections.contentStrategy?.blogPosts?.length ?? 0);
   const competitorCount = sections.competitorIntel?.length ?? 0;
   const groundingCount = Object.keys(plan.grounding ?? {}).length;
-  const forecastSignals = googleAdsCampaigns.filter(
-    (campaign) =>
-      Boolean(campaign.forecast?.intelligence?.summary) ||
-      Boolean(campaign.forecast?.intelligence?.assumptions?.length) ||
-      Boolean(campaign.forecast?.intelligence?.optimisationLevers?.length),
-  ).length;
 
   const richnessScore = [
     audiencesCount >= 4,
     quickWinsCount >= 6,
     channelCount >= 5,
-    servicesCount >= 6,
-    allocationCount >= 4,
-    whyUsCount >= 3,
     contentEntryCount >= 10,
     competitorCount >= 3,
     groundingCount >= 6,
-    forecastSignals >= 1,
     hasSeoFoundationsData(sections.seoFoundations),
-    hasEmailMarketingData(sections.emailMarketing),
   ].filter(Boolean).length;
 
   const dataRich = richnessScore >= 6;
@@ -231,32 +203,10 @@ export function resolvePresentationSlideBounds(plan: GrandPlanData): Presentatio
 
 export function summariseSourcePlan(plan: GrandPlanData): string {
   const sb = plan.strategyBrain;
-  const services = plan.sections.servicesInvestment;
   const audiences = plan.sections.audiences ?? [];
   const quickWins = plan.sections.quickWins ?? [];
-  const googleAdsCampaigns = Array.isArray(plan.sections.googleAdsCampaigns)
-    ? plan.sections.googleAdsCampaigns
-    : plan.sections.googleAdsCampaigns
-      ? [plan.sections.googleAdsCampaigns]
-      : [];
   const seo = plan.sections.seoFoundations;
-  const email = plan.sections.emailMarketing;
   const competitors = plan.sections.competitorIntel ?? [];
-
-  const servicesSummary = services?.services
-    ? services.services
-        .slice(0, 12)
-        .map((s) => `- ${s.name}${s.price ? ` (${s.price})` : ""}`)
-        .join("\n")
-    : "";
-  const allocationSummary = services?.investmentAllocation?.byChannel
-    ? services.investmentAllocation.byChannel
-        .map((c) => `- ${c.channel}: £${c.amount.toLocaleString()} (${Math.round(c.share)}%)`)
-        .join("\n")
-    : "";
-  const totalInvestment = services?.investmentAllocation?.totalMonthly
-    ? `£${services.investmentAllocation.totalMonthly.toLocaleString()}/month`
-    : "";
 
   const audienceLines = audiences
     .slice(0, 6)
@@ -294,53 +244,12 @@ export function summariseSourcePlan(plan: GrandPlanData): string {
         .join("\n")
     : "";
 
-  const emailFlowLines = email?.flows
-    ? email.flows
-        .slice(0, 8)
-        .map((flow) => `- ${flow.name} (trigger: ${flow.trigger}, emails: ${flow.emails.length})`)
-        .join("\n")
-    : "";
-  const emailCampaignLines = email?.campaigns
-    ? email.campaigns
-        .slice(0, 8)
-        .map(
-          (campaign) =>
-            `- ${campaign.name}: ${campaign.objectiveText} (audience: ${campaign.audience}, cadence: ${campaign.frequency})`,
-        )
-        .join("\n")
-    : "";
-  const emailSegmentationLines = email?.segmentation?.segments
-    ? email.segmentation.segments
-        .slice(0, 8)
-        .map((segment) => `- ${segment.name}: ${segment.criteria}`)
-        .join("\n")
-    : "";
-
   const competitorLines = competitors
     .slice(0, 8)
     .map(
       (competitor) =>
         `- ${competitor.domain}: strengths ${competitor.strengths.slice(0, 2).join(" | ")} | weaknesses ${competitor.weaknesses.slice(0, 2).join(" | ")}`,
     )
-    .join("\n");
-
-  const whyUsLines = services?.whyUs
-    ? services.whyUs
-        .slice(0, 6)
-        .map((point) => `- ${point.title}: ${point.description ?? ""}`)
-        .join("\n")
-    : "";
-
-  const forecastIntelligenceLines = googleAdsCampaigns
-    .map((campaign) => {
-      const forecast = campaign.forecast;
-      if (!forecast?.intelligence) return "";
-      const assumptions = forecast.intelligence.assumptions?.slice(0, 2).join(" | ") ?? "";
-      const levers = forecast.intelligence.optimisationLevers?.slice(0, 2).join(" | ") ?? "";
-      return `- ${campaign.campaignName}: ${forecast.intelligence.summary} (confidence: ${forecast.intelligence.confidence}, assumptions: ${assumptions}, levers: ${levers})`;
-    })
-    .filter(Boolean)
-    .slice(0, 6)
     .join("\n");
 
   const groundingLines = Object.entries(plan.grounding ?? {})
@@ -393,16 +302,6 @@ ${audienceLines || "(none)"}
 CHANNEL STRATEGY:
 ${channelStrategy || "(none)"}
 
-SERVICES IN SCOPE:
-${servicesSummary || "(none)"}
-
-INVESTMENT ALLOCATION:
-${allocationSummary || "(none)"}
-Total monthly investment: ${totalInvestment || "(none)"}
-
-WHY US PROOF POINTS:
-${whyUsLines || "(none)"}
-
 PRIORITY QUICK WINS:
 ${quickWinLines || "(none)"}
 
@@ -415,20 +314,8 @@ ${seoInternalHubs || "(none)"}
 SEO LINK-BUILDING TARGETS:
 ${seoLinkTargets || "(none)"}
 
-EMAIL FLOWS:
-${emailFlowLines || "(none)"}
-
-EMAIL CAMPAIGNS:
-${emailCampaignLines || "(none)"}
-
-EMAIL SEGMENTATION:
-${emailSegmentationLines || "(none)"}
-
 COMPETITOR INSIGHTS:
 ${competitorLines || "(none)"}
-
-GOOGLE ADS FORECAST INTELLIGENCE:
-${forecastIntelligenceLines || "(none)"}
 
 DATA GROUNDING SNAPSHOT:
 ${groundingLines || "(none)"}

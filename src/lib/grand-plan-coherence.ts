@@ -30,7 +30,11 @@ export interface CoherenceIssue {
 
 /** Normalise an audience-style label so "Owner-operators" matches "owner operators". */
 function normName(s: string): string {
-  return (s ?? "").toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+  return (s ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 /** Loose containment: does any approved name partially overlap with the candidate? */
@@ -45,12 +49,18 @@ function hasAnyMatch(candidate: string, approved: string[]): boolean {
     const ct = new Set(c.split(" ").filter((t) => t.length > 3));
     const nt = new Set(n.split(" ").filter((t) => t.length > 3));
     let shared = 0;
-    ct.forEach((t) => { if (nt.has(t)) shared++; });
+    ct.forEach((t) => {
+      if (nt.has(t)) shared++;
+    });
     return shared >= 2;
   });
 }
 
-export function validateCoherence(plan: GrandPlanData, brain: StrategyBrain | undefined, sources: GrandPlanSources): CoherenceIssue[] {
+export function validateCoherence(
+  plan: GrandPlanData,
+  brain: StrategyBrain | undefined,
+  sources: GrandPlanSources,
+): CoherenceIssue[] {
   const issues: CoherenceIssue[] = [];
 
   // Use brain audience names when available; otherwise fall back to the
@@ -59,22 +69,6 @@ export function validateCoherence(plan: GrandPlanData, brain: StrategyBrain | un
   const approvedAudiences = (brain?.audiences.map((a) => a.name) ?? [])
     .concat((plan.sections.audiences ?? []).map((a) => a.name))
     .filter((n): n is string => !!n);
-
-  // ── Email segments mirror audience names ────────────────────────────────
-  const emailSegments = plan.sections.emailMarketing?.segmentation?.segments ?? [];
-  if (emailSegments.length > 0 && approvedAudiences.length > 0) {
-    for (const seg of emailSegments) {
-      if (!seg?.name) continue;
-      if (!hasAnyMatch(seg.name, approvedAudiences)) {
-        issues.push({
-          section: "emailMarketing",
-          issue: `Email segment "${seg.name}" does not map to any of the agreed audiences.`,
-          suggestedFix: `Rename segment "${seg.name}" to match one of the strategy brain audiences (${approvedAudiences.slice(0, 4).join(", ")}) or replace with a clearly equivalent segment.`,
-          severity: "medium",
-        });
-      }
-    }
-  }
 
   // ── Calendar blog posts have a target audience the brain knows ─────────
   const calendar = plan.sections.contentCalendar ?? [];
@@ -108,12 +102,18 @@ export function validateCoherence(plan: GrandPlanData, brain: StrategyBrain | un
   const focusTokens = new Set<string>();
   (sources.campaignFocusPeriods ?? []).forEach((p) => {
     [p.label, p.description ?? ""].forEach((s) => {
-      s.toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length > 4).forEach((t) => focusTokens.add(t));
+      s.toLowerCase()
+        .split(/[^a-z0-9]+/)
+        .filter((t) => t.length > 4)
+        .forEach((t) => focusTokens.add(t));
     });
   });
   if (focusTokens.size > 0) {
     for (const n of negs) {
-      const tokens = (n.keyword ?? "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+      const tokens = (n.keyword ?? "")
+        .toLowerCase()
+        .split(/[^a-z0-9]+/)
+        .filter(Boolean);
       const hit = tokens.find((t) => focusTokens.has(t));
       if (hit) {
         issues.push({
@@ -160,9 +160,15 @@ export function autoFixCoherence(
       const cTokens = new Set(c.split(" ").filter((t) => t.length > 3));
       let best: { name: string; score: number } | null = null;
       for (const a of approvedAudiences) {
-        const aTokens = new Set(normName(a).split(" ").filter((t) => t.length > 3));
+        const aTokens = new Set(
+          normName(a)
+            .split(" ")
+            .filter((t) => t.length > 3),
+        );
         let shared = 0;
-        cTokens.forEach((t) => { if (aTokens.has(t)) shared++; });
+        cTokens.forEach((t) => {
+          if (aTokens.has(t)) shared++;
+        });
         if (!best || shared > best.score) best = { name: a, score: shared };
       }
       if (best && best.score >= 1) return best.name;
@@ -171,20 +177,6 @@ export function autoFixCoherence(
     rotate.i += 1;
     return pick;
   };
-
-  // ── Email segments → rename to closest approved audience ───────────────
-  const emailSegments = plan.sections.emailMarketing?.segmentation?.segments ?? [];
-  if (emailSegments.length && approvedAudiences.length) {
-    for (const seg of emailSegments) {
-      if (!seg?.name) continue;
-      if (hasAnyMatch(seg.name, approvedAudiences)) continue;
-      const replacement = pickAudience(seg.name);
-      if (replacement && replacement !== seg.name) {
-        seg.name = replacement;
-        fixes += 1;
-      }
-    }
-  }
 
   // ── Calendar blog posts → rewrite the "Written for X" tag ──────────────
   const calendar = plan.sections.contentCalendar ?? [];
@@ -196,7 +188,9 @@ export function autoFixCoherence(
         const tag = m?.[1]?.trim();
         if (!tag) continue;
         if (hasAnyMatch(tag, approvedAudiences)) continue;
-        const replacement = pickAudience(`${tag} ${post.title ?? ""} ${(post as { targetKeyword?: string }).targetKeyword ?? ""}`);
+        const replacement = pickAudience(
+          `${tag} ${post.title ?? ""} ${(post as { targetKeyword?: string }).targetKeyword ?? ""}`,
+        );
         if (!replacement) continue;
         // Replace the captured group, preserving the surrounding wording.
         const next = angle.replace(/(written for\s+)([^,]+)/i, `$1${replacement}`);
@@ -215,12 +209,18 @@ export function autoFixCoherence(
     const focusTokens = new Set<string>();
     (sources.campaignFocusPeriods ?? []).forEach((p) => {
       [p.label, p.description ?? ""].forEach((s) => {
-        s.toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length > 4).forEach((t) => focusTokens.add(t));
+        s.toLowerCase()
+          .split(/[^a-z0-9]+/)
+          .filter((t) => t.length > 4)
+          .forEach((t) => focusTokens.add(t));
       });
     });
     if (focusTokens.size > 0 && negsContainer) {
       const keep = negs.filter((n) => {
-        const tokens = (n.keyword ?? "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+        const tokens = (n.keyword ?? "")
+          .toLowerCase()
+          .split(/[^a-z0-9]+/)
+          .filter(Boolean);
         const hit = tokens.some((t) => focusTokens.has(t));
         if (hit) fixes += 1;
         return !hit;

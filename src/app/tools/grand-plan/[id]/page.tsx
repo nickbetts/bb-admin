@@ -64,12 +64,6 @@ const ALL_SECTIONS: { key: string; label: string; description: string; aiPowered
     aiPowered: false,
   },
   {
-    key: "googleAdsForecast",
-    label: "Google Ads Forecast",
-    description: "Estimated clicks, conversions, CPA from keyword data",
-    aiPowered: false,
-  },
-  {
     key: "metaCampaigns",
     label: "Meta Campaigns",
     description: "AI-generated Facebook/Instagram campaigns",
@@ -94,12 +88,6 @@ const ALL_SECTIONS: { key: string; label: string; description: string; aiPowered
     aiPowered: true,
   },
   {
-    key: "emailMarketing",
-    label: "Email Marketing",
-    description: "Automated flows, campaigns, segmentation",
-    aiPowered: true,
-  },
-  {
     key: "competitorIntel",
     label: "Competitor Intelligence",
     description: "AI-generated competitive analysis",
@@ -110,12 +98,6 @@ const ALL_SECTIONS: { key: string; label: string; description: string; aiPowered
     label: "SEO Foundations",
     description: "Quick wins on existing pages, internal linking structure, and link-building plan",
     aiPowered: true,
-  },
-  {
-    key: "servicesInvestment",
-    label: "Services & Investment",
-    description: "Pricing and timeline from proposal",
-    aiPowered: false,
   },
 ];
 
@@ -138,17 +120,6 @@ const REMOVABLE_SUBSECTIONS: Record<string, { path: string; label: string }[]> =
     { path: "quickWins", label: "Quick Wins" },
     { path: "internalLinking", label: "Internal Linking" },
     { path: "linkBuilding", label: "Link Building" },
-  ],
-  servicesInvestment: [
-    { path: "services", label: "Services" },
-    { path: "timeline", label: "Timeline" },
-    { path: "investmentAllocation", label: "Investment" },
-    { path: "whyUs", label: "Why Us" },
-  ],
-  emailMarketing: [
-    { path: "flows", label: "Flows" },
-    { path: "campaigns", label: "Campaigns" },
-    { path: "segmentation", label: "Segmentation" },
   ],
 };
 

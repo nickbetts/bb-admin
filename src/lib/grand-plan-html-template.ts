@@ -166,13 +166,10 @@ export function renderGrandPlanHtml(plan: GrandPlanData, isPublicView = false): 
   const hasPaidSocial = s.metaCampaigns?.length || s.linkedInAds?.length;
   const hasContent = s.contentStrategy || s.contentCalendar?.length;
   const hasResearch = s.competitorIntel?.length;
-  const hasCommercial = s.servicesInvestment || s.emailMarketing;
 
   if (hasPaidSearch) {
     addChapter("Paid Search");
     if (s.googleAdsCampaigns) navItems.push({ id: "google-ads", label: "Google Ads" });
-    if (s.googleAdsCampaigns?.forecast)
-      navItems.push({ id: "google-ads-forecast", label: "Forecast" });
   }
   if (hasPaidSocial) {
     addChapter("Paid Social");
@@ -190,11 +187,6 @@ export function renderGrandPlanHtml(plan: GrandPlanData, isPublicView = false): 
     addChapter("Research");
     if (s.competitorIntel?.length)
       navItems.push({ id: "competitor-intel", label: "Competitor Intel" });
-  }
-  if (hasCommercial) {
-    addChapter("Commercial");
-    if (s.servicesInvestment) navItems.push({ id: "services", label: "Services & Investment" });
-    if (s.emailMarketing) navItems.push({ id: "email-marketing", label: "Email Marketing" });
   }
 
   // ── Stats band ─────────────────────────────────────────────────────────────
@@ -252,18 +244,6 @@ export function renderGrandPlanHtml(plan: GrandPlanData, isPublicView = false): 
   if (s.contentCalendar?.length)
     contentStats.push({ num: String(s.contentCalendar.length), label: "Calendar Months" });
 
-  const organicStats: StatItem[] = [];
-  if (s.emailMarketing?.flows?.length)
-    organicStats.push({ num: String(s.emailMarketing.flows.length), label: "Email Flows" });
-  if (s.emailMarketing?.segmentation?.segments?.length) {
-    organicStats.push({
-      num: String(s.emailMarketing.segmentation.segments.length),
-      label: "Email Segments",
-    });
-  }
-  if (s.emailMarketing?.campaigns?.length)
-    organicStats.push({ num: String(s.emailMarketing.campaigns.length), label: "Email Campaigns" });
-
   const measurementStats: StatItem[] = [];
   if (s.competitorIntel?.length)
     measurementStats.push({ num: String(s.competitorIntel.length), label: "Competitors Analysed" });
@@ -273,7 +253,6 @@ export function renderGrandPlanHtml(plan: GrandPlanData, isPublicView = false): 
     { label: "Strategy", items: strategyStats },
     { label: "Paid Media", items: paidStats },
     { label: "Content & SEO", items: contentStats },
-    { label: "Organic & Lifecycle", items: organicStats },
     { label: "Performance", items: measurementStats },
   ].filter((g) => g.items.length > 0);
 
@@ -450,7 +429,6 @@ function buildChapteredSections(
   const hasPaidSocial = s.metaCampaigns?.length || s.linkedInAds?.length;
   const hasContent = s.contentStrategy || s.contentCalendar?.length;
   const hasResearch = s.competitorIntel?.length;
-  const hasCommercial = s.servicesInvestment || s.emailMarketing;
 
   // grounding badge wrapper — no-op in public view
   const wb = (html: string, g?: { grounding: string; sourceLabels: string[] } | null) =>
@@ -461,6 +439,16 @@ function buildChapteredSections(
   // Data sources panel removed — the Strategy Brain panel above already explains
   // the foundation. Internal teams can inspect plan.dataSources via the API.
   void dataSources;
+
+  if (s.audiences?.length) {
+    parts.push(
+      ch(
+        "Audiences",
+        "Who we are talking to, how each persona moves from awareness to retention, and the messaging that converts them.",
+      ),
+    );
+    parts.push(wb(renderAudiences(s.audiences), grounding?.audiences));
+  }
 
   if (hasPaidSearch) {
     parts.push(
@@ -477,10 +465,6 @@ function buildChapteredSections(
           ),
           grounding?.googleAdsCampaigns,
         ),
-      );
-    if (s.googleAdsCampaigns?.forecast)
-      parts.push(
-        wb(renderGoogleAdsForecast(s.googleAdsCampaigns.forecast), grounding?.googleAdsCampaigns),
       );
   }
 
@@ -532,14 +516,6 @@ function buildChapteredSections(
           grounding?.competitorIntel,
         ),
       );
-  }
-
-  if (hasCommercial) {
-    parts.push(ch("Commercial", "Services, investment overview, and email lifecycle."));
-    if (s.servicesInvestment)
-      parts.push(wb(renderServicesInvestment(s.servicesInvestment), grounding?.servicesInvestment));
-    if (s.emailMarketing)
-      parts.push(wb(renderEmailMarketing(s.emailMarketing), grounding?.emailMarketing));
   }
 
   return parts.join("\n");
@@ -722,6 +698,124 @@ function renderContext(
         ${periodsBlock}
       </div>
     </section>`;
+}
+
+// Audiences chapter — persona cards expanded with the #5 journey map (awareness
+// → consideration → decision → retention) and a per-persona messaging matrix.
+function renderAudiences(audiences: AudienceItem[]): string {
+  const STAGE_LABEL: Record<string, string> = {
+    awareness: "Awareness",
+    consideration: "Consideration",
+    decision: "Decision",
+    retention: "Retention",
+  };
+
+  const cards = audiences
+    .map((a, i) => {
+      const journeyBlock =
+        a.journey?.length && a.journey.some((j) => j.mindset || j.keyMessage)
+          ? `
+        <div class="aud-sub-label">Journey</div>
+        <div class="aud-journey-track">
+          ${a.journey
+            .map(
+              (j) => `
+          <div class="aud-journey-stage" data-stage="${esc(j.stage)}">
+            <div class="aud-stage-name">${esc(STAGE_LABEL[j.stage] ?? j.stage)}</div>
+            ${j.mindset ? `<p class="aud-stage-mindset">${esc(j.mindset)}</p>` : ""}
+            ${
+              j.touchpoints?.length
+                ? `<div class="aud-stage-touch">${j.touchpoints
+                    .map((t) => `<span>${esc(t)}</span>`)
+                    .join("")}</div>`
+                : ""
+            }
+            ${j.keyMessage ? `<div class="aud-stage-msg">${esc(j.keyMessage)}</div>` : ""}
+          </div>`,
+            )
+            .join("")}
+        </div>`
+          : "";
+
+      const m = a.messaging;
+      const messagingBlock =
+        m &&
+        (m.valueProposition || m.proofPoints?.length || m.primaryObjection || m.objectionResponse)
+          ? `
+        <div class="aud-sub-label">Messaging matrix</div>
+        <div class="aud-msg-grid">
+          ${
+            m.valueProposition
+              ? `<div class="aud-msg-cell"><span class="aud-msg-k">Value proposition</span><p>${esc(m.valueProposition)}</p></div>`
+              : ""
+          }
+          ${
+            m.proofPoints?.length
+              ? `<div class="aud-msg-cell"><span class="aud-msg-k">Proof points</span><ul class="aud-msg-proof">${m.proofPoints
+                  .map((p) => `<li>${esc(p)}</li>`)
+                  .join("")}</ul></div>`
+              : ""
+          }
+          ${
+            m.primaryObjection
+              ? `<div class="aud-msg-cell"><span class="aud-msg-k">Primary objection</span><p>${esc(m.primaryObjection)}</p></div>`
+              : ""
+          }
+          ${
+            m.objectionResponse
+              ? `<div class="aud-msg-cell"><span class="aud-msg-k">Our response</span><p>${esc(m.objectionResponse)}</p></div>`
+              : ""
+          }
+        </div>`
+          : "";
+
+      return `
+      <div class="aud-card">
+        <div class="aud-card-head">
+          <div class="aud-num">${String(i + 1).padStart(2, "0")}</div>
+          <div>
+            <h4 class="aud-name">${esc(a.name)}</h4>
+            <p class="aud-desc">${esc(a.description)}</p>
+          </div>
+        </div>
+        ${
+          a.personaQuote
+            ? `
+        <blockquote class="aud-quote"><p>${esc(a.personaQuote)}</p></blockquote>`
+            : ""
+        }
+        ${
+          a.painPoints?.length
+            ? `
+        <div class="aud-sub-label">Pain points</div>
+        <ul class="aud-pain-list">
+          ${a.painPoints.map((p) => `<li>${esc(p)}</li>`).join("")}
+        </ul>`
+            : ""
+        }
+        ${journeyBlock}
+        ${messagingBlock}
+        ${
+          a.channels?.length
+            ? `
+        <div class="aud-channels">
+          ${a.channels.map((c) => `<span class="aud-channel-chip">${esc(c)}</span>`).join("")}
+        </div>`
+            : ""
+        }
+      </div>`;
+    })
+    .join("\n");
+
+  return `
+<section class="section-block" id="audiences" data-snap>
+  <div class="section-inner">
+    <div class="section-kicker">Audiences</div>
+    <h2>Who we are talking to</h2>
+    <p class="section-intro">Each persona below maps how the audience moves from first awareness through to retention, alongside the messaging matrix that wins them over. These definitions carry through every channel in this plan.</p>
+    <div class="aud-grid">${cards}</div>
+  </div>
+</section>`;
 }
 
 function renderExecutiveSummary(html: string): string {
@@ -3109,6 +3203,39 @@ a{color:var(--accent);text-decoration:none}
 .section-body li{margin-bottom:.35rem}
 .section-body strong{color:var(--heading)}
 .subsection-title{font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--mid);margin-bottom:12px}
+
+/* ── Audiences (journey map + messaging matrix) ────────────── */
+.aud-grid{display:grid;grid-template-columns:1fr;gap:1.5rem;margin-top:.5rem}
+.aud-card{background:var(--white);border:1px solid var(--border);border-radius:16px;padding:1.75rem 2rem;box-shadow:0 2px 14px rgba(15,23,42,.04)}
+.aud-card-head{display:flex;gap:1rem;align-items:flex-start;margin-bottom:1rem}
+.aud-num{font-size:1.6rem;font-weight:800;color:var(--accent);letter-spacing:-1px;line-height:1;flex-shrink:0;opacity:.55}
+.aud-name{font-size:1.1rem;font-weight:700;color:var(--heading);margin:0 0 .3rem;line-height:1.3}
+.aud-desc{font-size:14px;color:var(--text-light);line-height:1.65;margin:0}
+.aud-quote{margin:0 0 1.25rem;padding:.9rem 1.1rem;background:var(--accent-bg);border-left:3px solid var(--accent);border-radius:0 10px 10px 0}
+.aud-quote p{margin:0;font-size:13.5px;font-style:italic;color:var(--accent-text);line-height:1.6}
+.aud-sub-label{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--mid);margin:1.5rem 0 .75rem}
+.aud-pain-list{list-style:none;padding:0;margin:0 0 .5rem;display:flex;flex-direction:column;gap:5px}
+.aud-pain-list li{font-size:13px;color:var(--text);padding:6px 12px;background:var(--bg);border-radius:8px;border-left:2px solid var(--accent)}
+.aud-journey-track{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.75rem}
+.aud-journey-stage{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:1rem 1.1rem;border-top:3px solid var(--accent)}
+.aud-journey-stage[data-stage="consideration"]{border-top-color:var(--accent-2)}
+.aud-journey-stage[data-stage="decision"]{border-top-color:var(--accent-3)}
+.aud-journey-stage[data-stage="retention"]{border-top-color:#10b981}
+.aud-stage-name{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--heading);margin-bottom:.5rem}
+.aud-stage-mindset{font-size:12.5px;color:var(--text);line-height:1.55;margin:0 0 .6rem}
+.aud-stage-touch{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:.6rem}
+.aud-stage-touch span{font-size:10px;font-weight:600;padding:2px 8px;background:var(--white);border:1px solid var(--border);border-radius:20px;color:var(--text-light)}
+.aud-stage-msg{font-size:12px;color:var(--accent-text);background:var(--accent-bg);border-radius:8px;padding:7px 10px;line-height:1.5;font-weight:500}
+.aud-msg-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.75rem}
+.aud-msg-cell{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:1rem 1.1rem}
+.aud-msg-k{display:block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--mid);margin-bottom:.45rem}
+.aud-msg-cell p{font-size:13px;color:var(--text);line-height:1.6;margin:0}
+.aud-msg-proof{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:4px}
+.aud-msg-proof li{font-size:12.5px;color:var(--text);padding-left:1rem;position:relative;line-height:1.5}
+.aud-msg-proof li::before{content:'\\2713';position:absolute;left:0;color:#10b981;font-weight:700}
+.aud-channels{display:flex;flex-wrap:wrap;gap:6px;margin-top:1.25rem}
+.aud-channel-chip{padding:3px 12px;border-radius:20px;font-size:11px;font-weight:600;background:var(--accent-bg);color:var(--accent-text);border:1px solid var(--border)}
+@media(max-width:640px){.aud-journey-track,.aud-msg-grid{grid-template-columns:1fr}}
 
 /* ── Campaign hero ─────────────────────────────────────────── */
 .campaign-hero{background:linear-gradient(135deg,#0f172a,#1e293b 60%,#1c1f4a);color:#fff;padding:1.75rem 2.25rem;border-radius:14px;margin-bottom:2rem;position:relative;overflow:hidden;box-shadow:0 4px 24px -4px rgba(15,23,42,.18)}

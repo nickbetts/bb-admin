@@ -3,10 +3,10 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { jsonrepair } from "jsonrepair";
 import { AsyncLocalStorage } from "node:async_hooks";
 
-// Default models. Opus 4.8 is the default for all heavy reasoning, Haiku 4.5
+// Default models. Opus 4.7 is the default for all heavy reasoning, Haiku 4.5
 // stays as the cheap structural model. The override mechanism is kept for
 // edge cases (e.g. cost-sensitive bulk regeneration) but no UI exposes it.
-const DEFAULT_MODEL = "claude-opus-4-8";
+const DEFAULT_MODEL = "claude-opus-4-7";
 const DEFAULT_MODEL_LIGHT = "claude-haiku-4-5";
 
 /** Whitelisted Anthropic model IDs callers may pick from. */
@@ -14,7 +14,7 @@ export type GrandPlanModelChoice = "sonnet" | "haiku" | "opus";
 const MODEL_BY_CHOICE: Record<GrandPlanModelChoice, string> = {
   sonnet: "claude-sonnet-4-6",
   haiku: "claude-haiku-4-5",
-  opus: "claude-opus-4-8",
+  opus: "claude-opus-4-7",
 };
 
 interface GenerationContext {
@@ -249,11 +249,6 @@ interface ServiceItem {
   description?: string;
   price?: string;
 }
-interface TimelinePhase {
-  phase: string;
-  duration?: string;
-  description?: string;
-}
 interface WhyUsPoint {
   title: string;
   description?: string;
@@ -402,6 +397,20 @@ export interface AudienceItem {
   sectorPreview?: {
     keywordGroups: { label: string; samples: string }[];
     campaignTeasers: { channel: string; focus: string }[];
+  };
+  /** #5 — Audience journey map: how this persona moves from awareness to retention. */
+  journey?: {
+    stage: "awareness" | "consideration" | "decision" | "retention";
+    mindset: string;
+    touchpoints: string[];
+    keyMessage: string;
+  }[];
+  /** #5 — Messaging matrix: the value proposition, proof and objection handling for this persona. */
+  messaging?: {
+    valueProposition: string;
+    proofPoints: string[];
+    primaryObjection: string;
+    objectionResponse: string;
   };
 }
 
@@ -609,8 +618,6 @@ export interface GrandPlanData {
       negativeKeywords: string[];
       aiNegativesWithReason?: { keyword: string; reason: string }[];
       suggestedLocations?: string[];
-      /** Deterministic forecast metrics with AI interpretation for planners. */
-      forecast?: GoogleAdsForecast;
       adGroups: {
         name: string;
         keywords: AdGroupKeyword[];
@@ -638,20 +645,11 @@ export interface GrandPlanData {
     /** SEO foundations: on-page quick wins, internal linking structure, outbound link-building plan. */
     seoFoundations?: SeoFoundations;
     contentCalendar?: ContentCalendarMonth[];
-    servicesInvestment?: {
-      services: ServiceItem[];
-      timeline: { phase: string; items: string[] }[] | TimelinePhase[];
-      /** Auto-generated investment allocation across selected channels. */
-      investmentAllocation?: InvestmentAllocation;
-      /** Structured "why us" proof points — first-class on GrandPlan. */
-      whyUs?: WhyUsPoint[];
-    };
     mediaPlan?: {
       objective: string;
       totalBudget: number;
       channels: { name: string; budget: number; percentage: number; strategy: string }[];
     };
-    emailMarketing?: EmailMarketingPlan;
     linkedInAds?: LinkedInCampaign[];
     competitorIntel?: CompetitorInsight[];
     /** Prioritised list of next-step actions, surfaced under Strategy. */
@@ -843,11 +841,8 @@ Be ruthless about authenticity — drop anything that sounds like marketing copy
     return { painPoints: [], competitorComplaints: [], quotes: [], queriesFired: [] };
   }
 
-  // Extract the LAST text block (after all web_search tool_use blocks) and parse JSON.
-  // extractText() uses .find() which returns the first block — the model opens with prose
-  // like "I'll research…" before firing searches, so we must use the last text block instead.
-  const lastTextBlock = [...res.content].reverse().find((b) => b.type === "text");
-  const text = lastTextBlock && lastTextBlock.type === "text" ? lastTextBlock.text.trim() : "";
+  // Extract the final text block (after any tool use) and parse JSON
+  const text = extractText(res);
   const cleaned = text
     .replace(/```json\n?/g, "")
     .replace(/```\n?/g, "")
@@ -1109,7 +1104,6 @@ export async function generateGrandPlan(
     ? safeJsonParse(sources.contentStrategy.spreadsheetData, {})
     : null;
   const services = sources.proposal ? safeJsonParse(sources.proposal.servicesJson, []) : [];
-  const timeline = sources.proposal ? safeJsonParse(sources.proposal.timelineJson, []) : [];
   const mediaChannels = sources.mediaPlan ? safeJsonParse(sources.mediaPlan.channels, []) : [];
 
   // Build context summary for AI prompts
@@ -1137,10 +1131,7 @@ export async function generateGrandPlan(
   if (isEnabled("metaCampaigns") && sources.keywordResearch) sectionNames.push("Meta Campaigns");
   if (isEnabled("contentCalendar")) sectionNames.push("Content Calendar");
   if (isEnabled("googleAdsCampaigns") && sources.keywordResearch && adGroups.length > 0)
-    sectionNames.push("Forecast Intelligence");
-  if (isEnabled("googleAdsCampaigns") && sources.keywordResearch && adGroups.length > 0)
     sectionNames.push("Negative Keywords");
-  if (isEnabled("emailMarketing")) sectionNames.push("Email Marketing");
   if (isEnabled("linkedInAds")) sectionNames.push("LinkedIn Ads");
   if (isEnabled("competitorIntel") && sources.keywordResearch)
     sectionNames.push("Competitor Intel");
@@ -1205,42 +1196,28 @@ export async function generateGrandPlan(
     ]);
 
   // Batch 2: supplementary sections
-  const [emailMarketing, linkedInAds, competitorIntel, audiences, seoFoundations] =
-    await Promise.all([
-      isEnabled("emailMarketing")
-        ? runSection("Email Marketing", "emailMarketing", () =>
-            generateEmailMarketing(anthropic, contextSummary, sources),
-          )
-        : Promise.resolve(undefined),
-      isEnabled("linkedInAds")
-        ? runSection("LinkedIn Ads", "linkedInAds", () =>
-            generateLinkedInAds(anthropic, contextSummary, sources),
-          )
-        : Promise.resolve(undefined),
-      isEnabled("competitorIntel") && sources.keywordResearch
-        ? runSection("Competitor Intel", "competitorIntel", () =>
-            generateCompetitorIntel(anthropic, contextSummary, sources),
-          )
-        : Promise.resolve(undefined),
-      isEnabled("audiences")
-        ? runSection("Audiences", "audiences", () =>
-            generateAudiences(anthropic, contextSummary, sources),
-          )
-        : Promise.resolve(undefined),
-      isEnabled("seoFoundations")
-        ? runSection("SEO Foundations", "seoFoundations", () =>
-            generateSeoFoundations(anthropic, contextSummary, sources),
-          )
-        : Promise.resolve(undefined),
-    ]);
-
-  // Auto-generate Services & Investment from sector + budget + selected
-  // platforms (no proposal dependency).
-  const servicesInvestmentGenerated = isEnabled("servicesInvestment")
-    ? await runSection("Services & Investment", "servicesInvestment", () =>
-        generateServicesInvestment(anthropic, contextSummary, sources, enabledPlatforms),
-      )
-    : undefined;
+  const [linkedInAds, competitorIntel, audiences, seoFoundations] = await Promise.all([
+    isEnabled("linkedInAds")
+      ? runSection("LinkedIn Ads", "linkedInAds", () =>
+          generateLinkedInAds(anthropic, contextSummary, sources),
+        )
+      : Promise.resolve(undefined),
+    isEnabled("competitorIntel") && sources.keywordResearch
+      ? runSection("Competitor Intel", "competitorIntel", () =>
+          generateCompetitorIntel(anthropic, contextSummary, sources),
+        )
+      : Promise.resolve(undefined),
+    isEnabled("audiences")
+      ? runSection("Audiences", "audiences", () =>
+          generateAudiences(anthropic, contextSummary, sources),
+        )
+      : Promise.resolve(undefined),
+    isEnabled("seoFoundations")
+      ? runSection("SEO Foundations", "seoFoundations", () =>
+          generateSeoFoundations(anthropic, contextSummary, sources),
+        )
+      : Promise.resolve(undefined),
+  ]);
 
   // Build Google Ads campaigns from keyword research (structured data + AI targeting)
   const googleAdsTargeting =
@@ -1258,30 +1235,6 @@ export async function generateGrandPlan(
           generateGoogleAdsSeedSuggestions(anthropic, sources, adGroups),
         )
       : undefined;
-  const googleAdsForecastBase =
-    isEnabled("googleAdsCampaigns") && sources.keywordResearch
-      ? buildGoogleAdsForecast(adGroups, sources)
-      : undefined;
-  const googleAdsForecastIntelligence =
-    googleAdsForecastBase && adGroups.length > 0
-      ? await runSection("Forecast Intelligence", "googleAdsForecastIntelligence", () =>
-          generateGoogleAdsForecastIntelligence(
-            anthropic,
-            googleAdsForecastBase,
-            adGroups,
-            sources,
-            contextSummary,
-          ),
-        )
-      : undefined;
-  const googleAdsForecast = googleAdsForecastBase
-    ? {
-        ...googleAdsForecastBase,
-        intelligence:
-          googleAdsForecastIntelligence ??
-          buildFallbackGoogleAdsForecastIntelligence(googleAdsForecastBase),
-      }
-    : undefined;
   const googleAdsCampaigns =
     isEnabled("googleAdsCampaigns") && sources.keywordResearch
       ? buildGoogleAdsCampaigns(
@@ -1290,7 +1243,6 @@ export async function generateGrandPlan(
           aiNegatives,
           googleAdsTargeting,
           googleAdsSeedSuggestions,
-          googleAdsForecast,
         )
       : undefined;
 
@@ -1300,17 +1252,8 @@ export async function generateGrandPlan(
     ? buildContentStrategySection(contentData, aiContentClusters)
     : undefined;
 
-  // Build services section: prefer auto-generated output (sector + budget +
-  // platforms). Falls back to a legacy proposal payload if one is supplied
-  // (kept for backwards compatibility, no longer wired in the new form).
-  const servicesInvestment = servicesInvestmentGenerated
-    ? servicesInvestmentGenerated
-    : isEnabled("servicesInvestment") && sources.proposal
-      ? { services, timeline }
-      : undefined;
-
-  // Unpack grounded sections (audiences, emailMarketing, linkedInAds, competitorIntel)
-  // — these now return { value, grounding, sourceLabels } so we can surface badges.
+  // Unpack grounded sections (audiences, linkedInAds, competitorIntel) — these
+  // now return { value, grounding, sourceLabels } so we can surface badges.
   const grounding: NonNullable<GrandPlanData["grounding"]> = {};
   const recordGrounding = <K extends string>(key: K, gs: GroundedSection<unknown> | undefined) => {
     if (gs)
@@ -1320,7 +1263,6 @@ export async function generateGrandPlan(
       };
   };
   recordGrounding("audiences", audiences);
-  recordGrounding("emailMarketing", emailMarketing);
   recordGrounding("linkedInAds", linkedInAds);
   recordGrounding("competitorIntel", competitorIntel);
 
@@ -1359,10 +1301,6 @@ export async function generateGrandPlan(
     !!sources.targetAudiences?.trim() || !!sources.strategyBrain?.audiences?.length;
   const hasStrategyChannels = !!sources.strategyBrain?.channelStrategy?.length;
   const hasAiContentClusters = !!aiContentClusters?.pillars?.length;
-  const hasAnyBudget = Object.values(sources.channelBudgets ?? {}).some(
-    (value) => typeof value === "number" && value > 0,
-  );
-  const hasProposalInputs = !!sources.proposal;
 
   recordInferredGrounding(
     "executiveSummary",
@@ -1394,7 +1332,6 @@ export async function generateGrandPlan(
     [
       hasKeywordResearch ? "Keyword Planner" : "",
       googleAdsTargeting?.suggestedLocations?.length ? "AI location targeting" : "",
-      googleAdsForecast?.intelligence?.summary ? "AI forecast interpretation" : "",
       aiNegatives?.campaignLevel?.length ? "AI negative keyword analysis" : "",
       hasAudienceSignals ? "Strategist audiences" : "",
     ],
@@ -1466,22 +1403,6 @@ export async function generateGrandPlan(
     ],
   );
 
-  recordInferredGrounding(
-    "servicesInvestment",
-    servicesInvestment,
-    hasProposalInputs || hasAnyBudget
-      ? "real"
-      : hasAudienceSignals || hasStrategyChannels
-        ? "partial"
-        : "ai-only",
-    [
-      hasProposalInputs ? "Proposal services and timeline" : "",
-      hasAnyBudget ? "Channel budget inputs" : "",
-      hasStrategyChannels ? "Strategy brain channel roles" : "",
-      hasAudienceSignals ? "Strategist audiences" : "",
-    ],
-  );
-
   // Aggregate the data sources actually consulted across the plan, for the
   // "Data Sources Used" panel rendered near the top of the report.
   const dataSources: NonNullable<GrandPlanData["dataSources"]> = [];
@@ -1526,8 +1447,6 @@ export async function generateGrandPlan(
       contentStrategy: contentStrategySection,
       seoFoundations,
       contentCalendar,
-      servicesInvestment,
-      emailMarketing: emailMarketing?.value,
       linkedInAds: linkedInAds?.value,
       competitorIntel: competitorIntel?.value,
     },
@@ -3076,12 +2995,7 @@ ${context}${buildSharedContextBlocks(sources)}`,
 // ─── Anthropic helper ───────────────────────────────────────────────────────
 
 function extractText(response: Anthropic.Message): string {
-  // Use the LAST text block, not the first. When the web_search tool is enabled
-  // the model emits interleaved blocks (leading prose, tool_use, …) and the real
-  // answer is the final text block. For ordinary calls there is only one text
-  // block, so this is equivalent and always correct.
-  const textBlocks = response.content.filter((b) => b.type === "text");
-  const block = textBlocks[textBlocks.length - 1];
+  const block = response.content.find((b) => b.type === "text");
   const raw = block && block.type === "text" ? block.text.trim() : "";
   // Strip markdown fencing if present (any language: json, html, markdown, etc.)
   const stripped = raw.replace(/^```(?:\w+)?\s*/i, "").replace(/\s*```$/i, "");
@@ -3394,7 +3308,6 @@ function buildGoogleAdsCampaigns(
     adGroupAudiences: { name: string; audience: string }[];
   },
   seedSuggestions?: { theme: string; phrases: string[] }[],
-  googleAdsForecast?: GoogleAdsForecast,
 ) {
   const adGroupNegMap = new Map((aiNegatives?.byAdGroup ?? []).map((g) => [g.name, g.negatives]));
   const audienceMap = new Map((targeting?.adGroupAudiences ?? []).map((a) => [a.name, a.audience]));
@@ -3426,7 +3339,6 @@ function buildGoogleAdsCampaigns(
           ? `£${sources.keywordResearch.monthlyBudget}/month`
           : "Custom",
     },
-    forecast: googleAdsForecast,
     suggestedLocations,
     negativeKeywords: allNegatives,
     aiNegativesWithReason,
@@ -5189,11 +5101,25 @@ Return JSON in this exact format:
         { "channel": "LinkedIn", "focus": "Job titles + industries this audience holds" },
         { "channel": "Meta", "focus": "Interest targeting + lookalike angles" }
       ]
+    },
+    "journey": [
+      { "stage": "awareness", "mindset": "How they feel and what they are doing at this stage (1 sentence)", "touchpoints": ["Where we reach them, e.g. Google Search", "Organic social"], "keyMessage": "The single message that moves them to the next stage" },
+      { "stage": "consideration", "mindset": "...", "touchpoints": ["..."], "keyMessage": "..." },
+      { "stage": "decision", "mindset": "...", "touchpoints": ["..."], "keyMessage": "..." },
+      { "stage": "retention", "mindset": "...", "touchpoints": ["..."], "keyMessage": "..." }
+    ],
+    "messaging": {
+      "valueProposition": "One sentence that states the core promise to THIS persona in their language",
+      "proofPoints": ["Concrete proof point 1", "Concrete proof point 2", "Concrete proof point 3"],
+      "primaryObjection": "The main reason this persona hesitates before buying",
+      "objectionResponse": "How we answer that objection in one or two plain sentences"
     }
   }
 ]
 - 3-5 keywordGroups per audience
 - 2-3 campaignTeasers per audience (only include channels actually relevant to this client)
+- journey: EXACTLY 4 entries, one per stage in this order: awareness, consideration, decision, retention. The mindset and keyMessage must be specific to THIS persona, in their voice, not generic funnel theory. Touchpoints must only list channels actually relevant to this client.
+- messaging: the valueProposition and objectionResponse must be in plain British English and specific to THIS persona. proofPoints must be concrete (2-4 items), never vague claims. primaryObjection must be the real reason this exact persona hesitates.
 ${
   strategistAudienceNames.length
     ? `
@@ -5283,6 +5209,75 @@ ${context}${buildSharedContextBlocks(sources)}`,
                     }))
                     .filter((t: { channel: string; focus: string }) => t.channel && t.focus)
                 : [],
+            }
+          : undefined,
+      journey: Array.isArray(a.journey)
+        ? a.journey
+            .filter(
+              (
+                j: unknown,
+              ): j is {
+                stage?: unknown;
+                mindset?: unknown;
+                touchpoints?: unknown;
+                keyMessage?: unknown;
+              } => !!j && typeof j === "object",
+            )
+            .map(
+              (j: {
+                stage?: unknown;
+                mindset?: unknown;
+                touchpoints?: unknown;
+                keyMessage?: unknown;
+              }) => {
+                const stageRaw = String(j.stage ?? "")
+                  .trim()
+                  .toLowerCase();
+                const stage = (
+                  ["awareness", "consideration", "decision", "retention"].includes(stageRaw)
+                    ? stageRaw
+                    : "awareness"
+                ) as "awareness" | "consideration" | "decision" | "retention";
+                return {
+                  stage,
+                  mindset: cleanEmDashes(String(j.mindset ?? "").trim()),
+                  touchpoints: Array.isArray(j.touchpoints)
+                    ? j.touchpoints
+                        .map((t: unknown) => cleanEmDashes(String(t).trim()))
+                        .filter((t: string) => t.length > 0)
+                        .slice(0, 6)
+                    : [],
+                  keyMessage: cleanEmDashes(String(j.keyMessage ?? "").trim()),
+                };
+              },
+            )
+            .filter((j: { mindset: string; keyMessage: string }) => j.mindset || j.keyMessage)
+            .slice(0, 4)
+        : undefined,
+      messaging:
+        a.messaging && typeof a.messaging === "object"
+          ? {
+              valueProposition: cleanEmDashes(
+                String(
+                  (a.messaging as { valueProposition?: unknown }).valueProposition ?? "",
+                ).trim(),
+              ),
+              proofPoints: Array.isArray((a.messaging as { proofPoints?: unknown }).proofPoints)
+                ? (a.messaging as { proofPoints: unknown[] }).proofPoints
+                    .map((p: unknown) => cleanEmDashes(String(p).trim()))
+                    .filter((p: string) => p.length > 0)
+                    .slice(0, 4)
+                : [],
+              primaryObjection: cleanEmDashes(
+                String(
+                  (a.messaging as { primaryObjection?: unknown }).primaryObjection ?? "",
+                ).trim(),
+              ),
+              objectionResponse: cleanEmDashes(
+                String(
+                  (a.messaging as { objectionResponse?: unknown }).objectionResponse ?? "",
+                ).trim(),
+              ),
             }
           : undefined,
     }),

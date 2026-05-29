@@ -119,7 +119,7 @@ const SECTORS = [
 // like Executive Summary, Strategy Plan, Audiences, Content Calendar,
 // Competitor Intel, Example Articles and Media Plan are added separately
 // regardless of platform selection.
-type PlatformId = "googleAds" | "metaAds" | "linkedInAds" | "emailMarketing";
+type PlatformId = "googleAds" | "metaAds" | "linkedInAds";
 
 const PLATFORMS: { id: PlatformId; label: string; description: string; sections: string[] }[] = [
   {
@@ -140,12 +140,6 @@ const PLATFORMS: { id: PlatformId; label: string; description: string; sections:
     description: "B2B targeting and ad mockups",
     sections: ["linkedInAds"],
   },
-  {
-    id: "emailMarketing",
-    label: "Email Marketing",
-    description: "Lifecycle and nurture flows",
-    sections: ["emailMarketing"],
-  },
 ];
 
 // Sections that can be toggled on/off independently of platform selection.
@@ -156,7 +150,6 @@ const ALWAYS_ON_SECTIONS: { key: string; label: string }[] = [
   { key: "contentCalendar", label: "Content Calendar" },
   { key: "seoFoundations", label: "SEO Foundations" },
   { key: "competitorIntel", label: "Competitor Intelligence" },
-  { key: "servicesInvestment", label: "Services &amp; Investment" },
 ];
 
 export default function NewGrandPlanPage() {
@@ -223,12 +216,7 @@ export default function NewGrandPlanPage() {
   const [loadingPriorSprints, setLoadingPriorSprints] = useState(false);
 
   // Platforms — controls which paid/organic channels the AI focuses on
-  const [platforms, setPlatforms] = useState<PlatformId[]>([
-    "googleAds",
-    "metaAds",
-    "linkedInAds",
-    "emailMarketing",
-  ]);
+  const [platforms, setPlatforms] = useState<PlatformId[]>(["googleAds", "metaAds", "linkedInAds"]);
 
   function togglePlatform(id: PlatformId) {
     setPlatforms((prev) => (prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]));
@@ -1705,7 +1693,6 @@ export default function NewGrandPlanPage() {
                 { label: "Google Ads", on: platforms.includes("googleAds") },
                 { label: "Meta Campaigns", on: platforms.includes("metaAds") },
                 { label: "LinkedIn Ads", on: platforms.includes("linkedInAds") },
-                { label: "Email Marketing", on: platforms.includes("emailMarketing") },
               ] as { label: string; on: boolean }[]
             ).map((item) => (
               <span
