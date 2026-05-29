@@ -1,3 +1,5 @@
+import { load, type Cheerio, type CheerioAPI } from "cheerio";
+import type { Element } from "domhandler";
 import type { LpFormField } from "@/lib/lp-form-config";
 
 export interface LpFieldStyleTemplate {
@@ -8,118 +10,356 @@ export interface LpFieldStyleTemplate {
   selectClass?: string;
 }
 
+const FORM_BLOCK_RE = /<form\b[^>]*\bdata-lp-form\b[^>]*>[\s\S]*?<\/form>/i;
+const ANY_FORM_BLOCK_RE = /<form\b[^>]*>[\s\S]*?<\/form>/i;
+const CONTROL_SELECTOR = "input, textarea, select";
+
+/**
+ * Synchronise the rendered form HTML with the authoritative formConfig.fields.
+ *
+ * This is the single source of truth for compiling configured fields into the
+ * built-in form. It is intentionally DOM-based (cheerio) rather than regex-based
+ * so it copes with nested `.form-row` grids and is fully idempotent — applying it
+ * twice yields the same output as applying it once. That idempotency matters
+ * because the function runs both at save time and at render time.
+ *
+ * Behaviour:
+ *  - removes controls whose `name` is not in the config (and any orphaned grid rows)
+ *  - de-duplicates repeated controls, keeping the first occurrence
+ *  - updates each kept control's type / placeholder / required + label text in place
+ *  - injects any configured field that is missing, once
+ *  - reorders the field blocks to match the configured order, preserving multi-field rows
+ */
 export function applyConfiguredFormFields(
   html: string,
   fields: LpFormField[],
   styleTemplateOverride?: Partial<LpFieldStyleTemplate>,
 ): string {
-  let nextHtml = removeFieldsNotInConfig(html, fields);
-  const matchedNames = new Set<string>();
+  const validFields = fields.filter((field) => field?.name);
+  if (validFields.length === 0) return html;
 
-  for (const field of fields) {
-    if (!field.name) continue;
-    const name = escapeRegex(field.name);
-    const groupRe = new RegExp(
-      `(<div[^>]*class=("|')[^"']*form-group[^"']*\\2[^>]*>(?:(?!<div[^>]*class=[^>]*form-group|</div>)[\\s\\S])*?<label[^>]*>)((?:(?!</label>)[\\s\\S])*?)(</label>(?:(?!<div[^>]*class=[^>]*form-group|</div>)[\\s\\S])*?<(input|textarea|select)([^>]*\\bname=("|')${name}\\7[^>]*)(?:>[\\s\\S]*?</\\5>|\\s*/?>)(?:(?!<div[^>]*class=[^>]*form-group)[\\s\\S])*?</div>)`,
-      "gi",
-    );
+  const formMatch = html.match(FORM_BLOCK_RE) ?? html.match(ANY_FORM_BLOCK_RE);
+  if (!formMatch) return html;
 
-    const beforeReplace = nextHtml;
-    nextHtml = nextHtml.replace(
-      groupRe,
-      (
-        _,
-        beforeLabel: string,
-        __quote: string,
-        _labelText: string,
-        afterLabel: string,
-        tagName: string,
-        attrs: string,
-      ) => {
-        matchedNames.add(field.name);
-        let nextAttrs = attrs;
-        nextAttrs = setBooleanAttribute(nextAttrs, "required", field.required);
+  const originalFormBlock = formMatch[0];
+  const rewrittenFormBlock = rewriteFormBlock(
+    originalFormBlock,
+    validFields,
+    styleTemplateOverride,
+  );
 
-        if (tagName.toLowerCase() !== "select") {
-          nextAttrs = setAttribute(nextAttrs, "placeholder", field.placeholder?.trim() || null);
-        }
-
-        if (tagName.toLowerCase() === "input") {
-          nextAttrs = setAttribute(nextAttrs, "type", field.type || null);
-        }
-
-        const labelText = `${escapeHtmlText(field.label)}${field.required ? " *" : ""}`;
-        const rebuiltControl = rebuildControl(tagName, nextAttrs, field);
-        return `${beforeLabel}${labelText}${replaceFirstControl(afterLabel, rebuiltControl)}`;
-      },
-    );
-
-    if (beforeReplace === nextHtml) {
-      console.log(`[DEBUG] Field: ${field.name} DID NOT change HTML with groupRe.`);
-    }
-
-    if (matchedNames.has(field.name)) continue;
-
-    const controlRe = new RegExp(
-      `<(input|textarea|select)([^>]*\\bname=("|')${name}\\3[^>]*)(?:>[\\s\\S]*?</\\1>|\\s*/?>)`,
-      "gi",
-    );
-    nextHtml = nextHtml.replace(controlRe, (_, tagName: string, attrs: string) => {
-      matchedNames.add(field.name);
-      let nextAttrs = attrs;
-      nextAttrs = setBooleanAttribute(nextAttrs, "required", field.required);
-      if (tagName.toLowerCase() !== "select") {
-        nextAttrs = setAttribute(nextAttrs, "placeholder", field.placeholder?.trim() || null);
-      }
-      if (tagName.toLowerCase() === "input") {
-        nextAttrs = setAttribute(nextAttrs, "type", field.type || null);
-      }
-      return rebuildControl(tagName, nextAttrs, field);
-    });
-  }
-
-  const missingFields = fields.filter((field) => field.name && !matchedNames.has(field.name));
-  if (missingFields.length > 0) {
-    nextHtml = injectMissingFields(nextHtml, missingFields, styleTemplateOverride);
-  }
-
-  return nextHtml;
+  if (rewrittenFormBlock === originalFormBlock) return html;
+  return spliceOnce(html, originalFormBlock, rewrittenFormBlock);
 }
 
-export function replaceBuiltInForm(html: string, rebuiltFormHtml: string): string {
-  return html.replace(/<form[^>]*data-lp-form=("|')true\1[^>]*>[\s\S]*?<\/form>/i, rebuiltFormHtml);
-}
-
-function injectMissingFields(
-  html: string,
+function rewriteFormBlock(
+  formBlock: string,
   fields: LpFormField[],
   styleTemplateOverride?: Partial<LpFieldStyleTemplate>,
 ): string {
-  const template = {
-    ...extractFieldStyleTemplate(html),
+  const $ = load(formBlock, undefined, false);
+  const form = $("form").first();
+  if (!form.length) return formBlock;
+
+  const configNames = new Set(fields.map((field) => field.name));
+  const indexByName = new Map(fields.map((field, index) => [field.name, index]));
+
+  // --- 1. De-duplicate + remove controls not in the config -------------------
+  const seen = new Set<string>();
+  const keptControlByName = new Map<string, Element>();
+
+  $(CONTROL_SELECTOR).each((_, el) => {
+    const $el = $(el);
+    const name = $el.attr("name")?.trim();
+    if (!name) return;
+    if (
+      el.tagName?.toLowerCase() === "input" &&
+      ($el.attr("type") ?? "").toLowerCase() === "hidden"
+    ) {
+      return;
+    }
+
+    const keep = configNames.has(name) && !seen.has(name);
+    if (keep) {
+      seen.add(name);
+      keptControlByName.set(name, el);
+    } else {
+      removeControl($, $el);
+    }
+  });
+
+  // --- 2. Update kept controls + labels in place -----------------------------
+  for (const field of fields) {
+    const control = keptControlByName.get(field.name);
+    if (!control) continue;
+    updateControl($, $(control), field);
+  }
+
+  // --- 3. Inject configured fields that are missing from the markup ----------
+  const template: LpFieldStyleTemplate = {
+    ...extractFieldStyleTemplate($),
     ...(styleTemplateOverride ?? {}),
   };
-  const missingMarkup = fields.map((field) => renderMissingField(field, template)).join("\n");
+  const usesFormRow = $(".form-row").length > 0;
 
-  // Prefer inserting directly after the last existing form-group so new
-  // fields inherit the same grid/container styling as neighbouring fields.
-  const lastFormGroupRe =
-    /(<div[^>]*class=("|')[^"']*form-group[^"']*\2[^>]*>[\s\S]*?<\/div>)(?![\s\S]*<div[^>]*class=("|')[^"']*form-group[^"']*\3[^>]*>)/i;
-  if (lastFormGroupRe.test(html)) {
-    return html.replace(lastFormGroupRe, `$1\n${missingMarkup}`);
+  for (const field of fields) {
+    if (keptControlByName.has(field.name)) continue;
+    const groupMarkup = renderMissingField(field, template);
+    const blockMarkup = usesFormRow ? `<div class="form-row">${groupMarkup}</div>` : groupMarkup;
+    const anchor = findSubmitAnchor($, form);
+    if (anchor.length) anchor.before(blockMarkup);
+    else form.append(blockMarkup);
   }
 
-  const formRe =
-    /<form[^>]*data-lp-form=("|')true\1[^>]*>[\s\S]*?<button[^>]*type=("|')submit\2[^>]*>[\s\S]*?<\/button>/i;
+  // --- 4. Reorder field blocks to match the configured order -----------------
+  // When any field carries an explicit width hint, lay the fields out by width
+  // (packing consecutive half-width fields two per row); otherwise fall back to
+  // the structure-preserving reorder that keeps hand-authored rows intact.
+  const laidOut = applyFieldLayout($, form, fields);
+  if (!laidOut) reorderFieldBlocks($, form, indexByName);
 
-  if (formRe.test(html)) {
-    return html.replace(
-      /(<button[^>]*type=("|')submit\2[^>]*>[\s\S]*?<\/button>)/i,
-      `${missingMarkup}\n$1`,
+  return $.html();
+}
+
+/** Remove a control along with its `.form-group`, cleaning up any empty `.form-row`. */
+function removeControl($: CheerioAPI, $el: Cheerio<Element>): void {
+  const group = $el.closest(".form-group");
+  if (group.length) {
+    const row = group.closest(".form-row");
+    group.remove();
+    if (row.length && row.find(".form-group").length === 0) row.remove();
+    return;
+  }
+
+  const id = $el.attr("id");
+  if (id) $(`label[for="${cssAttrEscape(id)}"]`).remove();
+  $el.remove();
+}
+
+function updateControl($: CheerioAPI, $el: Cheerio<Element>, field: LpFormField): void {
+  const tag = ($el.prop("tagName") ?? "").toLowerCase();
+
+  // required
+  if (field.required) $el.attr("required", "");
+  else $el.removeAttr("required");
+
+  // placeholder (not applicable to <select>)
+  if (tag !== "select") {
+    const placeholder = field.placeholder?.trim();
+    if (placeholder) $el.attr("placeholder", placeholder);
+    else $el.removeAttr("placeholder");
+  }
+
+  // type (input only, and only for genuine input types)
+  if (tag === "input" && field.type !== "textarea" && field.type !== "select") {
+    $el.attr("type", field.type);
+  }
+
+  // select options
+  if (tag === "select") {
+    const placeholder = field.placeholder?.trim() || defaultPlaceholder(field);
+    $el.html(buildSelectOptions(field, placeholder));
+  }
+
+  // label text + for/id sync
+  const group = $el.closest(".form-group");
+  let label = group.length ? group.find("label").first() : $();
+  const id = $el.attr("id");
+  if (!label.length && id) label = $(`label[for="${cssAttrEscape(id)}"]`).first();
+  if (label.length) {
+    label.text(`${field.label}${field.required ? " *" : ""}`);
+    if (id && label.attr("for") !== undefined) label.attr("for", id);
+  }
+}
+
+/**
+ * Lay out the configured field groups by their `width` hint, packing
+ * consecutive half-width fields two per row inside a `.form-row` and leaving
+ * full-width (or unpaired half-width) fields as standalone `.form-group`s.
+ *
+ * Only runs when at least one field carries an explicit `width` hint, so pages
+ * that don't use width hints keep their existing structure-preserving reorder.
+ * The output is derived purely from the configured order + width, so it is
+ * fully idempotent. Returns true when it took ownership of the layout.
+ */
+function applyFieldLayout($: CheerioAPI, form: Cheerio<Element>, fields: LpFormField[]): boolean {
+  const widthByName = new Map<string, "half" | "full">();
+  let hasWidthHint = false;
+  for (const field of fields) {
+    if (field.width === "half" || field.width === "full") hasWidthHint = true;
+    widthByName.set(field.name, field.width === "half" ? "half" : "full");
+  }
+  if (!hasWidthHint) return false;
+
+  // Locate the `.form-group` wrapper for each configured field's control.
+  const groupByName = new Map<string, Element>();
+  $(CONTROL_SELECTOR).each((_, el) => {
+    const name = $(el).attr("name")?.trim();
+    if (!name || !widthByName.has(name) || groupByName.has(name)) return;
+    const group = $(el).closest(".form-group");
+    if (group.length) groupByName.set(name, group[0] as Element);
+  });
+
+  const orderedNames = fields.map((field) => field.name).filter((name) => groupByName.has(name));
+  if (orderedNames.length === 0) return true;
+
+  // Remember the rows that currently wrap these groups so we can clean up any
+  // that become empty after re-grouping.
+  const oldRows = new Set<Element>();
+  for (const name of orderedNames) {
+    const row = $(groupByName.get(name)!).closest(".form-row");
+    if (row.length) oldRows.add(row[0] as Element);
+  }
+
+  // Build the new ordered block sequence.
+  const blocks: Cheerio<Element>[] = [];
+  let i = 0;
+  while (i < orderedNames.length) {
+    const name = orderedNames[i];
+    const group = $(groupByName.get(name)!);
+    const nextName = orderedNames[i + 1];
+    if (
+      widthByName.get(name) === "half" &&
+      nextName !== undefined &&
+      widthByName.get(nextName) === "half"
+    ) {
+      const row = $('<div class="form-row"></div>') as Cheerio<Element>;
+      row.append(group);
+      row.append($(groupByName.get(nextName)!));
+      blocks.push(row);
+      i += 2;
+    } else {
+      group.remove();
+      blocks.push(group);
+      i += 1;
+    }
+  }
+
+  // Re-attach the blocks in order, just before the submit anchor.
+  const anchor = findSubmitAnchor($, form);
+  for (const block of blocks) {
+    if (anchor.length) anchor.before(block);
+    else form.append(block);
+  }
+
+  // Drop any old rows that no longer contain a field group.
+  for (const row of oldRows) {
+    const $row = $(row);
+    if ($row.find(".form-group").length === 0) $row.remove();
+  }
+
+  return true;
+}
+
+/**
+ * Reorder the top-level field blocks (`.form-row` units and standalone
+ * `.form-group`s) to match the configured field order. Multi-field rows are
+ * kept intact, with their inner `.form-group`s sorted by configured order.
+ */
+function reorderFieldBlocks(
+  $: CheerioAPI,
+  form: Cheerio<Element>,
+  indexByName: Map<string, number>,
+): void {
+  const units: Element[] = [];
+
+  $(".form-row").each((_, el) => {
+    if ($(el).parents(".form-row").length === 0 && $(el).find(CONTROL_SELECTOR).length > 0) {
+      units.push(el);
+    }
+  });
+  $(".form-group").each((_, el) => {
+    if ($(el).closest(".form-row").length === 0 && $(el).find(CONTROL_SELECTOR).length > 0) {
+      units.push(el);
+    }
+  });
+
+  if (units.length < 2) return;
+
+  // Sort inner form-groups within multi-field rows.
+  for (const unit of units) {
+    const $unit = $(unit);
+    if (!$unit.is(".form-row")) continue;
+    const groups = $unit.children(".form-group").toArray();
+    if (groups.length < 2) continue;
+    const sortedGroups = stableSort(
+      groups,
+      (a, b) => unitKey($, a, indexByName) - unitKey($, b, indexByName),
     );
+    for (const group of sortedGroups) $unit.append($(group));
   }
 
-  return html.replace(/(<\/form>)/i, `${missingMarkup}\n$1`);
+  // Sort the units themselves and re-attach before the submit anchor.
+  const sortedUnits = stableSort(
+    units,
+    (a, b) => unitKey($, a, indexByName) - unitKey($, b, indexByName),
+  );
+  const anchor = findSubmitAnchor($, form);
+  for (const unit of sortedUnits) {
+    if (anchor.length) anchor.before($(unit));
+    else form.append($(unit));
+  }
+}
+
+function unitKey($: CheerioAPI, el: Element, indexByName: Map<string, number>): number {
+  let min = Number.POSITIVE_INFINITY;
+  $(el)
+    .find(CONTROL_SELECTOR)
+    .each((_, control) => {
+      const name = $(control).attr("name")?.trim();
+      if (name && indexByName.has(name)) min = Math.min(min, indexByName.get(name)!);
+    });
+  return min;
+}
+
+function findSubmitAnchor($: CheerioAPI, form: Cheerio<Element>): Cheerio<Element> {
+  const byType = form.find("button[type='submit']").first();
+  if (byType.length) return byType;
+  const bySubmitClass = form.find(".form-submit").first();
+  if (bySubmitClass.length) return bySubmitClass;
+  return form.find("button").first();
+}
+
+export function replaceBuiltInForm(html: string, rebuiltFormHtml: string): string {
+  return html.replace(
+    /<form[^>]*data-lp-form=("|')true\1[^>]*>[\s\S]*?<\/form>/i,
+    () => rebuiltFormHtml,
+  );
+}
+
+/**
+ * Remove form controls whose `name` is not present in the configured fields.
+ * Returns the original string unchanged when there is nothing to remove so that
+ * callers (and the published HTML) are not perturbed by re-serialisation.
+ */
+export function removeFieldsNotInConfig(html: string, fields: LpFormField[]): string {
+  const allowedNames = new Set(fields.map((field) => field.name).filter(Boolean));
+
+  const formMatch = html.match(FORM_BLOCK_RE) ?? html.match(ANY_FORM_BLOCK_RE);
+  if (!formMatch) return html;
+  const originalFormBlock = formMatch[0];
+
+  const $ = load(originalFormBlock, undefined, false);
+  let removed = false;
+
+  $(CONTROL_SELECTOR).each((_, el) => {
+    const $el = $(el);
+    const name = $el.attr("name")?.trim();
+    if (!name) return;
+    if (
+      el.tagName?.toLowerCase() === "input" &&
+      ($el.attr("type") ?? "").toLowerCase() === "hidden"
+    ) {
+      return;
+    }
+    if (!allowedNames.has(name)) {
+      removeControl($, $el);
+      removed = true;
+    }
+  });
+
+  if (!removed) return html;
+  return spliceOnce(html, originalFormBlock, $.html());
 }
 
 function renderMissingField(field: LpFormField, template: LpFieldStyleTemplate): string {
@@ -149,16 +389,6 @@ function renderMissingField(field: LpFormField, template: LpFieldStyleTemplate):
   return `<div class="${escapeHtmlAttr(wrapperClass)}"><label${labelClassAttr}>${label}</label><input${classAttr} type="${escapeHtmlAttr(field.type)}" name="${escapeHtmlAttr(field.name)}" placeholder="${escapeHtmlAttr(placeholder)}"${requiredAttr}></div>`;
 }
 
-function rebuildControl(tagName: string, attrs: string, field: LpFormField): string {
-  const lower = tagName.toLowerCase();
-  if (lower === "textarea") return `<textarea${attrs}></textarea>`;
-  if (lower === "select") {
-    const placeholder = field.placeholder?.trim() || defaultPlaceholder(field);
-    return `<select${attrs}>${buildSelectOptions(field, placeholder)}</select>`;
-  }
-  return `<input${attrs}>`;
-}
-
 function buildSelectOptions(field: LpFormField, placeholder: string): string {
   const options = field.options ?? [];
   const placeholderOption = `<option value="">${escapeHtmlText(placeholder)}</option>`;
@@ -173,99 +403,26 @@ function buildSelectOptions(field: LpFormField, placeholder: string): string {
   ].join("");
 }
 
-function replaceFirstControl(fragment: string, rebuiltControl: string): string {
-  return fragment.replace(
-    /<(input|textarea|select)([^>]*)(?:>[\s\S]*?<\/\1>|\s*\/?>)/i,
-    rebuiltControl,
-  );
-}
-
-function extractFieldStyleTemplate(html: string): LpFieldStyleTemplate {
+function extractFieldStyleTemplate($: CheerioAPI): LpFieldStyleTemplate {
   const template: LpFieldStyleTemplate = {};
 
-  const groupMatch = html.match(
-    /<div[^>]*class=("|')([^"']*form-group[^"']*)\1[^>]*>[\s\S]*?<label([^>]*)>[\s\S]*?<\/(?:label)>[\s\S]*?<(input|textarea|select)([^>]*)/i,
-  );
-  if (groupMatch) {
-    template.wrapperClass = groupMatch[2]?.trim() || undefined;
+  const firstGroup = $(".form-group").first();
+  if (firstGroup.length) {
+    const wrapperClass = firstGroup.attr("class")?.trim();
+    if (wrapperClass) template.wrapperClass = wrapperClass;
 
-    const labelClass = extractClassAttribute(groupMatch[3] || "");
+    const labelClass = firstGroup.find("label").first().attr("class")?.trim();
     if (labelClass) template.labelClass = labelClass;
-
-    const controlTag = (groupMatch[4] || "").toLowerCase();
-    const controlClass = extractClassAttribute(groupMatch[5] || "");
-    if (controlClass) {
-      if (controlTag === "textarea") template.textareaClass = controlClass;
-      else if (controlTag === "select") template.selectClass = controlClass;
-      else template.inputClass = controlClass;
-    }
   }
 
-  if (!template.inputClass) {
-    const inputMatch = html.match(/<input([^>]*)>/i);
-    template.inputClass = inputMatch ? extractClassAttribute(inputMatch[1]) : undefined;
-  }
-  if (!template.textareaClass) {
-    const textareaMatch = html.match(/<textarea([^>]*)>/i);
-    template.textareaClass = textareaMatch ? extractClassAttribute(textareaMatch[1]) : undefined;
-  }
-  if (!template.selectClass) {
-    const selectMatch = html.match(/<select([^>]*)>/i);
-    template.selectClass = selectMatch ? extractClassAttribute(selectMatch[1]) : undefined;
-  }
+  const inputClass = $("input").first().attr("class")?.trim();
+  if (inputClass) template.inputClass = inputClass;
+  const textareaClass = $("textarea").first().attr("class")?.trim();
+  if (textareaClass) template.textareaClass = textareaClass;
+  const selectClass = $("select").first().attr("class")?.trim();
+  if (selectClass) template.selectClass = selectClass;
 
   return template;
-}
-
-export function removeFieldsNotInConfig(html: string, fields: LpFormField[]): string {
-  const allowedNames = new Set(fields.map((field) => field.name).filter(Boolean));
-  const namesInHtml = new Set<string>();
-  const controlsRe =
-    /<(input|textarea|select)([^>]*\bname=("|')([^"']+)\3[^>]*)(?:>[\s\S]*?<\/\1>|\s*\/?>)/gi;
-  let controlMatch: RegExpExecArray | null;
-
-  while ((controlMatch = controlsRe.exec(html)) !== null) {
-    const tagName = controlMatch[1].toLowerCase();
-    const attrs = controlMatch[2] ?? "";
-    const name = controlMatch[4] ?? "";
-    if (!name) continue;
-    if (tagName === "input" && /\btype=("|')hidden\1/i.test(attrs)) continue;
-    namesInHtml.add(name);
-  }
-
-  const namesToRemove = Array.from(namesInHtml).filter((name) => !allowedNames.has(name));
-  if (namesToRemove.length === 0) return html;
-
-  let nextHtml = html;
-  for (const name of namesToRemove) {
-    const escapedName = escapeRegex(name);
-
-    const groupedFieldRe = new RegExp(
-      `<div[^>]*class=("|')[^"']*form-group[^"']*\\1[^>]*>(?:(?!<div[^>]*class=[^>]*form-group|</div>)[\\s\\S])*?<(input|textarea|select)[^>]*\\bname=("|')${escapedName}\\3[^>]*(?:>[\\s\\S]*?<\\/\\2>|\\s*\\/?>)(?:(?!<div[^>]*class=[^>]*form-group)[\\s\\S])*?<\\/div>`,
-      "gi",
-    );
-    nextHtml = nextHtml.replace(groupedFieldRe, "");
-
-    const labelAndControlRe = new RegExp(
-      `<label[^>]*>(?:(?!<label[^>]*>|<div[^>]*class=[^>]*form-group)[\\s\\S])*?<\\/label>\\s*<(input|textarea|select)[^>]*\\bname=("|')${escapedName}\\2[^>]*(?:>[\\s\\S]*?<\\/\\1>|\\s*\\/?>)`,
-      "gi",
-    );
-    nextHtml = nextHtml.replace(labelAndControlRe, "");
-
-    const controlRe = new RegExp(
-      `<(input|textarea|select)([^>]*\\bname=("|')${escapedName}\\3[^>]*)(?:>(?:(?!<textarea|<input|<select)[\\s\\S])*?<\\/\\1>|\\s*\\/?>)`,
-      "gi",
-    );
-    nextHtml = nextHtml.replace(controlRe, "");
-  }
-
-  return nextHtml;
-}
-
-function extractClassAttribute(attrs: string): string | undefined {
-  const classMatch = attrs.match(/\bclass=("([^"]*)"|'([^']*)')/i);
-  const value = (classMatch?.[2] ?? classMatch?.[3] ?? "").trim();
-  return value || undefined;
 }
 
 function defaultPlaceholder(field: LpFormField): string {
@@ -277,27 +434,25 @@ function defaultPlaceholder(field: LpFormField): string {
   return `Enter ${field.label.toLowerCase()}`;
 }
 
-function setAttribute(attrs: string, attr: string, value: string | null): string {
-  const attrRe = new RegExp(`\\s${attr}\\s*=\\s*("[^"]*"|'[^']*'|[^\\s>]+)`, "i");
-  if (!value) return attrs.replace(attrRe, "");
-
-  const escaped = escapeHtmlAttr(value);
-  if (attrRe.test(attrs)) {
-    return attrs.replace(attrRe, ` ${attr}="${escaped}"`);
-  }
-
-  return `${attrs} ${attr}="${escaped}"`;
+function stableSort<T>(items: T[], comparator: (a: T, b: T) => number): T[] {
+  return items
+    .map((item, index) => ({ item, index }))
+    .sort((a, b) => {
+      const result = comparator(a.item, b.item);
+      return result !== 0 ? result : a.index - b.index;
+    })
+    .map(({ item }) => item);
 }
 
-function setBooleanAttribute(attrs: string, attr: string, enabled: boolean): string {
-  const attrRe = new RegExp(`\\s${attr}(\\s*=\\s*("${attr}"|'${attr}'|${attr}))?`, "i");
-  if (!enabled) return attrs.replace(attrRe, "");
-  if (attrRe.test(attrs)) return attrs;
-  return `${attrs} ${attr}`;
+/** Replace the first occurrence of `search` without interpreting `$` patterns. */
+function spliceOnce(haystack: string, search: string, replacement: string): string {
+  const index = haystack.indexOf(search);
+  if (index === -1) return haystack;
+  return haystack.slice(0, index) + replacement + haystack.slice(index + search.length);
 }
 
-function escapeRegex(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function cssAttrEscape(value: string): string {
+  return value.replace(/["\\]/g, "\\$&");
 }
 
 function escapeHtmlAttr(value: string): string {

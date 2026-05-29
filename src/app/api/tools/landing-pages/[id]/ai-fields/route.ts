@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { getOpenAiClient } from "@/lib/openai-client";
-import { extractFormFieldsFromHtml, type LpFormField, type LpFormFieldOption, type LpFormFieldType } from "@/lib/lp-form-config";
+import {
+  extractFormFieldsFromHtml,
+  type LpFormField,
+  type LpFormFieldOption,
+  type LpFormFieldType,
+} from "@/lib/lp-form-config";
 
 export const dynamic = "force-dynamic";
 
@@ -11,15 +16,30 @@ interface RequestBody {
   currentFields?: LpFormField[];
 }
 
-const VALID_TYPES: Set<LpFormFieldType> = new Set(["text", "email", "tel", "textarea", "select", "date", "number", "url"]);
+const VALID_TYPES: Set<LpFormFieldType> = new Set([
+  "text",
+  "email",
+  "tel",
+  "textarea",
+  "select",
+  "date",
+  "number",
+  "url",
+]);
 
 function sanitiseOptions(options: unknown): LpFormFieldOption[] | undefined {
   if (!Array.isArray(options)) return undefined;
   const cleaned = options
     .map((option) => {
       if (!option || typeof option !== "object") return null;
-      const label = typeof (option as { label?: unknown }).label === "string" ? (option as { label: string }).label.trim() : "";
-      const value = typeof (option as { value?: unknown }).value === "string" ? (option as { value: string }).value.trim() : "";
+      const label =
+        typeof (option as { label?: unknown }).label === "string"
+          ? (option as { label: string }).label.trim()
+          : "";
+      const value =
+        typeof (option as { value?: unknown }).value === "string"
+          ? (option as { value: string }).value.trim()
+          : "";
       const fallback = label || value;
       if (!fallback) return null;
       return {
@@ -48,21 +68,30 @@ function sanitiseFields(rawFields: unknown, existingFields: LpFormField[]): LpFo
     if (!/^[a-zA-Z][a-zA-Z0-9_-]*$/.test(name)) continue;
 
     const existing =
-      (typeof candidate.id === "string" ? existingById.get(candidate.id) : undefined)
-      ?? existingByName.get(name);
+      (typeof candidate.id === "string" ? existingById.get(candidate.id) : undefined) ??
+      existingByName.get(name);
 
-    const typeCandidate = typeof candidate.type === "string" ? candidate.type.trim().toLowerCase() as LpFormFieldType : existing?.type ?? "text";
+    const typeCandidate =
+      typeof candidate.type === "string"
+        ? (candidate.type.trim().toLowerCase() as LpFormFieldType)
+        : (existing?.type ?? "text");
     const type = VALID_TYPES.has(typeCandidate) ? typeCandidate : (existing?.type ?? "text");
-    const label = typeof candidate.label === "string" && candidate.label.trim()
-      ? candidate.label.trim()
-      : (existing?.label ?? name);
-    const placeholder = typeof candidate.placeholder === "string"
-      ? candidate.placeholder.trim() || undefined
-      : existing?.placeholder;
-    const required = typeof candidate.required === "boolean" ? candidate.required : (existing?.required ?? false);
-    const options = type === "select"
-      ? sanitiseOptions(candidate.options) ?? existing?.options
-      : undefined;
+    const label =
+      typeof candidate.label === "string" && candidate.label.trim()
+        ? candidate.label.trim()
+        : (existing?.label ?? name);
+    const placeholder =
+      typeof candidate.placeholder === "string"
+        ? candidate.placeholder.trim() || undefined
+        : existing?.placeholder;
+    const required =
+      typeof candidate.required === "boolean" ? candidate.required : (existing?.required ?? false);
+    const options =
+      type === "select" ? (sanitiseOptions(candidate.options) ?? existing?.options) : undefined;
+    const widthCandidate =
+      typeof candidate.width === "string" ? candidate.width.trim().toLowerCase() : undefined;
+    const width =
+      widthCandidate === "half" || widthCandidate === "full" ? widthCandidate : existing?.width;
 
     result.push({
       id: existing?.id ?? crypto.randomUUID(),
@@ -72,6 +101,7 @@ function sanitiseFields(rawFields: unknown, existingFields: LpFormField[]): LpFo
       type,
       options,
       required,
+      width,
     });
     usedNames.add(name);
   }
@@ -79,10 +109,7 @@ function sanitiseFields(rawFields: unknown, existingFields: LpFormField[]): LpFo
   return result.length > 0 ? result : existingFields;
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -90,7 +117,7 @@ export async function POST(
 
   let body: RequestBody;
   try {
-    body = await request.json() as RequestBody;
+    body = (await request.json()) as RequestBody;
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
@@ -107,9 +134,10 @@ export async function POST(
 
   if (!lp) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const currentFields = Array.isArray(body.currentFields) && body.currentFields.length > 0
-    ? body.currentFields
-    : extractFormFieldsFromHtml(lp.currentHtml);
+  const currentFields =
+    Array.isArray(body.currentFields) && body.currentFields.length > 0
+      ? body.currentFields
+      : extractFormFieldsFromHtml(lp.currentHtml);
 
   try {
     const openai = await getOpenAiClient();
@@ -133,8 +161,10 @@ export async function POST(
             "- For select fields, return options as { label, value }.",
             "- Use British English in labels/placeholders.",
             "- Do not mention styling or HTML wrappers; only field schema.",
+            '- Each field has a layout width: "half" or "full". Use "half" for short, naturally-paired fields so two sit side-by-side on one row (e.g. first name + last name, city + postcode, date + time, dress size + preferred date). Adjacent half fields are paired in order. Use "full" (the default) for emails, long text, textareas, and anything that benefits from the full width.',
+            "- Preserve each field's existing width unless the request or sensible pairing implies a change.",
             "JSON shape:",
-            '{"fields":[{"id":"existing-or-new","name":"country","label":"Country of participant","placeholder":"England, Spain, Australia","type":"text","required":true,"options":[]}]}',
+            '{"fields":[{"id":"existing-or-new","name":"country","label":"Country of participant","placeholder":"England, Spain, Australia","type":"text","required":true,"options":[],"width":"full"}]}',
             "Current fields:",
             JSON.stringify(currentFields),
             "Request:",

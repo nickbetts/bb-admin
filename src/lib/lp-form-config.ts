@@ -9,7 +9,15 @@
  *   - the ordered list of form fields for email formatting
  */
 
-export type LpFormFieldType = "text" | "email" | "tel" | "textarea" | "select" | "date" | "number" | "url";
+export type LpFormFieldType =
+  | "text"
+  | "email"
+  | "tel"
+  | "textarea"
+  | "select"
+  | "date"
+  | "number"
+  | "url";
 
 export interface LpFormFieldOption {
   /** Display text shown to the visitor */
@@ -38,6 +46,13 @@ export interface LpFormField {
   options?: LpFormFieldOption[];
   /** Whether the field is required in the form */
   required: boolean;
+  /**
+   * Layout width hint for the rendered form. "half" lets the field sit
+   * side-by-side with an adjacent half-width field (two per row); "full"
+   * (the default when omitted) spans the whole row. Consumed by the form
+   * compiler in lp-form-fields-html.ts.
+   */
+  width?: "half" | "full";
 }
 
 export interface LpFormConfig {
@@ -159,10 +174,7 @@ export function extractFormFieldsFromHtml(html: string): LpFormField[] {
     const required = /\brequired\b/i.test(attrs) || attrMap.has("required");
     const placeholderAttr = attrMap.get("placeholder")?.trim();
     const selectDetails = tagName === "select" ? extractSelectDetails(html, name) : null;
-    const placeholder = (
-      (placeholderAttr ?? "")
-      || selectDetails?.placeholder
-    ) || undefined;
+    const placeholder = (placeholderAttr ?? "") || selectDetails?.placeholder || undefined;
 
     fields.push({
       id: crypto.randomUUID(),
@@ -190,7 +202,7 @@ export function extractFormFieldsFromHtml(html: string): LpFormField[] {
  */
 export function reconcileFormFields(
   html: string,
-  currentFields: LpFormField[] | undefined
+  currentFields: LpFormField[] | undefined,
 ): LpFormField[] {
   if (!html || !currentFields || currentFields.length === 0) {
     return extractFormFieldsFromHtml(html);
@@ -248,7 +260,8 @@ function formatFieldLabel(key: string): string {
 function extractFormLabels(html: string): Map<string, string> {
   const labels = new Map<string, string>();
 
-  const groupedLabelRe = /<div[^>]*class=("|')[^"']*form-group[^"']*\1[^>]*>[\s\S]*?<label[^>]*>([\s\S]*?)<\/label>[\s\S]*?<(input|textarea|select)([^>]*\bname=("|')([^"']+)\5[^>]*)/gi;
+  const groupedLabelRe =
+    /<div[^>]*class=("|')[^"']*form-group[^"']*\1[^>]*>[\s\S]*?<label[^>]*>([\s\S]*?)<\/label>[\s\S]*?<(input|textarea|select)([^>]*\bname=("|')([^"']+)\5[^>]*)/gi;
   let groupedMatch: RegExpExecArray | null;
   while ((groupedMatch = groupedLabelRe.exec(html)) !== null) {
     const name = groupedMatch[6];
@@ -257,7 +270,8 @@ function extractFormLabels(html: string): Map<string, string> {
   }
 
   const controlIdToName = new Map<string, string>();
-  const controlWithIdRe = /<(input|textarea|select)([^>]*\bname=("|')([^"']+)\3[^>]*\bid=("|')([^"']+)\5[^>]*)>/gi;
+  const controlWithIdRe =
+    /<(input|textarea|select)([^>]*\bname=("|')([^"']+)\3[^>]*\bid=("|')([^"']+)\5[^>]*)>/gi;
   let controlMatch: RegExpExecArray | null;
   while ((controlMatch = controlWithIdRe.exec(html)) !== null) {
     controlIdToName.set(controlMatch[6], controlMatch[4]);
@@ -274,7 +288,10 @@ function extractFormLabels(html: string): Map<string, string> {
   return labels;
 }
 
-function extractSelectDetails(html: string, fieldName: string): { placeholder?: string; options: LpFormFieldOption[] } | null {
+function extractSelectDetails(
+  html: string,
+  fieldName: string,
+): { placeholder?: string; options: LpFormFieldOption[] } | null {
   const selectRe = /<select\b([^>]*)>([\s\S]*?)<\/select>/gi;
   let selectMatch: RegExpExecArray | null;
   while ((selectMatch = selectRe.exec(html)) !== null) {
@@ -283,8 +300,8 @@ function extractSelectDetails(html: string, fieldName: string): { placeholder?: 
     const selectName = selectAttrMap.get("name")?.trim();
     if (!selectName || selectName !== fieldName) continue;
 
-    const placeholderAttr = selectAttrMap.get("placeholder")?.trim()
-      || selectAttrMap.get("data-placeholder")?.trim();
+    const placeholderAttr =
+      selectAttrMap.get("placeholder")?.trim() || selectAttrMap.get("data-placeholder")?.trim();
 
     const optionRe = /<option\b([^>]*)>([\s\S]*?)<\/option>/gi;
     let optionMatch: RegExpExecArray | null;
@@ -303,8 +320,8 @@ function extractSelectDetails(html: string, fieldName: string): { placeholder?: 
       // HTML default when value is omitted is text content; mirror browser behaviour.
       const value = (explicitValue ?? text).trim();
       const isLikelyPlaceholder =
-        (optionIndex === 0 && (explicitValue === "" || disabled || selected))
-        || (explicitValue === "" && !!text);
+        (optionIndex === 0 && (explicitValue === "" || disabled || selected)) ||
+        (explicitValue === "" && !!text);
 
       if (isLikelyPlaceholder) {
         if (!placeholder && text) placeholder = text;
