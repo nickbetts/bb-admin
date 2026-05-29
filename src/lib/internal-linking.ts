@@ -14,7 +14,11 @@ import * as mammoth from "mammoth";
 import * as cheerio from "cheerio";
 import { fetchSitemapUrls } from "@/lib/sitemap";
 import { getAnthropicClient } from "@/lib/anthropic-client";
-import { getTopOrganicKeywords, getUrlOrganicKeywords, type SemrushKeywordData } from "@/lib/semrush";
+import {
+  getTopOrganicKeywords,
+  getUrlOrganicKeywords,
+  type SemrushKeywordData,
+} from "@/lib/semrush";
 import { getGSCQueryPageCombos } from "@/lib/search-console";
 import { withApiCache } from "@/lib/api-cache";
 
@@ -58,7 +62,7 @@ export type { SemrushKeywordData };
 // ─── DOCX extraction ─────────────────────────────────────────────────────────
 
 export async function extractDraftFromDocx(
-  file: File
+  file: File,
 ): Promise<{ text: string; wordCount: number }> {
   const buffer = await file.arrayBuffer();
   const result = await mammoth.extractRawText({ buffer: Buffer.from(buffer) });
@@ -96,22 +100,16 @@ export async function fetchAndParsePage(url: string): Promise<ParsedPage> {
 
   const title = $("title").first().text().trim();
   const h1 = $("h1").first().text().trim();
-  const metaDescription =
-    $('meta[name="description"]').attr("content")?.trim() ?? "";
+  const metaDescription = $('meta[name="description"]').attr("content")?.trim() ?? "";
 
   // Extract main body text — prefer <article> / <main> / [role=main], fall back to body
-  const mainEl =
-    $("article").first().length
-      ? $("article").first()
-      : $("main, [role=main]").first().length
+  const mainEl = $("article").first().length
+    ? $("article").first()
+    : $("main, [role=main]").first().length
       ? $("main, [role=main]").first()
       : $("body");
 
-  const mainText = mainEl
-    .text()
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 800);
+  const mainText = mainEl.text().replace(/\s+/g, " ").trim().slice(0, 800);
 
   const bodyText = $("body").text().replace(/\s+/g, " ").trim();
   const wordCount = bodyText.split(/\s+/).filter(Boolean).length;
@@ -139,7 +137,9 @@ export async function fetchAndParsePage(url: string): Promise<ParsedPage> {
   // the JavaScript in a headless browser and returns clean markdown.
   // JINA_API_KEY is optional — anonymous calls work up to ~200 req/day.
   if (wordCount < 50) {
-    console.warn(`[internal-linking] fetchAndParsePage: only ${wordCount} words from ${url}, trying Jina Reader fallback`);
+    console.warn(
+      `[internal-linking] fetchAndParsePage: only ${wordCount} words from ${url}, trying Jina Reader fallback`,
+    );
     try {
       const jinaController = new AbortController();
       const jinaTimer = setTimeout(() => jinaController.abort(), 15_000);
@@ -187,7 +187,10 @@ export async function fetchAndParsePage(url: string): Promise<ParsedPage> {
         };
       }
     } catch (jinaErr) {
-      console.warn("[internal-linking] Jina Reader fallback failed:", jinaErr instanceof Error ? jinaErr.message : jinaErr);
+      console.warn(
+        "[internal-linking] Jina Reader fallback failed:",
+        jinaErr instanceof Error ? jinaErr.message : jinaErr,
+      );
       // Fall through and return the partial direct-fetch result below
     }
   }
@@ -224,7 +227,7 @@ export interface DiscoverBlogPostsResult {
 export async function discoverBlogPosts(
   domain: string,
   targetText: string,
-  moneyPageUrls: string[]
+  moneyPageUrls: string[],
 ): Promise<DiscoverBlogPostsResult> {
   const allUrls = await fetchSitemapUrls(domain);
 
@@ -279,12 +282,12 @@ export async function discoverBlogPosts(
     /^\/(cdn-cgi)(\/|$)/i,
   ];
 
-  const moneyPageSet = new Set(moneyPageUrls.map(u => u.replace(/\/$/, "")));
+  const moneyPageSet = new Set(moneyPageUrls.map((u) => u.replace(/\/$/, "")));
 
   const isUtility = (url: string): boolean => {
     try {
       const path = new URL(url).pathname;
-      return utilityPatterns.some(p => p.test(path));
+      return utilityPatterns.some((p) => p.test(path));
     } catch {
       return false;
     }
@@ -292,7 +295,7 @@ export async function discoverBlogPosts(
 
   // All non-utility content pages (used for fallback)
   const getContentPageCandidates = (exclude?: Set<string>): string[] =>
-    allUrls.filter(u => {
+    allUrls.filter((u) => {
       if (exclude?.has(u)) return false;
       if (moneyPageSet.has(u.replace(/\/$/, ""))) return false;
       if (isUtility(u)) return false;
@@ -318,23 +321,23 @@ export async function discoverBlogPosts(
     const parsed: ParsedPage[] = [];
     for (let i = 0; i < chosen.length; i += BATCH) {
       const batch = chosen.slice(i, i + BATCH);
-      const results = await Promise.allSettled(batch.map(u => fetchAndParsePage(u)));
+      const results = await Promise.allSettled(batch.map((u) => fetchAndParsePage(u)));
       for (const r of results) {
         if (r.status === "fulfilled") parsed.push(r.value);
       }
     }
 
-    const editorial = parsed.filter(p => !(p.outboundAnchors.length > 12 && p.wordCount < 500));
+    const editorial = parsed.filter((p) => !(p.outboundAnchors.length > 12 && p.wordCount < 500));
     if (editorial.length < parsed.length) {
       console.warn(
-        `[internal-linking] Dropped ${parsed.length - editorial.length} archive/listing page(s) from corpus.`
+        `[internal-linking] Dropped ${parsed.length - editorial.length} archive/listing page(s) from corpus.`,
       );
     }
     return editorial;
   };
 
   // Primary: blog-pattern filter (must have ≥ 2 path segments)
-  const blogCandidates = allUrls.filter(u => {
+  const blogCandidates = allUrls.filter((u) => {
     if (moneyPageSet.has(u.replace(/\/$/, ""))) return false;
     try {
       const path = new URL(u).pathname;
@@ -342,7 +345,7 @@ export async function discoverBlogPosts(
     } catch {
       return false;
     }
-    return blogPatterns.some(p => p.test(u));
+    return blogPatterns.some((p) => p.test(u));
   });
 
   // Try blog-pattern candidates first
@@ -353,7 +356,7 @@ export async function discoverBlogPosts(
     }
     // Blog patterns only matched archive/category pages — expand to full site
     console.warn(
-      `[internal-linking] Blog-pattern pages for ${domain} were all archive/listing pages. Expanding to all content pages.`
+      `[internal-linking] Blog-pattern pages for ${domain} were all archive/listing pages. Expanding to all content pages.`,
     );
   }
 
@@ -362,7 +365,7 @@ export async function discoverBlogPosts(
   const alreadyTried = new Set(blogCandidates);
   const contentCandidates = getContentPageCandidates(alreadyTried);
   console.warn(
-    `[internal-linking] No blog-pattern URLs found for ${domain}. Falling back to all content pages (${contentCandidates.length} candidates).`
+    `[internal-linking] No blog-pattern URLs found for ${domain}. Falling back to all content pages (${contentCandidates.length} candidates).`,
   );
 
   const editorial = await crawlAndFilter(contentCandidates);
@@ -376,7 +379,7 @@ export async function discoverBlogPosts(
 async function llmPreselectUrls(
   candidates: string[],
   targetText: string,
-  moneyPageUrls: string[]
+  moneyPageUrls: string[],
 ): Promise<string[]> {
   const anthropic = await getAnthropicClient();
 
@@ -403,7 +406,7 @@ Select the ${MAX_BLOG_POSTS} most topically relevant URLs.`;
       messages: [{ role: "user", content: userPrompt }],
     });
 
-    const textBlock = response.content.find(b => b.type === "text");
+    const textBlock = response.content.find((b) => b.type === "text");
     const raw = textBlock && textBlock.type === "text" ? textBlock.text.trim() : "";
     // Strip markdown fences if present
     const jsonMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
@@ -441,13 +444,17 @@ export async function discoverAndAnalyseCompetitors(
   userProvidedDomains: string[],
   clientSavedDomains: string[],
 ): Promise<CompetitorProfile[]> {
-
   // ── 1. Merge & deduplicate ────────────────────────────────────────────────
   const seen = new Set<string>();
   const merged: { domain: string; source: "user" | "client" }[] = [];
 
   const normalize = (d: string) =>
-    d.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/$/, "");
+    d
+      .trim()
+      .toLowerCase()
+      .replace(/^https?:\/\//, "")
+      .replace(/^www\./, "")
+      .replace(/\/$/, "");
 
   const userSet = new Set(userProvidedDomains.map(normalize));
 
@@ -480,7 +487,9 @@ Return ONLY a JSON array of ${needed + 2} competitor domain names (no www prefix
         messages: [{ role: "user", content: prompt }],
       });
 
-      const textBlock = response.content.find(b => b.type === "text");
+      // web_search emits multiple text blocks; the final answer is the LAST one.
+      const textBlocks = response.content.filter((b) => b.type === "text");
+      const textBlock = textBlocks[textBlocks.length - 1];
       const raw = textBlock && textBlock.type === "text" ? textBlock.text.trim() : "";
       const jsonMatch = raw.match(/\[[\s\S]*?\]/);
       if (jsonMatch) {
@@ -508,14 +517,12 @@ Return ONLY a JSON array of ${needed + 2} competitor domain names (no www prefix
   const profiles: CompetitorProfile[] = await Promise.all(
     competitors.map(async ({ domain, source }) => {
       try {
-        const keywords = await withApiCache(
-          `semrush-top-kws:${domain}`,
-          24,
-          () => getTopOrganicKeywords(domain, "uk", 20),
+        const keywords = await withApiCache(`semrush-top-kws:${domain}`, 24, () =>
+          getTopOrganicKeywords(domain, "uk", 20),
         );
         return {
           domain,
-          topKeywords: keywords.map(k => ({
+          topKeywords: keywords.map((k) => ({
             keyword: k.keyword,
             searchVolume: k.searchVolume,
             position: k.position,
@@ -542,12 +549,16 @@ Return ONLY a JSON array of ${needed + 2} competitor domain names (no www prefix
         max_tokens: 300,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 2 } as any],
-        messages: [{
-          role: "user",
-          content: `Search the web for "${profile.domain} SEO keywords" and "${profile.domain} organic search". What are the 8 most important organic search keywords or topics that ${profile.domain} appears to target or rank for? Return ONLY a JSON array of keyword strings, e.g. ["keyword one", "keyword two"]. No explanation.`,
-        }],
+        messages: [
+          {
+            role: "user",
+            content: `Search the web for "${profile.domain} SEO keywords" and "${profile.domain} organic search". What are the 8 most important organic search keywords or topics that ${profile.domain} appears to target or rank for? Return ONLY a JSON array of keyword strings, e.g. ["keyword one", "keyword two"]. No explanation.`,
+          },
+        ],
       });
-      const textBlock = response.content.find(b => b.type === "text");
+      // web_search emits multiple text blocks; the final answer is the LAST one.
+      const textBlocks = response.content.filter((b) => b.type === "text");
+      const textBlock = textBlocks[textBlocks.length - 1];
       const raw = textBlock && textBlock.type === "text" ? textBlock.text.trim() : "";
       const match = raw.match(/\[[\s\S]*?\]/);
       if (match) {
@@ -584,10 +595,7 @@ export function recommendLinkCount(wordCount: number): number {
  * Split the total link budget across money-page, outbound, and inbound
  * buckets. Money-page links get at least 1 per page provided.
  */
-export function computeLinkSplit(
-  total: number,
-  moneyPageCount: number
-): LinkBudget {
+export function computeLinkSplit(total: number, moneyPageCount: number): LinkBudget {
   // Guarantee at least 1 per money page, but don't exceed total
   const moneyPage = Math.min(moneyPageCount, Math.ceil(total * 0.4));
   const remainder = Math.max(0, total - moneyPage);
@@ -606,17 +614,12 @@ export function computeLinkSplit(
  *
  * Uses a single cached domain_organic call (24h TTL) — not per-URL.
  */
-export async function getQuickWinUrls(
-  domain: string,
-  blogUrls: string[]
-): Promise<Set<string>> {
+export async function getQuickWinUrls(domain: string, blogUrls: string[]): Promise<Set<string>> {
   if (blogUrls.length === 0) return new Set();
 
   try {
-    const keywords = await withApiCache(
-      `semrush-domain-organic:${domain}:200`,
-      24,
-      () => getTopOrganicKeywords(domain, "uk", 200),
+    const keywords = await withApiCache(`semrush-domain-organic:${domain}:200`, 24, () =>
+      getTopOrganicKeywords(domain, "uk", 200),
     );
 
     // Collect all URLs that have at least one keyword ranked P4-10
@@ -625,7 +628,9 @@ export async function getQuickWinUrls(
       if (kw.position >= 4 && kw.position <= 10 && kw.url) {
         try {
           quickWinSet.add(new URL(kw.url).href.replace(/\/$/, ""));
-        } catch { /* malformed URL — skip */ }
+        } catch {
+          /* malformed URL — skip */
+        }
       }
     }
 
@@ -635,7 +640,9 @@ export async function getQuickWinUrls(
       try {
         const normalized = new URL(url).href.replace(/\/$/, "");
         if (quickWinSet.has(normalized)) result.add(url);
-      } catch { /* skip */ }
+      } catch {
+        /* skip */
+      }
     }
     return result;
   } catch (err) {
@@ -670,14 +677,10 @@ export function buildAnchorDiversityMap(pages: ParsedPage[]): Map<string, number
  * Fetch the organic keywords the target URL already ranks for.
  * Returns empty array silently if SEMrush is unavailable.
  */
-export async function getTargetPageKeywords(
-  url: string,
-): Promise<SemrushKeywordData[]> {
+export async function getTargetPageKeywords(url: string): Promise<SemrushKeywordData[]> {
   try {
-    return await withApiCache(
-      `semrush-url-organic:${url}`,
-      24,
-      () => getUrlOrganicKeywords(url, "uk", 25),
+    return await withApiCache(`semrush-url-organic:${url}`, 24, () =>
+      getUrlOrganicKeywords(url, "uk", 25),
     );
   } catch (err) {
     console.error("[internal-linking] Target keyword fetch failed:", err);
@@ -715,15 +718,18 @@ export async function getGscPageKeywords(
     const normalise = (u: string) => u.replace(/\/$/, "").toLowerCase();
     const targetNorm = normalise(pageUrl);
 
-    const combos = await withApiCache(
-      `gsc-page-keywords:${gscSiteUrl}:${pageUrl}`,
-      4,
-      () => getGSCQueryPageCombos(gscSiteUrl, startDate, endDate, 200),
+    const combos = await withApiCache(`gsc-page-keywords:${gscSiteUrl}:${pageUrl}`, 4, () =>
+      getGSCQueryPageCombos(gscSiteUrl, startDate, endDate, 200),
     );
 
     return combos
-      .filter(c => normalise(c.page) === targetNorm)
-      .map(c => ({ keyword: c.query, position: c.position, clicks: c.clicks, impressions: c.impressions }))
+      .filter((c) => normalise(c.page) === targetNorm)
+      .map((c) => ({
+        keyword: c.query,
+        position: c.position,
+        clicks: c.clicks,
+        impressions: c.impressions,
+      }))
       .sort((a, b) => b.impressions - a.impressions)
       .slice(0, 25);
   } catch (err) {

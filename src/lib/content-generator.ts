@@ -302,8 +302,11 @@ Return ONLY a valid JSON object in this exact format — no commentary:
       ],
     });
 
-    const textBlock = response.content.find((b) => b.type === "text");
-    const text = textBlock?.type === "text" ? textBlock.text : "";
+    // web_search emits multiple content blocks (leading prose, tool_use, …);
+    // the final JSON is in the LAST text block, so take that rather than the first.
+    const textBlocks = response.content.filter((b) => b.type === "text");
+    const lastTextBlock = textBlocks[textBlocks.length - 1];
+    const text = lastTextBlock?.type === "text" ? lastTextBlock.text : "";
     const parsed = parseJsonSafely<{
       statsContext: string;
       sources: Array<{
@@ -518,8 +521,10 @@ Rules:
     messages: [{ role: "user", content: userPrompt }],
   });
 
-  // Extract the text block — may be preceded by tool_use blocks
-  const textBlock = response.content.find((b) => b.type === "text");
+  // web_search emits multiple content blocks (leading prose, tool_use, …);
+  // the final JSON is in the LAST text block, so take that rather than the first.
+  const textBlocks = response.content.filter((b) => b.type === "text");
+  const textBlock = textBlocks[textBlocks.length - 1];
   if (!textBlock || textBlock.type !== "text") {
     throw new Error("No text response from idea generation");
   }

@@ -45,10 +45,34 @@ interface OutputDef {
 }
 
 const OUTPUT_DEFS: readonly OutputDef[] = [
-  { key: "pageOptimisations", label: "Page optimisations", hoursPerItem: 1,    sprintHours: 8,  hint: "Title/meta/H1 rewrite, schema, internal links" },
-  { key: "landingPages",      label: "Landing pages",      hoursPerItem: 6,    sprintHours: 12, hint: "LP build, copy, tracking, ad set — one per campaign" },
-  { key: "blogPosts",         label: "Blog posts",         hoursPerItem: 2,    sprintHours: 16, hint: "Research, write, on-page, publish" },
-  { key: "socialPosts",       label: "Social posts",       hoursPerItem: 0.25, sprintHours: 24, hint: "Caption + asset spec" },
+  {
+    key: "pageOptimisations",
+    label: "Page optimisations",
+    hoursPerItem: 1,
+    sprintHours: 8,
+    hint: "Title/meta/H1 rewrite, schema, internal links",
+  },
+  {
+    key: "landingPages",
+    label: "Landing pages",
+    hoursPerItem: 6,
+    sprintHours: 12,
+    hint: "LP build, copy, tracking, ad set — one per campaign",
+  },
+  {
+    key: "blogPosts",
+    label: "Blog posts",
+    hoursPerItem: 2,
+    sprintHours: 16,
+    hint: "Research, write, on-page, publish",
+  },
+  {
+    key: "socialPosts",
+    label: "Social posts",
+    hoursPerItem: 0.25,
+    sprintHours: 24,
+    hint: "Caption + asset spec",
+  },
 ];
 
 type OutputCapacity = Record<OutputKey, { hoursPerItem: number; allocatedHours: number }>;
@@ -98,21 +122,41 @@ const SECTORS = [
 type PlatformId = "googleAds" | "metaAds" | "linkedInAds" | "emailMarketing";
 
 const PLATFORMS: { id: PlatformId; label: string; description: string; sections: string[] }[] = [
-  { id: "googleAds", label: "Google Ads", description: "Search campaigns, RSA ad copy", sections: ["googleAdsCampaigns"] },
-  { id: "metaAds", label: "Meta Ads", description: "Facebook & Instagram audience-led campaigns", sections: ["metaCampaigns"] },
-  { id: "linkedInAds", label: "LinkedIn Ads", description: "B2B targeting and ad mockups", sections: ["linkedInAds"] },
-  { id: "emailMarketing", label: "Email Marketing", description: "Lifecycle and nurture flows", sections: ["emailMarketing"] },
+  {
+    id: "googleAds",
+    label: "Google Ads",
+    description: "Search campaigns, RSA ad copy",
+    sections: ["googleAdsCampaigns"],
+  },
+  {
+    id: "metaAds",
+    label: "Meta Ads",
+    description: "Facebook & Instagram audience-led campaigns",
+    sections: ["metaCampaigns"],
+  },
+  {
+    id: "linkedInAds",
+    label: "LinkedIn Ads",
+    description: "B2B targeting and ad mockups",
+    sections: ["linkedInAds"],
+  },
+  {
+    id: "emailMarketing",
+    label: "Email Marketing",
+    description: "Lifecycle and nurture flows",
+    sections: ["emailMarketing"],
+  },
 ];
 
 // Sections that can be toggled on/off independently of platform selection.
 const ALWAYS_ON_SECTIONS: { key: string; label: string }[] = [
-  { key: "executiveSummary",  label: "Executive Summary" },
-  { key: "audiences",         label: "Audiences" },
-  { key: "contentStrategy",   label: "Content Strategy" },
-  { key: "contentCalendar",   label: "Content Calendar" },
-  { key: "seoFoundations",    label: "SEO Foundations" },
-  { key: "competitorIntel",   label: "Competitor Intelligence" },
-  { key: "servicesInvestment",label: "Services &amp; Investment" },
+  { key: "executiveSummary", label: "Executive Summary" },
+  { key: "audiences", label: "Audiences" },
+  { key: "contentStrategy", label: "Content Strategy" },
+  { key: "contentCalendar", label: "Content Calendar" },
+  { key: "seoFoundations", label: "SEO Foundations" },
+  { key: "competitorIntel", label: "Competitor Intelligence" },
+  { key: "servicesInvestment", label: "Services &amp; Investment" },
 ];
 
 export default function NewGrandPlanPage() {
@@ -148,11 +192,14 @@ export default function NewGrandPlanPage() {
   const [detectingCompetitors, setDetectingCompetitors] = useState(false);
   const [competitorInput, setCompetitorInput] = useState("");
   const [validatingCompetitor, setValidatingCompetitor] = useState(false);
+  const [competitorError, setCompetitorError] = useState<string | null>(null);
 
   // Team capacity — strategist allocates total hours across output types,
   // form derives the quantities the AI will produce. Defaults assume a
   // 90-day sprint (60h total). Annual plans scale ×4 (240h, 12 months).
-  const [outputCapacity, setOutputCapacity] = useState<OutputCapacity>(() => defaultOutputCapacity(1));
+  const [outputCapacity, setOutputCapacity] = useState<OutputCapacity>(() =>
+    defaultOutputCapacity(1),
+  );
   const [totalCapacityHours, setTotalCapacityHours] = useState<number>(60);
 
   // Plan duration mode — "annual" (default) or "sprint90" (12-week sprint).
@@ -166,13 +213,22 @@ export default function NewGrandPlanPage() {
   // plans for that client. When chosen, brief / audiences / competitors are
   // pre-filled from the prior plan (still editable) and the generator
   // receives a "do not duplicate" block listing prior items.
-  interface PriorSprintOption { id: string; title: string; createdAt: string }
+  interface PriorSprintOption {
+    id: string;
+    title: string;
+    createdAt: string;
+  }
   const [priorSprints, setPriorSprints] = useState<PriorSprintOption[]>([]);
   const [previousPlanId, setPreviousPlanId] = useState<string>("");
   const [loadingPriorSprints, setLoadingPriorSprints] = useState(false);
 
   // Platforms — controls which paid/organic channels the AI focuses on
-  const [platforms, setPlatforms] = useState<PlatformId[]>(["googleAds", "metaAds", "linkedInAds", "emailMarketing"]);
+  const [platforms, setPlatforms] = useState<PlatformId[]>([
+    "googleAds",
+    "metaAds",
+    "linkedInAds",
+    "emailMarketing",
+  ]);
 
   function togglePlatform(id: PlatformId) {
     setPlatforms((prev) => (prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]));
@@ -180,13 +236,14 @@ export default function NewGrandPlanPage() {
 
   // Always-on section toggles — defaults to all enabled
   const [enabledAlwaysOn, setEnabledAlwaysOn] = useState<Set<string>>(
-    () => new Set(ALWAYS_ON_SECTIONS.map((s) => s.key))
+    () => new Set(ALWAYS_ON_SECTIONS.map((s) => s.key)),
   );
 
   function toggleAlwaysOn(key: string) {
     setEnabledAlwaysOn((prev) => {
       const next = new Set(prev);
-      if (next.has(key)) next.delete(key); else next.add(key);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
   }
@@ -197,7 +254,7 @@ export default function NewGrandPlanPage() {
   useEffect(() => {
     fetch("/api/clients")
       .then((r) => r.json())
-      .then((data) => setClients(Array.isArray(data) ? data : data.clients ?? []))
+      .then((data) => setClients(Array.isArray(data) ? data : (data.clients ?? [])))
       .catch(() => {});
   }, []);
 
@@ -214,7 +271,9 @@ export default function NewGrandPlanPage() {
         if (client.contractedHours) {
           try {
             const parsed = JSON.parse(client.contractedHours);
-            const stored = parsed?.grandPlan?.hoursPerItem as Partial<Record<OutputKey, number>> | undefined;
+            const stored = parsed?.grandPlan?.hoursPerItem as
+              | Partial<Record<OutputKey, number>>
+              | undefined;
             if (stored && typeof stored === "object") {
               setOutputCapacity((prev) => {
                 const next = { ...prev };
@@ -278,12 +337,20 @@ export default function NewGrandPlanPage() {
       .then((r) => r.json())
       .then((data) => {
         if (cancelled) return;
-        const list = (Array.isArray(data) ? data : data.grandPlans ?? []) as Array<{ id: string; title: string; createdAt: string }>;
+        const list = (Array.isArray(data) ? data : (data.grandPlans ?? [])) as Array<{
+          id: string;
+          title: string;
+          createdAt: string;
+        }>;
         setPriorSprints(list.map((p) => ({ id: p.id, title: p.title, createdAt: p.createdAt })));
       })
       .catch(() => {})
-      .finally(() => { if (!cancelled) setLoadingPriorSprints(false); });
-    return () => { cancelled = true; };
+      .finally(() => {
+        if (!cancelled) setLoadingPriorSprints(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [planMode, clientId]);
 
   // When user picks a previous sprint, prefill brief / audiences / competitors
@@ -298,8 +365,15 @@ export default function NewGrandPlanPage() {
         const prior = data.grandPlan ?? data;
         if (!prior) return;
         if (!brief && prior.clientBrief) setBrief(prior.clientBrief);
-        if (audiences.length === 0 && typeof prior.targetAudiences === "string" && prior.targetAudiences.trim()) {
-          const lines = prior.targetAudiences.split(/\r?\n/).map((line: string) => line.trim()).filter(Boolean);
+        if (
+          audiences.length === 0 &&
+          typeof prior.targetAudiences === "string" &&
+          prior.targetAudiences.trim()
+        ) {
+          const lines = prior.targetAudiences
+            .split(/\r?\n/)
+            .map((line: string) => line.trim())
+            .filter(Boolean);
           const parsed: AudienceSuggestion[] = lines.map((line: string) => {
             const idx = line.indexOf(":");
             return idx > -1
@@ -310,25 +384,37 @@ export default function NewGrandPlanPage() {
         }
         if (competitors.length === 0 && prior.competitorsJson) {
           try {
-            const list = JSON.parse(prior.competitorsJson) as Array<{ domain: string; commonKeywords?: number; pageContext?: CompetitorEntry["pageContext"]; source?: "auto" | "manual" }>;
+            const list = JSON.parse(prior.competitorsJson) as Array<{
+              domain: string;
+              commonKeywords?: number;
+              pageContext?: CompetitorEntry["pageContext"];
+              source?: "auto" | "manual";
+            }>;
             if (Array.isArray(list) && list.length) {
-              setCompetitors(list.map((c) => ({
-                domain: c.domain,
-                status: "valid",
-                commonKeywords: c.commonKeywords,
-                pageContext: c.pageContext,
-                source: c.source ?? "auto",
-              })));
+              setCompetitors(
+                list.map((c) => ({
+                  domain: c.domain,
+                  status: "valid",
+                  commonKeywords: c.commonKeywords,
+                  pageContext: c.pageContext,
+                  source: c.source ?? "auto",
+                })),
+              );
             }
           } catch {}
         }
       })
       .catch(() => {});
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [previousPlanId]);
 
-  const domain = website.replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/^www\./, "");
+  const domain = website
+    .replace(/^https?:\/\//, "")
+    .replace(/\/.*$/, "")
+    .replace(/^www\./, "");
 
   // ── Audience helpers ─────────────────────────────────────────────────────
   const addAudience = useCallback((a: AudienceSuggestion) => {
@@ -357,7 +443,7 @@ export default function NewGrandPlanPage() {
         }),
       });
       if (!res.ok) return;
-      const data = await res.json() as { audiences?: AudienceSuggestion[] };
+      const data = (await res.json()) as { audiences?: AudienceSuggestion[] };
       if (Array.isArray(data.audiences)) setAudiences(data.audiences);
     } finally {
       setSuggestingAudiences(false);
@@ -375,14 +461,31 @@ export default function NewGrandPlanPage() {
   const handleDetectCompetitors = useCallback(async () => {
     if (!domain && !clientId) return;
     setDetectingCompetitors(true);
+    setCompetitorError(null);
     try {
       const res = await fetch("/api/tools/grand-plan/competitors", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "detect", domain: domain || undefined, clientId: clientId || undefined }),
+        body: JSON.stringify({
+          action: "detect",
+          domain: domain || undefined,
+          clientId: clientId || undefined,
+        }),
       });
-      if (!res.ok) return;
-      const data = await res.json() as { competitors?: { domain: string; commonKeywords?: number; pageContext?: CompetitorEntry["pageContext"] }[] };
+      const data = (await res.json()) as {
+        competitors?: {
+          domain: string;
+          commonKeywords?: number;
+          pageContext?: CompetitorEntry["pageContext"];
+        }[];
+        error?: string;
+      };
+      if (!res.ok) {
+        setCompetitorError(
+          data.error ?? "Could not auto-detect competitors. Please try again or add them manually.",
+        );
+        return;
+      }
       const detected: CompetitorEntry[] = (data.competitors ?? []).slice(0, 6).map((c) => ({
         domain: c.domain,
         commonKeywords: c.commonKeywords,
@@ -390,18 +493,38 @@ export default function NewGrandPlanPage() {
         status: "valid",
         source: "auto",
       }));
+      let addedCount = 0;
       setCompetitors((prev) => {
         const seen = new Set(prev.map((p) => p.domain.toLowerCase()));
-        return [...prev, ...detected.filter((d) => !seen.has(d.domain.toLowerCase()))];
+        const fresh = detected.filter((d) => !seen.has(d.domain.toLowerCase()));
+        addedCount = fresh.length;
+        return [...prev, ...fresh];
       });
+      if (detected.length === 0) {
+        setCompetitorError(
+          "SEMrush returned no competitors for this domain. Add competitors manually below.",
+        );
+      } else if (addedCount === 0) {
+        setCompetitorError(
+          "No new competitors found — the detected domains are already in your list.",
+        );
+      }
+    } catch {
+      setCompetitorError(
+        "Could not auto-detect competitors. Please try again or add them manually.",
+      );
     } finally {
       setDetectingCompetitors(false);
     }
   }, [domain, clientId]);
 
   const handleAddManualCompetitor = useCallback(async () => {
-    const raw = competitorInput.trim().toLowerCase()
-      .replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/$/, "");
+    const raw = competitorInput
+      .trim()
+      .toLowerCase()
+      .replace(/^https?:\/\//, "")
+      .replace(/^www\./, "")
+      .replace(/\/$/, "");
     if (!raw) return;
     if (competitors.some((c) => c.domain.toLowerCase() === raw)) {
       setCompetitorInput("");
@@ -415,30 +538,42 @@ export default function NewGrandPlanPage() {
       const res = await fetch("/api/tools/grand-plan/competitors", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "validate", competitor: raw, domain: domain || undefined, clientId: clientId || undefined }),
+        body: JSON.stringify({
+          action: "validate",
+          competitor: raw,
+          domain: domain || undefined,
+          clientId: clientId || undefined,
+        }),
       });
-      const data = await res.json() as {
+      const data = (await res.json()) as {
         commonKeywords?: number;
         scraped?: boolean;
         pageContext?: CompetitorEntry["pageContext"];
         error?: string;
       };
-      setCompetitors((prev) => prev.map((c) => {
-        if (c.domain !== raw) return c;
-        // API error or non-OK response → mark invalid
-        if (!res.ok || data.error) return { ...c, status: "invalid", message: data.error ?? "Could not validate" };
-        // Successful response: use keyword count to decide status.
-        // Even with 0 overlap (scraped fallback), keep as no-overlap so it's
-        // still included and the AI uses the scraped page context.
-        return {
-          ...c,
-          status: (data.commonKeywords ?? 0) > 0 ? "valid" : "no-overlap",
-          commonKeywords: data.commonKeywords,
-          pageContext: data.pageContext,
-        };
-      }));
+      setCompetitors((prev) =>
+        prev.map((c) => {
+          if (c.domain !== raw) return c;
+          // API error or non-OK response → mark invalid
+          if (!res.ok || data.error)
+            return { ...c, status: "invalid", message: data.error ?? "Could not validate" };
+          // Successful response: use keyword count to decide status.
+          // Even with 0 overlap (scraped fallback), keep as no-overlap so it's
+          // still included and the AI uses the scraped page context.
+          return {
+            ...c,
+            status: (data.commonKeywords ?? 0) > 0 ? "valid" : "no-overlap",
+            commonKeywords: data.commonKeywords,
+            pageContext: data.pageContext,
+          };
+        }),
+      );
     } catch {
-      setCompetitors((prev) => prev.map((c) => c.domain === raw ? { ...c, status: "invalid", message: "Validation failed" } : c));
+      setCompetitors((prev) =>
+        prev.map((c) =>
+          c.domain === raw ? { ...c, status: "invalid", message: "Validation failed" } : c,
+        ),
+      );
     } finally {
       setValidatingCompetitor(false);
     }
@@ -456,7 +591,9 @@ export default function NewGrandPlanPage() {
       const platformSections = platforms.flatMap(
         (id) => PLATFORMS.find((p) => p.id === id)?.sections ?? [],
       );
-      const enabledSections = Array.from(new Set([...Array.from(enabledAlwaysOn), ...platformSections]));
+      const enabledSections = Array.from(
+        new Set([...Array.from(enabledAlwaysOn), ...platformSections]),
+      );
 
       // Stringify audiences in the same "Name: Description" format the
       // existing generator already understands when targetAudiences is set.
@@ -478,12 +615,14 @@ export default function NewGrandPlanPage() {
       // Parse the manual page URLs textarea: one URL per line, trim, dedupe,
       // keep only http(s) URLs, cap at 10 to stay within the SEMrush quota
       // and keep the prepare-research step inside the lambda budget.
-      const manualPageUrls = Array.from(new Set(
-        manualPageUrlsText
-          .split(/\r?\n/)
-          .map((line) => line.trim())
-          .filter((line) => /^https?:\/\//i.test(line)),
-      )).slice(0, 10);
+      const manualPageUrls = Array.from(
+        new Set(
+          manualPageUrlsText
+            .split(/\r?\n/)
+            .map((line) => line.trim())
+            .filter((line) => /^https?:\/\//i.test(line)),
+        ),
+      ).slice(0, 10);
 
       const res = await fetch("/api/tools/grand-plan", {
         method: "POST",
@@ -503,23 +642,39 @@ export default function NewGrandPlanPage() {
           previousPlanId: planMode === "sprint90" && previousPlanId ? previousPlanId : undefined,
           config: (() => {
             const monthsInWindow = planMode === "annual" ? 12 : 3;
-            const counts = OUTPUT_DEFS.reduce((acc, def) => {
-              const row = outputCapacity[def.key];
-              acc[def.key] = row.hoursPerItem > 0 ? Math.floor(row.allocatedHours / row.hoursPerItem) : 0;
-              return acc;
-            }, {} as Record<OutputKey, number>);
+            const counts = OUTPUT_DEFS.reduce(
+              (acc, def) => {
+                const row = outputCapacity[def.key];
+                acc[def.key] =
+                  row.hoursPerItem > 0 ? Math.floor(row.allocatedHours / row.hoursPerItem) : 0;
+                return acc;
+              },
+              {} as Record<OutputKey, number>,
+            );
             // Derive per-month cadence for the calendar / social generators
             // (existing generator code expects per-month numbers).
-            const derivedPostsPerMonth = Math.max(1, Math.round(counts.blogPosts / monthsInWindow) || 1);
-            const derivedSocialPerMonth = Math.max(0, Math.round(counts.socialPosts / monthsInWindow));
-            const capacityItems = OUTPUT_DEFS.reduce((acc, def) => {
-              acc[def.key] = {
-                hoursPerItem: outputCapacity[def.key].hoursPerItem,
-                allocatedHours: outputCapacity[def.key].allocatedHours,
-                count: counts[def.key],
-              };
-              return acc;
-            }, {} as Record<OutputKey, { hoursPerItem: number; allocatedHours: number; count: number }>);
+            const derivedPostsPerMonth = Math.max(
+              1,
+              Math.round(counts.blogPosts / monthsInWindow) || 1,
+            );
+            const derivedSocialPerMonth = Math.max(
+              0,
+              Math.round(counts.socialPosts / monthsInWindow),
+            );
+            const capacityItems = OUTPUT_DEFS.reduce(
+              (acc, def) => {
+                acc[def.key] = {
+                  hoursPerItem: outputCapacity[def.key].hoursPerItem,
+                  allocatedHours: outputCapacity[def.key].allocatedHours,
+                  count: counts[def.key],
+                };
+                return acc;
+              },
+              {} as Record<
+                OutputKey,
+                { hoursPerItem: number; allocatedHours: number; count: number }
+              >,
+            );
             return {
               sections: enabledSections,
               postsPerMonth: derivedPostsPerMonth,
@@ -529,7 +684,9 @@ export default function NewGrandPlanPage() {
               ...(manualPageUrls.length ? { manualPageUrls } : {}),
               // Pillar pages set to 0 — landing pages cover dedicated campaign topics.
               contentLimits: {
-                ...(counts.pageOptimisations > 0 ? { pageOptimisations: counts.pageOptimisations } : {}),
+                ...(counts.pageOptimisations > 0
+                  ? { pageOptimisations: counts.pageOptimisations }
+                  : {}),
                 ...(counts.landingPages > 0 ? { landingPages: counts.landingPages } : {}),
                 ...(counts.blogPosts > 0 ? { blogPosts: counts.blogPosts } : {}),
                 pillarPages: 0,
@@ -540,12 +697,33 @@ export default function NewGrandPlanPage() {
                 monthsInWindow,
                 items: capacityItems,
               },
-              ...(website ? { kwBrief: { website, brief, monthlyBudget: channelBudgets.googleAds || monthlyBudget } } : {}),
-              ...(domain ? { contentBrief: { domain, brief, competitors: finalCompetitors.map((c) => c.domain).join(",") } } : {}),
-              ...(Object.keys(channelBudgets).length > 0 ? { channelBudgets: Object.fromEntries(
-                Object.entries(channelBudgets).filter(([, v]) => v && Number(v.replace(/[^0-9.]/g, "")) > 0)
-                  .map(([k, v]) => [k, Number(v.replace(/[^0-9.]/g, ""))])
-              ) } : {}),
+              ...(website
+                ? {
+                    kwBrief: {
+                      website,
+                      brief,
+                      monthlyBudget: channelBudgets.googleAds || monthlyBudget,
+                    },
+                  }
+                : {}),
+              ...(domain
+                ? {
+                    contentBrief: {
+                      domain,
+                      brief,
+                      competitors: finalCompetitors.map((c) => c.domain).join(","),
+                    },
+                  }
+                : {}),
+              ...(Object.keys(channelBudgets).length > 0
+                ? {
+                    channelBudgets: Object.fromEntries(
+                      Object.entries(channelBudgets)
+                        .filter(([, v]) => v && Number(v.replace(/[^0-9.]/g, "")) > 0)
+                        .map(([k, v]) => [k, Number(v.replace(/[^0-9.]/g, ""))]),
+                    ),
+                  }
+                : {}),
             };
           })(),
         }),
@@ -559,12 +737,19 @@ export default function NewGrandPlanPage() {
             const client = clients.find((c) => c.id === clientId);
             const existing = (() => {
               if (!client?.contractedHours) return {};
-              try { return JSON.parse(client.contractedHours) ?? {}; } catch { return {}; }
+              try {
+                return JSON.parse(client.contractedHours) ?? {};
+              } catch {
+                return {};
+              }
             })();
-            const hoursPerItem = OUTPUT_DEFS.reduce((acc, def) => {
-              acc[def.key] = outputCapacity[def.key].hoursPerItem;
-              return acc;
-            }, {} as Record<OutputKey, number>);
+            const hoursPerItem = OUTPUT_DEFS.reduce(
+              (acc, def) => {
+                acc[def.key] = outputCapacity[def.key].hoursPerItem;
+                return acc;
+              },
+              {} as Record<OutputKey, number>,
+            );
             const merged = {
               ...existing,
               grandPlan: { ...(existing?.grandPlan ?? {}), hoursPerItem },
@@ -589,27 +774,43 @@ export default function NewGrandPlanPage() {
 
   return (
     <div className="page" style={{ maxWidth: 720 }}>
-
       {/* Header */}
       <div style={{ marginBottom: 40 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
-          <div style={{
-            width: 40, height: 40, borderRadius: "var(--r-sm)",
-            background: "var(--gradient-accent)",
-            display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-          }}>
+          <div
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: "var(--r-sm)",
+              background: "var(--gradient-accent)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
             <Map style={{ width: 20, height: 20, color: "white" }} />
           </div>
           <h1 className="page-title">New Grand Plan</h1>
         </div>
         <p className="page-desc" style={{ marginLeft: 52 }}>
-          One brief, every deliverable. Keywords, ads, content, a landing page, and a full strategy document.
+          One brief, every deliverable. Keywords, ads, content, a landing page, and a full strategy
+          document.
         </p>
       </div>
 
       {/* ═══════ THE BRIEF ═══════ */}
       <div style={{ marginBottom: 24 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-3)", marginBottom: 12 }}>
+        <div
+          style={{
+            fontSize: 11,
+            fontWeight: 700,
+            textTransform: "uppercase",
+            letterSpacing: "0.5px",
+            color: "var(--text-3)",
+            marginBottom: 12,
+          }}
+        >
           The Brief
         </div>
 
@@ -619,17 +820,29 @@ export default function NewGrandPlanPage() {
             <div style={{ display: "grid", gridTemplateColumns: "200px 1fr", gap: 16 }}>
               <div>
                 <label className="form-label">Client</label>
-                <select className="form-input form-select" value={clientId} onChange={(e) => {
-                  setClientId(e.target.value);
-                }}>
+                <select
+                  className="form-input form-select"
+                  value={clientId}
+                  onChange={(e) => {
+                    setClientId(e.target.value);
+                  }}
+                >
                   <option value="">No client</option>
-                  {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  {clients.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
                 <label className="form-label">Plan Title</label>
-                <input className="form-input" value={title} onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. Acme Co — Go-to-Market Plan 2026" />
+                <input
+                  className="form-input"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="e.g. Acme Co — Go-to-Market Plan 2026"
+                />
               </div>
             </div>
 
@@ -644,7 +857,8 @@ export default function NewGrandPlanPage() {
                   placeholder="e.g. Acme Co (cold prospect)"
                 />
                 <span className="form-hint">
-                  Used for the share-page heading and pipeline. Convert to a full client later when they sign.
+                  Used for the share-page heading and pipeline. Convert to a full client later when
+                  they sign.
                 </span>
               </div>
             )}
@@ -652,18 +866,31 @@ export default function NewGrandPlanPage() {
             {/* Website + Budget row */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 160px", gap: 16 }}>
               <div>
-                <label className="form-label" style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <label
+                  className="form-label"
+                  style={{ display: "flex", alignItems: "center", gap: 4 }}
+                >
                   <Globe style={{ width: 13, height: 13 }} />
                   Website
                 </label>
-                <input className="form-input" value={website} onChange={(e) => setWebsite(e.target.value)}
-                  placeholder="https://example.com" />
-                <span className="form-hint">Used for keyword research, content strategy, brand extraction, and landing page</span>
+                <input
+                  className="form-input"
+                  value={website}
+                  onChange={(e) => setWebsite(e.target.value)}
+                  placeholder="https://example.com"
+                />
+                <span className="form-hint">
+                  Used for keyword research, content strategy, brand extraction, and landing page
+                </span>
               </div>
               <div>
                 <label className="form-label">Monthly Budget</label>
-                <input className="form-input" value={monthlyBudget} onChange={(e) => setMonthlyBudget(e.target.value)}
-                  placeholder="£5,000" />
+                <input
+                  className="form-input"
+                  value={monthlyBudget}
+                  onChange={(e) => setMonthlyBudget(e.target.value)}
+                  placeholder="£5,000"
+                />
               </div>
             </div>
 
@@ -671,23 +898,36 @@ export default function NewGrandPlanPage() {
             <div>
               <label className="form-label">Plan duration</label>
               <div style={{ display: "flex", gap: 6 }}>
-                {([
-                  { id: "annual", label: "Annual" },
-                  { id: "sprint90", label: "90-Day Sprint" },
-                ] as const).map((m) => (
-                  <button key={m.id} type="button" onClick={() => setPlanMode(m.id)} style={{
-                    flex: 1, padding: "9px 0", borderRadius: "var(--r-sm)", fontSize: 13, fontWeight: 600,
-                    border: `1.5px solid ${planMode === m.id ? "var(--accent)" : "var(--border)"}`,
-                    background: planMode === m.id ? "var(--gradient-accent)" : "transparent",
-                    color: planMode === m.id ? "white" : "var(--text-3)", cursor: "pointer",
-                    transition: "all 0.2s",
-                  }}>
+                {(
+                  [
+                    { id: "annual", label: "Annual" },
+                    { id: "sprint90", label: "90-Day Sprint" },
+                  ] as const
+                ).map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => setPlanMode(m.id)}
+                    style={{
+                      flex: 1,
+                      padding: "9px 0",
+                      borderRadius: "var(--r-sm)",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      border: `1.5px solid ${planMode === m.id ? "var(--accent)" : "var(--border)"}`,
+                      background: planMode === m.id ? "var(--gradient-accent)" : "transparent",
+                      color: planMode === m.id ? "white" : "var(--text-3)",
+                      cursor: "pointer",
+                      transition: "all 0.2s",
+                    }}
+                  >
                     {m.label}
                   </button>
                 ))}
               </div>
               <span className="form-hint">
-                Annual = 12-month strategy. 90-Day Sprint = focused 12-week plan you can re-run quarterly.
+                Annual = 12-month strategy. 90-Day Sprint = focused 12-week plan you can re-run
+                quarterly.
               </span>
             </div>
 
@@ -701,7 +941,9 @@ export default function NewGrandPlanPage() {
                   onChange={(e) => setPreviousPlanId(e.target.value)}
                   disabled={loadingPriorSprints}
                 >
-                  <option value="">{loadingPriorSprints ? "Loading…" : "(none — fresh sprint)"}</option>
+                  <option value="">
+                    {loadingPriorSprints ? "Loading…" : "(none — fresh sprint)"}
+                  </option>
                   {priorSprints.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.title} — {new Date(p.createdAt).toLocaleDateString("en-GB")}
@@ -709,25 +951,42 @@ export default function NewGrandPlanPage() {
                   ))}
                 </select>
                 <span className="form-hint">
-                  When set, the new sprint reads the prior plan and won&apos;t propose the same quick wins, pillars, page optimisations or blog topics again. Brief, audiences and competitors are pre-filled but stay editable.
+                  When set, the new sprint reads the prior plan and won&apos;t propose the same
+                  quick wins, pillars, page optimisations or blog topics again. Brief, audiences and
+                  competitors are pre-filled but stay editable.
                 </span>
               </div>
             )}
 
             {/* Purpose + Sector row — Purpose hidden in sprint mode (sprint IS the purpose). */}
-            <div style={{ display: "grid", gridTemplateColumns: planMode === "sprint90" ? "1fr" : "1fr 1fr", gap: 16 }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: planMode === "sprint90" ? "1fr" : "1fr 1fr",
+                gap: 16,
+              }}
+            >
               {planMode !== "sprint90" && (
                 <div>
                   <label className="form-label">Purpose</label>
                   <div style={{ display: "flex", gap: 6 }}>
                     {(["pitch", "onboarding", "strategy_refresh"] as const).map((p) => (
-                      <button key={p} onClick={() => setPurpose(p)} style={{
-                        flex: 1, padding: "9px 0", borderRadius: "var(--r-sm)", fontSize: 13, fontWeight: 600,
-                        border: `1.5px solid ${purpose === p ? "var(--accent)" : "var(--border)"}`,
-                        background: purpose === p ? "var(--gradient-accent)" : "transparent",
-                        color: purpose === p ? "white" : "var(--text-3)", cursor: "pointer",
-                        transition: "all 0.2s",
-                      }}>
+                      <button
+                        key={p}
+                        onClick={() => setPurpose(p)}
+                        style={{
+                          flex: 1,
+                          padding: "9px 0",
+                          borderRadius: "var(--r-sm)",
+                          fontSize: 13,
+                          fontWeight: 600,
+                          border: `1.5px solid ${purpose === p ? "var(--accent)" : "var(--border)"}`,
+                          background: purpose === p ? "var(--gradient-accent)" : "transparent",
+                          color: purpose === p ? "white" : "var(--text-3)",
+                          cursor: "pointer",
+                          transition: "all 0.2s",
+                        }}
+                      >
                         {p === "pitch" ? "Pitch" : p === "onboarding" ? "Onboarding" : "Refresh"}
                       </button>
                     ))}
@@ -736,9 +995,17 @@ export default function NewGrandPlanPage() {
               )}
               <div>
                 <label className="form-label">Sector</label>
-                <select className="form-input form-select" value={sector} onChange={(e) => setSector(e.target.value)}>
+                <select
+                  className="form-input form-select"
+                  value={sector}
+                  onChange={(e) => setSector(e.target.value)}
+                >
                   <option value="">Select...</option>
-                  {SECTORS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+                  {SECTORS.map((s) => (
+                    <option key={s.value} value={s.value}>
+                      {s.label}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -757,25 +1024,41 @@ export default function NewGrandPlanPage() {
             {/* Manual page URLs to optimise — drives SEO Quick Wins + Page Optimisations
                 with per-page SEMrush keyword data and AI commercial-intent recommendations. */}
             <div>
-              <label className="form-label">
-                Pages to optimise (one URL per line)
-              </label>
+              <label className="form-label">Pages to optimise (one URL per line)</label>
               <textarea
                 className="form-input form-textarea"
                 value={manualPageUrlsText}
                 onChange={(e) => setManualPageUrlsText(e.target.value)}
-                placeholder={"https://www.example.com/services/example-service/\nhttps://www.example.com/locations/london/"}
-                style={{ minHeight: 90, fontFamily: "var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace)", fontSize: 12.5 }}
+                placeholder={
+                  "https://www.example.com/services/example-service/\nhttps://www.example.com/locations/london/"
+                }
+                style={{
+                  minHeight: 90,
+                  fontFamily: "var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace)",
+                  fontSize: 12.5,
+                }}
               />
               <div style={{ fontSize: 11.5, color: "var(--mid)", marginTop: 4, lineHeight: 1.45 }}>
-                We&apos;ll scrape each page (title, H1, meta, body), pull the SEMrush keywords each one currently ranks for, and bias the SEO Quick Wins and Page Optimisations toward commercial / transactional intent — primary, secondary, long-tail. Up to 10 URLs.
+                We&apos;ll scrape each page (title, H1, meta, body), pull the SEMrush keywords each
+                one currently ranks for, and bias the SEO Quick Wins and Page Optimisations toward
+                commercial / transactional intent — primary, secondary, long-tail. Up to 10 URLs.
               </div>
             </div>
 
             {/* Target Audiences — chips with optional Suggest from brief */}
             <div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                <label className="form-label" style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 0 }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: 6,
+                }}
+              >
+                <label
+                  className="form-label"
+                  style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 0 }}
+                >
                   <Users style={{ width: 13, height: 13 }} />
                   Target Audiences
                 </label>
@@ -784,31 +1067,67 @@ export default function NewGrandPlanPage() {
                   className="btn btn-secondary btn-sm"
                   disabled={brief.trim().length < 20 || suggestingAudiences}
                   onClick={handleSuggestAudiences}
-                  title={brief.trim().length < 20 ? "Write a brief first (20+ characters)" : "Auto-populate audiences from the brief"}
+                  title={
+                    brief.trim().length < 20
+                      ? "Write a brief first (20+ characters)"
+                      : "Auto-populate audiences from the brief"
+                  }
                 >
-                  {suggestingAudiences
-                    ? <Loader2 style={{ width: 12, height: 12, animation: "spin 1s linear infinite" }} />
-                    : <Sparkles style={{ width: 12, height: 12 }} />}
+                  {suggestingAudiences ? (
+                    <Loader2
+                      style={{ width: 12, height: 12, animation: "spin 1s linear infinite" }}
+                    />
+                  ) : (
+                    <Sparkles style={{ width: 12, height: 12 }} />
+                  )}
                   {suggestingAudiences ? "Suggesting…" : "Suggest from brief"}
                 </button>
               </div>
               {audiences.length > 0 && (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
                   {audiences.map((a) => (
-                    <span key={a.name} style={{
-                      display: "inline-flex", alignItems: "flex-start", gap: 6,
-                      padding: "6px 10px", borderRadius: 8,
-                      background: "var(--accent-bg)", border: "1px solid var(--accent)",
-                      color: "var(--text)", fontSize: 12, lineHeight: 1.35, maxWidth: 320,
-                    }}>
+                    <span
+                      key={a.name}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "flex-start",
+                        gap: 6,
+                        padding: "6px 10px",
+                        borderRadius: 8,
+                        background: "var(--accent-bg)",
+                        border: "1px solid var(--accent)",
+                        color: "var(--text)",
+                        fontSize: 12,
+                        lineHeight: 1.35,
+                        maxWidth: 320,
+                      }}
+                    >
                       <span style={{ flex: 1 }}>
                         <strong>{a.name}</strong>
-                        {a.description && <span style={{ display: "block", color: "var(--text-3)", fontSize: 11, marginTop: 2 }}>{a.description}</span>}
+                        {a.description && (
+                          <span
+                            style={{
+                              display: "block",
+                              color: "var(--text-3)",
+                              fontSize: 11,
+                              marginTop: 2,
+                            }}
+                          >
+                            {a.description}
+                          </span>
+                        )}
                       </span>
                       <button
                         type="button"
                         onClick={() => removeAudience(a.name)}
-                        style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-3)", padding: 0, marginTop: 1 }}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
+                          color: "var(--text-3)",
+                          padding: 0,
+                          marginTop: 1,
+                        }}
                         aria-label={`Remove ${a.name}`}
                       >
                         <X style={{ width: 12, height: 12 }} />
@@ -823,20 +1142,43 @@ export default function NewGrandPlanPage() {
                   style={{ flex: 1, padding: "8px 12px", fontSize: 13 }}
                   value={audienceInput}
                   onChange={(e) => setAudienceInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddManualAudience(); } }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddManualAudience();
+                    }
+                  }}
                   placeholder="Add an audience name and press Enter"
                 />
-                <button type="button" className="btn btn-secondary btn-sm" onClick={handleAddManualAudience} disabled={!audienceInput.trim()}>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={handleAddManualAudience}
+                  disabled={!audienceInput.trim()}
+                >
                   <Plus style={{ width: 12, height: 12 }} /> Add
                 </button>
               </div>
-              <span className="form-hint">Use Suggest to auto-populate from the brief, or add manually. Empty list = AI infers them.</span>
+              <span className="form-hint">
+                Use Suggest to auto-populate from the brief, or add manually. Empty list = AI infers
+                them.
+              </span>
             </div>
 
             {/* Competitors — chips with auto-detect (SEMrush) + manual add */}
             <div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                <label className="form-label" style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 0 }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: 6,
+                }}
+              >
+                <label
+                  className="form-label"
+                  style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 0 }}
+                >
                   <Building2 style={{ width: 13, height: 13 }} />
                   Competitors
                 </label>
@@ -845,45 +1187,99 @@ export default function NewGrandPlanPage() {
                   className="btn btn-secondary btn-sm"
                   disabled={(!domain && !clientId) || detectingCompetitors}
                   onClick={handleDetectCompetitors}
-                  title={!domain && !clientId ? "Set a website or pick a client first" : "Auto-detect competitors via SEMrush"}
+                  title={
+                    !domain && !clientId
+                      ? "Set a website or pick a client first"
+                      : "Auto-detect competitors via SEMrush"
+                  }
                 >
-                  {detectingCompetitors
-                    ? <Loader2 style={{ width: 12, height: 12, animation: "spin 1s linear infinite" }} />
-                    : <SearchIcon style={{ width: 12, height: 12 }} />}
+                  {detectingCompetitors ? (
+                    <Loader2
+                      style={{ width: 12, height: 12, animation: "spin 1s linear infinite" }}
+                    />
+                  ) : (
+                    <SearchIcon style={{ width: 12, height: 12 }} />
+                  )}
                   {detectingCompetitors ? "Detecting…" : "Auto-detect"}
                 </button>
               </div>
+              {competitorError && (
+                <div
+                  style={{
+                    marginBottom: 8,
+                    padding: "6px 10px",
+                    borderRadius: 8,
+                    background: "#fef3c7",
+                    border: "1px solid #f59e0b",
+                    color: "#92400e",
+                    fontSize: 12,
+                  }}
+                >
+                  {competitorError}
+                </div>
+              )}
               {competitors.length > 0 && (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
                   {competitors.map((c) => {
                     const tone =
-                      c.status === "valid" ? { bg: "#d1fae5", fg: "#065f46", border: "#059669" } :
-                      c.status === "no-overlap" ? { bg: "#fef3c7", fg: "#92400e", border: "#f59e0b" } :
-                      c.status === "checking" ? { bg: "var(--accent-bg)", fg: "var(--accent)", border: "var(--accent)" } :
-                      { bg: "#fee2e2", fg: "#991b1b", border: "#dc2626" };
+                      c.status === "valid"
+                        ? { bg: "#d1fae5", fg: "#065f46", border: "#059669" }
+                        : c.status === "no-overlap"
+                          ? { bg: "#fef3c7", fg: "#92400e", border: "#f59e0b" }
+                          : c.status === "checking"
+                            ? {
+                                bg: "var(--accent-bg)",
+                                fg: "var(--accent)",
+                                border: "var(--accent)",
+                              }
+                            : { bg: "#fee2e2", fg: "#991b1b", border: "#dc2626" };
                     return (
-                      <span key={c.domain} style={{
-                        display: "inline-flex", alignItems: "center", gap: 8,
-                        padding: "6px 10px", borderRadius: 8,
-                        background: tone.bg, border: `1px solid ${tone.border}`,
-                        color: tone.fg, fontSize: 12,
-                      }}>
+                      <span
+                        key={c.domain}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 8,
+                          padding: "6px 10px",
+                          borderRadius: 8,
+                          background: tone.bg,
+                          border: `1px solid ${tone.border}`,
+                          color: tone.fg,
+                          fontSize: 12,
+                        }}
+                      >
                         <strong>{c.domain}</strong>
-                        {c.status === "checking" && <Loader2 style={{ width: 11, height: 11, animation: "spin 1s linear infinite" }} />}
+                        {c.status === "checking" && (
+                          <Loader2
+                            style={{ width: 11, height: 11, animation: "spin 1s linear infinite" }}
+                          />
+                        )}
                         {typeof c.commonKeywords === "number" && c.commonKeywords > 0 && (
-                          <span style={{ fontSize: 11, opacity: 0.85 }}>{c.commonKeywords} common KWs</span>
+                          <span style={{ fontSize: 11, opacity: 0.85 }}>
+                            {c.commonKeywords} common KWs
+                          </span>
                         )}
                         {c.status === "no-overlap" && (
                           <span style={{ fontSize: 11 }}>
                             {c.pageContext ? "scraped — no SEMrush overlap" : "no SEMrush overlap"}
                           </span>
                         )}
-                        {c.status === "invalid" && <span style={{ fontSize: 11 }}>{c.message ?? "invalid"}</span>}
-                        <span style={{ fontSize: 10, opacity: 0.7, textTransform: "uppercase" }}>{c.source}</span>
+                        {c.status === "invalid" && (
+                          <span style={{ fontSize: 11 }}>{c.message ?? "invalid"}</span>
+                        )}
+                        <span style={{ fontSize: 10, opacity: 0.7, textTransform: "uppercase" }}>
+                          {c.source}
+                        </span>
                         <button
                           type="button"
                           onClick={() => removeCompetitor(c.domain)}
-                          style={{ background: "none", border: "none", cursor: "pointer", color: tone.fg, padding: 0 }}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            cursor: "pointer",
+                            color: tone.fg,
+                            padding: 0,
+                          }}
                           aria-label={`Remove ${c.domain}`}
                         >
                           <X style={{ width: 11, height: 11 }} />
@@ -899,31 +1295,54 @@ export default function NewGrandPlanPage() {
                   style={{ flex: 1, padding: "8px 12px", fontSize: 13 }}
                   value={competitorInput}
                   onChange={(e) => setCompetitorInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddManualCompetitor(); } }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddManualCompetitor();
+                    }
+                  }}
                   placeholder="competitor.com"
                   disabled={validatingCompetitor}
                 />
-                <button type="button" className="btn btn-secondary btn-sm" onClick={handleAddManualCompetitor} disabled={!competitorInput.trim() || validatingCompetitor}>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={handleAddManualCompetitor}
+                  disabled={!competitorInput.trim() || validatingCompetitor}
+                >
                   <Plus style={{ width: 12, height: 12 }} /> Add
                 </button>
               </div>
-              <span className="form-hint">Auto-detect uses SEMrush keyword overlap. Manual entries are scraped for headlines/CTAs when SEMrush has no data.</span>
+              <span className="form-hint">
+                Auto-detect uses SEMrush keyword overlap. Manual entries are scraped for
+                headlines/CTAs when SEMrush has no data.
+              </span>
             </div>
 
             {/* Team capacity — derives the AI's output quantities */}
             {(() => {
               const monthsInWindow = planMode === "annual" ? 12 : 3;
               const windowLabel = planMode === "annual" ? "12 months" : "90 days";
-              const allocatedSum = Object.values(outputCapacity).reduce((s, v) => s + v.allocatedHours, 0);
+              const allocatedSum = Object.values(outputCapacity).reduce(
+                (s, v) => s + v.allocatedHours,
+                0,
+              );
               const remaining = totalCapacityHours - allocatedSum;
               const overBudget = remaining < 0;
-              const counts: Record<OutputKey, number> = OUTPUT_DEFS.reduce((acc, def) => {
-                const row = outputCapacity[def.key];
-                acc[def.key] = row.hoursPerItem > 0 ? Math.floor(row.allocatedHours / row.hoursPerItem) : 0;
-                return acc;
-              }, {} as Record<OutputKey, number>);
+              const counts: Record<OutputKey, number> = OUTPUT_DEFS.reduce(
+                (acc, def) => {
+                  const row = outputCapacity[def.key];
+                  acc[def.key] =
+                    row.hoursPerItem > 0 ? Math.floor(row.allocatedHours / row.hoursPerItem) : 0;
+                  return acc;
+                },
+                {} as Record<OutputKey, number>,
+              );
 
-              function updateRow(key: OutputKey, patch: Partial<{ hoursPerItem: number; allocatedHours: number }>) {
+              function updateRow(
+                key: OutputKey,
+                patch: Partial<{ hoursPerItem: number; allocatedHours: number }>,
+              ) {
                 setOutputCapacity((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } }));
               }
 
@@ -951,12 +1370,28 @@ export default function NewGrandPlanPage() {
               return (
                 <div>
                   <label className="form-label">Team capacity</label>
-                  <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 10, marginTop: -4 }}>
-                    Allocate the hours you have available across {windowLabel}. The form derives how many of each output the AI will produce.
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: "var(--text-3)",
+                      marginBottom: 10,
+                      marginTop: -4,
+                    }}
+                  >
+                    Allocate the hours you have available across {windowLabel}. The form derives how
+                    many of each output the AI will produce.
                   </div>
 
                   {/* Total + summary row */}
-                  <div style={{ display: "grid", gridTemplateColumns: "200px 1fr", gap: 12, alignItems: "center", marginBottom: 12 }}>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "200px 1fr",
+                      gap: 12,
+                      alignItems: "center",
+                      marginBottom: 12,
+                    }}
+                  >
                     <div>
                       <input
                         className="form-input"
@@ -964,31 +1399,49 @@ export default function NewGrandPlanPage() {
                         min={0}
                         step={1}
                         value={totalCapacityHours}
-                        onChange={(e) => setTotalCapacityHours(Math.max(0, Number(e.target.value) || 0))}
+                        onChange={(e) =>
+                          setTotalCapacityHours(Math.max(0, Number(e.target.value) || 0))
+                        }
                       />
                       <span className="form-hint">Total hours over {windowLabel}</span>
                     </div>
-                    <div style={{
-                      fontSize: 13, fontWeight: 600,
-                      color: overBudget ? "var(--danger)" : "var(--text-2)",
-                    }}>
-                      {allocatedSum}h allocated · {remaining}h {overBudget ? "over budget" : "remaining"}
+                    <div
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: overBudget ? "var(--danger)" : "var(--text-2)",
+                      }}
+                    >
+                      {allocatedSum}h allocated · {remaining}h{" "}
+                      {overBudget ? "over budget" : "remaining"}
                     </div>
                   </div>
 
                   {/* Per-output rows */}
-                  <div style={{
-                    border: "1px solid var(--border)", borderRadius: "var(--r-sm)",
-                    padding: "8px 12px", display: "flex", flexDirection: "column", gap: 8,
-                  }}>
-                    <div style={{
-                      display: "grid",
-                      gridTemplateColumns: "1.4fr 1fr 1fr 1fr",
-                      gap: 10, fontSize: 11, fontWeight: 700,
-                      textTransform: "uppercase", letterSpacing: "0.5px",
-                      color: "var(--text-3)", paddingBottom: 6,
-                      borderBottom: "1px solid var(--border)",
-                    }}>
+                  <div
+                    style={{
+                      border: "1px solid var(--border)",
+                      borderRadius: "var(--r-sm)",
+                      padding: "8px 12px",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 8,
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1.4fr 1fr 1fr 1fr",
+                        gap: 10,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.5px",
+                        color: "var(--text-3)",
+                        paddingBottom: 6,
+                        borderBottom: "1px solid var(--border)",
+                      }}
+                    >
                       <div>Output</div>
                       <div>Hours / item</div>
                       <div>Hours allocated</div>
@@ -998,12 +1451,20 @@ export default function NewGrandPlanPage() {
                       const row = outputCapacity[def.key];
                       const count = counts[def.key];
                       return (
-                        <div key={def.key} style={{
-                          display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1fr",
-                          gap: 10, alignItems: "center", padding: "4px 0",
-                        }}>
+                        <div
+                          key={def.key}
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "1.4fr 1fr 1fr 1fr",
+                            gap: 10,
+                            alignItems: "center",
+                            padding: "4px 0",
+                          }}
+                        >
                           <div>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{def.label}</div>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>
+                              {def.label}
+                            </div>
                             <div style={{ fontSize: 11, color: "var(--text-3)" }}>{def.hint}</div>
                           </div>
                           <input
@@ -1012,7 +1473,11 @@ export default function NewGrandPlanPage() {
                             min={0}
                             step={0.25}
                             value={row.hoursPerItem}
-                            onChange={(e) => updateRow(def.key, { hoursPerItem: Math.max(0, Number(e.target.value) || 0) })}
+                            onChange={(e) =>
+                              updateRow(def.key, {
+                                hoursPerItem: Math.max(0, Number(e.target.value) || 0),
+                              })
+                            }
                             style={{ padding: "6px 10px", fontSize: 13 }}
                           />
                           <input
@@ -1021,21 +1486,36 @@ export default function NewGrandPlanPage() {
                             min={0}
                             step={0.25}
                             value={row.allocatedHours}
-                            onChange={(e) => updateRow(def.key, { allocatedHours: Math.max(0, Number(e.target.value) || 0) })}
+                            onChange={(e) =>
+                              updateRow(def.key, {
+                                allocatedHours: Math.max(0, Number(e.target.value) || 0),
+                              })
+                            }
                             style={{ padding: "6px 10px", fontSize: 13 }}
                           />
-                          <div style={{
-                            fontSize: 13, fontWeight: 600, color: "var(--accent)",
-                            background: "var(--accent-soft, rgba(99,102,241,0.1))",
-                            padding: "6px 10px", borderRadius: "var(--r-sm)",
-                            textAlign: "center",
-                          }}>
+                          <div
+                            style={{
+                              fontSize: 13,
+                              fontWeight: 600,
+                              color: "var(--accent)",
+                              background: "var(--accent-soft, rgba(99,102,241,0.1))",
+                              padding: "6px 10px",
+                              borderRadius: "var(--r-sm)",
+                              textAlign: "center",
+                            }}
+                          >
                             {count} {count === 1 ? "item" : "items"}
                             {def.key === "socialPosts" && monthsInWindow > 0 && count > 0 && (
-                              <span style={{ fontWeight: 400, opacity: 0.8 }}> · ~{Math.round(count / monthsInWindow)}/mo</span>
+                              <span style={{ fontWeight: 400, opacity: 0.8 }}>
+                                {" "}
+                                · ~{Math.round(count / monthsInWindow)}/mo
+                              </span>
                             )}
                             {def.key === "blogPosts" && monthsInWindow > 0 && count > 0 && (
-                              <span style={{ fontWeight: 400, opacity: 0.8 }}> · ~{Math.round(count / monthsInWindow)}/mo</span>
+                              <span style={{ fontWeight: 400, opacity: 0.8 }}>
+                                {" "}
+                                · ~{Math.round(count / monthsInWindow)}/mo
+                              </span>
                             )}
                           </div>
                         </div>
@@ -1044,7 +1524,11 @@ export default function NewGrandPlanPage() {
                   </div>
 
                   <div style={{ display: "flex", gap: 10, marginTop: 8, fontSize: 12 }}>
-                    <button type="button" className="btn btn-secondary btn-sm" onClick={autoAllocateEvenly}>
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      onClick={autoAllocateEvenly}
+                    >
                       Auto-allocate evenly
                     </button>
                     <button type="button" className="btn btn-ghost btn-sm" onClick={resetDefaults}>
@@ -1052,12 +1536,14 @@ export default function NewGrandPlanPage() {
                     </button>
                     {overBudget && (
                       <span style={{ color: "var(--danger)", alignSelf: "center" }}>
-                        Over budget by {Math.abs(remaining)}h — submit allowed but worth a sanity check.
+                        Over budget by {Math.abs(remaining)}h — submit allowed but worth a sanity
+                        check.
                       </span>
                     )}
                   </div>
                   <span className="form-hint" style={{ marginTop: 6, display: "block" }}>
-                    Pillar pages are intentionally excluded — landing pages cover dedicated campaign topics, and pillar setup is included in the landing-page hours.
+                    Pillar pages are intentionally excluded — landing pages cover dedicated campaign
+                    topics, and pillar setup is included in the landing-page hours.
                   </span>
                 </div>
               );
@@ -1066,13 +1552,23 @@ export default function NewGrandPlanPage() {
             {/* Platforms */}
             <div>
               <label className="form-label">Platforms</label>
-              <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 10, marginTop: -4 }}>
-                Choose which channels the plan should focus on. Sections for unselected platforms are skipped.
+              <div
+                style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 10, marginTop: -4 }}
+              >
+                Choose which channels the plan should focus on. Sections for unselected platforms
+                are skipped.
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 8 }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+                  gap: 8,
+                }}
+              >
                 {PLATFORMS.map((p) => {
                   const checked = platforms.includes(p.id);
-                  const isPaid = p.id === "googleAds" || p.id === "metaAds" || p.id === "linkedInAds";
+                  const isPaid =
+                    p.id === "googleAds" || p.id === "metaAds" || p.id === "linkedInAds";
                   return (
                     <div key={p.id} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                       <button
@@ -1109,8 +1605,12 @@ export default function NewGrandPlanPage() {
                           {checked && <Check style={{ width: 11, height: 11, color: "white" }} />}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{p.label}</div>
-                          <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{p.description}</div>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>
+                            {p.label}
+                          </div>
+                          <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>
+                            {p.description}
+                          </div>
                         </div>
                       </button>
                       {isPaid && checked && (
@@ -1119,7 +1619,9 @@ export default function NewGrandPlanPage() {
                             className="form-input"
                             style={{ fontSize: 12, padding: "6px 10px" }}
                             value={channelBudgets[p.id] ?? ""}
-                            onChange={(e) => setChannelBudgets((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                            onChange={(e) =>
+                              setChannelBudgets((prev) => ({ ...prev, [p.id]: e.target.value }))
+                            }
                             placeholder="Monthly budget e.g. £500"
                           />
                           <span className="form-hint" style={{ fontSize: 11 }}>
@@ -1139,11 +1641,28 @@ export default function NewGrandPlanPage() {
       {/* ═══════ WHAT GETS GENERATED ═══════ */}
       <div className="card" style={{ marginBottom: 24 }}>
         <div className="card-body" style={{ padding: "20px 24px" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-3)" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: 10,
+            }}
+          >
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "0.5px",
+                color: "var(--text-3)",
+              }}
+            >
               What gets generated
             </div>
-            <span style={{ fontSize: 11, color: "var(--text-3)" }}>Click to toggle sections on or off</span>
+            <span style={{ fontSize: 11, color: "var(--text-3)" }}>
+              Click to toggle sections on or off
+            </span>
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {/* Always-on sections — individually toggleable */}
@@ -1171,20 +1690,24 @@ export default function NewGrandPlanPage() {
                   }}
                   title={on ? `Disable ${s.label}` : `Enable ${s.label}`}
                 >
-                  {on
-                    ? <Sparkles style={{ width: 10, height: 10 }} />
-                    : <X style={{ width: 10, height: 10 }} />}
+                  {on ? (
+                    <Sparkles style={{ width: 10, height: 10 }} />
+                  ) : (
+                    <X style={{ width: 10, height: 10 }} />
+                  )}
                   <span dangerouslySetInnerHTML={{ __html: s.label }} />
                 </button>
               );
             })}
             {/* Platform sections — reflect the platform toggles above, not individually toggleable here */}
-            {([
-              { label: "Google Ads",     on: platforms.includes("googleAds") },
-              { label: "Meta Campaigns", on: platforms.includes("metaAds") },
-              { label: "LinkedIn Ads",   on: platforms.includes("linkedInAds") },
-              { label: "Email Marketing",on: platforms.includes("emailMarketing") },
-            ] as { label: string; on: boolean }[]).map((item) => (
+            {(
+              [
+                { label: "Google Ads", on: platforms.includes("googleAds") },
+                { label: "Meta Campaigns", on: platforms.includes("metaAds") },
+                { label: "LinkedIn Ads", on: platforms.includes("linkedInAds") },
+                { label: "Email Marketing", on: platforms.includes("emailMarketing") },
+              ] as { label: string; on: boolean }[]
+            ).map((item) => (
               <span
                 key={item.label}
                 style={{
@@ -1202,16 +1725,19 @@ export default function NewGrandPlanPage() {
                 }}
                 title="Toggle this in the Platforms section above"
               >
-                {item.on
-                  ? <Sparkles style={{ width: 10, height: 10 }} />
-                  : <X style={{ width: 10, height: 10 }} />}
+                {item.on ? (
+                  <Sparkles style={{ width: 10, height: 10 }} />
+                ) : (
+                  <X style={{ width: 10, height: 10 }} />
+                )}
                 {item.label}
               </span>
             ))}
           </div>
           <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 10 }}>
-            Platform sections (Google Ads, Meta, etc.) are toggled in the <strong>Platforms</strong> panel above.
-            Pressing <strong>Create &amp; Generate</strong> starts the pipeline immediately.
+            Platform sections (Google Ads, Meta, etc.) are toggled in the <strong>Platforms</strong>{" "}
+            panel above. Pressing <strong>Create &amp; Generate</strong> starts the pipeline
+            immediately.
           </div>
         </div>
       </div>
@@ -1221,15 +1747,12 @@ export default function NewGrandPlanPage() {
         <button className="btn btn-ghost" onClick={() => router.push("/tools/grand-plan")}>
           Cancel
         </button>
-        <button
-          className="btn btn-primary"
-          disabled={!title || creating}
-          onClick={handleCreate}
-        >
-          {creating
-            ? <Loader2 style={{ width: 15, height: 15, animation: "spin 1s linear infinite" }} />
-            : <ChevronRight style={{ width: 15, height: 15 }} />
-          }
+        <button className="btn btn-primary" disabled={!title || creating} onClick={handleCreate}>
+          {creating ? (
+            <Loader2 style={{ width: 15, height: 15, animation: "spin 1s linear infinite" }} />
+          ) : (
+            <ChevronRight style={{ width: 15, height: 15 }} />
+          )}
           Create &amp; Generate
         </button>
       </div>

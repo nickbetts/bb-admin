@@ -63,13 +63,14 @@ function parseSemrushNumber(value: string | undefined): number {
   if (!Number.isFinite(base)) return 0;
 
   const suffix = (match[2] || "").toUpperCase();
-  const multiplier = suffix === "K" ? 1_000 : suffix === "M" ? 1_000_000 : suffix === "B" ? 1_000_000_000 : 1;
+  const multiplier =
+    suffix === "K" ? 1_000 : suffix === "M" ? 1_000_000 : suffix === "B" ? 1_000_000_000 : 1;
   return base * multiplier;
 }
 
 export async function getDomainOverview(
   domain: string,
-  database: string = "uk"
+  database: string = "uk",
 ): Promise<SemrushDomainOverview> {
   const apiKey = getApiKey();
   const params = new URLSearchParams({
@@ -85,8 +86,12 @@ export async function getDomainOverview(
 
   if (lines.length < 2 || lines[0]?.startsWith("ERROR")) {
     return {
-      organicTraffic: 0, organicKeywords: 0, organicCost: 0,
-      paidTraffic: 0, paidKeywords: 0, paidCost: 0,
+      organicTraffic: 0,
+      organicKeywords: 0,
+      organicCost: 0,
+      paidTraffic: 0,
+      paidKeywords: 0,
+      paidCost: 0,
     };
   }
 
@@ -104,7 +109,7 @@ export async function getDomainOverview(
 export async function getTopOrganicKeywords(
   domain: string,
   database: string = "uk",
-  limit: number = 10
+  limit: number = 10,
 ): Promise<SemrushKeywordData[]> {
   const apiKey = getApiKey();
   const params = new URLSearchParams({
@@ -181,7 +186,7 @@ export async function getUrlOrganicKeywords(
 export async function getRankMovers(
   domain: string,
   database: string = "uk",
-  limit: number = 200
+  limit: number = 200,
 ): Promise<SemrushKeywordData[]> {
   const apiKey = getApiKey();
   const params = new URLSearchParams({
@@ -199,9 +204,11 @@ export async function getRankMovers(
 
   if (lines.length < 2) return [];
 
-  return lines.slice(1)
+  return lines
+    .slice(1)
     .map((line: string) => {
-      const [keyword, position, previousPosition, searchVolume, cpc, url, trafficPercent] = line.split(";");
+      const [keyword, position, previousPosition, searchVolume, cpc, url, trafficPercent] =
+        line.split(";");
       return {
         keyword: keyword || "",
         position: parseInt(position) || 0,
@@ -212,14 +219,19 @@ export async function getRankMovers(
         trafficPercent: parseFloat(trafficPercent) || 0,
       };
     })
-    .filter((kw: SemrushKeywordData) => kw.previousPosition > 0 && (kw.previousPosition - kw.position) > 0)
-    .sort((a: SemrushKeywordData, b: SemrushKeywordData) => (b.previousPosition - b.position) - (a.previousPosition - a.position))
+    .filter(
+      (kw: SemrushKeywordData) => kw.previousPosition > 0 && kw.previousPosition - kw.position > 0,
+    )
+    .sort(
+      (a: SemrushKeywordData, b: SemrushKeywordData) =>
+        b.previousPosition - b.position - (a.previousPosition - a.position),
+    )
     .slice(0, 20);
 }
 
 export async function getDomainRankHistory(
   domain: string,
-  database: string = "uk"
+  database: string = "uk",
 ): Promise<{ date: string; organicKeywords: number; organicTraffic: number }[]> {
   const apiKey = getApiKey();
   const params = new URLSearchParams({
@@ -251,7 +263,7 @@ export async function getDomainRankHistory(
 
 export async function getKeywordPositionDistribution(
   domain: string,
-  database: string = "uk"
+  database: string = "uk",
 ): Promise<{ range: string; count: number }[]> {
   const keywords = await getTopOrganicKeywords(domain, database, 100);
 
@@ -286,7 +298,7 @@ export interface SemrushCompetitor {
 export async function getCompetitors(
   domain: string,
   database: string = "uk",
-  limit: number = 10
+  limit: number = 10,
 ): Promise<SemrushCompetitor[]> {
   const apiKey = getApiKey();
   const params = new URLSearchParams({
@@ -302,11 +314,24 @@ export async function getCompetitors(
   const response = await axios.get(`${SEMRUSH_BASE_URL}/?${params.toString()}`);
   const lines = (response.data as string).trim().split("\n");
 
+  // SEMrush returns plain-text errors with HTTP 200 (e.g. "ERROR 50 :: NOTHING FOUND").
+  // "NOTHING FOUND" is a legitimate empty result; any other ERROR should surface.
+  if (lines[0]?.startsWith("ERROR")) {
+    if (/NOTHING FOUND/i.test(lines[0])) return [];
+    throw new Error(`SEMrush competitors error: ${lines[0]}`);
+  }
+
   if (lines.length < 2) return [];
 
   return lines.slice(1).map((line: string) => {
-    const [competitorDomain, commonKeywords, organicKeywords, organicTraffic, organicCost, adKeywords] =
-      line.split(";");
+    const [
+      competitorDomain,
+      commonKeywords,
+      organicKeywords,
+      organicTraffic,
+      organicCost,
+      adKeywords,
+    ] = line.split(";");
     return {
       domain: competitorDomain || "",
       commonKeywords: parseSemrushNumber(commonKeywords),
@@ -346,10 +371,7 @@ export async function getSingleCompetitorOverlap(
   }
 }
 
-export async function getBacklinks(
-  domain: string,
-  limit: number = 10
-): Promise<SemrushBacklink[]> {
+export async function getBacklinks(domain: string, limit: number = 10): Promise<SemrushBacklink[]> {
   const apiKey = getApiKey();
   // Build query string manually — URLSearchParams encodes commas as %2C which the
   // SEMrush Analytics v1 API rejects with HTTP 400 for export_columns values.
@@ -373,7 +395,7 @@ export async function getBacklinks(
     if (lines.length < 2) return [];
 
     return lines.slice(1).map((line: string) => {
-      const [sourceUrl, targetUrl, anchorText, authority] = line.split("\t");  // columns: source_url, target_url, anchor, ascore
+      const [sourceUrl, targetUrl, anchorText, authority] = line.split("\t"); // columns: source_url, target_url, anchor, ascore
       return {
         sourceUrl: sourceUrl || "",
         targetUrl: targetUrl || "",
@@ -384,7 +406,7 @@ export async function getBacklinks(
   } catch (err) {
     if (axios.isAxiosError(err) && err.response) {
       throw new Error(
-        `SEMrush backlinks (${err.response.status}): ${typeof err.response.data === "string" ? err.response.data.slice(0, 200) : JSON.stringify(err.response.data)}`
+        `SEMrush backlinks (${err.response.status}): ${typeof err.response.data === "string" ? err.response.data.slice(0, 200) : JSON.stringify(err.response.data)}`,
       );
     }
     throw err;
@@ -430,20 +452,23 @@ export async function getSemrushTrackedKeywords(
 
   try {
     const response = await axios.get<Record<string, unknown>>(
-      `${SEMRUSH_TRACKING_BASE}/${campaignId}/tracking/?${qs}`
+      `${SEMRUSH_TRACKING_BASE}/${campaignId}/tracking/?${qs}`,
     );
 
     const data = response.data as {
       total?: number;
-      data?: Record<string, {
-        Ph?: string;
-        Nq?: string;
-        Fi?: Record<string, number | string>;
-        Be?: Record<string, number | string>;
-        Lu?: Record<string, Record<string, string>>;
-        Tr?: Record<string, Record<string, number | string>>;
-        Sf?: Record<string, string[]>;
-      }>;
+      data?: Record<
+        string,
+        {
+          Ph?: string;
+          Nq?: string;
+          Fi?: Record<string, number | string>;
+          Be?: Record<string, number | string>;
+          Lu?: Record<string, Record<string, string>>;
+          Tr?: Record<string, Record<string, number | string>>;
+          Sf?: Record<string, string[]>;
+        }
+      >;
     };
 
     if (!data?.data || data.total === 0) return [];
@@ -453,13 +478,16 @@ export async function getSemrushTrackedKeywords(
       const fiEntries = kw.Fi ? Object.values(kw.Fi) : [];
       const beEntries = kw.Be ? Object.values(kw.Be) : [];
       const pos = typeof fiEntries[0] === "number" ? fiEntries[0] : parseInt(String(fiEntries[0]));
-      const prevPos = typeof beEntries[0] === "number" ? beEntries[0] : parseInt(String(beEntries[0]));
+      const prevPos =
+        typeof beEntries[0] === "number" ? beEntries[0] : parseInt(String(beEntries[0]));
       // Lu = landing URL per date; use the first date's first domain value
       const luDates = kw.Lu ? Object.values(kw.Lu) : [];
-      const landingUrl = luDates.length > 0 ? Object.values(luDates[0])[0] ?? "" : "";
+      const landingUrl = luDates.length > 0 ? (Object.values(luDates[0])[0] ?? "") : "";
       const estTraffic = (() => {
         if (!kw.Tr) return null;
-        const dates = Object.keys(kw.Tr).filter((k) => /^\d{8}$/.test(k)).sort();
+        const dates = Object.keys(kw.Tr)
+          .filter((k) => /^\d{8}$/.test(k))
+          .sort();
         const lastDate = dates[dates.length - 1];
         if (!lastDate) return null;
         const vals = Object.values(kw.Tr[lastDate] ?? {}).filter((v) => v !== "-");
@@ -469,7 +497,9 @@ export async function getSemrushTrackedKeywords(
       })();
       const serpFeatures = (() => {
         if (!kw.Sf) return [];
-        const dates = Object.keys(kw.Sf).filter((k) => /^\d{8}$/.test(k)).sort();
+        const dates = Object.keys(kw.Sf)
+          .filter((k) => /^\d{8}$/.test(k))
+          .sort();
         const lastDate = dates[dates.length - 1];
         if (!lastDate) return [];
         return Array.isArray(kw.Sf[lastDate]) ? kw.Sf[lastDate] : [];
@@ -488,7 +518,12 @@ export async function getSemrushTrackedKeywords(
   } catch (err) {
     console.error("SEMrush tracked keywords fetch error:", err);
     if (axios.isAxiosError(err) && err.response) {
-      console.error("SEMrush response body:", typeof err.response.data === "string" ? err.response.data.slice(0, 300) : JSON.stringify(err.response.data));
+      console.error(
+        "SEMrush response body:",
+        typeof err.response.data === "string"
+          ? err.response.data.slice(0, 300)
+          : JSON.stringify(err.response.data),
+      );
     }
     return [];
   }
@@ -533,11 +568,13 @@ export async function getSemrushCampaignDateRange(
   ].join("&");
   try {
     const response = await axios.get<Record<string, unknown>>(
-      `${SEMRUSH_TRACKING_BASE}/${campaignId}/tracking/?${qs}`
+      `${SEMRUSH_TRACKING_BASE}/${campaignId}/tracking/?${qs}`,
     );
     const data = response.data as { total?: string; data?: Record<string, { Dt?: string }> };
     if (!data?.data) return { first: null, last: null };
-    const dates = Object.values(data.data).map((d) => d.Dt).filter(Boolean) as string[];
+    const dates = Object.values(data.data)
+      .map((d) => d.Dt)
+      .filter(Boolean) as string[];
     if (dates.length === 0) return { first: null, last: null };
     const sorted = dates.sort();
     return { first: sorted[0] ?? null, last: sorted[sorted.length - 1] ?? null };
@@ -604,10 +641,11 @@ export async function getSemrushTrackedKeywordsWithTags(
     // Example: "april 2025" must be sent as "april%25202025"; "name&co" as "name%2526co".
     const encodedCondition = tags
       .split(/([|&!])/)
-      .map((part) =>
-        part === "|" || part === "&" || part === "!"
-          ? encodeURIComponent(part) // operator: single-encode
-          : encodeURIComponent(encodeURIComponent(part)), // tag value: double-encode
+      .map(
+        (part) =>
+          part === "|" || part === "&" || part === "!"
+            ? encodeURIComponent(part) // operator: single-encode
+            : encodeURIComponent(encodeURIComponent(part)), // tag value: double-encode
       )
       .join("");
     qsParts.push(`display_tags_condition=${encodedCondition}`);
@@ -616,24 +654,27 @@ export async function getSemrushTrackedKeywordsWithTags(
 
   try {
     const response = await axios.get<Record<string, unknown>>(
-      `${SEMRUSH_TRACKING_BASE}/${campaignId}/tracking/?${qs}`
+      `${SEMRUSH_TRACKING_BASE}/${campaignId}/tracking/?${qs}`,
     );
     const data = response.data as {
       total?: number;
-      data?: Record<string, {
-        Ph?: string;
-        Nq?: string;
-        Tg?: Record<string, string>;
-        Fi?: Record<string, number | string>;
-        Be?: Record<string, number | string>;
-        Diff?: Record<string, number | string>;
-        Lu?: Record<string, Record<string, string>>;
-        In?: Record<string, string>;
-        Tr?: Record<string, Record<string, number>>;
-        Sov?: Record<string, Record<string, number>>;
-        Sf?: Record<string, string[] | null>;
-        Lt?: Record<string, Record<string, string[]> | null>;
-      }>;
+      data?: Record<
+        string,
+        {
+          Ph?: string;
+          Nq?: string;
+          Tg?: Record<string, string>;
+          Fi?: Record<string, number | string>;
+          Be?: Record<string, number | string>;
+          Diff?: Record<string, number | string>;
+          Lu?: Record<string, Record<string, string>>;
+          In?: Record<string, string>;
+          Tr?: Record<string, Record<string, number>>;
+          Sov?: Record<string, Record<string, number>>;
+          Sf?: Record<string, string[] | null>;
+          Lt?: Record<string, Record<string, string[]> | null>;
+        }
+      >;
     };
     if (!data?.data || data.total === 0) return [];
 
@@ -657,7 +698,7 @@ export async function getSemrushTrackedKeywordsWithTags(
     return Object.values(data.data).map((kw) => {
       const luDates = kw.Lu ? Object.values(kw.Lu) : [];
       const landingUrl =
-        luDates.length > 0 ? Object.values(luDates[luDates.length - 1] ?? {})[0] ?? "" : "";
+        luDates.length > 0 ? (Object.values(luDates[luDates.length - 1] ?? {})[0] ?? "") : "";
 
       return {
         keyword: kw.Ph ?? "",
@@ -668,32 +709,40 @@ export async function getSemrushTrackedKeywordsWithTags(
         intent: kw.In ? (Object.values(kw.In)[0] ?? null) : null,
         estTraffic: (() => {
           if (!kw.Tr) return null;
-          const dates = Object.keys(kw.Tr).filter(k => /^\d{8}$/.test(k)).sort();
+          const dates = Object.keys(kw.Tr)
+            .filter((k) => /^\d{8}$/.test(k))
+            .sort();
           if (!dates.length) return null;
           const latest = kw.Tr[dates[dates.length - 1]];
           return latest ? (Object.values(latest)[0] ?? null) : null;
         })(),
         shareOfVoice: (() => {
           if (!kw.Sov) return null;
-          const dates = Object.keys(kw.Sov).filter(k => /^\d{8}$/.test(k)).sort();
+          const dates = Object.keys(kw.Sov)
+            .filter((k) => /^\d{8}$/.test(k))
+            .sort();
           if (!dates.length) return null;
           const latest = kw.Sov[dates[dates.length - 1]];
           return latest ? (Object.values(latest)[0] ?? null) : null;
         })(),
         serpFeatures: (() => {
           if (!kw.Sf) return [];
-          const dates = Object.keys(kw.Sf).filter(k => /^\d{8}$/.test(k)).sort();
+          const dates = Object.keys(kw.Sf)
+            .filter((k) => /^\d{8}$/.test(k))
+            .sort();
           if (!dates.length) return [];
           const latest = kw.Sf[dates[dates.length - 1]];
           return Array.isArray(latest) ? latest.filter(Boolean) : [];
         })(),
         ownedFeatures: (() => {
           if (!kw.Lt) return [];
-          const dates = Object.keys(kw.Lt).filter(k => /^\d{8}$/.test(k)).sort();
+          const dates = Object.keys(kw.Lt)
+            .filter((k) => /^\d{8}$/.test(k))
+            .sort();
           if (!dates.length) return [];
           const latest = kw.Lt[dates[dates.length - 1]];
           // Lt is keyed date → urlMask → string[], unlike Sf which is date → string[]
-          if (!latest || typeof latest !== 'object' || Array.isArray(latest)) return [];
+          if (!latest || typeof latest !== "object" || Array.isArray(latest)) return [];
           return [...new Set(Object.values(latest).flat().filter(Boolean))];
         })(),
         url: landingUrl,
@@ -702,7 +751,12 @@ export async function getSemrushTrackedKeywordsWithTags(
   } catch (err) {
     console.error("SEMrush tagged keywords fetch error:", err);
     if (axios.isAxiosError(err) && err.response) {
-      console.error("SEMrush response body:", typeof err.response.data === "string" ? err.response.data.slice(0, 300) : JSON.stringify(err.response.data));
+      console.error(
+        "SEMrush response body:",
+        typeof err.response.data === "string"
+          ? err.response.data.slice(0, 300)
+          : JSON.stringify(err.response.data),
+      );
     }
     return [];
   }
@@ -712,7 +766,10 @@ export async function getSemrushTrackedKeywordsWithTags(
  * Returns all unique tag names used in a Position Tracking campaign
  * by fetching keywords using the campaign's actual first and last crawl dates.
  */
-export async function getSemrushCampaignTags(campaignId: string, domain?: string): Promise<string[]> {
+export async function getSemrushCampaignTags(
+  campaignId: string,
+  domain?: string,
+): Promise<string[]> {
   const { first, last } = await getSemrushCampaignDateRange(campaignId);
   if (!first || !last) return [];
 
@@ -749,12 +806,14 @@ export interface SemrushAIVisibility {
   keywords: SemrushAIKeyword[];
 }
 
-export async function getSemrushAIVisibility(
-  campaignId: string,
-): Promise<SemrushAIVisibility> {
+export async function getSemrushAIVisibility(campaignId: string): Promise<SemrushAIVisibility> {
   const apiKey = getApiKey();
   const empty: SemrushAIVisibility = {
-    totalTracked: 0, aiOverviewKeywords: 0, brandCitations: 0, aiVisibilityScore: 0, keywords: [],
+    totalTracked: 0,
+    aiOverviewKeywords: 0,
+    brandCitations: 0,
+    aiVisibilityScore: 0,
+    keywords: [],
   };
 
   const qs = [
@@ -767,7 +826,7 @@ export async function getSemrushAIVisibility(
   let response: { data: Record<string, unknown> };
   try {
     response = await axios.get<Record<string, unknown>>(
-      `${SEMRUSH_TRACKING_BASE}/${campaignId}/tracking/?${qs}`
+      `${SEMRUSH_TRACKING_BASE}/${campaignId}/tracking/?${qs}`,
     );
   } catch (err) {
     if (axios.isAxiosError(err) && err.response?.status === 400) return empty;
@@ -776,19 +835,23 @@ export async function getSemrushAIVisibility(
 
   const data = response.data as {
     total?: number;
-    data?: Record<string, {
-      Ph?: string;
-      Nq?: string;
-      Fi?: Record<string, number | string>;
-      Sf?: Record<string, string[]>;
-    }>;
+    data?: Record<
+      string,
+      {
+        Ph?: string;
+        Nq?: string;
+        Fi?: Record<string, number | string>;
+        Sf?: Record<string, string[]>;
+      }
+    >;
   };
 
   if (!data?.data || data.total === 0) return empty;
 
   const keywords: SemrushAIKeyword[] = Object.values(data.data).map((kw) => {
     const fiEntries = kw.Fi ? Object.values(kw.Fi) : [];
-    const pos = typeof fiEntries[0] === "number" ? fiEntries[0] : parseInt(String(fiEntries[0] ?? "0"));
+    const pos =
+      typeof fiEntries[0] === "number" ? fiEntries[0] : parseInt(String(fiEntries[0] ?? "0"));
     // Sf is SERP features per date — check the most recent date for "aio" (AI Overview)
     const sfDates = kw.Sf ? Object.values(kw.Sf) : [];
     const latestSf: string[] = sfDates.length > 0 ? (sfDates[sfDates.length - 1] ?? []) : [];
@@ -825,14 +888,24 @@ export interface KeywordVolumeResult {
 }
 
 const MONTH_NAMES = [
-  "JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE",
-  "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER",
+  "JANUARY",
+  "FEBRUARY",
+  "MARCH",
+  "APRIL",
+  "MAY",
+  "JUNE",
+  "JULY",
+  "AUGUST",
+  "SEPTEMBER",
+  "OCTOBER",
+  "NOVEMBER",
+  "DECEMBER",
 ];
 
 export async function getKeywordVolumeMetrics(
   keywords: string[],
   database = "uk",
-  concurrency = 20
+  concurrency = 20,
 ): Promise<KeywordVolumeResult[]> {
   const apiKey = getApiKey();
   const results: KeywordVolumeResult[] = [];
@@ -885,7 +958,7 @@ export async function getKeywordVolumeMetrics(
         } catch {
           return null;
         }
-      })
+      }),
     );
     results.push(...(batchResults.filter(Boolean) as KeywordVolumeResult[]));
   }
@@ -912,7 +985,7 @@ const INTENT_MAP: Record<string, string> = {
 
 export async function getKeywordDifficultyAndIntent(
   keywords: string[],
-  database: string = "uk"
+  database: string = "uk",
 ): Promise<SemrushKeywordDifficulty[]> {
   const apiKey = getApiKey();
   const results: SemrushKeywordDifficulty[] = [];
@@ -950,7 +1023,7 @@ export async function getKeywordDifficultyAndIntent(
         } catch {
           return null;
         }
-      })
+      }),
     );
     results.push(...(batchResults.filter(Boolean) as SemrushKeywordDifficulty[]));
   }
@@ -971,7 +1044,7 @@ export interface SemrushContentGap {
 export async function getContentGap(
   domain: string,
   competitors: string[],
-  database: string = "uk"
+  database: string = "uk",
 ): Promise<SemrushContentGap[]> {
   const apiKey = getApiKey();
 
@@ -1030,7 +1103,7 @@ export interface SemrushSerpFeature {
 
 export async function getSerpFeatures(
   domain: string,
-  database: string = "uk"
+  database: string = "uk",
 ): Promise<SemrushSerpFeature[]> {
   const apiKey = getApiKey();
 
@@ -1052,7 +1125,12 @@ export async function getSerpFeatures(
 
     return lines.slice(1).map((line: string) => {
       const [keyword, position, searchVolume, sfRaw] = line.split(";");
-      const features = sfRaw ? sfRaw.split(",").map((f) => f.trim()).filter(Boolean) : [];
+      const features = sfRaw
+        ? sfRaw
+            .split(",")
+            .map((f) => f.trim())
+            .filter(Boolean)
+        : [];
       return {
         keyword: keyword || "",
         position: parseInt(position) || 0,
@@ -1080,7 +1158,7 @@ export interface SemrushBacklinkChange {
 
 async function fetchBacklinksByType(
   domain: string,
-  changeType: "new" | "lost"
+  changeType: "new" | "lost",
 ): Promise<SemrushBacklinkChange[]> {
   const apiKey = getApiKey();
   const qs = [
@@ -1115,9 +1193,7 @@ async function fetchBacklinksByType(
   });
 }
 
-export async function getBacklinkChanges(
-  domain: string
-): Promise<SemrushBacklinkChange[]> {
+export async function getBacklinkChanges(domain: string): Promise<SemrushBacklinkChange[]> {
   try {
     const [newLinks, lostLinks] = await Promise.all([
       fetchBacklinksByType(domain, "new"),
@@ -1151,7 +1227,7 @@ export interface SemrushCompetitorAdKeyword {
 export async function getCompetitorAdKeywords(
   domain: string,
   database: string = "uk",
-  limit: number = 30
+  limit: number = 30,
 ): Promise<SemrushCompetitorAdKeyword[]> {
   const apiKey = getApiKey();
   const params = new URLSearchParams({
@@ -1169,8 +1245,7 @@ export async function getCompetitorAdKeywords(
   if (lines.length < 2 || lines[0]?.startsWith("ERROR")) return [];
 
   return lines.slice(1).map((line: string) => {
-    const [keyword, position, url, cpc, volume, trafficPercent, trafficCost] =
-      line.split(";");
+    const [keyword, position, url, cpc, volume, trafficPercent, trafficCost] = line.split(";");
     return {
       keyword: keyword || "",
       position: parseInt(position) || 0,
@@ -1201,7 +1276,7 @@ export interface SemrushTopicResearch {
  */
 export async function getTopicResearch(
   keyword: string,
-  database: string = "uk"
+  database: string = "uk",
 ): Promise<SemrushTopicResearch | null> {
   const apiKey = getApiKey();
   const params = new URLSearchParams({
@@ -1261,14 +1336,12 @@ export interface SemrushSiteAudit {
  * Fetches site audit summary from the SEMrush Site Audit project API.
  * Requires the project to have site audit enabled.
  */
-export async function getSiteAudit(
-  projectId: string
-): Promise<SemrushSiteAudit | null> {
+export async function getSiteAudit(projectId: string): Promise<SemrushSiteAudit | null> {
   const apiKey = getApiKey();
 
   try {
     const response = await axios.get(
-      `https://api.semrush.com/reports/v1/projects/${projectId}/siteaudit/info?key=${encodeURIComponent(apiKey)}`
+      `https://api.semrush.com/reports/v1/projects/${projectId}/siteaudit/info?key=${encodeURIComponent(apiKey)}`,
     );
 
     const data = response.data;
@@ -1280,11 +1353,13 @@ export async function getSiteAudit(
       errors: data.errors ?? 0,
       warnings: data.warnings ?? 0,
       notices: data.notices ?? 0,
-      issues: (data.issues ?? []).slice(0, 20).map((issue: { title?: string; severity?: string; count?: number }) => ({
-        title: issue.title ?? "",
-        severity: issue.severity ?? "notice",
-        count: issue.count ?? 0,
-      })),
+      issues: (data.issues ?? [])
+        .slice(0, 20)
+        .map((issue: { title?: string; severity?: string; count?: number }) => ({
+          title: issue.title ?? "",
+          severity: issue.severity ?? "notice",
+          count: issue.count ?? 0,
+        })),
     };
   } catch (err) {
     console.error("SEMrush site audit error:", err);
@@ -1308,7 +1383,7 @@ export interface SemrushAdCopy {
 export async function getAdCopyDatabase(
   domain: string,
   database: string = "uk",
-  limit: number = 30
+  limit: number = 30,
 ): Promise<SemrushAdCopy[]> {
   const apiKey = getApiKey();
   const params = new URLSearchParams({
@@ -1357,7 +1432,7 @@ export interface SemrushDisplayAd {
 export async function getDisplayAdvertisingCompetitors(
   domain: string,
   database: string = "uk",
-  limit: number = 20
+  limit: number = 20,
 ): Promise<SemrushDisplayAd[]> {
   const apiKey = getApiKey();
   const params = new URLSearchParams({
@@ -1404,7 +1479,7 @@ export interface SemrushShoppingCompetitor {
 export async function getShoppingCompetitors(
   domain: string,
   database: string = "uk",
-  limit: number = 20
+  limit: number = 20,
 ): Promise<SemrushShoppingCompetitor[]> {
   const apiKey = getApiKey();
   const params = new URLSearchParams({
@@ -1452,7 +1527,7 @@ export interface SemrushKeywordTrend {
 export async function getKeywordTrends(
   keyword: string,
   database: string = "uk",
-  limit: number = 20
+  limit: number = 20,
 ): Promise<SemrushKeywordTrend[]> {
   const apiKey = getApiKey();
   const params = new URLSearchParams({
@@ -1502,7 +1577,7 @@ export interface SemrushReferringDomain {
 
 export async function getReferringDomains(
   domain: string,
-  limit: number = 20
+  limit: number = 20,
 ): Promise<SemrushReferringDomain[]> {
   const apiKey = getApiKey();
   const params = new URLSearchParams({
@@ -1552,7 +1627,7 @@ export interface SemrushAnchorText {
 
 export async function getAnchorTextDistribution(
   domain: string,
-  limit: number = 20
+  limit: number = 20,
 ): Promise<SemrushAnchorText[]> {
   const apiKey = getApiKey();
   const params = new URLSearchParams({
@@ -1601,7 +1676,7 @@ export interface SemrushBacklinkComparison {
 }
 
 export async function getBacklinkComparison(
-  domains: string[]
+  domains: string[],
 ): Promise<SemrushBacklinkComparison[]> {
   const apiKey = getApiKey();
   const results: SemrushBacklinkComparison[] = [];
@@ -1653,7 +1728,7 @@ export interface SemrushPositionChange {
 export async function getOrganicPositionChanges(
   domain: string,
   database: string = "uk",
-  limit: number = 50
+  limit: number = 50,
 ): Promise<SemrushPositionChange[]> {
   const apiKey = getApiKey();
   const params = new URLSearchParams({
@@ -1730,7 +1805,8 @@ export async function getBriefKeywordResearch(
         if (lines.length < 2 || lines[0]?.startsWith("ERROR")) {
           return { topic, keywords: [] };
         }
-        const keywords = lines.slice(1)
+        const keywords = lines
+          .slice(1)
           .map((line: string) => {
             const [ph, nq, kd] = line.split(";");
             const volume = parseInt(nq) || 0;
@@ -1760,7 +1836,7 @@ export async function getKeywordPositionForDomain(
   domain: string,
   keyword: string,
   database: string = "uk",
-  date?: string // YYYYMM01 format — if provided, returns data for that month's snapshot
+  date?: string, // YYYYMM01 format — if provided, returns data for that month's snapshot
 ): Promise<KeywordPositionResult> {
   const apiKey = getApiKey();
   const paramObj: Record<string, string> = {
@@ -1814,7 +1890,7 @@ export interface PhraseOrganicResult {
 export async function getKeywordPhraseOrganic(
   keyword: string,
   database: string = "uk",
-  date?: string // YYYYMM01 — if provided, returns data for that month's snapshot
+  date?: string, // YYYYMM01 — if provided, returns data for that month's snapshot
 ): Promise<PhraseOrganicResult> {
   const apiKey = getApiKey();
   const paramObj: Record<string, string> = {
@@ -1839,7 +1915,11 @@ export async function getKeywordPhraseOrganic(
       const [dn, rk, ur] = lines[i].split(";");
       const pos = parseInt(rk);
       if (pos > 0 && dn) {
-        entries.push({ domain: dn.toLowerCase().replace(/^www\./, ""), position: pos, url: (ur || "").trim() });
+        entries.push({
+          domain: dn.toLowerCase().replace(/^www\./, ""),
+          position: pos,
+          url: (ur || "").trim(),
+        });
       }
     }
     return { volume: 0, entries }; // volume fetched separately via phrase_this
@@ -1852,7 +1932,7 @@ export async function getKeywordPhraseOrganic(
 /** Returns the monthly search volume for a keyword regardless of who ranks for it. */
 export async function getKeywordSearchVolume(
   keyword: string,
-  database: string = "uk"
+  database: string = "uk",
 ): Promise<number> {
   const apiKey = getApiKey();
   const params = new URLSearchParams({

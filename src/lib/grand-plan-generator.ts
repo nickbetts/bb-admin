@@ -843,8 +843,11 @@ Be ruthless about authenticity — drop anything that sounds like marketing copy
     return { painPoints: [], competitorComplaints: [], quotes: [], queriesFired: [] };
   }
 
-  // Extract the final text block (after any tool use) and parse JSON
-  const text = extractText(res);
+  // Extract the LAST text block (after all web_search tool_use blocks) and parse JSON.
+  // extractText() uses .find() which returns the first block — the model opens with prose
+  // like "I'll research…" before firing searches, so we must use the last text block instead.
+  const lastTextBlock = [...res.content].reverse().find((b) => b.type === "text");
+  const text = lastTextBlock && lastTextBlock.type === "text" ? lastTextBlock.text.trim() : "";
   const cleaned = text
     .replace(/```json\n?/g, "")
     .replace(/```\n?/g, "")
@@ -3073,7 +3076,12 @@ ${context}${buildSharedContextBlocks(sources)}`,
 // ─── Anthropic helper ───────────────────────────────────────────────────────
 
 function extractText(response: Anthropic.Message): string {
-  const block = response.content.find((b) => b.type === "text");
+  // Use the LAST text block, not the first. When the web_search tool is enabled
+  // the model emits interleaved blocks (leading prose, tool_use, …) and the real
+  // answer is the final text block. For ordinary calls there is only one text
+  // block, so this is equivalent and always correct.
+  const textBlocks = response.content.filter((b) => b.type === "text");
+  const block = textBlocks[textBlocks.length - 1];
   const raw = block && block.type === "text" ? block.text.trim() : "";
   // Strip markdown fencing if present (any language: json, html, markdown, etc.)
   const stripped = raw.replace(/^```(?:\w+)?\s*/i, "").replace(/\s*```$/i, "");
