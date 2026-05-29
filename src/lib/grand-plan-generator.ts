@@ -3,10 +3,10 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { jsonrepair } from "jsonrepair";
 import { AsyncLocalStorage } from "node:async_hooks";
 
-// Default models. Opus 4.7 is the default for all heavy reasoning, Haiku 4.5
+// Default models. Opus 4.8 is the default for all heavy reasoning, Haiku 4.5
 // stays as the cheap structural model. The override mechanism is kept for
 // edge cases (e.g. cost-sensitive bulk regeneration) but no UI exposes it.
-const DEFAULT_MODEL = "claude-opus-4-7";
+const DEFAULT_MODEL = "claude-opus-4-8";
 const DEFAULT_MODEL_LIGHT = "claude-haiku-4-5";
 
 /** Whitelisted Anthropic model IDs callers may pick from. */
@@ -14,7 +14,7 @@ export type GrandPlanModelChoice = "sonnet" | "haiku" | "opus";
 const MODEL_BY_CHOICE: Record<GrandPlanModelChoice, string> = {
   sonnet: "claude-sonnet-4-6",
   haiku: "claude-haiku-4-5",
-  opus: "claude-opus-4-7",
+  opus: "claude-opus-4-8",
 };
 
 interface GenerationContext {

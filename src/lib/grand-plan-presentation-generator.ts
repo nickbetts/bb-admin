@@ -3,7 +3,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { jsonrepair } from "jsonrepair";
 import type { GrandPlanData } from "@/lib/grand-plan-generator";
 
-const PRESENTATION_MODEL = "claude-opus-4-7";
+const PRESENTATION_MODEL = "claude-opus-4-8";
 
 const TRANSIENT_ERROR_CODES = new Set([408, 425, 429, 500, 502, 503, 504, 529]);
 function isTransientError(err: unknown): boolean {

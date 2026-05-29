@@ -3,7 +3,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAnthropicClient } from "@/lib/anthropic-client";
 
-const MODEL = "claude-opus-4-7";
+const MODEL = "claude-opus-4-8";
 
 // Suggest target audiences from the brief.
 // Used by the Grand Plan creation form to pre-populate the audience chip list
@@ -23,7 +23,9 @@ export async function POST(request: NextRequest) {
     const brief = body.brief?.trim();
     if (!brief || brief.length < 20) {
       return NextResponse.json(
-        { error: "brief is required and should describe the campaign in at least a sentence or two" },
+        {
+          error: "brief is required and should describe the campaign in at least a sentence or two",
+        },
         { status: 400 },
       );
     }
@@ -77,13 +79,27 @@ ${brief}`,
 
     const textBlock = res.content.find((c) => c.type === "text");
     const raw = textBlock && textBlock.type === "text" ? textBlock.text : "";
-    const cleaned = raw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
-    let parsed: { audiences?: { name?: string; description?: string; primaryPain?: string; decisionTrigger?: string }[] } = {};
+    const cleaned = raw
+      .replace(/^```json\s*/i, "")
+      .replace(/^```\s*/i, "")
+      .replace(/```\s*$/i, "")
+      .trim();
+    let parsed: {
+      audiences?: {
+        name?: string;
+        description?: string;
+        primaryPain?: string;
+        decisionTrigger?: string;
+      }[];
+    } = {};
     try {
       parsed = JSON.parse(cleaned);
     } catch {
       // Defensive — return raw if parsing fails so the UI can show an error toast.
-      return NextResponse.json({ error: "AI response could not be parsed", raw: cleaned }, { status: 502 });
+      return NextResponse.json(
+        { error: "AI response could not be parsed", raw: cleaned },
+        { status: 502 },
+      );
     }
 
     const audiences = Array.isArray(parsed.audiences)

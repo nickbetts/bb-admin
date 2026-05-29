@@ -3,7 +3,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAnthropicClient } from "@/lib/anthropic-client";
 
-const MODEL = "claude-opus-4-7";
+const MODEL = "claude-opus-4-8";
 
 // Suggest a target audience for a PPC landing page from the brief.
 // Each landing page targets ONE audience, so this returns a small set
@@ -24,7 +24,9 @@ export async function POST(request: NextRequest) {
     const brief = body.brief?.trim();
     if (!brief || brief.length < 20) {
       return NextResponse.json(
-        { error: "brief is required and should describe the campaign in at least a sentence or two" },
+        {
+          error: "brief is required and should describe the campaign in at least a sentence or two",
+        },
         { status: 400 },
       );
     }
@@ -85,12 +87,19 @@ ${brief}`,
 
     const textBlock = res.content.find((c) => c.type === "text");
     const raw = textBlock && textBlock.type === "text" ? textBlock.text : "";
-    const cleaned = raw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
+    const cleaned = raw
+      .replace(/^```json\s*/i, "")
+      .replace(/^```\s*/i, "")
+      .replace(/```\s*$/i, "")
+      .trim();
     let parsed: { audiences?: { name?: string; description?: string }[] } = {};
     try {
       parsed = JSON.parse(cleaned);
     } catch {
-      return NextResponse.json({ error: "AI response could not be parsed", raw: cleaned }, { status: 502 });
+      return NextResponse.json(
+        { error: "AI response could not be parsed", raw: cleaned },
+        { status: 502 },
+      );
     }
 
     const seen = new Set<string>();

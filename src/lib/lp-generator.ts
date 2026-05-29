@@ -17,9 +17,9 @@ import {
 import { buildDesignAuditBlock } from "@/lib/lp-design-elements";
 import { buildCopyAuditBlock } from "@/lib/lp-copy-elements";
 
-const MODEL = "claude-opus-4-7";
+const MODEL = "claude-opus-4-8";
 const REFINE_MODEL = "claude-sonnet-4-5"; // Faster for refinements — avoids 300s Vercel timeout on large pages
-// Opus 4.7 supports up to 32K output tokens. A fully-populated landing
+// Opus 4.8 supports up to 32K output tokens. A fully-populated landing
 // LP HTML for a fully populated page can reach 70-80k chars. At ~2 chars/token
 // for attribute-heavy HTML, that's ~35-40k output tokens. Set to 64k to give
 // headroom for both the base page and any additions.

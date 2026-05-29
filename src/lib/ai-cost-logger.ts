@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
  */
 const PRICING = {
   // Anthropic
+  "claude-opus-4-8": { input: 0.005, output: 0.025 },
   "claude-opus-4-7": { input: 0.005, output: 0.025 },
   "claude-opus-4-6": { input: 0.005, output: 0.025 },
   "claude-opus-4-5": { input: 0.015, output: 0.075 },

@@ -6,7 +6,7 @@ import { exhaustiveTargetingSearch, type MetaTargetingResult } from "@/lib/meta-
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-const MODEL = "claude-opus-4-7";
+const MODEL = "claude-opus-4-8";
 
 // POST /api/tools/meta-audience-scraper/ai-suggest
 // Body: { brief?: string; keywords?: string[]; sector?: string; clientName?: string; geography?: string }

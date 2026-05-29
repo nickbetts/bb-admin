@@ -13,7 +13,8 @@ export const maxDuration = 60;
 const SUPPORTED_MODELS = {
   "gpt-5.4-nano": { provider: "openai" as const, label: "GPT-5.4 nano" },
   "claude-sonnet-4-6": { provider: "anthropic" as const, label: "Claude Sonnet 4.6" },
-  "claude-opus-4-7": { provider: "anthropic" as const, label: "Claude Opus 4.7" },
+  "claude-opus-4-8": { provider: "anthropic" as const, label: "Claude Opus 4.8" },
+  "claude-opus-4-7": { provider: "anthropic" as const, label: "Claude Opus 4.8" },
 };
 type SupportedModel = keyof typeof SUPPORTED_MODELS;
 const DEFAULT_MODEL: SupportedModel = "gpt-5.4-nano";
@@ -23,25 +24,43 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const rl = enforceAiRateLimit(session.user.id); if (!rl.ok) return rl.response!;
+    const rl = enforceAiRateLimit(session.user.id);
+    if (!rl.ok) return rl.response!;
 
-    const { clientId, message, conversationHistory, model } = await request.json() as {
+    const { clientId, message, conversationHistory, model } = (await request.json()) as {
       clientId: string;
       message: string;
       conversationHistory?: { role: string; content: string }[];
       model?: string;
     };
 
-    const selectedModel: SupportedModel = (model && model in SUPPORTED_MODELS)
-      ? (model as SupportedModel)
-      : DEFAULT_MODEL;
+    const selectedModel: SupportedModel =
+      model && model in SUPPORTED_MODELS ? (model as SupportedModel) : DEFAULT_MODEL;
     const provider = SUPPORTED_MODELS[selectedModel].provider;
 
     if (!clientId || !message) {
       return NextResponse.json({ error: "clientId and message are required" }, { status: 400 });
     }
 
-    const client = await prisma.client.findUnique({ where: { id: clientId }, select: { id: true, name: true, website: true, aiReportInstructions: true, contractedHours: true, ga4PropertyId: true, googleAdsCustomerId: true, metaAccountId: true, searchConsoleSiteUrl: true, semrushDomain: true, woocommerceUrl: true, shopifyStoreDomain: true, tiktokAdvertiserId: true, microsoftAdsAccountId: true } });
+    const client = await prisma.client.findUnique({
+      where: { id: clientId },
+      select: {
+        id: true,
+        name: true,
+        website: true,
+        aiReportInstructions: true,
+        contractedHours: true,
+        ga4PropertyId: true,
+        googleAdsCustomerId: true,
+        metaAccountId: true,
+        searchConsoleSiteUrl: true,
+        semrushDomain: true,
+        woocommerceUrl: true,
+        shopifyStoreDomain: true,
+        tiktokAdvertiserId: true,
+        microsoftAdsAccountId: true,
+      },
+    });
     if (!client) return NextResponse.json({ error: "Client not found" }, { status: 404 });
 
     const clientAiInstructions = client.aiReportInstructions ?? "";
@@ -54,39 +73,73 @@ export async function POST(request: NextRequest) {
     });
 
     // Build context from snapshots — format metrics as human-readable text rather than raw JSON
-    const snapshotContext = snapshots.map((s) => {
-      let metrics: Record<string, unknown>;
-      try { metrics = JSON.parse(s.metrics); } catch { metrics = {}; }
-      const metricLines = Object.entries(metrics)
-        .filter(([, v]) => v !== null && v !== undefined && typeof v === "number")
-        .map(([k, v]) => {
-          const n = v as number;
-          const key = k.toLowerCase();
-          if (key.includes("rate") || key === "ctr" || key === "engagementrate" || key === "conversionrate" || key === "bouncerate") {
-            return `  ${k}: ${(n * (n <= 1 ? 100 : 1)).toFixed(2)}%`;
-          }
-          if (key === "roas") return `  ${k}: ${n.toFixed(2)}x`;
-          if (key.includes("spend") || key.includes("cost") || key.includes("revenue") || key.includes("value") || key === "cpa" || key === "cpm" || key === "cpc" || key === "aov" || key === "averageordervalue") {
-            return `  ${k}: £${n.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-          }
-          return `  ${k}: ${n.toLocaleString("en-GB")}`;
-        })
-        .join("\n");
-      return `[${s.sectionType}] ${s.periodStart} to ${s.periodEnd}:\n${metricLines || "  (no numeric metrics)"}`;
-    }).join("\n\n");
+    const snapshotContext = snapshots
+      .map((s) => {
+        let metrics: Record<string, unknown>;
+        try {
+          metrics = JSON.parse(s.metrics);
+        } catch {
+          metrics = {};
+        }
+        const metricLines = Object.entries(metrics)
+          .filter(([, v]) => v !== null && v !== undefined && typeof v === "number")
+          .map(([k, v]) => {
+            const n = v as number;
+            const key = k.toLowerCase();
+            if (
+              key.includes("rate") ||
+              key === "ctr" ||
+              key === "engagementrate" ||
+              key === "conversionrate" ||
+              key === "bouncerate"
+            ) {
+              return `  ${k}: ${(n * (n <= 1 ? 100 : 1)).toFixed(2)}%`;
+            }
+            if (key === "roas") return `  ${k}: ${n.toFixed(2)}x`;
+            if (
+              key.includes("spend") ||
+              key.includes("cost") ||
+              key.includes("revenue") ||
+              key.includes("value") ||
+              key === "cpa" ||
+              key === "cpm" ||
+              key === "cpc" ||
+              key === "aov" ||
+              key === "averageordervalue"
+            ) {
+              return `  ${k}: £${n.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            }
+            return `  ${k}: ${n.toLocaleString("en-GB")}`;
+          })
+          .join("\n");
+        return `[${s.sectionType}] ${s.periodStart} to ${s.periodEnd}:\n${metricLines || "  (no numeric metrics)"}`;
+      })
+      .join("\n\n");
 
     // Fetch open/in-progress actions for context
     const actions = await prisma.actionItem.findMany({
       where: { clientId, status: { in: ["open", "in_progress"] } },
       orderBy: { createdAt: "desc" },
       take: 10,
-      select: { title: true, description: true, status: true, priority: true, dueDate: true, assignedTo: true },
+      select: {
+        title: true,
+        description: true,
+        status: true,
+        priority: true,
+        dueDate: true,
+        assignedTo: true,
+      },
     });
-    const actionsContext = actions.length > 0
-      ? "\n\nOPEN ACTIONS:\n" + actions.map((a) =>
-          `  [${a.priority.toUpperCase()}] ${a.title}${a.description ? ` — ${a.description}` : ""}${a.dueDate ? ` (due ${a.dueDate})` : ""}${a.assignedTo ? ` — assigned to ${a.assignedTo}` : ""}`
-        ).join("\n")
-      : "";
+    const actionsContext =
+      actions.length > 0
+        ? "\n\nOPEN ACTIONS:\n" +
+          actions
+            .map(
+              (a) =>
+                `  [${a.priority.toUpperCase()}] ${a.title}${a.description ? ` — ${a.description}` : ""}${a.dueDate ? ` (due ${a.dueDate})` : ""}${a.assignedTo ? ` — assigned to ${a.assignedTo}` : ""}`,
+            )
+            .join("\n")
+        : "";
 
     // Fetch recent communications for context
     const comms = await prisma.clientCommunication.findMany({
@@ -95,23 +148,33 @@ export async function POST(request: NextRequest) {
       take: 5,
       select: { type: true, direction: true, subject: true, sentAt: true, createdAt: true },
     });
-    const commsContext = comms.length > 0
-      ? "\n\nRECENT COMMUNICATIONS:\n" + comms.map((c) => {
-          const date = (c.sentAt ?? c.createdAt).toISOString().split("T")[0];
-          return `  [${date}] ${c.direction} ${c.type}: "${c.subject}"`;
-        }).join("\n")
-      : "";
+    const commsContext =
+      comms.length > 0
+        ? "\n\nRECENT COMMUNICATIONS:\n" +
+          comms
+            .map((c) => {
+              const date = (c.sentAt ?? c.createdAt).toISOString().split("T")[0];
+              return `  [${date}] ${c.direction} ${c.type}: "${c.subject}"`;
+            })
+            .join("\n")
+        : "";
 
     // Parse contracted hours if available
     let contractsContext = "";
     if (client.contractedHours) {
       try {
-        const contracts = JSON.parse(client.contractedHours) as { service: string; hoursPerMonth: number }[];
+        const contracts = JSON.parse(client.contractedHours) as {
+          service: string;
+          hoursPerMonth: number;
+        }[];
         if (contracts.length > 0) {
-          contractsContext = "\n\nCONTRACTED SERVICES:\n" +
+          contractsContext =
+            "\n\nCONTRACTED SERVICES:\n" +
             contracts.map((c) => `  ${c.service}: ${c.hoursPerMonth}h/month`).join("\n");
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
 
     // Read most recently cached GA4 demographics and AI referrals (from ApiCache, written when those tabs are loaded)
@@ -132,24 +195,42 @@ export async function POST(request: NextRequest) {
       ]);
       if (demoCache.status === "fulfilled" && demoCache.value) {
         try {
-          const d = JSON.parse(demoCache.value.data) as { ageGroups?: { range: string; users: number }[]; genderSplit?: { gender: string; users: number }[] };
+          const d = JSON.parse(demoCache.value.data) as {
+            ageGroups?: { range: string; users: number }[];
+            genderSplit?: { gender: string; users: number }[];
+          };
           const totalUsers = (d.ageGroups ?? []).reduce((s, g) => s + g.users, 0);
           if (totalUsers > 0) {
-            demographicsContext = "\n\nAUDIENCE DEMOGRAPHICS (GA4):\n  Age: " +
-              (d.ageGroups ?? []).map((g) => `${g.range}: ${Math.round((g.users / totalUsers) * 100)}%`).join(", ") +
-              "\n  Gender: " + (d.genderSplit ?? []).map((g) => `${g.gender}: ${Math.round((g.users / totalUsers) * 100)}%`).join(", ");
+            demographicsContext =
+              "\n\nAUDIENCE DEMOGRAPHICS (GA4):\n  Age: " +
+              (d.ageGroups ?? [])
+                .map((g) => `${g.range}: ${Math.round((g.users / totalUsers) * 100)}%`)
+                .join(", ") +
+              "\n  Gender: " +
+              (d.genderSplit ?? [])
+                .map((g) => `${g.gender}: ${Math.round((g.users / totalUsers) * 100)}%`)
+                .join(", ");
           }
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
       }
       if (aiRefCache.status === "fulfilled" && aiRefCache.value) {
         try {
           const refs = JSON.parse(aiRefCache.value.data) as { source: string; sessions: number }[];
           if (refs.length > 0) {
             const total = refs.reduce((s, r) => s + r.sessions, 0);
-            aiReferralsContext = `\n\nAI SEARCH REFERRALS: ${total.toLocaleString()} sessions from AI tools (` +
-              refs.slice(0, 5).map((r) => `${r.source}: ${r.sessions}`).join(", ") + ")";
+            aiReferralsContext =
+              `\n\nAI SEARCH REFERRALS: ${total.toLocaleString()} sessions from AI tools (` +
+              refs
+                .slice(0, 5)
+                .map((r) => `${r.source}: ${r.sessions}`)
+                .join(", ") +
+              ")";
           }
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
       }
     }
 
@@ -167,17 +248,21 @@ ${snapshotContext || "No historical snapshots available yet. Answer based on gen
 Client details:
 - Name: ${client.name}
 - Website: ${client.website || "Not set"}
-- Connected platforms: ${[
-  client.ga4PropertyId && "GA4",
-  client.googleAdsCustomerId && "Google Ads",
-  client.metaAccountId && "Meta Ads",
-  client.searchConsoleSiteUrl && "Search Console",
-  client.semrushDomain && "SemRush",
-  client.woocommerceUrl && "WooCommerce",
-  client.shopifyStoreDomain && "Shopify",
-  client.tiktokAdvertiserId && "TikTok Ads",
-  client.microsoftAdsAccountId && "Microsoft Ads",
-].filter(Boolean).join(", ") || "None"}
+- Connected platforms: ${
+      [
+        client.ga4PropertyId && "GA4",
+        client.googleAdsCustomerId && "Google Ads",
+        client.metaAccountId && "Meta Ads",
+        client.searchConsoleSiteUrl && "Search Console",
+        client.semrushDomain && "SemRush",
+        client.woocommerceUrl && "WooCommerce",
+        client.shopifyStoreDomain && "Shopify",
+        client.tiktokAdvertiserId && "TikTok Ads",
+        client.microsoftAdsAccountId && "Microsoft Ads",
+      ]
+        .filter(Boolean)
+        .join(", ") || "None"
+    }
 
 Instructions:
 - Answer questions about the client's marketing performance using the available data
@@ -196,21 +281,18 @@ Instructions:
     if (provider === "anthropic") {
       const anthropic = await getAnthropicClient();
       const completion = await anthropic.messages.create({
-        model: selectedModel,
+        model: selectedModel === "claude-opus-4-7" ? "claude-opus-4-8" : selectedModel,
         max_tokens: 2000,
         temperature: 0.3,
         system: systemPrompt,
-        messages: [
-          ...history,
-          { role: "user", content: message },
-        ],
+        messages: [...history, { role: "user", content: message }],
       });
       await logAnthropicUsage("chat", completion);
-      reply = completion.content
-        .map((block) => (block.type === "text" ? block.text : ""))
-        .filter(Boolean)
-        .join("\n")
-        || "I couldn't generate a response. Please try again.";
+      reply =
+        completion.content
+          .map((block) => (block.type === "text" ? block.text : ""))
+          .filter(Boolean)
+          .join("\n") || "I couldn't generate a response. Please try again.";
     } else {
       const openai = await getOpenAiClient();
       const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
@@ -225,7 +307,9 @@ Instructions:
         max_completion_tokens: 2000,
       });
       await logOpenAiUsage("chat", completion);
-      reply = completion.choices[0]?.message?.content ?? "I couldn't generate a response. Please try again.";
+      reply =
+        completion.choices[0]?.message?.content ??
+        "I couldn't generate a response. Please try again.";
     }
 
     // Store assistant message
@@ -247,7 +331,7 @@ Instructions:
     console.error("AI chat error:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "AI chat failed" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -257,7 +341,8 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const rl = enforceAiRateLimit(session.user.id); if (!rl.ok) return rl.response!;
+    const rl = enforceAiRateLimit(session.user.id);
+    if (!rl.ok) return rl.response!;
 
     const { searchParams } = request.nextUrl;
     const clientId = searchParams.get("clientId");

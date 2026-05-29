@@ -11,7 +11,7 @@ import {
 export const dynamic = "force-dynamic";
 export const maxDuration = 240;
 
-const MODEL = "claude-opus-4-7";
+const MODEL = "claude-opus-4-8";
 const MAX_TOKENS = 16000;
 
 // POST /api/tools/meta-audience-scraper/refine-slice

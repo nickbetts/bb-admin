@@ -224,22 +224,34 @@ function extractMetaJson<T>(text: string): { html: string; meta: T | null } {
   if (tagMatch) {
     const before = text.slice(0, tagMatch.index).trim();
     const after = text.slice(tagMatch.index + tagMatch[0].length).trim();
-    return { html: (before + (after ? "\n" + after : "")).trim(), meta: parseJsonSafely<T>(tagMatch[1].trim()) };
+    return {
+      html: (before + (after ? "\n" + after : "")).trim(),
+      meta: parseJsonSafely<T>(tagMatch[1].trim()),
+    };
   }
   // 2. Unclosed <meta-json> — response truncated before closing tag
   const openTagMatch = /<meta-json>([\s\S]*)$/i.exec(text);
   if (openTagMatch) {
-    return { html: text.slice(0, openTagMatch.index).trim(), meta: parseJsonSafely<T>(openTagMatch[1].trim()) };
+    return {
+      html: text.slice(0, openTagMatch.index).trim(),
+      meta: parseJsonSafely<T>(openTagMatch[1].trim()),
+    };
   }
   // 3. Complete triple-backtick code block containing JSON at end
   const codeBlockMatch = /\n?```(?:json)?\s*\n?(\{[\s\S]*?\})\s*\n?```\s*$/i.exec(text);
   if (codeBlockMatch) {
-    return { html: text.slice(0, codeBlockMatch.index).trim(), meta: parseJsonSafely<T>(codeBlockMatch[1]) };
+    return {
+      html: text.slice(0, codeBlockMatch.index).trim(),
+      meta: parseJsonSafely<T>(codeBlockMatch[1]),
+    };
   }
   // 4. Unclosed triple-backtick block — response truncated mid-JSON
   const openCodeMatch = /\n```(?:json)?\s*\n?(\{[\s\S]*)$/i.exec(text);
   if (openCodeMatch) {
-    return { html: text.slice(0, openCodeMatch.index).trim(), meta: parseJsonSafely<T>(openCodeMatch[1].trim()) };
+    return {
+      html: text.slice(0, openCodeMatch.index).trim(),
+      meta: parseJsonSafely<T>(openCodeMatch[1].trim()),
+    };
   }
   // 5. Legacy: trailing single-line JSON
   const legacy = /\n(\{[^\n]+\})\s*$/.exec(text);
@@ -267,12 +279,13 @@ async function researchStats(params: {
 
   try {
     const response = await params.anthropic.messages.create({
-      model: "claude-opus-4-7",
+      model: "claude-opus-4-8",
       max_tokens: 1500,
       tools,
-      messages: [{
-        role: "user",
-        content: `Search for 4-6 real, current statistics or data points to support an article about: "${params.topic}"
+      messages: [
+        {
+          role: "user",
+          content: `Search for 4-6 real, current statistics or data points to support an article about: "${params.topic}"
 Angle: ${params.angle}
 Target audience: ${params.audience}
 
@@ -285,21 +298,33 @@ Requirements:
 
 Return ONLY a valid JSON object in this exact format — no commentary:
 {"statsContext":"Bullet-point summary of verified statistics, each with inline citation [N]. Format: \\u2022 [stat] [N]","sources":[{"n":1,"title":"Source page title","url":"https://...","domain":"organisation.com","publishedDate":"2024"}]}`,
-      }],
+        },
+      ],
     });
 
     const textBlock = response.content.find((b) => b.type === "text");
     const text = textBlock?.type === "text" ? textBlock.text : "";
     const parsed = parseJsonSafely<{
       statsContext: string;
-      sources: Array<{ n: number; title: string; url: string; domain?: string; publishedDate?: string }>;
+      sources: Array<{
+        n: number;
+        title: string;
+        url: string;
+        domain?: string;
+        publishedDate?: string;
+      }>;
     }>(text);
 
     if (!parsed) return { statsContext: "", sources: [] };
 
     return {
       statsContext: parsed.statsContext ?? "",
-      sources: (parsed.sources ?? []).map(({ title, url, domain, publishedDate }) => ({ title, url, domain, publishedDate })),
+      sources: (parsed.sources ?? []).map(({ title, url, domain, publishedDate }) => ({
+        title,
+        url,
+        domain,
+        publishedDate,
+      })),
     };
   } catch {
     // Research failure should not block generation
@@ -321,20 +346,22 @@ async function runCleanupPass(params: {
 
   // Pre-strip the most obvious artifacts synchronously before the API call
   const preStripped = html
-    .replace(/```(?:json|html)?[\s\S]*?```/gi, "")      // any code fence blocks
+    .replace(/```(?:json|html)?[\s\S]*?```/gi, "") // any code fence blocks
     .replace(/<meta-json>[\s\S]*?(?:<\/meta-json>|$)/gi, "") // meta-json tags (open or closed)
-    .replace(/\n```(?:json|html)?\s*$/, "")              // trailing unclosed code fence
+    .replace(/\n```(?:json|html)?\s*$/, "") // trailing unclosed code fence
     .trim();
 
-  const typeLabel = type === "blog" ? "blog article" : type === "whitepaper" ? "whitepaper" : "case study";
+  const typeLabel =
+    type === "blog" ? "blog article" : type === "whitepaper" ? "whitepaper" : "case study";
 
   const response = await anthropic.messages.create({
-    model: "claude-opus-4-7",
+    model: "claude-opus-4-8",
     max_tokens: 5000,
     system: `You are a senior editor performing a final quality pass on a ${typeLabel}. You output only clean, publication-ready HTML.`,
-    messages: [{
-      role: "user",
-      content: `Review this ${typeLabel} HTML and return a clean, final version. Return ONLY the HTML — no commentary, no code fences, no JSON.
+    messages: [
+      {
+        role: "user",
+        content: `Review this ${typeLabel} HTML and return a clean, final version. Return ONLY the HTML — no commentary, no code fences, no JSON.
 
 Rules:
 - Remove any JSON objects, schema markup, code fences, or technical metadata that has leaked into the body text
@@ -345,12 +372,17 @@ Rules:
 - Do NOT restructure or substantially rewrite sections
 
 ${preStripped}`,
-    }],
+      },
+    ],
   });
 
-  const result = response.content[0]?.type === "text" ? response.content[0].text.trim() : preStripped;
+  const result =
+    response.content[0]?.type === "text" ? response.content[0].text.trim() : preStripped;
   // Strip any code fences the model might wrap its response in
-  return result.replace(/^```(?:html)?\n?/, "").replace(/\n?```$/, "").trim();
+  return result
+    .replace(/^```(?:html)?\n?/, "")
+    .replace(/\n?```$/, "")
+    .trim();
 }
 
 // ─── generateIdeas ────────────────────────────────────────────────────────────
@@ -366,7 +398,15 @@ export async function generateIdeas(params: {
 }): Promise<ContentIdea[]> {
   const anthropic = await getAnthropicClient();
 
-  const { brief, contentTypes, semrushContext, competitors, clientName, clientWebsite, clientInstructions } = params;
+  const {
+    brief,
+    contentTypes,
+    semrushContext,
+    competitors,
+    clientName,
+    clientWebsite,
+    clientInstructions,
+  } = params;
 
   const semrushSummary = semrushContext
     ? `
@@ -374,7 +414,8 @@ SEMrush data for ${semrushContext.domain ?? clientWebsite ?? "the client's domai
 - Organic keywords ranking: ${semrushContext.organicKeywords ?? "unknown"}
 - Monthly organic traffic estimate: ${semrushContext.organicTraffic ?? "unknown"}
 - Top ranking keywords: ${
-        semrushContext.topKeywords?.slice(0, 20)
+        semrushContext.topKeywords
+          ?.slice(0, 20)
           .map((k) => `"${k.keyword}" (vol: ${k.searchVolume}, pos: ${k.position})`)
           .join(", ") ?? "none available"
       }
@@ -470,7 +511,7 @@ Rules:
   ] as any;
 
   const response = await anthropic.messages.create({
-    model: "claude-opus-4-7",
+    model: "claude-opus-4-8",
     max_tokens: 8000,
     system: systemPrompt,
     tools,
@@ -498,11 +539,22 @@ async function generateBlog(params: {
   approvedKeywords: { primary: string; secondary: string[]; longTail: string[] };
   clientInstructions: string;
   anthropic: Awaited<ReturnType<typeof getAnthropicClient>>;
-}): Promise<{ content: string; titleTag: string; metaDescription: string; schemaJson?: string; sourceCitations?: SourceCitation[] }> {
+}): Promise<{
+  content: string;
+  titleTag: string;
+  metaDescription: string;
+  schemaJson?: string;
+  sourceCitations?: SourceCitation[];
+}> {
   const { idea, approvedKeywords, clientInstructions, anthropic } = params;
 
   // Step 1: Research real, citable statistics on the topic before writing
-  const research = await researchStats({ topic: idea.title, angle: idea.angle, audience: idea.targetAudience, anthropic });
+  const research = await researchStats({
+    topic: idea.title,
+    angle: idea.angle,
+    audience: idea.targetAudience,
+    anthropic,
+  });
 
   const systemPrompt = `You are an experienced content writer and SEO specialist. You write long-form blog articles that rank in Google and genuinely help readers.
 
@@ -547,14 +599,18 @@ After the article HTML, output the metadata in exactly this format:
 </meta-json>`;
 
   const response = await anthropic.messages.create({
-    model: "claude-opus-4-7",
+    model: "claude-opus-4-8",
     max_tokens: 4500,
     system: systemPrompt,
     messages: [{ role: "user", content: userPrompt }],
   });
 
   const text = response.content[0]?.type === "text" ? response.content[0].text : "";
-  const { html: rawHtml, meta: metaObj } = extractMetaJson<{ titleTag: string; metaDescription: string; schema?: Record<string, unknown> }>(text);
+  const { html: rawHtml, meta: metaObj } = extractMetaJson<{
+    titleTag: string;
+    metaDescription: string;
+    schema?: Record<string, unknown>;
+  }>(text);
   const articleHtml = await runCleanupPass({ html: rawHtml, type: "blog", anthropic });
 
   return {
@@ -571,11 +627,22 @@ async function generateWhitepaper(params: {
   approvedKeywords: { primary: string; secondary: string[]; longTail: string[] };
   clientInstructions: string;
   anthropic: Awaited<ReturnType<typeof getAnthropicClient>>;
-}): Promise<{ content: string; titleTag: string; metaDescription: string; schemaJson?: string; sourceCitations?: SourceCitation[] }> {
+}): Promise<{
+  content: string;
+  titleTag: string;
+  metaDescription: string;
+  schemaJson?: string;
+  sourceCitations?: SourceCitation[];
+}> {
   const { idea, approvedKeywords, clientInstructions, anthropic } = params;
 
   // Step 1: Research real, citable statistics before writing
-  const research = await researchStats({ topic: idea.title, angle: idea.angle, audience: idea.targetAudience, anthropic });
+  const research = await researchStats({
+    topic: idea.title,
+    angle: idea.angle,
+    audience: idea.targetAudience,
+    anthropic,
+  });
 
   const systemPrompt = `You are a senior analyst and business writer specialising in authoritative whitepapers and research reports. Your writing is precise, evidence-based, and read by senior decision-makers.
 
@@ -629,13 +696,13 @@ After the HTML, output the metadata in exactly this format:
 
   const [part1Res, part2Res] = await Promise.all([
     anthropic.messages.create({
-      model: "claude-opus-4-7",
+      model: "claude-opus-4-8",
       max_tokens: 3000,
       system: systemPrompt,
       messages: [{ role: "user", content: part1Prompt }],
     }),
     anthropic.messages.create({
-      model: "claude-opus-4-7",
+      model: "claude-opus-4-8",
       max_tokens: 3000,
       system: systemPrompt,
       messages: [{ role: "user", content: part2Prompt }],
@@ -645,8 +712,16 @@ After the HTML, output the metadata in exactly this format:
   const text1 = part1Res.content[0]?.type === "text" ? part1Res.content[0].text.trim() : "";
   const text2 = part2Res.content[0]?.type === "text" ? part2Res.content[0].text.trim() : "";
 
-  const { html: body2, meta: metaObj } = extractMetaJson<{ titleTag: string; metaDescription: string; schema?: Record<string, unknown> }>(text2);
-  const whitepaperHtml = await runCleanupPass({ html: `${text1}\n${body2}`, type: "whitepaper", anthropic });
+  const { html: body2, meta: metaObj } = extractMetaJson<{
+    titleTag: string;
+    metaDescription: string;
+    schema?: Record<string, unknown>;
+  }>(text2);
+  const whitepaperHtml = await runCleanupPass({
+    html: `${text1}\n${body2}`,
+    type: "whitepaper",
+    anthropic,
+  });
 
   return {
     content: whitepaperHtml,
@@ -706,13 +781,13 @@ After the HTML, output the metadata in exactly this format:
 
   const [part1Res, part2Res] = await Promise.all([
     anthropic.messages.create({
-      model: "claude-opus-4-7",
+      model: "claude-opus-4-8",
       max_tokens: 2000,
       system: systemPrompt,
       messages: [{ role: "user", content: part1Prompt }],
     }),
     anthropic.messages.create({
-      model: "claude-opus-4-7",
+      model: "claude-opus-4-8",
       max_tokens: 2000,
       system: systemPrompt,
       messages: [{ role: "user", content: part2Prompt }],
@@ -722,8 +797,16 @@ After the HTML, output the metadata in exactly this format:
   const text1 = part1Res.content[0]?.type === "text" ? part1Res.content[0].text.trim() : "";
   const text2 = part2Res.content[0]?.type === "text" ? part2Res.content[0].text.trim() : "";
 
-  const { html: body2, meta: metaObj } = extractMetaJson<{ titleTag: string; metaDescription: string; schema?: Record<string, unknown> }>(text2);
-  const caseStudyHtml = await runCleanupPass({ html: `${text1}\n${body2}`, type: "case_study", anthropic });
+  const { html: body2, meta: metaObj } = extractMetaJson<{
+    titleTag: string;
+    metaDescription: string;
+    schema?: Record<string, unknown>;
+  }>(text2);
+  const caseStudyHtml = await runCleanupPass({
+    html: `${text1}\n${body2}`,
+    type: "case_study",
+    anthropic,
+  });
 
   return {
     content: caseStudyHtml,
@@ -774,7 +857,7 @@ Return ONLY a valid JSON object (no markdown, no commentary):
 }`;
 
   const response = await anthropic.messages.create({
-    model: "claude-opus-4-7",
+    model: "claude-opus-4-8",
     max_tokens: 2000,
     system: systemPrompt,
     messages: [{ role: "user", content: userPrompt }],
@@ -817,20 +900,35 @@ export async function generateContent(
     schemaJson = result.schemaJson;
     sourceCitations = result.sourceCitations;
   } else if (idea.type === "whitepaper") {
-    const result = await generateWhitepaper({ idea, approvedKeywords, clientInstructions, anthropic });
+    const result = await generateWhitepaper({
+      idea,
+      approvedKeywords,
+      clientInstructions,
+      anthropic,
+    });
     content = result.content;
     titleTag = result.titleTag;
     metaDescription = result.metaDescription;
     schemaJson = result.schemaJson;
     sourceCitations = result.sourceCitations;
   } else if (idea.type === "case_study") {
-    const result = await generateCaseStudy({ idea, approvedKeywords, clientInstructions, anthropic });
+    const result = await generateCaseStudy({
+      idea,
+      approvedKeywords,
+      clientInstructions,
+      anthropic,
+    });
     content = result.content;
     titleTag = result.titleTag;
     metaDescription = result.metaDescription;
     schemaJson = result.schemaJson;
   } else if (idea.type === "social") {
-    socialVariations = await generateSocial({ idea, approvedKeywords, clientInstructions, anthropic });
+    socialVariations = await generateSocial({
+      idea,
+      approvedKeywords,
+      clientInstructions,
+      anthropic,
+    });
     content = Object.values(socialVariations).join("\n\n---\n\n");
   }
 
@@ -920,7 +1018,13 @@ export function buildHtmlDeliverable(params: {
       }
 
       const prettySchema = item.schemaJson
-        ? (() => { try { return JSON.stringify(JSON.parse(item.schemaJson), null, 2); } catch { return item.schemaJson; } })()
+        ? (() => {
+            try {
+              return JSON.stringify(JSON.parse(item.schemaJson), null, 2);
+            } catch {
+              return item.schemaJson;
+            }
+          })()
         : "";
       const seoBlock =
         item.titleTag || item.metaDescription || item.schemaJson
@@ -943,18 +1047,26 @@ export function buildHtmlDeliverable(params: {
         <div style="font-size:16px;line-height:1.8;color:#1e293b;max-width:720px;">
           ${item.content}
         </div>
-        ${item.sourceCitations && item.sourceCitations.length > 0 ? `
+        ${
+          item.sourceCitations && item.sourceCitations.length > 0
+            ? `
         <div style="margin-top:32px;padding:20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;">
           <h4 style="margin:0 0 12px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#475569;">Sources</h4>
           <ol style="margin:0;padding-left:1.25em;font-size:13px;line-height:2;color:#334155;">
             ${item.sourceCitations.map((s) => `<li><a href="${s.url}" style="color:#2563eb;text-decoration:none;">${s.title}</a>${s.domain ? ` <span style="color:#94a3b8;">— ${s.domain}</span>` : ""}${s.publishedDate ? ` <span style="color:#94a3b8;">(${s.publishedDate})</span>` : ""}</li>`).join("\n            ")}
           </ol>
-        </div>` : ""}
+        </div>`
+            : ""
+        }
       </section>`;
     })
     .join("\n");
 
-  const now = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+  const now = new Date().toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 
   return `<!DOCTYPE html>
 <html lang="en">

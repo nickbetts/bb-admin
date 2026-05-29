@@ -25,9 +25,9 @@ const SUGGESTED_PROMPTS = [
 const MODEL_OPTIONS = [
   { value: "gpt-5.4-nano", label: "GPT-5.4 nano" },
   { value: "claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
-  { value: "claude-opus-4-7", label: "Claude Opus 4.7" },
+  { value: "claude-opus-4-8", label: "Claude Opus 4.8" },
 ] as const;
-type ModelValue = typeof MODEL_OPTIONS[number]["value"];
+type ModelValue = (typeof MODEL_OPTIONS)[number]["value"];
 const MODEL_STORAGE_KEY = "ai-chat-model";
 
 export function AiChatPanel({ clientId, clientName }: AiChatPanelProps) {
@@ -41,7 +41,8 @@ export function AiChatPanel({ clientId, clientName }: AiChatPanelProps) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    const saved = typeof window !== "undefined" ? window.localStorage.getItem(MODEL_STORAGE_KEY) : null;
+    const saved =
+      typeof window !== "undefined" ? window.localStorage.getItem(MODEL_STORAGE_KEY) : null;
     if (saved && MODEL_OPTIONS.some((m) => m.value === saved)) {
       setModel(saved as ModelValue);
     }
@@ -71,39 +72,51 @@ export function AiChatPanel({ clientId, clientName }: AiChatPanelProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const sendMessage = useCallback(async (text: string) => {
-    if (!text.trim() || loading) return;
+  const sendMessage = useCallback(
+    async (text: string) => {
+      if (!text.trim() || loading) return;
 
-    const userMessage: Message = { role: "user", content: text.trim() };
-    setMessages((prev) => [...prev, userMessage]);
-    setInput("");
-    setLoading(true);
+      const userMessage: Message = { role: "user", content: text.trim() };
+      setMessages((prev) => [...prev, userMessage]);
+      setInput("");
+      setLoading(true);
 
-    try {
-      const res = await fetch("/api/ai/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          clientId,
-          message: text.trim(),
-          conversationHistory: messages.slice(-10),
-          model,
-        }),
-      });
+      try {
+        const res = await fetch("/api/ai/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            clientId,
+            message: text.trim(),
+            conversationHistory: messages.slice(-10),
+            model,
+          }),
+        });
 
-      const data = await res.json();
-      if (data.reply) {
-        setMessages((prev) => [...prev, { role: "assistant", content: data.reply }]);
-      } else {
-        setMessages((prev) => [...prev, { role: "assistant", content: "Sorry, I couldn't process that. Please try again." }]);
+        const data = await res.json();
+        if (data.reply) {
+          setMessages((prev) => [...prev, { role: "assistant", content: data.reply }]);
+        } else {
+          setMessages((prev) => [
+            ...prev,
+            { role: "assistant", content: "Sorry, I couldn't process that. Please try again." },
+          ]);
+        }
+      } catch {
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: "Connection error. Please check your network and try again.",
+          },
+        ]);
+      } finally {
+        setLoading(false);
+        inputRef.current?.focus();
       }
-    } catch {
-      setMessages((prev) => [...prev, { role: "assistant", content: "Connection error. Please check your network and try again." }]);
-    } finally {
-      setLoading(false);
-      inputRef.current?.focus();
-    }
-  }, [clientId, loading, messages, model]);
+    },
+    [clientId, loading, messages, model],
+  );
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -136,8 +149,12 @@ export function AiChatPanel({ clientId, clientName }: AiChatPanelProps) {
             zIndex: 1000,
             transition: "transform 0.2s, box-shadow 0.2s",
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.1)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "scale(1.1)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "scale(1)";
+          }}
           title="Ask the Data"
         >
           <MessageCircle style={{ width: 24, height: 24 }} />
@@ -180,8 +197,20 @@ export function AiChatPanel({ clientId, clientName }: AiChatPanelProps) {
               <Sparkles style={{ width: 20, height: 20, flexShrink: 0 }} />
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontWeight: 600, fontSize: 15 }}>Ask the Data</div>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, opacity: 0.9 }}>
-                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{clientName}</span>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    fontSize: 12,
+                    opacity: 0.9,
+                  }}
+                >
+                  <span
+                    style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                  >
+                    {clientName}
+                  </span>
                   <span style={{ opacity: 0.6 }}>·</span>
                   <select
                     value={model}
@@ -210,15 +239,32 @@ export function AiChatPanel({ clientId, clientName }: AiChatPanelProps) {
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <button
-                onClick={() => { setMessages([]); setHistoryLoaded(false); }}
-                style={{ background: "rgba(255,255,255,0.2)", border: "none", borderRadius: 8, padding: "6px", cursor: "pointer", color: "white" }}
+                onClick={() => {
+                  setMessages([]);
+                  setHistoryLoaded(false);
+                }}
+                style={{
+                  background: "rgba(255,255,255,0.2)",
+                  border: "none",
+                  borderRadius: 8,
+                  padding: "6px",
+                  cursor: "pointer",
+                  color: "white",
+                }}
                 title="Clear chat"
               >
                 <Trash2 style={{ width: 16, height: 16 }} />
               </button>
               <button
                 onClick={() => setIsOpen(false)}
-                style={{ background: "rgba(255,255,255,0.2)", border: "none", borderRadius: 8, padding: "6px", cursor: "pointer", color: "white" }}
+                style={{
+                  background: "rgba(255,255,255,0.2)",
+                  border: "none",
+                  borderRadius: 8,
+                  padding: "6px",
+                  cursor: "pointer",
+                  color: "white",
+                }}
               >
                 <X style={{ width: 16, height: 16 }} />
               </button>
@@ -226,10 +272,21 @@ export function AiChatPanel({ clientId, clientName }: AiChatPanelProps) {
           </div>
 
           {/* Messages */}
-          <div style={{ flex: 1, overflowY: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+          <div
+            style={{
+              flex: 1,
+              overflowY: "auto",
+              padding: 16,
+              display: "flex",
+              flexDirection: "column",
+              gap: 12,
+            }}
+          >
             {messages.length === 0 && (
               <div style={{ textAlign: "center", padding: "24px 0" }}>
-                <Sparkles style={{ width: 32, height: 32, color: "var(--accent)", margin: "0 auto 12px" }} />
+                <Sparkles
+                  style={{ width: 32, height: 32, color: "var(--accent)", margin: "0 auto 12px" }}
+                />
                 <p style={{ fontWeight: 600, color: "var(--text-1, #1a1a1a)", margin: "0 0 8px" }}>
                   Ask anything about {clientName}
                 </p>
@@ -252,8 +309,12 @@ export function AiChatPanel({ clientId, clientName }: AiChatPanelProps) {
                         textAlign: "left",
                         transition: "background 0.15s",
                       }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-3, #f3f4f6)"; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = "var(--bg-2, #f9fafb)"; }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "var(--bg-3, #f3f4f6)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "var(--bg-2, #f9fafb)";
+                      }}
                     >
                       {prompt}
                     </button>
@@ -270,9 +331,8 @@ export function AiChatPanel({ clientId, clientName }: AiChatPanelProps) {
                   maxWidth: "85%",
                   padding: "10px 14px",
                   borderRadius: msg.role === "user" ? "14px 14px 4px 14px" : "14px 14px 14px 4px",
-                  background: msg.role === "user"
-                    ? "var(--gradient-accent)"
-                    : "var(--bg-2, #f3f4f6)",
+                  background:
+                    msg.role === "user" ? "var(--gradient-accent)" : "var(--bg-2, #f3f4f6)",
                   color: msg.role === "user" ? "white" : "var(--text-1, #1a1a1a)",
                   fontSize: 14,
                   lineHeight: 1.6,
@@ -285,7 +345,15 @@ export function AiChatPanel({ clientId, clientName }: AiChatPanelProps) {
             ))}
 
             {loading && (
-              <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-3, #999)", fontSize: 13 }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  color: "var(--text-3, #999)",
+                  fontSize: 13,
+                }}
+              >
                 <Loader2 style={{ width: 16, height: 16, animation: "spin 1s linear infinite" }} />
                 Analysing...
               </div>
