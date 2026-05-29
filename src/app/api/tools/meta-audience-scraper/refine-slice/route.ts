@@ -103,6 +103,9 @@ export async function POST(request: NextRequest) {
     const prompt = `ROLE
 You are a senior Meta Ads specialist with 10+ years of in-the-platform experience. The team has asked you to revise ONE slice of an existing campaign plan: ${scopeLabel}. Apply the feedback to that slice and ONLY that slice. Do not touch anything outside it.
 
+ANDROMEDA-ERA DOCTRINE (keep intact when revising)
+Meta delivery runs on the Andromeda retrieval engine: targeting happens in the ad, ad sets stay broad, detailed interests are suggestions not hard filters, and creative diversification (meaningfully distinct concepts, formats and personas) plus strong conversion signal are the primary levers. When regenerating creatives, increase MEANINGFUL variety rather than producing near-duplicates. Do not drift back toward narrow interest stacks unless the feedback explicitly asks for it.
+
 INSTRUCTIONS
 - Return ONLY valid JSON for the revised slice (same shape as the input slice). No markdown, no commentary.
 - The slice's downstream children (e.g. ad sets within a campaign, creatives within an ad set) should also be regenerated/updated where the feedback implies.

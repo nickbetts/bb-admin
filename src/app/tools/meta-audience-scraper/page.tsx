@@ -145,6 +145,27 @@ interface ControlsVsSuggestions {
   manualOverrideTriggers?: string[];
 }
 
+interface SignalReadiness {
+  verdict?: string;
+  pixelCapiStatus?: string;
+  recommendedOptimisationEvent?: string;
+  eventVolumeCheck?: string;
+  valueOptimisation?: string;
+  aemNotes?: string;
+  preLaunchActions?: string[];
+}
+
+interface CostProjection {
+  cpmRange?: string;
+  dailyReach?: string;
+  ctrCpcBand?: string;
+  targetCpa?: string;
+  realisticCpaRange?: string;
+  weeklyConversionEstimate?: string;
+  confidence?: string;
+  assumptions?: string[];
+}
+
 interface StrategyHandoffPack {
   campaignBuildOrder?: string[];
   creativeTestMatrix?: string[];
@@ -157,6 +178,7 @@ interface FullPlan {
   summary: string;
   structureRationale: string;
   controlsVsSuggestions?: ControlsVsSuggestions;
+  signalReadiness?: SignalReadiness;
   campaigns: CampaignPlan[];
   creativeTestingFramework?: string;
   weekByWeek?: string[];
@@ -169,6 +191,7 @@ interface FullPlan {
   };
   risks: string[];
   scaleUp: string;
+  costProjection?: CostProjection;
   handoffPack?: StrategyHandoffPack;
 }
 
@@ -406,7 +429,13 @@ export default function MetaAudienceScraperPage() {
   function buildPillarsForPlan(): {
     name: string;
     rationale: string;
-    options: { id: string; name: string; type: string }[];
+    options: {
+      id: string;
+      name: string;
+      type: string;
+      audienceSizeLower?: number | null;
+      audienceSizeUpper?: number | null;
+    }[];
   }[] {
     return (aiResult?.pillars ?? [])
       .filter((p) => !excludedPillars.has(p.name))
@@ -415,7 +444,13 @@ export default function MetaAudienceScraperPage() {
         rationale: p.rationale,
         options: p.options
           .filter((o) => !excludedOptionIds.has(o.id))
-          .map((o) => ({ id: o.id, name: o.name, type: o.type })),
+          .map((o) => ({
+            id: o.id,
+            name: o.name,
+            type: o.type,
+            audienceSizeLower: o.audienceSizeLower ?? null,
+            audienceSizeUpper: o.audienceSizeUpper ?? null,
+          })),
       }))
       .filter((p) => p.options.length > 0);
   }
@@ -1608,6 +1643,8 @@ function CampaignPlanSection(props: CampaignPlanSectionProps) {
       summary: currentPlan.summary,
       structureRationale: currentPlan.structureRationale,
       controlsVsSuggestions: currentPlan.controlsVsSuggestions ?? null,
+      signalReadiness: currentPlan.signalReadiness ?? null,
+      costProjection: currentPlan.costProjection ?? null,
       handoffPack: currentPlan.handoffPack ?? null,
       campaignNames,
       createdAt: new Date().toISOString(),
@@ -1699,6 +1736,197 @@ function CampaignPlanSection(props: CampaignPlanSectionProps) {
             </p>
           </div>
 
+          {/* Signal readiness — Andromeda feeds on conversion signal */}
+          {plan.signalReadiness &&
+            (plan.signalReadiness.verdict ||
+              plan.signalReadiness.pixelCapiStatus ||
+              plan.signalReadiness.recommendedOptimisationEvent) && (
+              <div
+                style={{
+                  padding: 14,
+                  background: "var(--surface-2)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--r)",
+                  borderLeft: "3px solid var(--success-text, var(--accent))",
+                }}
+              >
+                <h3 style={{ margin: 0, fontSize: 13, fontWeight: 600 }}>Signal readiness</h3>
+                {plan.signalReadiness.verdict && (
+                  <p
+                    style={{
+                      margin: "6px 0 0",
+                      fontSize: 12.5,
+                      color: "var(--text)",
+                      fontWeight: 500,
+                    }}
+                  >
+                    {plan.signalReadiness.verdict}
+                  </p>
+                )}
+                <div style={{ display: "grid", gap: 6, margin: "10px 0 0" }}>
+                  {plan.signalReadiness.recommendedOptimisationEvent && (
+                    <p style={{ margin: 0, fontSize: 12, color: "var(--text-2)" }}>
+                      <strong>Optimise for:</strong>{" "}
+                      {plan.signalReadiness.recommendedOptimisationEvent}
+                    </p>
+                  )}
+                  {plan.signalReadiness.eventVolumeCheck && (
+                    <p style={{ margin: 0, fontSize: 12, color: "var(--text-2)" }}>
+                      <strong>Event volume:</strong> {plan.signalReadiness.eventVolumeCheck}
+                    </p>
+                  )}
+                  {plan.signalReadiness.pixelCapiStatus && (
+                    <p style={{ margin: 0, fontSize: 12, color: "var(--text-2)" }}>
+                      <strong>Pixel &amp; CAPI:</strong> {plan.signalReadiness.pixelCapiStatus}
+                    </p>
+                  )}
+                  {plan.signalReadiness.valueOptimisation && (
+                    <p style={{ margin: 0, fontSize: 12, color: "var(--text-2)" }}>
+                      <strong>Value optimisation:</strong> {plan.signalReadiness.valueOptimisation}
+                    </p>
+                  )}
+                  {plan.signalReadiness.aemNotes && (
+                    <p style={{ margin: 0, fontSize: 12, color: "var(--text-2)" }}>
+                      <strong>AEM / iOS:</strong> {plan.signalReadiness.aemNotes}
+                    </p>
+                  )}
+                </div>
+                {Array.isArray(plan.signalReadiness.preLaunchActions) &&
+                  plan.signalReadiness.preLaunchActions.length > 0 && (
+                    <>
+                      <p
+                        style={{
+                          margin: "10px 0 4px",
+                          fontSize: 12,
+                          color: "var(--text)",
+                          fontWeight: 600,
+                        }}
+                      >
+                        Before launch
+                      </p>
+                      <ul
+                        style={{
+                          margin: 0,
+                          paddingLeft: 18,
+                          fontSize: 12,
+                          color: "var(--text-2)",
+                          lineHeight: 1.5,
+                        }}
+                      >
+                        {plan.signalReadiness.preLaunchActions.map((item, i) => (
+                          <li key={i}>{item}</li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+              </div>
+            )}
+
+          {/* Cost & delivery projection — set expectations before launch */}
+          {plan.costProjection &&
+            (plan.costProjection.cpmRange ||
+              plan.costProjection.realisticCpaRange ||
+              plan.costProjection.weeklyConversionEstimate) && (
+              <div
+                style={{
+                  padding: 14,
+                  background: "var(--surface-2)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--r)",
+                  borderLeft: "3px solid var(--accent)",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 8,
+                  }}
+                >
+                  <h3 style={{ margin: 0, fontSize: 13, fontWeight: 600 }}>
+                    Cost &amp; delivery projection
+                  </h3>
+                  {plan.costProjection.confidence && (
+                    <span
+                      style={{
+                        fontSize: 10.5,
+                        textTransform: "uppercase",
+                        letterSpacing: 0.4,
+                        color: "var(--text-2)",
+                        border: "1px solid var(--border)",
+                        borderRadius: 999,
+                        padding: "1px 8px",
+                      }}
+                    >
+                      {plan.costProjection.confidence} confidence
+                    </span>
+                  )}
+                </div>
+                <div style={{ display: "grid", gap: 6, margin: "10px 0 0" }}>
+                  {plan.costProjection.cpmRange && (
+                    <p style={{ margin: 0, fontSize: 12, color: "var(--text-2)" }}>
+                      <strong>CPM:</strong> {plan.costProjection.cpmRange}
+                    </p>
+                  )}
+                  {plan.costProjection.dailyReach && (
+                    <p style={{ margin: 0, fontSize: 12, color: "var(--text-2)" }}>
+                      <strong>Daily reach:</strong> {plan.costProjection.dailyReach}
+                    </p>
+                  )}
+                  {plan.costProjection.ctrCpcBand && (
+                    <p style={{ margin: 0, fontSize: 12, color: "var(--text-2)" }}>
+                      <strong>CTR / CPC:</strong> {plan.costProjection.ctrCpcBand}
+                    </p>
+                  )}
+                  {plan.costProjection.targetCpa && (
+                    <p style={{ margin: 0, fontSize: 12, color: "var(--text-2)" }}>
+                      <strong>Target CPA:</strong> {plan.costProjection.targetCpa}
+                    </p>
+                  )}
+                  {plan.costProjection.realisticCpaRange && (
+                    <p style={{ margin: 0, fontSize: 12, color: "var(--text-2)" }}>
+                      <strong>Realistic CPA:</strong> {plan.costProjection.realisticCpaRange}
+                    </p>
+                  )}
+                  {plan.costProjection.weeklyConversionEstimate && (
+                    <p style={{ margin: 0, fontSize: 12, color: "var(--text-2)" }}>
+                      <strong>Weekly conversions:</strong>{" "}
+                      {plan.costProjection.weeklyConversionEstimate}
+                    </p>
+                  )}
+                </div>
+                {Array.isArray(plan.costProjection.assumptions) &&
+                  plan.costProjection.assumptions.length > 0 && (
+                    <>
+                      <p
+                        style={{
+                          margin: "10px 0 4px",
+                          fontSize: 12,
+                          color: "var(--text)",
+                          fontWeight: 600,
+                        }}
+                      >
+                        Assumptions
+                      </p>
+                      <ul
+                        style={{
+                          margin: 0,
+                          paddingLeft: 18,
+                          fontSize: 12,
+                          color: "var(--text-2)",
+                          lineHeight: 1.5,
+                        }}
+                      >
+                        {plan.costProjection.assumptions.map((item, i) => (
+                          <li key={i}>{item}</li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+              </div>
+            )}
+
           {/* Campaigns */}
           {campaigns.map((campaign, ci) => (
             <CampaignCard
@@ -1721,6 +1949,93 @@ function CampaignPlanSection(props: CampaignPlanSectionProps) {
               sliceKey={sliceKey}
             />
           ))}
+
+          {/* Creative diversification matrix — Andromeda's #1 lever at a glance */}
+          {(() => {
+            type MatrixRow = {
+              concept: string;
+              format: string;
+              persona: string;
+              variants: number;
+            };
+            const rows: MatrixRow[] = [];
+            const formats = new Set<string>();
+            const angles = new Set<string>();
+            for (const campaign of campaigns) {
+              for (const adSet of campaign.adSets ?? []) {
+                const persona = adSet.cohort || adSet.pillarName || adSet.name || "—";
+                for (const creative of adSet.creatives ?? []) {
+                  const format = creative.format || "—";
+                  const angle = creative.copyAngle || "—";
+                  formats.add(format);
+                  angles.add(angle);
+                  const variants =
+                    (creative.hooks?.length ?? (creative.hook ? 1 : 0)) +
+                    (creative.headlines?.length ?? (creative.headline ? 1 : 0)) +
+                    (creative.primaryTexts?.length ?? (creative.primaryText ? 1 : 0)) +
+                    (creative.longFormVariants?.length ?? 0);
+                  rows.push({ concept: angle, format, persona, variants });
+                }
+              }
+            }
+            if (rows.length === 0) return null;
+            return (
+              <div
+                style={{
+                  padding: 14,
+                  background: "var(--surface-2)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--r)",
+                  borderLeft: "3px solid var(--accent)",
+                }}
+              >
+                <h3 style={{ margin: 0, fontSize: 13, fontWeight: 600 }}>
+                  Creative diversification matrix
+                </h3>
+                <p style={{ margin: "4px 0 10px", fontSize: 11.5, color: "var(--text-3)" }}>
+                  {rows.length} concept{rows.length === 1 ? "" : "s"} across {formats.size} format
+                  {formats.size === 1 ? "" : "s"} and {angles.size} angle
+                  {angles.size === 1 ? "" : "s"}. Meaningful variety is Andromeda&apos;s strongest
+                  lever — feed the machine genuinely distinct candidates.
+                </p>
+                <div style={{ overflowX: "auto" }}>
+                  <table
+                    style={{
+                      width: "100%",
+                      borderCollapse: "collapse",
+                      fontSize: 12,
+                      color: "var(--text-2)",
+                    }}
+                  >
+                    <thead>
+                      <tr style={{ textAlign: "left", color: "var(--text-3)" }}>
+                        <th style={{ padding: "4px 8px 6px 0", fontWeight: 600 }}>
+                          Concept / angle
+                        </th>
+                        <th style={{ padding: "4px 8px 6px 0", fontWeight: 600 }}>Format</th>
+                        <th style={{ padding: "4px 8px 6px 0", fontWeight: 600 }}>Persona</th>
+                        <th style={{ padding: "4px 0 6px 0", fontWeight: 600 }}>Variants</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((row, i) => (
+                        <tr key={i} style={{ borderTop: "1px solid var(--border)" }}>
+                          <td style={{ padding: "6px 8px 6px 0", color: "var(--text)" }}>
+                            {row.concept}
+                          </td>
+                          <td style={{ padding: "6px 8px 6px 0" }}>
+                            {row.format.replace(/_/g, " ")}
+                          </td>
+                          <td style={{ padding: "6px 8px 6px 0" }}>{row.persona}</td>
+                          <td style={{ padding: "6px 0 6px 0" }}>{row.variants}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Creative testing framework */}
           {plan.creativeTestingFramework && (

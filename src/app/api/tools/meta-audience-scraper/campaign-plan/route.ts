@@ -14,6 +14,8 @@ export const maxDuration = 300;
 
 const MODEL = "claude-opus-4-8";
 
+const PLAN_SCHEMA_VERSION = 2;
+
 const MAX_TOKENS = 24000;
 
 // Quick KPI / benchmark grounding via OpenAI web search. Runs in parallel
@@ -87,7 +89,13 @@ export async function POST(request: NextRequest) {
       pillars?: {
         name: string;
         rationale?: string;
-        options: { id: string; name: string; type: string }[];
+        options: {
+          id: string;
+          name: string;
+          type: string;
+          audienceSizeLower?: number | null;
+          audienceSizeUpper?: number | null;
+        }[];
       }[];
     };
 
@@ -135,6 +143,51 @@ export async function POST(request: NextRequest) {
       })
       .join("\n\n");
 
+    // ── Real Meta audience-size intelligence (no client account needed) ──
+    // Meta's /search endpoint returns global audience_size bounds for every
+    // interest/behaviour. These are real, Meta-reported figures we already
+    // have in hand. We summarise them per pillar so the planner grounds its
+    // reach + cost projection in real numbers rather than guessing.
+    const fmtSize = (n?: number | null): string | null => {
+      if (typeof n !== "number" || !Number.isFinite(n) || n <= 0) return null;
+      if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+      if (n >= 1_000) return `${Math.round(n / 1_000)}k`;
+      return String(Math.round(n));
+    };
+    const audienceIntelLines: string[] = [];
+    for (let i = 0; i < pillars.length; i++) {
+      const p = pillars[i];
+      const sized = p.options
+        .map((o) => ({
+          name: o.name,
+          lower: typeof o.audienceSizeLower === "number" ? o.audienceSizeLower : 0,
+          upper: typeof o.audienceSizeUpper === "number" ? o.audienceSizeUpper : 0,
+        }))
+        .filter((o) => o.upper > 0)
+        .sort((a, b) => b.upper - a.upper);
+      if (sized.length === 0) continue;
+      const largest = sized[0];
+      const top = sized
+        .slice(0, 5)
+        .map((o) => {
+          const lo = fmtSize(o.lower);
+          const hi = fmtSize(o.upper);
+          const range = lo && hi ? `${lo}–${hi}` : (hi ?? lo ?? "?");
+          return `${o.name} (${range})`;
+        })
+        .join("; ");
+      const largestRange = `${fmtSize(largest.lower) ?? "?"}–${fmtSize(largest.upper) ?? "?"}`;
+      audienceIntelLines.push(
+        `Pillar ${i + 1} (${p.name}): largest single audience ≈ ${largestRange} people (global, Meta-reported). Top sized options: ${top}.`,
+      );
+    }
+    const audienceIntelBlock =
+      audienceIntelLines.length > 0
+        ? `REAL META AUDIENCE SIZES (from Meta's targeting search — global monthly-active figures, NOT guesses)
+These are Meta's own audience_size bounds for the targeting options below. Use them as the real reach denominators when you write costProjection.dailyReach and when you judge whether an ad set can support its optimisation event. Remember: these are GLOBAL sizes — scale them down hard for the campaign geography (${body.geography ?? "the target market"}) before reasoning about reach, and remember interests overlap heavily so do NOT simply sum them. In the Andromeda era, broad Advantage+ Audience delivery will reach well beyond any single interest, so treat the largest sized audience as a floor, not a ceiling.
+${audienceIntelLines.join("\n")}`
+        : "";
+
     const prompt = `ROLE
 You are a senior Meta Ads specialist with 10+ years of in-the-platform experience running paid social for brands across DTC, lead gen, B2B, charity, hospitality and luxury. You have personally managed accounts at every budget tier from £50/day to £500k/day. You write campaign plans the way the best media buyers in the industry do — opinionated, specific, grounded in current Meta best practice (CBO + Advantage+, broad targeting where appropriate, relentless creative testing, lean ad-set count, conservative attribution windows). You do NOT hedge with vague advice. Every recommendation has a clear strategic reason behind it that a media buyer will recognise as correct.
 
@@ -154,16 +207,26 @@ ${benchmarks}`
     : ""
 }
 
+${audienceIntelBlock}
+
+ANDROMEDA-ERA DOCTRINE (READ FIRST — THIS OVERRIDES OLD HABITS)
+Meta delivery now runs on Andromeda, an ML retrieval engine that narrows tens of millions of ads to a few thousand candidates per impression opportunity, then ranks them. The practical consequences, confirmed by Meta's own guidance, are:
+  - TARGETING NOW HAPPENS IN THE AD. Keep ad sets broad and let Andromeda match the person. You rarely need multiple ad sets purely for targeting; detailed-interest stacks are SUGGESTIONS the system may ignore, not the primary lever.
+  - CREATIVE DIVERSIFICATION IS THE #1 LEVER. Andromeda rewards MEANINGFUL variety across concepts/angles, formats and personas (not near-duplicate tweaks). The more genuinely distinct, high-quality candidates you feed it, the better it personalises. Meta removed the old 'max ~6 ads per ad set' guidance in 2025 — feed many strong, distinct ads.
+  - SIGNAL QUALITY FEEDS THE MACHINE. Andromeda can only personalise as well as the conversion signal it receives. A healthy pixel + Conversions API (CAPI) feed, enough weekly conversion events for the chosen optimisation, and value signals matter more than audience micro-management.
+  - SIMPLIFY STRUCTURE. One campaign per goal, Advantage+ defaults, broad ad sets, and the heavy lifting at the ad level. Spend strategist effort on signal and creative, not fragmentation.
+Apply this doctrine throughout. Where an old-school instinct (tight interest stacks, many narrow ad sets) conflicts with it, follow the doctrine and say why.
+
 WHAT YOU MUST DO
 Produce a build-ready campaign plan that a media buyer could plug straight into Ads Manager today. Apply the modern Meta playbook:
 
 1. STRUCTURE — Resist the urge to over-fragment. At this budget, ${dailyBudget < 50 ? "1 campaign, 1-2 ad sets is almost certainly correct (Meta needs ~50 conversions per ad set per week to exit learning)." : dailyBudget < 200 ? "1-2 campaigns and 2-4 ad sets max is typically right. Don't dilute spend across too many ad sets." : dailyBudget < 1000 ? "2-3 campaigns split by funnel stage (e.g. prospecting + retargeting) with 2-3 ad sets per campaign is typical." : "you can support a multi-campaign structure split by funnel stage, region, or product line — but still keep ad-set count per campaign tight."}
 2. CBO vs ABO — Default to CBO (Advantage Campaign Budget) unless there's a strong reason. ABO only when you specifically want to control delivery to a particular audience.
-3. ADVANTAGE+ AUDIENCE — At small/mid budgets, Advantage+ Audience with interests as suggestions almost always outperforms a tight stack — but explicitly call out the exceptions: niche luxury, B2B with very specific job titles, regulated verticals, or very tight geos where you genuinely need to constrain.
-4. ADVANTAGE+ SHOPPING / SALES — For e-commerce above ~£100/day with a working pixel, Advantage+ Shopping campaigns frequently beat manual structures. Recommend it when warranted.
+3. ADVANTAGE+ AUDIENCE — This is the default. In the Andromeda era, Advantage+ Audience (with interests supplied only as SUGGESTIONS / seeds) almost always outperforms a hard-constrained stack, because retrieval finds converters you would never have hand-picked. Treat the audience pillars below as seed signals, NOT as rigid inclusion filters. Only hard-constrain (specific saved audience, locked interests, exclusions) when there's a genuine reason: niche luxury, B2B with very specific job titles, regulated verticals, brand-safety, or very tight geos. When you do constrain, justify why the cost of constraining beats letting Andromeda explore.
+4. ADVANTAGE+ SHOPPING / SALES — If the brief is ecommerce/retail with a working pixel and the daily budget is ≥ ~£100, DEFAULT to an Advantage+ Sales (Advantage+ Shopping) campaign rather than a manual structure — it consistently wins in the Andromeda era because it gives retrieval the broadest, signal-led pool. Recommend the manual structure only when there's a clear reason (very low budget, no purchase signal yet, strict creative/audience control). For lead-gen and app, prefer the equivalent Advantage+ flow where eligible. State the call explicitly.
 5. OPTIMISATION GOAL — Pick the lowest-funnel event the budget can sustain (≥50 events/week per ad set). If the budget can't sustain Purchase optimisation, drop to Add-to-Cart or Landing Page Views and explain why.
 6. BIDDING — Default to Lowest Cost (highest volume). Only recommend Cost Cap or Bid Cap when there's a clear unit-economics reason and the account has the data to back it.
-7. ATTRIBUTION — Default to 7-day click + 1-day view for ecom/leads. Use 1-day click only for awareness or very short consideration cycles.
+7. ATTRIBUTION — Default to 7-day click + 1-day view for ecom/leads. Use 1-day click only for awareness or very short consideration cycles. Note that post-iOS, much of the conversion picture is MODELLED — set Aggregated Event Measurement priority ordering so the primary conversion event ranks first, and read results at campaign level rather than over-reacting to under-reported in-platform numbers. Recommend an incrementality / conversion-lift test once spend justifies it, rather than trusting last-touch attribution alone.
 8. PLACEMENTS — Default to Advantage+ Placements. Only restrict to specific placements (e.g. Reels-only for short-form video creative) when you genuinely have format-specific creative.
 
 8b. GEOGRAPHY & DIASPORA — This is critical. Whenever the brief involves a country, religion, culture, language or community, the geo strategy MUST consider THREE dimensions:
@@ -174,7 +237,7 @@ Produce a build-ready campaign plan that a media buyer could plug straight into 
 
 8c. REGIONAL GROUPING & COHORT SPLITS — When the brief covers multiple countries or regions, GROUP ad sets by region (e.g. "Europe", "Middle East", "Asia", "Oceania", "North America", "UK & Ireland", "Diaspora — Western Europe"). Use the "group" field on each ad set so the UI can render them clustered. Within a region, if there are clearly distinct AGE COHORTS in the brief (e.g. students 18-23 vs parents 35-59, first-time donors vs lapsed donors, GenZ vs Millennials), produce a SEPARATE ad set per cohort with its own age range, its own lookalike, its own creative angle. Meta only allows one age range per ad set so cohort splits are real ad sets.
 
-9. CREATIVE — This is where campaigns are won. For each ad set, give 2 distinct creative concepts. Each concept must include: 3 short-form hook variants, 3 short-form headline variants, 3 short-form primary-text variants (under 125 chars each), a CTA, and a detailed image-prompt array suitable for gpt-image-1. Specify the copy angle (e.g. "Problem-Agitate-Solve", "Founder story", "User-generated style", "Direct response", "Aspirational lifestyle"). Image prompts must describe scene, subject, composition, mood, lighting, colour palette, camera angle and style. Concrete visual language only. No invented brand logos, no celebrities, no recognisable real people.
+9. CREATIVE — This is where campaigns are won in the Andromeda era. Creative diversification is the primary performance lever, so give Meta a genuinely VARIED set of candidates to retrieve from. For each ad set, produce ${dailyBudget < 50 ? "3-4" : dailyBudget < 200 ? "4-6" : dailyBudget < 1000 ? "6-8" : "8-12"} distinct creative concepts that differ MEANINGFULLY across three axes — CONCEPT/ANGLE (e.g. Problem-Agitate-Solve, founder story, social proof, direct-response offer, educational, comparison), FORMAT (single image, carousel, short video, collection), and PERSONA / awareness stage (who it speaks to and how warm they are). Do NOT produce near-duplicates that only swap a word — each concept must be a different idea a different person would respond to. Each concept must include: 3 short-form hook variants, 3 short-form headline variants, 3 short-form primary-text variants (under 125 chars each), a CTA, and a detailed image-prompt array suitable for gpt-image-1. Specify the copyAngle. Image prompts must describe scene, subject, composition, mood, lighting, colour palette, camera angle and style. Concrete visual language only. No invented brand logos, no celebrities, no recognisable real people.
 
 9b. LONG-FORM COPY — In addition to the short-form variants, give 2-4 LONG-FORM body-copy variants (each 80-220 words) per creative concept. Each long-form variant must use a DIFFERENT TONE so the media buyer can split-test angle, not phrasing. Tones to draw from (pick the 2-4 that fit the brief best, no duplicates within a concept):
     - "Emotive" — story-driven, vivid imagery, present tense, makes the reader feel something specific. Strong for charity, healthcare, family.
@@ -202,10 +265,14 @@ Produce a build-ready campaign plan that a media buyer could plug straight into 
    - video → 1 prompt describing the COVER/keyframe still — the opening shot a media buyer would freeze.
    - collection → 3-4 prompts. Card 1 is the hero shot, the rest are product tiles or feature close-ups.
    The number of items in imagePrompts MUST match these rules. Do not generate fewer than the format requires.
-10. EXCLUSIONS, FREQUENCY, LOOKALIKES — Recommend when relevant. Exclude existing customers from prospecting. Frequency cap retargeting. Lookalikes off purchasers (or value-based LALs) when there's enough seed data; ${dailyBudget < 50 ? "at this budget skip LALs initially — pixel data first." : "make the call based on the brief and explain it."}
+10. EXCLUSIONS, FREQUENCY, LOOKALIKES — Recommend when relevant. Exclude existing customers from prospecting. Frequency cap retargeting. For lookalikes in the Andromeda era, treat them as an ADDITIONAL SEED SIGNAL layered inside Advantage+ Audience (not a rigid alternative to it) — supply the LAL as a suggestion and let retrieval expand beyond it. Only build a LAL when the seed has enough data: roughly ≥100 (ideally ≥1,000) matched conversions/customers in the source; if the seed is thinner than that, say so and skip it. ${dailyBudget < 50 ? "At this budget skip LALs initially — gather pixel/purchase data first." : "Make the call based on seed size and explain it, including the suggested percentage band (1%, 1-3%, 3-5%) and the seed list."}
 11. WHY EVERYTHING — Every "why" field must be 2-3 sentences of *specific, expert* reasoning. Not "this audience is good for the brand" — actually explain the media-buying logic ("Stacking three behaviour signals that Meta's auction can intersect lets us hold CPM down while still hitting a high-intent pool. Optimising for Purchase rather than ATC means delivery skews to people who Meta has seen complete checkouts on similar products in the last 7 days.").
 12. CONTROLS VS SUGGESTIONS — Separate hard constraints from optional recommendations. Identify what the buyer should treat as non-negotiable controls versus testable suggestions.
 13. STRATEGY HANDOFF PACK — Provide a handoff block a strategist can copy into an implementation ticket. It must include build order, launch checklist, first-14-day guardrails, and kill/scale rules with concrete thresholds.
+14. SIGNAL READINESS — Andromeda is only as good as the conversion signal it receives, so this is a first-class section, not an afterthought. Assess and instruct on: pixel + Conversions API (CAPI) status and why server-side deduplicated signal matters; which standard/custom events to fire and the single optimisation event this plan should target; whether the account can realistically generate enough weekly events for that optimisation (≈50/ad set/week) and what to optimise for instead if not; value optimisation / value sets eligibility for ecommerce; and Aggregated Event Measurement / iOS priority ordering. Give a concise readiness verdict and the specific actions to take BEFORE launch.
+15. ADVANTAGE+ CREATIVE & DYNAMIC CREATIVE — Recommend turning on Advantage+ Creative / Standard Enhancements and, where it fits, Dynamic Creative (asset feed): supply many headlines, primary texts and media and let Meta combine and rank them per person. This complements the diversification matrix — the matrix gives distinct concepts; Dynamic Creative optimises within them. Call out where to leave enhancements off (regulated claims, precise brand lockups).
+
+16. COST & DELIVERY PROJECTION — Produce a grounded forward projection so the buyer knows what "good" looks like before launch. Using the sector benchmarks supplied above (and sensible ranges where none exist), estimate a CPM range, expected daily reach/impressions at the planned budget, an expected CPC/CTR band, a target and realistic CPA/CPL range, and the implied weekly conversion volume — then sanity-check that volume against the ≈50 events/ad set/week learning threshold. Be explicit when the budget is too thin to exit learning. State assumptions and confidence; never present a single false-precision number — always give a range with the reasoning behind it.
 
 Map the audience pillars below to ad sets. Consolidate aggressively. Each ad set needs ~50 conversions per week to exit learning. If the budget can't support a pillar as its own ad set, fold it into another or drop it. BUT — per rule 8c — if the brief naturally splits across regions or distinct cohorts, do produce one ad set per region+cohort combination and let the budget split sort itself out. Do not collapse Europe and the Middle East into one ad set just to save budget.
 
@@ -222,6 +289,15 @@ Return ONLY valid JSON (no markdown fences, no commentary). British English thro
     "hardControls": ["string — must-do setup controls the buyer should not ignore"],
     "suggestions": ["string — optional tests or optimisation suggestions"],
     "manualOverrideTriggers": ["string — explicit condition where manual intervention should override automation"]
+  },
+  "signalReadiness": {
+    "verdict": "string — one-line readiness call, e.g. 'Pixel healthy, CAPI missing — fix before scaling' or 'Strong signal, ready for Purchase optimisation'",
+    "pixelCapiStatus": "string — what the pixel/CAPI setup should look like and why server-side, deduplicated signal matters for Andromeda",
+    "recommendedOptimisationEvent": "string — the single event this plan optimises for, e.g. 'Purchase' or, if volume is too low, 'Add to Cart / Lead' with the reason",
+    "eventVolumeCheck": "string — can the account realistically generate ~50 of that event per ad set per week at this budget? If not, what to optimise for instead.",
+    "valueOptimisation": "string — value optimisation / value sets eligibility and recommendation (ecommerce). Empty string if not applicable.",
+    "aemNotes": "string — Aggregated Event Measurement / iOS priority-ordering notes and any tracking caveats.",
+    "preLaunchActions": ["string — specific signal/tracking actions to complete BEFORE launch"]
   },
   "campaigns": [
     {
@@ -302,6 +378,16 @@ Return ONLY valid JSON (no markdown fences, no commentary). British English thro
     "minLearningPhaseEvents": "string — e.g. '50 purchases per ad set per 7 days; expect ~5-7 days to exit learning at this budget'",
     "ctaToHoldOff": "1-2 sentences. What NOT to touch in the first 7 days and why.",
     "campaignLevelReading": "string — how to judge campaign-level performance before making structural edits"
+  },
+  "costProjection": {
+    "cpmRange": "string — expected CPM range with currency, e.g. '£6–£11 CPM' and the basis for it",
+    "dailyReach": "string — estimated daily reach/impressions at the planned budget",
+    "ctrCpcBand": "string — expected CTR and CPC band, e.g. 'CTR 0.9–1.6%, CPC £0.45–£0.90'",
+    "targetCpa": "string — target CPA/CPL the plan is built to hit",
+    "realisticCpaRange": "string — honest CPA/CPL range given sector and budget, separate from the target",
+    "weeklyConversionEstimate": "string — implied conversions per week and whether that clears the ≈50/ad set/week learning threshold",
+    "confidence": "low | medium | high",
+    "assumptions": ["string — the key assumptions behind these numbers (sector benchmark, AOV, funnel quality, etc.)"]
   },
   "risks": ["string — 1 sentence each, expert-level. e.g. 'Audience overlap between Pillar A and B will cannibalise — monitor in Inspect tool after 5 days and merge if overlap > 30%.'"],
   "scaleUp": "1 paragraph. Specific scaling moves: budget % increase per step, when to introduce new ad sets, when to add lookalikes, when to expand geography, when to graduate to Advantage+ Shopping. Reference numbers.",
@@ -400,6 +486,9 @@ ${JSON.stringify(plan)}`;
     return NextResponse.json({
       plan,
       meta: {
+        schemaVersion: PLAN_SCHEMA_VERSION,
+        generatedWith: MODEL,
+        generatedAt: new Date().toISOString(),
         droppedIds: idCheck.droppedIds,
         budgetReports: budgetCheck.reports,
         copyHygiene: {
@@ -408,6 +497,7 @@ ${JSON.stringify(plan)}`;
           fixAttempted: copyFixAttempted,
         },
         benchmarksUsed: benchmarks.length > 0,
+        audienceIntelUsed: audienceIntelLines.length > 0,
       },
     });
   } catch (error) {

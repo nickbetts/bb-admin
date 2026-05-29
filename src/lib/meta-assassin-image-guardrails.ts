@@ -1,14 +1,12 @@
 import { logAICost } from "@/lib/ai-cost-logger";
+import { prisma } from "@/lib/prisma";
+import type OpenAI from "openai";
 
 type ImageMode = "generate" | "refine";
 
 interface GuardrailLimit {
   perHour: number;
   perDay: number;
-}
-
-interface UserBucket {
-  timestamps: number[];
 }
 
 interface GuardrailResult {
@@ -26,64 +24,94 @@ const LIMITS: Record<ImageMode, GuardrailLimit> = {
   refine: { perHour: 25, perDay: 80 },
 };
 
-function getStore(): Map<string, UserBucket> {
-  const globalRef = globalThis as typeof globalThis & {
-    __metaAssassinImageGuardrails?: Map<string, UserBucket>;
-  };
-  if (!globalRef.__metaAssassinImageGuardrails) {
-    globalRef.__metaAssassinImageGuardrails = new Map<string, UserBucket>();
-  }
-  return globalRef.__metaAssassinImageGuardrails;
-}
-
-function pruneWindow(timestamps: number[], now: number, windowMs: number): number[] {
-  return timestamps.filter((ts) => now - ts < windowMs);
-}
-
-function countWithinWindow(timestamps: number[], now: number, windowMs: number): number {
-  let count = 0;
-  for (const ts of timestamps) {
-    if (now - ts < windowMs) count += 1;
-  }
-  return count;
-}
-
-export function enforceMetaAssassinImageGuardrail(
+// Persistent, per-user image rate limit backed by MetaAssassinImageEvent.
+// Counts rows within rolling hour/day windows so the cap survives serverless
+// cold starts and is shared across instances. Fail-open: if the database is
+// unreachable we allow the call rather than blocking legitimate work.
+export async function enforceMetaAssassinImageGuardrail(
   userId: string,
   mode: ImageMode,
-): GuardrailResult {
-  const now = Date.now();
+): Promise<GuardrailResult> {
   const limit = LIMITS[mode];
-  const key = `${mode}:${userId}`;
+  const now = Date.now();
+  const dayAgo = new Date(now - DAY_MS);
+  const hourAgo = new Date(now - HOUR_MS);
 
-  const store = getStore();
-  const bucket = store.get(key) ?? { timestamps: [] };
-  bucket.timestamps = pruneWindow(bucket.timestamps, now, DAY_MS);
+  try {
+    const [usedDay, usedHour] = await Promise.all([
+      prisma.metaAssassinImageEvent.count({
+        where: { userId, mode, createdAt: { gte: dayAgo } },
+      }),
+      prisma.metaAssassinImageEvent.count({
+        where: { userId, mode, createdAt: { gte: hourAgo } },
+      }),
+    ]);
 
-  const usedHour = countWithinWindow(bucket.timestamps, now, HOUR_MS);
-  const usedDay = bucket.timestamps.length;
+    const remainingHour = Math.max(limit.perHour - usedHour, 0);
+    const remainingDay = Math.max(limit.perDay - usedDay, 0);
 
-  const remainingHour = Math.max(limit.perHour - usedHour, 0);
-  const remainingDay = Math.max(limit.perDay - usedDay, 0);
+    if (usedHour >= limit.perHour || usedDay >= limit.perDay) {
+      const scope = usedHour >= limit.perHour ? "hourly" : "daily";
+      return {
+        ok: false,
+        remainingHour,
+        remainingDay,
+        error: `Image ${mode} limit reached (${scope}). Try again later.`,
+      };
+    }
 
-  if (usedHour >= limit.perHour || usedDay >= limit.perDay) {
-    const scope = usedHour >= limit.perHour ? "hourly" : "daily";
+    await prisma.metaAssassinImageEvent.create({ data: { userId, mode } });
+
+    return {
+      ok: true,
+      remainingHour: Math.max(remainingHour - 1, 0),
+      remainingDay: Math.max(remainingDay - 1, 0),
+    };
+  } catch (error) {
+    console.error("meta-assassin image guardrail check failed:", error);
+    // Fail open — do not block image generation on a rate-limit lookup error.
+    return { ok: true, remainingHour: limit.perHour, remainingDay: limit.perDay };
+  }
+}
+
+export interface ImagePromptScreenResult {
+  ok: boolean;
+  flaggedCategories?: string[];
+  error?: string;
+}
+
+// Cheap, fast policy pre-check run BEFORE the (costly) gpt-image-1 call.
+// Uses OpenAI's moderation endpoint to catch prompts that would either be
+// refused by the image model or breach Meta's ad-image policies, so we fail
+// fast with a clear message instead of burning an image-generation credit.
+// Moderation is best-effort: if it errors (network / quota) we allow the
+// generation to proceed rather than blocking legitimate work.
+export async function screenImagePrompt(
+  openai: OpenAI,
+  prompt: string,
+): Promise<ImagePromptScreenResult> {
+  try {
+    const moderation = await openai.moderations.create({
+      model: "omni-moderation-latest",
+      input: prompt,
+    });
+    const result = moderation.results?.[0];
+    if (!result || !result.flagged) return { ok: true };
+    const flaggedCategories = Object.entries(result.categories ?? {})
+      .filter(([, flagged]) => flagged === true)
+      .map(([category]) => category.replace(/[/_]/g, " "));
     return {
       ok: false,
-      remainingHour,
-      remainingDay,
-      error: `Image ${mode} limit reached (${scope}). Try again later.`,
+      flaggedCategories,
+      error:
+        flaggedCategories.length > 0
+          ? `Image prompt blocked by content policy (${flaggedCategories.join(", ")}). Rephrase the visual brief and try again.`
+          : "Image prompt blocked by content policy. Rephrase the visual brief and try again.",
     };
+  } catch {
+    // Moderation failed — do not block legitimate generations on it.
+    return { ok: true };
   }
-
-  bucket.timestamps.push(now);
-  store.set(key, bucket);
-
-  return {
-    ok: true,
-    remainingHour: Math.max(remainingHour - 1, 0),
-    remainingDay: Math.max(remainingDay - 1, 0),
-  };
 }
 
 export async function logMetaAssassinImageUsage(mode: ImageMode): Promise<void> {

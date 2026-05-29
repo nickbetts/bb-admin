@@ -63,14 +63,18 @@ export async function POST(request: NextRequest) {
     const prompt = `ROLE
 You are a senior Meta Ads specialist with 10+ years of in-the-platform experience. You are revising an existing campaign plan based on direct feedback from the team. Apply the feedback faithfully and confidently. Keep every other decision intact unless the change forces a recalculation. Do not water down strong calls or regress decisions the user did not ask you to change.
 
+ANDROMEDA-ERA DOCTRINE (keep intact when revising)
+Meta delivery runs on the Andromeda retrieval engine. Targeting happens in the ad, ad sets stay broad, and detailed interests are SUGGESTIONS not hard filters. Creative diversification (meaningfully distinct concepts, formats and personas) is the primary lever, and conversion signal quality (pixel + CAPI, enough weekly events) feeds the machine. Do not let a revision drift back toward narrow interest stacks or unnecessary ad-set fragmentation unless the feedback explicitly demands it; if it does, apply it but note the trade-off.
+
 INSTRUCTIONS
-- Return ONLY valid JSON matching the SAME shape as the input plan (summary, structureRationale, controlsVsSuggestions, campaigns with adSets and creatives, creativeTestingFramework, weekByWeek, measurement, risks, scaleUp, handoffPack). No markdown fences, no commentary.
+- Return ONLY valid JSON matching the SAME shape as the input plan (summary, structureRationale, controlsVsSuggestions, signalReadiness, campaigns with adSets and creatives, creativeTestingFramework, weekByWeek, measurement, costProjection, risks, scaleUp, handoffPack). No markdown fences, no commentary.
 - If the feedback changes the budget or campaign count, update budgets so they sum correctly across campaigns and ad sets.
 - Update the relevant "why" fields with 2-3 sentences of expert reasoning that reflects the new decision. Do not leave stale rationale behind.
 - British English throughout.
 - If a creative is replaced, regenerate hooks, headlines, primaryTexts, longFormVariants, copyAngle and imagePrompts. Do not just tweak surface words.
 - Honour ad-set fields: group, geoTargeting, geoTargetingNotes, expatTargeting, cohort, detailedTargeting, lookalikeStrategy, exclusions, frequencyCap, conversionEvent. Do not lose these on revision.
 - Preserve and update controlsVsSuggestions and handoffPack whenever the feedback changes strategy, automation tolerance, launch sequencing, or scale/kill logic.
+- Preserve and update signalReadiness (pixel/CAPI status, recommended optimisation event, event-volume check, value optimisation, AEM notes, pre-launch actions) when the feedback affects optimisation events, budget, or tracking.
 - If the feedback is wrong-headed (e.g. an action that breaks Meta's learning phase), apply it but call out the trade-off in the relevant "why" field.
 - COPY HYGIENE (still non-negotiable on revised copy): NO em dashes (—) or en dashes (–). NO AI-tell phrasing — banned: "Unlock", "Discover", "Elevate", "In today's world", "Game-changer", "Take your X to the next level", "Whether you're", "Cutting-edge", "Revolutionary", "Seamless", "Empower", "Harness", "Leverage", "Tap into", "Step into", "Dive into", "Journey", "Furthermore", "Moreover", "Crafted", "Curated", "Transform your X", "Reimagine", "Redefine", "Picture this", "Imagine if". Variants must read differently from siblings (different opening word, angle, sentence length). Long-form variants must be 80-220 words.
 

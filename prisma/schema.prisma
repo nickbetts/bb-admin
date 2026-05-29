@@ -1448,6 +1448,20 @@ model AICostLog {
   @@index([timestamp])
 }
 
+// Persistent rate-limit ledger for Meta Assassin image generation/refinement.
+// Each row is one image call. Limits are enforced by counting rows per user
+// within rolling time windows, so the cap survives serverless cold starts and
+// is shared across instances (unlike an in-memory counter).
+model MetaAssassinImageEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  mode      String   // "generate" | "refine"
+  createdAt DateTime @default(now())
+
+  @@index([userId, mode, createdAt])
+  @@index([createdAt])
+}
+
 // ─── Clickr Public SaaS ──────────────────────────────────────────────────────
 
 model ClickrUser {

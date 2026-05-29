@@ -6,6 +6,7 @@ import { getOpenAiClient } from "@/lib/openai-client";
 import {
   enforceMetaAssassinImageGuardrail,
   logMetaAssassinImageUsage,
+  screenImagePrompt,
 } from "@/lib/meta-assassin-image-guardrails";
 
 export const runtime = "nodejs";
@@ -56,7 +57,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const guardrail = enforceMetaAssassinImageGuardrail(session.user.id, "refine");
+    const guardrail = await enforceMetaAssassinImageGuardrail(session.user.id, "refine");
     if (!guardrail.ok) {
       return NextResponse.json(
         {
@@ -74,6 +75,17 @@ export async function POST(request: NextRequest) {
     const quality: "low" | "medium" | "high" = body.quality ?? "medium";
 
     const openai = await getOpenAiClient();
+
+    const policy = await screenImagePrompt(
+      openai,
+      [body.originalPrompt, refinement].filter(Boolean).join("\n\n"),
+    );
+    if (!policy.ok) {
+      return NextResponse.json(
+        { error: policy.error, flaggedCategories: policy.flaggedCategories },
+        { status: 400 },
+      );
+    }
 
     let b64: string | undefined;
 
