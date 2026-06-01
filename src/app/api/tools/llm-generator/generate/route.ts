@@ -135,6 +135,20 @@ function sanitizeNotFound(text: string): string {
   return result.join("\n");
 }
 
+// ─── Extract page URLs from raw sitemap XML ─────────────────────────────────────
+// Returns clean URL strings from <loc> tags so the AI receives a verified list
+// instead of raw XML that it may fail to parse.
+
+function extractSitemapUrls(rawText: string, limit = 60): string[] {
+  const locPattern = /<loc>\s*(https?:\/\/[^\s<]+)\s*<\/loc>/gi;
+  const urls: string[] = [];
+  let match;
+  while ((match = locPattern.exec(rawText)) !== null && urls.length < limit) {
+    urls.push(match[1].trim());
+  }
+  return urls;
+}
+
 // ─── Fetch publicly accessible auxiliary data (sitemap, robots.txt) ────────────
 // These endpoints typically work even when the homepage is Cloudflare-blocked.
 // They give us real internal URLs and crawl priority signals.
@@ -331,8 +345,10 @@ export async function POST(request: NextRequest) {
       website?: string;
       templateId?: string;
       clientId?: string;
+      /** Force web search enrichment even when the site crawls successfully */
+      webSearch?: boolean;
     };
-    const { website, templateId, clientId } = body;
+    const { website, templateId, clientId, webSearch } = body;
 
     if (!website?.trim() || !templateId?.trim()) {
       return NextResponse.json({ error: "website and templateId are required" }, { status: 400 });
@@ -386,10 +402,21 @@ export async function POST(request: NextRequest) {
     const authorityData =
       authoritySearchResult.status === "fulfilled" ? (authoritySearchResult.value ?? "") : "";
 
-    // ── Web search fallback when site blocks crawlers ──────────────────────
+    // ── Detect thin crawl content ─────────────────────────────────────────────
+    // JS-rendered sites (Cloudflare, React, Next.js) can return HTTP 200 but
+    // a hollow app shell — almost no text for the crawler to extract.
+    // Trigger web search enrichment in this case just as we do for hard 4xx blocks.
+    const crawlWasBlocked = Boolean(
+      crawl.homepageError && /^HTTP (4|5)\d\d/.test(crawl.homepageError),
+    );
+    const crawlRawContent = crawl.contextLines.join("\n");
+    const crawlIsThin =
+      crawlRawContent.replace(/\s+/g, " ").trim().length < 1500 || crawl.pagesCrawled.length < 2;
+    const shouldUseWebSearch = crawlWasBlocked || crawlIsThin || Boolean(webSearch);
+
+    // ── Web search fallback / enrichment ─────────────────────────────────────
     let webSearchData: string | null = null;
-    const crawlWasBlocked = crawl.homepageError && /^HTTP (4|5)\d\d/.test(crawl.homepageError);
-    if (crawlWasBlocked) {
+    if (shouldUseWebSearch) {
       try {
         webSearchData = await webSearchForSite(openai, normalizedWebsite, template.sector);
       } catch (err) {
@@ -432,16 +459,29 @@ export async function POST(request: NextRequest) {
     const todayISO = new Date().toISOString().slice(0, 10);
 
     const crawlData = crawl.contextLines.join("\n") || "No page content could be extracted.";
+
+    // Extract verified page URLs from sitemap XML so the AI doesn't have to parse raw XML.
+    const sitemapUrls = extractSitemapUrls(auxiliaryData);
+    const verifiedSitemapBlock =
+      sitemapUrls.length > 0
+        ? `\n=== VERIFIED PAGES FROM SITEMAP (these URLs are confirmed real — use them directly in URL fields) ===\n${sitemapUrls.join("\n")}\n`
+        : "";
+
+    const noDataReason = crawlWasBlocked
+      ? `The website returned ${crawl.homepageError} — direct crawling was blocked`
+      : crawlIsThin
+        ? `The website appears to be JavaScript-rendered — the crawler received a thin page shell with little usable content`
+        : "";
     const crawlBlockedNote =
-      crawlWasBlocked && !webSearchData
-        ? `\nNOTE: The website returned ${crawl.homepageError} — direct crawling was blocked and web search fallback also failed. Use the website URL and domain name to infer the organisation name, sector, and structure. Fill what you reasonably can; use "Insert if applicable" for anything that requires real page data.\n`
+      shouldUseWebSearch && !webSearchData && noDataReason
+        ? `\nNOTE: ${noDataReason}, and web search fallback also failed. Use the website URL and domain name to infer the organisation name, sector, and structure. Fill what you reasonably can; use "Insert if applicable" for anything that requires real page data.\n`
         : "";
     const socialData =
       socialProfiles.length > 0
         ? `\nSocial media profiles found on homepage:\n${socialProfiles.join("\n")}`
         : "\nNo social media profiles found on homepage.";
 
-    // Build data section: prefer web search results over blocked crawl
+    // Build data section: prefer web search results over blocked / thin crawl
     const authorityBlock = authorityData
       ? `\n=== CHARITY REGISTER & AUTHORITY DATA (Charity Commission, Companies House) ===\n${authorityData}\n`
       : "";
@@ -450,8 +490,8 @@ export async function POST(request: NextRequest) {
       : "";
 
     const dataSection = webSearchData
-      ? `--- WEB SEARCH RESEARCH DATA ---\n(Direct crawl was blocked; the following was gathered via web search)\n${webSearchData}\n${socialData}${authorityBlock}${auxiliaryBlock}\n--- END WEB SEARCH DATA ---`
-      : `--- CRAWLED WEBSITE DATA ---\n${crawlData}\n${socialData}${authorityBlock}${auxiliaryBlock}\n${crawlBlockedNote}--- END CRAWLED DATA ---`;
+      ? `--- WEB SEARCH RESEARCH DATA ---\n(Direct crawl ${crawlWasBlocked ? "was blocked" : crawlIsThin ? "returned thin content (JS-rendered site)" : "was supplemented"} — the following was gathered via web search)\n${webSearchData}\n${socialData}${authorityBlock}${auxiliaryBlock}${verifiedSitemapBlock}\n--- END WEB SEARCH DATA ---`
+      : `--- CRAWLED WEBSITE DATA ---\n${crawlData}\n${socialData}${authorityBlock}${auxiliaryBlock}${verifiedSitemapBlock}\n${crawlBlockedNote}--- END CRAWLED DATA ---`;
 
     const prompt = `You are an expert in AI search optimisation, LLM indexing, and llm.txt files. Your task is to generate a complete, accurate llm.txt file for the website below.
 
@@ -471,7 +511,7 @@ CRITICAL INSTRUCTIONS — READ CAREFULLY:
 3. Replace [domain] in all URLs with the actual domain slug (e.g. "orphansinneed" for orphansinneed.org.uk) — but ONLY for URLs you have confirmed actually exist in the research data
 4. Replace [YYYY-MM-DD] with ${todayISO}
 5. REMOVE any field, list item, or entire section block for which you cannot find real data — do NOT leave "Insert if applicable" anywhere in the output. Every value in the final file must be real and verified.
-   CRITICAL URL RULE: For every URL field, you must have seen that exact URL (or a URL clearly pointing to that page) in the research data above. NEVER construct a URL by guessing a path like /safeguarding, /governance, /trustees, /financials etc. If you did not find the specific URL in the research data, remove that URL field entirely. This rule applies to ALL URL fields without exception.
+   CRITICAL URL RULE: For every URL field, you must have seen that exact URL (or a URL clearly pointing to that page) in the research data above. URLs listed in the "VERIFIED PAGES FROM SITEMAP" section ARE confirmed real pages on this domain — you may use them directly in URL fields. For all other URL fields, NEVER construct a URL by guessing a path like /safeguarding, /governance, /trustees, /financials etc. If you did not find the specific URL in the research data or the sitemap, remove that URL field entirely.
 6. After the main llm.txt content, append a final comment block headed "## DATA GAPS" that lists every field or section you removed and a one-line reason why (e.g. "not found in research data"). Format as YAML comments (# prefixed lines).
 7. Keep ALL section headers, comment lines (# lines), and YAML formatting exactly as shown in the template for fields you DO fill
 8. Write in British English throughout
@@ -552,6 +592,7 @@ Output the complete filled-in llm.txt followed by the ## DATA GAPS block. No pre
           pagesCrawled: crawl.pagesCrawled.length,
           deadUrlsRemoved: deadUrlCount,
           usedWebSearchFallback: Boolean(webSearchData),
+          crawlBlocked: crawlWasBlocked || crawlIsThin,
           authorityDataUsed: Boolean(authorityData),
           socialProfilesFound: socialProfiles.length,
           generationMs,
@@ -570,7 +611,9 @@ Output the complete filled-in llm.txt followed by the ## DATA GAPS block. No pre
       deadUrlsRemoved: deadUrlCount,
       meta: {
         usedWebSearchFallback: Boolean(webSearchData),
-        crawlBlocked: Boolean(crawlWasBlocked),
+        crawlBlocked: crawlWasBlocked,
+        crawlThin: crawlIsThin,
+        webSearchForced: Boolean(webSearch),
         authorityDataUsed: Boolean(authorityData),
         auxiliaryDataUsed: Boolean(auxiliaryData),
         socialProfilesFound: socialProfiles.length,

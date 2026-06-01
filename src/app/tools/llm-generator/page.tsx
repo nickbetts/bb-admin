@@ -53,6 +53,8 @@ interface ClientOption {
 interface GenerationMeta {
   usedWebSearchFallback: boolean;
   crawlBlocked: boolean;
+  crawlThin: boolean;
+  webSearchForced: boolean;
   authorityDataUsed: boolean;
   auxiliaryDataUsed: boolean;
   socialProfilesFound: number;
@@ -141,6 +143,7 @@ export default function LlmGeneratorPage() {
   // Client linking + persistence
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string>("");
+  const [webSearch, setWebSearch] = useState(false);
   const [currentMeta, setCurrentMeta] = useState<GenerationMeta | null>(null);
   const [currentDeadUrls, setCurrentDeadUrls] = useState<number>(0);
   const [currentId, setCurrentId] = useState<string | null>(null);
@@ -233,6 +236,7 @@ export default function LlmGeneratorPage() {
           website: website.trim(),
           templateId: selectedTemplate.id,
           clientId: selectedClientId || undefined,
+          webSearch: webSearch || undefined,
         }),
       });
       const data = (await res.json()) as {
@@ -732,6 +736,36 @@ export default function LlmGeneratorPage() {
             )}
 
             {/* Generate button */}
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                fontSize: 13,
+                color: "var(--text-muted)",
+                cursor: "pointer",
+                userSelect: "none",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={webSearch}
+                onChange={(e) => setWebSearch(e.target.checked)}
+                style={{ accentColor: "var(--accent)" }}
+              />
+              Boost with web search
+              <span
+                style={{
+                  fontSize: 11,
+                  background: "var(--accent-bg)",
+                  color: "var(--accent-text)",
+                  padding: "1px 6px",
+                  borderRadius: 99,
+                }}
+              >
+                recommended for JS-heavy sites
+              </span>
+            </label>
             <button
               className="btn btn-primary"
               style={{ justifyContent: "center", height: 46 }}
@@ -765,7 +799,14 @@ export default function LlmGeneratorPage() {
                 <p style={{ fontWeight: 600, marginBottom: 4 }}>What&apos;s happening…</p>
                 <p>1. Crawling your homepage and key sub-pages (about, services, donate, etc.)</p>
                 <p>2. Extracting titles, descriptions, headings, content, and social profiles</p>
-                <p>3. AI generating a complete llm.txt from the crawled data</p>
+                {webSearch ? (
+                  <p>3. Running web search enrichment to fill knowledge gaps</p>
+                ) : (
+                  <p>
+                    3. If the crawl is thin (JS-rendered site), web search kicks in automatically
+                  </p>
+                )}
+                <p>4. AI generating a complete llm.txt from all gathered data</p>
               </div>
             )}
           </div>
@@ -849,6 +890,17 @@ export default function LlmGeneratorPage() {
                   {currentMeta?.authorityDataUsed && (
                     <span style={metaChip}>Authority register data</span>
                   )}
+                  {currentMeta?.crawlThin && !currentMeta?.usedWebSearchFallback && (
+                    <span
+                      style={{
+                        ...metaChip,
+                        background: "var(--warning-bg)",
+                        color: "var(--warning-text)",
+                      }}
+                    >
+                      JS-rendered site — sparse crawl
+                    </span>
+                  )}
                   {currentMeta?.usedWebSearchFallback && (
                     <span
                       style={{
@@ -869,6 +921,17 @@ export default function LlmGeneratorPage() {
                       }}
                     >
                       Crawl blocked — used search
+                    </span>
+                  )}
+                  {currentMeta?.crawlThin && currentMeta?.usedWebSearchFallback && (
+                    <span
+                      style={{
+                        ...metaChip,
+                        background: "var(--warning-bg)",
+                        color: "var(--warning-text)",
+                      }}
+                    >
+                      Thin crawl — web search used
                     </span>
                   )}
                   {currentMeta?.generationMs ? (
