@@ -1,7 +1,24 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { ClipboardList, ExternalLink, Loader2 } from "lucide-react";
+import {
+  AlertTriangle,
+  Building2,
+  CalendarClock,
+  Check,
+  ClipboardList,
+  ExternalLink,
+  Globe,
+  Info,
+  Loader2,
+  MessageSquareText,
+  Plus,
+  ShieldAlert,
+  Sparkles,
+  Users,
+  Wallet,
+  Zap,
+} from "lucide-react";
 
 import {
   SalesHandoffPipelineBoard,
@@ -9,6 +26,7 @@ import {
 } from "@/components/sales-handoff/SalesHandoffPipelineBoard";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
+import { cn } from "@/lib/utils";
 
 interface SalesHandoffForm {
   prospectName: string;
@@ -416,35 +434,42 @@ export default function SalesHandoffPage() {
 
   return (
     <div className="page max-w-350">
-      <div className="mb-6 flex items-center gap-3">
-        <div className="grid h-10 w-10 place-items-center rounded-xl bg-linear-to-br from-indigo-600 to-violet-500 text-white">
+      <div className="mb-6 flex items-center gap-3.5">
+        <div className="grid h-11 w-11 place-items-center rounded-2xl bg-linear-to-br from-indigo-600 to-violet-500 text-white shadow-sm shadow-indigo-500/20">
           <ClipboardList className="h-5 w-5" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Sales Handoff</h1>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          <h1 className="page-title">Sales Handoff</h1>
+          <p className="page-desc">
             Capture first-call context and manage pipeline handoffs to marketing.
           </p>
         </div>
       </div>
 
-      <div className="space-y-3">
-        <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
-          {enforce48HourNotice
-            ? "Marketing needs at least 48 hours notice to prepare a plan for a potential client."
-            : "Marketing usually prefers 48 hours notice, but this is currently guidance only."}
+      <div className="space-y-2.5">
+        <div className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
+          <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-500 dark:text-amber-400" />
+          <p>
+            {enforce48HourNotice
+              ? "Marketing needs at least 48 hours notice to prepare a plan for a potential client."
+              : "Marketing usually prefers 48 hours notice, but this is currently guidance only."}
+          </p>
         </div>
 
         {!clickupListConfigured ? (
-          <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
-            Sales handoff list ID is not configured. Tasks will use the default list until an admin
-            sets this in settings.
+          <div className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
+            <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-500 dark:text-amber-400" />
+            <p>
+              Sales handoff list ID is not configured. Tasks will use the default list until an
+              admin sets this in settings.
+            </p>
           </div>
         ) : null}
 
         {fieldError ? (
-          <div className="rounded-lg border border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300">
-            {fieldError}
+          <div className="flex items-start gap-2.5 rounded-xl border border-rose-200 bg-rose-50/80 px-4 py-3 text-sm text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-rose-500 dark:text-rose-400" />
+            <p>{fieldError}</p>
           </div>
         ) : null}
       </div>
@@ -452,13 +477,23 @@ export default function SalesHandoffPage() {
       <div className="mt-5 grid gap-6 xl:grid-cols-[420px_minmax(0,1fr)]">
         <form onSubmit={handleSubmit} className="card h-fit">
           <div className="card-header">
-            <h2 className="card-title">Create New Handoff</h2>
-            <p className="card-subtitle">Turn first-call notes into a tracked delivery workflow.</p>
+            <div>
+              <h2 className="card-title">Create New Handoff</h2>
+              <p className="card-subtitle">
+                Turn first-call notes into a tracked delivery workflow.
+              </p>
+            </div>
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300">
+              <ClipboardList className="h-4.5 w-4.5" />
+            </div>
           </div>
 
-          <div className="card-body grid gap-4">
+          <div className="card-body grid gap-5">
             <div className="grid gap-1.5">
-              <label className="form-label">Prospect or Company Name</label>
+              <label className="form-label flex items-center gap-1.5">
+                <Building2 className="h-3.5 w-3.5 text-zinc-400" />
+                Prospect or company name
+              </label>
               <input
                 className="form-input"
                 value={form.prospectName}
@@ -469,7 +504,10 @@ export default function SalesHandoffPage() {
             </div>
 
             <div className="grid gap-1.5">
-              <label className="form-label">Website URL</label>
+              <label className="form-label flex items-center gap-1.5">
+                <Globe className="h-3.5 w-3.5 text-zinc-400" />
+                Website URL
+              </label>
               <input
                 className="form-input"
                 value={form.website}
@@ -480,7 +518,10 @@ export default function SalesHandoffPage() {
             </div>
 
             <div className="grid gap-1.5">
-              <label className="form-label">Target Audience Summary</label>
+              <label className="form-label flex items-center gap-1.5">
+                <Users className="h-3.5 w-3.5 text-zinc-400" />
+                Target audience summary
+              </label>
               <textarea
                 className="form-input"
                 value={form.targetAudienceSummary}
@@ -492,7 +533,10 @@ export default function SalesHandoffPage() {
             </div>
 
             <div className="grid gap-1.5">
-              <label className="form-label">Second Call Date and Time</label>
+              <label className="form-label flex items-center gap-1.5">
+                <CalendarClock className="h-3.5 w-3.5 text-zinc-400" />
+                Second call date and time
+              </label>
               <input
                 type="datetime-local"
                 className="form-input"
@@ -502,12 +546,14 @@ export default function SalesHandoffPage() {
               />
               {noticeHours !== null ? (
                 <p
-                  className={
+                  className={cn(
+                    "inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
                     secondCallInPast || violatesNoticeWindow
-                      ? "text-xs text-rose-600 dark:text-rose-300"
-                      : "text-xs text-emerald-600 dark:text-emerald-300"
-                  }
+                      ? "bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-300"
+                      : "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300",
+                  )}
                 >
+                  <CalendarClock className="h-3 w-3" />
                   {secondCallInPast
                     ? "Second call must be in the future."
                     : `Notice window: ${noticeHours.toFixed(1)} hours before the second call.`}
@@ -516,21 +562,25 @@ export default function SalesHandoffPage() {
             </div>
 
             {enforce48HourNotice && violatesNoticeWindow && allowUrgentOverride ? (
-              <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-900 dark:bg-amber-950/40">
-                <label className="inline-flex items-center gap-2 text-sm font-medium text-amber-700 dark:text-amber-300">
+              <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3.5 dark:border-amber-900/60 dark:bg-amber-950/30">
+                <label className="flex cursor-pointer items-center gap-2.5 text-sm font-semibold text-amber-800 dark:text-amber-200">
                   <input
                     type="checkbox"
+                    className="h-4 w-4 accent-amber-600"
                     checked={urgentOverride}
                     onChange={(event) => setUrgentOverride(event.target.checked)}
                   />
-                  Mark as urgent override
+                  <span className="inline-flex items-center gap-1.5">
+                    <Zap className="h-3.5 w-3.5" />
+                    Mark as urgent override
+                  </span>
                 </label>
-                <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+                <p className="mt-1.5 pl-6.5 text-xs text-amber-700 dark:text-amber-300/90">
                   Use this only when the second call timing cannot be moved.
                 </p>
 
                 {urgentOverride ? (
-                  <div className="mt-2 grid gap-1.5">
+                  <div className="mt-3 grid gap-1.5">
                     <label className="form-label">Urgent reason</label>
                     <textarea
                       className="form-input"
@@ -546,14 +596,20 @@ export default function SalesHandoffPage() {
             ) : null}
 
             {enforce48HourNotice && violatesNoticeWindow && !allowUrgentOverride ? (
-              <div className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-xs text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300">
-                Urgent override is disabled by policy. Move the second call to at least 48 hours from
-                now.
+              <div className="flex items-start gap-2.5 rounded-xl border border-rose-200 bg-rose-50/80 px-3.5 py-2.5 text-xs text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200">
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-500 dark:text-rose-400" />
+                <p>
+                  Urgent override is disabled by policy. Move the second call to at least 48 hours
+                  from now.
+                </p>
               </div>
             ) : null}
 
             <div className="grid gap-1.5">
-              <label className="form-label">Budget Range</label>
+              <label className="form-label flex items-center gap-1.5">
+                <Wallet className="h-3.5 w-3.5 text-zinc-400" />
+                Budget range
+              </label>
               <input
                 className="form-input"
                 value={form.budgetRange}
@@ -563,30 +619,44 @@ export default function SalesHandoffPage() {
               />
             </div>
 
-            <div className="grid gap-2">
-              <label className="form-label">Services They Might Be Interested In</label>
-              <div className="grid gap-2 sm:grid-cols-2">
+            <div className="grid gap-2.5">
+              <label className="form-label flex items-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5 text-zinc-400" />
+                Services they might be interested in
+              </label>
+              <div className="flex flex-wrap gap-2">
                 {serviceOptions.map((service) => {
                   const checked = form.interestedServices.includes(service);
                   return (
-                    <label
+                    <button
                       key={service}
-                      className="inline-flex items-center gap-2 rounded-md border border-zinc-200 px-3 py-2 text-sm text-zinc-700 dark:border-zinc-800 dark:text-zinc-300"
+                      type="button"
+                      onClick={() => toggleService(service)}
+                      aria-pressed={checked}
+                      className={cn(
+                        "inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
+                        checked
+                          ? "border-indigo-300 bg-indigo-50 text-indigo-700 dark:border-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300"
+                          : "border-zinc-200 text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-900",
+                      )}
                     >
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => toggleService(service)}
-                      />
+                      {checked ? (
+                        <Check className="h-3.5 w-3.5" />
+                      ) : (
+                        <Plus className="h-3.5 w-3.5 opacity-40" />
+                      )}
                       {service}
-                    </label>
+                    </button>
                   );
                 })}
               </div>
             </div>
 
             <div className="grid gap-1.5">
-              <label className="form-label">Other Information</label>
+              <label className="form-label flex items-center gap-1.5">
+                <MessageSquareText className="h-3.5 w-3.5 text-zinc-400" />
+                Other information
+              </label>
               <textarea
                 className="form-input"
                 value={form.otherInformation}
@@ -596,16 +666,18 @@ export default function SalesHandoffPage() {
               />
             </div>
 
-            <div className="flex justify-end">
-              <button
-                type="submit"
-                className="btn btn-primary inline-flex items-center gap-2"
-                disabled={submitting || !canSubmit}
-              >
-                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                {submitting ? "Creating task..." : "Create ClickUp Task"}
-              </button>
-            </div>
+            <button
+              type="submit"
+              className="btn btn-primary mt-1 inline-flex w-full items-center justify-center gap-2"
+              disabled={submitting || !canSubmit}
+            >
+              {submitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Zap className="h-4 w-4" />
+              )}
+              {submitting ? "Creating task…" : "Create ClickUp Task"}
+            </button>
           </div>
         </form>
 
