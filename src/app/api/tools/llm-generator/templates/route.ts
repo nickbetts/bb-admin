@@ -696,7 +696,9 @@ QUALITY RULES:
 - Social profiles found in the crawl should populate the social_profiles section; remove placeholder entries for platforms not detected`;
 
 async function seedBuiltIns() {
-  const existing = await prisma.llmTemplate.findFirst({ where: { isBuiltIn: true, sector: "charity" } });
+  const existing = await prisma.llmTemplate.findFirst({
+    where: { isBuiltIn: true, sector: "charity" },
+  });
   const data = {
     name: "Charity",
     sector: "charity",
@@ -732,11 +734,20 @@ export async function POST(request: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = await request.json() as { name?: string; sector?: string; description?: string; templateText?: string; promptGuidance?: string };
+  const body = (await request.json()) as {
+    name?: string;
+    sector?: string;
+    description?: string;
+    templateText?: string;
+    promptGuidance?: string;
+  };
   const { name, sector, description, templateText, promptGuidance } = body;
 
   if (!name?.trim() || !sector?.trim() || !templateText?.trim()) {
-    return NextResponse.json({ error: "name, sector, and templateText are required" }, { status: 400 });
+    return NextResponse.json(
+      { error: "name, sector, and templateText are required" },
+      { status: 400 },
+    );
   }
 
   const template = await prisma.llmTemplate.create({
@@ -747,6 +758,8 @@ export async function POST(request: NextRequest) {
       templateText: templateText.trim(),
       promptGuidance: promptGuidance?.trim() ?? null,
       isBuiltIn: false,
+      ownerUserId: session.user.id,
+      ownerEmail: session.user.email,
     },
   });
 

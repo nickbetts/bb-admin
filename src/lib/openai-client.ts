@@ -29,7 +29,7 @@ export async function getOpenAiClient(): Promise<OpenAI> {
  */
 export async function logOpenAiUsage(
   tool: string,
-  response: OpenAI.Chat.ChatCompletion
+  response: OpenAI.Chat.ChatCompletion,
 ): Promise<void> {
   try {
     if (!response.usage) {
@@ -46,6 +46,34 @@ export async function logOpenAiUsage(
     });
   } catch (error) {
     console.error("[OpenAI Cost Logger] Failed to log usage:", error);
+  }
+}
+
+/**
+ * Wrapper to log OpenAI Responses API usage (web search, tool calls, etc.).
+ * Call this after `openai.responses.create(...)`. Tolerates missing usage data.
+ * `web_search_preview` calls bill tokens against the underlying model, so this
+ * captures spend that `logOpenAiUsage` (chat completions only) would otherwise miss.
+ */
+export async function logResponsesUsage(
+  tool: string,
+  response: { model?: string; usage?: { input_tokens?: number; output_tokens?: number } | null },
+): Promise<void> {
+  try {
+    if (!response.usage) {
+      console.warn("[OpenAI Cost Logger] No usage data in Responses result");
+      return;
+    }
+
+    await logAICost({
+      tool,
+      provider: "openai",
+      model: response.model ?? "gpt-4o",
+      inputTokens: response.usage.input_tokens ?? 0,
+      outputTokens: response.usage.output_tokens ?? 0,
+    });
+  } catch (error) {
+    console.error("[OpenAI Cost Logger] Failed to log Responses usage:", error);
   }
 }
 
@@ -162,7 +190,9 @@ export function streamWithWebSearch(
 
         for await (const event of stream) {
           if (event.type === "response.output_text.delta") {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: event.delta })}\n\n`));
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({ content: event.delta })}\n\n`),
+            );
           }
         }
 
@@ -177,7 +207,9 @@ export function streamWithWebSearch(
         controller.close();
       } catch (err) {
         controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ error: err instanceof Error ? err.message : "Stream error" })}\n\n`),
+          encoder.encode(
+            `data: ${JSON.stringify({ error: err instanceof Error ? err.message : "Stream error" })}\n\n`,
+          ),
         );
         controller.close();
       }

@@ -91,9 +91,8 @@ async function parseOutputBlocks(
   for (const item of output ?? []) {
     // Reasoning summary
     if (item.type === "reasoning") {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const summaryText = (item.summary ?? [])
-        .map((s: any) => s.text ?? "")
+        .map((s: { text?: string }) => s.text ?? "")
         .join("\n")
         .trim();
       if (summaryText) blocks.push({ type: "reasoning", summary: summaryText });

@@ -3,10 +3,59 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { crawlSiteForKeywordContext } from "@/lib/landing-page-analyzer";
 import OpenAI from "openai";
-import { getOpenAiClient, logOpenAiUsage } from "@/lib/openai-client";
+import { getOpenAiClient, logOpenAiUsage, logResponsesUsage } from "@/lib/openai-client";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 180;
+
+// ─── SSRF-safe URL validation / normalisation ────────────────────────────────
+// The generate route fetches arbitrary user-supplied URLs (homepage, sitemap,
+// robots.txt, HEAD checks). Validate the host to prevent the server being used
+// to reach internal/metadata endpoints (OWASP A10: SSRF).
+
+const PRIVATE_HOST_PATTERNS: RegExp[] = [
+  /^localhost$/i,
+  /\.local$/i,
+  /^127\./,
+  /^0\./,
+  /^10\./,
+  /^192\.168\./,
+  /^169\.254\./, // link-local / cloud metadata (169.254.169.254)
+  /^172\.(1[6-9]|2\d|3[01])\./, // 172.16.0.0 – 172.31.255.255
+  /^::1$/,
+  /^fe80:/i, // IPv6 link-local
+  /^fc00:/i, // IPv6 unique-local
+  /^fd[0-9a-f]{2}:/i,
+];
+
+function validateAndNormalizeUrl(raw: string): { url: string } | { error: string } {
+  let candidate = raw.trim();
+  if (!candidate) return { error: "A website URL is required" };
+  // Prepend https:// when the user omits the scheme so https://example.org works.
+  if (!/^https?:\/\//i.test(candidate)) candidate = `https://${candidate}`;
+
+  let parsed: URL;
+  try {
+    parsed = new URL(candidate);
+  } catch {
+    return { error: "That does not look like a valid website URL" };
+  }
+
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    return { error: "Only http and https URLs are supported" };
+  }
+  const host = parsed.hostname.toLowerCase();
+  if (!host.includes(".") && host !== "localhost") {
+    return { error: "Enter a full domain, for example https://example.org" };
+  }
+  if (PRIVATE_HOST_PATTERNS.some((re) => re.test(host))) {
+    return { error: "Private, local, and internal addresses are not allowed" };
+  }
+
+  // Normalise: drop trailing slash, strip hash/search noise from the base.
+  const normalized = `${parsed.protocol}//${parsed.host}${parsed.pathname}`.replace(/\/$/, "");
+  return { url: normalized };
+}
 
 // ─── Extract social media profiles from raw HTML ──────────────────────────────
 
@@ -72,7 +121,10 @@ function sanitizeNotFound(text: string): string {
       for (let j = i + 1; j < pass1.length; j++) {
         const next = pass1[j];
         if (next.trim() === "" || next.trim().startsWith("#")) continue;
-        if (next.search(/\S/) > thisIndent) { hasChildren = true; break; }
+        if (next.search(/\S/) > thisIndent) {
+          hasChildren = true;
+          break;
+        }
         break;
       }
       if (!hasChildren) continue; // drop the orphaned parent
@@ -89,7 +141,8 @@ function sanitizeNotFound(text: string): string {
 
 async function fetchAuxiliaryData(baseUrl: string): Promise<string> {
   const parts: string[] = [];
-  const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+  const UA =
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
   const tryFetch = async (url: string, label: string, maxBytes = 60_000): Promise<void> => {
     const controller = new AbortController();
@@ -138,6 +191,7 @@ async function searchAuthorityRegisters(openai: OpenAI, url: string): Promise<st
 6. Find which countries they operate in from any overview sources.
 Provide exact numbers, names, and URLs from the registers — not summaries.`,
     });
+    await logResponsesUsage("llm-generator:authority-search", result);
     return result.output_text;
   } catch {
     return null;
@@ -183,16 +237,26 @@ async function webSearchForSite(openai: OpenAI, url: string, sector: string): Pr
   const sections: string[] = [];
 
   if (identityResult.status === "fulfilled") {
-    sections.push(`=== IDENTITY, REGISTRATION & LEADERSHIP ===\n${identityResult.value.output_text}`);
+    await logResponsesUsage("llm-generator:web-search", identityResult.value);
+    sections.push(
+      `=== IDENTITY, REGISTRATION & LEADERSHIP ===\n${identityResult.value.output_text}`,
+    );
   }
   if (programmesResult.status === "fulfilled") {
+    await logResponsesUsage("llm-generator:web-search", programmesResult.value);
     sections.push(`=== PROGRAMMES, IMPACT & CAMPAIGNS ===\n${programmesResult.value.output_text}`);
   }
   if (socialResult.status === "fulfilled") {
-    sections.push(`=== SOCIAL MEDIA, CONTACT & PARTNERSHIPS ===\n${socialResult.value.output_text}`);
+    await logResponsesUsage("llm-generator:web-search", socialResult.value);
+    sections.push(
+      `=== SOCIAL MEDIA, CONTACT & PARTNERSHIPS ===\n${socialResult.value.output_text}`,
+    );
   }
   if (pagesResult.status === "fulfilled") {
-    sections.push(`=== VERIFIED PAGE URLS FROM SITEMAP/NAVIGATION ===\n${pagesResult.value.output_text}`);
+    await logResponsesUsage("llm-generator:web-search", pagesResult.value);
+    sections.push(
+      `=== VERIFIED PAGE URLS FROM SITEMAP/NAVIGATION ===\n${pagesResult.value.output_text}`,
+    );
   }
 
   if (sections.length === 0) throw new Error("All web searches failed");
@@ -226,7 +290,8 @@ async function verifyTargetUrls(targetDomain: string, text: string): Promise<Set
           signal: controller.signal,
           redirect: "follow",
           headers: {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
           },
         });
         if (res.status === 404) {
@@ -238,7 +303,8 @@ async function verifyTargetUrls(targetDomain: string, text: string): Promise<Set
             signal: controller.signal,
             redirect: "follow",
             headers: {
-              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+              "User-Agent":
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
             },
           });
           if (res2.status === 404) deadUrls.add(pageUrl);
@@ -248,7 +314,7 @@ async function verifyTargetUrls(targetDomain: string, text: string): Promise<Set
       } finally {
         clearTimeout(timer);
       }
-    })
+    }),
   );
 
   return deadUrls;
@@ -261,14 +327,23 @@ export async function POST(request: NextRequest) {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const body = await request.json() as { website?: string; templateId?: string };
-    const { website, templateId } = body;
+    const body = (await request.json()) as {
+      website?: string;
+      templateId?: string;
+      clientId?: string;
+    };
+    const { website, templateId, clientId } = body;
 
     if (!website?.trim() || !templateId?.trim()) {
       return NextResponse.json({ error: "website and templateId are required" }, { status: 400 });
     }
 
-    const normalizedWebsite = website.trim().replace(/\/$/, "");
+    const validation = validateAndNormalizeUrl(website);
+    if ("error" in validation) {
+      return NextResponse.json({ error: validation.error }, { status: 400 });
+    }
+    const normalizedWebsite = validation.url;
+    const startedAt = Date.now();
 
     // ── Load template ──────────────────────────────────────────────────────
     const template = await prisma.llmTemplate.findUnique({ where: { id: templateId } });
@@ -286,9 +361,12 @@ export async function POST(request: NextRequest) {
       // For HTTP 4xx/5xx, the site is reachable but blocking crawlers — fall back to web search
       const isHttpBlocked = /^HTTP (4|5)\d\d/.test(crawl.homepageError);
       if (!isHttpBlocked) {
-        return NextResponse.json({
-          error: `Could not reach the website: ${crawl.homepageError}`,
-        }, { status: 422 });
+        return NextResponse.json(
+          {
+            error: `Could not reach the website: ${crawl.homepageError}`,
+          },
+          { status: 422 },
+        );
       }
       // Fall through — will use web search fallback below
     }
@@ -296,13 +374,17 @@ export async function POST(request: NextRequest) {
     // ── Fetch auxiliary data + always-run authority search in parallel with crawl
     const [auxiliaryDataResult, authoritySearchResult] = await Promise.allSettled([
       fetchAuxiliaryData(normalizedWebsite),
-      template.sector.toLowerCase().includes("charit") || template.sector.toLowerCase().includes("nonprofit") || template.sector.toLowerCase().includes("non-profit")
+      template.sector.toLowerCase().includes("charit") ||
+      template.sector.toLowerCase().includes("nonprofit") ||
+      template.sector.toLowerCase().includes("non-profit")
         ? searchAuthorityRegisters(openai, normalizedWebsite)
         : Promise.resolve(null),
     ]);
 
-    const auxiliaryData = auxiliaryDataResult.status === "fulfilled" ? auxiliaryDataResult.value : "";
-    const authorityData = authoritySearchResult.status === "fulfilled" ? (authoritySearchResult.value ?? "") : "";
+    const auxiliaryData =
+      auxiliaryDataResult.status === "fulfilled" ? auxiliaryDataResult.value : "";
+    const authorityData =
+      authoritySearchResult.status === "fulfilled" ? (authoritySearchResult.value ?? "") : "";
 
     // ── Web search fallback when site blocks crawlers ──────────────────────
     let webSearchData: string | null = null;
@@ -324,7 +406,8 @@ export async function POST(request: NextRequest) {
       const res = await fetch(normalizedWebsite, {
         signal: controller.signal,
         headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
           Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
           "Accept-Language": "en-GB,en;q=0.9",
           "Cache-Control": "max-age=0",
@@ -341,16 +424,22 @@ export async function POST(request: NextRequest) {
       // Best-effort
     }
 
-    const today = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+    const today = new Date().toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
     const todayISO = new Date().toISOString().slice(0, 10);
 
     const crawlData = crawl.contextLines.join("\n") || "No page content could be extracted.";
-    const crawlBlockedNote = crawlWasBlocked && !webSearchData
-      ? `\nNOTE: The website returned ${crawl.homepageError} — direct crawling was blocked and web search fallback also failed. Use the website URL and domain name to infer the organisation name, sector, and structure. Fill what you reasonably can; use "Insert if applicable" for anything that requires real page data.\n`
-      : "";
-    const socialData = socialProfiles.length > 0
-      ? `\nSocial media profiles found on homepage:\n${socialProfiles.join("\n")}`
-      : "\nNo social media profiles found on homepage.";
+    const crawlBlockedNote =
+      crawlWasBlocked && !webSearchData
+        ? `\nNOTE: The website returned ${crawl.homepageError} — direct crawling was blocked and web search fallback also failed. Use the website URL and domain name to infer the organisation name, sector, and structure. Fill what you reasonably can; use "Insert if applicable" for anything that requires real page data.\n`
+        : "";
+    const socialData =
+      socialProfiles.length > 0
+        ? `\nSocial media profiles found on homepage:\n${socialProfiles.join("\n")}`
+        : "\nNo social media profiles found on homepage.";
 
     // Build data section: prefer web search results over blocked crawl
     const authorityBlock = authorityData
@@ -428,21 +517,72 @@ Output the complete filled-in llm.txt followed by the ## DATA GAPS block. No pre
           })
           .join("\n");
         // Append removed URLs to DATA GAPS block
-        const gapNote = [...deadUrls]
-          .map((u) => `# REMOVED (404 confirmed): ${u}`)
-          .join("\n");
+        const gapNote = [...deadUrls].map((u) => `# REMOVED (404 confirmed): ${u}`).join("\n");
         output += `\n\n## URLS REMOVED (returned 404)\n${gapNote}`;
       }
     } catch {
       // Best-effort — return unfiltered if verification errors
     }
 
-    return NextResponse.json({ output, pagesCrawled: crawl.pagesCrawled.length, deadUrlsRemoved: deadUrlCount });
+    // ── Persist the generation so the team can revisit, share, and link it
+    //    to a client. Best-effort: never fail the request if saving errors.
+    const generationMs = Date.now() - startedAt;
+    let savedId: string | null = null;
+    try {
+      const domainLabel = new URL(normalizedWebsite).hostname.replace(/^www\./, "");
+      let resolvedClientId: string | null = null;
+      if (clientId?.trim()) {
+        const client = await prisma.client.findUnique({
+          where: { id: clientId.trim() },
+          select: { id: true },
+        });
+        resolvedClientId = client?.id ?? null;
+      }
+      const saved = await prisma.llmGeneration.create({
+        data: {
+          clientId: resolvedClientId,
+          userId: session.user.id,
+          createdByEmail: session.user.email,
+          title: domainLabel,
+          website: normalizedWebsite,
+          templateId: template.id,
+          templateName: template.name,
+          sector: template.sector,
+          output,
+          pagesCrawled: crawl.pagesCrawled.length,
+          deadUrlsRemoved: deadUrlCount,
+          usedWebSearchFallback: Boolean(webSearchData),
+          authorityDataUsed: Boolean(authorityData),
+          socialProfilesFound: socialProfiles.length,
+          generationMs,
+        },
+        select: { id: true },
+      });
+      savedId = saved.id;
+    } catch (saveErr) {
+      console.error("llm-generator: failed to persist generation", saveErr);
+    }
+
+    return NextResponse.json({
+      id: savedId,
+      output,
+      pagesCrawled: crawl.pagesCrawled.length,
+      deadUrlsRemoved: deadUrlCount,
+      meta: {
+        usedWebSearchFallback: Boolean(webSearchData),
+        crawlBlocked: Boolean(crawlWasBlocked),
+        authorityDataUsed: Boolean(authorityData),
+        auxiliaryDataUsed: Boolean(auxiliaryData),
+        socialProfilesFound: socialProfiles.length,
+        clientId: clientId?.trim() || null,
+        generationMs,
+      },
+    });
   } catch (err) {
     console.error("llm-generator error", err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "An unexpected error occurred" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -162,6 +162,7 @@ model Client {
   emailVerificationJobs   EmailVerificationJob[]
   internalLinkingPlans    InternalLinkingPlan[]
   salesHandoffs           SalesHandoff[]
+  llmGenerations          LlmGeneration[]
 }
 
 model ClientGoal {
@@ -425,8 +426,50 @@ model LlmTemplate {
   templateText   String // The structure/format the AI follows to generate the llm.txt
   promptGuidance String? // Strategic/prioritisation instructions the AI should follow when filling this template
   isBuiltIn      Boolean  @default(false)
+  // Ownership — null for legacy/seeded rows. Custom templates record their creator
+  // so edit/delete can be restricted to the owner (or users with manage-any rights).
+  ownerUserId    String?
+  ownerEmail     String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+
+  @@index([ownerUserId])
+}
+
+// A saved llm.txt generation — the client-facing deliverable produced by the
+// LLM.txt Generator. Persisted so the team can revisit, re-download, share with
+// the client, and link the file to a client record. Mirrors the share/owner
+// conventions used by GrandPlan and LandingPage.
+model LlmGeneration {
+  id                    String    @id @default(cuid())
+  clientId              String? // Optional link to a client record
+  userId                String // Creator
+  createdByEmail        String?
+  title                 String // Display label (defaults to the domain)
+  website               String // Normalised source URL
+  templateId            String? // Soft reference to the template used (kept as snapshot below)
+  templateName          String // Snapshot of template name at generation time
+  sector                String // Snapshot of template sector
+  output                String // The generated llm.txt content
+  // Generation provenance / quality signals surfaced in the UI
+  pagesCrawled          Int       @default(0)
+  deadUrlsRemoved       Int       @default(0)
+  usedWebSearchFallback Boolean   @default(false)
+  authorityDataUsed     Boolean   @default(false)
+  socialProfilesFound   Int       @default(0)
+  generationMs          Int?
+  // Sharing — public read-only link for handing the file to a client
+  shareToken            String?   @unique // null = not shared
+  sharePassword         String? // SHA256 hash of optional password
+  shareExpiresAt        DateTime?
+  viewCount             Int       @default(0)
+  lastViewedAt          DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  client                Client?   @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  @@index([clientId, createdAt])
+  @@index([userId, createdAt])
 }
 
 // Notification system: delivers anomaly alerts, report events, and key platform events

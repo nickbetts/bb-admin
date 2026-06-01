@@ -367,12 +367,12 @@ Output: sorted anomaly list (high severity first)
 
 **Platform-specific anomaly checks** go beyond basic metric thresholds:
 
-| Platform | Additional Checks |
-|----------|------------------|
+| Platform       | Additional Checks                                                                         |
+| -------------- | ----------------------------------------------------------------------------------------- |
 | **Google Ads** | Impression share loss (budget + rank), quality score degradation, auction competitiveness |
-| **Meta Ads** | Ad frequency/fatigue (>3.0), creative fatigue correlation, ROAS below 1× breakeven |
-| **GSC** | Clicks drop, position regression, CTR anomalies |
-| **GA4** | Sessions decline, bounce rate spike, conversion rate drop |
+| **Meta Ads**   | Ad frequency/fatigue (>3.0), creative fatigue correlation, ROAS below 1× breakeven        |
+| **GSC**        | Clicks drop, position regression, CTR anomalies                                           |
+| **GA4**        | Sessions decline, bounce rate spike, conversion rate drop                                 |
 
 ### AI Summary Generation
 
@@ -638,12 +638,19 @@ Input: website URL + template (optional) + sector type
         │
         v
 6. Call OpenAI:
-   ├── gpt-4o-search-preview (web search for blocked sites)
-   └── gpt-4o (content generation from template)
+   ├── gpt-4o-search-preview (web search for blocked sites + authority signals)
+   └── gpt-5.4 (content generation from template)
         │
         v
-Output: formatted llm.txt content
+7. Persist the result (LlmGeneration), optionally linked to a client
+        │
+        v
+Output: formatted llm.txt content + saved record id + quality metadata
 ```
+
+**Persistence & delivery.** Every generation is saved to the `LlmGeneration` table so the team can revisit, reload, and audit it. A generation can be linked to a client and turned into a public share link (`GET /api/share/llm/[token]`) that serves the file as `text/plain` — clients publish this as their site's `llm.txt`. Share links support optional passwords, expiry, and view tracking. Supporting routes: `GET/POST` not required — the generate route saves automatically; `GET /api/tools/llm-generator/generations` (list, optional `?clientId=`), `GET/PATCH/DELETE /api/tools/llm-generator/generations/[id]` (open, rename, link client, share/unshare, delete).
+
+**Templates.** A built-in Charity template ships by default. Users can create custom templates, and any template (including built-ins) can be cloned into an editable, owner-stamped copy. Edit/delete is restricted to the template owner or holders of the `settings` permission.
 
 ---
 
@@ -687,6 +694,7 @@ Displays platform-wide statistics: total clients, total reports, active integrat
 **Route:** `/portfolio` (requires `clients` permission)
 
 Agency-wide client health overview with:
+
 - **Health score gauges** (0–100) per client — green ≥70, amber ≥40, red <40
 - **Churn risk indicators** (Low / Medium / High) based on engagement signals
 - **Trend direction** (trending up, down, or stable) per client
@@ -718,6 +726,7 @@ Fetches data from ALL configured platforms in parallel, runs computed anomaly ch
 **Tab:** Overview
 
 Aggregates data from all platforms to show:
+
 - **Marketing funnel:** Impressions → Clicks → Sessions → Conversions → Revenue
 - **Blended KPIs:** Total ad spend, blended ROAS, blended CPA, total conversions
 - **Channel efficiency matrix** with health scores per platform
@@ -729,22 +738,22 @@ Aggregates data from all platforms to show:
 
 Each marketing channel has a dedicated dashboard tab with KPI cards, trend charts, sortable data tables, and AI insights:
 
-| Tab | Key Metrics | Notable Features |
-|-----|-------------|------------------|
-| **SEO / SemRush** | Organic traffic, keywords, domain authority | Position distribution, rank movers, competitor landscape, AI visibility analysis |
-| **Web Analytics (GA4)** | Sessions, users, pageviews, bounce rate, conversions | Traffic sources, demographics, AI referrals, conversion events |
-| **Search Console** | Clicks, impressions, CTR, avg position | Position movers, organic vs paid keyword overlap analysis |
-| **Meta Ads** | Spend, ROAS, CPM, CTR, conversions | Campaign → Ad Set → Creative drill-down, creative media lightbox, audience demographics |
-| **Google Ads** | Cost, clicks, conversions, impression share | Campaign/ad group/keyword tables, search terms report, landing page analysis |
-| **TikTok Ads** | Spend, impressions, video views, reach, frequency | Campaign performance with video view metrics |
-| **Microsoft Ads** | Spend, clicks, conversions, ROAS | Campaign performance with status badges |
-| **LinkedIn Ads** | Spend, impressions, clicks, leads | Campaign-level breakdown |
-| **Klaviyo** | Sends, opens, clicks, revenue, unsubscribes | Per-campaign open rate and click rate |
-| **YouTube** | Views, watch time, subscribers, estimated revenue | Video-level performance table |
-| **HubSpot** | Contacts, deals, pipeline value | Deal stage breakdown |
-| **CallRail** | Total calls, answered, missed, avg duration | Call log with source attribution |
-| **E-Commerce** | Revenue, orders, AOV, conversion rate | Top products, orders by status (WooCommerce/Shopify) |
-| **Core Web Vitals** | LCP, CLS, INP, TTFB, FCP | Per-metric good/ok/poor distribution bars (CrUX API) |
+| Tab                     | Key Metrics                                          | Notable Features                                                                        |
+| ----------------------- | ---------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| **SEO / SemRush**       | Organic traffic, keywords, domain authority          | Position distribution, rank movers, competitor landscape, AI visibility analysis        |
+| **Web Analytics (GA4)** | Sessions, users, pageviews, bounce rate, conversions | Traffic sources, demographics, AI referrals, conversion events                          |
+| **Search Console**      | Clicks, impressions, CTR, avg position               | Position movers, organic vs paid keyword overlap analysis                               |
+| **Meta Ads**            | Spend, ROAS, CPM, CTR, conversions                   | Campaign → Ad Set → Creative drill-down, creative media lightbox, audience demographics |
+| **Google Ads**          | Cost, clicks, conversions, impression share          | Campaign/ad group/keyword tables, search terms report, landing page analysis            |
+| **TikTok Ads**          | Spend, impressions, video views, reach, frequency    | Campaign performance with video view metrics                                            |
+| **Microsoft Ads**       | Spend, clicks, conversions, ROAS                     | Campaign performance with status badges                                                 |
+| **LinkedIn Ads**        | Spend, impressions, clicks, leads                    | Campaign-level breakdown                                                                |
+| **Klaviyo**             | Sends, opens, clicks, revenue, unsubscribes          | Per-campaign open rate and click rate                                                   |
+| **YouTube**             | Views, watch time, subscribers, estimated revenue    | Video-level performance table                                                           |
+| **HubSpot**             | Contacts, deals, pipeline value                      | Deal stage breakdown                                                                    |
+| **CallRail**            | Total calls, answered, missed, avg duration          | Call log with source attribution                                                        |
+| **E-Commerce**          | Revenue, orders, AOV, conversion rate                | Top products, orders by status (WooCommerce/Shopify)                                    |
+| **Core Web Vitals**     | LCP, CLS, INP, TTFB, FCP                             | Per-metric good/ok/poor distribution bars (CrUX API)                                    |
 
 ### Goals & KPI Tracking
 
@@ -761,17 +770,17 @@ Each marketing channel has a dedicated dashboard tab with KPI cards, trend chart
 
 Several AI-powered panels appear on the Overview and channel tabs:
 
-| Panel | Location | Description |
-|-------|----------|-------------|
-| **Predictive Forecasting** | Overview tab | 30/60/90 day projections with confidence bands (best/expected/worst) using historical snapshot data |
-| **Budget Optimisation Advisor** | Overview tab | Cross-channel budget reallocation recommendations with projected revenue impact |
-| **Multi-Touch Attribution** | Overview tab | Compare 5 attribution models (Last Click, First Click, Linear, Time Decay, Position-Based) |
-| **Seasonality Intelligence** | Overview tab | Automatic seasonal pattern detection from snapshot history with forward-looking alerts |
-| **Share of Voice** | SEO tab | Organic + paid competitive position tracking using SemRush data |
-| **Creative Intelligence** | Meta / Google Ads tabs | Ad creative performance analysis with actionable creative briefs |
-| **AI Strategy Documents** | On demand | Quarterly forward-looking strategy documents per client, shareable |
-| **Conversational AI Chat** | All tabs (floating) | "Ask the Data" — GPT-4o-mini powered chat with full metric history context |
-| **Competitor Intelligence** | SEO tab + `/tools/competitor-intelligence` | SemRush-backed competitor monitoring with AI-generated competitive summaries |
+| Panel                           | Location                                   | Description                                                                                         |
+| ------------------------------- | ------------------------------------------ | --------------------------------------------------------------------------------------------------- |
+| **Predictive Forecasting**      | Overview tab                               | 30/60/90 day projections with confidence bands (best/expected/worst) using historical snapshot data |
+| **Budget Optimisation Advisor** | Overview tab                               | Cross-channel budget reallocation recommendations with projected revenue impact                     |
+| **Multi-Touch Attribution**     | Overview tab                               | Compare 5 attribution models (Last Click, First Click, Linear, Time Decay, Position-Based)          |
+| **Seasonality Intelligence**    | Overview tab                               | Automatic seasonal pattern detection from snapshot history with forward-looking alerts              |
+| **Share of Voice**              | SEO tab                                    | Organic + paid competitive position tracking using SemRush data                                     |
+| **Creative Intelligence**       | Meta / Google Ads tabs                     | Ad creative performance analysis with actionable creative briefs                                    |
+| **AI Strategy Documents**       | On demand                                  | Quarterly forward-looking strategy documents per client, shareable                                  |
+| **Conversational AI Chat**      | All tabs (floating)                        | "Ask the Data" — GPT-4o-mini powered chat with full metric history context                          |
+| **Competitor Intelligence**     | SEO tab + `/tools/competitor-intelligence` | SemRush-backed competitor monitoring with AI-generated competitive summaries                        |
 
 ### Client Portal
 
@@ -837,11 +846,13 @@ Multi-user workflow for reviewing and approving reports before sharing with clie
 **Route:** `/reports` (list) and `/reports/[id]` (editor)
 
 **Report list features:**
+
 - Search/filter reports
 - Inline rename, delete with confirmation, duplicate report
 - Status badges (draft/published)
 
 **Report editor features:**
+
 - Status stepper: Draft → Review → Published
 - Custom date range pickers with comparison period
 - Drag-and-drop section reordering (dnd-kit)
@@ -866,17 +877,17 @@ Multi-user workflow for reviewing and approving reports before sharing with clie
 
 ### Tools
 
-| Tool | Route | Description |
-|------|-------|-------------|
-| **Page Analyser** | `/tools/page-analyser` | AI-powered CRO/SEO/mobile/forms scoring for any URL, plus SemRush competitive data |
-| **Keyword Planner** | `/tools/keyword-planner` | Brief → AI keyword suggestions → SemRush research → proposal generation |
-| **Proposals** | `/tools/proposals` | Pipeline CRM (Prospect → Sent → Viewed → Negotiating → Won/Lost), share links, view tracking, enquiry capture |
-| **Pricing Strategy** | `/tools/pricing` | Agency pricing configuration editor (service tiers, add-ons, retainer packages) |
-| **LLM.txt Generator** | `/tools/llm-generator` | AI-search-optimised `llm.txt` files with site crawling, authority verification, and sector templates |
-| **Action Tracking** | `/tools/actions` | Agency-wide action dashboard — create, assign, track, and measure outcomes |
-| **Communications Hub** | `/tools/communications` | Agency-wide communication log — emails, calls, meetings, notes across all clients |
-| **Competitor Intelligence** | `/tools/competitor-intelligence` | SemRush-backed competitor monitoring with AI-generated competitive summaries |
-| **Media Plan Builder** | `/tools/media-plan` | Paid media planning with channel allocation, AI forecast, and status management |
+| Tool                        | Route                            | Description                                                                                                                                 |
+| --------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Page Analyser**           | `/tools/page-analyser`           | AI-powered CRO/SEO/mobile/forms scoring for any URL, plus SemRush competitive data                                                          |
+| **Keyword Planner**         | `/tools/keyword-planner`         | Brief → AI keyword suggestions → SemRush research → proposal generation                                                                     |
+| **Proposals**               | `/tools/proposals`               | Pipeline CRM (Prospect → Sent → Viewed → Negotiating → Won/Lost), share links, view tracking, enquiry capture                               |
+| **Pricing Strategy**        | `/tools/pricing`                 | Agency pricing configuration editor (service tiers, add-ons, retainer packages)                                                             |
+| **LLM.txt Generator**       | `/tools/llm-generator`           | AI-search-optimised `llm.txt` files with site crawling, authority verification, saved client-linked generations, and shareable client links |
+| **Action Tracking**         | `/tools/actions`                 | Agency-wide action dashboard — create, assign, track, and measure outcomes                                                                  |
+| **Communications Hub**      | `/tools/communications`          | Agency-wide communication log — emails, calls, meetings, notes across all clients                                                           |
+| **Competitor Intelligence** | `/tools/competitor-intelligence` | SemRush-backed competitor monitoring with AI-generated competitive summaries                                                                |
+| **Media Plan Builder**      | `/tools/media-plan`              | Paid media planning with channel allocation, AI forecast, and status management                                                             |
 
 ### Admin Panel
 
