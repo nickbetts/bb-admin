@@ -592,7 +592,6 @@ Output the complete filled-in llm.txt followed by the ## DATA GAPS block. No pre
           pagesCrawled: crawl.pagesCrawled.length,
           deadUrlsRemoved: deadUrlCount,
           usedWebSearchFallback: Boolean(webSearchData),
-          crawlBlocked: crawlWasBlocked || crawlIsThin,
           authorityDataUsed: Boolean(authorityData),
           socialProfilesFound: socialProfiles.length,
           generationMs,
