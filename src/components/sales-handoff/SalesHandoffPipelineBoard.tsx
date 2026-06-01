@@ -289,7 +289,7 @@ function StatusColumn({
     <section
       ref={setNodeRef}
       className={cn(
-        "flex min-h-40 flex-col rounded-xl border border-t-2 border-zinc-200 dark:border-zinc-800",
+        "flex min-h-56 flex-col rounded-xl border border-t-2 border-zinc-200 dark:border-zinc-800",
         column.accentBorderClass,
         column.bgClass,
         isOver && "ring-2 ring-indigo-400/40 dark:ring-indigo-500/30",
@@ -582,7 +582,7 @@ export function SalesHandoffPipelineBoard({
       ) : (
         <div className="overflow-x-auto pb-2">
           <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-            <div className="grid min-w-7xl grid-cols-7 gap-3">
+            <div className="grid min-w-240 grid-cols-7 gap-2.5">
               {STATUS_COLUMNS.map((column) => (
                 <StatusColumn
                   key={column.status}
