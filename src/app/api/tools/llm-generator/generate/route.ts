@@ -194,7 +194,7 @@ async function searchAuthorityRegisters(openai: OpenAI, url: string): Promise<st
   try {
     const domain = new URL(url).hostname.replace(/^www\./, "");
     const result = await openai.responses.create({
-      model: "gpt-4o-search-preview",
+      model: "gpt-4o",
       tools: [{ type: "web_search_preview" as const }],
       input: `Look up the UK charity at ${url} (domain: ${domain}) on authoritative public registers. Specifically:
 1. Search register-of-charities.charitycommission.gov.uk for the charity — find its registered charity number, registered legal name, registered address, date of registration, charitable objects, and current income/expenditure figures.
@@ -213,65 +213,73 @@ Provide exact numbers, names, and URLs from the registers — not summaries.`,
 }
 
 // ─── Web search fallback (used when site blocks direct crawl) ─────────────────
-// Runs three targeted searches in parallel for maximum coverage.
+// Runs searches sequentially to avoid Responses API rate limits.
+// Uses gpt-4o (stable) with the web_search_preview tool.
+// Falls back to gpt-4o-mini on 429 / model-not-found errors.
+
+const WEB_SEARCH_MODEL = "gpt-4o";
+const WEB_SEARCH_MODEL_FALLBACK = "gpt-4o-mini";
+
+async function runWebSearch(openai: OpenAI, label: string, input: string): Promise<string | null> {
+  for (const model of [WEB_SEARCH_MODEL, WEB_SEARCH_MODEL_FALLBACK]) {
+    try {
+      const result = await openai.responses.create({
+        model,
+        tools: [{ type: "web_search_preview" as const }],
+        input,
+      });
+      await logResponsesUsage("llm-generator:web-search", result);
+      return result.output_text ?? null;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      // Retry with fallback model on 429 or unknown-model errors; otherwise surface
+      if (
+        model === WEB_SEARCH_MODEL_FALLBACK ||
+        (!msg.includes("429") && !msg.toLowerCase().includes("model"))
+      ) {
+        console.warn(`[llm-generator] web search "${label}" failed (${model}): ${msg}`);
+        return null;
+      }
+      console.warn(
+        `[llm-generator] web search "${label}" retrying with fallback model after: ${msg}`,
+      );
+    }
+  }
+  return null;
+}
 
 async function webSearchForSite(openai: OpenAI, url: string, sector: string): Promise<string> {
   const domain = new URL(url).hostname.replace(/^www\./, "");
-
-  const [identityResult, programmesResult, socialResult, pagesResult] = await Promise.allSettled([
-    // Search 1: Legal identity — additional targeted sources beyond the authority search
-    openai.responses.create({
-      model: "gpt-4o-search-preview",
-      tools: [{ type: "web_search_preview" as const }],
-      input: `Research the ${sector} organisation at ${url} (domain: ${domain}). Find: the full legal organisation name, year founded, founder names, mission statement (exact wording), vision statement, stated values, headquarters city and country, about page URL, governance page URL. Also search the charity's own website for: privacy policy URL, terms and conditions URL, contact page URL, cookie policy URL, complaints policy URL, safeguarding page URL. Look at the footer and header navigation for these links.`,
-    }),
-
-    // Search 2: Programmes, beneficiaries, geography, impact statistics, campaigns
-    openai.responses.create({
-      model: "gpt-4o-search-preview",
-      tools: [{ type: "web_search_preview" as const }],
-      input: `Research ${url} and the ${sector} organisation at ${domain}. Find specific details about: all named programmes, appeals, and campaigns (with their EXACT URLs and descriptions), beneficiary groups and eligibility, every country and region where they operate, impact statistics with real numbers (people helped, meals provided, water wells, schools, clinics, children sponsored, families supported), annual report findings, evidence of impact, seasonal campaigns (Ramadan, Qurbani, Zakat, winter, etc.), faith-based giving options, donation types accepted, and volunteering opportunities.`,
-    }),
-
-    // Search 3: Social media, contact, partnerships, accreditations, media coverage
-    openai.responses.create({
-      model: "gpt-4o-search-preview",
-      tools: [{ type: "web_search_preview" as const }],
-      input: `Research ${url} and "${domain}". Find: exact URLs for all social media profiles (Facebook, Instagram, Twitter/X, LinkedIn, YouTube, TikTok), general contact email address, phone number, media or press email, institutional or implementation partners, corporate partners, accreditations, charity memberships (e.g. NCVO, Fundraising Regulator), any media coverage or press mentions, awards received, and any notable news stories about this organisation.`,
-    }),
-
-    // Search 4: Real page URLs — only verified pages that actually exist on the site
-    openai.responses.create({
-      model: "gpt-4o-search-preview",
-      tools: [{ type: "web_search_preview" as const }],
-      input: `Find the actual real pages that exist on the website ${url}. Check the sitemap at ${url}/sitemap.xml if it exists. Look for the real exact URLs for pages like: about, donate, get involved, impact, programmes, annual reports, privacy policy, terms, contact, FAQ, blog, news, volunteer, safeguarding, governance, trustees, resources, stories. List ONLY exact URLs you can confirm actually exist on this website — do not guess paths. If ${url}/sitemap.xml is accessible list the URLs from it.`,
-    }),
-  ]);
-
   const sections: string[] = [];
 
-  if (identityResult.status === "fulfilled") {
-    await logResponsesUsage("llm-generator:web-search", identityResult.value);
-    sections.push(
-      `=== IDENTITY, REGISTRATION & LEADERSHIP ===\n${identityResult.value.output_text}`,
-    );
-  }
-  if (programmesResult.status === "fulfilled") {
-    await logResponsesUsage("llm-generator:web-search", programmesResult.value);
-    sections.push(`=== PROGRAMMES, IMPACT & CAMPAIGNS ===\n${programmesResult.value.output_text}`);
-  }
-  if (socialResult.status === "fulfilled") {
-    await logResponsesUsage("llm-generator:web-search", socialResult.value);
-    sections.push(
-      `=== SOCIAL MEDIA, CONTACT & PARTNERSHIPS ===\n${socialResult.value.output_text}`,
-    );
-  }
-  if (pagesResult.status === "fulfilled") {
-    await logResponsesUsage("llm-generator:web-search", pagesResult.value);
-    sections.push(
-      `=== VERIFIED PAGE URLS FROM SITEMAP/NAVIGATION ===\n${pagesResult.value.output_text}`,
-    );
-  }
+  // Run sequentially — Responses API has low rate limits; parallel calls reliably 429.
+  const identityText = await runWebSearch(
+    openai,
+    "identity",
+    `Research the ${sector} organisation at ${url} (domain: ${domain}). Find: the full legal organisation name, year founded, founder names, mission statement (exact wording), vision statement, stated values, headquarters city and country, about page URL, governance page URL. Also search the charity's own website for: privacy policy URL, terms and conditions URL, contact page URL, cookie policy URL, complaints policy URL, safeguarding page URL. Look at the footer and header navigation for these links.`,
+  );
+  if (identityText) sections.push(`=== IDENTITY, REGISTRATION & LEADERSHIP ===\n${identityText}`);
+
+  const programmesText = await runWebSearch(
+    openai,
+    "programmes",
+    `Research ${url} and the ${sector} organisation at ${domain}. Find specific details about: all named programmes, appeals, and campaigns (with their EXACT URLs and descriptions), beneficiary groups and eligibility, every country and region where they operate, impact statistics with real numbers (people helped, meals provided, water wells, schools, clinics, children sponsored, families supported), annual report findings, evidence of impact, seasonal campaigns (Ramadan, Qurbani, Zakat, winter, etc.), faith-based giving options, donation types accepted, and volunteering opportunities.`,
+  );
+  if (programmesText) sections.push(`=== PROGRAMMES, IMPACT & CAMPAIGNS ===\n${programmesText}`);
+
+  const socialText = await runWebSearch(
+    openai,
+    "social",
+    `Research ${url} and "${domain}". Find: exact URLs for all social media profiles (Facebook, Instagram, Twitter/X, LinkedIn, YouTube, TikTok), general contact email address, phone number, media or press email, institutional or implementation partners, corporate partners, accreditations, charity memberships (e.g. NCVO, Fundraising Regulator), any media coverage or press mentions, awards received, and any notable news stories about this organisation.`,
+  );
+  if (socialText) sections.push(`=== SOCIAL MEDIA, CONTACT & PARTNERSHIPS ===\n${socialText}`);
+
+  const pagesText = await runWebSearch(
+    openai,
+    "pages",
+    `Find the actual real pages that exist on the website ${url}. Check the sitemap at ${url}/sitemap.xml if it exists. Look for the real exact URLs for pages like: about, donate, get involved, impact, programmes, annual reports, privacy policy, terms, contact, FAQ, blog, news, volunteer, safeguarding, governance, trustees, resources, stories. List ONLY exact URLs you can confirm actually exist on this website — do not guess paths. If ${url}/sitemap.xml is accessible list the URLs from it.`,
+  );
+  if (pagesText) sections.push(`=== VERIFIED PAGE URLS FROM SITEMAP/NAVIGATION ===\n${pagesText}`);
 
   if (sections.length === 0) throw new Error("All web searches failed");
 
