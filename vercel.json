@@ -21,6 +21,10 @@
       "schedule": "5 0 1 * *"
     },
     {
+      "path": "/api/cron/meta-token-refresh",
+      "schedule": "0 4 * * 1"
+    },
+    {
       "path": "/api/tools/sales-handoff/sync",
       "schedule": "20 * * * *"
     }

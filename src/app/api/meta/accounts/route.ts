@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
+import { getMetaAccessToken } from "@/lib/meta-token";
 
 export interface MetaAdAccount {
   id: string;
@@ -13,12 +14,9 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const token = process.env.META_ACCESS_TOKEN;
+    const token = await getMetaAccessToken();
     if (!token) {
-      return NextResponse.json(
-        { error: "META_ACCESS_TOKEN not configured" },
-        { status: 503 }
-      );
+      return NextResponse.json({ error: "META_ACCESS_TOKEN not configured" }, { status: 503 });
     }
 
     const params = new URLSearchParams({
@@ -27,9 +25,7 @@ export async function GET() {
       limit: "100",
     });
 
-    const response = await fetch(
-      `https://graph.facebook.com/v19.0/me/adaccounts?${params}`
-    );
+    const response = await fetch(`https://graph.facebook.com/v19.0/me/adaccounts?${params}`);
 
     if (!response.ok) {
       let message = "Meta API error";
@@ -44,12 +40,10 @@ export async function GET() {
 
     const data = await response.json();
 
-    const accounts: MetaAdAccount[] = (data.data ?? []).map(
-      (a: { id: string; name: string }) => ({
-        id: a.id.replace("act_", ""),
-        name: a.name,
-      })
-    );
+    const accounts: MetaAdAccount[] = (data.data ?? []).map((a: { id: string; name: string }) => ({
+      id: a.id.replace("act_", ""),
+      name: a.name,
+    }));
 
     return NextResponse.json(accounts);
   } catch (error) {

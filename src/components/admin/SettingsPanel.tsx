@@ -214,6 +214,16 @@ function SettingsPanelInner() {
   const [defaultAssigneeSaving, setDefaultAssigneeSaving] = useState(false);
   const [defaultAssigneeSaved, setDefaultAssigneeSaved] = useState(false);
 
+  const [metaToken, setMetaToken] = useState<{
+    configured: boolean;
+    expiresAt: string | null;
+    refreshedAt: string | null;
+    expiresInDays: number | null;
+    autoRefreshConfigured: boolean;
+  } | null>(null);
+  const [metaTokenRefreshing, setMetaTokenRefreshing] = useState(false);
+  const [metaTokenError, setMetaTokenError] = useState<string | null>(null);
+
   const oauthErrorKey = searchParams.get("error");
   const oauthConnected = searchParams.get("connected");
   const [banner, setBanner] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -397,6 +407,43 @@ function SettingsPanelInner() {
   useEffect(() => {
     loadClickupMembers();
   }, [loadClickupMembers]);
+
+  const loadMetaToken = useCallback(async () => {
+    try {
+      const res = await fetch("/api/settings/meta-token");
+      if (!res.ok) return;
+      setMetaToken(await res.json());
+    } catch {
+      /* non-fatal */
+    }
+  }, []);
+
+  useEffect(() => {
+    loadMetaToken();
+  }, [loadMetaToken]);
+
+  async function handleMetaTokenRefresh() {
+    setMetaTokenRefreshing(true);
+    setMetaTokenError(null);
+    try {
+      const res = await fetch("/api/settings/meta-token", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to refresh");
+      if (data.status) setMetaToken(data.status);
+      if (!data.refreshed && data.reason) {
+        setMetaTokenError(data.reason);
+      } else {
+        setBanner({
+          type: "success",
+          message: `Meta token refreshed — valid for ~${data.expiresInDays} days.`,
+        });
+      }
+    } catch (err) {
+      setMetaTokenError(err instanceof Error ? err.message : "Failed to refresh");
+    } finally {
+      setMetaTokenRefreshing(false);
+    }
+  }
 
   async function handleOpenaiKeySave() {
     setOpenaiKeySaving(true);
@@ -1347,6 +1394,92 @@ function SettingsPanelInner() {
                 as a redirect URI. Set <code>MS365_CLIENT_ID</code> and{" "}
                 <code>MS365_CLIENT_SECRET</code> in your environment variables.
               </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Meta Ads Access Token */}
+      <div className="card" style={{ marginBottom: 24 }}>
+        <div className="card-header">
+          <div>
+            <h2 className="card-title">Meta Ads Access Token</h2>
+            <p className="card-subtitle">
+              The shared long-lived token used to fetch Meta Ads data. It is automatically
+              re-exchanged for a fresh 60-day token every week, so it never lapses.
+            </p>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            className="shrink-0"
+            onClick={handleMetaTokenRefresh}
+            disabled={metaTokenRefreshing || (metaToken ? !metaToken.autoRefreshConfigured : false)}
+          >
+            {metaTokenRefreshing ? "Refreshing…" : "Refresh now"}
+          </Button>
+        </div>
+        <div className="card-body">
+          {metaTokenError && (
+            <p style={{ fontSize: 13, color: "var(--danger)", marginBottom: 12 }}>
+              {metaTokenError}
+            </p>
+          )}
+          {!metaToken ? (
+            <p style={{ fontSize: 13, color: "var(--text-3)" }}>Loading token status…</p>
+          ) : !metaToken.configured ? (
+            <p style={{ fontSize: 13, color: "var(--danger)" }}>
+              ⚠ No Meta access token configured. Set <code>META_ACCESS_TOKEN</code> in your
+              environment, then click Refresh now.
+            </p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span
+                  style={{
+                    display: "inline-block",
+                    width: 8,
+                    height: 8,
+                    borderRadius: "50%",
+                    background:
+                      metaToken.expiresInDays == null
+                        ? "var(--text-3)"
+                        : metaToken.expiresInDays <= 7
+                          ? "var(--danger)"
+                          : metaToken.expiresInDays <= 21
+                            ? "#f59e0b"
+                            : "var(--success)",
+                  }}
+                />
+                <span style={{ fontSize: 14, fontWeight: 600 }}>
+                  {metaToken.expiresInDays == null
+                    ? "Token active — expiry unknown until first auto-refresh"
+                    : metaToken.expiresInDays <= 0
+                      ? "Token expired — click Refresh now"
+                      : `Expires in ${metaToken.expiresInDays} day${metaToken.expiresInDays === 1 ? "" : "s"}`}
+                </span>
+              </div>
+              {metaToken.expiresAt && (
+                <p style={{ fontSize: 12, color: "var(--text-3)" }}>
+                  Expiry date:{" "}
+                  {new Date(metaToken.expiresAt).toLocaleDateString("en-GB", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })}
+                </p>
+              )}
+              {metaToken.refreshedAt && (
+                <p style={{ fontSize: 12, color: "var(--text-3)" }}>
+                  Last refreshed: {new Date(metaToken.refreshedAt).toLocaleString("en-GB")}
+                </p>
+              )}
+              {!metaToken.autoRefreshConfigured && (
+                <p style={{ fontSize: 12, color: "#f59e0b", marginTop: 4 }}>
+                  Auto-refresh disabled — set <code>META_APP_ID</code> and{" "}
+                  <code>META_APP_SECRET</code> to enable the weekly refresh.
+                </p>
+              )}
             </div>
           )}
         </div>
