@@ -246,8 +246,8 @@ export default function LandingPagesPage() {
         className="card"
         style={{
           padding: 0,
-          opacity: isArchived ? 0.58 : 1,
-          filter: isArchived ? "saturate(0.82)" : "none",
+          opacity: isArchived ? 0.38 : 1,
+          filter: isArchived ? "saturate(0.55)" : "none",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px 20px" }}>
