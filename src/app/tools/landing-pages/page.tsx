@@ -230,9 +230,26 @@ export default function LandingPagesPage() {
     return p.title.toLowerCase().includes(q) || (p.client?.name ?? "").toLowerCase().includes(q);
   });
 
+  const displayPages = [...filtered].sort((a, b) => {
+    const aArchived = a.status === "archived";
+    const bArchived = b.status === "archived";
+    if (aArchived === bArchived) return 0;
+    return aArchived ? 1 : -1;
+  });
+
   function renderCard(p: LandingPageItem) {
+    const isArchived = p.status === "archived";
+
     return (
-      <div key={p.id} className="card" style={{ padding: 0 }}>
+      <div
+        key={p.id}
+        className="card"
+        style={{
+          padding: 0,
+          opacity: isArchived ? 0.58 : 1,
+          filter: isArchived ? "saturate(0.82)" : "none",
+        }}
+      >
         <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px 20px" }}>
           <div
             style={{
@@ -482,10 +499,14 @@ export default function LandingPagesPage() {
         />
       ) : clientId ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {filtered.map(renderCard)}
+          {displayPages.map(renderCard)}
         </div>
       ) : (
-        <ClientFolderGroup items={filtered} getClient={(p) => p.client} renderItem={renderCard} />
+        <ClientFolderGroup
+          items={displayPages}
+          getClient={(p) => p.client}
+          renderItem={renderCard}
+        />
       )}
     </div>
   );
