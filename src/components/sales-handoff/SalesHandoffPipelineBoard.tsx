@@ -237,10 +237,10 @@ function DragCard({ handoff, disabled }: { handoff: SalesHandoffPipelineItem; di
       {...attributes}
       {...listeners}
     >
-      <div className="p-3.5">
+      <div className="p-4">
         {/* Urgent badge */}
         {handoff.urgentOverride ? (
-          <div className="mb-2.5 inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-300">
+          <div className="mb-3 inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-300">
             <AlertTriangle className="h-2.5 w-2.5" />
             Urgent override
           </div>
@@ -250,20 +250,20 @@ function DragCard({ handoff, disabled }: { handoff: SalesHandoffPipelineItem; di
         <h3 className="truncate text-sm leading-snug font-semibold text-zinc-900 dark:text-zinc-100">
           {handoff.prospectName}
         </h3>
-        <p className="mt-0.5 truncate text-[11px] text-zinc-400 dark:text-zinc-500">
+        <p className="mt-1 truncate text-[11px] text-zinc-400 dark:text-zinc-500">
           {handoff.website}
         </p>
 
         {/* Budget range pill */}
         {handoff.budgetRange ? (
-          <div className="mt-2 inline-flex items-center gap-1 rounded-md bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+          <div className="mt-2.5 inline-flex items-center gap-1 rounded-md bg-zinc-100 px-2 py-1 text-[11px] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
             <Wallet className="h-3 w-3 shrink-0 opacity-60" />
             {handoff.budgetRange}
           </div>
         ) : null}
 
         {/* Divider */}
-        <div className="my-2.5 border-t border-zinc-100 dark:border-zinc-800" />
+        <div className="my-3.5 border-t border-zinc-100 dark:border-zinc-800" />
 
         {/* Second call date */}
         <p className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-600 dark:text-zinc-300">
@@ -272,7 +272,7 @@ function DragCard({ handoff, disabled }: { handoff: SalesHandoffPipelineItem; di
         </p>
 
         {/* Owner + sync state */}
-        <div className="mt-2 flex items-center justify-between gap-2">
+        <div className="mt-2.5 flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-1.5">
             <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-zinc-200 text-[9px] font-bold text-zinc-600 dark:bg-zinc-700 dark:text-zinc-300">
               {ownerInitials(handoff.owner)}
@@ -297,13 +297,13 @@ function DragCard({ handoff, disabled }: { handoff: SalesHandoffPipelineItem; di
             href={handoff.clickupTaskUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-2.5 inline-flex items-center gap-1 text-[11px] font-medium text-indigo-500 opacity-0 transition-opacity group-hover:opacity-100 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300"
+            className="mt-3 inline-flex items-center gap-1 text-[11px] font-medium text-indigo-500 opacity-0 transition-opacity group-hover:opacity-100 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300"
             onPointerDown={(event) => event.stopPropagation()}
           >
             Open in ClickUp <ExternalLink className="h-2.5 w-2.5" />
           </a>
         ) : (
-          <div className="mt-2.5 h-4" />
+          <div className="mt-3 h-4" />
         )}
       </div>
     </article>
@@ -325,14 +325,14 @@ function StatusColumn({
     <section
       ref={setNodeRef}
       className={cn(
-        "flex min-h-72 flex-col rounded-xl border border-t-2 border-zinc-200 dark:border-zinc-800",
+        "flex min-h-80 flex-col rounded-xl border border-t-2 border-zinc-200 dark:border-zinc-800",
         column.accentBorderClass,
         column.bgClass,
         isOver && "ring-2 ring-indigo-400/40 dark:ring-indigo-500/30",
         "transition-shadow",
       )}
     >
-      <header className="flex items-center justify-between border-b border-zinc-200/60 px-3 py-2.5 dark:border-zinc-800/60">
+      <header className="flex items-center justify-between border-b border-zinc-200/60 px-4 py-3 dark:border-zinc-800/60">
         <div className="flex items-center gap-1.5">
           <span className={cn("h-2 w-2 shrink-0 rounded-full", column.dotClass)} />
           <h3 className={cn("text-[11px] font-bold tracking-widest uppercase", column.labelClass)}>
@@ -351,7 +351,7 @@ function StatusColumn({
         </span>
       </header>
 
-      <div className="flex flex-1 flex-col gap-2 p-2">
+      <div className="flex flex-1 flex-col gap-2.5 p-2.5">
         {handoffs.length === 0 ? (
           <div className="flex flex-1 items-center justify-center rounded-lg border-2 border-dashed border-zinc-200/70 py-8 text-[11px] text-zinc-300 transition-colors dark:border-zinc-700/40 dark:text-zinc-600">
             Drop here
@@ -493,20 +493,20 @@ export function SalesHandoffPipelineBoard({
   }
 
   return (
-    <section id="sales-handoff-pipeline" className="space-y-5">
+    <section id="sales-handoff-pipeline" className="space-y-7">
       {/* KPI stat strip */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {STAT_CARDS.map(({ key, label, icon: Icon, accentText, iconBg, borderAccent }) => (
           <div
             key={key}
             className={cn(
-              "flex items-center gap-4 rounded-xl border border-l-4 border-zinc-200 bg-white px-4 py-4 shadow-xs dark:border-zinc-800 dark:bg-zinc-950",
+              "flex items-center gap-5 rounded-xl border border-l-4 border-zinc-200 bg-white px-5 py-5 shadow-xs dark:border-zinc-800 dark:bg-zinc-950",
               borderAccent,
             )}
           >
             <div
               className={cn(
-                "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+                "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl",
                 iconBg,
               )}
             >
@@ -516,7 +516,7 @@ export function SalesHandoffPipelineBoard({
               <p className={cn("text-3xl leading-none font-bold tabular-nums", accentText)}>
                 {metrics[key]}
               </p>
-              <p className="mt-1 truncate text-[11px] text-zinc-500 dark:text-zinc-400">{label}</p>
+              <p className="mt-1.5 truncate text-xs text-zinc-500 dark:text-zinc-400">{label}</p>
             </div>
           </div>
         ))}
@@ -525,12 +525,12 @@ export function SalesHandoffPipelineBoard({
       {/* Board header + filters */}
       <div className="rounded-xl border border-zinc-200 bg-white shadow-xs dark:border-zinc-800 dark:bg-zinc-950">
         {/* Header row */}
-        <div className="flex flex-wrap items-center justify-between gap-3 px-4 pt-4 pb-3">
+        <div className="flex flex-wrap items-center justify-between gap-4 px-5 pt-5 pb-4">
           <div>
             <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
               Pipeline board
             </h2>
-            <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
               Drag cards across stages · status changes sync to ClickUp automatically
             </p>
           </div>
@@ -567,7 +567,7 @@ export function SalesHandoffPipelineBoard({
         </div>
 
         {/* Filter row */}
-        <div className="flex flex-wrap gap-2 border-t border-zinc-100 px-4 py-3 dark:border-zinc-800">
+        <div className="flex flex-wrap gap-2 border-t border-zinc-100 px-5 py-4 dark:border-zinc-800">
           <label className="relative min-w-52 flex-1">
             <Search className="pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-zinc-400" />
             <input
@@ -632,7 +632,7 @@ export function SalesHandoffPipelineBoard({
       ) : (
         <div className="overflow-x-auto pb-2">
           <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-            <div className="grid min-w-[1120px] grid-cols-7 gap-3">
+            <div className="grid min-w-[1120px] grid-cols-7 gap-4">
               {STATUS_COLUMNS.map((column) => (
                 <StatusColumn
                   key={column.status}
