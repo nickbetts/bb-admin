@@ -68,78 +68,69 @@ interface SalesHandoffPipelineBoardProps {
   onStatusChange: (handoffId: string, status: SalesHandoffStatus) => Promise<void>;
 }
 
-// Logical pipeline order — draft first, terminal states last
 const STATUS_COLUMNS: Array<{
   status: SalesHandoffStatus;
   label: string;
-  dotClass: string;
-  accentBorderClass: string;
-  bgClass: string;
-  labelClass: string;
-  countClass: string;
+  color: string;
+  lightBg: string;
+  textClass: string;
+  dotColor: string;
 }> = [
   {
     status: "draft",
     label: "Draft",
-    dotClass: "bg-amber-400",
-    accentBorderClass: "border-t-amber-400",
-    bgClass: "bg-amber-50/30 dark:bg-amber-950/10",
-    labelClass: "text-amber-700 dark:text-amber-400",
-    countClass: "bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400",
+    color: "#f59e0b",
+    lightBg: "rgba(245,158,11,0.06)",
+    textClass: "text-amber-700 dark:text-amber-400",
+    dotColor: "#f59e0b",
   },
   {
     status: "submitted",
     label: "New",
-    dotClass: "bg-sky-500",
-    accentBorderClass: "border-t-sky-500",
-    bgClass: "bg-sky-50/30 dark:bg-sky-950/10",
-    labelClass: "text-sky-700 dark:text-sky-400",
-    countClass: "bg-sky-100 text-sky-600 dark:bg-sky-900/40 dark:text-sky-400",
+    color: "#0ea5e9",
+    lightBg: "rgba(14,165,233,0.06)",
+    textClass: "text-sky-700 dark:text-sky-400",
+    dotColor: "#0ea5e9",
   },
   {
     status: "in_progress",
     label: "In Progress",
-    dotClass: "bg-indigo-500",
-    accentBorderClass: "border-t-indigo-500",
-    bgClass: "bg-indigo-50/30 dark:bg-indigo-950/10",
-    labelClass: "text-indigo-700 dark:text-indigo-400",
-    countClass: "bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-400",
+    color: "#6366f1",
+    lightBg: "rgba(99,102,241,0.06)",
+    textClass: "text-indigo-700 dark:text-indigo-400",
+    dotColor: "#6366f1",
   },
   {
     status: "ready_for_meeting",
     label: "Ready",
-    dotClass: "bg-emerald-500",
-    accentBorderClass: "border-t-emerald-500",
-    bgClass: "bg-emerald-50/30 dark:bg-emerald-950/10",
-    labelClass: "text-emerald-700 dark:text-emerald-400",
-    countClass: "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400",
+    color: "#10b981",
+    lightBg: "rgba(16,185,129,0.06)",
+    textClass: "text-emerald-700 dark:text-emerald-400",
+    dotColor: "#10b981",
   },
   {
     status: "blocked",
     label: "Blocked",
-    dotClass: "bg-rose-500",
-    accentBorderClass: "border-t-rose-500",
-    bgClass: "bg-rose-50/30 dark:bg-rose-950/10",
-    labelClass: "text-rose-700 dark:text-rose-400",
-    countClass: "bg-rose-100 text-rose-600 dark:bg-rose-900/40 dark:text-rose-400",
+    color: "#ef4444",
+    lightBg: "rgba(239,68,68,0.06)",
+    textClass: "text-rose-700 dark:text-rose-400",
+    dotColor: "#ef4444",
   },
   {
     status: "completed",
     label: "Completed",
-    dotClass: "bg-green-500",
-    accentBorderClass: "border-t-green-500",
-    bgClass: "bg-green-50/30 dark:bg-green-950/10",
-    labelClass: "text-green-700 dark:text-green-400",
-    countClass: "bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400",
+    color: "#22c55e",
+    lightBg: "rgba(34,197,94,0.06)",
+    textClass: "text-green-700 dark:text-green-400",
+    dotColor: "#22c55e",
   },
   {
     status: "cancelled",
     label: "Cancelled",
-    dotClass: "bg-zinc-400",
-    accentBorderClass: "border-t-zinc-400",
-    bgClass: "bg-zinc-50/40 dark:bg-zinc-900/20",
-    labelClass: "text-zinc-500 dark:text-zinc-400",
-    countClass: "bg-zinc-200 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-500",
+    color: "#94a3b8",
+    lightBg: "rgba(148,163,184,0.06)",
+    textClass: "text-zinc-500 dark:text-zinc-400",
+    dotColor: "#94a3b8",
   },
 ];
 
@@ -150,33 +141,33 @@ const STAT_CARDS = [
     key: "openPipeline" as const,
     label: "Open in pipeline",
     icon: Target,
-    accentText: "text-indigo-600 dark:text-indigo-400",
-    iconBg: "bg-indigo-100 dark:bg-indigo-950/60",
-    borderAccent: "border-l-indigo-400",
+    accentColor: "#6366f1",
+    iconBg: "#eef2ff",
+    iconColor: "#4f46e5",
   },
   {
     key: "urgent" as const,
     label: "Urgent overrides",
     icon: ShieldAlert,
-    accentText: "text-amber-600 dark:text-amber-400",
-    iconBg: "bg-amber-100 dark:bg-amber-950/60",
-    borderAccent: "border-l-amber-400",
+    accentColor: "#f59e0b",
+    iconBg: "#fffbeb",
+    iconColor: "#d97706",
   },
   {
     key: "dueSoon" as const,
     label: "Calls in next 48h",
     icon: Clock3,
-    accentText: "text-sky-600 dark:text-sky-400",
-    iconBg: "bg-sky-100 dark:bg-sky-950/60",
-    borderAccent: "border-l-sky-400",
+    accentColor: "#0ea5e9",
+    iconBg: "#f0f9ff",
+    iconColor: "#0284c7",
   },
   {
     key: "syncFailed" as const,
     label: "Sync issues",
     icon: Zap,
-    accentText: "text-rose-600 dark:text-rose-400",
-    iconBg: "bg-rose-100 dark:bg-rose-950/60",
-    borderAccent: "border-l-rose-400",
+    accentColor: "#ef4444",
+    iconBg: "#fef2f2",
+    iconColor: "#dc2626",
   },
 ] as const;
 
@@ -222,72 +213,153 @@ function DragCard({ handoff, disabled }: { handoff: SalesHandoffPipelineItem; di
   return (
     <article
       ref={setNodeRef}
-      style={style}
+      style={{
+        ...style,
+        background: "var(--surface)",
+        borderRadius: "var(--r)",
+        border: isSyncFailed ? "1px solid #fecaca" : "1px solid var(--border)",
+        boxShadow: isDragging ? "var(--shadow-lg)" : "var(--shadow-sm)",
+        transition: "box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease",
+        transform: isDragging ? `${style?.transform ?? ""} scale(1.02)` : style?.transform,
+      }}
       className={cn(
-        "group rounded-xl border bg-white shadow-xs transition-all dark:bg-zinc-900",
+        "group",
         !disabled && "cursor-grab active:cursor-grabbing",
-        isDragging
-          ? "scale-[1.02] opacity-60 shadow-xl ring-2 ring-indigo-400/50"
-          : "hover:shadow-md",
+        isDragging ? "opacity-60" : undefined,
         disabled && "cursor-not-allowed opacity-50",
-        isSyncFailed
-          ? "border-rose-200 dark:border-rose-800/60"
-          : "border-zinc-200 hover:border-zinc-300 dark:border-zinc-800 dark:hover:border-zinc-700",
       )}
       {...attributes}
       {...listeners}
     >
-      <div className="p-4">
+      <div style={{ padding: "14px 16px 12px" }}>
         {/* Urgent badge */}
         {handoff.urgentOverride ? (
-          <div className="mb-3 inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-300">
+          <div
+            style={{ marginBottom: "10px" }}
+            className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700"
+          >
             <AlertTriangle className="h-2.5 w-2.5" />
-            Urgent override
+            Urgent
           </div>
         ) : null}
 
-        {/* Prospect name + website */}
-        <h3 className="truncate text-sm leading-snug font-semibold text-zinc-900 dark:text-zinc-100">
+        {/* Prospect name */}
+        <h3
+          className="truncate"
+          style={{
+            fontSize: "13px",
+            fontWeight: 600,
+            color: "var(--text)",
+            lineHeight: 1.3,
+          }}
+        >
           {handoff.prospectName}
         </h3>
-        <p className="mt-1 truncate text-[11px] text-zinc-400 dark:text-zinc-500">
+
+        {/* Website */}
+        <p
+          className="truncate"
+          style={{
+            fontSize: "11px",
+            color: "var(--text-3)",
+            marginTop: "3px",
+          }}
+        >
           {handoff.website}
         </p>
 
-        {/* Budget range pill */}
+        {/* Budget pill */}
         {handoff.budgetRange ? (
-          <div className="mt-2.5 inline-flex items-center gap-1 rounded-md bg-zinc-100 px-2 py-1 text-[11px] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-            <Wallet className="h-3 w-3 shrink-0 opacity-60" />
+          <div
+            style={{
+              marginTop: "8px",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "4px",
+              background: "var(--bg)",
+              borderRadius: "var(--r-sm)",
+              padding: "3px 8px",
+              fontSize: "11px",
+              fontWeight: 500,
+              color: "var(--text-2)",
+            }}
+          >
+            <Wallet style={{ width: "11px", height: "11px", opacity: 0.6, flexShrink: 0 }} />
             {handoff.budgetRange}
           </div>
         ) : null}
 
         {/* Divider */}
-        <div className="my-3.5 border-t border-zinc-100 dark:border-zinc-800" />
+        <div
+          style={{
+            margin: "12px 0",
+            borderTop: "1px solid var(--border-subtle)",
+          }}
+        />
 
         {/* Second call date */}
-        <p className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-600 dark:text-zinc-300">
-          <Clock3 className="h-3 w-3 shrink-0 text-zinc-400" />
+        <p
+          style={{
+            fontSize: "11px",
+            fontWeight: 500,
+            color: "var(--text-2)",
+            display: "flex",
+            alignItems: "center",
+            gap: "5px",
+          }}
+        >
+          <Clock3
+            style={{ width: "12px", height: "12px", flexShrink: 0, color: "var(--text-3)" }}
+          />
           {formatDateTime(handoff.secondCallAt)}
         </p>
 
-        {/* Owner + sync state */}
-        <div className="mt-2.5 flex items-center justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-1.5">
-            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-zinc-200 text-[9px] font-bold text-zinc-600 dark:bg-zinc-700 dark:text-zinc-300">
+        {/* Owner row */}
+        <div
+          style={{
+            marginTop: "8px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "8px",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: 0 }}>
+            <span
+              style={{
+                width: "20px",
+                height: "20px",
+                borderRadius: "99px",
+                background: "var(--accent-bg)",
+                color: "var(--accent-text)",
+                fontSize: "9px",
+                fontWeight: 700,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
               {ownerInitials(handoff.owner)}
             </span>
-            <p className="truncate text-[11px] text-zinc-400 dark:text-zinc-500">{ownerLabel}</p>
+            <p className="truncate" style={{ fontSize: "11px", color: "var(--text-3)" }}>
+              {ownerLabel}
+            </p>
           </div>
-          <div className="flex shrink-0 items-center gap-1">
+          <div style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0 }}>
             {isSyncFailed ? (
-              <span className="rounded-md bg-rose-100 px-1.5 py-0.5 text-[10px] font-semibold text-rose-600 dark:bg-rose-900/40 dark:text-rose-300">
+              <span className="rounded-md bg-rose-100 px-1.5 py-0.5 text-[10px] font-semibold text-rose-600">
                 Sync failed
               </span>
             ) : isSynced ? (
-              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 dark:text-emerald-400" />
+              <CheckCircle2 style={{ width: "14px", height: "14px", color: "var(--success)" }} />
             ) : null}
-            {disabled ? <Loader2 className="h-3.5 w-3.5 animate-spin text-zinc-400" /> : null}
+            {disabled ? (
+              <Loader2
+                style={{ width: "14px", height: "14px", color: "var(--text-3)" }}
+                className="animate-spin"
+              />
+            ) : null}
           </div>
         </div>
 
@@ -297,13 +369,14 @@ function DragCard({ handoff, disabled }: { handoff: SalesHandoffPipelineItem; di
             href={handoff.clickupTaskUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-3 inline-flex items-center gap-1 text-[11px] font-medium text-indigo-500 opacity-0 transition-opacity group-hover:opacity-100 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300"
+            className="mt-3 inline-flex items-center gap-1 text-[11px] font-medium opacity-0 transition-opacity group-hover:opacity-100"
+            style={{ color: "var(--accent)" }}
             onPointerDown={(event) => event.stopPropagation()}
           >
-            Open in ClickUp <ExternalLink className="h-2.5 w-2.5" />
+            Open in ClickUp <ExternalLink style={{ width: "10px", height: "10px" }} />
           </a>
         ) : (
-          <div className="mt-3 h-4" />
+          <div style={{ marginTop: "12px", height: "16px" }} />
         )}
       </div>
     </article>
@@ -324,36 +397,91 @@ function StatusColumn({
   return (
     <section
       ref={setNodeRef}
-      className={cn(
-        "flex min-h-80 flex-col rounded-xl border border-t-2 border-zinc-200 dark:border-zinc-800",
-        column.accentBorderClass,
-        column.bgClass,
-        isOver && "ring-2 ring-indigo-400/40 dark:ring-indigo-500/30",
-        "transition-shadow",
-      )}
+      style={{
+        background: isOver ? column.lightBg : "var(--surface)",
+        borderRadius: "var(--r)",
+        border: `1px solid var(--border)`,
+        borderTop: `3px solid ${column.color}`,
+        boxShadow: isOver ? `0 0 0 2px ${column.color}33` : "var(--shadow-xs)",
+        minHeight: "320px",
+        display: "flex",
+        flexDirection: "column",
+        transition: "box-shadow 0.15s ease, background 0.15s ease",
+      }}
     >
-      <header className="flex items-center justify-between border-b border-zinc-200/60 px-4 py-3 dark:border-zinc-800/60">
-        <div className="flex items-center gap-1.5">
-          <span className={cn("h-2 w-2 shrink-0 rounded-full", column.dotClass)} />
-          <h3 className={cn("text-[11px] font-bold tracking-widest uppercase", column.labelClass)}>
+      {/* Column header */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "12px 14px 10px",
+          borderBottom: "1px solid var(--border-subtle)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
+          <span
+            style={{
+              width: "7px",
+              height: "7px",
+              borderRadius: "99px",
+              background: column.color,
+              flexShrink: 0,
+            }}
+          />
+          <h3
+            style={{
+              fontSize: "10px",
+              fontWeight: 700,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              color: column.color,
+            }}
+          >
             {column.label}
           </h3>
         </div>
         <span
-          className={cn(
-            "rounded-full px-2 py-0.5 text-[10px] font-bold",
-            handoffs.length > 0
-              ? column.countClass
-              : "bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-600",
-          )}
+          style={{
+            fontSize: "10px",
+            fontWeight: 700,
+            minWidth: "20px",
+            textAlign: "center",
+            padding: "2px 7px",
+            borderRadius: "99px",
+            background: handoffs.length > 0 ? `${column.color}18` : "var(--bg)",
+            color: handoffs.length > 0 ? column.color : "var(--text-3)",
+          }}
         >
           {handoffs.length}
         </span>
-      </header>
+      </div>
 
-      <div className="flex flex-1 flex-col gap-2.5 p-2.5">
+      {/* Card list */}
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          gap: "8px",
+          padding: "10px",
+        }}
+      >
         {handoffs.length === 0 ? (
-          <div className="flex flex-1 items-center justify-center rounded-lg border-2 border-dashed border-zinc-200/70 py-8 text-[11px] text-zinc-300 transition-colors dark:border-zinc-700/40 dark:text-zinc-600">
+          <div
+            style={{
+              flex: 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: "var(--r-sm)",
+              border: "2px dashed var(--border)",
+              minHeight: "80px",
+              fontSize: "11px",
+              color: "var(--text-4)",
+              userSelect: "none",
+            }}
+          >
             Drop here
           </div>
         ) : (
@@ -401,31 +529,25 @@ export function SalesHandoffPipelineBoard({
 
   const owners = useMemo(() => {
     const map = new Map<string, string>();
-
     for (const handoff of handoffs) {
       const key = handoff.owner?.id ?? handoff.owner?.email;
       if (!key) continue;
       map.set(key, handoff.owner?.name ?? handoff.owner?.email ?? "Unknown");
     }
-
     return Array.from(map.entries()).map(([id, label]) => ({ id, label }));
   }, [handoffs]);
 
   const filteredHandoffs = useMemo(() => {
     const lowerSearch = search.trim().toLowerCase();
-
     return handoffs
       .filter((handoff) => {
         if (urgentOnly && !handoff.urgentOverride) return false;
         if (syncFailedOnly && handoff.clickupSyncStatus !== "failed") return false;
-
         if (ownerFilter !== "all") {
           const ownerKey = handoff.owner?.id ?? handoff.owner?.email ?? "";
           if (ownerKey !== ownerFilter) return false;
         }
-
         if (!lowerSearch) return true;
-
         const haystack = [
           handoff.prospectName,
           handoff.website,
@@ -435,7 +557,6 @@ export function SalesHandoffPipelineBoard({
         ]
           .join(" ")
           .toLowerCase();
-
         return haystack.includes(lowerSearch);
       })
       .sort((a, b) => new Date(a.secondCallAt).getTime() - new Date(b.secondCallAt).getTime());
@@ -451,97 +572,109 @@ export function SalesHandoffPipelineBoard({
       blocked: [],
       cancelled: [],
     };
-
     for (const handoff of filteredHandoffs) {
       buckets[handoff.status].push(handoff);
     }
-
     return buckets;
   }, [filteredHandoffs]);
 
   const metrics = useMemo(() => {
     const in48Hours = nowMs + 48 * 60 * 60 * 1000;
-
-    const openPipeline = filteredHandoffs.filter((handoff) => isOpenStatus(handoff.status)).length;
-    const urgent = filteredHandoffs.filter((handoff) => handoff.urgentOverride).length;
-    const dueSoon = filteredHandoffs.filter((handoff) => {
-      const callAt = new Date(handoff.secondCallAt).getTime();
-      return callAt >= nowMs && callAt <= in48Hours && isOpenStatus(handoff.status);
+    const openPipeline = filteredHandoffs.filter((h) => isOpenStatus(h.status)).length;
+    const urgent = filteredHandoffs.filter((h) => h.urgentOverride).length;
+    const dueSoon = filteredHandoffs.filter((h) => {
+      const callAt = new Date(h.secondCallAt).getTime();
+      return callAt >= nowMs && callAt <= in48Hours && isOpenStatus(h.status);
     }).length;
-    const syncFailed = filteredHandoffs.filter(
-      (handoff) => handoff.clickupSyncStatus === "failed",
-    ).length;
-
+    const syncFailed = filteredHandoffs.filter((h) => h.clickupSyncStatus === "failed").length;
     return { openPipeline, urgent, dueSoon, syncFailed };
   }, [filteredHandoffs, nowMs]);
 
   function handleDragEnd(event: DragEndEvent) {
     if (updatingId) return;
-
     const activeData = event.active.data.current as { status?: string } | undefined;
     const overId = event.over?.id;
     if (!activeData || !overId) return;
-
     const nextStatus = String(overId);
     if (!isKnownSalesHandoffStatus(nextStatus)) return;
-
     const currentStatus = activeData.status;
     if (!currentStatus || !isKnownSalesHandoffStatus(currentStatus)) return;
     if (currentStatus === nextStatus) return;
-
     void onStatusChange(String(event.active.id), nextStatus);
   }
 
   return (
-    <section id="sales-handoff-pipeline" className="space-y-7">
-      {/* KPI stat strip */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        {STAT_CARDS.map(({ key, label, icon: Icon, accentText, iconBg, borderAccent }) => (
+    <section
+      id="sales-handoff-pipeline"
+      style={{ display: "flex", flexDirection: "column", gap: "28px" }}
+    >
+      {/* ── KPI stat strip ── */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px" }}>
+        {STAT_CARDS.map(({ key, label, icon: Icon, accentColor, iconBg, iconColor }) => (
           <div
             key={key}
-            className={cn(
-              "flex items-center gap-5 rounded-xl border border-l-4 border-zinc-200 bg-white px-5 py-5 shadow-xs dark:border-zinc-800 dark:bg-zinc-950",
-              borderAccent,
-            )}
+            className="metric-card"
+            style={{ display: "flex", alignItems: "center", gap: "16px" }}
           >
             <div
-              className={cn(
-                "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl",
-                iconBg,
-              )}
+              style={{
+                width: "44px",
+                height: "44px",
+                borderRadius: "12px",
+                background: iconBg,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
             >
-              <Icon className={cn("h-5 w-5", accentText)} />
+              <Icon style={{ width: "20px", height: "20px", color: iconColor }} />
             </div>
-            <div className="min-w-0">
-              <p className={cn("text-3xl leading-none font-bold tabular-nums", accentText)}>
+            <div style={{ minWidth: 0 }}>
+              <p
+                style={{
+                  fontSize: "28px",
+                  fontWeight: 700,
+                  lineHeight: 1,
+                  color: accentColor,
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
                 {metrics[key]}
               </p>
-              <p className="mt-1.5 truncate text-xs text-zinc-500 dark:text-zinc-400">{label}</p>
+              <p
+                className="truncate"
+                style={{
+                  fontSize: "11px",
+                  color: "var(--text-3)",
+                  marginTop: "5px",
+                  fontWeight: 500,
+                }}
+              >
+                {label}
+              </p>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Board header + filters */}
-      <div className="rounded-xl border border-zinc-200 bg-white shadow-xs dark:border-zinc-800 dark:bg-zinc-950">
-        {/* Header row */}
-        <div className="flex flex-wrap items-center justify-between gap-4 px-5 pt-5 pb-4">
+      {/* ── Board header + filters ── */}
+      <div className="card" style={{ overflow: "visible" }}>
+        <div className="card-header" style={{ padding: "20px 28px" }}>
           <div>
-            <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
-              Pipeline board
-            </h2>
-            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+            <h2 className="card-title">Pipeline board</h2>
+            <p className="card-subtitle">
               Drag cards across stages · status changes sync to ClickUp automatically
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <button
               type="button"
               onClick={() => {
                 if (!loading && !syncing) onSync();
               }}
               disabled={loading || syncing}
-              className="btn btn-primary inline-flex items-center gap-1.5"
+              className="btn btn-primary inline-flex items-center gap-2"
             >
               {syncing ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -554,7 +687,7 @@ export function SalesHandoffPipelineBoard({
               type="button"
               onClick={onRefresh}
               disabled={loading || syncing}
-              className="btn btn-ghost inline-flex items-center gap-1.5"
+              className="btn btn-ghost inline-flex items-center gap-2"
             >
               {loading ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -567,11 +700,41 @@ export function SalesHandoffPipelineBoard({
         </div>
 
         {/* Filter row */}
-        <div className="flex flex-wrap gap-2 border-t border-zinc-100 px-5 py-4 dark:border-zinc-800">
-          <label className="relative min-w-52 flex-1">
-            <Search className="pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "8px",
+            padding: "14px 28px",
+            borderTop: "1px solid var(--border-subtle)",
+          }}
+        >
+          <label style={{ position: "relative", flex: 1, minWidth: "200px" }}>
+            <Search
+              style={{
+                position: "absolute",
+                top: "50%",
+                left: "10px",
+                transform: "translateY(-50%)",
+                width: "15px",
+                height: "15px",
+                color: "var(--text-3)",
+                pointerEvents: "none",
+              }}
+            />
             <input
-              className="h-9 w-full rounded-lg border border-zinc-200 bg-zinc-50 pr-3 pl-9 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100 focus:outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:bg-zinc-950 dark:focus:ring-indigo-900/30"
+              style={{
+                height: "36px",
+                width: "100%",
+                borderRadius: "var(--r-sm)",
+                border: "1px solid var(--border)",
+                background: "var(--bg)",
+                paddingLeft: "32px",
+                paddingRight: "12px",
+                fontSize: "13px",
+                color: "var(--text)",
+                outline: "none",
+              }}
               placeholder="Search company, website, owner…"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
@@ -579,7 +742,16 @@ export function SalesHandoffPipelineBoard({
           </label>
 
           <select
-            className="h-9 rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-sm text-zinc-700 focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100 focus:outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:focus:bg-zinc-950 dark:focus:ring-indigo-900/30"
+            style={{
+              height: "36px",
+              borderRadius: "var(--r-sm)",
+              border: "1px solid var(--border)",
+              background: "var(--bg)",
+              padding: "0 12px",
+              fontSize: "13px",
+              color: "var(--text-2)",
+              outline: "none",
+            }}
             value={ownerFilter}
             onChange={(event) => setOwnerFilter(event.target.value)}
           >
@@ -594,12 +766,18 @@ export function SalesHandoffPipelineBoard({
           <button
             type="button"
             onClick={() => setUrgentOnly((prev) => !prev)}
-            className={cn(
-              "h-9 rounded-lg border px-3 text-sm font-medium transition-colors",
-              urgentOnly
-                ? "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
-                : "border-zinc-200 text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-900",
-            )}
+            style={{
+              height: "36px",
+              borderRadius: "var(--r-sm)",
+              border: urgentOnly ? "1px solid #fcd34d" : "1px solid var(--border)",
+              background: urgentOnly ? "#fffbeb" : "var(--bg)",
+              color: urgentOnly ? "#92400e" : "var(--text-2)",
+              padding: "0 14px",
+              fontSize: "13px",
+              fontWeight: 500,
+              cursor: "pointer",
+              transition: "all 0.15s ease",
+            }}
           >
             Urgent only
           </button>
@@ -607,32 +785,64 @@ export function SalesHandoffPipelineBoard({
           <button
             type="button"
             onClick={() => setSyncFailedOnly((prev) => !prev)}
-            className={cn(
-              "h-9 rounded-lg border px-3 text-sm font-medium transition-colors",
-              syncFailedOnly
-                ? "border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-700 dark:bg-rose-950/40 dark:text-rose-300"
-                : "border-zinc-200 text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-900",
-            )}
+            style={{
+              height: "36px",
+              borderRadius: "var(--r-sm)",
+              border: syncFailedOnly ? "1px solid #fca5a5" : "1px solid var(--border)",
+              background: syncFailedOnly ? "#fef2f2" : "var(--bg)",
+              color: syncFailedOnly ? "#991b1b" : "var(--text-2)",
+              padding: "0 14px",
+              fontSize: "13px",
+              fontWeight: 500,
+              cursor: "pointer",
+              transition: "all 0.15s ease",
+            }}
           >
             Sync failed
           </button>
         </div>
       </div>
 
-      {/* Kanban board */}
+      {/* ── Kanban board ── */}
       {loading ? (
-        <div className="flex items-center gap-2.5 rounded-xl border border-zinc-200 bg-white p-8 text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400">
-          <Loader2 className="h-4 w-4 animate-spin" />
+        <div
+          className="card"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            padding: "32px",
+            fontSize: "14px",
+            color: "var(--text-3)",
+          }}
+        >
+          <Loader2 style={{ width: "16px", height: "16px" }} className="animate-spin" />
           Loading pipeline…
         </div>
       ) : error ? (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-700 dark:border-rose-800 dark:bg-rose-950/30 dark:text-rose-300">
+        <div
+          style={{
+            borderRadius: "var(--r)",
+            border: "1px solid #fecaca",
+            background: "#fef2f2",
+            padding: "18px 22px",
+            fontSize: "14px",
+            color: "#991b1b",
+          }}
+        >
           {error}
         </div>
       ) : (
-        <div className="overflow-x-auto pb-2">
+        <div style={{ overflowX: "auto", paddingBottom: "8px" }}>
           <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-            <div className="grid min-w-[1120px] grid-cols-7 gap-4">
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(7, 1fr)",
+                gap: "12px",
+                minWidth: "1100px",
+              }}
+            >
               {STATUS_COLUMNS.map((column) => (
                 <StatusColumn
                   key={column.status}
@@ -647,13 +857,28 @@ export function SalesHandoffPipelineBoard({
       )}
 
       {!loading && filteredHandoffs.length === 0 && !error ? (
-        <p className="py-3 text-center text-sm text-zinc-400 dark:text-zinc-500">
+        <p
+          style={{
+            textAlign: "center",
+            fontSize: "13px",
+            color: "var(--text-3)",
+            padding: "8px 0",
+          }}
+        >
           No handoffs match your current filters.
         </p>
       ) : null}
 
-      <p className="flex items-center gap-1.5 text-[11px] text-zinc-400 dark:text-zinc-500">
-        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+      <p
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+          fontSize: "11px",
+          color: "var(--text-3)",
+        }}
+      >
+        <CheckCircle2 style={{ width: "13px", height: "13px", color: "var(--success)" }} />
         Drag any card to update its status — changes push to ClickUp automatically.
       </p>
     </section>
