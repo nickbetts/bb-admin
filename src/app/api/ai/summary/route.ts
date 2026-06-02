@@ -20,7 +20,7 @@ export const maxDuration = 300;
 //   3. Suppress recommendations whose current value is already on the right side
 //      of the benchmark (root cause of the original "reduce 2.6× to under 3×" bug).
 interface AlertSignalMeta {
-  id?: string;                                // stable signal ID, e.g. "meta.campaign.fatigue"
+  id?: string; // stable signal ID, e.g. "meta.campaign.fatigue"
   currentValue?: number;
   benchmarkValue?: number;
   desiredDirection?: "up" | "down";
@@ -36,13 +36,24 @@ type AlertInput = {
 } & AlertSignalMeta;
 
 /** Verbs whose direction we can confidently classify. */
-const DOWN_VERBS = ["reduce", "pause", "remove", "cut", "lower", "decrease", "archive", "drop", "shrink"];
+const DOWN_VERBS = [
+  "reduce",
+  "pause",
+  "remove",
+  "cut",
+  "lower",
+  "decrease",
+  "archive",
+  "drop",
+  "shrink",
+];
 const UP_VERBS = ["increase", "expand", "scale", "raise", "boost", "grow", "lift", "add"];
 
 function recDirection(rec: string): "up" | "down" | null {
   const lower = rec.toLowerCase().replace(/\*/g, "").trim();
   // Match the first imperative verb (after optional "**").
-  for (const v of DOWN_VERBS) if (lower.startsWith(v + " ") || lower.startsWith(v + ":")) return "down";
+  for (const v of DOWN_VERBS)
+    if (lower.startsWith(v + " ") || lower.startsWith(v + ":")) return "down";
   for (const v of UP_VERBS) if (lower.startsWith(v + " ") || lower.startsWith(v + ":")) return "up";
   return null;
 }
@@ -94,18 +105,28 @@ async function loadClientAiContext(clientId: string | undefined): Promise<{
       }),
       prisma.clientGoal.findMany({
         where: { clientId, status: { in: ["active", "at_risk"] } },
-        select: { title: true, metric: true, targetValue: true, currentValue: true, unit: true, status: true },
+        select: {
+          title: true,
+          metric: true,
+          targetValue: true,
+          currentValue: true,
+          unit: true,
+          status: true,
+        },
         take: 8,
       }),
     ]);
     const config = resolveConfig(client?.signalConfig ?? null);
     const aiInstructions = client?.aiReportInstructions ?? "";
     const goalsContext = goals.length
-      ? "\n\nACTIVE CLIENT GOALS:\n" + goals.map((g) => {
-          const cur = g.currentValue != null ? `${g.currentValue}${g.unit ?? ""}` : "n/a";
-          const tgt = `${g.targetValue}${g.unit ?? ""}`;
-          return `• ${g.title} (${g.metric}): ${cur} → target ${tgt}${g.status === "at_risk" ? " [AT RISK]" : ""}`;
-        }).join("\n")
+      ? "\n\nACTIVE CLIENT GOALS:\n" +
+        goals
+          .map((g) => {
+            const cur = g.currentValue != null ? `${g.currentValue}${g.unit ?? ""}` : "n/a";
+            const tgt = `${g.targetValue}${g.unit ?? ""}`;
+            return `• ${g.title} (${g.metric}): ${cur} → target ${tgt}${g.status === "at_risk" ? " [AT RISK]" : ""}`;
+          })
+          .join("\n")
       : "";
     return { config, aiInstructions, goalsContext };
   } catch {
@@ -202,7 +223,7 @@ function detectAnomalies(
   higherIsBetter: string[],
   lowerIsBetter: string[],
   metricLabels: Record<string, string>,
-  anomalyThresholds?: Record<string, { concerning?: number; notable?: number }>
+  anomalyThresholds?: Record<string, { concerning?: number; notable?: number }>,
 ): Anomaly[] {
   if (!previousMetrics) return [];
   const anomalies: Anomaly[] = [];
@@ -216,11 +237,7 @@ function detectAnomalies(
     if (absChange < 10) continue;
 
     const isUp = changePct > 0;
-    const isGood = higherIsBetter.includes(key)
-      ? isUp
-      : lowerIsBetter.includes(key)
-      ? !isUp
-      : isUp;
+    const isGood = higherIsBetter.includes(key) ? isUp : lowerIsBetter.includes(key) ? !isUp : isUp;
 
     const severity: "high" | "medium" | "low" =
       absChange >= 50 ? "high" : absChange >= 25 ? "medium" : "low";
@@ -252,9 +269,7 @@ function detectAnomalies(
   });
 }
 
-function detectGoogleAdsCampaignAnomalies(
-  campaigns: GoogleAdsCampaignContext[]
-): Anomaly[] {
+function detectGoogleAdsCampaignAnomalies(campaigns: GoogleAdsCampaignContext[]): Anomaly[] {
   const anomalies: Anomaly[] = [];
 
   for (const c of campaigns) {
@@ -348,7 +363,8 @@ function detectMetaCampaignAnomalies(campaigns: MetaCampaignContext[]): Anomaly[
 
   for (const c of campaigns) {
     if (c.frequency != null && c.frequency > 3.5) {
-      const severity: "high" | "medium" | "low" = c.frequency >= 7 ? "high" : c.frequency >= 5 ? "medium" : "low";
+      const severity: "high" | "medium" | "low" =
+        c.frequency >= 7 ? "high" : c.frequency >= 5 ? "medium" : "low";
       anomalies.push({
         metric: "Ad Frequency",
         value: c.frequency.toFixed(1),
@@ -371,11 +387,7 @@ function detectMetaCampaignAnomalies(campaigns: MetaCampaignContext[]): Anomaly[
     }
 
     // Creative fatigue correlation: high frequency + low CTR
-    if (
-      c.frequency != null && c.frequency > 3.5 &&
-      c.ctr != null && c.ctr < 0.5 &&
-      c.spend > 50
-    ) {
+    if (c.frequency != null && c.frequency > 3.5 && c.ctr != null && c.ctr < 0.5 && c.spend > 50) {
       anomalies.push({
         metric: "Creative Fatigue",
         value: `${c.frequency.toFixed(1)}x freq, ${c.ctr.toFixed(2)}% CTR`,
@@ -405,7 +417,16 @@ const SECTION_CONFIGS: Record<
   ga4: {
     name: "Web Analytics (GA4)",
     // bounceRate uses a higher anomaly threshold (20%) — small natural variation is normal
-    higherIsBetter: ["sessions", "users", "newUsers", "pageviews", "avgSessionDuration", "conversionRate", "engagedSessions", "engagementRate"],
+    higherIsBetter: [
+      "sessions",
+      "users",
+      "newUsers",
+      "pageviews",
+      "avgSessionDuration",
+      "conversionRate",
+      "engagedSessions",
+      "engagementRate",
+    ],
     lowerIsBetter: ["bounceRate"],
     anomalyThresholds: { bounceRate: { concerning: 20, notable: 30 } },
     metricLabels: {
@@ -423,7 +444,16 @@ const SECTION_CONFIGS: Record<
   googleads: {
     name: "Google Ads",
     // impressions in higherIsBetter so a significant drop gets flagged
-    higherIsBetter: ["clicks", "impressions", "conversions", "conversionValue", "roas", "ctr", "searchImpressionShare", "qualityScore"],
+    higherIsBetter: [
+      "clicks",
+      "impressions",
+      "conversions",
+      "conversionValue",
+      "roas",
+      "ctr",
+      "searchImpressionShare",
+      "qualityScore",
+    ],
     lowerIsBetter: ["cpc", "cpa", "searchBudgetLostIS", "searchRankLostIS"],
     metricLabels: {
       clicks: "Clicks",
@@ -443,7 +473,16 @@ const SECTION_CONFIGS: Record<
   },
   meta: {
     name: "Meta Ads",
-    higherIsBetter: ["totalClicks", "totalConversions", "avgRoas", "avgCtr", "totalConversionValue", "reach", "outboundClicks", "landingPageViews"],
+    higherIsBetter: [
+      "totalClicks",
+      "totalConversions",
+      "avgRoas",
+      "avgCtr",
+      "totalConversionValue",
+      "reach",
+      "outboundClicks",
+      "landingPageViews",
+    ],
     // NOTE: avgFrequency intentionally NOT in lowerIsBetter. Frequency naturally varies with
     // campaign maturity / audience size and only matters in absolute terms (>3.5× = fatigue risk).
     // Period-over-period frequency changes are not anomalies on their own — fatigue is detected
@@ -468,7 +507,13 @@ const SECTION_CONFIGS: Record<
   },
   seo: {
     name: "SEO (SemRush)",
-    higherIsBetter: ["organicTraffic", "organicKeywords", "organicCost", "paidTraffic", "paidKeywords"],
+    higherIsBetter: [
+      "organicTraffic",
+      "organicKeywords",
+      "organicCost",
+      "paidTraffic",
+      "paidKeywords",
+    ],
     lowerIsBetter: [],
     metricLabels: {
       organicTraffic: "Organic Traffic",
@@ -597,10 +642,7 @@ const SECTION_CONFIGS: Record<
 
 // ─── Prompt builder helpers ────────────────────────────────────────────────────
 
-function buildCampaignSummaryText(
-  sectionType: string,
-  campaigns: CampaignContext[]
-): string {
+function buildCampaignSummaryText(sectionType: string, campaigns: CampaignContext[]): string {
   if (!campaigns.length) return "";
 
   if (sectionType === "googleads") {
@@ -616,9 +658,7 @@ function buildCampaignSummaryText(
         ? `bidding: ${c.biddingStrategyType.replace(/_/g, " ").toLowerCase()}`
         : "";
       const is =
-        c.searchImpressionShare != null
-          ? `IS: ${Math.round(c.searchImpressionShare * 100)}%`
-          : "";
+        c.searchImpressionShare != null ? `IS: ${Math.round(c.searchImpressionShare * 100)}%` : "";
       const isLostBudget =
         c.searchBudgetLostImpressionShare != null && c.searchBudgetLostImpressionShare > 0.02
           ? `IS lost budget: ${Math.round(c.searchBudgetLostImpressionShare * 100)}%`
@@ -628,7 +668,9 @@ function buildCampaignSummaryText(
           ? `IS lost rank: ${Math.round(c.searchRankLostImpressionShare * 100)}%`
           : "";
       const channelType = c.channelType ? c.channelType.replace(/_/g, " ").toLowerCase() : "";
-      const meta = [channelType, budget, bidding, is, isLostBudget, isLostRank].filter(Boolean).join(", ");
+      const meta = [channelType, budget, bidding, is, isLostBudget, isLostRank]
+        .filter(Boolean)
+        .join(", ");
       return `  • ${c.name} [${c.status ?? ""}]: spend £${cost.toFixed(2)}, ROAS ${roas}x, CPA £${cpa}, ${c.clicks} clicks${meta ? ` (${meta})` : ""}`;
     });
     return `Campaign breakdown:\n${rows.join("\n")}`;
@@ -639,8 +681,8 @@ function buildCampaignSummaryText(
       const budget = c.dailyBudget
         ? `£${c.dailyBudget.toFixed(0)}/day`
         : c.lifetimeBudget
-        ? `£${c.lifetimeBudget.toFixed(0)} lifetime`
-        : "";
+          ? `£${c.lifetimeBudget.toFixed(0)} lifetime`
+          : "";
       const freq = c.frequency != null ? `freq: ${c.frequency.toFixed(1)}x` : "";
       const obj = c.objective ? `obj: ${c.objective.replace(/_/g, " ").toLowerCase()}` : "";
       const bid = c.bidStrategy ? `bid: ${c.bidStrategy.replace(/_/g, " ").toLowerCase()}` : "";
@@ -671,7 +713,7 @@ function buildLandingPageText(pages: LandingPageContext[]): string {
 
 function buildHistoricalTrendText(
   snapshots: HistoricalSnapshot[],
-  metricLabels: Record<string, string>
+  metricLabels: Record<string, string>,
 ): string {
   if (snapshots.length < 2) return "";
 
@@ -683,7 +725,9 @@ function buildHistoricalTrendText(
     const values = recent
       .map((s) => {
         const v = s.metrics[key];
-        return v != null ? `${s.periodStart}: ${typeof v === "number" ? v.toLocaleString() : v}` : null;
+        return v != null
+          ? `${s.periodStart}: ${typeof v === "number" ? v.toLocaleString() : v}`
+          : null;
       })
       .filter(Boolean)
       .join(" → ");
@@ -728,7 +772,7 @@ export async function POST(request: NextRequest) {
     const rl = enforceAiRateLimit(session.user.id);
     if (!rl.ok) return rl.response!;
 
-    const body = await request.json() as {
+    const body = (await request.json()) as {
       sectionType: string;
       metrics: Record<string, number>;
       previousMetrics?: Record<string, number>;
@@ -763,14 +807,19 @@ export async function POST(request: NextRequest) {
     // Per-channel call: returns one specific recommendation per alert, using a
     // channel-appropriate persona so suggestions are always relevant to that platform.
     if (sectionType === "alert_recommendations") {
-      const alerts = (body as unknown as {
-        alerts?: AlertInput[];
-        campaignPlatform?: string;
-        channelType?: string;
-        channelContext?: string;
-      }).alerts ?? [];
-      const campaignPlatform = (body as unknown as { campaignPlatform?: string }).campaignPlatform ?? "meta";
-      const channelType = (body as unknown as { channelType?: string }).channelType ?? campaignPlatform;
+      const alerts =
+        (
+          body as unknown as {
+            alerts?: AlertInput[];
+            campaignPlatform?: string;
+            channelType?: string;
+            channelContext?: string;
+          }
+        ).alerts ?? [];
+      const campaignPlatform =
+        (body as unknown as { campaignPlatform?: string }).campaignPlatform ?? "meta";
+      const channelType =
+        (body as unknown as { channelType?: string }).channelType ?? campaignPlatform;
       const channelContext = (body as unknown as { channelContext?: string }).channelContext ?? "";
 
       if (!alerts.length) return NextResponse.json({ recommendations: [] });
@@ -778,7 +827,11 @@ export async function POST(request: NextRequest) {
       // Load client config + AI instructions + goals up-front so we can both
       // (a) suppress muted signals before they reach the LLM and (b) tell the
       // LLM about the client's primary KPI / business model.
-      const { config: clientCfg, aiInstructions, goalsContext } = await loadClientAiContext(clientId);
+      const {
+        config: clientCfg,
+        aiInstructions,
+        goalsContext,
+      } = await loadClientAiContext(clientId);
 
       // Pre-filter: drop muted signals and signals where the value is already healthy.
       const filteredIdx: number[] = [];
@@ -803,7 +856,8 @@ export async function POST(request: NextRequest) {
       });
 
       // If everything was filtered out, return empty recs in the original shape.
-      if (!filteredAlerts.length) return NextResponse.json({ recommendations: alerts.map(() => "") });
+      if (!filteredAlerts.length)
+        return NextResponse.json({ recommendations: alerts.map(() => "") });
 
       const openai2 = await getOpenAiClient();
 
@@ -826,6 +880,7 @@ KEY PATTERNS TO IDENTIFY:
 - High outbound clicks but low landing page views → page load speed issue or tracking gap → investigate landing page performance.
 - High impressions + low CTR → ad creative or targeting mismatch → review audience relevance and ad copy/visual.
 - ROAS below 1x on any campaign → loss-making → recommend pausing, restructuring, or testing new audiences.
+      - Paused ad sets inside active campaigns can indicate either a winning audience worth retesting or an underperformer that should stay paused — recommendations must respect the paused status and explain whether to reactivate, rebuild, or leave paused.
 - Gap between reach and conversions → funnel leak → check audience intent alignment and landing page conversion path.
 When creative data is available: name specific ads, quote their metrics, and state whether to keep, pause, iterate, or kill each one. Explain WHY winners work (hook, CTA, social proof, emotional appeal). Compare format performance (image vs video vs carousel).
 AVAILABLE LEVERS: campaign budgets, bid strategies, ad frequency caps, creative refresh, audience targeting (lookalikes, retargeting, interest-based), campaign objectives, ad set structure, placement optimisation (Feed vs Stories vs Reels), and Advantage+ settings.`,
@@ -978,8 +1033,9 @@ Frame all recommendations in terms of revenue impact and customer lifetime value
 AVAILABLE LEVERS: channel budget reallocation based on revenue contribution, email automation sequences, loyalty/retention programmes, checkout optimisation, product feed quality (for Shopping ads), and seasonal campaign planning.`,
       };
 
-      const systemPrompt = CHANNEL_PERSONAS[channelType]
-        ?? `You are a senior digital marketing strategist at a UK performance marketing agency. Only suggest actions that are genuinely applicable to this channel's data.`;
+      const systemPrompt =
+        CHANNEL_PERSONAS[channelType] ??
+        `You are a senior digital marketing strategist at a UK performance marketing agency. Only suggest actions that are genuinely applicable to this channel's data.`;
 
       const campaignCtxText = campaignData?.length
         ? buildCampaignSummaryText(campaignPlatform, campaignData)
@@ -988,8 +1044,10 @@ AVAILABLE LEVERS: channel budget reallocation based on revenue contribution, ema
       const alertList = filteredAlerts
         .map((a, i) => {
           const meta: string[] = [];
-          if (typeof a.currentValue === "number") meta.push(`current=${a.currentValue}${a.unit ?? ""}`);
-          if (typeof a.benchmarkValue === "number") meta.push(`benchmark=${a.benchmarkValue}${a.unit ?? ""}`);
+          if (typeof a.currentValue === "number")
+            meta.push(`current=${a.currentValue}${a.unit ?? ""}`);
+          if (typeof a.benchmarkValue === "number")
+            meta.push(`benchmark=${a.benchmarkValue}${a.unit ?? ""}`);
           if (a.desiredDirection) meta.push(`desiredDirection=${a.desiredDirection}`);
           const metaStr = meta.length ? ` { ${meta.join(", ")} }` : "";
           return `${i + 1}. [${(a.severity ?? "").toUpperCase()}]${a.level ? ` [${a.level}]` : ""} "${a.label ?? ""}" — ${a.detail}${metaStr}`;
@@ -1002,7 +1060,9 @@ AVAILABLE LEVERS: channel budget reallocation based on revenue contribution, ema
         `Client business model: ${configBriefForPrompt(clientCfg)}`,
         aiInstructions ? `Client-specific guidance:\n${aiInstructions}` : "",
         goalsContext.trim(),
-      ].filter(Boolean).join("\n\n");
+      ]
+        .filter(Boolean)
+        .join("\n\n");
 
       const recPrompt = `Client: ${clientName ?? "client"} | Period: ${dateRange ?? "selected period"}
 
@@ -1011,7 +1071,7 @@ ${clientContextBlock}
 For each numbered alert below, write ONE specific, immediately actionable recommendation (1–2 sentences max).
 
 MANDATORY FORMAT RULES:
-1. ALWAYS begin with a bold imperative verb: **Increase**, **Pause**, **Reduce**, **Add**, **Update**, **Remove**, **Switch**, **Expand**, **Archive**, **Restructure**. A recommendation that starts with "Investigate", "Review", "Examine", "Assess", "Monitor", "Evaluate", or "Consider" is INVALID and must be rewritten.
+1. ALWAYS begin with a bold imperative verb: **Increase**, **Pause**, **Reduce**, **Add**, **Update**, **Remove**, **Switch**, **Expand**, **Archive**, **Restructure**, **Reactivate**, or **Keep**. A recommendation that starts with "Investigate", "Review", "Examine", "Assess", "Monitor", "Evaluate", or "Consider" is INVALID and must be rewritten.
 2. Use EXACT numbers from the alert and context. If daily budget is £20.00 and 27% IS is lost to budget, write: "**Increase** daily budget for '[campaign name]' from £20.00 to £27.00/day — this is losing 27% of eligible impressions purely due to budget cap."
 3. Name specific campaigns, ad sets, ads, and queries by their exact names from the data. Never write "the campaign" when you know its name.
 4. State the expected outcome with numbers that ACTUALLY MOVE IN THE RIGHT DIRECTION:
@@ -1035,7 +1095,12 @@ One string per alert, same order. British English.`;
       const comp2 = await openai2.chat.completions.create({
         model: "gpt-5.4-nano",
         messages: [
-          { role: "system", content: systemPrompt + "\nProvide specific, data-grounded, actionable recommendations. British English. Never fabricate numbers or metrics not present in the data. Always use exact campaign names and numbers from the data." },
+          {
+            role: "system",
+            content:
+              systemPrompt +
+              "\nProvide specific, data-grounded, actionable recommendations. British English. Never fabricate numbers or metrics not present in the data. Always use exact campaign names and numbers from the data.",
+          },
           { role: "user", content: recPrompt },
         ],
         response_format: { type: "json_object" },
@@ -1053,7 +1118,12 @@ One string per alert, same order. British English.`;
         const retry = await openai2.chat.completions.create({
           model: "gpt-5.4-nano",
           messages: [
-            { role: "system", content: systemPrompt + "\nReturn ONLY a JSON object exactly matching: { \"recommendations\": string[] }. No prose, no fences." },
+            {
+              role: "system",
+              content:
+                systemPrompt +
+                '\nReturn ONLY a JSON object exactly matching: { "recommendations": string[] }. No prose, no fences.',
+            },
             { role: "user", content: recPrompt },
           ],
           response_format: { type: "json_object" },
@@ -1065,7 +1135,9 @@ One string per alert, same order. British English.`;
           retry.choices[0]?.message?.content ?? null,
         );
       }
-      const recs = validated.ok ? validated.data : { recommendations: filteredAlerts.map(() => "") };
+      const recs = validated.ok
+        ? validated.data
+        : { recommendations: filteredAlerts.map(() => "") };
 
       // Apply direction-sanity guard against the FILTERED alerts (same indexing).
       const guardedFiltered = applyDirectionSanity(
@@ -1084,16 +1156,33 @@ One string per alert, same order. British English.`;
 
     // ── Holistic Game Plan — cross-channel unified strategy ────────────────────
     if (sectionType === "holistic_game_plan") {
-      const alerts = (body as unknown as {
-        alerts?: Array<{ platform: string; severity: string; level?: string; label?: string; metric?: string; detail: string; direction?: string; recommendation?: string; id?: string }>;
-        crossPlatformContext?: string;
-      }).alerts ?? [];
+      const alerts =
+        (
+          body as unknown as {
+            alerts?: Array<{
+              platform: string;
+              severity: string;
+              level?: string;
+              label?: string;
+              metric?: string;
+              detail: string;
+              direction?: string;
+              recommendation?: string;
+              id?: string;
+            }>;
+            crossPlatformContext?: string;
+          }
+        ).alerts ?? [];
 
       if (!alerts.length) return NextResponse.json({ gamePlan: "" });
 
       // Pull client config + AI instructions + goals so the game plan respects
       // the client's primary KPI, muted signals, and bespoke guidance.
-      const { config: clientCfg, aiInstructions, goalsContext } = await loadClientAiContext(clientId);
+      const {
+        config: clientCfg,
+        aiInstructions,
+        goalsContext,
+      } = await loadClientAiContext(clientId);
       const filteredGpAlerts = alerts.filter((a) => {
         if (a.id && clientCfg.mutedSignals.has(a.id)) return false;
         if (!clientCfg.tracksRevenue && /roas/i.test(a.metric ?? "")) return false;
@@ -1103,18 +1192,22 @@ One string per alert, same order. British English.`;
       if (!filteredGpAlerts.length) return NextResponse.json({ gamePlan: "" });
 
       const signalSummary = filteredGpAlerts
-        .map((a, i) =>
-          `${i + 1}. [${(a.severity ?? "").toUpperCase()}] [${a.platform}]${a.level ? ` [${a.level}]` : ""} "${a.label ?? a.metric ?? ""}" — ${a.detail}${a.recommendation ? `\n   Current recommendation: ${a.recommendation}` : ""}`
+        .map(
+          (a, i) =>
+            `${i + 1}. [${(a.severity ?? "").toUpperCase()}] [${a.platform}]${a.level ? ` [${a.level}]` : ""} "${a.label ?? a.metric ?? ""}" — ${a.detail}${a.recommendation ? `\n   Current recommendation: ${a.recommendation}` : ""}`,
         )
         .join("\n");
 
-      const crossCtx = (body as unknown as { crossPlatformContext?: string }).crossPlatformContext ?? "";
+      const crossCtx =
+        (body as unknown as { crossPlatformContext?: string }).crossPlatformContext ?? "";
 
       const clientContextBlock = [
         `Client business model: ${configBriefForPrompt(clientCfg)}`,
         aiInstructions ? `Client-specific guidance:\n${aiInstructions}` : "",
         goalsContext.trim(),
-      ].filter(Boolean).join("\n\n");
+      ]
+        .filter(Boolean)
+        .join("\n\n");
 
       const gamePlanPrompt = `You are a senior digital marketing strategist at a UK performance marketing agency. You have been given ALL the signals detected across ALL channels for a client. Your job is to synthesise these into a single, unified game plan — NOT repeat each signal individually.
 
@@ -1150,7 +1243,8 @@ Output the result as clean HTML only — no markdown, no code fences, no preambl
         model: "claude-opus-4-6",
         max_tokens: 8000,
         temperature: 0.35,
-        system: "You are a senior cross-channel digital marketing strategist at a UK performance marketing agency. Produce a unified, prioritised action plan that synthesises all detected signals into a coherent strategy. Be specific with numbers, campaign names, exact platform settings, and concrete steps. Output clean HTML only — no markdown, no code fences, no preamble. British English.",
+        system:
+          "You are a senior cross-channel digital marketing strategist at a UK performance marketing agency. Produce a unified, prioritised action plan that synthesises all detected signals into a coherent strategy. Be specific with numbers, campaign names, exact platform settings, and concrete steps. Output clean HTML only — no markdown, no code fences, no preamble. British English.",
         messages: [{ role: "user", content: gamePlanPrompt }],
       });
 
@@ -1160,7 +1254,7 @@ Output the result as clean HTML only — no markdown, no code fences, no preambl
       // Anthropic returns content blocks; collect text-type blocks.
       const gamePlan = opusResponse.content
         .filter((b) => b.type === "text")
-        .map((b) => "text" in b ? String(b.text) : "")
+        .map((b) => ("text" in b ? String(b.text) : ""))
         .join("")
         .trim();
 
@@ -1185,32 +1279,46 @@ Output the result as clean HTML only — no markdown, no code fences, no preambl
           take: 10,
         });
         // Deduplicate by domain (keep latest per domain)
-        const byDomain = new Map<string, typeof competitors[0]>();
+        const byDomain = new Map<string, (typeof competitors)[0]>();
         for (const snap of competitors) {
           if (!byDomain.has(snap.domain)) byDomain.set(snap.domain, snap);
         }
         const uniqueCompetitors = Array.from(byDomain.values());
         if (uniqueCompetitors.length > 0) {
-          competitorContext = "\n\nCOMPETITOR LANDSCAPE:\n" + uniqueCompetitors.map(c => {
-            let metricsStr = "";
-            try {
-              const m = typeof c.metrics === "string" ? JSON.parse(c.metrics) : c.metrics;
-              const parts: string[] = [];
-              if (m.organicTraffic != null) parts.push(`${Number(m.organicTraffic).toLocaleString()} organic traffic`);
-              if (m.organicKeywords != null) parts.push(`${Number(m.organicKeywords).toLocaleString()} keywords`);
-              if (m.domainAuthority != null || m.authorityScore != null) parts.push(`DA ${m.domainAuthority ?? m.authorityScore}`);
-              metricsStr = parts.length ? ` — ${parts.join(", ")}` : "";
-            } catch { /* ignore parse errors */ }
-            return `• ${c.domain}${metricsStr}`;
-          }).join("\n");
+          competitorContext =
+            "\n\nCOMPETITOR LANDSCAPE:\n" +
+            uniqueCompetitors
+              .map((c) => {
+                let metricsStr = "";
+                try {
+                  const m = typeof c.metrics === "string" ? JSON.parse(c.metrics) : c.metrics;
+                  const parts: string[] = [];
+                  if (m.organicTraffic != null)
+                    parts.push(`${Number(m.organicTraffic).toLocaleString()} organic traffic`);
+                  if (m.organicKeywords != null)
+                    parts.push(`${Number(m.organicKeywords).toLocaleString()} keywords`);
+                  if (m.domainAuthority != null || m.authorityScore != null)
+                    parts.push(`DA ${m.domainAuthority ?? m.authorityScore}`);
+                  metricsStr = parts.length ? ` — ${parts.join(", ")}` : "";
+                } catch {
+                  /* ignore parse errors */
+                }
+                return `• ${c.domain}${metricsStr}`;
+              })
+              .join("\n");
         }
-      } catch { /* ignore competitor fetch errors */ }
+      } catch {
+        /* ignore competitor fetch errors */
+      }
     }
 
     // Fetch client-specific AI instructions if clientId provided
     let clientAiInstructions = "";
     if (clientId) {
-      const client = await prisma.client.findUnique({ where: { id: clientId }, select: { aiReportInstructions: true } });
+      const client = await prisma.client.findUnique({
+        where: { id: clientId },
+        select: { aiReportInstructions: true },
+      });
       if (client?.aiReportInstructions) {
         clientAiInstructions = client.aiReportInstructions;
       }
@@ -1221,13 +1329,28 @@ Output the result as clean HTML only — no markdown, no code fences, no preambl
     if (clientId) {
       const goals = await prisma.clientGoal.findMany({
         where: { clientId, status: { in: ["active", "at_risk"] } },
-        select: { title: true, metric: true, targetValue: true, currentValue: true, unit: true, targetDate: true, status: true },
+        select: {
+          title: true,
+          metric: true,
+          targetValue: true,
+          currentValue: true,
+          unit: true,
+          targetDate: true,
+          status: true,
+        },
       });
       if (goals.length > 0) {
-        goalsContext = "\n\nACTIVE CLIENT GOALS:\n" + goals.map((g: typeof goals[number]) => {
-          const progress = g.currentValue && g.targetValue && g.targetValue !== 0 ? Math.round((g.currentValue / g.targetValue) * 100) : null;
-          return `• ${g.title}: target ${g.targetValue}${g.unit ? ` ${g.unit}` : ""} by ${g.targetDate} (current: ${g.currentValue ?? "not measured"}${progress ? ` — ${progress}% to target` : ""}, ${g.status.toUpperCase()})`;
-        }).join("\n");
+        goalsContext =
+          "\n\nACTIVE CLIENT GOALS:\n" +
+          goals
+            .map((g: (typeof goals)[number]) => {
+              const progress =
+                g.currentValue && g.targetValue && g.targetValue !== 0
+                  ? Math.round((g.currentValue / g.targetValue) * 100)
+                  : null;
+              return `• ${g.title}: target ${g.targetValue}${g.unit ? ` ${g.unit}` : ""} by ${g.targetDate} (current: ${g.currentValue ?? "not measured"}${progress ? ` — ${progress}% to target` : ""}, ${g.status.toUpperCase()})`;
+            })
+            .join("\n");
       }
     }
 
@@ -1252,12 +1375,10 @@ Output the result as clean HTML only — no markdown, no code fences, no preambl
     let campaignAnomalies: Anomaly[] = [];
     if (sectionType === "googleads" && campaignData?.length) {
       campaignAnomalies = detectGoogleAdsCampaignAnomalies(
-        campaignData as GoogleAdsCampaignContext[]
+        campaignData as GoogleAdsCampaignContext[],
       );
     } else if (sectionType === "meta" && campaignData?.length) {
-      campaignAnomalies = detectMetaCampaignAnomalies(
-        campaignData as MetaCampaignContext[]
-      );
+      campaignAnomalies = detectMetaCampaignAnomalies(campaignData as MetaCampaignContext[]);
     }
 
     // Landing page anomalies (high click volume, zero conversions)
@@ -1265,18 +1386,28 @@ Output the result as clean HTML only — no markdown, no code fences, no preambl
       ? detectLandingPageAnomalies(landingPages)
       : [];
 
-    const allAnomalies = [...accountLevelAnomalies, ...campaignAnomalies, ...landingPageAnomalies].sort((a, b) => {
+    const allAnomalies = [
+      ...accountLevelAnomalies,
+      ...campaignAnomalies,
+      ...landingPageAnomalies,
+    ].sort((a, b) => {
       const sev: Record<string, number> = { high: 3, medium: 2, low: 1 };
       return (sev[b.severity] ?? 0) - (sev[a.severity] ?? 0);
     });
 
     const metricsText = Object.entries(metrics)
-      .map(([k, v]) => `${config.metricLabels[k] ?? k}: ${typeof v === "number" ? v.toLocaleString() : v}`)
+      .map(
+        ([k, v]) =>
+          `${config.metricLabels[k] ?? k}: ${typeof v === "number" ? v.toLocaleString() : v}`,
+      )
       .join(", ");
 
     const prevText = previousMetrics
       ? Object.entries(previousMetrics)
-          .map(([k, v]) => `${config.metricLabels[k] ?? k}: ${typeof v === "number" ? v.toLocaleString() : v}`)
+          .map(
+            ([k, v]) =>
+              `${config.metricLabels[k] ?? k}: ${typeof v === "number" ? v.toLocaleString() : v}`,
+          )
           .join(", ")
       : null;
 
@@ -1289,9 +1420,7 @@ Output the result as clean HTML only — no markdown, no code fences, no preambl
       ? buildCampaignSummaryText(sectionType, campaignData)
       : "";
 
-    const landingPageText = landingPages?.length
-      ? buildLandingPageText(landingPages)
-      : "";
+    const landingPageText = landingPages?.length ? buildLandingPageText(landingPages) : "";
 
     const historicalText =
       historicalSnapshots && historicalSnapshots.length >= 2
@@ -1301,11 +1430,14 @@ Output the result as clean HTML only — no markdown, no code fences, no preambl
     const TONE_INSTRUCTIONS: Record<string, string> = {
       professional: "Use formal, professional business language suitable for a client report.",
       friendly: "Use approachable, conversational language — warm but still informative.",
-      technical: "Be data-focused with precise metric references, percentages, and specific figures throughout.",
-      executive: "Provide a high-level strategic summary focused on business outcomes and strategic direction rather than granular metrics.",
+      technical:
+        "Be data-focused with precise metric references, percentages, and specific figures throughout.",
+      executive:
+        "Provide a high-level strategic summary focused on business outcomes and strategic direction rather than granular metrics.",
     };
     const LENGTH_INSTRUCTIONS: Record<string, string> = {
-      short: "Be concise — keep the summary to 2-3 sentences and limit insights/recommendations to the top 2-3 most important.",
+      short:
+        "Be concise — keep the summary to 2-3 sentences and limit insights/recommendations to the top 2-3 most important.",
       medium: "Use moderate detail — 3-4 sentence summary, 4-5 insights, 3-4 recommendations.",
       long: "Be thorough — provide a detailed summary and comprehensive insights and recommendations.",
     };
@@ -1363,7 +1495,9 @@ CROSS-CUTTING RULES:
       landingPageText,
       historicalText,
       extraContext ?? "",
-      crossPlatformContext ? `\nCROSS-PLATFORM CONTEXT (from other channels — use to inform deeper analysis):\n${crossPlatformContext}` : "",
+      crossPlatformContext
+        ? `\nCROSS-PLATFORM CONTEXT (from other channels — use to inform deeper analysis):\n${crossPlatformContext}`
+        : "",
       goalsContext,
       competitorContext,
       `\n${seasonality.promptText}`,
@@ -1435,8 +1569,8 @@ Respond in JSON format:
                   periodStart: dateRange ?? today,
                   periodEnd: dateRange ?? today,
                 },
-              })
-            )
+              }),
+            ),
         );
       } catch {
         // Non-critical — don't fail the summary if anomaly storage fails
