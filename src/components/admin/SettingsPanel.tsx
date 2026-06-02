@@ -36,6 +36,16 @@ const OAUTH_ERRORS: Record<string, string> = {
   ms365_no_refresh_token: "Microsoft did not return a refresh token. Please try connecting again.",
 };
 
+const META_TOKEN_TOOL_URL = "https://developers.facebook.com/tools/explorer/";
+const META_LONG_LIVED_TOKEN_GUIDE_URL =
+  "https://developers.facebook.com/docs/facebook-login/guides/access-tokens/get-long-lived";
+const META_TOKEN_EXPIRED_PATTERN =
+  /session has expired|error validating access token|oauth exception|\bcode\s*[:=]?\s*190\b|\bsubcode\s*[:=]?\s*463\b/i;
+
+function isExpiredMetaTokenError(message: string | null): boolean {
+  return Boolean(message && META_TOKEN_EXPIRED_PATTERN.test(message));
+}
+
 const DEFAULT_SALES_HANDOFF_SERVICES = [
   "Google PPC",
   "Paid Meta",
@@ -1421,17 +1431,79 @@ function SettingsPanelInner() {
         </div>
         <div className="card-body">
           {metaTokenError && (
-            <p style={{ fontSize: 13, color: "var(--danger)", marginBottom: 12 }}>
-              {metaTokenError}
-            </p>
+            <div style={{ marginBottom: 12 }}>
+              <p style={{ fontSize: 13, color: "var(--danger)", marginBottom: 8 }}>
+                {metaTokenError}
+              </p>
+              {isExpiredMetaTokenError(metaTokenError) && (
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: "var(--text-2)",
+                    background: "var(--bg-2)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "var(--r-sm)",
+                    padding: "10px 12px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 8,
+                  }}
+                >
+                  <p>
+                    This token has fully expired. The refresh action can only extend a still-valid
+                    token.
+                  </p>
+                  <p>
+                    Generate a fresh long-lived token, update <code>META_ACCESS_TOKEN</code> in your
+                    environment, then click Refresh now.
+                  </p>
+                  <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                    <a
+                      href={META_TOKEN_TOOL_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ color: "var(--accent)", fontWeight: 500 }}
+                    >
+                      Open Meta Access Token Tool
+                    </a>
+                    <a
+                      href={META_LONG_LIVED_TOKEN_GUIDE_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ color: "var(--accent)", fontWeight: 500 }}
+                    >
+                      How to create a long-lived token
+                    </a>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
           {!metaToken ? (
             <p style={{ fontSize: 13, color: "var(--text-3)" }}>Loading token status…</p>
           ) : !metaToken.configured ? (
-            <p style={{ fontSize: 13, color: "var(--danger)" }}>
-              ⚠ No Meta access token configured. Set <code>META_ACCESS_TOKEN</code> in your
-              environment, then click Refresh now.
-            </p>
+            <div
+              style={{
+                fontSize: 13,
+                color: "var(--danger)",
+                display: "flex",
+                flexDirection: "column",
+                gap: 8,
+              }}
+            >
+              <p>
+                ⚠ No Meta access token configured. Set <code>META_ACCESS_TOKEN</code> in your
+                environment, then click Refresh now.
+              </p>
+              <a
+                href={META_TOKEN_TOOL_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: "var(--accent)", fontWeight: 500 }}
+              >
+                Open Meta Access Token Tool
+              </a>
+            </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

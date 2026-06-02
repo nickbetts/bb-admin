@@ -15,6 +15,18 @@ import { prisma } from "@/lib/prisma";
 
 const META_OAUTH_BASE = "https://graph.facebook.com/v19.0";
 
+interface MetaExchangeError {
+  message?: string;
+  code?: number;
+  error_subcode?: number;
+}
+
+interface MetaExchangeResponse {
+  access_token?: string;
+  expires_in?: number;
+  error?: MetaExchangeError;
+}
+
 export const META_ACCESS_TOKEN_KEY = "metaAccessToken";
 export const META_ACCESS_TOKEN_EXPIRES_AT_KEY = "metaAccessTokenExpiresAt";
 export const META_ACCESS_TOKEN_REFRESHED_AT_KEY = "metaAccessTokenRefreshedAt";
@@ -44,6 +56,47 @@ export interface MetaTokenStatus {
   refreshedAt: string | null;
   expiresInDays: number | null;
   autoRefreshConfigured: boolean;
+}
+
+function buildMetaTokenExchangeUrl(token: string, appId: string, appSecret: string): string {
+  const url = new URL(`${META_OAUTH_BASE}/oauth/access_token`);
+  url.searchParams.set("grant_type", "fb_exchange_token");
+  url.searchParams.set("client_id", appId);
+  url.searchParams.set("client_secret", appSecret);
+  url.searchParams.set("fb_exchange_token", token);
+  return url.toString();
+}
+
+async function exchangeMetaToken(
+  token: string,
+  appId: string,
+  appSecret: string,
+): Promise<
+  { ok: true; accessToken: string; expiresInSeconds: number } | { ok: false; reason: string }
+> {
+  const response = await fetch(buildMetaTokenExchangeUrl(token, appId, appSecret), {
+    cache: "no-store",
+  });
+
+  const data = (await response.json()) as MetaExchangeResponse;
+
+  if (!response.ok || data.error || !data.access_token) {
+    const code = data.error?.code ? ` (code ${data.error.code})` : "";
+    const subcode = data.error?.error_subcode ? ` subcode ${data.error.error_subcode}` : "";
+    return {
+      ok: false,
+      reason:
+        data.error?.message ||
+        `Meta token exchange failed (HTTP ${response.status})${code}${subcode}`,
+    };
+  }
+
+  return {
+    ok: true,
+    accessToken: data.access_token,
+    // Meta returns ~5,184,000s (60 days). Default to 60 days if omitted.
+    expiresInSeconds: data.expires_in ?? 60 * 24 * 60 * 60,
+  };
 }
 
 /**
@@ -97,8 +150,15 @@ export async function refreshMetaAccessToken(): Promise<MetaTokenRefreshResult> 
     };
   }
 
-  const currentToken = await getMetaAccessToken();
-  if (!currentToken) {
+  const [storedTokenSetting] = await Promise.all([
+    prisma.appSetting.findUnique({ where: { key: META_ACCESS_TOKEN_KEY } }),
+  ]);
+  const storedToken = storedTokenSetting?.value?.trim() ?? "";
+  const envToken = process.env.META_ACCESS_TOKEN?.trim() ?? "";
+
+  const tokensToTry = Array.from(new Set([storedToken, envToken].filter(Boolean)));
+
+  if (tokensToTry.length === 0) {
     return {
       refreshed: false,
       expiresInDays: null,
@@ -107,39 +167,40 @@ export async function refreshMetaAccessToken(): Promise<MetaTokenRefreshResult> 
     };
   }
 
-  const url = new URL(`${META_OAUTH_BASE}/oauth/access_token`);
-  url.searchParams.set("grant_type", "fb_exchange_token");
-  url.searchParams.set("client_id", appId);
-  url.searchParams.set("client_secret", appSecret);
-  url.searchParams.set("fb_exchange_token", currentToken);
+  let lastFailureReason = "Meta token exchange failed";
+  let exchangedToken: string | null = null;
+  let expiresInSeconds = 0;
 
-  const response = await fetch(url.toString(), { cache: "no-store" });
-  const data = (await response.json()) as {
-    access_token?: string;
-    expires_in?: number;
-    error?: { message?: string };
-  };
+  for (const token of tokensToTry) {
+    const exchange = await exchangeMetaToken(token, appId, appSecret);
+    if (exchange.ok) {
+      exchangedToken = exchange.accessToken;
+      expiresInSeconds = exchange.expiresInSeconds;
+      break;
+    }
+    lastFailureReason = exchange.reason;
+  }
 
-  if (!response.ok || data.error || !data.access_token) {
+  if (!exchangedToken) {
+    const attemptedMultipleSources = tokensToTry.length > 1;
     return {
       refreshed: false,
       expiresInDays: null,
       expiresAt: null,
-      reason: data.error?.message || `Meta token exchange failed (HTTP ${response.status})`,
+      reason: attemptedMultipleSources
+        ? `${lastFailureReason}. Tried both stored and environment tokens.`
+        : `${lastFailureReason}. Generate a new long-lived token, update META_ACCESS_TOKEN, then retry.`,
     };
   }
 
-  const newToken = data.access_token;
-  // Meta returns ~5,184,000s (60 days). Default to 60 days if omitted.
-  const expiresInSeconds = data.expires_in ?? 60 * 24 * 60 * 60;
   const expiresAt = new Date(Date.now() + expiresInSeconds * 1000);
   const now = new Date();
 
   await prisma.$transaction([
     prisma.appSetting.upsert({
       where: { key: META_ACCESS_TOKEN_KEY },
-      create: { key: META_ACCESS_TOKEN_KEY, value: newToken },
-      update: { value: newToken },
+      create: { key: META_ACCESS_TOKEN_KEY, value: exchangedToken },
+      update: { value: exchangedToken },
     }),
     prisma.appSetting.upsert({
       where: { key: META_ACCESS_TOKEN_EXPIRES_AT_KEY },
