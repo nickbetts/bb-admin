@@ -41,7 +41,7 @@ interface LandingPageItem {
 
 function GoogleIcon() {
   return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" role="img" aria-label="Google Ads">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" role="img" aria-label="Google Ads">
       <path
         d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
         fill="#4285F4"
@@ -64,7 +64,7 @@ function GoogleIcon() {
 
 function MetaIcon() {
   return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" role="img" aria-label="Meta Ads">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" role="img" aria-label="Meta Ads">
       <path
         d="M12 2C6.477 2 2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878V14.89h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12c0-5.523-4.477-10-10-10z"
         fill="#1877F2"
@@ -86,7 +86,14 @@ function PlatformBadges({ platforms }: { platforms: string }) {
   }
   if (!list.length) return null;
   return (
-    <>
+    <div
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        flexShrink: 0,
+      }}
+    >
       {list.includes("google") && (
         <span
           title="Google Ads"
@@ -94,10 +101,12 @@ function PlatformBadges({ platforms }: { platforms: string }) {
             display: "inline-flex",
             alignItems: "center",
             justifyContent: "center",
-            width: 20,
-            height: 20,
-            borderRadius: 4,
-            background: "#EAF1FB",
+            width: 28,
+            height: 28,
+            borderRadius: 8,
+            border: "1px solid #cfe0fb",
+            background: "#f5f9ff",
+            boxShadow: "0 1px 2px rgba(16, 24, 40, 0.06)",
             flexShrink: 0,
           }}
         >
@@ -111,17 +120,19 @@ function PlatformBadges({ platforms }: { platforms: string }) {
             display: "inline-flex",
             alignItems: "center",
             justifyContent: "center",
-            width: 20,
-            height: 20,
-            borderRadius: 4,
-            background: "#EBF3FF",
+            width: 28,
+            height: 28,
+            borderRadius: 8,
+            border: "1px solid #cde0ff",
+            background: "#f4f8ff",
+            boxShadow: "0 1px 2px rgba(16, 24, 40, 0.06)",
             flexShrink: 0,
           }}
         >
           <MetaIcon />
         </span>
       )}
-    </>
+    </div>
   );
 }
 
@@ -238,7 +249,7 @@ export default function LandingPagesPage() {
             <Globe style={{ width: 16, height: 16, color: "var(--accent)" }} />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
               <p
                 style={{
                   fontSize: 14,
