@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
   output   = "../node_modules/.prisma/client"
@@ -13,7 +10,7 @@ datasource db {
 model Role {
   id          String   @id @default(cuid())
   name        String   @unique
-  permissions String // JSON array of permission keys
+  permissions String
   isSystem    Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -21,31 +18,31 @@ model Role {
 }
 
 model User {
-  id                  String               @id @default(cuid())
-  email               String               @unique
-  name                String?
-  password            String
-  role                String               @default("user")
-  mustChangePassword  Boolean              @default(false)
-  roleId              String?
-  userRole            Role?                @relation(fields: [roleId], references: [id], onDelete: SetNull)
-  notificationPrefs   String? // JSON: { email: boolean, slack: boolean, slackWebhook?: string, digestFrequency: "immediate"|"daily"|"weekly", quietHoursStart?: string, quietHoursEnd?: string, enabledTypes: string[] }
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
-  sessions            Session[]
-  notifications       Notification[]
-  conversations       ClientConversation[]
-  timeEntries         AgencyTimeEntry[]
-  landingPages        LandingPage[]
-  taskAssignments     TaskAssignee[]
-  taskComments        TaskComment[]
-  taskTimeLogs        TaskTimeLog[]
-  taskAttachments     TaskAttachment[]
-  uploadedClientFiles ClientFile[]
-  createdReports      Report[]       @relation("ReportCreatedBy")
-  createdSalesHandoffs SalesHandoff[]      @relation("SalesHandoffCreatedBy")
-  ownedSalesHandoffs  SalesHandoff[]       @relation("SalesHandoffOwner")
-  salesHandoffEvents  SalesHandoffEvent[]  @relation("SalesHandoffEventActor")
+  id                   String               @id @default(cuid())
+  email                String               @unique
+  name                 String?
+  password             String
+  role                 String               @default("user")
+  mustChangePassword   Boolean              @default(false)
+  roleId               String?
+  notificationPrefs    String?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  timeEntries          AgencyTimeEntry[]
+  conversations        ClientConversation[]
+  uploadedClientFiles  ClientFile[]
+  landingPages         LandingPage[]
+  notifications        Notification[]
+  createdReports       Report[]             @relation("ReportCreatedBy")
+  createdSalesHandoffs SalesHandoff[]       @relation("SalesHandoffCreatedBy")
+  ownedSalesHandoffs   SalesHandoff[]       @relation("SalesHandoffOwner")
+  salesHandoffEvents   SalesHandoffEvent[]  @relation("SalesHandoffEventActor")
+  sessions             Session[]
+  taskAssignments      TaskAssignee[]
+  taskAttachments      TaskAttachment[]
+  taskComments         TaskComment[]
+  taskTimeLogs         TaskTimeLog[]
+  userRole             Role?                @relation(fields: [roleId], references: [id])
 }
 
 model Session {
@@ -64,105 +61,94 @@ model AppSetting {
 }
 
 model Client {
-  id                      String                   @id @default(cuid())
-  name                    String
-  slug                    String                   @unique
-  website                 String?
-  logoUrl                 String?
-  ga4PropertyId           String?
-  ga4PropertyName         String?
-  semrushDomain           String?
-  semrushProjectId        Int?
-  semrushCampaignIds      String? // JSON: string[] — campaign IDs for Position Tracking (format: "{projectId}_{campaignNum}")
-  metaAccountId           String?
-  metaAccountName         String?
-  metaAccessToken         String?
-  gaCredentials           String?
-  googleAdsCustomerId     String?
-  googleAdsAccountName    String?
-  searchConsoleSiteUrl    String?
-  aiReportInstructions    String?
-  woocommerceUrl          String?
-  woocommerceKey          String?
-  woocommerceSecret       String?
-  shopifyStoreDomain      String?
-  shopifyAccessToken      String?
-  contractedHours         String? // JSON: Array<{service: string, hoursPerMonth: number}>
-  tiktokAdvertiserId      String?
-  tiktokAccessToken       String?
-  microsoftAdsAccountId   String?
-  microsoftAdsAccountName String?
-  cwvUrl                  String? // URL for Core Web Vitals tracking
-  reportSchedule          String? // JSON: { frequency: "monthly"|"weekly", dayOfMonth?: number, dayOfWeek?: number, autoApprove: boolean, templateId?: string }
-  notifyEmail             String? // Override email for report delivery
-  linkedinAccountId       String?
-  linkedinAccountName     String?
-  linkedinAccessToken     String?
-  klaviyoApiKey           String?
-  klaviyoAccountName      String?
-  // Phase 3: New integrations
-  hubspotPortalId         String? // HubSpot portal ID
-  hubspotAccessToken      String? // HubSpot private app token
-  youtubeChannelId        String? // YouTube channel ID
-  youtubeChannelName      String? // YouTube channel display name
-  callrailAccountId       String? // CallRail account ID
-  callrailApiKey          String? // CallRail API key
-  // Phase 3: Competitor intelligence
-  competitorDomains       String? // JSON: string[] — domains to monitor
-  // Click fraud protection snippet token
-  clickFraudToken         String?                  @unique // Unique token for website protection snippet
-  // Microsoft 365 email sync
-  contactEmails           String? // JSON: string[] — client contact email addresses for email sync
-  contentStrategyLimits   String? // JSON: { pageOptimisations?: number, landingPages?: number, blogPosts?: number, linkTargets?: number }
-  // Default analytics/conversion tracking config inherited by new landing pages for this client.
-  // JSON shape: see LpAnalyticsConfig in src/lib/lp-analytics.ts
-  defaultAnalyticsConfig  String                   @default("{}")
-  // Per-client signal/AI configuration. Drives which alerts fire and how the AI frames recommendations.
-  // JSON shape: {
-  //   primaryKpi?: "roas" | "cpa" | "leads" | "calls" | "awareness" | "engagement",
-  //   tracksConversions?: boolean,   // false → suppress 0-conversion / CPA alerts
-  //   tracksRevenue?: boolean,       // false → suppress ROAS alerts entirely
-  //   conversionsSource?: "ga4" | "platform" | "callrail" | "hubspot" | "none",
-  //   sector?: string,               // preset key (charity, ecommerce, lead_gen, ...)
-  //   thresholds?: { roasMin?, roasTarget?, freqMax?, ctrMin?, qsMin?, ... },
-  //   mutedSignals?: string[]        // stable signal IDs to suppress (e.g. "meta.campaign.fatigue")
-  // }
-  signalConfig            String?
-  country                 String?                  // ISO 3166-1 alpha-2 e.g. "GB", "US", "AU" — used for international phone number formatting in LP translations
-  status                  String                   @default("active") // lead | qualifying | proposal_sent | negotiating | active | churned | lost
-  createdAt               DateTime                 @default(now())
-  updatedAt               DateTime                 @updatedAt
-  reports                 Report[]
-  snapshots               MetricSnapshot[]
-  conversations           ClientConversation[]
-  notifications           Notification[]
-  goals                   ClientGoal[]
-  strategyDocuments       StrategyDocument[]
-  budgetRecommendations   BudgetRecommendation[]
-  actions                 ActionItem[]
-  communications          ClientCommunication[]
-  portalUsers             ClientPortalUser[]
-  competitorSnapshots     CompetitorSnapshot[]
-  mediaPlans              MediaPlan[]
-  detectedAnomalies       DetectedAnomaly[]
-  clickFraudEvents        ClickFraudEvent[]
-  contentStrategies       ContentStrategy[]
-  landingPages            LandingPage[]
-  qaChecklists            QaChecklist[]
-  proposals               Proposal[]
-  keywordResearch         KeywordPlannerResearch[]
-  grandPlans              GrandPlan[]
-  contentGenerators       ContentGenerator[]
-  retainers               ClientRetainer[]
-  invoices                ClientInvoice[]
-  timeEntries             AgencyTimeEntry[]
-  portalThreads           PortalThread[]
-  taskCategories          ClientTaskCategory[]
-  files                   ClientFile[]
-  emailVerificationJobs   EmailVerificationJob[]
-  internalLinkingPlans    InternalLinkingPlan[]
-  salesHandoffs           SalesHandoff[]
-  llmGenerations          LlmGeneration[]
+  id                        String                      @id @default(cuid())
+  name                      String
+  slug                      String                      @unique
+  website                   String?
+  logoUrl                   String?
+  ga4PropertyId             String?
+  ga4PropertyName           String?
+  semrushDomain             String?
+  semrushProjectId          Int?
+  semrushCampaignIds        String?
+  metaAccountId             String?
+  metaAccountName           String?
+  metaAccessToken           String?
+  gaCredentials             String?
+  googleAdsCustomerId       String?
+  googleAdsAccountName      String?
+  searchConsoleSiteUrl      String?
+  aiReportInstructions      String?
+  woocommerceUrl            String?
+  woocommerceKey            String?
+  woocommerceSecret         String?
+  shopifyStoreDomain        String?
+  shopifyAccessToken        String?
+  contractedHours           String?
+  tiktokAdvertiserId        String?
+  tiktokAccessToken         String?
+  microsoftAdsAccountId     String?
+  microsoftAdsAccountName   String?
+  cwvUrl                    String?
+  reportSchedule            String?
+  notifyEmail               String?
+  linkedinAccountId         String?
+  linkedinAccountName       String?
+  linkedinAccessToken       String?
+  klaviyoApiKey             String?
+  klaviyoAccountName        String?
+  hubspotPortalId           String?
+  hubspotAccessToken        String?
+  youtubeChannelId          String?
+  youtubeChannelName        String?
+  callrailAccountId         String?
+  callrailApiKey            String?
+  competitorDomains         String?
+  clickFraudToken           String?                     @unique
+  contactEmails             String?
+  contentStrategyLimits     String?
+  defaultAnalyticsConfig    String                      @default("{}")
+  signalConfig              String?
+  status                    String                      @default("active")
+  createdAt                 DateTime                    @default(now())
+  updatedAt                 DateTime                    @updatedAt
+  country                   String?
+  stripeDefaultCurrency     String?
+  stripePublishableKey      String?
+  stripeSecretKeyEnc        String?
+  stripeWebhookSecretEnc    String?
+  actions                   ActionItem[]
+  timeEntries               AgencyTimeEntry[]
+  budgetRecommendations     BudgetRecommendation[]
+  clickFraudEvents          ClickFraudEvent[]
+  communications            ClientCommunication[]
+  conversations             ClientConversation[]
+  files                     ClientFile[]
+  goals                     ClientGoal[]
+  invoices                  ClientInvoice[]
+  portalUsers               ClientPortalUser[]
+  retainers                 ClientRetainer[]
+  taskCategories            ClientTaskCategory[]
+  competitorSnapshots       CompetitorSnapshot[]
+  contentGenerators         ContentGenerator[]
+  contentStrategies         ContentStrategy[]
+  detectedAnomalies         DetectedAnomaly[]
+  emailVerificationJobs     EmailVerificationJob[]
+  grandPlans                GrandPlan[]
+  internalLinkingPlans      InternalLinkingPlan[]
+  keywordResearch           KeywordPlannerResearch[]
+  landingPages              LandingPage[]
+  LandingPagePaymentSession LandingPagePaymentSession[]
+  llmGenerations            LlmGeneration[]
+  mediaPlans                MediaPlan[]
+  snapshots                 MetricSnapshot[]
+  notifications             Notification[]
+  portalThreads             PortalThread[]
+  proposals                 Proposal[]
+  qaChecklists              QaChecklist[]
+  reports                   Report[]
+  salesHandoffs             SalesHandoff[]
+  strategyDocuments         StrategyDocument[]
 }
 
 model ClientGoal {
@@ -188,7 +174,7 @@ model StrategyDocument {
   title      String
   period     String
   content    String
-  type       String   @default("strategy") // "strategy" | "briefing"
+  type       String   @default("strategy")
   shareToken String?  @unique
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -217,24 +203,21 @@ model Report {
   customEndDate     String?
   compareStartDate  String?
   compareEndDate    String?
-  // AI-generated narrative (persisted so it shows in PDF export)
-  narrativeData     String? // JSON: { executiveSummary, keyThemes, crossSectionStories, goalProgressNarrative }
-  // Phase 3: Collaboration & approval
-  approvalStatus    String? // "pending" | "approved" | "changes_requested"
+  narrativeData     String?
+  approvalStatus    String?
   approvalNotes     String?
   approvedBy        String?
   approvedAt        DateTime?
-  // Client-portal publish flag — only items with portalPublishedAt set are visible in the client portal
   portalPublishedAt DateTime?
   portalPublishedBy String?
-  createdByUserId   String?
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
+  createdByUserId   String?
   client            Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  createdBy         User?           @relation("ReportCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdBy         User?           @relation("ReportCreatedBy", fields: [createdByUserId], references: [id])
+  comments          ReportComment[]
   sections          ReportSection[]
   screenshots       Screenshot[]
-  comments          ReportComment[]
 }
 
 model ReportSection {
@@ -268,7 +251,7 @@ model ReportTemplate {
   id          String   @id @default(cuid())
   name        String
   description String?
-  sections    String // JSON: SectionConfig[]
+  sections    String
   isDefault   Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -282,55 +265,48 @@ model GoogleConnection {
   createdAt    DateTime @default(now())
 }
 
-// Stores periodic metric snapshots for each client/section to enable
-// historical trending, anomaly detection over multiple periods, and
-// a lightweight change-log experience.
 model MetricSnapshot {
   id           String   @id @default(cuid())
   clientId     String
-  sectionType  String // "googleads" | "meta" | "ga4" | "searchconsole" | "seo"
-  periodStart  String // ISO date e.g. "2025-03-01"
-  periodEnd    String // ISO date e.g. "2025-03-31"
-  metrics      String // JSON blob of key→number metrics
-  campaignData String? // JSON blob of per-campaign metrics array
+  sectionType  String
+  periodStart  String
+  periodEnd    String
+  metrics      String
+  campaignData String?
   createdAt    DateTime @default(now())
   client       Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@unique([clientId, sectionType, periodStart, periodEnd])
 }
 
-// Server-side runtime log — captures console.error/warn from API routes for in-platform debugging
 model ServerLog {
   id        String   @id @default(cuid())
-  level     String // "error" | "warn"
+  level     String
   message   String
-  source    String? // route path or module context extracted from stack
-  details   String? // JSON string of extra args / stack trace
+  source    String?
+  details   String?
   createdAt DateTime @default(now())
 
   @@index([level, createdAt])
 }
 
-// Audit log for each cron/manual snapshot run
 model CronLog {
   id               String    @id @default(cuid())
-  jobName          String // "snapshots" | "reports"
-  triggeredBy      String    @default("cron") // "cron" | "manual"
+  jobName          String
+  triggeredBy      String    @default("cron")
   startedAt        DateTime  @default(now())
   completedAt      DateTime?
-  status           String    @default("running") // "running" | "success" | "error"
+  status           String    @default("running")
   clientsTotal     Int       @default(0)
   snapshotsNew     Int       @default(0)
   snapshotsSkipped Int       @default(0)
   errors           Int       @default(0)
-  details          String? // JSON: per-client results array
+  details          String?
 }
 
-// Short-lived cache for external API responses (SEMrush, GA4, etc.)
-// to avoid burning credits / hitting rate limits on every dashboard load.
 model ApiCache {
-  key       String   @id // e.g. "semrush:overview:example.com:uk"
-  data      String // JSON response blob
+  key       String   @id
+  data      String
   fetchedAt DateTime @default(now())
   expiresAt DateTime
 }
@@ -338,56 +314,52 @@ model ApiCache {
 model KeywordPlannerResearch {
   id               String      @id @default(cuid())
   userId           String
-  clientId         String? // Optional link to Client — allows standalone prospect research
+  clientId         String?
   title            String
   website          String
   brief            String
   location         String      @default("2826")
-  adGroups         String // JSON: AdGroup[]
-  selectedKws      String // JSON: string[]
-  ideas            String // JSON: KeywordIdea[]
+  adGroups         String
+  selectedKws      String
+  ideas            String
   maxCpc           String      @default("")
   monthlyBudget    String      @default("")
   conversionRate   String      @default("3")
-  websiteContext   String? // Crawled website content for AI context
-  proposedServices String      @default("[]") // JSON: string[] — pre-agreed service names
+  websiteContext   String?
+  proposedServices String      @default("[]")
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
-  client           Client?     @relation(fields: [clientId], references: [id], onDelete: SetNull)
-  proposals        Proposal[]
   grandPlans       GrandPlan[]
+  client           Client?     @relation(fields: [clientId], references: [id])
+  proposals        Proposal[]
 }
 
-// @deprecated PR5 (Apr 2026) — Proposals retired in favour of GrandPlan.
-// Existing rows remain queryable forever and shareable via /share/proposal/[token].
-// New pitches must be created as GrandPlan records. Do not add new fields here.
 model Proposal {
   id               String                  @id @default(cuid())
   userId           String
-  clientId         String? // Optional FK to Client — allows cold-outreach proposals without a client record
-  clientName       String // Display name (kept as fallback for prospects)
+  clientId         String?
+  clientName       String
   website          String                  @default("")
   title            String
-  html             String // Full generated HTML (legacy/download)
-  servicesJson     String                  @default("[]") // JSON: Service[]
-  timelineJson     String                  @default("[]") // JSON: TimelinePhase[]
-  proposalDataJson String? // JSON: structured proposal data for interactive viewer
-  shareToken       String?                 @unique // null = not shared
+  html             String
+  servicesJson     String                  @default("[]")
+  timelineJson     String                  @default("[]")
+  proposalDataJson String?
+  shareToken       String?                 @unique
   viewCount        Int                     @default(0)
   lastViewedAt     DateTime?
   researchId       String?
-  // Phase 3: Pipeline CRM fields
-  pipelineStage    String                  @default("prospect") // prospect|sent|viewed|negotiating|won|lost
+  pipelineStage    String                  @default("prospect")
   pipelineNotes    String?
   expectedValue    Float?
   closeDate        String?
   lostReason       String?
-  client           Client?                 @relation(fields: [clientId], references: [id], onDelete: SetNull)
-  research         KeywordPlannerResearch? @relation(fields: [researchId], references: [id], onDelete: SetNull)
-  enquiries        ProposalEnquiry[]
-  grandPlans       GrandPlan[]
   createdAt        DateTime                @default(now())
   updatedAt        DateTime                @updatedAt
+  grandPlans       GrandPlan[]
+  client           Client?                 @relation(fields: [clientId], references: [id])
+  research         KeywordPlannerResearch? @relation(fields: [researchId], references: [id])
+  enquiries        ProposalEnquiry[]
   salesHandoffs    SalesHandoff[]
 }
 
@@ -405,12 +377,12 @@ model ProposalEnquiry {
 model QaChecklist {
   id              String   @id @default(cuid())
   clientId        String
-  checklistType   String   @default("website") // "website" | "google_ads" | "meta_ads"
-  label           String? // free-text label (campaign name, site name, etc.)
+  checklistType   String   @default("website")
+  label           String?
   websiteUrl      String?
-  status          String   @default("in_progress") // "in_progress" | "complete"
-  marketingChecks String   @default("{}") // JSON: { [checkId: string]: boolean }
-  devChecks       String   @default("{}") // JSON: { [checkId: string]: boolean }
+  status          String   @default("in_progress")
+  marketingChecks String   @default("{}")
+  devChecks       String   @default("{}")
   notes           String?
   aiSummary       String?
   createdAt       DateTime @default(now())
@@ -423,139 +395,121 @@ model LlmTemplate {
   name           String
   sector         String
   description    String?
-  templateText   String // The structure/format the AI follows to generate the llm.txt
-  promptGuidance String? // Strategic/prioritisation instructions the AI should follow when filling this template
+  templateText   String
+  promptGuidance String?
   isBuiltIn      Boolean  @default(false)
-  // Ownership — null for legacy/seeded rows. Custom templates record their creator
-  // so edit/delete can be restricted to the owner (or users with manage-any rights).
-  ownerUserId    String?
-  ownerEmail     String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+  ownerEmail     String?
+  ownerUserId    String?
 
   @@index([ownerUserId])
 }
 
-// A saved llm.txt generation — the client-facing deliverable produced by the
-// LLM.txt Generator. Persisted so the team can revisit, re-download, share with
-// the client, and link the file to a client record. Mirrors the share/owner
-// conventions used by GrandPlan and LandingPage.
 model LlmGeneration {
   id                    String    @id @default(cuid())
-  clientId              String? // Optional link to a client record
-  userId                String // Creator
+  clientId              String?
+  userId                String
   createdByEmail        String?
-  title                 String // Display label (defaults to the domain)
-  website               String // Normalised source URL
-  templateId            String? // Soft reference to the template used (kept as snapshot below)
-  templateName          String // Snapshot of template name at generation time
-  sector                String // Snapshot of template sector
-  output                String // The generated llm.txt content
-  // Generation provenance / quality signals surfaced in the UI
+  title                 String
+  website               String
+  templateId            String?
+  templateName          String
+  sector                String
+  output                String
   pagesCrawled          Int       @default(0)
   deadUrlsRemoved       Int       @default(0)
   usedWebSearchFallback Boolean   @default(false)
   authorityDataUsed     Boolean   @default(false)
   socialProfilesFound   Int       @default(0)
   generationMs          Int?
-  // Sharing — public read-only link for handing the file to a client
-  shareToken            String?   @unique // null = not shared
-  sharePassword         String? // SHA256 hash of optional password
+  shareToken            String?   @unique
+  sharePassword         String?
   shareExpiresAt        DateTime?
   viewCount             Int       @default(0)
   lastViewedAt          DateTime?
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
-  client                Client?   @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  client                Client?   @relation(fields: [clientId], references: [id])
 
   @@index([clientId, createdAt])
   @@index([userId, createdAt])
 }
 
-// Notification system: delivers anomaly alerts, report events, and key platform events
 model Notification {
   id          String    @id @default(cuid())
   userId      String
   clientId    String?
-  type        String // "anomaly" | "report_ready" | "report_sent" | "report_opened" | "proposal_viewed" | "integration_error" | "goal_at_risk" | "snapshot_complete"
-  severity    String? // "high" | "medium" | "low"
+  type        String
+  severity    String?
   title       String
   body        String
-  metadata    String? // JSON: extra context (anomaly details, report id, etc.)
-  channel     String    @default("in_app") // "in_app" | "email" | "slack"
-  status      String    @default("unread") // "unread" | "read" | "dismissed"
+  metadata    String?
+  channel     String    @default("in_app")
+  status      String    @default("unread")
   deliveredAt DateTime?
   readAt      DateTime?
   createdAt   DateTime  @default(now())
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   client      Client?   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// Conversational AI: stores chat messages per client for the "Ask the Data" feature
 model ClientConversation {
   id        String   @id @default(cuid())
   clientId  String
   userId    String
-  role      String // "user" | "assistant"
+  role      String
   content   String
-  metadata  String? // JSON: suggested prompts, context summary, etc.
+  metadata  String?
   createdAt DateTime @default(now())
   client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// Phase 3: Internal Action Tracking — AI recommendations → assigned actions → outcomes
-// Now also powers the per-client kanban task boards (see TaskCategory + TaskAssignee).
 model ActionItem {
   id                   String           @id @default(cuid())
   clientId             String
   categoryId           String?
   title                String
   description          String?
-  // status values: to_do | in_progress | for_approval | signed_off_internal | signed_off_client | done | cancelled
-  // (legacy AI rows may have: open | completed — migrated to to_do/done by 20260422_add_kanban_tasks)
   status               String           @default("to_do")
-  priority             String           @default("medium") // low|medium|high|urgent
-  boardOrder           Int              @default(0) // Order within a kanban column
-  assignedTo           String? // Legacy single-assignee User ID — kept for back-compat
+  priority             String           @default("medium")
+  boardOrder           Int              @default(0)
+  assignedTo           String?
   dueDate              String?
   completedAt          DateTime?
-  outcome              String? // Notes / measured outcome after completion
-  sourceType           String? // "ai_recommendation" | "manual"
-  sourceRef            String? // Reference to source (e.g., anomaly id)
-  // Approval audit
-  forApprovalAt        DateTime? // When "Submitted for approval" was first clicked
+  outcome              String?
+  sourceType           String?
+  sourceRef            String?
+  forApprovalAt        DateTime?
   internalApprovedBy   String?
   internalApprovedAt   DateTime?
   clientApprovedBy     String?
   clientApprovedAt     DateTime?
-  clientApprovalSource String? // "portal" | "agency"
+  clientApprovalSource String?
   approvalNotes        String?
-  // Client-side ownership — when set, this task is something the client portal user is asked to do.
-  // Such tasks appear in the client portal's "Your tasks" list and the client can mark them done.
   clientPortalUserId   String?
   clientCompletedAt    DateTime?
   createdAt            DateTime         @default(now())
   updatedAt            DateTime         @updatedAt
+  category             TaskCategory?    @relation(fields: [categoryId], references: [id])
   client               Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  category             TaskCategory?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  salesHandoffs        SalesHandoff[]
   assignees            TaskAssignee[]
+  attachments          TaskAttachment[]
   comments             TaskComment[]
   timeLogs             TaskTimeLog[]
-  attachments          TaskAttachment[]
-  salesHandoffs        SalesHandoff[]
 
   @@index([clientId, categoryId, status, boardOrder])
   @@index([clientPortalUserId, status])
 }
 
-// Admin-managed global list of task categories. Each client picks which to display via ClientTaskCategory.
 model TaskCategory {
   id          String               @id @default(cuid())
   name        String
   slug        String               @unique
-  color       String? // Hex like #6366f1
-  icon        String? // Lucide icon name
+  color       String?
+  icon        String?
   sortOrder   Int                  @default(0)
   isArchived  Boolean              @default(false)
   createdAt   DateTime             @default(now())
@@ -564,7 +518,6 @@ model TaskCategory {
   clientLinks ClientTaskCategory[]
 }
 
-// Per-client visibility/order of task categories.
 model ClientTaskCategory {
   id         String       @id @default(cuid())
   clientId   String
@@ -572,20 +525,19 @@ model ClientTaskCategory {
   sortOrder  Int          @default(0)
   isEnabled  Boolean      @default(true)
   createdAt  DateTime     @default(now())
-  client     Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
   category   TaskCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  client     Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@unique([clientId, categoryId])
   @@index([clientId, sortOrder])
 }
 
-// Multi-assignee join table for ActionItem.
 model TaskAssignee {
   id           String     @id @default(cuid())
   actionItemId String
   userId       String
   assignedAt   DateTime   @default(now())
-  assignedBy   String? // User ID who made the assignment
+  assignedBy   String?
   actionItem   ActionItem @relation(fields: [actionItemId], references: [id], onDelete: Cascade)
   user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -593,31 +545,28 @@ model TaskAssignee {
   @@index([userId])
 }
 
-// Threaded comments on tasks. Authored by an agency User.
 model TaskComment {
   id           String           @id @default(cuid())
   actionItemId String
-  userId       String // Author
+  userId       String
   body         String
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
+  attachments  TaskAttachment[]
   actionItem   ActionItem       @relation(fields: [actionItemId], references: [id], onDelete: Cascade)
   user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  attachments  TaskAttachment[]
 
   @@index([actionItemId, createdAt])
 }
 
-// Time log entries on tasks. An entry with endedAt = null is the user's currently-running timer.
-// Total elapsed = sum(durationMs) for ended entries + (now - startedAt) for any active entry.
 model TaskTimeLog {
   id           String     @id @default(cuid())
   actionItemId String
-  userId       String // Owner of the timer entry
+  userId       String
   startedAt    DateTime   @default(now())
   endedAt      DateTime?
-  durationMs   Int? // Stamped on stop = endedAt - startedAt (ms)
-  note         String? // Optional note on what was worked on
+  durationMs   Int?
+  note         String?
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
   actionItem   ActionItem @relation(fields: [actionItemId], references: [id], onDelete: Cascade)
@@ -627,9 +576,6 @@ model TaskTimeLog {
   @@index([userId, endedAt])
 }
 
-// File attachment uploaded to a task or to a comment on a task. Files are stored in
-// Vercel Blob; this row holds the URL and metadata. If commentId is set, the attachment
-// belongs to that specific comment; otherwise it is a task-level attachment.
 model TaskAttachment {
   id           String       @id @default(cuid())
   actionItemId String
@@ -648,7 +594,6 @@ model TaskAttachment {
   @@index([commentId])
 }
 
-// Per-client file library. Stored in Vercel Blob; one flat list per client.
 model ClientFile {
   id           String   @id @default(cuid())
   clientId     String
@@ -666,45 +611,42 @@ model ClientFile {
   @@index([clientId, createdAt])
 }
 
-// Phase 3: Client Communication Hub — centralised communication log
 model ClientCommunication {
   id                String    @id @default(cuid())
   clientId          String
-  userId            String // Agency user who logged/sent the communication
-  type              String // "email" | "call" | "meeting" | "note" | "report_share" | "proposal_share"
-  direction         String    @default("outbound") // "inbound" | "outbound"
+  userId            String
+  type              String
+  direction         String    @default("outbound")
   subject           String
   body              String?
-  status            String    @default("logged") // "draft" | "sent" | "logged"
+  status            String    @default("logged")
   sentAt            DateTime?
-  externalMessageId String?   @unique // Dedup key for MS365-synced messages/events
-  metadata          String? // JSON: { reportId?, proposalId?, duration?, participants?: string[] }
+  externalMessageId String?   @unique
+  metadata          String?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
   client            Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
 }
 
-// Phase 3: Report Collaboration — comments on report sections
 model ReportComment {
   id        String   @id @default(cuid())
   reportId  String
   sectionId String?
-  userId    String // Author
+  userId    String
   content   String
   resolved  Boolean  @default(false)
-  parentId  String? // For threaded replies
+  parentId  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   report    Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
 }
 
-// Phase 3: Competitor Intelligence — ongoing competitive monitoring snapshots
 model CompetitorSnapshot {
   id          String   @id @default(cuid())
   clientId    String
   domain      String
-  metrics     String // JSON: { organicTraffic?, organicKeywords?, backlinks?, paidKeywords?, etc. }
-  insights    String? // AI-generated competitive summary
+  metrics     String
+  insights    String?
   periodStart String
   periodEnd   String
   createdAt   DateTime @default(now())
@@ -713,54 +655,51 @@ model CompetitorSnapshot {
   @@unique([clientId, domain, periodStart, periodEnd])
 }
 
-// Phase 3: Media Plan Builder — paid media planning with forecast outputs
 model MediaPlan {
   id          String      @id @default(cuid())
   clientId    String?
   title       String
-  objective   String // "brand_awareness" | "lead_gen" | "ecommerce" | "traffic"
+  objective   String
   totalBudget Float
-  duration    Int // Duration in days
+  duration    Int
   startDate   String?
-  channels    String // JSON: ChannelAllocation[]
-  forecast    String? // JSON: AI-generated forecast output
-  status      String      @default("draft") // draft|active|completed|archived
+  channels    String
+  forecast    String?
+  status      String      @default("draft")
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
-  client      Client?     @relation(fields: [clientId], references: [id], onDelete: SetNull)
   grandPlans  GrandPlan[]
+  client      Client?     @relation(fields: [clientId], references: [id])
 }
 
-// Phase 3: Client Portal — self-serve client-facing dashboard access
 model ClientPortalUser {
   id          String    @id @default(cuid())
   clientId    String
   email       String    @unique
   name        String?
-  magicToken  String?   @unique // Single-use login token
+  magicToken  String?   @unique
   tokenExpiry DateTime?
   lastLoginAt DateTime?
-  permissions String    @default("[]") // JSON: ["reports","goals","communications"]
+  permissions String    @default("[]")
   isActive    Boolean   @default(true)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   client      Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
 }
 
-// Phase 3: Anomaly Memory — stores detected anomalies so root-cause can reference history
 model DetectedAnomaly {
   id            String    @id @default(cuid())
   clientId      String
-  platform      String // "googleads" | "meta" | "ga4" | "searchconsole" | "seo" etc.
-  metric        String // The metric that triggered the anomaly
-  severity      String // "high" | "medium" | "low"
-  direction     String // "up" | "down"
+  platform      String
+  metric        String
+  severity      String
+  direction     String
   changePercent Float
-  detail        String // Human-readable description
-  rootCauseText String? // AI-generated root cause (short, 2-3 sentences)
-  actionsTaken  String? // JSON: string[] — actions taken in response
-  periodStart   String // ISO date
-  periodEnd     String // ISO date
+  detail        String
+  rootCauseText String?
+  actionsTaken  String?
+  periodStart   String
+  periodEnd     String
   resolvedAt    DateTime?
   createdAt     DateTime  @default(now())
   client        Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
@@ -768,19 +707,18 @@ model DetectedAnomaly {
   @@index([clientId, platform, metric])
 }
 
-// Click fraud protection — events captured by the website snippet
 model ClickFraudEvent {
   id           String   @id @default(cuid())
   clientId     String
-  sessionId    String // Random session ID generated by the snippet
+  sessionId    String
   userAgent    String?
-  ipHash       String? // SHA-256 of IP address (privacy-safe)
+  ipHash       String?
   referer      String?
   utmSource    String?
   utmMedium    String?
   utmCampaign  String?
   isSuspicious Boolean  @default(false)
-  reason       String? // "bot_ua" | "headless" | "no_interaction" | "rapid_repeat"
+  reason       String?
   createdAt    DateTime @default(now())
   client       Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
@@ -788,24 +726,20 @@ model ClickFraudEvent {
   @@index([clientId, isSuspicious])
 }
 
-// @deprecated PR5 (Apr 2026) — ContentStrategy retired in favour of GrandPlan.
-// Existing rows remain queryable forever and shareable via /share/content-strategy/[token].
-// New content plans must be created as GrandPlan records. Do not add new fields here.
 model ContentStrategy {
   id                String      @id @default(cuid())
   clientId          String?
   title             String
   period            String
   createdBy         String?
-  status            String      @default("live") // "live" | "archived"
-  generationMs      Int? // how long the full generation took in milliseconds
-  generationStatus  String      @default("complete") // "generating" | "complete" | "failed"
-  generationError   String? // error message when generationStatus = "failed"
-  spreadsheetData   String // JSON: parsed spreadsheet data
-  generatedHtml     String // Full standalone HTML output
+  status            String      @default("live")
+  generationMs      Int?
+  generationStatus  String      @default("complete")
+  generationError   String?
+  spreadsheetData   String
+  generatedHtml     String
   shareToken        String?     @unique
-  sharePassword     String? // bcrypt hash of password for share link
-  // Client-portal publish flag — only items with portalPublishedAt set are visible in the client portal
+  sharePassword     String?
   portalPublishedAt DateTime?
   portalPublishedBy String?
   viewCount         Int         @default(0)
@@ -818,19 +752,18 @@ model ContentStrategy {
   @@index([clientId, createdAt])
 }
 
-// User activity log — tracks key actions for an audit trail / changelog
 model UserActivityLog {
   id           String   @id @default(cuid())
-  userId       String? // null for system/cron-triggered actions
-  userEmail    String? // denormalised so display works even if user is deleted
-  userName     String? // display name at time of action
-  action       String // e.g. "report_created" | "report_published" | "ai_summary" | "client_created"
-  resourceType String? // "report" | "client" | "proposal" | "strategy_document" | "snapshot"
-  resourceId   String? // ID of the affected resource
-  clientId     String? // which client this relates to (if any)
-  clientName   String? // denormalised client name
-  description  String // human-readable: "Generated report 'April 2025' for Acme Corp"
-  metadata     String? // JSON: extra context (model, tokens, etc.)
+  userId       String?
+  userEmail    String?
+  userName     String?
+  action       String
+  resourceType String?
+  resourceId   String?
+  clientId     String?
+  clientName   String?
+  description  String
+  metadata     String?
   createdAt    DateTime @default(now())
 
   @@index([createdAt])
@@ -840,43 +773,43 @@ model UserActivityLog {
 }
 
 model SalesHandoff {
-  id                         String             @id @default(cuid())
-  prospectName               String
-  website                    String
-  targetAudienceSummary      String
-  secondCallAt               DateTime
-  interestedServicesJson     String             @default("[]")
-  budgetRange                String
-  otherInformation           String?
-  urgentOverride             Boolean            @default(false)
-  urgentReason               String?
-  hoursUntilCall             Float?
-  noticeStatus               String?
-  status                     String             @default("submitted") // draft | submitted | in_progress | ready_for_meeting | completed | blocked | cancelled
-  clickupTaskId              String?            @unique
-  clickupTaskUrl             String?
-  clickupListId              String?
-  clickupSyncStatus          String             @default("not_synced") // not_synced | synced | failed
-  clickupLastSyncedAt        DateTime?
-  policyEnforce48HourNotice  Boolean            @default(true)
-  policyAllowUrgentOverride  Boolean            @default(true)
-  notes                      String?
-  sourceIdempotencyKey       String?            @unique
-  createdByUserId            String?
-  ownerUserId                String?
-  linkedClientId             String?
-  linkedProposalId           String?
-  linkedGrandPlanId          String?
-  linkedActionItemId         String?
-  createdAt                  DateTime           @default(now())
-  updatedAt                  DateTime           @updatedAt
-  createdBy                  User?              @relation("SalesHandoffCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  owner                      User?              @relation("SalesHandoffOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
-  client                     Client?            @relation(fields: [linkedClientId], references: [id], onDelete: SetNull)
-  proposal                   Proposal?          @relation(fields: [linkedProposalId], references: [id], onDelete: SetNull)
-  grandPlan                  GrandPlan?         @relation(fields: [linkedGrandPlanId], references: [id], onDelete: SetNull)
-  actionItem                 ActionItem?        @relation(fields: [linkedActionItemId], references: [id], onDelete: SetNull)
-  events                     SalesHandoffEvent[]
+  id                        String              @id @default(cuid())
+  prospectName              String
+  website                   String
+  targetAudienceSummary     String
+  secondCallAt              DateTime
+  interestedServicesJson    String              @default("[]")
+  budgetRange               String
+  otherInformation          String?
+  urgentOverride            Boolean             @default(false)
+  urgentReason              String?
+  hoursUntilCall            Float?
+  noticeStatus              String?
+  status                    String              @default("submitted")
+  clickupTaskId             String?             @unique
+  clickupTaskUrl            String?
+  clickupListId             String?
+  clickupSyncStatus         String              @default("not_synced")
+  clickupLastSyncedAt       DateTime?
+  policyEnforce48HourNotice Boolean             @default(true)
+  policyAllowUrgentOverride Boolean             @default(true)
+  notes                     String?
+  sourceIdempotencyKey      String?             @unique
+  createdByUserId           String?
+  ownerUserId               String?
+  linkedClientId            String?
+  linkedProposalId          String?
+  linkedGrandPlanId         String?
+  linkedActionItemId        String?
+  createdAt                 DateTime            @default(now())
+  updatedAt                 DateTime            @updatedAt
+  createdBy                 User?               @relation("SalesHandoffCreatedBy", fields: [createdByUserId], references: [id])
+  actionItem                ActionItem?         @relation(fields: [linkedActionItemId], references: [id])
+  client                    Client?             @relation(fields: [linkedClientId], references: [id])
+  grandPlan                 GrandPlan?          @relation(fields: [linkedGrandPlanId], references: [id])
+  proposal                  Proposal?           @relation(fields: [linkedProposalId], references: [id])
+  owner                     User?               @relation("SalesHandoffOwner", fields: [ownerUserId], references: [id])
+  events                    SalesHandoffEvent[]
 
   @@index([status, createdAt])
   @@index([secondCallAt])
@@ -889,68 +822,64 @@ model SalesHandoff {
 }
 
 model SalesHandoffEvent {
-  id          String       @id @default(cuid())
-  handoffId   String
-  eventType   String
-  title       String
-  description String?
+  id           String       @id @default(cuid())
+  handoffId    String
+  eventType    String
+  title        String
+  description  String?
   metadataJson String?
-  actorUserId String?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  handoff     SalesHandoff @relation(fields: [handoffId], references: [id], onDelete: Cascade)
-  actor       User?        @relation("SalesHandoffEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  actorUserId  String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  actor        User?        @relation("SalesHandoffEventActor", fields: [actorUserId], references: [id])
+  handoff      SalesHandoff @relation(fields: [handoffId], references: [id], onDelete: Cascade)
 
   @@index([handoffId, createdAt])
   @@index([eventType, createdAt])
   @@index([actorUserId, createdAt])
 }
 
-// Microsoft 365 connected accounts for email/calendar sync
 model Ms365Connection {
   id           String   @id @default(cuid())
-  label        String // Display name / email address
+  label        String
   email        String   @unique
-  refreshToken String // OAuth2 refresh token
+  refreshToken String
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
 
-// ── Landing Page Generator ──────────────────────────────────────────────────
-
-// AI-generated landing pages for ad campaigns, optionally linked to a client
 model LandingPage {
-  id                String               @id @default(cuid())
-  clientId          String?
-  userId            String? // Internal Stratos user (null for Clickr public users)
-  clickrUserId      String? // Clickr public user (null for internal Stratos users)
-  title             String
-  slug              String // URL slug — unique within client scope
-  currentHtml       String // Active HTML (latest accepted version)
-  briefJson         String // JSON: { url, brief, campaignType, targetAudience }
-  brandContextJson  String // JSON: extracted brand data (colours, fonts, logo, imagery)
-  formConfig        String               @default("{}") // JSON: { builtInFields?: string[], externalFormUrl?: string }
-  // Per-landing-page analytics/conversion tracking override. Merged on top of Client.defaultAnalyticsConfig at serve time.
-  analyticsConfig   String               @default("{}")
-  shareToken        String?              @unique
-  publicSlug        String?              @unique // Pretty URL slug for /lp/{slug}
-  customSubdomain   String? // Custom subdomain for clickr.marketing (e.g. "inspired-gaming-lounge" → inspired-gaming-lounge.clickr.marketing/{slug})
-  viewCount         Int                  @default(0)
-  lastViewedAt      DateTime?
-  status            String               @default("draft") // draft | published | archived
-  // Client-portal publish flag — only items with portalPublishedAt set are visible in the client portal
-  portalPublishedAt DateTime?
-  portalPublishedBy String?
-  templateId        String? // LandingPageTemplate.id if created from template
-  createdAt         DateTime             @default(now())
-  updatedAt         DateTime             @updatedAt
-  client            Client?              @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  user              User?                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  clickrUser        ClickrUser?          @relation(fields: [clickrUserId], references: [id], onDelete: Cascade)
-  versions          LandingPageVersion[]
-  leads             LandingPageLead[]
-  translations      LandingPageTranslation[]
-  refineJobs        LandingPageRefineJob[]
+  id                        String                      @id @default(cuid())
+  clientId                  String?
+  userId                    String?
+  title                     String
+  slug                      String
+  currentHtml               String
+  briefJson                 String
+  brandContextJson          String
+  formConfig                String                      @default("{}")
+  analyticsConfig           String                      @default("{}")
+  shareToken                String?                     @unique
+  publicSlug                String?                     @unique
+  viewCount                 Int                         @default(0)
+  lastViewedAt              DateTime?
+  status                    String                      @default("draft")
+  portalPublishedAt         DateTime?
+  portalPublishedBy         String?
+  templateId                String?
+  createdAt                 DateTime                    @default(now())
+  updatedAt                 DateTime                    @updatedAt
+  customSubdomain           String?
+  platforms                 String                      @default("[]")
+  clickrUserId              String?
+  clickrUser                ClickrUser?                 @relation(fields: [clickrUserId], references: [id], onDelete: Cascade)
+  client                    Client?                     @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  user                      User?                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leads                     LandingPageLead[]
+  LandingPagePaymentSession LandingPagePaymentSession[]
+  refineJobs                LandingPageRefineJob[]
+  translations              LandingPageTranslation[]
+  versions                  LandingPageVersion[]
 
   @@unique([clientId, slug])
   @@unique([customSubdomain, slug])
@@ -960,17 +889,15 @@ model LandingPage {
   @@index([clickrUserId, createdAt])
 }
 
-// Background refinement jobs for landing pages. Jobs are processed in short
-// batched runs to stay within serverless request limits.
 model LandingPageRefineJob {
   id              String      @id @default(cuid())
   landingPageId   String
   userId          String
-  status          String      @default("pending") // pending | running | complete | failed
-  refinementMode  String      @default("single-pass") // single-pass | double-pass
+  status          String      @default("pending")
+  refinementMode  String      @default("single-pass")
   prompt          String
-  payloadJson     String // JSON payload from the client request
-  stateJson       String      @default("{}") // JSON state-machine snapshot
+  payloadJson     String
+  stateJson       String      @default("{}")
   progressMessage String?
   progressPercent Int         @default(0)
   errorMessage    String?
@@ -985,78 +912,85 @@ model LandingPageRefineJob {
   @@index([status, createdAt])
 }
 
-// Version history: every AI refinement creates a new version
 model LandingPageVersion {
-  id            String      @id @default(cuid())
-  landingPageId String
-  versionNumber Int // Sequential per landing page (1, 2, 3…)
-  html          String // Full HTML at this version
-  prompt        String // The user prompt that produced this version
+  id              String      @id @default(cuid())
+  landingPageId   String
+  versionNumber   Int
+  html            String
+  prompt          String
+  createdAt       DateTime    @default(now())
   createdByUserId String?
   createdByEmail  String?
-  createdAt     DateTime    @default(now())
-  landingPage   LandingPage @relation(fields: [landingPageId], references: [id], onDelete: Cascade)
+  landingPage     LandingPage @relation(fields: [landingPageId], references: [id], onDelete: Cascade)
 
   @@unique([landingPageId, versionNumber])
   @@index([landingPageId, createdAt])
 }
 
-// Leads captured through the built-in LP form
 model LandingPageLead {
-  id            String      @id @default(cuid())
-  landingPageId String
-  name          String
-  email         String
-  phone         String?
-  message       String?
-  formData      String? // JSON: additional custom field data
-  referrer      String?
-  createdAt     DateTime    @default(now())
-  emailStatus   String? // skipped | sent | failed
-  emailSentAt   DateTime?
-  emailError    String?
-  webhookStatus String? // skipped | sent | failed
-  webhookSentAt DateTime?
-  webhookHttpStatus Int?
-  webhookError  String?
-  webhookRetryCount Int?
-  nextWebhookRetryAt DateTime?
-  notificationAttempts Int?
+  id                        String                          @id @default(cuid())
+  landingPageId             String
+  name                      String
+  email                     String
+  phone                     String?
+  message                   String?
+  formData                  String?
+  referrer                  String?
+  createdAt                 DateTime                        @default(now())
+  emailError                String?
+  emailSentAt               DateTime?
+  emailStatus               String?
   lastNotificationAttemptAt DateTime?
   lastNotificationSuccessAt DateTime?
-  landingPage   LandingPage @relation(fields: [landingPageId], references: [id], onDelete: Cascade)
-  webhookAttempts LandingPageLeadWebhookAttempt[]
+  notificationAttempts      Int?
+  webhookError              String?
+  webhookHttpStatus         Int?
+  webhookSentAt             DateTime?
+  webhookStatus             String?
+  nextWebhookRetryAt        DateTime?
+  webhookRetryCount         Int?
+  amountPaidCents           Int?
+  currency                  String?
+  paymentCompletedAt        DateTime?
+  paymentSessionId          String?                         @unique
+  paymentStatus             String?
+  stripeCustomerId          String?
+  stripePaymentIntentId     String?
+  stripeSessionId           String?
+  landingPage               LandingPage                     @relation(fields: [landingPageId], references: [id], onDelete: Cascade)
+  LandingPagePaymentSession LandingPagePaymentSession?      @relation(fields: [paymentSessionId], references: [id])
+  webhookAttempts           LandingPageLeadWebhookAttempt[]
 
   @@index([landingPageId, createdAt])
   @@index([landingPageId, emailStatus, createdAt])
   @@index([landingPageId, webhookStatus, createdAt])
   @@index([webhookStatus, nextWebhookRetryAt])
+  @@index([paymentStatus, createdAt])
+  @@index([stripeSessionId])
 }
 
-// Persisted webhook delivery history for LP lead retries and diagnostics
 model LandingPageLeadWebhookAttempt {
-  id            String           @id @default(cuid())
+  id            String          @id @default(cuid())
   leadId        String
   attemptNumber Int
-  status        String // sent | failed
+  status        String
   httpStatus    Int?
   error         String?
-  createdAt     DateTime         @default(now())
-  lead          LandingPageLead  @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  createdAt     DateTime        @default(now())
+  lead          LandingPageLead @relation(fields: [leadId], references: [id], onDelete: Cascade)
 
   @@unique([leadId, attemptNumber])
   @@index([leadId, createdAt])
   @@index([status, createdAt])
 }
 
-// AI-translated versions of a landing page, served via ?lang= query param
 model LandingPageTranslation {
   id            String      @id @default(cuid())
   landingPageId String
-  language      String      // BCP-47 code, e.g. "fr", "es", "de", "pt-BR"
-  languageName  String      // Human label, e.g. "French", "Spanish"
-  html          String      // Full translated HTML (runtime scripts injected at serve time)
-  status        String      @default("draft") // draft | published
+  language      String
+  languageName  String
+  html          String
+  status        String      @default("draft")
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
   landingPage   LandingPage @relation(fields: [landingPageId], references: [id], onDelete: Cascade)
@@ -1065,100 +999,73 @@ model LandingPageTranslation {
   @@index([landingPageId])
 }
 
-// Reusable LP templates — built-in seeds + user-saved from successful LPs
 model LandingPageTemplate {
   id             String   @id @default(cuid())
   name           String
   description    String?
-  category       String // "lead-gen" | "ecommerce" | "event" | "service" | "product-launch"
+  category       String
   thumbnailUrl   String?
-  html           String // Template HTML (with placeholder markers)
-  promptGuidance String? // System prompt hints for AI when using this template
+  html           String
+  promptGuidance String?
   isBuiltIn      Boolean  @default(false)
-  createdBy      String? // User email who saved this template
+  createdBy      String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
 
-// ── Grand Plan Generator ────────────────────────────────────────────────────
-
-// Go-to-market plans combining proposals, keyword research, content strategy,
-// media plans, campaign structures, and content calendars into a single
-// client-facing deliverable. Used for pitches (pre-sale) and onboarding (post-sale).
 model GrandPlan {
   id                       String                  @id @default(cuid())
   clientId                 String?
-  userId                   String // Creator
+  userId                   String
   title                    String
-  // Cold-prospect mode: when no clientId, fall back to these for display + share-page personalisation
-  prospectName             String? // Display name for orphan plans (e.g. "Acme Co")
-  prospectWebsite          String? // Website for orphan plans
-  status                   String                  @default("draft") // draft | generating | complete | failed
-  statusMessage            String? // Progress message during generation (e.g., "Researching keywords...")
-  purpose                  String                  @default("pitch") // pitch | onboarding | strategy_refresh
-  generationMs             Int? // How long AI generation took in ms
-  generationError          String? // Error message when status = "failed"
-  // Sales pipeline (CRM) — mirrors Proposal.pipelineStage
-  pipelineStage            String                  @default("prospect") // prospect|sent|viewed|negotiating|won|lost
-  pipelineNotes            String?
-  expectedValue            Float? // Deal value in GBP
-  closeDate                String? // ISO date string for forecast close
-  lostReason               String?
-  // Enquiry capture on the public share page — opt-in per plan so existing shares don't change
-  enquiryFormEnabled       Boolean                 @default(false)
-  // Reporting / planning period (e.g. "January 2026", "Q1 2026", "12 months from Mar 2026") — distinct from `title`
-  period                   String?
-  // Source links — all optional, sections auto-enabled based on what's linked
+  status                   String                  @default("draft")
+  statusMessage            String?
+  purpose                  String                  @default("pitch")
+  generationMs             Int?
+  generationError          String?
   proposalId               String?
   keywordResearchId        String?
   contentStrategyId        String?
   mediaPlanId              String?
-  // Sprint continuity — optional self-relation pointing to a previous 90-day
-  // sprint plan. The generator reads the prior plan's outputs and tells the
-  // AI not to duplicate quick wins, pillars, page optimisations or blog
-  // topics that have already been shipped.
-  previousPlanId           String?
-  // Generated output
-  planDataJson             String? // JSON: structured plan data for interactive viewer
-  generatedHtml            String? // Full standalone HTML deliverable
-  // Client-facing presentation deck — top-level distillation of the plan.
-  // Generated on demand via the "Create Presentation" button; not auto-regenerated
-  // when the plan is regenerated, so the strategist controls when the client-facing
-  // artefact is refreshed.
-  presentationHtml         String? // Self-contained HTML deck (8–12 slides)
-  presentationDataJson     String? // JSON: structured slide data for re-render
-  presentationGeneratedAt  DateTime? // Last presentation generation timestamp
-  // Customisation
-  configJson               String                  @default("{}") // JSON: { sections: string[], brandingOverrides?: {} }
-  campaignFocusPeriodsJson String                  @default("[]") // JSON: Array<{ startMonth: number, endMonth: number, label: string, description?: string }>
-  customSectionsJson       String                  @default("[]") // JSON: user-added custom sections
-  clientBrief              String? // Free-text brief for AI context
-  targetAudiences          String? // Free-text description of target audiences for AI context
-  // JSON array of { domain, commonKeywords?, pageContext?, source: "manual"|"auto" }
-  // — captured at plan-creation time so the AI sees the same competitor list
-  // every regenerate, regardless of how SEMrush results drift.
-  competitorsJson          String                  @default("[]")
-  // Sharing
+  planDataJson             String?
+  generatedHtml            String?
+  configJson               String                  @default("{}")
+  campaignFocusPeriodsJson String                  @default("[]")
+  customSectionsJson       String                  @default("[]")
+  clientBrief              String?
+  targetAudiences          String?
   shareToken               String?                 @unique
-  sharePassword            String? // SHA256 hash of password for share link
-  shareExpiresAt           DateTime? // Optional expiry for share link
-  // Client-portal publish flag — only items with portalPublishedAt set are visible in the client portal
+  sharePassword            String?
+  shareExpiresAt           DateTime?
   portalPublishedAt        DateTime?
   portalPublishedBy        String?
   viewCount                Int                     @default(0)
   lastViewedAt             DateTime?
   createdAt                DateTime                @default(now())
   updatedAt                DateTime                @updatedAt
-  // Relations
-  client                   Client?                 @relation(fields: [clientId], references: [id], onDelete: SetNull)
-  proposal                 Proposal?               @relation(fields: [proposalId], references: [id], onDelete: SetNull)
-  keywordResearch          KeywordPlannerResearch? @relation(fields: [keywordResearchId], references: [id], onDelete: SetNull)
-  contentStrategy          ContentStrategy?        @relation(fields: [contentStrategyId], references: [id], onDelete: SetNull)
-  mediaPlan                MediaPlan?              @relation(fields: [mediaPlanId], references: [id], onDelete: SetNull)
-  versions                 GrandPlanVersion[]
-  enquiries                GrandPlanEnquiry[]
-  previousPlan             GrandPlan?              @relation("PriorSprint", fields: [previousPlanId], references: [id], onDelete: SetNull)
+  prospectName             String?
+  prospectWebsite          String?
+  pipelineStage            String                  @default("prospect")
+  pipelineNotes            String?
+  expectedValue            Float?
+  closeDate                String?
+  lostReason               String?
+  enquiryFormEnabled       Boolean                 @default(false)
+  period                   String?
+  competitorsJson          String                  @default("[]")
+  previousPlanId           String?
+  presentationHtml         String?
+  presentationDataJson     String?
+  presentationGeneratedAt  DateTime?
+  client                   Client?                 @relation(fields: [clientId], references: [id])
+  contentStrategy          ContentStrategy?        @relation(fields: [contentStrategyId], references: [id])
+  keywordResearch          KeywordPlannerResearch? @relation(fields: [keywordResearchId], references: [id])
+  mediaPlan                MediaPlan?              @relation(fields: [mediaPlanId], references: [id])
+  previousPlan             GrandPlan?              @relation("PriorSprint", fields: [previousPlanId], references: [id])
   nextSprints              GrandPlan[]             @relation("PriorSprint")
+  proposal                 Proposal?               @relation(fields: [proposalId], references: [id])
+  enquiries                GrandPlanEnquiry[]
+  versions                 GrandPlanVersion[]
   salesHandoffs            SalesHandoff[]
 
   @@index([clientId, createdAt])
@@ -1167,9 +1074,6 @@ model GrandPlan {
   @@index([previousPlanId])
 }
 
-// Public-form enquiry/lead capture from the share page.
-// Mirrors ProposalEnquiry — used so a single Grand Plan share link can collect
-// new business leads as well as render the strategy.
 model GrandPlanEnquiry {
   id          String    @id @default(cuid())
   grandPlanId String
@@ -1183,14 +1087,13 @@ model GrandPlanEnquiry {
   @@index([grandPlanId, createdAt])
 }
 
-// Version history: every AI refinement creates a new version
 model GrandPlanVersion {
   id            String    @id @default(cuid())
   grandPlanId   String
-  versionNumber Int // Sequential per plan (1, 2, 3…)
-  generatedHtml String // Full HTML at this version
-  planDataJson  String? // Structured data at this version
-  prompt        String // The user prompt that produced this version
+  versionNumber Int
+  generatedHtml String
+  planDataJson  String?
+  prompt        String
   createdAt     DateTime  @default(now())
   grandPlan     GrandPlan @relation(fields: [grandPlanId], references: [id], onDelete: Cascade)
 
@@ -1198,46 +1101,39 @@ model GrandPlanVersion {
   @@index([grandPlanId, createdAt])
 }
 
-// ─── Content Generator ────────────────────────────────────────────────────
-// AI-powered long-form content generation tool: blogs, whitepapers, case
-// studies, and social media copy. Multi-step flow: brief → keyword research
-// + idea generation → user selects ideas + approves keywords → full copy.
 model ContentGenerator {
   id                   String   @id @default(cuid())
   clientId             String
   userId               String
   title                String
-  brief                String // Free-text brief from the user
-  contentTypes         String   @default("[]") // JSON: ("blog"|"whitepaper"|"case_study"|"social")[]
+  brief                String
+  contentTypes         String   @default("[]")
   websiteUrl           String?
-  competitorsJson      String   @default("[]") // JSON: same structure as GrandPlan.competitorsJson
-  keywordResearchJson  String?  // JSON: SemRush domain/keyword data
-  ideasJson            String?  // JSON: ContentIdea[] — 5 per content type
-  selectedIdeasJson    String?  // JSON: user-approved ideas with approved keyword flags
-  generatedContentJson String?  // JSON: GeneratedContent[] — final copy per idea
-  generatedHtml        String?  // Full standalone HTML deliverable (legacy — superseded by generatedHtmlUrl)
-  generatedHtmlUrl     String?  // Vercel Blob URL for the HTML deliverable
-  status               String   @default("draft") // draft|researching|ideas_ready|generating|complete|failed
+  competitorsJson      String   @default("[]")
+  keywordResearchJson  String?
+  ideasJson            String?
+  selectedIdeasJson    String?
+  generatedContentJson String?
+  generatedHtml        String?
+  status               String   @default("draft")
   statusMessage        String?
   generationError      String?
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
+  generatedHtmlUrl     String?
   client               Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@index([clientId, createdAt])
   @@index([userId, createdAt])
 }
 
-// ─── Bet A: Agency Financials ──────────────────────────────────────────────
-// Recurring retainer / project fees billed per client. Drives utilisation,
-// margin and "is this account profitable?" reporting.
 model ClientRetainer {
   id              String   @id @default(cuid())
   clientId        String
-  monthlyFee      Float // GBP per month
-  contractedHours Float? // Hours included per month
-  startDate       String // ISO date
-  endDate         String? // null = active
+  monthlyFee      Float
+  contractedHours Float?
+  startDate       String
+  endDate         String?
   notes           String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -1246,17 +1142,15 @@ model ClientRetainer {
   @@index([clientId, startDate])
 }
 
-// Issued / paid invoices. Lightweight — we are not building Xero, just enough
-// to compute revenue, ageing, and profitability per client.
 model ClientInvoice {
   id          String   @id @default(cuid())
   clientId    String
-  invoiceRef  String // External reference (e.g. Xero invoice number)
-  amount      Float // GBP, ex VAT
-  issuedDate  String // ISO date
-  dueDate     String? // ISO date
-  paidDate    String? // ISO date — null = unpaid
-  status      String   @default("issued") // draft|issued|paid|overdue|void
+  invoiceRef  String
+  amount      Float
+  issuedDate  String
+  dueDate     String?
+  paidDate    String?
+  status      String   @default("issued")
   description String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -1266,15 +1160,13 @@ model ClientInvoice {
   @@index([clientId, paidDate])
 }
 
-// Time logged by team members against a client. The unit feeding utilisation,
-// margin, and capacity planning. Could be imported from a timer or manual.
 model AgencyTimeEntry {
   id        String   @id @default(cuid())
   clientId  String
   userId    String
-  date      String // ISO date
+  date      String
   hours     Float
-  category  String? // "strategy" | "ads" | "seo" | "creative" | "meeting" | …
+  category  String?
   notes     String?
   billable  Boolean  @default(true)
   createdAt DateTime @default(now())
@@ -1285,20 +1177,16 @@ model AgencyTimeEntry {
   @@index([userId, date])
 }
 
-// ─── Bet B: Two-way Client Portal ───────────────────────────────────────────
-// Threaded conversation between agency and the client portal. Cleanly
-// separate from `ClientCommunication` (which is the agency-side log) so the
-// permission boundaries are obvious.
 model PortalThread {
   id            String          @id @default(cuid())
   clientId      String
   subject       String
-  status        String          @default("open") // open|resolved|archived
+  status        String          @default("open")
   lastMessageAt DateTime        @default(now())
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
-  client        Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
   messages      PortalMessage[]
+  client        Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@index([clientId, lastMessageAt])
 }
@@ -1306,10 +1194,10 @@ model PortalThread {
 model PortalMessage {
   id          String       @id @default(cuid())
   threadId    String
-  authorType  String // "agency_user" | "portal_user"
-  authorId    String // FK to User (agency) or ClientPortalUser
+  authorType  String
+  authorId    String
   body        String
-  attachments String? // JSON: [{ name, url, size }]
+  attachments String?
   readAt      DateTime?
   createdAt   DateTime     @default(now())
   thread      PortalThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
@@ -1317,24 +1205,19 @@ model PortalMessage {
   @@index([threadId, createdAt])
 }
 
-// ─── Subscription Manager ───────────────────────────────────────────────────
-// Internal log of the agency's own SaaS / platform subscriptions
-// (Claude, Vercel, Figma, etc.) so managers can see what we're paying
-// for and where the credentials are stored. Passwords are encrypted at
-// rest using AES-256-GCM with the SESSION_SECRET.
 model AgencySubscription {
   id           String   @id @default(cuid())
-  platform     String // e.g. "Claude", "Vercel", "Figma"
-  category     String? // e.g. "AI", "Hosting", "Design", "Marketing"
-  url          String? // login URL
-  email        String? // login email / username
-  loginMethod  String   @default("password") // password|magic_link|email_code|google_sso|sso_saml|api_key|other
-  passwordEnc  String? // AES-256-GCM ciphertext — only used when loginMethod="password"
-  cost         Float    @default(0) // amount in chosen currency
-  currency     String   @default("GBP") // ISO code
-  billingCycle String   @default("monthly") // monthly|yearly
-  renewalDate  String? // ISO date (next renewal/billing date)
-  owner        String? // person/team responsible internally
+  platform     String
+  category     String?
+  url          String?
+  email        String?
+  loginMethod  String   @default("password")
+  passwordEnc  String?
+  cost         Float    @default(0)
+  currency     String   @default("GBP")
+  billingCycle String   @default("monthly")
+  renewalDate  String?
+  owner        String?
   notes        String?
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
@@ -1344,15 +1227,12 @@ model AgencySubscription {
   @@index([active])
 }
 
-// --------------------------------------------------------------------------
-// Email Verifier — bulk email validation jobs powered by ZeroBounce.
-// --------------------------------------------------------------------------
 model EmailVerificationJob {
   id             String                    @id @default(cuid())
   userId         String
   clientId       String?
   title          String
-  status         String                    @default("pending") // pending | running | complete | failed
+  status         String                    @default("pending")
   totalCount     Int                       @default(0)
   processedCount Int                       @default(0)
   validCount     Int                       @default(0)
@@ -1365,7 +1245,7 @@ model EmailVerificationJob {
   errorMessage   String?
   createdAt      DateTime                  @default(now())
   updatedAt      DateTime                  @updatedAt
-  client         Client?                   @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  client         Client?                   @relation(fields: [clientId], references: [id])
   results        EmailVerificationResult[]
 
   @@index([userId])
@@ -1377,7 +1257,7 @@ model EmailVerificationResult {
   id           String               @id @default(cuid())
   jobId        String
   email        String
-  status       String               @default("unknown") // valid | invalid | catch-all | unknown | spamtrap | abuse | do_not_mail
+  status       String               @default("unknown")
   subStatus    String?
   account      String?
   domain       String?
@@ -1399,37 +1279,28 @@ model EmailVerificationResult {
   @@index([status])
 }
 
-// ─── Ad Image Generator ───────────────────────────────────────────────────────
-// Multi-turn AI ad imagery sessions. Each turn captures the user's prompt and
-// the resulting image URL (stored in Vercel Blob). The first turn is a fresh
-// generate; subsequent turns refine the latest image via images.edit.
 model AdImageSession {
   id              String   @id @default(cuid())
   userId          String
   clientId        String?
   title           String
   size            String   @default("1024x1024")
-  messages        String   @default("[]") // JSON: ChatTurn[]
+  messages        String   @default("[]")
   currentImageUrl String?
-  lastResponseId  String? // OpenAI Responses API response ID — used as previous_response_id for multi-turn chaining
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+  lastResponseId  String?
 
   @@index([userId])
   @@index([clientId])
 }
 
-// ─── Meta Assassin (audience scraper + campaign plan) ──────────────────────
-// Stores a saved plan session: the brief, the AI audience suggestions, the
-// generated campaign plan, refinement history, generated images, and the
-// reach estimates. The whole tool state is serialised into a single JSON
-// blob so the schema doesn't have to evolve as we tweak the plan shape.
 model MetaAssassinPlan {
   id        String   @id @default(cuid())
   userId    String
   clientId  String?
   title     String
-  state     String   // JSON: { brief, keywords, sector, geography, dailyBudget, currency, objective, accountId, aiResult, plan, excludedPillars, excludedOptionIds, refinementHistory, images, estimates }
+  state     String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1437,89 +1308,73 @@ model MetaAssassinPlan {
   @@index([clientId])
 }
 
-// ─── Internal Linking Generator ─────────────────────────────────────────────
-// Stores internal-linking analysis runs generated by the Internal Linking
-// Generator tool. Each run scrapes the target site's sitemap, fetches and
-// parses a representative sample of blog posts with cheerio, then uses
-// GPT-4o to suggest outbound, inbound, and money-page-priority internal links
-// in a word-count-proportional quantity.
 model InternalLinkingPlan {
-  id               String    @id @default(cuid())
-  userId           String
-  clientId         String?   // Optional FK — allows standalone/prospect runs
-  title            String
-  targetUrl        String?   // Live blog URL (null when target is an upload)
-  targetSource     String    @default("url") // "url" | "upload"
-  targetWordCount  Int?      // Approximate word count of the target post
-  domain           String    // Root domain crawled for sitemap discovery
-  moneyPageUrls    Json      // string[] — money pages the user provided
-  inputJson        Json      // Raw brief: sitemap snapshot, parsed target signals, money-page metadata
-  resultJson       Json?     // Suggestions: { summary, outboundLinks, inboundLinks, moneyPageLinks, warnings }
-  // Generation lifecycle
-  generationStatus String    @default("generating") // "generating" | "complete" | "failed"
-  generationError  String?
-  generationMs     Int?
-  // Share / portal
-  shareToken       String?   @unique
-  sharePassword    String?   // bcrypt hash
-  viewCount        Int       @default(0)
-  lastViewedAt     DateTime?
+  id                String    @id @default(cuid())
+  userId            String
+  clientId          String?
+  title             String
+  targetUrl         String?
+  targetSource      String    @default("url")
+  targetWordCount   Int?
+  domain            String
+  moneyPageUrls     Json
+  inputJson         Json
+  resultJson        Json?
+  generationStatus  String    @default("generating")
+  generationError   String?
+  generationMs      Int?
+  shareToken        String?   @unique
+  sharePassword     String?
+  viewCount         Int       @default(0)
+  lastViewedAt      DateTime?
   portalPublishedAt DateTime?
   portalPublishedBy String?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-  client           Client?   @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  client            Client?   @relation(fields: [clientId], references: [id])
 
   @@index([userId, createdAt])
   @@index([clientId, createdAt])
 }
 
-// ─── AI Cost Tracking ───────────────────────────────────────────────────────
-// Logs every AI API call to track usage, tokens, and costs per tool/feature
 model AICostLog {
-  id            String   @id @default(cuid())
-  tool          String   // "content-strategy", "grand-plan", "summary", "chat", etc.
-  provider      String   // "anthropic" | "openai"
-  model         String   // "claude-opus-4-5", "gpt-4o-mini", etc.
-  inputTokens   Int
-  outputTokens  Int
-  costUSD       Float    // Calculated based on current model pricing
-  timestamp     DateTime @default(now())
-  
+  id           String   @id @default(cuid())
+  tool         String
+  provider     String
+  model        String
+  inputTokens  Int
+  outputTokens Int
+  costUSD      Float
+  timestamp    DateTime @default(now())
+
   @@index([tool, timestamp])
   @@index([provider, timestamp])
   @@index([timestamp])
 }
 
-// Persistent rate-limit ledger for Meta Assassin image generation/refinement.
-// Each row is one image call. Limits are enforced by counting rows per user
-// within rolling time windows, so the cap survives serverless cold starts and
-// is shared across instances (unlike an in-memory counter).
 model MetaAssassinImageEvent {
   id        String   @id @default(cuid())
   userId    String
-  mode      String   // "generate" | "refine"
+  mode      String
   createdAt DateTime @default(now())
 
   @@index([userId, mode, createdAt])
   @@index([createdAt])
 }
 
-// ─── Clickr Public SaaS ──────────────────────────────────────────────────────
-
 model ClickrUser {
-  id                   String         @id @default(cuid())
-  email                String         @unique
+  id                   String          @id @default(cuid())
+  email                String          @unique
   passwordHash         String
   name                 String?
-  planTier             String         @default("free")   // "free" | "starter" | "pro"
-  planStatus           String         @default("active") // "active" | "past_due" | "cancelled" | "disabled"
-  lpsThisMonth         Int            @default(0)
-  billingPeriodStart   DateTime       @default(now())
-  stripeCustomerId     String?        @unique
-  stripeSubscriptionId String?        @unique
-  createdAt            DateTime       @default(now())
-  updatedAt            DateTime       @updatedAt
+  planTier             String          @default("free")
+  planStatus           String          @default("active")
+  lpsThisMonth         Int             @default(0)
+  billingPeriodStart   DateTime        @default(now())
+  stripeCustomerId     String?         @unique
+  stripeSubscriptionId String?         @unique
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
   sessions             ClickrSession[]
   landingPages         LandingPage[]
 
@@ -1531,8 +1386,8 @@ model KeywordTrackerList {
   id        String   @id @default(cuid())
   userId    String
   name      String
-  keywords  String   // JSON: string[]
-  clientIds String   // JSON: string[]
+  keywords  String
+  clientIds String
   database  String   @default("uk")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1541,13 +1396,44 @@ model KeywordTrackerList {
 }
 
 model ClickrSession {
-  id          String     @id @default(cuid())
+  id           String     @id @default(cuid())
   clickrUserId String
-  token       String     @unique
-  expiresAt   DateTime
-  createdAt   DateTime   @default(now())
-  clickrUser  ClickrUser @relation(fields: [clickrUserId], references: [id], onDelete: Cascade)
+  token        String     @unique
+  expiresAt    DateTime
+  createdAt    DateTime   @default(now())
+  clickrUser   ClickrUser @relation(fields: [clickrUserId], references: [id], onDelete: Cascade)
 
   @@index([clickrUserId])
   @@index([token])
+}
+
+model LandingPagePaymentSession {
+  id                    String           @id
+  landingPageId         String
+  clientId              String?
+  status                String           @default("pending")
+  stripeSessionId       String?          @unique
+  stripePaymentIntentId String?
+  stripeCustomerId      String?
+  email                 String
+  name                  String?
+  phone                 String?
+  amountCents           Int
+  currency              String
+  pricingMode           String
+  payloadJson           String?
+  metadataJson          String?
+  successUrl            String?
+  cancelUrl             String?
+  completedAt           DateTime?
+  expiresAt             DateTime?
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime
+  LandingPageLead       LandingPageLead?
+  Client                Client?          @relation(fields: [clientId], references: [id])
+  LandingPage           LandingPage      @relation(fields: [landingPageId], references: [id], onDelete: Cascade)
+
+  @@index([clientId, createdAt])
+  @@index([landingPageId, createdAt])
+  @@index([status, createdAt])
 }

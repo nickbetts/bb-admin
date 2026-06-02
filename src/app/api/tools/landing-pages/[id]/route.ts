@@ -7,10 +7,7 @@ import { logActivity } from "@/lib/activity-logger";
 export const dynamic = "force-dynamic";
 
 // GET /api/tools/landing-pages/[id] — get LP with versions
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -33,10 +30,7 @@ export async function GET(
 }
 
 // PUT /api/tools/landing-pages/[id] — update LP metadata
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -45,13 +39,13 @@ export async function PUT(
   const existing = await prisma.landingPage.findUnique({ where: { id } });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const body = await request.json() as {
+  const body = (await request.json()) as {
     title?: string;
     slug?: string;
     status?: string;
     formConfig?: Record<string, unknown>;
     analyticsConfig?: Record<string, unknown>;
-    html?: string;       // Direct HTML update (text editing, code editor, etc.)
+    html?: string; // Direct HTML update (text editing, code editor, etc.)
     publicSlug?: string;
     customSubdomain?: string | null;
     clientId?: string;
@@ -70,11 +64,24 @@ export async function PUT(
   if (body.customSubdomain !== undefined) {
     // Normalise to valid subdomain label or null
     data.customSubdomain = body.customSubdomain
-      ? body.customSubdomain.toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/-+/g, "-").replace(/^-+|-+$/g, "").slice(0, 63) || null
+      ? body.customSubdomain
+          .toLowerCase()
+          .replace(/[^a-z0-9-]+/g, "-")
+          .replace(/-+/g, "-")
+          .replace(/^-+|-+$/g, "")
+          .slice(0, 63) || null
       : null;
   }
   if (body.clientId !== undefined) {
     data.clientId = body.clientId || null;
+  }
+  if (body.platforms !== undefined) {
+    // Validate and store as JSON array of known platform strings
+    const allowed = ["google", "meta"];
+    const incoming = Array.isArray(body.platforms) ? body.platforms : [];
+    data.platforms = JSON.stringify(
+      incoming.filter((p: unknown) => typeof p === "string" && allowed.includes(p)),
+    );
   }
 
   const updated = await prisma.landingPage.update({
@@ -90,10 +97,7 @@ export async function PUT(
 export { PUT as PATCH };
 
 // DELETE /api/tools/landing-pages/[id]
-export async function DELETE(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 

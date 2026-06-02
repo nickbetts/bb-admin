@@ -96,6 +96,7 @@ export async function GET(request: NextRequest) {
         viewCount: true,
         lastViewedAt: true,
         clientId: true,
+        platforms: true,
         createdAt: true,
         updatedAt: true,
         client: { select: { id: true, name: true } },
