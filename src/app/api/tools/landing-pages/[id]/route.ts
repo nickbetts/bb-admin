@@ -49,6 +49,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     publicSlug?: string;
     customSubdomain?: string | null;
     clientId?: string;
+    platforms?: unknown[];
   };
 
   const data: Record<string, unknown> = {};
