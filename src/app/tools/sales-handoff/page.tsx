@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   Building2,
@@ -165,6 +165,16 @@ function formatStatusLabel(status: string): string {
     .join(" ");
 }
 
+function formatBoardRefreshLabel(value: number | null): string | null {
+  if (!value) return null;
+
+  return new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(value);
+}
+
 function mapDetailToHistoryItem(detail: SalesHandoffDetail): SalesHandoffHistoryItem {
   return {
     id: detail.id,
@@ -209,6 +219,7 @@ export default function SalesHandoffPage() {
   const [historyLoading, setHistoryLoading] = useState(true);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [historySyncing, setHistorySyncing] = useState(false);
+  const [historyLastLoadedAt, setHistoryLastLoadedAt] = useState<number | null>(null);
   const [historyUpdatingId, setHistoryUpdatingId] = useState<string | null>(null);
   const [selectedHandoffId, setSelectedHandoffId] = useState<string | null>(null);
   const [selectedHandoffDetail, setSelectedHandoffDetail] = useState<SalesHandoffDetail | null>(
@@ -225,6 +236,7 @@ export default function SalesHandoffPage() {
   const [commentSending, setCommentSending] = useState(false);
   const [notesDraft, setNotesDraft] = useState("");
   const [notesSaving, setNotesSaving] = useState(false);
+  const syncInFlightRef = useRef(false);
 
   const upsertHandoffHistoryItem = useCallback((nextHandoff: SalesHandoffHistoryItem) => {
     setHandoffHistory((prev) => {
@@ -239,8 +251,10 @@ export default function SalesHandoffPage() {
     });
   }, []);
 
-  const loadHistory = useCallback(async () => {
-    setHistoryLoading(true);
+  const loadHistory = useCallback(async (options?: { background?: boolean }) => {
+    if (!options?.background) {
+      setHistoryLoading(true);
+    }
     setHistoryError(null);
 
     try {
@@ -252,11 +266,14 @@ export default function SalesHandoffPage() {
       }
 
       setHandoffHistory(Array.isArray(data.handoffs) ? data.handoffs : []);
+      setHistoryLastLoadedAt(Date.now());
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to load handoff history";
       setHistoryError(message);
     } finally {
-      setHistoryLoading(false);
+      if (!options?.background) {
+        setHistoryLoading(false);
+      }
     }
   }, []);
 
@@ -306,39 +323,48 @@ export default function SalesHandoffPage() {
     [applyPatchedHandoff],
   );
 
-  const syncHistory = useCallback(async () => {
-    setHistorySyncing(true);
+  const syncHistory = useCallback(
+    async (options?: { background?: boolean; silent?: boolean }) => {
+      if (syncInFlightRef.current) return;
 
-    try {
-      const res = await fetch("/api/tools/sales-handoff/sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ limit: 120 }),
-      });
+      syncInFlightRef.current = true;
+      setHistorySyncing(true);
 
-      const data = (await res.json()) as SalesHandoffSyncResponse;
-      if (!res.ok) {
-        throw new Error(data.error ?? "Failed to sync with ClickUp");
+      try {
+        const res = await fetch("/api/tools/sales-handoff/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ limit: 120 }),
+        });
+
+        const data = (await res.json()) as SalesHandoffSyncResponse;
+        if (!res.ok) {
+          throw new Error(data.error ?? "Failed to sync with ClickUp");
+        }
+
+        const summary = data.summary;
+        if (!options?.silent && summary) {
+          toast(
+            `Synced ${summary.syncedCount}/${summary.requested}. Changed ${summary.statusChangedCount}, failed ${summary.failureCount}.`,
+            summary.failureCount > 0 ? "warning" : "success",
+          );
+        } else if (!options?.silent) {
+          toast("Sales handoff sync complete", "success");
+        }
+
+        await loadHistory({ background: options?.background ?? true });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to sync with ClickUp";
+        if (!options?.silent) {
+          toast(message, "error");
+        }
+      } finally {
+        syncInFlightRef.current = false;
+        setHistorySyncing(false);
       }
-
-      const summary = data.summary;
-      if (summary) {
-        toast(
-          `Synced ${summary.syncedCount}/${summary.requested}. Changed ${summary.statusChangedCount}, failed ${summary.failureCount}.`,
-          summary.failureCount > 0 ? "warning" : "success",
-        );
-      } else {
-        toast("Sales handoff sync complete", "success");
-      }
-
-      await loadHistory();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to sync with ClickUp";
-      toast(message, "error");
-    } finally {
-      setHistorySyncing(false);
-    }
-  }, [loadHistory, toast]);
+    },
+    [loadHistory, toast],
+  );
 
   const updateHandoffStatus = useCallback(
     async (handoffId: string, status: SalesHandoffStatus) => {
@@ -459,7 +485,31 @@ export default function SalesHandoffPage() {
 
     void loadConfig();
     void loadHistory();
-  }, [loadHistory]);
+    void syncHistory({ background: true, silent: true });
+  }, [loadHistory, syncHistory]);
+
+  useEffect(() => {
+    function triggerBackgroundSync() {
+      void syncHistory({ background: true, silent: true });
+    }
+
+    const interval = window.setInterval(triggerBackgroundSync, 5 * 60 * 1000);
+    const handleFocus = () => triggerBackgroundSync();
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        triggerBackgroundSync();
+      }
+    };
+
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [syncHistory]);
 
   useEffect(() => {
     if (!selectedHandoffId) {
@@ -660,7 +710,7 @@ export default function SalesHandoffPage() {
       setForm(INITIAL_FORM);
       setUrgentOverride(false);
       setUrgentReason("");
-      await loadHistory();
+      await loadHistory({ background: true });
       toast("Sales handoff task created in ClickUp", "success");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to create ClickUp task";
@@ -704,7 +754,7 @@ export default function SalesHandoffPage() {
             className="btn btn-primary inline-flex items-center gap-2"
           >
             <Plus className="h-4 w-4" />
-            New Handoff
+            New Request
           </button>
         </div>
       </div>
@@ -714,13 +764,8 @@ export default function SalesHandoffPage() {
         loading={historyLoading}
         error={historyError}
         syncing={historySyncing}
+        lastSyncedLabel={formatBoardRefreshLabel(historyLastLoadedAt)}
         updatingId={historyUpdatingId}
-        onSync={() => {
-          void syncHistory();
-        }}
-        onRefresh={() => {
-          void loadHistory();
-        }}
         onOpenHandoff={(handoff) => {
           setSelectedHandoffId(handoff.id);
         }}

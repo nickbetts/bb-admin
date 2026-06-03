@@ -18,7 +18,6 @@ import {
   ExternalLink,
   GripVertical,
   Loader2,
-  RefreshCw,
   Search,
   ShieldAlert,
   Target,
@@ -65,9 +64,8 @@ interface SalesHandoffPipelineBoardProps {
   loading: boolean;
   error: string | null;
   syncing: boolean;
+  lastSyncedLabel: string | null;
   updatingId: string | null;
-  onSync: () => void;
-  onRefresh: () => void;
   onOpenHandoff: (handoff: SalesHandoffPipelineItem) => void;
   onStatusChange: (handoffId: string, status: SalesHandoffStatus) => Promise<void>;
 }
@@ -569,9 +567,8 @@ export function SalesHandoffPipelineBoard({
   loading,
   error,
   syncing,
+  lastSyncedLabel,
   updatingId,
-  onSync,
-  onRefresh,
   onOpenHandoff,
   onStatusChange,
 }: SalesHandoffPipelineBoardProps) {
@@ -742,35 +739,33 @@ export function SalesHandoffPipelineBoard({
               Drag cards across stages · status changes sync to ClickUp automatically
             </p>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <button
-              type="button"
-              onClick={() => {
-                if (!loading && !syncing) onSync();
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "10px" }}>
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px",
+                borderRadius: "999px",
+                border: "1px solid var(--border)",
+                background: "var(--surface-2)",
+                padding: "7px 12px",
+                fontSize: "12px",
+                fontWeight: 600,
+                color: "var(--text-2)",
               }}
-              disabled={loading || syncing}
-              className="btn btn-primary inline-flex items-center gap-2"
             >
               {syncing ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
-                <Zap className="h-3.5 w-3.5" />
+                <CheckCircle2 style={{ width: "14px", height: "14px", color: "var(--success)" }} />
               )}
-              {syncing ? "Syncing…" : "Sync ClickUp"}
-            </button>
-            <button
-              type="button"
-              onClick={onRefresh}
-              disabled={loading || syncing}
-              className="btn btn-ghost inline-flex items-center gap-2"
-            >
-              {loading ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <RefreshCw className="h-3.5 w-3.5" />
-              )}
-              Refresh
-            </button>
+              {syncing ? "Syncing ClickUp…" : "Auto-sync enabled"}
+            </span>
+            <span style={{ fontSize: "12px", color: "var(--text-3)" }}>
+              {lastSyncedLabel
+                ? `Last checked ${lastSyncedLabel}`
+                : "Checks on load, on focus, and every 5 minutes"}
+            </span>
           </div>
         </div>
 
@@ -804,27 +799,18 @@ export function SalesHandoffPipelineBoard({
                   {syncFailedHandoffs.length === 1 ? " has" : "s have"} a ClickUp sync issue
                 </p>
                 <p style={{ marginTop: "3px", fontSize: "12px", color: "#9f1239" }}>
-                  The board is showing the latest local state. Run a sync to confirm the remote
-                  ClickUp status.
+                  The board is showing the latest local state. Automatic checks keep reconciling
+                  ClickUp in the background.
                 </p>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                if (!loading && !syncing) onSync();
-              }}
-              disabled={loading || syncing}
-              className="btn btn-ghost inline-flex items-center gap-2"
-              style={{ borderColor: "#fecaca", color: "#991b1b", background: "white" }}
-            >
-              {syncing ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <RefreshCw className="h-3.5 w-3.5" />
-              )}
-              {syncing ? "Syncing…" : "Retry sync"}
-            </button>
+            <span style={{ fontSize: "12px", fontWeight: 600, color: "#991b1b" }}>
+              {syncing
+                ? "Checking ClickUp now…"
+                : lastSyncedLabel
+                  ? `Last checked ${lastSyncedLabel}`
+                  : "Automatic checks are enabled"}
+            </span>
           </div>
         ) : null}
 
@@ -967,9 +953,11 @@ export function SalesHandoffPipelineBoard({
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(7, 1fr)",
-                gap: "12px",
-                minWidth: "1100px",
+                gridAutoFlow: "column",
+                gridAutoColumns: "minmax(248px, 248px)",
+                gap: "14px",
+                minWidth: `${STATUS_COLUMNS.length * 262}px`,
+                alignItems: "start",
               }}
             >
               {STATUS_COLUMNS.map((column) => (
