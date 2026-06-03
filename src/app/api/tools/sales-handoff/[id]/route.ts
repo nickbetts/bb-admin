@@ -21,15 +21,17 @@ const SALES_HANDOFF_STATUSES = [
   "cancelled",
 ] as const;
 
+// Maps Stratos internal statuses to ClickUp status names in priority order.
+// Primary candidates match this workspace's actual ClickUp statuses:
+//   PIPELINE, ON-HOLD, HANDOFF READY, DISCUSSION, IN PROGRESS, ACTION, CLOSED
 const CLICKUP_STATUS_CANDIDATES: Record<(typeof SALES_HANDOFF_STATUSES)[number], string[]> = {
-  // ClickUp display label variants listed first, then fallbacks
-  draft: ["draft", "to do", "todo", "open", "backlog"],
-  submitted: ["new", "to do", "todo", "open", "backlog", "submitted"],
-  in_progress: ["in progress", "in-progress", "progress", "doing", "active"],
-  ready_for_meeting: ["ready", "ready for meeting", "review", "awaiting", "pending review"],
-  completed: ["completed", "complete", "done", "closed", "resolved"],
-  blocked: ["blocked", "on hold", "on_hold", "paused", "hold", "stuck", "suspended", "waiting"],
-  cancelled: ["cancelled", "canceled", "closed", "void"],
+  draft: ["pipeline", "to do", "todo", "open", "backlog", "draft"],
+  submitted: ["pipeline", "to do", "todo", "open", "new", "backlog"],
+  in_progress: ["in progress", "discussion", "in-progress", "progress", "doing", "active"],
+  ready_for_meeting: ["handoff ready", "ready for meeting", "ready", "review", "awaiting"],
+  completed: ["action", "complete", "completed", "done", "resolved"],
+  blocked: ["on-hold", "on hold", "on_hold", "blocked", "paused", "hold", "stuck", "waiting"],
+  cancelled: ["closed", "cancelled", "canceled", "void"],
 };
 
 /**
