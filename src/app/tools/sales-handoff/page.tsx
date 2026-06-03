@@ -1005,24 +1005,29 @@ export default function SalesHandoffPage() {
 
               {/* STEP 2: Target Audience */}
               {formStep === 2 && (
-                <div className="space-y-14">
-                  <div className="space-y-5">
-                    <p className="text-[11px] font-semibold tracking-wide text-indigo-500 uppercase dark:text-indigo-400">
-                      Step 2 of 6
-                    </p>
-                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-                      Target audience
-                    </h2>
-                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                      Who are they selling to and what pain points came up?
-                    </p>
-                  </div>
+                <div className="flex flex-col">
+                  <p className="text-[11px] font-semibold tracking-wide text-indigo-500 uppercase dark:text-indigo-400">
+                    Step 2 of 6
+                  </p>
 
-                  <div className="grid gap-7">
+                  <div aria-hidden="true" className="h-5" />
+
+                  <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                    Target audience
+                  </h2>
+
+                  <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                    Who are they selling to and what pain points came up?
+                  </p>
+
+                  <div aria-hidden="true" className="h-5" />
+
+                  <div className="flex flex-col">
                     <label className="flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">
                       <Users className="h-4 w-4 text-indigo-400" />
                       <span>Audience description</span>
                     </label>
+                    <div aria-hidden="true" className="h-2.5" />
                     <textarea
                       className="form-input min-h-24 leading-relaxed"
                       value={form.targetAudienceSummary}
@@ -1033,30 +1038,37 @@ export default function SalesHandoffPage() {
                       autoFocus
                     />
                   </div>
+
+                  <div aria-hidden="true" className="h-2.5" />
                 </div>
               )}
 
               {/* STEP 3: Timing & Budget */}
               {formStep === 3 && (
-                <div className="space-y-14">
-                  <div className="space-y-5">
-                    <p className="text-[11px] font-semibold tracking-wide text-indigo-500 uppercase dark:text-indigo-400">
-                      Step 3 of 6
-                    </p>
-                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-                      Timeline and budget
-                    </h2>
-                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                      When&apos;s the second call and what&apos;s the budget range?
-                    </p>
-                  </div>
+                <div className="flex flex-col">
+                  <p className="text-[11px] font-semibold tracking-wide text-indigo-500 uppercase dark:text-indigo-400">
+                    Step 3 of 6
+                  </p>
 
-                  <div className="space-y-12">
-                    <div className="grid gap-7">
+                  <div aria-hidden="true" className="h-5" />
+
+                  <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                    Timeline and budget
+                  </h2>
+
+                  <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                    When&apos;s the second call and what&apos;s the budget range?
+                  </p>
+
+                  <div aria-hidden="true" className="h-5" />
+
+                  <div className="flex flex-col">
+                    <div className="flex flex-col">
                       <label className="flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">
                         <CalendarClock className="h-4 w-4 text-indigo-400" />
                         <span>Second call date and time</span>
                       </label>
+                      <div aria-hidden="true" className="h-2.5" />
                       <input
                         type="datetime-local"
                         className="form-input"
@@ -1066,26 +1078,32 @@ export default function SalesHandoffPage() {
                         autoFocus
                       />
                       {noticeHours !== null && (
-                        <p
-                          className={cn(
-                            "text-xs font-medium",
-                            secondCallInPast || violatesNoticeWindow
-                              ? "text-rose-600 dark:text-rose-400"
-                              : "text-emerald-600 dark:text-emerald-400",
-                          )}
-                        >
-                          {secondCallInPast
-                            ? "⚠️ Date must be in the future"
-                            : `✓ ${noticeHours.toFixed(1)} hours notice`}
-                        </p>
+                        <div>
+                          <div aria-hidden="true" className="h-2.5" />
+                          <p
+                            className={cn(
+                              "text-xs font-medium",
+                              secondCallInPast || violatesNoticeWindow
+                                ? "text-rose-600 dark:text-rose-400"
+                                : "text-emerald-600 dark:text-emerald-400",
+                            )}
+                          >
+                            {secondCallInPast
+                              ? "⚠️ Date must be in the future"
+                              : `✓ ${noticeHours.toFixed(1)} hours notice`}
+                          </p>
+                        </div>
                       )}
                     </div>
 
-                    <div className="grid gap-7">
+                    <div aria-hidden="true" className="h-2.5" />
+
+                    <div className="flex flex-col">
                       <label className="flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">
                         <Wallet className="h-4 w-4 text-indigo-400" />
                         <span>Budget range per month</span>
                       </label>
+                      <div aria-hidden="true" className="h-2.5" />
                       <div className="flex items-center gap-2">
                         <div className="relative flex-1">
                           <span className="absolute top-1/2 left-3 -translate-y-1/2 text-sm text-zinc-500">
@@ -1126,103 +1144,123 @@ export default function SalesHandoffPage() {
                     </div>
 
                     {enforce48HourNotice && violatesNoticeWindow && allowUrgentOverride && (
-                      <div className="rounded-md border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/50 dark:bg-amber-950/30">
-                        <label className="flex cursor-pointer items-center gap-2">
-                          <input
-                            type="checkbox"
-                            className="h-4 w-4 rounded accent-amber-600"
-                            checked={urgentOverride}
-                            onChange={(event) => setUrgentOverride(event.target.checked)}
-                          />
-                          <span className="text-sm font-medium text-amber-900 dark:text-amber-100">
-                            Mark as urgent
-                          </span>
-                        </label>
-                        <p className="mt-2 ml-6 text-xs text-amber-800 dark:text-amber-200/90">
-                          Use only if timing can&apos;t be moved
-                        </p>
+                      <div>
+                        <div aria-hidden="true" className="h-2.5" />
+                        <div className="rounded-md border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/50 dark:bg-amber-950/30">
+                          <label className="flex cursor-pointer items-center gap-2">
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4 rounded accent-amber-600"
+                              checked={urgentOverride}
+                              onChange={(event) => setUrgentOverride(event.target.checked)}
+                            />
+                            <span className="text-sm font-medium text-amber-900 dark:text-amber-100">
+                              Mark as urgent
+                            </span>
+                          </label>
+                          <p className="mt-2 ml-6 text-xs text-amber-800 dark:text-amber-200/90">
+                            Use only if timing can&apos;t be moved
+                          </p>
+                        </div>
                       </div>
                     )}
 
                     {urgentOverride && (
-                      <div className="grid gap-7">
-                        <label className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                          Why is this urgent?
-                        </label>
-                        <textarea
-                          className="form-input min-h-20 leading-relaxed"
-                          value={urgentReason}
-                          onChange={(event) => setUrgentReason(event.target.value)}
-                          placeholder="Explain why this can't wait..."
-                          rows={3}
-                          required={requiresUrgentReason}
-                        />
+                      <div>
+                        <div aria-hidden="true" className="h-2.5" />
+                        <div className="flex flex-col">
+                          <label className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                            Why is this urgent?
+                          </label>
+                          <div aria-hidden="true" className="h-2.5" />
+                          <textarea
+                            className="form-input min-h-20 leading-relaxed"
+                            value={urgentReason}
+                            onChange={(event) => setUrgentReason(event.target.value)}
+                            placeholder="Explain why this can't wait..."
+                            rows={3}
+                            required={requiresUrgentReason}
+                          />
+                        </div>
                       </div>
                     )}
                   </div>
+
+                  <div aria-hidden="true" className="h-2.5" />
                 </div>
               )}
 
               {/* STEP 4: Services */}
               {formStep === 4 && (
-                <div className="space-y-14">
-                  <div className="space-y-5">
-                    <p className="text-[11px] font-semibold tracking-wide text-indigo-500 uppercase dark:text-indigo-400">
-                      Step 4 of 6
-                    </p>
-                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-                      Services interested in
-                    </h2>
-                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                      Select all that apply.
-                    </p>
-                  </div>
+                <div className="flex flex-col">
+                  <p className="text-[11px] font-semibold tracking-wide text-indigo-500 uppercase dark:text-indigo-400">
+                    Step 4 of 6
+                  </p>
 
-                  <div className="grid gap-7">
-                    {serviceOptions.map((service) => {
+                  <div aria-hidden="true" className="h-5" />
+
+                  <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                    Services interested in
+                  </h2>
+
+                  <p className="text-sm text-zinc-600 dark:text-zinc-400">Select all that apply.</p>
+
+                  <div aria-hidden="true" className="h-5" />
+
+                  <div className="flex flex-col">
+                    {serviceOptions.map((service, index) => {
                       const checked = form.interestedServices.includes(service);
                       return (
-                        <button
-                          key={service}
-                          type="button"
-                          onClick={() => toggleService(service)}
-                          className={cn(
-                            "flex items-center justify-between rounded-xl border px-3.5 py-2.5 text-sm font-medium transition-all",
-                            checked
-                              ? "border-indigo-300 bg-indigo-50 text-indigo-900 shadow-sm dark:border-indigo-700/60 dark:bg-indigo-950/40 dark:text-indigo-100"
-                              : "border-zinc-200 bg-white text-zinc-700 hover:border-indigo-200 hover:bg-indigo-50/40 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-indigo-800/50 dark:hover:bg-indigo-950/20",
-                          )}
-                        >
-                          <span>{service}</span>
-                          {checked && (
-                            <Check className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-                          )}
-                        </button>
+                        <div key={service}>
+                          {index > 0 && <div aria-hidden="true" className="h-2.5" />}
+                          <button
+                            type="button"
+                            onClick={() => toggleService(service)}
+                            className={cn(
+                              "flex items-center justify-between rounded-xl border px-3.5 py-2.5 text-sm font-medium transition-all",
+                              checked
+                                ? "border-indigo-300 bg-indigo-50 text-indigo-900 shadow-sm dark:border-indigo-700/60 dark:bg-indigo-950/40 dark:text-indigo-100"
+                                : "border-zinc-200 bg-white text-zinc-700 hover:border-indigo-200 hover:bg-indigo-50/40 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-indigo-800/50 dark:hover:bg-indigo-950/20",
+                            )}
+                          >
+                            <span>{service}</span>
+                            {checked && (
+                              <Check className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                            )}
+                          </button>
+                        </div>
                       );
                     })}
                   </div>
+
+                  <div aria-hidden="true" className="h-2.5" />
                 </div>
               )}
 
               {/* STEP 5: Planning Notes (REQUIRED) */}
               {formStep === 5 && (
-                <div className="space-y-14">
-                  <div className="space-y-5">
-                    <p className="text-[11px] font-semibold tracking-wide text-indigo-500 uppercase dark:text-indigo-400">
-                      Step 5 of 6
-                    </p>
-                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-                      Planning notes
-                    </h2>
-                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                      Provide context for the marketing team.
-                    </p>
-                  </div>
+                <div className="flex flex-col">
+                  <p className="text-[11px] font-semibold tracking-wide text-indigo-500 uppercase dark:text-indigo-400">
+                    Step 5 of 6
+                  </p>
 
-                  <div className="grid gap-4">
+                  <div aria-hidden="true" className="h-5" />
+
+                  <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                    Planning notes
+                  </h2>
+
+                  <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                    Provide context for the marketing team.
+                  </p>
+
+                  <div aria-hidden="true" className="h-5" />
+
+                  <div className="flex flex-col">
                     <label className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
                       What should we know?
                     </label>
+                    <div aria-hidden="true" className="h-2.5" />
                     <textarea
                       className="form-input min-h-28 leading-relaxed"
                       value={form.otherInformation}
@@ -1232,28 +1270,37 @@ export default function SalesHandoffPage() {
                       required
                     />
                     {form.otherInformation.length > 0 && (
-                      <p className="text-right text-xs text-zinc-500 dark:text-zinc-400">
-                        {form.otherInformation.length} chars
-                      </p>
+                      <div>
+                        <div aria-hidden="true" className="h-2.5" />
+                        <p className="text-right text-xs text-zinc-500 dark:text-zinc-400">
+                          {form.otherInformation.length} chars
+                        </p>
+                      </div>
                     )}
                   </div>
+
+                  <div aria-hidden="true" className="h-2.5" />
                 </div>
               )}
 
               {/* STEP 6: Review */}
               {formStep === 6 && (
-                <div className="space-y-8">
-                  <div className="space-y-2">
-                    <p className="text-[11px] font-semibold tracking-wide text-indigo-500 uppercase dark:text-indigo-400">
-                      Step 6 of 6
-                    </p>
-                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-                      Review and send
-                    </h2>
-                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                      Check everything looks right before sending to marketing.
-                    </p>
-                  </div>
+                <div className="flex flex-col">
+                  <p className="text-[11px] font-semibold tracking-wide text-indigo-500 uppercase dark:text-indigo-400">
+                    Step 6 of 6
+                  </p>
+
+                  <div aria-hidden="true" className="h-5" />
+
+                  <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                    Review and send
+                  </h2>
+
+                  <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                    Check everything looks right before sending to marketing.
+                  </p>
+
+                  <div aria-hidden="true" className="h-5" />
 
                   <div
                     className={cn(
@@ -1264,62 +1311,78 @@ export default function SalesHandoffPage() {
                     {requestReadiness.label}
                   </div>
 
-                  <div className="space-y-3 rounded-md border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900/30">
-                    <div>
-                      <p className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">
-                        Prospect
-                      </p>
-                      <p className="mt-1 text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                        {form.prospectName}
-                      </p>
-                    </div>
+                  <div aria-hidden="true" className="h-2.5" />
 
-                    <div>
-                      <p className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">
-                        Website
-                      </p>
-                      <p className="mt-1 text-sm break-all text-zinc-700 dark:text-zinc-300">
-                        {form.website}
-                      </p>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4 pt-2">
+                  <div className="rounded-md border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900/30">
+                    <div className="flex flex-col">
                       <div>
                         <p className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">
-                          Budget
+                          Prospect
                         </p>
-                        <p className="mt-1 text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                          £{form.budgetRange}
+                        <div aria-hidden="true" className="h-2.5" />
+                        <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                          {form.prospectName}
                         </p>
                       </div>
+
+                      <div aria-hidden="true" className="h-2.5" />
+
                       <div>
                         <p className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">
-                          Call
+                          Website
                         </p>
-                        <p className="mt-1 text-sm text-zinc-700 dark:text-zinc-300">
-                          {form.secondCallAt ? "Scheduled" : "—"}
+                        <div aria-hidden="true" className="h-2.5" />
+                        <p className="text-sm break-all text-zinc-700 dark:text-zinc-300">
+                          {form.website}
                         </p>
                       </div>
-                    </div>
 
-                    {form.interestedServices.length > 0 && (
-                      <div className="pt-2">
-                        <p className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">
-                          Services
-                        </p>
-                        <div className="mt-2 flex flex-wrap gap-1.5">
-                          {form.interestedServices.map((service) => (
-                            <span
-                              key={service}
-                              className="inline-flex items-center rounded-md border border-zinc-300 bg-zinc-100 px-2 py-1 text-xs font-medium text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
-                            >
-                              {service}
-                            </span>
-                          ))}
+                      <div aria-hidden="true" className="h-2.5" />
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">
+                            Budget
+                          </p>
+                          <div aria-hidden="true" className="h-2.5" />
+                          <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                            £{form.budgetRange}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">
+                            Call
+                          </p>
+                          <div aria-hidden="true" className="h-2.5" />
+                          <p className="text-sm text-zinc-700 dark:text-zinc-300">
+                            {form.secondCallAt ? "Scheduled" : "—"}
+                          </p>
                         </div>
                       </div>
-                    )}
+
+                      {form.interestedServices.length > 0 && (
+                        <div>
+                          <div aria-hidden="true" className="h-2.5" />
+                          <p className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">
+                            Services
+                          </p>
+                          <div aria-hidden="true" className="h-2.5" />
+                          <div className="flex flex-wrap gap-1.5">
+                            {form.interestedServices.map((service) => (
+                              <span
+                                key={service}
+                                className="inline-flex items-center rounded-md border border-zinc-300 bg-zinc-100 px-2 py-1 text-xs font-medium text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+                              >
+                                {service}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
+
+                  <div aria-hidden="true" className="h-2.5" />
                 </div>
               )}
             </motion.div>
