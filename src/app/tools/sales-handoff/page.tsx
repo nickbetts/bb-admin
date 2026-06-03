@@ -837,7 +837,7 @@ export default function SalesHandoffPage() {
               ) : (
                 <Zap className="h-4 w-4" />
               )}
-              {submitting ? "Creating task…" : "Create ClickUp Task"}
+              {submitting ? "Sending request..." : "Request a Marketing Plan"}
             </button>
           </>
         }
@@ -861,61 +861,106 @@ export default function SalesHandoffPage() {
         </div>
 
         <form id="sales-handoff-form" onSubmit={handleSubmit} className="mt-4 grid gap-5">
-          <div className="grid gap-1.5">
-            <label className="form-label flex items-center gap-1.5">
-              <Building2 className="h-3.5 w-3.5 text-zinc-400" />
-              Prospect or company name
-            </label>
-            <input
-              className="form-input"
-              value={form.prospectName}
-              onChange={(event) => update("prospectName", event.target.value)}
-              placeholder="Acme Sportswear"
-              required
-            />
+          <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
+            <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/50">
+              <div className="mb-4">
+                <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                  Client context
+                </p>
+                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                  Add the core business details marketing needs before shaping the plan.
+                </p>
+              </div>
+
+              <div className="grid gap-4">
+                <div className="grid gap-2">
+                  <label className="inline-flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-200">
+                    <Building2 className="h-4 w-4 shrink-0 text-zinc-400" />
+                    <span>Prospect or company name</span>
+                  </label>
+                  <input
+                    className="form-input h-12 px-4 text-sm"
+                    value={form.prospectName}
+                    onChange={(event) => update("prospectName", event.target.value)}
+                    placeholder="Acme Sportswear"
+                    required
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <label className="inline-flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-200">
+                    <Globe className="h-4 w-4 shrink-0 text-zinc-400" />
+                    <span>Website URL</span>
+                  </label>
+                  <input
+                    className="form-input h-12 px-4 text-sm"
+                    value={form.website}
+                    onChange={(event) => update("website", event.target.value)}
+                    placeholder="https://www.example.com"
+                    required
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <label className="inline-flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-200">
+                    <Users className="h-4 w-4 shrink-0 text-zinc-400" />
+                    <span>Target audience summary</span>
+                  </label>
+                  <textarea
+                    className="form-input min-h-[128px] px-4 py-3 text-sm leading-6"
+                    value={form.targetAudienceSummary}
+                    onChange={(event) => update("targetAudienceSummary", event.target.value)}
+                    placeholder="Who are they selling to, and what pain points came up on the call?"
+                    rows={4}
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/50">
+              <div className="mb-4">
+                <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                  Timing and budget
+                </p>
+                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                  Confirm the next milestone and the commercial range before the request is sent.
+                </p>
+              </div>
+
+              <div className="grid gap-4">
+                <div className="grid gap-2">
+                  <label className="inline-flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-200">
+                    <CalendarClock className="h-4 w-4 shrink-0 text-zinc-400" />
+                    <span>Second call date and time</span>
+                  </label>
+                  <input
+                    type="datetime-local"
+                    className="form-input h-12 px-4 text-sm"
+                    value={form.secondCallAt}
+                    onChange={(event) => update("secondCallAt", event.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <label className="inline-flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-200">
+                    <Wallet className="h-4 w-4 shrink-0 text-zinc-400" />
+                    <span>Budget range</span>
+                  </label>
+                  <input
+                    className="form-input h-12 px-4 text-sm"
+                    value={form.budgetRange}
+                    onChange={(event) => update("budgetRange", event.target.value)}
+                    placeholder="e.g. GBP 3,000 to 5,000 per month"
+                    required
+                  />
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="grid gap-1.5">
-            <label className="form-label flex items-center gap-1.5">
-              <Globe className="h-3.5 w-3.5 text-zinc-400" />
-              Website URL
-            </label>
-            <input
-              className="form-input"
-              value={form.website}
-              onChange={(event) => update("website", event.target.value)}
-              placeholder="https://www.example.com"
-              required
-            />
-          </div>
-
-          <div className="grid gap-1.5">
-            <label className="form-label flex items-center gap-1.5">
-              <Users className="h-3.5 w-3.5 text-zinc-400" />
-              Target audience summary
-            </label>
-            <textarea
-              className="form-input"
-              value={form.targetAudienceSummary}
-              onChange={(event) => update("targetAudienceSummary", event.target.value)}
-              placeholder="Who are they selling to, and what pain points came up on the call?"
-              rows={4}
-              required
-            />
-          </div>
-
-          <div className="grid gap-1.5">
-            <label className="form-label flex items-center gap-1.5">
-              <CalendarClock className="h-3.5 w-3.5 text-zinc-400" />
-              Second call date and time
-            </label>
-            <input
-              type="datetime-local"
-              className="form-input"
-              value={form.secondCallAt}
-              onChange={(event) => update("secondCallAt", event.target.value)}
-              required
-            />
             {noticeHours !== null ? (
               <p
                 className={cn(
@@ -977,90 +1022,80 @@ export default function SalesHandoffPage() {
             </div>
           ) : null}
 
-          <div className="grid gap-1.5">
-            <label className="form-label flex items-center gap-1.5">
-              <Wallet className="h-3.5 w-3.5 text-zinc-400" />
-              Budget range
-            </label>
-            <input
-              className="form-input"
-              value={form.budgetRange}
-              onChange={(event) => update("budgetRange", event.target.value)}
-              placeholder="e.g. GBP 3,000 to 5,000 per month"
-              required
-            />
-          </div>
-
-          <div className="grid gap-2.5">
-            <div>
-              <label className="form-label flex items-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5 text-zinc-400" />
-                Services they might be interested in
-              </label>
-              <p className="mt-0.5 text-xs" style={{ color: "var(--text-3)" }}>
-                Select all that apply — this shapes the plan we put together.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {serviceOptions.map((service) => {
-                const checked = form.interestedServices.includes(service);
-                return (
-                  <button
-                    key={service}
-                    type="button"
-                    onClick={() => toggleService(service)}
-                    aria-pressed={checked}
-                    className={cn(
-                      "inline-flex items-center gap-1.5 rounded-lg border px-3.5 py-2 text-sm font-medium transition-all",
-                      checked
-                        ? "border-indigo-400 bg-indigo-500 text-white shadow-sm dark:border-indigo-500 dark:bg-indigo-600"
-                        : "border-zinc-200 bg-white text-zinc-600 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-indigo-700 dark:hover:bg-indigo-950/40 dark:hover:text-indigo-300",
-                    )}
-                  >
-                    {checked && <Check className="h-3.5 w-3.5" />}
-                    {service}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="grid gap-2">
-            <div
-              className="flex items-start gap-3 rounded-xl border px-4 py-3"
-              style={{
-                borderColor: "var(--accent-subtle, #c7d2fe)",
-                background: "var(--accent-faint, #eef2ff)",
-              }}
-            >
-              <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-indigo-500" />
+          <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/50">
+            <div className="grid gap-3">
               <div>
-                <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>
-                  The more you share, the better the plan
-                </p>
-                <p className="mt-0.5 text-xs leading-relaxed" style={{ color: "var(--text-2)" }}>
-                  Include goals, timelines, blockers, decision-makers, budget sensitivities, and
-                  anything else that came up on the call. Marketing uses this to build a tailored
-                  strategy — every detail counts.
+                <label className="inline-flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-200">
+                  <Sparkles className="h-4 w-4 shrink-0 text-zinc-400" />
+                  <span>Services they might be interested in</span>
+                </label>
+                <p className="mt-1 text-xs" style={{ color: "var(--text-3)" }}>
+                  Select all that apply. This shapes the plan we put together.
                 </p>
               </div>
+              <div className="flex flex-wrap gap-2.5">
+                {serviceOptions.map((service) => {
+                  const checked = form.interestedServices.includes(service);
+                  return (
+                    <button
+                      key={service}
+                      type="button"
+                      onClick={() => toggleService(service)}
+                      aria-pressed={checked}
+                      className={cn(
+                        "inline-flex min-h-11 items-center gap-2 rounded-xl border px-4 py-2.5 text-sm leading-none font-medium transition-all",
+                        checked
+                          ? "border-indigo-500 bg-indigo-500 text-white shadow-sm shadow-indigo-500/15 dark:border-indigo-500 dark:bg-indigo-600"
+                          : "border-zinc-200 bg-zinc-50 text-zinc-700 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-indigo-700 dark:hover:bg-indigo-950/40 dark:hover:text-indigo-300",
+                      )}
+                    >
+                      {checked && <Check className="h-3.5 w-3.5 shrink-0" />}
+                      {service}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-            <label className="form-label flex items-center gap-1.5">
-              <MessageSquareText className="h-3.5 w-3.5 text-zinc-400" />
-              Other information
-            </label>
-            <textarea
-              className="form-input"
-              value={form.otherInformation}
-              onChange={(event) => update("otherInformation", event.target.value)}
-              placeholder="e.g. CEO is the decision-maker, they're launching in September, already trialled Google Ads with another agency and had a bad experience, budget is flexible if ROI is proven…"
-              rows={6}
-            />
-            {form.otherInformation.length > 0 && (
-              <p className="text-right text-xs" style={{ color: "var(--text-3)" }}>
-                {form.otherInformation.length} characters
-              </p>
-            )}
+          </div>
+
+          <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/50">
+            <div className="grid gap-3">
+              <div
+                className="flex items-start gap-3 rounded-xl border px-4 py-3"
+                style={{
+                  borderColor: "var(--accent-subtle, #c7d2fe)",
+                  background: "var(--accent-faint, #eef2ff)",
+                }}
+              >
+                <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-indigo-500" />
+                <div>
+                  <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>
+                    The more you share, the better the plan
+                  </p>
+                  <p className="mt-0.5 text-xs leading-relaxed" style={{ color: "var(--text-2)" }}>
+                    Include goals, timelines, blockers, decision-makers, budget sensitivities, and
+                    anything else that came up on the call. Marketing uses this to build a tailored
+                    strategy. Every detail counts.
+                  </p>
+                </div>
+              </div>
+              <label className="inline-flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-200">
+                <MessageSquareText className="h-4 w-4 shrink-0 text-zinc-400" />
+                <span>Other information</span>
+              </label>
+              <textarea
+                className="form-input min-h-[144px] px-4 py-3 text-sm leading-6"
+                value={form.otherInformation}
+                onChange={(event) => update("otherInformation", event.target.value)}
+                placeholder="e.g. CEO is the decision-maker, they're launching in September, already trialled Google Ads with another agency and had a bad experience, budget is flexible if ROI is proven…"
+                rows={6}
+              />
+              {form.otherInformation.length > 0 && (
+                <p className="text-right text-xs" style={{ color: "var(--text-3)" }}>
+                  {form.otherInformation.length} characters
+                </p>
+              )}
+            </div>
           </div>
         </form>
       </Modal>

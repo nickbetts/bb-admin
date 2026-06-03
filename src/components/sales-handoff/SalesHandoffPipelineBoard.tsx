@@ -240,6 +240,7 @@ function DragCard({
   const isSyncFailed = handoff.clickupSyncStatus === "failed";
   const isSynced = handoff.clickupSyncStatus === "synced";
   const ownerLabel = handoff.owner?.name ?? handoff.owner?.email ?? "Unassigned";
+  const websiteLabel = handoff.website.replace(/^https?:\/\//, "").replace(/\/$/, "");
 
   return (
     <article
@@ -247,14 +248,15 @@ function DragCard({
       style={{
         ...style,
         background: "var(--surface)",
-        borderRadius: "var(--r)",
+        borderRadius: "16px",
         border: isSyncFailed ? "1px solid #fecaca" : "1px solid var(--border)",
-        boxShadow: isDragging ? "var(--shadow-lg)" : "var(--shadow-sm)",
-        transition: "box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease",
+        boxShadow: isDragging ? "var(--shadow-lg)" : "0 1px 2px rgba(15, 23, 42, 0.06)",
+        transition:
+          "box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease, background 0.2s ease",
         transform: isDragging ? `${style?.transform ?? ""} scale(1.02)` : style?.transform,
       }}
       className={cn(
-        "group",
+        "group overflow-hidden",
         "cursor-pointer",
         isDragging ? "opacity-60" : undefined,
         disabled && "opacity-50",
@@ -264,32 +266,40 @@ function DragCard({
         onOpen(handoff);
       }}
     >
-      <div style={{ padding: "14px 16px 12px" }}>
+      <div style={{ padding: "14px 14px 12px" }}>
         <div
           style={{
             display: "flex",
             justifyContent: "space-between",
             gap: "10px",
-            marginBottom: "10px",
+            marginBottom: "12px",
           }}
         >
-          {/* Urgent badge */}
-          {handoff.urgentOverride ? (
-            <div className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
-              <AlertTriangle className="h-2.5 w-2.5" />
-              Urgent
-            </div>
-          ) : (
-            <div />
-          )}
+          <div style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: 0 }}>
+            <span
+              className="inline-flex items-center rounded-full px-2 py-1 text-[10px] font-semibold tracking-[0.08em] uppercase"
+              style={{
+                background: isSyncFailed ? "#fff1f2" : "var(--surface-2)",
+                color: isSyncFailed ? "#be123c" : "var(--text-3)",
+              }}
+            >
+              Request
+            </span>
+            {handoff.urgentOverride ? (
+              <div className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] font-semibold text-amber-700">
+                <AlertTriangle className="h-2.5 w-2.5" />
+                Urgent
+              </div>
+            ) : null}
+          </div>
           <button
             type="button"
             aria-label={`Drag ${handoff.prospectName}`}
             style={{
               border: "1px solid var(--border)",
-              background: "var(--bg)",
-              borderRadius: "8px",
-              padding: "4px",
+              background: "var(--surface-2)",
+              borderRadius: "10px",
+              padding: "6px",
               color: "var(--text-3)",
               cursor: disabled ? "not-allowed" : "grab",
               flexShrink: 0,
@@ -303,92 +313,83 @@ function DragCard({
           </button>
         </div>
 
-        {/* Prospect name */}
         <h3
-          className="truncate"
+          className="line-clamp-2"
           style={{
-            fontSize: "13px",
-            fontWeight: 600,
+            fontSize: "14px",
+            fontWeight: 700,
             color: "var(--text)",
-            lineHeight: 1.3,
+            lineHeight: 1.35,
           }}
         >
           {handoff.prospectName}
         </h3>
 
-        {/* Website */}
         <p
-          className="truncate"
+          className="mt-1 truncate"
           style={{
             fontSize: "11px",
             color: "var(--text-3)",
-            marginTop: "3px",
           }}
         >
-          {handoff.website}
+          {websiteLabel}
         </p>
 
-        {/* Budget pill */}
-        {handoff.budgetRange ? (
-          <div
+        <div style={{ marginTop: "12px", display: "flex", flexWrap: "wrap", gap: "6px" }}>
+          <span
             style={{
-              marginTop: "8px",
               display: "inline-flex",
               alignItems: "center",
-              gap: "4px",
-              background: "var(--bg)",
-              borderRadius: "var(--r-sm)",
-              padding: "3px 8px",
+              gap: "5px",
+              borderRadius: "999px",
+              background: "var(--surface-2)",
+              padding: "5px 9px",
               fontSize: "11px",
-              fontWeight: 500,
+              fontWeight: 600,
               color: "var(--text-2)",
             }}
           >
-            <Wallet style={{ width: "11px", height: "11px", opacity: 0.6, flexShrink: 0 }} />
-            {handoff.budgetRange}
-          </div>
-        ) : null}
+            <Clock3
+              style={{ width: "11px", height: "11px", flexShrink: 0, color: "var(--text-3)" }}
+            />
+            {formatDateTime(handoff.secondCallAt)}
+          </span>
+          {handoff.budgetRange ? (
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "5px",
+                borderRadius: "999px",
+                background: "var(--surface-2)",
+                padding: "5px 9px",
+                fontSize: "11px",
+                fontWeight: 600,
+                color: "var(--text-2)",
+              }}
+            >
+              <Wallet style={{ width: "11px", height: "11px", opacity: 0.7, flexShrink: 0 }} />
+              {handoff.budgetRange}
+            </span>
+          ) : null}
+        </div>
 
-        {/* Divider */}
         <div
           style={{
-            margin: "12px 0",
-            borderTop: "1px solid var(--border-subtle)",
-          }}
-        />
-
-        {/* Second call date */}
-        <p
-          style={{
-            fontSize: "11px",
-            fontWeight: 500,
-            color: "var(--text-2)",
-            display: "flex",
-            alignItems: "center",
-            gap: "5px",
-          }}
-        >
-          <Clock3
-            style={{ width: "12px", height: "12px", flexShrink: 0, color: "var(--text-3)" }}
-          />
-          {formatDateTime(handoff.secondCallAt)}
-        </p>
-
-        {/* Owner row */}
-        <div
-          style={{
-            marginTop: "8px",
+            marginTop: "14px",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
             gap: "8px",
+            borderTop: "1px solid var(--border-subtle)",
+            paddingTop: "10px",
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: 0 }}>
             <span
               style={{
-                width: "20px",
-                height: "20px",
+                width: "22px",
+                height: "22px",
                 borderRadius: "99px",
                 background: "var(--accent-bg)",
                 color: "var(--accent-text)",
@@ -423,7 +424,6 @@ function DragCard({
           </div>
         </div>
 
-        {/* ClickUp link — reveals on hover */}
         {handoff.clickupTaskUrl ? (
           <a
             href={handoff.clickupTaskUrl}
@@ -997,7 +997,7 @@ export function SalesHandoffPipelineBoard({
         }}
       >
         <CheckCircle2 style={{ width: "13px", height: "13px", color: "var(--success)" }} />
-        Drag any card to update its status — changes push to ClickUp automatically.
+        Drag any card to update its status. Changes push to ClickUp automatically.
       </p>
     </section>
   );
