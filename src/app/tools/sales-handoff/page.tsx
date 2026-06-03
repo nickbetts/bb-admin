@@ -24,6 +24,10 @@ import {
   SalesHandoffPipelineBoard,
   type SalesHandoffStatus,
 } from "@/components/sales-handoff/SalesHandoffPipelineBoard";
+import {
+  SalesHandoffDetailDrawer as SalesHandoffDrawer,
+  type SalesHandoffDetail,
+} from "@/components/sales-handoff/SalesHandoffDetailDrawer";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
@@ -67,6 +71,11 @@ interface SalesHandoffHistoryItem {
     name: string | null;
     email: string;
   } | null;
+  client?: {
+    id: string;
+    name: string;
+    slug: string;
+  } | null;
 }
 
 interface SalesHandoffHistoryResponse {
@@ -87,13 +96,18 @@ interface SalesHandoffSyncResponse {
 
 interface SalesHandoffPatchResponse {
   error?: string;
-  handoff?: SalesHandoffHistoryItem;
+  handoff?: SalesHandoffDetail;
   warning?: {
     code: "clickup_status_push_failed";
     message: string;
     attemptedStatuses: string[];
     errorMessage: string;
   };
+}
+
+interface SalesHandoffDetailResponse {
+  error?: string;
+  handoff?: SalesHandoffDetail;
 }
 
 const DEFAULT_SERVICE_OPTIONS = [
@@ -144,6 +158,29 @@ function formatStatusLabel(status: string): string {
     .join(" ");
 }
 
+function mapDetailToHistoryItem(detail: SalesHandoffDetail): SalesHandoffHistoryItem {
+  return {
+    id: detail.id,
+    prospectName: detail.prospectName,
+    website: detail.website,
+    secondCallAt: detail.secondCallAt,
+    interestedServices: detail.interestedServices,
+    budgetRange: detail.budgetRange,
+    status: detail.status,
+    noticeStatus: detail.noticeStatus,
+    urgentOverride: detail.urgentOverride,
+    urgentReason: detail.urgentReason,
+    clickupTaskId: detail.clickupTaskId,
+    clickupTaskUrl: detail.clickupTaskUrl,
+    clickupSyncStatus: detail.clickupSyncStatus,
+    clickupLastSyncedAt: detail.clickupLastSyncedAt,
+    createdAt: detail.createdAt,
+    updatedAt: detail.updatedAt,
+    owner: detail.owner,
+    client: detail.client,
+  };
+}
+
 export default function SalesHandoffPage() {
   const { toast } = useToast();
 
@@ -166,6 +203,14 @@ export default function SalesHandoffPage() {
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [historySyncing, setHistorySyncing] = useState(false);
   const [historyUpdatingId, setHistoryUpdatingId] = useState<string | null>(null);
+  const [selectedHandoffId, setSelectedHandoffId] = useState<string | null>(null);
+  const [selectedHandoffDetail, setSelectedHandoffDetail] = useState<SalesHandoffDetail | null>(
+    null,
+  );
+  const [selectedHandoffLoading, setSelectedHandoffLoading] = useState(false);
+  const [selectedHandoffError, setSelectedHandoffError] = useState<string | null>(null);
+  const [notesDraft, setNotesDraft] = useState("");
+  const [notesSaving, setNotesSaving] = useState(false);
 
   const upsertHandoffHistoryItem = useCallback((nextHandoff: SalesHandoffHistoryItem) => {
     setHandoffHistory((prev) => {
@@ -200,6 +245,52 @@ export default function SalesHandoffPage() {
       setHistoryLoading(false);
     }
   }, []);
+
+  const selectedHandoffSummary = useMemo(
+    () => handoffHistory.find((handoff) => handoff.id === selectedHandoffId) ?? null,
+    [handoffHistory, selectedHandoffId],
+  );
+
+  const applyPatchedHandoff = useCallback(
+    (detail: SalesHandoffDetail, options?: { syncNotesDraft?: boolean }) => {
+      upsertHandoffHistoryItem(mapDetailToHistoryItem(detail));
+      if (selectedHandoffId === detail.id) {
+        setSelectedHandoffDetail(detail);
+        if (options?.syncNotesDraft) {
+          setNotesDraft(detail.notes ?? "");
+        }
+      }
+    },
+    [selectedHandoffId, upsertHandoffHistoryItem],
+  );
+
+  const patchHandoff = useCallback(
+    async (
+      handoffId: string,
+      payload: Record<string, unknown>,
+      options?: { syncNotesDraft?: boolean },
+    ) => {
+      const res = await fetch(`/api/tools/sales-handoff/${handoffId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = (await res.json()) as SalesHandoffPatchResponse;
+      if (!res.ok) {
+        throw new Error(data.error ?? "Failed to update sales handoff");
+      }
+
+      if (data.handoff) {
+        applyPatchedHandoff(data.handoff, options);
+      }
+
+      return data;
+    },
+    [applyPatchedHandoff],
+  );
 
   const syncHistory = useCallback(async () => {
     setHistorySyncing(true);
@@ -240,22 +331,7 @@ export default function SalesHandoffPage() {
       setHistoryUpdatingId(handoffId);
 
       try {
-        const res = await fetch(`/api/tools/sales-handoff/${handoffId}`, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ status }),
-        });
-
-        const data = (await res.json()) as SalesHandoffPatchResponse;
-        if (!res.ok) {
-          throw new Error(data.error ?? "Failed to update sales handoff status");
-        }
-
-        if (data.handoff) {
-          upsertHandoffHistoryItem(data.handoff);
-        }
+        const data = await patchHandoff(handoffId, { status });
 
         if (data.warning) {
           const attemptedStatuses = data.warning.attemptedStatuses.join(", ");
@@ -274,8 +350,29 @@ export default function SalesHandoffPage() {
         setHistoryUpdatingId(null);
       }
     },
-    [toast, upsertHandoffHistoryItem],
+    [patchHandoff, toast],
   );
+
+  const saveSelectedNotes = useCallback(async () => {
+    if (!selectedHandoffId) return;
+
+    setNotesSaving(true);
+    try {
+      await patchHandoff(
+        selectedHandoffId,
+        {
+          notes: notesDraft.trim() ? notesDraft.trim() : null,
+        },
+        { syncNotesDraft: true },
+      );
+      toast("Notes saved", "success");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to save handoff notes";
+      toast(message, "error");
+    } finally {
+      setNotesSaving(false);
+    }
+  }, [notesDraft, patchHandoff, selectedHandoffId, toast]);
 
   useEffect(() => {
     async function loadConfig() {
@@ -298,6 +395,51 @@ export default function SalesHandoffPage() {
     void loadConfig();
     void loadHistory();
   }, [loadHistory]);
+
+  useEffect(() => {
+    if (!selectedHandoffId) {
+      setSelectedHandoffDetail(null);
+      setSelectedHandoffError(null);
+      setSelectedHandoffLoading(false);
+      setNotesDraft("");
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadHandoffDetail() {
+      setSelectedHandoffLoading(true);
+      setSelectedHandoffError(null);
+
+      try {
+        const res = await fetch(`/api/tools/sales-handoff/${selectedHandoffId}`);
+        const data = (await res.json()) as SalesHandoffDetailResponse;
+
+        if (!res.ok) {
+          throw new Error(data.error ?? "Failed to load sales handoff details");
+        }
+
+        if (cancelled) return;
+        setSelectedHandoffDetail(data.handoff ?? null);
+        setNotesDraft(data.handoff?.notes ?? "");
+      } catch (error) {
+        if (cancelled) return;
+        const message =
+          error instanceof Error ? error.message : "Failed to load sales handoff details";
+        setSelectedHandoffError(message);
+      } finally {
+        if (!cancelled) {
+          setSelectedHandoffLoading(false);
+        }
+      }
+    }
+
+    void loadHandoffDetail();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedHandoffId]);
 
   const secondCallAtTimestamp = useMemo(() => {
     if (!form.secondCallAt.trim()) return null;
@@ -508,7 +650,30 @@ export default function SalesHandoffPage() {
         onRefresh={() => {
           void loadHistory();
         }}
+        onOpenHandoff={(handoff) => {
+          setSelectedHandoffId(handoff.id);
+        }}
         onStatusChange={updateHandoffStatus}
+      />
+
+      <SalesHandoffDrawer
+        open={!!selectedHandoffId}
+        loading={selectedHandoffLoading}
+        error={selectedHandoffError}
+        handoff={selectedHandoffSummary}
+        detail={selectedHandoffDetail}
+        notesDraft={notesDraft}
+        notesSaving={notesSaving}
+        statusUpdating={historyUpdatingId === selectedHandoffId}
+        onClose={() => setSelectedHandoffId(null)}
+        onNotesChange={setNotesDraft}
+        onSaveNotes={() => {
+          void saveSelectedNotes();
+        }}
+        onStatusChange={(status) => {
+          if (!selectedHandoffId) return;
+          void updateHandoffStatus(selectedHandoffId, status);
+        }}
       />
 
       <Modal

@@ -16,6 +16,7 @@ import {
   CheckCircle2,
   Clock3,
   ExternalLink,
+  GripVertical,
   Loader2,
   RefreshCw,
   Search,
@@ -65,6 +66,7 @@ interface SalesHandoffPipelineBoardProps {
   updatingId: string | null;
   onSync: () => void;
   onRefresh: () => void;
+  onOpenHandoff: (handoff: SalesHandoffPipelineItem) => void;
   onStatusChange: (handoffId: string, status: SalesHandoffStatus) => Promise<void>;
 }
 
@@ -198,7 +200,15 @@ function ownerInitials(owner: SalesHandoffPipelineItem["owner"]): string {
   return name.slice(0, 2).toUpperCase() || "?";
 }
 
-function DragCard({ handoff, disabled }: { handoff: SalesHandoffPipelineItem; disabled: boolean }) {
+function DragCard({
+  handoff,
+  disabled,
+  onOpen,
+}: {
+  handoff: SalesHandoffPipelineItem;
+  disabled: boolean;
+  onOpen: (handoff: SalesHandoffPipelineItem) => void;
+}) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: handoff.id,
     data: { type: "handoff-card", status: handoff.status },
@@ -224,24 +234,53 @@ function DragCard({ handoff, disabled }: { handoff: SalesHandoffPipelineItem; di
       }}
       className={cn(
         "group",
-        !disabled && "cursor-grab active:cursor-grabbing",
+        "cursor-pointer",
         isDragging ? "opacity-60" : undefined,
-        disabled && "cursor-not-allowed opacity-50",
+        disabled && "opacity-50",
       )}
-      {...attributes}
-      {...listeners}
+      onClick={() => {
+        if (isDragging) return;
+        onOpen(handoff);
+      }}
     >
       <div style={{ padding: "14px 16px 12px" }}>
-        {/* Urgent badge */}
-        {handoff.urgentOverride ? (
-          <div
-            style={{ marginBottom: "10px" }}
-            className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700"
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            gap: "10px",
+            marginBottom: "10px",
+          }}
+        >
+          {/* Urgent badge */}
+          {handoff.urgentOverride ? (
+            <div className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
+              <AlertTriangle className="h-2.5 w-2.5" />
+              Urgent
+            </div>
+          ) : (
+            <div />
+          )}
+          <button
+            type="button"
+            aria-label={`Drag ${handoff.prospectName}`}
+            style={{
+              border: "1px solid var(--border)",
+              background: "var(--bg)",
+              borderRadius: "8px",
+              padding: "4px",
+              color: "var(--text-3)",
+              cursor: disabled ? "not-allowed" : "grab",
+              flexShrink: 0,
+            }}
+            onClick={(event) => event.stopPropagation()}
+            {...attributes}
+            {...listeners}
+            disabled={disabled}
           >
-            <AlertTriangle className="h-2.5 w-2.5" />
-            Urgent
-          </div>
-        ) : null}
+            <GripVertical className="h-3.5 w-3.5" />
+          </button>
+        </div>
 
         {/* Prospect name */}
         <h3
@@ -371,6 +410,7 @@ function DragCard({ handoff, disabled }: { handoff: SalesHandoffPipelineItem; di
             rel="noopener noreferrer"
             className="mt-3 inline-flex items-center gap-1 text-[11px] font-medium opacity-0 transition-opacity group-hover:opacity-100"
             style={{ color: "var(--accent)" }}
+            onClick={(event) => event.stopPropagation()}
             onPointerDown={(event) => event.stopPropagation()}
           >
             Open in ClickUp <ExternalLink style={{ width: "10px", height: "10px" }} />
@@ -387,10 +427,12 @@ function StatusColumn({
   column,
   handoffs,
   updatingId,
+  onOpenHandoff,
 }: {
   column: StatusColumnConfig;
   handoffs: SalesHandoffPipelineItem[];
   updatingId: string | null;
+  onOpenHandoff: (handoff: SalesHandoffPipelineItem) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: column.status });
 
@@ -490,6 +532,7 @@ function StatusColumn({
               key={handoff.id}
               handoff={handoff}
               disabled={!!updatingId && updatingId === handoff.id}
+              onOpen={onOpenHandoff}
             />
           ))
         )}
@@ -506,6 +549,7 @@ export function SalesHandoffPipelineBoard({
   updatingId,
   onSync,
   onRefresh,
+  onOpenHandoff,
   onStatusChange,
 }: SalesHandoffPipelineBoardProps) {
   const sensors = useSensors(
@@ -908,6 +952,7 @@ export function SalesHandoffPipelineBoard({
                   column={column}
                   handoffs={groupedHandoffs[column.status]}
                   updatingId={updatingId}
+                  onOpenHandoff={onOpenHandoff}
                 />
               ))}
             </div>
