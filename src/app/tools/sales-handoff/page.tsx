@@ -804,7 +804,7 @@ export default function SalesHandoffPage() {
             title="On Hold"
             value={handoffHistory.filter((h) => h.status === "on_hold").length}
             icon={<AlertTriangle className="h-5 w-5" />}
-            color="amber"
+            color="orange"
             loading={historyLoading}
           />
           <MetricCard
