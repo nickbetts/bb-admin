@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { AlertTriangle, Check, Loader2, Settings, X } from "lucide-react";
 
 import { useToast } from "@/components/ui/Toast";
+import { Toggle } from "@/components/ui/Toggle";
 
 const SETTING_DEFAULTS = {
   salesHandoffTaskNamePrefix: "Sales Handoff",
@@ -30,9 +31,10 @@ interface SalesHandoffSettingsPanelProps {
 
 function SectionHeading({ title }: { title: string }) {
   return (
-    <p className="border-b border-zinc-200 pb-2 text-[11px] font-semibold tracking-wider text-zinc-400 uppercase dark:border-zinc-800 dark:text-zinc-500">
+    <h3 className="flex items-center gap-2 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
       {title}
-    </p>
+      <span className="h-px flex-1 bg-gradient-to-r from-zinc-300 to-zinc-300 opacity-40 dark:from-zinc-700 dark:to-zinc-700" />
+    </h3>
   );
 }
 
@@ -163,7 +165,7 @@ export function SalesHandoffSettingsPanel({ open, onClose }: SalesHandoffSetting
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto" style={{ padding: "24px" }}>
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-5 w-5 animate-spin text-zinc-400" />
@@ -176,9 +178,16 @@ export function SalesHandoffSettingsPanel({ open, onClose }: SalesHandoffSetting
           ) : (
             <div className="space-y-8">
               {/* Task naming */}
-              <div className="space-y-4">
+              <div
+                style={{
+                  padding: "16px",
+                  background: "var(--surface-2)",
+                  borderRadius: "var(--r-sm)",
+                  border: "1px solid var(--border)",
+                }}
+              >
                 <SectionHeading title="Task Naming" />
-                <div className="grid gap-1.5">
+                <div className="mt-4">
                   <label className="form-label">Task name prefix</label>
                   <input
                     className="form-input"
@@ -186,9 +195,11 @@ export function SalesHandoffSettingsPanel({ open, onClose }: SalesHandoffSetting
                     onChange={(e) => update("salesHandoffTaskNamePrefix", e.target.value)}
                     placeholder="Sales Handoff"
                   />
-                  <p className="text-xs text-zinc-400 dark:text-zinc-500">
+                  <p style={{ fontSize: "12px", color: "var(--text-3)", marginTop: "8px" }}>
                     Preview:{" "}
-                    <span className="font-mono text-zinc-600 dark:text-zinc-300">
+                    <span
+                      style={{ fontFamily: "monospace", color: "var(--text-2)", fontWeight: 500 }}
+                    >
                       {taskNamePreview}
                     </span>
                   </p>
@@ -196,9 +207,16 @@ export function SalesHandoffSettingsPanel({ open, onClose }: SalesHandoffSetting
               </div>
 
               {/* Description headings */}
-              <div className="space-y-4">
+              <div
+                style={{
+                  padding: "16px",
+                  background: "var(--surface-2)",
+                  borderRadius: "var(--r-sm)",
+                  border: "1px solid var(--border)",
+                }}
+              >
                 <SectionHeading title="Description Section Headings" />
-                <div className="grid gap-3">
+                <div className="mt-4 grid gap-4">
                   {(
                     [
                       {
@@ -223,7 +241,7 @@ export function SalesHandoffSettingsPanel({ open, onClose }: SalesHandoffSetting
                       },
                     ] as const
                   ).map(({ key, label, placeholder }) => (
-                    <div key={key} className="grid gap-1.5">
+                    <div key={key}>
                       <label className="form-label">{label}</label>
                       <input
                         className="form-input"
@@ -237,10 +255,17 @@ export function SalesHandoffSettingsPanel({ open, onClose }: SalesHandoffSetting
               </div>
 
               {/* Checklist */}
-              <div className="space-y-4">
+              <div
+                style={{
+                  padding: "16px",
+                  background: "var(--surface-2)",
+                  borderRadius: "var(--r-sm)",
+                  border: "1px solid var(--border)",
+                }}
+              >
                 <SectionHeading title="ClickUp Checklist" />
-                <div className="grid gap-3">
-                  <div className="grid gap-1.5">
+                <div className="mt-4 grid gap-4">
+                  <div>
                     <label className="form-label">Checklist name</label>
                     <input
                       className="form-input"
@@ -249,7 +274,7 @@ export function SalesHandoffSettingsPanel({ open, onClose }: SalesHandoffSetting
                       placeholder="Marketing Handoff Progress"
                     />
                   </div>
-                  <div className="grid gap-1.5">
+                  <div>
                     <label className="form-label">Checklist items</label>
                     <textarea
                       className="form-input"
@@ -258,16 +283,25 @@ export function SalesHandoffSettingsPanel({ open, onClose }: SalesHandoffSetting
                       onChange={(e) => update("clickupSalesHandoffChecklist", e.target.value)}
                       placeholder="Plan generated&#10;Internal sign-off&#10;Ready for client meeting"
                     />
-                    <p className="text-xs text-zinc-400 dark:text-zinc-500">One item per line</p>
+                    <p style={{ fontSize: "12px", color: "var(--text-3)", marginTop: "6px" }}>
+                      One item per line
+                    </p>
                   </div>
                 </div>
               </div>
 
               {/* ClickUp integration */}
-              <div className="space-y-4">
+              <div
+                style={{
+                  padding: "16px",
+                  background: "var(--surface-2)",
+                  borderRadius: "var(--r-sm)",
+                  border: "1px solid var(--border)",
+                }}
+              >
                 <SectionHeading title="ClickUp Integration" />
-                <div className="grid gap-3">
-                  <div className="grid gap-1.5">
+                <div className="mt-4 grid gap-4">
+                  <div>
                     <label className="form-label">List ID</label>
                     <input
                       className="form-input font-mono"
@@ -275,11 +309,11 @@ export function SalesHandoffSettingsPanel({ open, onClose }: SalesHandoffSetting
                       onChange={(e) => update("clickupSalesHandoffListId", e.target.value)}
                       placeholder="901202558111"
                     />
-                    <p className="text-xs text-zinc-400 dark:text-zinc-500">
+                    <p style={{ fontSize: "12px", color: "var(--text-3)", marginTop: "6px" }}>
                       Numeric ClickUp list ID where tasks are created
                     </p>
                   </div>
-                  <div className="grid gap-1.5">
+                  <div>
                     <label className="form-label">Default assignees</label>
                     <textarea
                       className="form-input"
@@ -288,7 +322,7 @@ export function SalesHandoffSettingsPanel({ open, onClose }: SalesHandoffSetting
                       onChange={(e) => update("clickupSalesHandoffAssignees", e.target.value)}
                       placeholder="Nick Betts&#10;Connor James"
                     />
-                    <p className="text-xs text-zinc-400 dark:text-zinc-500">
+                    <p style={{ fontSize: "12px", color: "var(--text-3)", marginTop: "6px" }}>
                       One name per line — matched to ClickUp member usernames
                     </p>
                   </div>
@@ -296,9 +330,16 @@ export function SalesHandoffSettingsPanel({ open, onClose }: SalesHandoffSetting
               </div>
 
               {/* Services */}
-              <div className="space-y-4">
+              <div
+                style={{
+                  padding: "16px",
+                  background: "var(--surface-2)",
+                  borderRadius: "var(--r-sm)",
+                  border: "1px solid var(--border)",
+                }}
+              >
                 <SectionHeading title="Services" />
-                <div className="grid gap-1.5">
+                <div className="mt-4">
                   <label className="form-label">Available services</label>
                   <textarea
                     className="form-input"
@@ -307,48 +348,37 @@ export function SalesHandoffSettingsPanel({ open, onClose }: SalesHandoffSetting
                     onChange={(e) => update("clickupSalesHandoffServices", e.target.value)}
                     placeholder="Google PPC&#10;Paid Meta&#10;..."
                   />
-                  <p className="text-xs text-zinc-400 dark:text-zinc-500">
+                  <p style={{ fontSize: "12px", color: "var(--text-3)", marginTop: "6px" }}>
                     One service per line — shown as checkboxes on the new handoff form
                   </p>
                 </div>
               </div>
 
               {/* Policies */}
-              <div className="space-y-4">
+              <div
+                style={{
+                  padding: "16px",
+                  background: "var(--surface-2)",
+                  borderRadius: "var(--r-sm)",
+                  border: "1px solid var(--border)",
+                }}
+              >
                 <SectionHeading title="Policies" />
-                <div className="grid gap-3">
-                  <label className="flex cursor-pointer items-center gap-3">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 accent-indigo-600"
-                      checked={settings.clickupSalesHandoffEnforce48HourNotice === "true"}
-                      onChange={(e) =>
-                        update(
-                          "clickupSalesHandoffEnforce48HourNotice",
-                          e.target.checked ? "true" : "false",
-                        )
-                      }
-                    />
-                    <span className="text-sm text-zinc-700 dark:text-zinc-300">
-                      Enforce 48-hour notice policy
-                    </span>
-                  </label>
-                  <label className="flex cursor-pointer items-center gap-3">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 accent-indigo-600"
-                      checked={settings.clickupSalesHandoffAllowUrgentOverride === "true"}
-                      onChange={(e) =>
-                        update(
-                          "clickupSalesHandoffAllowUrgentOverride",
-                          e.target.checked ? "true" : "false",
-                        )
-                      }
-                    />
-                    <span className="text-sm text-zinc-700 dark:text-zinc-300">
-                      Allow urgent override for &lt;48h notice
-                    </span>
-                  </label>
+                <div className="mt-4 grid gap-4">
+                  <Toggle
+                    label="Enforce 48-hour notice policy"
+                    checked={settings.clickupSalesHandoffEnforce48HourNotice === "true"}
+                    onChange={(checked) =>
+                      update("clickupSalesHandoffEnforce48HourNotice", checked ? "true" : "false")
+                    }
+                  />
+                  <Toggle
+                    label="Allow urgent override for <48h notice"
+                    checked={settings.clickupSalesHandoffAllowUrgentOverride === "true"}
+                    onChange={(checked) =>
+                      update("clickupSalesHandoffAllowUrgentOverride", checked ? "true" : "false")
+                    }
+                  />
                 </div>
               </div>
             </div>
