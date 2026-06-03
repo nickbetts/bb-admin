@@ -945,8 +945,8 @@ export default function SalesHandoffPage() {
             >
               {/* STEP 1: Client Context */}
               {formStep === 1 && (
-                <div className="space-y-14">
-                  <div className="space-y-2.5">
+                <div className="flex flex-col">
+                  <div className="flex flex-col">
                     <p className="py-2.5 text-[11px] font-semibold tracking-wide text-indigo-500 uppercase dark:text-indigo-400">
                       Step 1 of 6
                     </p>
@@ -958,16 +958,15 @@ export default function SalesHandoffPage() {
                     </p>
                   </div>
 
-                  <div aria-hidden="true" className="h-3" />
+                  <div aria-hidden="true" className="h-2.5" />
 
-                  <div className="space-y-12">
-                    <div aria-hidden="true" className="h-2.5" />
-
-                    <div className="grid gap-2.5">
+                  <div className="flex flex-col">
+                    <div className="flex flex-col">
                       <label className="flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">
                         <Building2 className="h-4 w-4 text-indigo-400" />
                         <span>Company name</span>
                       </label>
+                      <div aria-hidden="true" className="h-2.5" />
                       <input
                         className="form-input"
                         value={form.prospectName}
@@ -978,13 +977,14 @@ export default function SalesHandoffPage() {
                       />
                     </div>
 
-                    <div aria-hidden="true" className="h-2" />
+                    <div aria-hidden="true" className="h-2.5" />
 
-                    <div className="grid gap-2.5">
+                    <div className="flex flex-col">
                       <label className="flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">
                         <Globe className="h-4 w-4 text-indigo-400" />
                         <span>Website</span>
                       </label>
+                      <div aria-hidden="true" className="h-2.5" />
                       <input
                         className="form-input"
                         value={form.website}
@@ -995,7 +995,7 @@ export default function SalesHandoffPage() {
                     </div>
                   </div>
 
-                  <div aria-hidden="true" className="h-3" />
+                  <div aria-hidden="true" className="h-2.5" />
                 </div>
               )}
 
@@ -1321,7 +1321,7 @@ export default function SalesHandoffPage() {
             </motion.div>
           </AnimatePresence>
 
-          <div aria-hidden="true" className="h-3" />
+          <div aria-hidden="true" className="h-2.5" />
 
           {/* Navigation */}
           <div className="flex items-center justify-between gap-3 border-t border-zinc-200 pt-6 dark:border-zinc-800">
