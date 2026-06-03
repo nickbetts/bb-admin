@@ -7,6 +7,15 @@
     "neon": {
       "type": "http",
       "url": "https://mcp.neon.tech/mcp"
+    },
+    "21st-dev-magic": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@21st-dev/magic@latest",
+        "API_KEY=\"2e279235594245bca847fbd919f46e17562e375fb4f0b9c8eb748dcbd21d8521\""
+      ]
     }
   }
 }

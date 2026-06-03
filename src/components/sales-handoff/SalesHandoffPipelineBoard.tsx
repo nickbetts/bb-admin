@@ -19,8 +19,6 @@ import {
   GripVertical,
   Loader2,
   Search,
-  ShieldAlert,
-  Target,
   Wallet,
   Zap,
 } from "lucide-react";
@@ -151,43 +149,6 @@ const STATUS_COLUMNS: Array<{
     dotColor: "#94a3b8",
   },
 ];
-
-type StatusColumnConfig = (typeof STATUS_COLUMNS)[number];
-
-const STAT_CARDS = [
-  {
-    key: "openPipeline" as const,
-    label: "Open in pipeline",
-    icon: Target,
-    accentColor: "#6366f1",
-    iconBg: "#eef2ff",
-    iconColor: "#4f46e5",
-  },
-  {
-    key: "urgent" as const,
-    label: "Urgent overrides",
-    icon: ShieldAlert,
-    accentColor: "#f59e0b",
-    iconBg: "#fffbeb",
-    iconColor: "#d97706",
-  },
-  {
-    key: "dueSoon" as const,
-    label: "Calls in next 48h",
-    icon: Clock3,
-    accentColor: "#0ea5e9",
-    iconBg: "#f0f9ff",
-    iconColor: "#0284c7",
-  },
-  {
-    key: "syncFailed" as const,
-    label: "Sync issues",
-    icon: Zap,
-    accentColor: "#ef4444",
-    iconBg: "#fef2f2",
-    iconColor: "#dc2626",
-  },
-] as const;
 
 function isKnownSalesHandoffStatus(value: string): value is SalesHandoffStatus {
   return STATUS_COLUMNS.some((col) => col.status === value);
@@ -645,18 +606,6 @@ export function SalesHandoffPipelineBoard({
     return buckets;
   }, [filteredHandoffs]);
 
-  const metrics = useMemo(() => {
-    const in48Hours = nowMs + 48 * 60 * 60 * 1000;
-    const openPipeline = filteredHandoffs.filter((h) => isOpenStatus(h.status)).length;
-    const urgent = filteredHandoffs.filter((h) => h.urgentOverride).length;
-    const dueSoon = filteredHandoffs.filter((h) => {
-      const callAt = new Date(h.secondCallAt).getTime();
-      return callAt >= nowMs && callAt <= in48Hours && isOpenStatus(h.status);
-    }).length;
-    const syncFailed = filteredHandoffs.filter((h) => h.clickupSyncStatus === "failed").length;
-    return { openPipeline, urgent, dueSoon, syncFailed };
-  }, [filteredHandoffs, nowMs]);
-
   const syncFailedHandoffs = useMemo(
     () => filteredHandoffs.filter((handoff) => handoff.clickupSyncStatus === "failed"),
     [filteredHandoffs],
@@ -680,56 +629,6 @@ export function SalesHandoffPipelineBoard({
       id="sales-handoff-pipeline"
       style={{ display: "flex", flexDirection: "column", gap: "28px" }}
     >
-      {/* ── KPI stat strip ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px" }}>
-        {STAT_CARDS.map(({ key, label, icon: Icon, accentColor, iconBg, iconColor }) => (
-          <div
-            key={key}
-            className="metric-card"
-            style={{ display: "flex", alignItems: "center", gap: "16px" }}
-          >
-            <div
-              style={{
-                width: "44px",
-                height: "44px",
-                borderRadius: "12px",
-                background: iconBg,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-              }}
-            >
-              <Icon style={{ width: "20px", height: "20px", color: iconColor }} />
-            </div>
-            <div style={{ minWidth: 0 }}>
-              <p
-                style={{
-                  fontSize: "28px",
-                  fontWeight: 700,
-                  lineHeight: 1,
-                  color: accentColor,
-                  fontVariantNumeric: "tabular-nums",
-                }}
-              >
-                {metrics[key]}
-              </p>
-              <p
-                className="truncate"
-                style={{
-                  fontSize: "11px",
-                  color: "var(--text-3)",
-                  marginTop: "5px",
-                  fontWeight: 500,
-                }}
-              >
-                {label}
-              </p>
-            </div>
-          </div>
-        ))}
-      </div>
-
       {/* ── Board header + filters ── */}
       <div className="card" style={{ overflow: "visible" }}>
         <div className="card-header" style={{ padding: "20px 28px" }}>

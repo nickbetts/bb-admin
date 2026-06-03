@@ -750,103 +750,113 @@ export default function SalesHandoffPage() {
 
   return (
     <div className="page max-w-350">
-      {/* Header Section */}
-      <div className="mb-12 space-y-8">
-        {/* Title */}
-        <div>
-          <h1 className="text-4xl font-bold text-zinc-900 dark:text-zinc-100">Sales Requests</h1>
-          <p className="mt-3 text-lg text-zinc-600 dark:text-zinc-400">
-            Capture first-call context and hand marketing a sharper brief.
-          </p>
+      {/* ═════ HERO HEADER ═════ */}
+      <div className="mb-16 space-y-10">
+        {/* Title + CTA */}
+        <div className="flex flex-col items-start justify-between gap-8 lg:flex-row lg:items-end">
+          <div>
+            <h1 className="text-5xl font-black text-zinc-900 dark:text-zinc-100">Sales Requests</h1>
+            <p className="mt-4 max-w-xl text-xl text-zinc-600 dark:text-zinc-400">
+              Capture first-call context and hand marketing a sharper, more actionable brief.
+            </p>
+          </div>
+          <div className="flex flex-col gap-4 sm:flex-row">
+            <button
+              type="button"
+              onClick={() => setShowSettingsPanel(true)}
+              className="inline-flex items-center justify-center gap-3 rounded-2xl border-2 border-zinc-300 bg-white px-8 py-4 text-lg font-bold text-zinc-900 transition hover:border-zinc-400 hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:border-zinc-500 dark:hover:bg-zinc-800"
+            >
+              <Settings className="h-6 w-6" />
+              <span>Settings</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setFieldError(null);
+                setShowCreateModal(true);
+                setFormStep(1);
+              }}
+              className="inline-flex items-center justify-center gap-3 rounded-2xl bg-gradient-to-br from-indigo-600 to-indigo-700 px-8 py-4 text-lg font-bold text-white shadow-lg transition hover:from-indigo-700 hover:to-indigo-800 dark:from-indigo-500 dark:to-indigo-600"
+            >
+              <Plus className="h-6 w-6" />
+              <span>New Request</span>
+            </button>
+          </div>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 gap-6 lg:grid-cols-4">
-          <div className="rounded-2xl border border-blue-200 bg-blue-50/60 p-6 dark:border-blue-900/40 dark:bg-blue-950/20">
-            <div className="space-y-3">
-              <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-blue-600/10">
-                <ClipboardList className="h-7 w-7 text-blue-600 dark:text-blue-400" />
+        {/* Premium Stats Grid (2x2) */}
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+          {/* Total Requests */}
+          <div className="group relative overflow-hidden rounded-3xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-blue-50/50 p-8 transition hover:border-blue-300 dark:border-blue-900/50 dark:from-blue-950/30 dark:to-blue-950/10">
+            <div className="absolute top-0 right-0 h-32 w-32 rounded-full bg-blue-100/50 blur-3xl dark:bg-blue-900/20" />
+            <div className="relative space-y-4">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-600/10 transition group-hover:bg-blue-600/20">
+                <ClipboardList className="h-8 w-8 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
-                <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                <p className="text-sm font-bold tracking-widest text-blue-600 uppercase dark:text-blue-400">
                   Total Requests
                 </p>
-                <p className="mt-2 text-3xl font-bold text-blue-900 dark:text-blue-100">
+                <p className="mt-3 text-5xl font-black text-blue-900 dark:text-blue-100">
                   {handoffHistory.length}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-6 dark:border-amber-900/40 dark:bg-amber-950/20">
-            <div className="space-y-3">
-              <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-amber-600/10">
-                <Zap className="h-7 w-7 text-amber-600 dark:text-amber-400" />
+          {/* In Progress */}
+          <div className="group relative overflow-hidden rounded-3xl border-2 border-amber-200 bg-gradient-to-br from-amber-50 to-amber-50/50 p-8 transition hover:border-amber-300 dark:border-amber-900/50 dark:from-amber-950/30 dark:to-amber-950/10">
+            <div className="absolute top-0 right-0 h-32 w-32 rounded-full bg-amber-100/50 blur-3xl dark:bg-amber-900/20" />
+            <div className="relative space-y-4">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-600/10 transition group-hover:bg-amber-600/20">
+                <Zap className="h-8 w-8 text-amber-600 dark:text-amber-400" />
               </div>
               <div>
-                <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
+                <p className="text-sm font-bold tracking-widest text-amber-600 uppercase dark:text-amber-400">
                   In Progress
                 </p>
-                <p className="mt-2 text-3xl font-bold text-amber-900 dark:text-amber-100">
+                <p className="mt-3 text-5xl font-black text-amber-900 dark:text-amber-100">
                   {handoffHistory.filter((h) => h.status === "delivery_in_progress").length}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-6 dark:border-emerald-900/40 dark:bg-emerald-950/20">
-            <div className="space-y-3">
-              <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-emerald-600/10">
-                <Check className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
+          {/* Completed */}
+          <div className="group relative overflow-hidden rounded-3xl border-2 border-emerald-200 bg-gradient-to-br from-emerald-50 to-emerald-50/50 p-8 transition hover:border-emerald-300 dark:border-emerald-900/50 dark:from-emerald-950/30 dark:to-emerald-950/10">
+            <div className="absolute top-0 right-0 h-32 w-32 rounded-full bg-emerald-100/50 blur-3xl dark:bg-emerald-900/20" />
+            <div className="relative space-y-4">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-600/10 transition group-hover:bg-emerald-600/20">
+                <Check className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
               </div>
               <div>
-                <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                <p className="text-sm font-bold tracking-widest text-emerald-600 uppercase dark:text-emerald-400">
                   Completed
                 </p>
-                <p className="mt-2 text-3xl font-bold text-emerald-900 dark:text-emerald-100">
+                <p className="mt-3 text-5xl font-black text-emerald-900 dark:text-emerald-100">
                   {handoffHistory.filter((h) => h.status === "delivery_complete").length}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-violet-200 bg-violet-50/60 p-6 dark:border-violet-900/40 dark:bg-violet-950/20">
-            <div className="space-y-3">
-              <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-violet-600/10">
-                <ExternalLink className="h-7 w-7 text-violet-600 dark:text-violet-400" />
+          {/* Synced to ClickUp */}
+          <div className="group relative overflow-hidden rounded-3xl border-2 border-violet-200 bg-gradient-to-br from-violet-50 to-violet-50/50 p-8 transition hover:border-violet-300 dark:border-violet-900/50 dark:from-violet-950/30 dark:to-violet-950/10">
+            <div className="absolute top-0 right-0 h-32 w-32 rounded-full bg-violet-100/50 blur-3xl dark:bg-violet-900/20" />
+            <div className="relative space-y-4">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-violet-600/10 transition group-hover:bg-violet-600/20">
+                <ExternalLink className="h-8 w-8 text-violet-600 dark:text-violet-400" />
               </div>
               <div>
-                <p className="text-sm font-medium text-violet-600 dark:text-violet-400">Synced</p>
-                <p className="mt-2 text-3xl font-bold text-violet-900 dark:text-violet-100">
+                <p className="text-sm font-bold tracking-widest text-violet-600 uppercase dark:text-violet-400">
+                  Synced
+                </p>
+                <p className="mt-3 text-5xl font-black text-violet-900 dark:text-violet-100">
                   {handoffHistory.filter((h) => h.clickupTaskId).length}
                 </p>
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex flex-col gap-4 sm:flex-row">
-          <button
-            type="button"
-            onClick={() => setShowSettingsPanel(true)}
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-7 py-3.5 text-base font-semibold text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
-          >
-            <Settings className="h-5 w-5" />
-            Settings
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setFieldError(null);
-              setShowCreateModal(true);
-              setFormStep(1);
-            }}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-7 py-3.5 text-base font-semibold text-white transition hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600"
-          >
-            <Plus className="h-5 w-5" />
-            New Request
-          </button>
         </div>
       </div>
 
