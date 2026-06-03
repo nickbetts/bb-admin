@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   AlertTriangle,
   Building2,
@@ -28,6 +29,7 @@ import {
   type SalesHandoffDetail,
 } from "@/components/sales-handoff/SalesHandoffDetailDrawer";
 import { SalesHandoffSettingsPanel } from "@/components/sales-handoff/SalesHandoffSettingsPanel";
+import { MetricCard } from "@/components/ui/MetricCard";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
@@ -752,21 +754,17 @@ export default function SalesHandoffPage() {
     <div className="page max-w-350">
       {/* ═════ HEADER ═════ */}
       <div className="mb-8 space-y-6">
-        {/* Title + CTA - Clean minimal header */}
-        <div className="flex items-end justify-between gap-4">
+        {/* Title + CTA */}
+        <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="flex-1">
-            <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
-              Sales Requests
-            </h1>
-            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-              Manage prospect briefs and track marketing delivery
-            </p>
+            <h1 className="page-title">Sales Requests</h1>
+            <p className="page-desc">Manage prospect briefs and track marketing delivery</p>
           </div>
           <div className="flex gap-2">
             <button
               type="button"
               onClick={() => setShowSettingsPanel(true)}
-              className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium text-zinc-600 transition hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+              className="btn btn-secondary btn-sm"
             >
               <Settings className="h-3.5 w-3.5" />
               Settings
@@ -778,7 +776,7 @@ export default function SalesHandoffPage() {
                 setShowCreateModal(true);
                 setFormStep(1);
               }}
-              className="inline-flex items-center gap-1.5 rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+              className="btn btn-primary btn-sm"
             >
               <Plus className="h-3.5 w-3.5" />
               New Request
@@ -786,93 +784,52 @@ export default function SalesHandoffPage() {
           </div>
         </div>
 
-        {/* Stats Grid - Minimal, modern */}
+        {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          {/* Total Requests */}
-          <div className="rounded-md border border-zinc-200 bg-white p-3 transition hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900/30">
-            <div className="flex items-center justify-between gap-2">
-              <div className="min-w-0">
-                <p className="truncate text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                  Total
-                </p>
-                <p className="mt-1 text-xl font-semibold text-zinc-900 dark:text-zinc-100">
-                  {handoffHistory.length}
-                </p>
-              </div>
-              <div className="shrink-0 rounded-md bg-zinc-100 p-1.5 dark:bg-zinc-800">
-                <ClipboardList className="h-3.5 w-3.5 text-zinc-600 dark:text-zinc-400" />
-              </div>
-            </div>
-          </div>
-
-          {/* In Progress */}
-          <div className="rounded-md border border-zinc-200 bg-white p-3 transition hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900/30">
-            <div className="flex items-center justify-between gap-2">
-              <div className="min-w-0">
-                <p className="truncate text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                  In Progress
-                </p>
-                <p className="mt-1 text-xl font-semibold text-zinc-900 dark:text-zinc-100">
-                  {handoffHistory.filter((h) => h.status === "delivery_in_progress").length}
-                </p>
-              </div>
-              <div className="shrink-0 rounded-md bg-amber-100 p-1.5 dark:bg-amber-900/30">
-                <Zap className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-              </div>
-            </div>
-          </div>
-
-          {/* Completed */}
-          <div className="rounded-md border border-zinc-200 bg-white p-3 transition hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900/30">
-            <div className="flex items-center justify-between gap-2">
-              <div className="min-w-0">
-                <p className="truncate text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                  Completed
-                </p>
-                <p className="mt-1 text-xl font-semibold text-zinc-900 dark:text-zinc-100">
-                  {handoffHistory.filter((h) => h.status === "delivery_complete").length}
-                </p>
-              </div>
-              <div className="shrink-0 rounded-md bg-emerald-100 p-1.5 dark:bg-emerald-900/30">
-                <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-              </div>
-            </div>
-          </div>
-
-          {/* Synced */}
-          <div className="rounded-md border border-zinc-200 bg-white p-3 transition hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900/30">
-            <div className="flex items-center justify-between gap-2">
-              <div className="min-w-0">
-                <p className="truncate text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                  Synced
-                </p>
-                <p className="mt-1 text-xl font-semibold text-zinc-900 dark:text-zinc-100">
-                  {handoffHistory.filter((h) => h.clickupTaskId).length}
-                </p>
-              </div>
-              <div className="shrink-0 rounded-md bg-violet-100 p-1.5 dark:bg-violet-900/30">
-                <ExternalLink className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
-              </div>
-            </div>
-          </div>
+          <MetricCard
+            title="Total"
+            value={handoffHistory.length}
+            icon={<ClipboardList className="h-5 w-5" />}
+            color="purple"
+            loading={historyLoading}
+          />
+          <MetricCard
+            title="In Progress"
+            value={handoffHistory.filter((h) => h.status === "plan_in_progress").length}
+            icon={<Zap className="h-5 w-5" />}
+            color="orange"
+            loading={historyLoading}
+          />
+          <MetricCard
+            title="Completed"
+            value={handoffHistory.filter((h) => h.status === "won").length}
+            icon={<Check className="h-5 w-5" />}
+            color="green"
+            loading={historyLoading}
+          />
+          <MetricCard
+            title="Synced"
+            value={handoffHistory.filter((h) => h.clickupTaskId).length}
+            icon={<ExternalLink className="h-5 w-5" />}
+            color="blue"
+            loading={historyLoading}
+          />
         </div>
       </div>
 
       {/* Kanban Board */}
-      <div className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900/30">
-        <SalesHandoffPipelineBoard
-          handoffs={handoffHistory}
-          loading={historyLoading}
-          error={historyError}
-          syncing={historySyncing}
-          lastSyncedLabel={formatBoardRefreshLabel(historyLastLoadedAt)}
-          updatingId={historyUpdatingId}
-          onOpenHandoff={(handoff) => {
-            setSelectedHandoffId(handoff.id);
-          }}
-          onStatusChange={updateHandoffStatus}
-        />
-      </div>
+      <SalesHandoffPipelineBoard
+        handoffs={handoffHistory}
+        loading={historyLoading}
+        error={historyError}
+        syncing={historySyncing}
+        lastSyncedLabel={formatBoardRefreshLabel(historyLastLoadedAt)}
+        updatingId={historyUpdatingId}
+        onOpenHandoff={(handoff) => {
+          setSelectedHandoffId(handoff.id);
+        }}
+        onStatusChange={updateHandoffStatus}
+      />
 
       <SalesHandoffSettingsPanel
         open={showSettingsPanel}
@@ -916,12 +873,12 @@ export default function SalesHandoffPage() {
           setFieldError(null);
         }}
         title={
-          <span className="inline-flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900">
+          <span className="inline-flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-linear-to-br from-indigo-500 to-violet-500 text-white shadow-sm">
               <ClipboardList className="h-4 w-4" />
             </div>
             <div>
-              <p className="text-xs font-medium tracking-wide text-zinc-500 uppercase dark:text-zinc-400">
+              <p className="text-[11px] font-semibold tracking-wide text-indigo-500 uppercase dark:text-indigo-400">
                 New Request
               </p>
               <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
@@ -931,30 +888,28 @@ export default function SalesHandoffPage() {
           </span>
         }
         description="Build a complete prospect profile step by step."
-        size="2xl"
+        size="xl"
         footer={null}
       >
         <div className="space-y-3">
           {/* Info Box */}
-          <div className="rounded-md border border-zinc-200 bg-zinc-50 px-3.5 py-3 dark:border-zinc-800 dark:bg-zinc-900/30">
-            <div className="flex gap-2.5">
-              <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded text-zinc-500 dark:text-zinc-400">
-                <Info className="h-3.5 w-3.5" />
-              </div>
-              <div className="text-xs leading-relaxed">
-                <p className="font-medium text-zinc-900 dark:text-zinc-100">Notice requirement</p>
-                <p className="mt-0.5 text-zinc-600 dark:text-zinc-400">
-                  {enforce48HourNotice
-                    ? "Marketing needs 48 hours to prepare."
-                    : "Marketing usually needs 48 hours notice."}
-                </p>
-              </div>
+          <div className="flex gap-2.5 rounded-xl border border-indigo-100 bg-indigo-50/60 px-3.5 py-3 dark:border-indigo-900/40 dark:bg-indigo-950/20">
+            <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-300">
+              <Info className="h-3.5 w-3.5" />
+            </div>
+            <div className="text-xs leading-relaxed">
+              <p className="font-semibold text-zinc-900 dark:text-zinc-100">Notice requirement</p>
+              <p className="mt-0.5 text-zinc-600 dark:text-zinc-400">
+                {enforce48HourNotice
+                  ? "Marketing needs 48 hours to prepare."
+                  : "Marketing usually needs 48 hours notice."}
+              </p>
             </div>
           </div>
 
           {/* Error Box */}
           {fieldError ? (
-            <div className="flex gap-2.5 rounded-md border border-rose-200 bg-rose-50 px-3.5 py-3 dark:border-rose-900/50 dark:bg-rose-950/30">
+            <div className="flex gap-2.5 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-3 dark:border-rose-900/50 dark:bg-rose-950/30">
               <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-600 dark:text-rose-400" />
               <p className="text-xs text-rose-700 dark:text-rose-200">{fieldError}</p>
             </div>
@@ -962,371 +917,400 @@ export default function SalesHandoffPage() {
         </div>
 
         <form id="sales-handoff-form" onSubmit={handleSubmit} className="mt-6 space-y-6">
-          {/* STEP 1: Client Context */}
-          {formStep === 1 && (
-            <div className="space-y-6">
-              <div>
-                <p className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">
-                  Step 1 of 6
-                </p>
-                <h2 className="mt-2 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-                  Who&apos;s the prospect?
-                </h2>
-                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                  Company name and website to get started.
-                </p>
-              </div>
-
-              <div className="space-y-4">
-                <div className="grid gap-2">
-                  <label className="flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                    <Building2 className="h-4 w-4 text-zinc-400" />
-                    <span>Company name</span>
-                  </label>
-                  <input
-                    className="form-input h-10 rounded-md border border-zinc-200 bg-white px-3 text-sm placeholder-zinc-400 transition focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/20 dark:border-zinc-700 dark:bg-zinc-900 dark:placeholder-zinc-500 dark:focus:border-zinc-600"
-                    value={form.prospectName}
-                    onChange={(event) => update("prospectName", event.target.value)}
-                    placeholder="Local Gym Chain"
-                    required
-                    autoFocus
-                  />
-                </div>
-
-                <div className="grid gap-2">
-                  <label className="flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                    <Globe className="h-4 w-4 text-zinc-400" />
-                    <span>Website</span>
-                  </label>
-                  <input
-                    className="form-input h-10 rounded-md border border-zinc-200 bg-white px-3 text-sm placeholder-zinc-400 transition focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/20 dark:border-zinc-700 dark:bg-zinc-900 dark:placeholder-zinc-500 dark:focus:border-zinc-600"
-                    value={form.website}
-                    onChange={(event) => update("website", event.target.value)}
-                    placeholder="https://example.com"
-                    required
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* STEP 2: Target Audience */}
-          {formStep === 2 && (
-            <div className="space-y-6">
-              <div>
-                <p className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">
-                  Step 2 of 6
-                </p>
-                <h2 className="mt-2 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-                  Target audience
-                </h2>
-                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                  Who are they selling to and what pain points came up?
-                </p>
-              </div>
-
-              <div className="grid gap-2">
-                <label className="flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                  <Users className="h-4 w-4 text-zinc-400" />
-                  <span>Audience description</span>
-                </label>
-                <textarea
-                  className="form-input min-h-24 rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm leading-relaxed placeholder-zinc-400 transition focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/20 dark:border-zinc-700 dark:bg-zinc-900 dark:placeholder-zinc-500 dark:focus:border-zinc-600"
-                  value={form.targetAudienceSummary}
-                  onChange={(event) => update("targetAudienceSummary", event.target.value)}
-                  placeholder="Describe who they sell to and key pain points..."
-                  rows={5}
-                  required
-                  autoFocus
-                />
-              </div>
-            </div>
-          )}
-
-          {/* STEP 3: Timing & Budget */}
-          {formStep === 3 && (
-            <div className="space-y-6">
-              <div>
-                <p className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">
-                  Step 3 of 6
-                </p>
-                <h2 className="mt-2 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-                  Timeline and budget
-                </h2>
-                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                  When&apos;s the second call and what&apos;s the budget range?
-                </p>
-              </div>
-
-              <div className="space-y-4">
-                <div className="grid gap-2">
-                  <label className="flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                    <CalendarClock className="h-4 w-4 text-zinc-400" />
-                    <span>Second call date and time</span>
-                  </label>
-                  <input
-                    type="datetime-local"
-                    className="form-input h-10 rounded-md border border-zinc-200 bg-white px-3 text-sm transition focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/20 dark:border-zinc-700 dark:bg-zinc-900 dark:focus:border-zinc-600"
-                    value={form.secondCallAt}
-                    onChange={(event) => update("secondCallAt", event.target.value)}
-                    required
-                    autoFocus
-                  />
-                  {noticeHours !== null && (
-                    <p
-                      className={cn(
-                        "text-xs font-medium",
-                        secondCallInPast || violatesNoticeWindow
-                          ? "text-rose-600 dark:text-rose-400"
-                          : "text-emerald-600 dark:text-emerald-400",
-                      )}
-                    >
-                      {secondCallInPast
-                        ? "⚠️ Date must be in the future"
-                        : `✓ ${noticeHours.toFixed(1)} hours notice`}
-                    </p>
-                  )}
-                </div>
-
-                <div className="grid gap-2">
-                  <label className="flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                    <Wallet className="h-4 w-4 text-zinc-400" />
-                    <span>Budget range per month</span>
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <div className="relative flex-1">
-                      <span className="absolute top-1/2 left-3 -translate-y-1/2 text-sm text-zinc-500">
-                        £
-                      </span>
-                      <input
-                        type="number"
-                        className="form-input h-10 w-full rounded-md border border-zinc-200 bg-white pr-3 pl-7 text-sm placeholder-zinc-400 transition focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/20 dark:border-zinc-700 dark:bg-zinc-900 dark:placeholder-zinc-500 dark:focus:border-zinc-600"
-                        value={form.budgetRange.split("-")[0]?.trim() || ""}
-                        onChange={(event) => {
-                          const min = event.target.value;
-                          const max = form.budgetRange.split("-")[1]?.trim() || "";
-                          update("budgetRange", max ? `${min} - ${max}` : min);
-                        }}
-                        placeholder="3000"
-                        required
-                      />
-                    </div>
-                    <span className="text-xs text-zinc-500">to</span>
-                    <div className="relative flex-1">
-                      <span className="absolute top-1/2 left-3 -translate-y-1/2 text-sm text-zinc-500">
-                        £
-                      </span>
-                      <input
-                        type="number"
-                        className="form-input h-10 w-full rounded-md border border-zinc-200 bg-white pr-3 pl-7 text-sm placeholder-zinc-400 transition focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/20 dark:border-zinc-700 dark:bg-zinc-900 dark:placeholder-zinc-500 dark:focus:border-zinc-600"
-                        value={form.budgetRange.split("-")[1]?.trim() || ""}
-                        onChange={(event) => {
-                          const min = form.budgetRange.split("-")[0]?.trim() || "";
-                          const max = event.target.value;
-                          update("budgetRange", min ? `${min} - ${max}` : max);
-                        }}
-                        placeholder="5000"
-                        required
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {enforce48HourNotice && violatesNoticeWindow && allowUrgentOverride && (
-                  <div className="rounded-md border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/50 dark:bg-amber-950/30">
-                    <label className="flex cursor-pointer items-center gap-2">
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 rounded accent-amber-600"
-                        checked={urgentOverride}
-                        onChange={(event) => setUrgentOverride(event.target.checked)}
-                      />
-                      <span className="text-sm font-medium text-amber-900 dark:text-amber-100">
-                        Mark as urgent
-                      </span>
-                    </label>
-                    <p className="mt-1 ml-6 text-xs text-amber-800 dark:text-amber-200/90">
-                      Use only if timing can&apos;t be moved
-                    </p>
-                  </div>
+          {/* Stepper progress */}
+          <div className="flex items-center gap-1.5" aria-hidden="true">
+            {[1, 2, 3, 4, 5, 6].map((step) => (
+              <div
+                key={step}
+                className={cn(
+                  "h-1.5 flex-1 rounded-full transition-colors duration-300",
+                  step < formStep
+                    ? "bg-indigo-500"
+                    : step === formStep
+                      ? "bg-indigo-500"
+                      : "bg-zinc-200 dark:bg-zinc-800",
                 )}
+              />
+            ))}
+          </div>
 
-                {urgentOverride && (
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={formStep}
+              initial={{ opacity: 0, x: 12 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -12 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+            >
+              {/* STEP 1: Client Context */}
+              {formStep === 1 && (
+                <div className="space-y-6">
+                  <div>
+                    <p className="text-[11px] font-semibold tracking-wide text-indigo-500 uppercase dark:text-indigo-400">
+                      Step 1 of 6
+                    </p>
+                    <h2 className="mt-2 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                      Who&apos;s the prospect?
+                    </h2>
+                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                      Company name and website to get started.
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="grid gap-2">
+                      <label className="flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                        <Building2 className="h-4 w-4 text-indigo-400" />
+                        <span>Company name</span>
+                      </label>
+                      <input
+                        className="form-input"
+                        value={form.prospectName}
+                        onChange={(event) => update("prospectName", event.target.value)}
+                        placeholder="Local Gym Chain"
+                        required
+                        autoFocus
+                      />
+                    </div>
+
+                    <div className="grid gap-2">
+                      <label className="flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                        <Globe className="h-4 w-4 text-indigo-400" />
+                        <span>Website</span>
+                      </label>
+                      <input
+                        className="form-input"
+                        value={form.website}
+                        onChange={(event) => update("website", event.target.value)}
+                        placeholder="https://example.com"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 2: Target Audience */}
+              {formStep === 2 && (
+                <div className="space-y-6">
+                  <div>
+                    <p className="text-[11px] font-semibold tracking-wide text-indigo-500 uppercase dark:text-indigo-400">
+                      Step 2 of 6
+                    </p>
+                    <h2 className="mt-2 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                      Target audience
+                    </h2>
+                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                      Who are they selling to and what pain points came up?
+                    </p>
+                  </div>
+
                   <div className="grid gap-2">
-                    <label className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                      Why is this urgent?
+                    <label className="flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                      <Users className="h-4 w-4 text-indigo-400" />
+                      <span>Audience description</span>
                     </label>
                     <textarea
-                      className="form-input min-h-20 rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm leading-relaxed placeholder-zinc-400 transition focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/20 dark:border-zinc-700 dark:bg-zinc-900 dark:placeholder-zinc-500 dark:focus:border-zinc-600"
-                      value={urgentReason}
-                      onChange={(event) => setUrgentReason(event.target.value)}
-                      placeholder="Explain why this can't wait..."
-                      rows={3}
-                      required={requiresUrgentReason}
+                      className="form-input min-h-24 leading-relaxed"
+                      value={form.targetAudienceSummary}
+                      onChange={(event) => update("targetAudienceSummary", event.target.value)}
+                      placeholder="Describe who they sell to and key pain points..."
+                      rows={5}
+                      required
+                      autoFocus
                     />
                   </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* STEP 4: Services */}
-          {formStep === 4 && (
-            <div className="space-y-6">
-              <div>
-                <p className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">
-                  Step 4 of 6
-                </p>
-                <h2 className="mt-2 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-                  Services interested in
-                </h2>
-                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                  Select all that apply.
-                </p>
-              </div>
-
-              <div className="grid gap-2">
-                {serviceOptions.map((service) => {
-                  const checked = form.interestedServices.includes(service);
-                  return (
-                    <button
-                      key={service}
-                      type="button"
-                      onClick={() => toggleService(service)}
-                      className={cn(
-                        "flex items-center justify-between rounded-md border px-3 py-2 text-sm font-medium transition-all",
-                        checked
-                          ? "border-zinc-400 bg-zinc-100 text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100"
-                          : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-zinc-600 dark:hover:bg-zinc-800",
-                      )}
-                    >
-                      <span>{service}</span>
-                      {checked && <Check className="h-4 w-4" />}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* STEP 5: Planning Notes (REQUIRED) */}
-          {formStep === 5 && (
-            <div className="space-y-6">
-              <div>
-                <p className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">
-                  Step 5 of 6
-                </p>
-                <h2 className="mt-2 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-                  Planning notes
-                </h2>
-                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                  Provide context for the marketing team.
-                </p>
-              </div>
-
-              <div className="grid gap-2">
-                <label className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                  What should we know?
-                </label>
-                <textarea
-                  className="form-input min-h-28 rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm leading-relaxed placeholder-zinc-400 transition focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/20 dark:border-zinc-700 dark:bg-zinc-900 dark:placeholder-zinc-500 dark:focus:border-zinc-600"
-                  value={form.otherInformation}
-                  onChange={(event) => update("otherInformation", event.target.value)}
-                  placeholder="Goals, timelines, blockers, competitors, budget notes, launch date, anything relevant..."
-                  rows={6}
-                  required
-                />
-                {form.otherInformation.length > 0 && (
-                  <p className="text-right text-xs text-zinc-500 dark:text-zinc-400">
-                    {form.otherInformation.length} chars
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* STEP 6: Review */}
-          {formStep === 6 && (
-            <div className="space-y-6">
-              <div>
-                <p className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">
-                  Step 6 of 6
-                </p>
-                <h2 className="mt-2 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-                  Review and send
-                </h2>
-                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                  Check everything looks right before sending to marketing.
-                </p>
-              </div>
-
-              <div
-                className={cn(
-                  "rounded-md border px-3 py-2 text-sm font-medium",
-                  requestReadiness.tone,
-                )}
-              >
-                {requestReadiness.label}
-              </div>
-
-              <div className="space-y-3 rounded-md border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900/30">
-                <div>
-                  <p className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">
-                    Prospect
-                  </p>
-                  <p className="mt-1 text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                    {form.prospectName}
-                  </p>
                 </div>
+              )}
 
-                <div>
-                  <p className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">
-                    Website
-                  </p>
-                  <p className="mt-1 text-sm break-all text-zinc-700 dark:text-zinc-300">
-                    {form.website}
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 pt-2">
+              {/* STEP 3: Timing & Budget */}
+              {formStep === 3 && (
+                <div className="space-y-6">
                   <div>
-                    <p className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">
-                      Budget
+                    <p className="text-[11px] font-semibold tracking-wide text-indigo-500 uppercase dark:text-indigo-400">
+                      Step 3 of 6
                     </p>
-                    <p className="mt-1 text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                      £{form.budgetRange}
+                    <h2 className="mt-2 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                      Timeline and budget
+                    </h2>
+                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                      When&apos;s the second call and what&apos;s the budget range?
                     </p>
                   </div>
-                  <div>
-                    <p className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">
-                      Call
-                    </p>
-                    <p className="mt-1 text-sm text-zinc-700 dark:text-zinc-300">
-                      {form.secondCallAt ? "Scheduled" : "—"}
-                    </p>
-                  </div>
-                </div>
 
-                {form.interestedServices.length > 0 && (
-                  <div className="pt-2">
-                    <p className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">
-                      Services
-                    </p>
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      {form.interestedServices.map((service) => (
-                        <span
-                          key={service}
-                          className="inline-flex items-center rounded-md border border-zinc-300 bg-zinc-100 px-2 py-1 text-xs font-medium text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+                  <div className="space-y-4">
+                    <div className="grid gap-2">
+                      <label className="flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                        <CalendarClock className="h-4 w-4 text-indigo-400" />
+                        <span>Second call date and time</span>
+                      </label>
+                      <input
+                        type="datetime-local"
+                        className="form-input"
+                        value={form.secondCallAt}
+                        onChange={(event) => update("secondCallAt", event.target.value)}
+                        required
+                        autoFocus
+                      />
+                      {noticeHours !== null && (
+                        <p
+                          className={cn(
+                            "text-xs font-medium",
+                            secondCallInPast || violatesNoticeWindow
+                              ? "text-rose-600 dark:text-rose-400"
+                              : "text-emerald-600 dark:text-emerald-400",
+                          )}
                         >
-                          {service}
-                        </span>
-                      ))}
+                          {secondCallInPast
+                            ? "⚠️ Date must be in the future"
+                            : `✓ ${noticeHours.toFixed(1)} hours notice`}
+                        </p>
+                      )}
                     </div>
+
+                    <div className="grid gap-2">
+                      <label className="flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                        <Wallet className="h-4 w-4 text-indigo-400" />
+                        <span>Budget range per month</span>
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <div className="relative flex-1">
+                          <span className="absolute top-1/2 left-3 -translate-y-1/2 text-sm text-zinc-500">
+                            £
+                          </span>
+                          <input
+                            type="number"
+                            className="form-input pl-7"
+                            value={form.budgetRange.split("-")[0]?.trim() || ""}
+                            onChange={(event) => {
+                              const min = event.target.value;
+                              const max = form.budgetRange.split("-")[1]?.trim() || "";
+                              update("budgetRange", max ? `${min} - ${max}` : min);
+                            }}
+                            placeholder="3000"
+                            required
+                          />
+                        </div>
+                        <span className="text-xs text-zinc-500">to</span>
+                        <div className="relative flex-1">
+                          <span className="absolute top-1/2 left-3 -translate-y-1/2 text-sm text-zinc-500">
+                            £
+                          </span>
+                          <input
+                            type="number"
+                            className="form-input pl-7"
+                            value={form.budgetRange.split("-")[1]?.trim() || ""}
+                            onChange={(event) => {
+                              const min = form.budgetRange.split("-")[0]?.trim() || "";
+                              const max = event.target.value;
+                              update("budgetRange", min ? `${min} - ${max}` : max);
+                            }}
+                            placeholder="5000"
+                            required
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {enforce48HourNotice && violatesNoticeWindow && allowUrgentOverride && (
+                      <div className="rounded-md border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/50 dark:bg-amber-950/30">
+                        <label className="flex cursor-pointer items-center gap-2">
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 rounded accent-amber-600"
+                            checked={urgentOverride}
+                            onChange={(event) => setUrgentOverride(event.target.checked)}
+                          />
+                          <span className="text-sm font-medium text-amber-900 dark:text-amber-100">
+                            Mark as urgent
+                          </span>
+                        </label>
+                        <p className="mt-1 ml-6 text-xs text-amber-800 dark:text-amber-200/90">
+                          Use only if timing can&apos;t be moved
+                        </p>
+                      </div>
+                    )}
+
+                    {urgentOverride && (
+                      <div className="grid gap-2">
+                        <label className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                          Why is this urgent?
+                        </label>
+                        <textarea
+                          className="form-input min-h-20 leading-relaxed"
+                          value={urgentReason}
+                          onChange={(event) => setUrgentReason(event.target.value)}
+                          placeholder="Explain why this can't wait..."
+                          rows={3}
+                          required={requiresUrgentReason}
+                        />
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            </div>
-          )}
+                </div>
+              )}
+
+              {/* STEP 4: Services */}
+              {formStep === 4 && (
+                <div className="space-y-6">
+                  <div>
+                    <p className="text-[11px] font-semibold tracking-wide text-indigo-500 uppercase dark:text-indigo-400">
+                      Step 4 of 6
+                    </p>
+                    <h2 className="mt-2 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                      Services interested in
+                    </h2>
+                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                      Select all that apply.
+                    </p>
+                  </div>
+
+                  <div className="grid gap-2">
+                    {serviceOptions.map((service) => {
+                      const checked = form.interestedServices.includes(service);
+                      return (
+                        <button
+                          key={service}
+                          type="button"
+                          onClick={() => toggleService(service)}
+                          className={cn(
+                            "flex items-center justify-between rounded-xl border px-3.5 py-2.5 text-sm font-medium transition-all",
+                            checked
+                              ? "border-indigo-300 bg-indigo-50 text-indigo-900 shadow-sm dark:border-indigo-700/60 dark:bg-indigo-950/40 dark:text-indigo-100"
+                              : "border-zinc-200 bg-white text-zinc-700 hover:border-indigo-200 hover:bg-indigo-50/40 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-indigo-800/50 dark:hover:bg-indigo-950/20",
+                          )}
+                        >
+                          <span>{service}</span>
+                          {checked && (
+                            <Check className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 5: Planning Notes (REQUIRED) */}
+              {formStep === 5 && (
+                <div className="space-y-6">
+                  <div>
+                    <p className="text-[11px] font-semibold tracking-wide text-indigo-500 uppercase dark:text-indigo-400">
+                      Step 5 of 6
+                    </p>
+                    <h2 className="mt-2 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                      Planning notes
+                    </h2>
+                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                      Provide context for the marketing team.
+                    </p>
+                  </div>
+
+                  <div className="grid gap-2">
+                    <label className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                      What should we know?
+                    </label>
+                    <textarea
+                      className="form-input min-h-28 leading-relaxed"
+                      value={form.otherInformation}
+                      onChange={(event) => update("otherInformation", event.target.value)}
+                      placeholder="Goals, timelines, blockers, competitors, budget notes, launch date, anything relevant..."
+                      rows={6}
+                      required
+                    />
+                    {form.otherInformation.length > 0 && (
+                      <p className="text-right text-xs text-zinc-500 dark:text-zinc-400">
+                        {form.otherInformation.length} chars
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 6: Review */}
+              {formStep === 6 && (
+                <div className="space-y-6">
+                  <div>
+                    <p className="text-[11px] font-semibold tracking-wide text-indigo-500 uppercase dark:text-indigo-400">
+                      Step 6 of 6
+                    </p>
+                    <h2 className="mt-2 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                      Review and send
+                    </h2>
+                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                      Check everything looks right before sending to marketing.
+                    </p>
+                  </div>
+
+                  <div
+                    className={cn(
+                      "rounded-md border px-3 py-2 text-sm font-medium",
+                      requestReadiness.tone,
+                    )}
+                  >
+                    {requestReadiness.label}
+                  </div>
+
+                  <div className="space-y-3 rounded-md border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900/30">
+                    <div>
+                      <p className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">
+                        Prospect
+                      </p>
+                      <p className="mt-1 text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                        {form.prospectName}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">
+                        Website
+                      </p>
+                      <p className="mt-1 text-sm break-all text-zinc-700 dark:text-zinc-300">
+                        {form.website}
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 pt-2">
+                      <div>
+                        <p className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">
+                          Budget
+                        </p>
+                        <p className="mt-1 text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                          £{form.budgetRange}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">
+                          Call
+                        </p>
+                        <p className="mt-1 text-sm text-zinc-700 dark:text-zinc-300">
+                          {form.secondCallAt ? "Scheduled" : "—"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {form.interestedServices.length > 0 && (
+                      <div className="pt-2">
+                        <p className="text-xs font-semibold tracking-wide text-zinc-500 uppercase">
+                          Services
+                        </p>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {form.interestedServices.map((service) => (
+                            <span
+                              key={service}
+                              className="inline-flex items-center rounded-md border border-zinc-300 bg-zinc-100 px-2 py-1 text-xs font-medium text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+                            >
+                              {service}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </AnimatePresence>
 
           {/* Navigation */}
           <div className="mt-8 flex items-center justify-between gap-3 border-t border-zinc-200 pt-6 dark:border-zinc-800">
@@ -1334,7 +1318,7 @@ export default function SalesHandoffPage() {
               <button
                 type="button"
                 onClick={() => setFormStep(formStep - 1)}
-                className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium text-zinc-600 transition hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                className="btn btn-ghost btn-sm"
               >
                 ← Back
               </button>
@@ -1352,7 +1336,7 @@ export default function SalesHandoffPage() {
                   (formStep === 4 && form.interestedServices.length === 0) ||
                   (formStep === 5 && !form.otherInformation.trim())
                 }
-                className="inline-flex items-center gap-1.5 rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+                className="btn btn-primary btn-sm"
               >
                 Next →
               </button>
@@ -1360,7 +1344,7 @@ export default function SalesHandoffPage() {
               <button
                 type="submit"
                 disabled={submitting || !canSubmit}
-                className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-emerald-600 dark:hover:bg-emerald-700"
+                className="btn btn-primary btn-sm"
               >
                 {submitting ? (
                   <>
@@ -1389,7 +1373,7 @@ export default function SalesHandoffPage() {
           <>
             <button
               type="button"
-              className="rounded-md px-3 py-1.5 text-xs font-medium text-zinc-600 transition hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+              className="btn btn-ghost btn-sm"
               onClick={() => setShowSuccessModal(false)}
             >
               Close
@@ -1399,7 +1383,7 @@ export default function SalesHandoffPage() {
                 href={createdTaskUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+                className="btn btn-primary btn-sm"
               >
                 Open in ClickUp <ExternalLink className="h-3.5 w-3.5" />
               </a>
@@ -1407,9 +1391,9 @@ export default function SalesHandoffPage() {
           </>
         }
       >
-        <div className="rounded-md border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/30">
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/30">
           <div className="flex gap-3">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
               <Check className="h-4 w-4" />
             </div>
             <div className="space-y-1">

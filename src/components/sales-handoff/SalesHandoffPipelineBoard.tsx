@@ -68,14 +68,16 @@ interface SalesHandoffPipelineBoardProps {
   onStatusChange: (handoffId: string, status: SalesHandoffStatus) => Promise<void>;
 }
 
-const STATUS_COLUMNS: Array<{
+type StatusColumnConfig = {
   status: SalesHandoffStatus;
   label: string;
   color: string;
   lightBg: string;
   textClass: string;
   dotColor: string;
-}> = [
+};
+
+const STATUS_COLUMNS: StatusColumnConfig[] = [
   {
     status: "plan_requested",
     label: "Plan Requested",
@@ -455,9 +457,9 @@ function StatusColumn({
           />
           <h3
             style={{
-              fontSize: "10px",
+              fontSize: "11px",
               fontWeight: 700,
-              letterSpacing: "0.08em",
+              letterSpacing: "0.07em",
               textTransform: "uppercase",
               color: column.color,
             }}
@@ -467,11 +469,11 @@ function StatusColumn({
         </div>
         <span
           style={{
-            fontSize: "10px",
+            fontSize: "11px",
             fontWeight: 700,
-            minWidth: "20px",
+            minWidth: "22px",
             textAlign: "center",
-            padding: "2px 7px",
+            padding: "2px 8px",
             borderRadius: "99px",
             background: handoffs.length > 0 ? `${column.color}18` : "var(--bg)",
             color: handoffs.length > 0 ? column.color : "var(--text-3)",
