@@ -26,8 +26,8 @@ const SALES_HANDOFF_STATUSES = [
 //   PIPELINE, ON-HOLD, HANDOFF READY, DISCUSSION, IN PROGRESS, ACTION, CLOSED
 const CLICKUP_STATUS_CANDIDATES: Record<(typeof SALES_HANDOFF_STATUSES)[number], string[]> = {
   draft: ["pipeline", "to do", "todo", "open", "backlog", "draft"],
-  submitted: ["pipeline", "to do", "todo", "open", "new", "backlog"],
-  in_progress: ["in progress", "discussion", "in-progress", "progress", "doing", "active"],
+  submitted: ["discussion", "pipeline", "to do", "todo", "open", "new"],
+  in_progress: ["in progress", "in-progress", "progress", "doing", "active"],
   ready_for_meeting: ["handoff ready", "ready for meeting", "ready", "review", "awaiting"],
   completed: ["action", "complete", "completed", "done", "resolved"],
   blocked: ["on-hold", "on hold", "on_hold", "blocked", "paused", "hold", "stuck", "waiting"],

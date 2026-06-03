@@ -80,7 +80,7 @@ const STATUS_COLUMNS: Array<{
 }> = [
   {
     status: "draft",
-    label: "Draft",
+    label: "Pipeline",
     color: "#f59e0b",
     lightBg: "rgba(245,158,11,0.06)",
     textClass: "text-amber-700 dark:text-amber-400",
@@ -88,7 +88,7 @@ const STATUS_COLUMNS: Array<{
   },
   {
     status: "submitted",
-    label: "New",
+    label: "Discussion",
     color: "#0ea5e9",
     lightBg: "rgba(14,165,233,0.06)",
     textClass: "text-sky-700 dark:text-sky-400",
@@ -104,7 +104,7 @@ const STATUS_COLUMNS: Array<{
   },
   {
     status: "ready_for_meeting",
-    label: "Ready",
+    label: "Handoff Ready",
     color: "#10b981",
     lightBg: "rgba(16,185,129,0.06)",
     textClass: "text-emerald-700 dark:text-emerald-400",
@@ -112,7 +112,7 @@ const STATUS_COLUMNS: Array<{
   },
   {
     status: "blocked",
-    label: "Blocked",
+    label: "On-Hold",
     color: "#ef4444",
     lightBg: "rgba(239,68,68,0.06)",
     textClass: "text-rose-700 dark:text-rose-400",
@@ -120,7 +120,7 @@ const STATUS_COLUMNS: Array<{
   },
   {
     status: "completed",
-    label: "Completed",
+    label: "Action",
     color: "#22c55e",
     lightBg: "rgba(34,197,94,0.06)",
     textClass: "text-green-700 dark:text-green-400",
@@ -128,7 +128,7 @@ const STATUS_COLUMNS: Array<{
   },
   {
     status: "cancelled",
-    label: "Cancelled",
+    label: "Closed",
     color: "#94a3b8",
     lightBg: "rgba(148,163,184,0.06)",
     textClass: "text-zinc-500 dark:text-zinc-400",
