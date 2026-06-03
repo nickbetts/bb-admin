@@ -751,84 +751,57 @@ export default function SalesHandoffPage() {
 
   return (
     <div className="page max-w-350">
-      <div className="relative mb-6 overflow-hidden rounded-[28px] border border-indigo-200/60 bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.22),transparent_34%),linear-gradient(135deg,rgba(255,255,255,0.96),rgba(244,244,255,0.98))] p-6 shadow-[0_24px_80px_-48px_rgba(79,70,229,0.45)] dark:border-indigo-900/40 dark:bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.26),transparent_32%),linear-gradient(135deg,rgba(24,24,34,0.98),rgba(16,18,28,0.98))]">
-        <div className="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-violet-400/10 blur-3xl dark:bg-violet-500/20" />
-        <div className="pointer-events-none absolute -bottom-12 left-20 h-40 w-40 rounded-full bg-cyan-300/10 blur-3xl dark:bg-cyan-400/10" />
-
-        <div className="relative flex flex-wrap items-start justify-between gap-5">
-          <div className="max-w-3xl">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-indigo-200/70 bg-white/80 px-3 py-1 text-[11px] font-semibold tracking-[0.12em] text-indigo-700 uppercase shadow-sm dark:border-indigo-900/50 dark:bg-zinc-950/60 dark:text-indigo-300">
-              <Sparkles className="h-3.5 w-3.5" />
-              21st-enhanced request flow
-            </div>
-
-            <div className="flex items-center gap-3.5">
-              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-linear-to-br from-indigo-600 via-violet-500 to-cyan-400 text-white shadow-lg shadow-indigo-500/25">
-                <ClipboardList className="h-5 w-5" />
-              </div>
-              <div>
-                <h1 className="page-title">Sales Requests</h1>
-                <p className="page-desc max-w-2xl">
-                  Capture first-call context, pressure-test readiness, and hand marketing a sharper
-                  brief.
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-5 flex flex-wrap gap-2.5">
-              <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200/80 bg-white/80 px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/60 dark:text-zinc-300">
-                <Check className="h-3.5 w-3.5 text-emerald-500" />
-                Auto-syncs with ClickUp
-              </span>
-              <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200/80 bg-white/80 px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/60 dark:text-zinc-300">
-                <CalendarClock className="h-3.5 w-3.5 text-sky-500" />
-                5-minute background checks
-              </span>
-              <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200/80 bg-white/80 px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/60 dark:text-zinc-300">
-                <Zap className="h-3.5 w-3.5 text-violet-500" />
-                Premium request builder
-              </span>
-            </div>
+      <div className="relative mb-6 overflow-hidden rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+        <div className="relative flex items-center gap-4">
+          <div className="grid h-12 w-12 place-items-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400">
+            <ClipboardList className="h-5 w-5" />
           </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setShowSettingsPanel(true)}
-              className="btn btn-ghost inline-flex items-center gap-2 border border-white/70 bg-white/80 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/60"
-              aria-label="Open handoff settings"
-            >
-              <Settings className="h-4 w-4" />
-              Settings
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setFieldError(null);
-                setShowPlanningNotes(false);
-                setShowCreateModal(true);
-              }}
-              className="inline-flex items-center gap-2 rounded-xl bg-linear-to-r from-indigo-600 via-violet-500 to-cyan-400 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-transform hover:-translate-y-0.5"
-            >
-              <Plus className="h-4 w-4" />
-              New Request
-            </button>
+          <div>
+            <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Sales Requests</h1>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              Capture first-call context and hand marketing a sharper brief.
+            </p>
           </div>
+        </div>
+
+        <div className="mt-6 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowSettingsPanel(true)}
+            className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            aria-label="Open handoff settings"
+          >
+            <Settings className="h-4 w-4" />
+            Settings
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setFieldError(null);
+              setShowCreateModal(true);
+            }}
+            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600"
+          >
+            <Plus className="h-4 w-4" />
+            New Request
+          </button>
         </div>
       </div>
 
-      <SalesHandoffPipelineBoard
-        handoffs={handoffHistory}
-        loading={historyLoading}
-        error={historyError}
-        syncing={historySyncing}
-        lastSyncedLabel={formatBoardRefreshLabel(historyLastLoadedAt)}
-        updatingId={historyUpdatingId}
-        onOpenHandoff={(handoff) => {
-          setSelectedHandoffId(handoff.id);
-        }}
-        onStatusChange={updateHandoffStatus}
-      />
+      <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
+        <SalesHandoffPipelineBoard
+          handoffs={handoffHistory}
+          loading={historyLoading}
+          error={historyError}
+          syncing={historySyncing}
+          lastSyncedLabel={formatBoardRefreshLabel(historyLastLoadedAt)}
+          updatingId={historyUpdatingId}
+          onOpenHandoff={(handoff) => {
+            setSelectedHandoffId(handoff.id);
+          }}
+          onStatusChange={updateHandoffStatus}
+        />
+      </div>
 
       <SalesHandoffSettingsPanel
         open={showSettingsPanel}
