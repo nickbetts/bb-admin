@@ -105,6 +105,17 @@ function isClickUpNotFoundError(error: unknown): boolean {
   return error instanceof Error && /ClickUp API error\s+404/i.test(error.message);
 }
 
+function getSyncFailureFallbackStatus(input: {
+  currentStatus: SalesHandoffStatus;
+  taskMissing: boolean;
+}): SalesHandoffStatus {
+  if (input.taskMissing) {
+    return "cancelled";
+  }
+
+  return input.currentStatus;
+}
+
 function verifySignature(input: { rawBody: string; signature: string; secret: string }): boolean {
   const expected = createHmac("sha256", input.secret).update(input.rawBody).digest("hex");
 
@@ -302,11 +313,10 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const taskMissing = isClickUpNotFoundError(error);
 
-    const fallbackStatus: SalesHandoffStatus = taskMissing
-      ? "cancelled"
-      : isTerminalStatus(handoff.status)
-        ? (handoff.status as SalesHandoffStatus)
-        : "blocked";
+    const fallbackStatus = getSyncFailureFallbackStatus({
+      currentStatus: handoff.status as SalesHandoffStatus,
+      taskMissing,
+    });
 
     await prisma.salesHandoff.update({
       where: { id: handoff.id },

@@ -590,6 +590,11 @@ export function SalesHandoffPipelineBoard({
     return { openPipeline, urgent, dueSoon, syncFailed };
   }, [filteredHandoffs, nowMs]);
 
+  const syncFailedHandoffs = useMemo(
+    () => filteredHandoffs.filter((handoff) => handoff.clickupSyncStatus === "failed"),
+    [filteredHandoffs],
+  );
+
   function handleDragEnd(event: DragEndEvent) {
     if (updatingId) return;
     const activeData = event.active.data.current as { status?: string } | undefined;
@@ -698,6 +703,60 @@ export function SalesHandoffPipelineBoard({
             </button>
           </div>
         </div>
+
+        {syncFailedHandoffs.length > 0 ? (
+          <div
+            style={{
+              margin: "0 28px 14px",
+              display: "flex",
+              alignItems: "flex-start",
+              justifyContent: "space-between",
+              gap: "12px",
+              borderRadius: "14px",
+              border: "1px solid #fecaca",
+              background: "#fff1f2",
+              padding: "12px 14px",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
+              <AlertTriangle
+                style={{
+                  width: "16px",
+                  height: "16px",
+                  color: "#dc2626",
+                  marginTop: "1px",
+                  flexShrink: 0,
+                }}
+              />
+              <div>
+                <p style={{ fontSize: "13px", fontWeight: 600, color: "#991b1b" }}>
+                  {syncFailedHandoffs.length} handoff
+                  {syncFailedHandoffs.length === 1 ? " has" : "s have"} a ClickUp sync issue
+                </p>
+                <p style={{ marginTop: "3px", fontSize: "12px", color: "#9f1239" }}>
+                  The board is showing the latest local state. Run a sync to confirm the remote
+                  ClickUp status.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (!loading && !syncing) onSync();
+              }}
+              disabled={loading || syncing}
+              className="btn btn-ghost inline-flex items-center gap-2"
+              style={{ borderColor: "#fecaca", color: "#991b1b", background: "white" }}
+            >
+              {syncing ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3.5 w-3.5" />
+              )}
+              {syncing ? "Syncing…" : "Retry sync"}
+            </button>
+          </div>
+        ) : null}
 
         {/* Filter row */}
         <div

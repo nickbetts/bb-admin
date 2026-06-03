@@ -23,6 +23,7 @@ export default async function ToolsLayout({ children }: { children: React.ReactN
         "keyword_tracker",
         "sales_handoff",
         "time_checker",
+        "manage_tracking",
       ]}
     >
       {children}

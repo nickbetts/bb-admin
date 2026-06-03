@@ -37,6 +37,13 @@ interface SalesHandoffPatchBody {
   linkedActionItemId?: string | null;
 }
 
+interface ClickUpPushWarning {
+  code: "clickup_status_push_failed";
+  message: string;
+  attemptedStatuses: string[];
+  errorMessage: string;
+}
+
 function cleanText(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
@@ -322,7 +329,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       return NextResponse.json({ error: "No changes to apply" }, { status: 400 });
     }
 
-    let clickupPushWarning: string | null = null;
+    let clickupPushWarning: ClickUpPushWarning | null = null;
     const nextStatus = typeof data.status === "string" ? data.status : null;
 
     await prisma.salesHandoff.update({
@@ -359,7 +366,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
           },
         });
       } else {
-        clickupPushWarning = "Updated locally, but failed to push status to ClickUp.";
+        clickupPushWarning = {
+          code: "clickup_status_push_failed",
+          message: "Updated locally, but failed to push status to ClickUp.",
+          attemptedStatuses: pushResult.attemptedStatuses,
+          errorMessage: pushResult.errorMessage,
+        };
 
         await prisma.salesHandoff.update({
           where: { id },

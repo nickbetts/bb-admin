@@ -87,7 +87,13 @@ interface SalesHandoffSyncResponse {
 
 interface SalesHandoffPatchResponse {
   error?: string;
-  warning?: string;
+  handoff?: SalesHandoffHistoryItem;
+  warning?: {
+    code: "clickup_status_push_failed";
+    message: string;
+    attemptedStatuses: string[];
+    errorMessage: string;
+  };
 }
 
 const DEFAULT_SERVICE_OPTIONS = [
@@ -160,6 +166,19 @@ export default function SalesHandoffPage() {
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [historySyncing, setHistorySyncing] = useState(false);
   const [historyUpdatingId, setHistoryUpdatingId] = useState<string | null>(null);
+
+  const upsertHandoffHistoryItem = useCallback((nextHandoff: SalesHandoffHistoryItem) => {
+    setHandoffHistory((prev) => {
+      const existingIndex = prev.findIndex((item) => item.id === nextHandoff.id);
+      if (existingIndex === -1) {
+        return [nextHandoff, ...prev];
+      }
+
+      const nextItems = [...prev];
+      nextItems[existingIndex] = nextHandoff;
+      return nextItems;
+    });
+  }, []);
 
   const loadHistory = useCallback(async () => {
     setHistoryLoading(true);
@@ -234,13 +253,19 @@ export default function SalesHandoffPage() {
           throw new Error(data.error ?? "Failed to update sales handoff status");
         }
 
+        if (data.handoff) {
+          upsertHandoffHistoryItem(data.handoff);
+        }
+
         if (data.warning) {
-          toast(data.warning, "warning");
+          const attemptedStatuses = data.warning.attemptedStatuses.join(", ");
+          toast(
+            `${data.warning.message} Tried ClickUp statuses: ${attemptedStatuses}. ${data.warning.errorMessage}`,
+            "warning",
+          );
         } else {
           toast(`Moved handoff to ${formatStatusLabel(status)}`, "success");
         }
-
-        await loadHistory();
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Failed to update sales handoff status";
@@ -249,7 +274,7 @@ export default function SalesHandoffPage() {
         setHistoryUpdatingId(null);
       }
     },
-    [loadHistory, toast],
+    [toast, upsertHandoffHistoryItem],
   );
 
   useEffect(() => {

@@ -43,6 +43,8 @@ export const ALL_PERMISSIONS = [
   "publish_to_portal",
   // Client files library — per-client Vercel Blob file storage.
   "client_files",
+  // Tracking tool — audit and configure GTM/GA4/Meta/Google Ads tracking
+  "manage_tracking",
   // Granular task permissions. Without these the action is hidden in the UI
   // and the corresponding API routes return 403.
   "tasks.create",

@@ -26,6 +26,7 @@ model User {
   mustChangePassword   Boolean              @default(false)
   roleId               String?
   notificationPrefs    String?
+  canManageTracking    Boolean              @default(false)
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
   timeEntries          AgencyTimeEntry[]
@@ -42,6 +43,7 @@ model User {
   taskAttachments      TaskAttachment[]
   taskComments         TaskComment[]
   taskTimeLogs         TaskTimeLog[]
+  trackingAudits       TrackingAudit[]      @relation("TrackingAuditAuditedBy")
   userRole             Role?                @relation(fields: [roleId], references: [id])
 }
 
@@ -149,6 +151,8 @@ model Client {
   reports                   Report[]
   salesHandoffs             SalesHandoff[]
   strategyDocuments         StrategyDocument[]
+  trackingSetups            TrackingSetup[]
+  trackingAudits            TrackingAudit[]             @relation("TrackingAuditClient")
 }
 
 model ClientGoal {
@@ -1436,4 +1440,53 @@ model LandingPagePaymentSession {
   @@index([clientId, createdAt])
   @@index([landingPageId, createdAt])
   @@index([status, createdAt])
+}
+
+model TrackingSetup {
+  id              String            @id @default(cuid())
+  clientId        String
+  gtmContainerId  String?
+  ga4PropertyId   String?
+  metaPixelId     String?
+  googleAdsConversionId String?
+  status          String            @default("DRAFT") // DRAFT | APPROVED | DEPLOYED
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  client          Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  events          TrackingEvent[]
+  
+  @@index([clientId])
+  @@unique([clientId])
+}
+
+model TrackingEvent {
+  id              String            @id @default(cuid())
+  trackingSetupId String
+  eventName       String
+  eventCategory   String?
+  eventParameters Json               @default("[]") // Array of {name: string, type: "STRING" | "NUMBER" | "BOOL"}
+  firingRules     Json               @default("[]") // Array of {action, selector?, urlPatterns?, delay?, customCondition?}
+  status          String            @default("DRAFT") // DRAFT | ACTIVE
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  createdBy       String?
+  trackingSetup   TrackingSetup     @relation(fields: [trackingSetupId], references: [id], onDelete: Cascade)
+  
+  @@index([trackingSetupId])
+  @@unique([trackingSetupId, eventName])
+}
+
+model TrackingAudit {
+  id              String            @id @default(cuid())
+  clientId        String
+  auditType       String            // GTM | GA4 | META | GOOGLE_ADS
+  findings        Json              @default("[]") // Array of {status: PASS|WARNING|FAIL, message: string, recommendation?: string}
+  status          String            // PASS | WARNING | FAIL
+  auditedAt       DateTime          @default(now())
+  auditedBy       String?
+  client          Client            @relation("TrackingAuditClient", fields: [clientId], references: [id], onDelete: Cascade)
+  auditUser       User?             @relation("TrackingAuditAuditedBy", fields: [auditedBy], references: [id])
+  
+  @@index([clientId, auditType])
+  @@index([auditedAt])
 }

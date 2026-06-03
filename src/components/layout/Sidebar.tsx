@@ -238,6 +238,12 @@ const toolsNavItems: NavItem[] = [
     icon: <ClipboardList className="h-4 w-4" />,
     permission: "sales_handoff",
   },
+  {
+    href: "/tools/tracking-guru",
+    label: "Tracking Guru",
+    icon: <Activity className="h-4 w-4" />,
+    permission: "manage_tracking",
+  },
 ];
 
 interface SidebarProps {
