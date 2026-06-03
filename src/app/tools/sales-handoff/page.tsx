@@ -750,25 +750,86 @@ export default function SalesHandoffPage() {
 
   return (
     <div className="page max-w-350">
-      <div className="relative mb-6 overflow-hidden rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-        <div className="relative flex items-center gap-4">
-          <div className="grid h-12 w-12 place-items-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400">
-            <ClipboardList className="h-5 w-5" />
+      {/* Header with Stats */}
+      <div className="mb-8 space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">Sales Requests</h1>
+          <p className="mt-2 text-base text-zinc-600 dark:text-zinc-400">
+            Capture first-call context and hand marketing a sharper brief.
+          </p>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-4 gap-4">
+          <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-5 dark:border-blue-900/40 dark:bg-blue-950/20">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-medium text-blue-600 dark:text-blue-400">
+                  Total Requests
+                </p>
+                <p className="mt-2 text-2xl font-bold text-blue-900 dark:text-blue-100">
+                  {handoffHistory.length}
+                </p>
+              </div>
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-600/10">
+                <ClipboardList className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Sales Requests</h1>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              Capture first-call context and hand marketing a sharper brief.
-            </p>
+
+          <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-5 dark:border-amber-900/40 dark:bg-amber-950/20">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-medium text-amber-600 dark:text-amber-400">
+                  In Progress
+                </p>
+                <p className="mt-2 text-2xl font-bold text-amber-900 dark:text-amber-100">
+                  {handoffHistory.filter((h) => h.status === "delivery_in_progress").length}
+                </p>
+              </div>
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-amber-600/10">
+                <Zap className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-5 dark:border-emerald-900/40 dark:bg-emerald-950/20">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                  Completed
+                </p>
+                <p className="mt-2 text-2xl font-bold text-emerald-900 dark:text-emerald-100">
+                  {handoffHistory.filter((h) => h.status === "delivery_complete").length}
+                </p>
+              </div>
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-emerald-600/10">
+                <Check className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-violet-200 bg-violet-50/50 p-5 dark:border-violet-900/40 dark:bg-violet-950/20">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-medium text-violet-600 dark:text-violet-400">Synced</p>
+                <p className="mt-2 text-2xl font-bold text-violet-900 dark:text-violet-100">
+                  {handoffHistory.filter((h) => h.clickupTaskId).length}
+                </p>
+              </div>
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-violet-600/10">
+                <ExternalLink className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="mt-6 flex items-center gap-2">
+        {/* Action Buttons */}
+        <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => setShowSettingsPanel(true)}
-            className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
-            aria-label="Open handoff settings"
+            className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-5 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
           >
             <Settings className="h-4 w-4" />
             Settings
@@ -778,8 +839,9 @@ export default function SalesHandoffPage() {
             onClick={() => {
               setFieldError(null);
               setShowCreateModal(true);
+              setFormStep(1);
             }}
-            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600"
+            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600"
           >
             <Plus className="h-4 w-4" />
             New Request
@@ -787,7 +849,8 @@ export default function SalesHandoffPage() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
+      {/* Kanban Board */}
+      <div className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
         <SalesHandoffPipelineBoard
           handoffs={handoffHistory}
           loading={historyLoading}
@@ -844,27 +907,36 @@ export default function SalesHandoffPage() {
           setFieldError(null);
         }}
         title={
-          <span className="inline-flex items-center gap-2">
-            <ClipboardList className="h-5 w-5 text-indigo-500" />
-            Create New Request
+          <span className="inline-flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-600 text-white">
+              <ClipboardList className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-indigo-600 dark:text-indigo-400">
+                New Sales Request
+              </p>
+              <p className="text-base font-bold text-zinc-900 dark:text-zinc-100">
+                Create a Request
+              </p>
+            </div>
           </span>
         }
-        description="Turn first-call notes into a tracked delivery workflow."
+        description="Turn first-call notes into a tracked delivery workflow. Step through each section carefully."
         size="2xl"
         footer={null}
       >
-        <div className="space-y-2.5">
-          <div className="relative overflow-hidden rounded-2xl border border-indigo-200/70 bg-[linear-gradient(135deg,rgba(99,102,241,0.08),rgba(34,211,238,0.08))] px-4 py-3 dark:border-indigo-900/50 dark:bg-[linear-gradient(135deg,rgba(99,102,241,0.18),rgba(34,211,238,0.08))]">
-            <div className="absolute top-0 right-0 h-20 w-20 rounded-full bg-violet-400/10 blur-2xl dark:bg-violet-500/10" />
-            <div className="relative flex items-start gap-2.5 text-sm text-zinc-700 dark:text-zinc-200">
-              <div className="mt-0.5 grid h-8 w-8 place-items-center rounded-xl bg-white/80 text-indigo-600 shadow-sm dark:bg-zinc-950/60 dark:text-indigo-300">
+        <div className="space-y-4">
+          {/* Info Box */}
+          <div className="rounded-xl border border-indigo-200/70 bg-indigo-50/50 px-5 py-4 dark:border-indigo-900/40 dark:bg-indigo-950/30">
+            <div className="flex gap-3">
+              <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-600/10 text-indigo-600 dark:text-indigo-400">
                 <Info className="h-4 w-4" />
               </div>
-              <div>
-                <p className="font-semibold text-zinc-900 dark:text-zinc-100">
+              <div className="text-sm">
+                <p className="font-semibold text-indigo-900 dark:text-indigo-100">
                   Plan intake briefing
                 </p>
-                <p className="mt-0.5 text-sm text-zinc-600 dark:text-zinc-300">
+                <p className="mt-1 text-indigo-800 dark:text-indigo-200">
                   {enforce48HourNotice
                     ? "Marketing needs at least 48 hours notice to prepare a plan for a potential client."
                     : "Marketing usually prefers 48 hours notice, but this is currently guidance only."}
@@ -873,45 +945,44 @@ export default function SalesHandoffPage() {
             </div>
           </div>
 
+          {/* Error Box */}
           {fieldError ? (
-            <div className="flex items-start gap-2.5 rounded-xl border border-rose-200 bg-rose-50/80 px-4 py-3 text-sm text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-rose-500 dark:text-rose-400" />
-              <p>{fieldError}</p>
+            <div className="flex gap-3 rounded-xl border border-rose-200 bg-rose-50/50 px-5 py-4 dark:border-rose-900/40 dark:bg-rose-950/30">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400" />
+              <p className="text-sm text-rose-700 dark:text-rose-200">{fieldError}</p>
             </div>
           ) : null}
         </div>
 
-        <form id="sales-handoff-form" onSubmit={handleSubmit} className="mt-6">
-          {fieldError && (
-            <div className="mb-6 flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50/80 px-5 py-4 dark:border-rose-900/60 dark:bg-rose-950/30">
-              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-rose-500 dark:text-rose-400" />
-              <p className="text-sm text-rose-700 dark:text-rose-200">{fieldError}</p>
-            </div>
-          )}
-
+        <form id="sales-handoff-form" onSubmit={handleSubmit} className="mt-8 space-y-8">
           {/* STEP 1: Client Context */}
           {formStep === 1 && (
-            <div className="space-y-8">
+            <div className="space-y-10">
               <div>
-                <p className="text-xs font-semibold tracking-[0.12em] text-indigo-600 uppercase dark:text-indigo-400">
-                  Step 1 of 6
-                </p>
-                <h2 className="mt-3 text-3xl font-bold text-zinc-900 dark:text-zinc-100">
+                <div className="inline-flex items-center gap-2 rounded-lg bg-indigo-100 px-3 py-1 dark:bg-indigo-950/40">
+                  <div className="h-2 w-2 rounded-full bg-indigo-600 dark:bg-indigo-400" />
+                  <p className="text-xs font-bold tracking-widest text-indigo-700 uppercase dark:text-indigo-300">
+                    Step 1 of 6
+                  </p>
+                </div>
+                <h2 className="mt-4 text-3xl font-bold text-zinc-900 dark:text-zinc-100">
                   Who&apos;s the prospect?
                 </h2>
-                <p className="mt-2 text-base text-zinc-600 dark:text-zinc-400">
+                <p className="mt-3 text-base text-zinc-600 dark:text-zinc-400">
                   Let&apos;s start with the basics. We&apos;ll build the full brief from here.
                 </p>
               </div>
 
-              <div className="space-y-6">
+              <div className="space-y-7">
                 <div className="grid gap-3">
                   <label className="inline-flex items-center gap-2 text-base font-semibold text-zinc-900 dark:text-zinc-100">
-                    <Building2 className="h-5 w-5 text-zinc-400" />
+                    <div className="flex h-5 w-5 items-center justify-center rounded-md bg-indigo-100 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400">
+                      <Building2 className="h-3.5 w-3.5" />
+                    </div>
                     <span>Company or prospect name</span>
                   </label>
                   <input
-                    className="form-input h-16 rounded-2xl px-6 text-lg"
+                    className="form-input h-16 rounded-xl border border-zinc-200 bg-white px-5 text-lg placeholder-zinc-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:placeholder-zinc-500 dark:focus:border-indigo-400 dark:focus:ring-indigo-400/20"
                     value={form.prospectName}
                     onChange={(event) => update("prospectName", event.target.value)}
                     placeholder="e.g. Local Gym Chain"
@@ -922,11 +993,13 @@ export default function SalesHandoffPage() {
 
                 <div className="grid gap-3">
                   <label className="inline-flex items-center gap-2 text-base font-semibold text-zinc-900 dark:text-zinc-100">
-                    <Globe className="h-5 w-5 text-zinc-400" />
+                    <div className="flex h-5 w-5 items-center justify-center rounded-md bg-blue-100 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
+                      <Globe className="h-3.5 w-3.5" />
+                    </div>
                     <span>Website URL</span>
                   </label>
                   <input
-                    className="form-input h-16 rounded-2xl px-6 text-lg"
+                    className="form-input h-16 rounded-xl border border-zinc-200 bg-white px-5 text-lg placeholder-zinc-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:placeholder-zinc-500 dark:focus:border-indigo-400 dark:focus:ring-indigo-400/20"
                     value={form.website}
                     onChange={(event) => update("website", event.target.value)}
                     placeholder="https://example.com"
@@ -1257,12 +1330,12 @@ export default function SalesHandoffPage() {
           )}
 
           {/* Navigation */}
-          <div className="mt-10 flex items-center justify-between gap-4">
+          <div className="mt-12 flex items-center justify-between gap-4 border-t border-zinc-200 pt-8 dark:border-zinc-800">
             {formStep > 1 && (
               <button
                 type="button"
                 onClick={() => setFormStep(formStep - 1)}
-                className="btn btn-ghost text-base"
+                className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 px-6 py-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
               >
                 ← Back
               </button>
@@ -1280,7 +1353,7 @@ export default function SalesHandoffPage() {
                   (formStep === 4 && form.interestedServices.length === 0) ||
                   (formStep === 5 && !form.otherInformation.trim())
                 }
-                className="btn btn-primary text-base"
+                className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-6 py-3 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-indigo-500 dark:hover:bg-indigo-600"
               >
                 Next →
               </button>
@@ -1288,16 +1361,16 @@ export default function SalesHandoffPage() {
               <button
                 type="submit"
                 disabled={submitting || !canSubmit}
-                className="btn btn-primary inline-flex items-center gap-2 text-base"
+                className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-6 py-3 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-emerald-500 dark:hover:bg-emerald-600"
               >
                 {submitting ? (
                   <>
-                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" />
                     Sending…
                   </>
                 ) : (
                   <>
-                    <Zap className="h-5 w-5" />
+                    <Check className="h-4 w-4" />
                     Send to Marketing
                   </>
                 )}
