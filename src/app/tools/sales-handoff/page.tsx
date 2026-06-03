@@ -1034,13 +1034,44 @@ export default function SalesHandoffPage() {
                       <Wallet className="h-4 w-4 shrink-0 text-zinc-400" />
                       <span>Budget range</span>
                     </label>
-                    <input
-                      className="form-input h-12 px-4 text-sm"
-                      value={form.budgetRange}
-                      onChange={(event) => update("budgetRange", event.target.value)}
-                      placeholder="e.g. GBP 3,000 to 5,000 per month"
-                      required
-                    />
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1">
+                        <span className="absolute top-1/2 left-4 -translate-y-1/2 text-sm text-zinc-500">
+                          £
+                        </span>
+                        <input
+                          type="number"
+                          className="form-input h-12 w-full pr-4 pl-8 text-sm"
+                          value={form.budgetRange.split("-")[0]?.trim() || ""}
+                          onChange={(event) => {
+                            const min = event.target.value;
+                            const max = form.budgetRange.split("-")[1]?.trim() || "";
+                            update("budgetRange", max ? `${min} - ${max}` : min);
+                          }}
+                          placeholder="3,000"
+                          required
+                        />
+                      </div>
+                      <span className="text-xs font-medium text-zinc-500">to</span>
+                      <div className="relative flex-1">
+                        <span className="absolute top-1/2 left-4 -translate-y-1/2 text-sm text-zinc-500">
+                          £
+                        </span>
+                        <input
+                          type="number"
+                          className="form-input h-12 w-full pr-4 pl-8 text-sm"
+                          value={form.budgetRange.split("-")[1]?.trim() || ""}
+                          onChange={(event) => {
+                            const min = form.budgetRange.split("-")[0]?.trim() || "";
+                            const max = event.target.value;
+                            update("budgetRange", min ? `${min} - ${max}` : max);
+                          }}
+                          placeholder="5,000"
+                          required
+                        />
+                      </div>
+                      <span className="shrink-0 text-xs font-medium text-zinc-500">/month</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1239,89 +1270,123 @@ export default function SalesHandoffPage() {
                 {requestReadiness.label}
               </div>
 
-              <div className="grid gap-3 rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900/60">
-                <div>
-                  <p className="text-[11px] font-semibold tracking-[0.08em] text-zinc-500 uppercase dark:text-zinc-400">
-                    Prospect
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-                    {form.prospectName.trim() || "Not added yet"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[11px] font-semibold tracking-[0.08em] text-zinc-500 uppercase dark:text-zinc-400">
-                    Website
-                  </p>
-                  <p className="mt-1 text-sm break-all text-zinc-700 dark:text-zinc-300">
-                    {form.website.trim() || "No website yet"}
-                  </p>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <p className="text-[11px] font-semibold tracking-[0.08em] text-zinc-500 uppercase dark:text-zinc-400">
-                      Budget
-                    </p>
-                    <p className="mt-1 text-sm text-zinc-700 dark:text-zinc-300">
-                      {form.budgetRange.trim() || "Not set"}
-                    </p>
+              <div className="grid gap-3">
+                <p className="text-[11px] font-semibold tracking-[0.08em] text-zinc-500 uppercase dark:text-zinc-400">
+                  Completion checklist
+                </p>
+
+                <div className="flex items-center gap-2.5 rounded-lg border border-zinc-200 bg-zinc-50/50 px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-900/30">
+                  <div
+                    className={cn(
+                      "flex h-5 w-5 items-center justify-center rounded-md border",
+                      form.prospectName.trim()
+                        ? "border-emerald-300 bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-950/40"
+                        : "border-zinc-300 bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800/40",
+                    )}
+                  >
+                    {form.prospectName.trim() && (
+                      <Check className="h-3 w-3 text-emerald-700 dark:text-emerald-300" />
+                    )}
                   </div>
-                  <div>
-                    <p className="text-[11px] font-semibold tracking-[0.08em] text-zinc-500 uppercase dark:text-zinc-400">
-                      Call timing
-                    </p>
-                    <p className="mt-1 text-sm text-zinc-700 dark:text-zinc-300">
-                      {form.secondCallAt.trim() ? "Scheduled" : "Not set"}
-                    </p>
+                  <span className="text-sm text-zinc-700 dark:text-zinc-300">Prospect name</span>
+                </div>
+
+                <div className="flex items-center gap-2.5 rounded-lg border border-zinc-200 bg-zinc-50/50 px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-900/30">
+                  <div
+                    className={cn(
+                      "flex h-5 w-5 items-center justify-center rounded-md border",
+                      form.website.trim()
+                        ? "border-emerald-300 bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-950/40"
+                        : "border-zinc-300 bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800/40",
+                    )}
+                  >
+                    {form.website.trim() && (
+                      <Check className="h-3 w-3 text-emerald-700 dark:text-emerald-300" />
+                    )}
                   </div>
+                  <span className="text-sm text-zinc-700 dark:text-zinc-300">Website URL</span>
+                </div>
+
+                <div className="flex items-center gap-2.5 rounded-lg border border-zinc-200 bg-zinc-50/50 px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-900/30">
+                  <div
+                    className={cn(
+                      "flex h-5 w-5 items-center justify-center rounded-md border",
+                      form.targetAudienceSummary.trim()
+                        ? "border-emerald-300 bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-950/40"
+                        : "border-zinc-300 bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800/40",
+                    )}
+                  >
+                    {form.targetAudienceSummary.trim() && (
+                      <Check className="h-3 w-3 text-emerald-700 dark:text-emerald-300" />
+                    )}
+                  </div>
+                  <span className="text-sm text-zinc-700 dark:text-zinc-300">Audience summary</span>
+                </div>
+
+                <div className="flex items-center gap-2.5 rounded-lg border border-zinc-200 bg-zinc-50/50 px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-900/30">
+                  <div
+                    className={cn(
+                      "flex h-5 w-5 items-center justify-center rounded-md border",
+                      form.secondCallAt.trim()
+                        ? "border-emerald-300 bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-950/40"
+                        : "border-zinc-300 bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800/40",
+                    )}
+                  >
+                    {form.secondCallAt.trim() && (
+                      <Check className="h-3 w-3 text-emerald-700 dark:text-emerald-300" />
+                    )}
+                  </div>
+                  <span className="text-sm text-zinc-700 dark:text-zinc-300">Call timing</span>
+                </div>
+
+                <div className="flex items-center gap-2.5 rounded-lg border border-zinc-200 bg-zinc-50/50 px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-900/30">
+                  <div
+                    className={cn(
+                      "flex h-5 w-5 items-center justify-center rounded-md border",
+                      form.budgetRange.trim()
+                        ? "border-emerald-300 bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-950/40"
+                        : "border-zinc-300 bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800/40",
+                    )}
+                  >
+                    {form.budgetRange.trim() && (
+                      <Check className="h-3 w-3 text-emerald-700 dark:text-emerald-300" />
+                    )}
+                  </div>
+                  <span className="text-sm text-zinc-700 dark:text-zinc-300">Budget range</span>
                 </div>
               </div>
 
-              <div className="grid gap-2">
-                <p className="text-[11px] font-semibold tracking-[0.08em] text-zinc-500 uppercase dark:text-zinc-400">
-                  Readiness checks
-                </p>
-                <div className="flex items-center justify-between rounded-xl border border-zinc-200 px-3 py-2 dark:border-zinc-800">
-                  <span className="text-sm text-zinc-700 dark:text-zinc-300">Core fields</span>
-                  <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">
-                    {completedRequiredFields}/5 complete
-                  </span>
-                </div>
-                <div className="flex items-center justify-between rounded-xl border border-zinc-200 px-3 py-2 dark:border-zinc-800">
-                  <span className="text-sm text-zinc-700 dark:text-zinc-300">
-                    Services selected
-                  </span>
-                  <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">
-                    {form.interestedServices.length || 0}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between rounded-xl border border-zinc-200 px-3 py-2 dark:border-zinc-800">
-                  <span className="text-sm text-zinc-700 dark:text-zinc-300">Planning notes</span>
-                  <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">
-                    {form.otherInformation.trim().length > 0 ? "Added" : "Recommended"}
-                  </span>
-                </div>
-              </div>
-
-              <div className="grid gap-2">
-                <p className="text-[11px] font-semibold tracking-[0.08em] text-zinc-500 uppercase dark:text-zinc-400">
-                  Selected services
-                </p>
-                {form.interestedServices.length > 0 ? (
+              {form.interestedServices.length > 0 && (
+                <div className="grid gap-2">
+                  <p className="text-[11px] font-semibold tracking-[0.08em] text-zinc-500 uppercase dark:text-zinc-400">
+                    Selected services
+                  </p>
                   <div className="flex flex-wrap gap-2">
                     {form.interestedServices.map((service) => (
                       <span
                         key={service}
-                        className="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 dark:border-indigo-900/50 dark:bg-indigo-950/30 dark:text-indigo-300"
                       >
+                        <Check className="h-3 w-3" />
                         {service}
                       </span>
                     ))}
                   </div>
-                ) : (
-                  <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                    No services selected yet.
-                  </p>
-                )}
+                </div>
+              )}
+
+              <div className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50/50 px-3 py-2.5 text-xs dark:border-zinc-800 dark:bg-zinc-900/30">
+                <span
+                  className={cn(
+                    "h-2 w-2 rounded-full",
+                    form.otherInformation.trim() ? "bg-emerald-500" : "bg-zinc-300",
+                  )}
+                />
+                <span className="text-zinc-700 dark:text-zinc-300">
+                  {form.otherInformation.trim()
+                    ? "Planning notes added"
+                    : "Planning notes optional"}
+                </span>
               </div>
             </div>
           </aside>
