@@ -764,40 +764,69 @@ export default function SalesHandoffPage() {
 
   return (
     <div className="page max-w-350">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="grid h-11 w-11 place-items-center rounded-2xl bg-linear-to-br from-indigo-600 to-violet-500 text-white shadow-sm shadow-indigo-500/20">
-            <ClipboardList className="h-5 w-5" />
+      <div className="relative mb-6 overflow-hidden rounded-[28px] border border-indigo-200/60 bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.22),transparent_34%),linear-gradient(135deg,rgba(255,255,255,0.96),rgba(244,244,255,0.98))] p-6 shadow-[0_24px_80px_-48px_rgba(79,70,229,0.45)] dark:border-indigo-900/40 dark:bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.26),transparent_32%),linear-gradient(135deg,rgba(24,24,34,0.98),rgba(16,18,28,0.98))]">
+        <div className="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-violet-400/10 blur-3xl dark:bg-violet-500/20" />
+        <div className="pointer-events-none absolute -bottom-12 left-20 h-40 w-40 rounded-full bg-cyan-300/10 blur-3xl dark:bg-cyan-400/10" />
+
+        <div className="relative flex flex-wrap items-start justify-between gap-5">
+          <div className="max-w-3xl">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-indigo-200/70 bg-white/80 px-3 py-1 text-[11px] font-semibold tracking-[0.12em] text-indigo-700 uppercase shadow-sm dark:border-indigo-900/50 dark:bg-zinc-950/60 dark:text-indigo-300">
+              <Sparkles className="h-3.5 w-3.5" />
+              21st-enhanced request flow
+            </div>
+
+            <div className="flex items-center gap-3.5">
+              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-linear-to-br from-indigo-600 via-violet-500 to-cyan-400 text-white shadow-lg shadow-indigo-500/25">
+                <ClipboardList className="h-5 w-5" />
+              </div>
+              <div>
+                <h1 className="page-title">Sales Requests</h1>
+                <p className="page-desc max-w-2xl">
+                  Capture first-call context, pressure-test readiness, and hand marketing a sharper
+                  brief.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 flex flex-wrap gap-2.5">
+              <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200/80 bg-white/80 px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/60 dark:text-zinc-300">
+                <Check className="h-3.5 w-3.5 text-emerald-500" />
+                Auto-syncs with ClickUp
+              </span>
+              <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200/80 bg-white/80 px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/60 dark:text-zinc-300">
+                <CalendarClock className="h-3.5 w-3.5 text-sky-500" />
+                5-minute background checks
+              </span>
+              <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200/80 bg-white/80 px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/60 dark:text-zinc-300">
+                <Zap className="h-3.5 w-3.5 text-violet-500" />
+                Premium request builder
+              </span>
+            </div>
           </div>
-          <div>
-            <h1 className="page-title">Sales Requests</h1>
-            <p className="page-desc">
-              Capture first-call context and manage pipeline requests to marketing.
-            </p>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowSettingsPanel(true)}
+              className="btn btn-ghost inline-flex items-center gap-2 border border-white/70 bg-white/80 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/60"
+              aria-label="Open handoff settings"
+            >
+              <Settings className="h-4 w-4" />
+              Settings
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setFieldError(null);
+                setShowPlanningNotes(false);
+                setShowCreateModal(true);
+              }}
+              className="inline-flex items-center gap-2 rounded-xl bg-linear-to-r from-indigo-600 via-violet-500 to-cyan-400 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-transform hover:-translate-y-0.5"
+            >
+              <Plus className="h-4 w-4" />
+              New Request
+            </button>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setShowSettingsPanel(true)}
-            className="btn btn-ghost inline-flex items-center gap-2"
-            aria-label="Open handoff settings"
-          >
-            <Settings className="h-4 w-4" />
-            Settings
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setFieldError(null);
-              setShowPlanningNotes(false);
-              setShowCreateModal(true);
-            }}
-            className="btn btn-primary inline-flex items-center gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            New Request
-          </button>
         </div>
       </div>
 
@@ -885,13 +914,23 @@ export default function SalesHandoffPage() {
         }
       >
         <div className="space-y-2.5">
-          <div className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
-            <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-500 dark:text-amber-400" />
-            <p>
-              {enforce48HourNotice
-                ? "Marketing needs at least 48 hours notice to prepare a plan for a potential client."
-                : "Marketing usually prefers 48 hours notice, but this is currently guidance only."}
-            </p>
+          <div className="relative overflow-hidden rounded-2xl border border-indigo-200/70 bg-[linear-gradient(135deg,rgba(99,102,241,0.08),rgba(34,211,238,0.08))] px-4 py-3 dark:border-indigo-900/50 dark:bg-[linear-gradient(135deg,rgba(99,102,241,0.18),rgba(34,211,238,0.08))]">
+            <div className="absolute top-0 right-0 h-20 w-20 rounded-full bg-violet-400/10 blur-2xl dark:bg-violet-500/10" />
+            <div className="relative flex items-start gap-2.5 text-sm text-zinc-700 dark:text-zinc-200">
+              <div className="mt-0.5 grid h-8 w-8 place-items-center rounded-xl bg-white/80 text-indigo-600 shadow-sm dark:bg-zinc-950/60 dark:text-indigo-300">
+                <Info className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="font-semibold text-zinc-900 dark:text-zinc-100">
+                  Plan intake briefing
+                </p>
+                <p className="mt-0.5 text-sm text-zinc-600 dark:text-zinc-300">
+                  {enforce48HourNotice
+                    ? "Marketing needs at least 48 hours notice to prepare a plan for a potential client."
+                    : "Marketing usually prefers 48 hours notice, but this is currently guidance only."}
+                </p>
+              </div>
+            </div>
           </div>
 
           {fieldError ? (
@@ -1292,8 +1331,8 @@ export default function SalesHandoffPage() {
       <Modal
         open={showSuccessModal}
         onClose={() => setShowSuccessModal(false)}
-        title="Task Created"
-        description="Your sales handoff task is now live in ClickUp."
+        title="Request Sent"
+        description="Your marketing plan request is now live in ClickUp."
         size="md"
         footer={
           <>
@@ -1317,9 +1356,22 @@ export default function SalesHandoffPage() {
           </>
         }
       >
-        <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300">
-          Task created successfully. Marketing can now track prep activity and sync status from the
-          pipeline board.
+        <div className="relative overflow-hidden rounded-2xl border border-indigo-200/60 bg-[linear-gradient(145deg,rgba(99,102,241,0.08),rgba(34,211,238,0.06))] p-5 dark:border-indigo-900/50 dark:bg-[linear-gradient(145deg,rgba(99,102,241,0.16),rgba(34,211,238,0.08))]">
+          <div className="pointer-events-none absolute -top-6 -right-6 h-24 w-24 rounded-full bg-violet-400/10 blur-2xl dark:bg-violet-500/15" />
+          <div className="relative grid gap-4">
+            <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-white/80 text-indigo-600 shadow-sm dark:bg-zinc-950/60 dark:text-indigo-300">
+              <Check className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
+                Marketing has the brief
+              </p>
+              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
+                The request is in ClickUp, the board will keep itself in sync, and the team can now
+                move it through planning and review.
+              </p>
+            </div>
+          </div>
         </div>
       </Modal>
     </div>

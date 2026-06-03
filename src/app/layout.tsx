@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import { ToastProvider } from "@/components/ui/Toast";
 import { ConfirmProvider } from "@/components/ui/ConfirmDialog";
 import { FrontendEnhancementsProvider } from "@/components/providers/FrontendEnhancementsProvider";
+import { TwentyFirstToolbarProvider } from "@/components/providers/TwentyFirstToolbarProvider";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -25,6 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <a href="#main-content" className="skip-to-content">
           Skip to content
         </a>
+        <TwentyFirstToolbarProvider />
         <ToastProvider>
           <ConfirmProvider>
             <FrontendEnhancementsProvider>{children}</FrontendEnhancementsProvider>
