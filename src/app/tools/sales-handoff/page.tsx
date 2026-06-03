@@ -907,6 +907,8 @@ export default function SalesHandoffPage() {
             </div>
           </div>
 
+          <div aria-hidden="true" className="h-2.5" />
+
           {/* Error Box */}
           {fieldError ? (
             <div className="flex gap-2.5 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-3 dark:border-rose-900/50 dark:bg-rose-950/30">
@@ -934,6 +936,8 @@ export default function SalesHandoffPage() {
             ))}
           </div>
 
+          <div aria-hidden="true" className="h-2.5" />
+
           <AnimatePresence mode="wait">
             <motion.div
               key={formStep}
@@ -955,8 +959,6 @@ export default function SalesHandoffPage() {
                   <h2 className="py-2.5 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
                     Who&apos;s the prospect?
                   </h2>
-
-                  <div aria-hidden="true" className="h-2.5" />
 
                   <p className="py-2.5 text-sm text-zinc-600 dark:text-zinc-400">
                     Company name and website to get started.
