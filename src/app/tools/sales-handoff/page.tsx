@@ -946,53 +946,55 @@ export default function SalesHandoffPage() {
               {/* STEP 1: Client Context */}
               {formStep === 1 && (
                 <div className="flex flex-col">
+                  <p className="py-2.5 text-[11px] font-semibold tracking-wide text-indigo-500 uppercase dark:text-indigo-400">
+                    Step 1 of 6
+                  </p>
+
+                  <div aria-hidden="true" className="h-2.5" />
+
+                  <h2 className="py-2.5 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                    Who&apos;s the prospect?
+                  </h2>
+
+                  <div aria-hidden="true" className="h-2.5" />
+
+                  <p className="py-2.5 text-sm text-zinc-600 dark:text-zinc-400">
+                    Company name and website to get started.
+                  </p>
+
+                  <div aria-hidden="true" className="h-2.5" />
+
                   <div className="flex flex-col">
-                    <p className="py-2.5 text-[11px] font-semibold tracking-wide text-indigo-500 uppercase dark:text-indigo-400">
-                      Step 1 of 6
-                    </p>
-                    <h2 className="py-2.5 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-                      Who&apos;s the prospect?
-                    </h2>
-                    <p className="py-2.5 text-sm text-zinc-600 dark:text-zinc-400">
-                      Company name and website to get started.
-                    </p>
+                    <label className="flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                      <Building2 className="h-4 w-4 text-indigo-400" />
+                      <span>Company name</span>
+                    </label>
+                    <div aria-hidden="true" className="h-2.5" />
+                    <input
+                      className="form-input"
+                      value={form.prospectName}
+                      onChange={(event) => update("prospectName", event.target.value)}
+                      placeholder="Local Gym Chain"
+                      required
+                      autoFocus
+                    />
                   </div>
 
                   <div aria-hidden="true" className="h-2.5" />
 
                   <div className="flex flex-col">
-                    <div className="flex flex-col">
-                      <label className="flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                        <Building2 className="h-4 w-4 text-indigo-400" />
-                        <span>Company name</span>
-                      </label>
-                      <div aria-hidden="true" className="h-2.5" />
-                      <input
-                        className="form-input"
-                        value={form.prospectName}
-                        onChange={(event) => update("prospectName", event.target.value)}
-                        placeholder="Local Gym Chain"
-                        required
-                        autoFocus
-                      />
-                    </div>
-
+                    <label className="flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                      <Globe className="h-4 w-4 text-indigo-400" />
+                      <span>Website</span>
+                    </label>
                     <div aria-hidden="true" className="h-2.5" />
-
-                    <div className="flex flex-col">
-                      <label className="flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                        <Globe className="h-4 w-4 text-indigo-400" />
-                        <span>Website</span>
-                      </label>
-                      <div aria-hidden="true" className="h-2.5" />
-                      <input
-                        className="form-input"
-                        value={form.website}
-                        onChange={(event) => update("website", event.target.value)}
-                        placeholder="https://example.com"
-                        required
-                      />
-                    </div>
+                    <input
+                      className="form-input"
+                      value={form.website}
+                      onChange={(event) => update("website", event.target.value)}
+                      placeholder="https://example.com"
+                      required
+                    />
                   </div>
 
                   <div aria-hidden="true" className="h-2.5" />
