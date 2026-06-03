@@ -190,6 +190,39 @@ function diffStr(
   return sign + (fmt === "currency" ? formatCurrency(Math.abs(d)) : formatNumber(Math.abs(d)));
 }
 
+function renderInlineMarkdown(text: string): React.ReactNode[] {
+  const parts: React.ReactNode[] = [];
+  const regex = /(\*\*([^*]+)\*\*|\*([^*]+)\*|`([^`]+)`)/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  let key = 0;
+
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) parts.push(text.slice(lastIndex, match.index));
+    if (match[2]) parts.push(<strong key={key++}>{match[2]}</strong>);
+    else if (match[3]) parts.push(<em key={key++}>{match[3]}</em>);
+    else if (match[4])
+      parts.push(
+        <code
+          key={key++}
+          style={{
+            background: "rgba(0,0,0,0.12)",
+            padding: "1px 4px",
+            borderRadius: 3,
+            fontSize: "0.88em",
+            fontFamily: "monospace",
+          }}
+        >
+          {match[4]}
+        </code>,
+      );
+    lastIndex = regex.lastIndex;
+  }
+
+  if (lastIndex < text.length) parts.push(text.slice(lastIndex));
+  return parts;
+}
+
 /** Build a hierarchical text summary of campaign → ad set → creative for AI context */
 function buildCreativeSummary(creatives: MetaAdCreative[], adSetsData: MetaAdSet[]): string {
   // Group creatives by campaign → ad set
@@ -540,7 +573,7 @@ export function MetaSection({
           label: c.name,
           detail: `Frequency ${c.frequency.toFixed(1)}× — severe ad fatigue`,
           recommendation:
-            "Pause or refresh creatives immediately. Rest the campaign 3–5 days or rotate in new ad variations to reset audience fatigue.",
+            "Refresh the creative now. If delivery still looks saturated, rest the campaign for 3–5 days or rotate in new ad variations to reset fatigue.",
         });
       else if (c.frequency > 3.5)
         alerts.push({
@@ -549,7 +582,7 @@ export function MetaSection({
           label: c.name,
           detail: `Frequency ${c.frequency.toFixed(1)}× — fatigue risk`,
           recommendation:
-            "Introduce creative variations or expand audience size. Rotating ad sets can reduce frequency without pausing delivery.",
+            "Refresh the creative or expand the audience. Rotate ad sets if you want to lower frequency without pausing delivery.",
         });
       if (c.roas > 0 && c.roas < 1.0 && c.spend > 50)
         alerts.push({
@@ -558,7 +591,7 @@ export function MetaSection({
           label: c.name,
           detail: `ROAS ${c.roas.toFixed(2)}× — spend exceeding revenue`,
           recommendation:
-            "Pause or cut budget and reallocate spend to stronger campaigns. Review audience targeting and landing page alignment.",
+            "Cut budget now and move spend to a stronger campaign. Review audience targeting and landing page alignment before relaunching.",
         });
       else if (c.roas > 0 && c.roas < 1.5 && c.spend > 100)
         alerts.push({
@@ -567,7 +600,7 @@ export function MetaSection({
           label: c.name,
           detail: `ROAS ${c.roas.toFixed(2)}× — below target threshold`,
           recommendation:
-            "Reduce daily budget 20–30% and shift spend to better-performing campaigns. Review audience and creative mix.",
+            "Trim daily budget by 20–30% and reallocate the spend to better-performing campaigns. Review audience and creative mix next.",
         });
       if (c.ctr != null && c.ctr < 0.5 && c.impressions > 5000)
         alerts.push({
@@ -576,7 +609,7 @@ export function MetaSection({
           label: c.name,
           detail: `CTR ${c.ctr.toFixed(2)}% — low click-through rate`,
           recommendation:
-            "Test new ad copy, headlines, and creative formats. Ensure messaging matches the target audience's intent.",
+            "Test new ad copy, headlines, and creative formats now. Make sure the messaging matches the audience's intent.",
         });
     }
     for (const s of adSets) {
@@ -588,7 +621,7 @@ export function MetaSection({
           label: s.name,
           detail: `Frequency ${s.frequency.toFixed(1)}×`,
           recommendation:
-            "Expand audience or introduce creative variations. Excluding recent converters and widening the audience will dilute frequency.",
+            "Expand the audience or introduce new creative variations. Exclude recent converters if you need to dilute frequency faster.",
         });
       if (s.roas > 0 && s.roas < 1.0 && s.spend > 30)
         alerts.push({
@@ -597,7 +630,7 @@ export function MetaSection({
           label: s.name,
           detail: `ROAS ${s.roas.toFixed(2)}× — unprofitable`,
           recommendation:
-            "Pause this ad set and reallocate budget to better-performing ad sets. Review audience, placements, and bid settings.",
+            "Pause this ad set and reallocate the budget to a stronger ad set. Review audience, placements, and bid settings before testing again.",
         });
       if (s.conversions === 0 && s.spend > 50)
         alerts.push({
@@ -606,7 +639,7 @@ export function MetaSection({
           label: s.name,
           detail: `£${s.spend.toFixed(0)} spend, 0 conversions`,
           recommendation:
-            "Pause this ad set. Review landing page experience, audience relevance, and the optimisation event setup in Events Manager.",
+            "Pause this ad set now. Review landing page experience, audience relevance, and the optimisation event setup in Events Manager.",
         });
     }
     for (const s of pausedAdSetsInActiveCampaigns) {
@@ -617,7 +650,7 @@ export function MetaSection({
           label: s.adSetName,
           detail: `Paused inside live campaign "${s.campaignName}" after ${s.conversions} conversions on £${s.spend.toFixed(0)} spend`,
           recommendation:
-            "Decide whether to reactivate this ad set for a controlled retest or keep it paused and duplicate its audience or creative mix into a fresh variant if the campaign still needs more scale.",
+            "Reactivate this ad set only for a controlled retest. If you want more scale, duplicate the audience or creative into a fresh variant instead.",
         });
       } else if (s.spend > 25 && s.conversions === 0) {
         alerts.push({
@@ -626,7 +659,7 @@ export function MetaSection({
           label: s.adSetName,
           detail: `Paused inside live campaign "${s.campaignName}" after £${s.spend.toFixed(0)} spend with 0 conversions`,
           recommendation:
-            "Keep this ad set paused unless you are relaunching it with materially different creative, targeting, or optimisation settings.",
+            "Keep this ad set paused unless you relaunch it with materially different creative, targeting, or optimisation settings.",
         });
       }
     }
@@ -639,7 +672,7 @@ export function MetaSection({
           label: cr.adName,
           detail: `ROAS ${cr.roas.toFixed(2)}× — £${cr.spend.toFixed(0)} spent`,
           recommendation:
-            "Pause this creative and reallocate budget to top-performers. A/B test a new format or message against a better-performing variation.",
+            "Pause this creative and move budget to the top performer. A/B test a new format or message against a stronger variation.",
         });
       if (cr.frequency > 5)
         alerts.push({
@@ -648,7 +681,7 @@ export function MetaSection({
           label: cr.adName,
           detail: `Frequency ${cr.frequency.toFixed(1)}×`,
           recommendation:
-            "Retire or refresh this creative. Introduce new variants with different visuals or messaging to counter audience fatigue.",
+            "Retire or refresh this creative now. Introduce new variants with different visuals or messaging to counter audience fatigue.",
         });
       if (cr.conversions === 0 && cr.spend > 30 && cr.impressions > 1000)
         alerts.push({
@@ -657,7 +690,7 @@ export function MetaSection({
           label: cr.adName,
           detail: `£${cr.spend.toFixed(0)} spend, 0 conversions`,
           recommendation:
-            "Pause and test new variations — try different formats (video vs. image), headlines, or calls-to-action.",
+            "Pause this creative and test new variations now. Try different formats, headlines, or calls-to-action.",
         });
     }
     // ── Audience / targeting signals ──────────────────────────────────────
@@ -681,7 +714,7 @@ export function MetaSection({
           label: aud.adSetName,
           detail: "Conversion campaign running with no custom audience — missing retargeting",
           recommendation:
-            "Add a website custom audience or customer list to retarget warm prospects. Retargeting typically delivers significantly higher ROAS than cold audience conversion campaigns.",
+            "Add a website custom audience or customer list now to retarget warm prospects. Retargeting usually beats a cold audience on ROAS.",
         });
       }
 
@@ -715,7 +748,7 @@ export function MetaSection({
           label: aud.adSetName,
           detail: "Fully broad targeting (18–65+, all genders, no interests, no audiences)",
           recommendation:
-            "Consider adding interest, behaviour, or custom audience layers. Fully broad targeting can work with Advantage+ but may waste budget without directional signals.",
+            "Add interest, behaviour, or custom audience layers if you need more direction. Fully broad targeting can work with Advantage+ but may waste budget without a signal.",
         });
       }
     }
@@ -1189,7 +1222,7 @@ export function MetaSection({
                           >
                             {alertAiRecs[i] ? "AI" : "Action"}
                           </span>
-                          {alertAiRecs[i] ?? a.recommendation}
+                          {renderInlineMarkdown(alertAiRecs[i] ?? a.recommendation)}
                         </p>
                       </div>
                     ))}

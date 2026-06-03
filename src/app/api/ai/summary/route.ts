@@ -876,14 +876,16 @@ ONLY suggest SEO actions: title tag/meta description rewrites, content refresh, 
         meta: `You are a senior paid social specialist at a UK digital marketing agency analysing Meta Ads (Facebook/Instagram) performance.
 DATA AVAILABLE: spend, impressions, clicks, CTR, CPC, CPM, conversions, ROAS, reach, frequency, outbound clicks, landing page views. You will also receive campaign-level breakdowns (name, objective, budget, ROAS, CPA) and may receive individual ad creative data (ad name, headline, description, format, CTR, ROAS, CPA, conversions).
 KEY PATTERNS TO IDENTIFY:
-- Frequency > 3 with declining CTR or rising CPA → creative fatigue → recommend creative refresh with specific format guidance (static vs carousel vs video vs Reels).
-- High outbound clicks but low landing page views → page load speed issue or tracking gap → investigate landing page performance.
-- High impressions + low CTR → ad creative or targeting mismatch → review audience relevance and ad copy/visual.
-- ROAS below 1x on any campaign → loss-making → recommend pausing, restructuring, or testing new audiences.
-      - Paused ad sets inside active campaigns can indicate either a winning audience worth retesting or an underperformer that should stay paused — recommendations must respect the paused status and explain whether to reactivate, rebuild, or leave paused.
-- Gap between reach and conversions → funnel leak → check audience intent alignment and landing page conversion path.
-When creative data is available: name specific ads, quote their metrics, and state whether to keep, pause, iterate, or kill each one. Explain WHY winners work (hook, CTA, social proof, emotional appeal). Compare format performance (image vs video vs carousel).
-AVAILABLE LEVERS: campaign budgets, bid strategies, ad frequency caps, creative refresh, audience targeting (lookalikes, retargeting, interest-based), campaign objectives, ad set structure, placement optimisation (Feed vs Stories vs Reels), and Advantage+ settings.`,
+      - Frequency > 3 with declining CTR or rising CPA → creative fatigue → recommend the next concrete move: refresh the creative, broaden the audience, or rotate format (static vs carousel vs video vs Reels).
+      - When a campaign is already converting and frequency is rising, lead with creative refresh or audience expansion before any pause.
+      - Treat broad, clean signal paths as the default modern Meta frame when the data supports it. Avoid over-narrowing audiences unless the performance data clearly justifies it.
+      - High outbound clicks but low landing page views → page load speed issue or tracking gap → investigate landing page performance.
+      - High impressions + low CTR → ad creative or targeting mismatch → tighten audience relevance and ad copy/visual.
+      - ROAS below 1x on any campaign → loss-making → recommend pausing, restructuring, or testing new audiences.
+      - Paused ad sets inside active campaigns can indicate either a winning audience worth retesting or an underperformer that should stay paused — the recommendation must say which path to take and why.
+      - Gap between reach and conversions → funnel leak → check audience intent alignment and landing page conversion path.
+      When creative data is available: name specific ads, quote their metrics, and state whether to keep, pause, iterate, or kill each one. Explain why winners work using hook, CTA, social proof, or emotional appeal. Compare format performance (image vs video vs carousel).
+      AVAILABLE LEVERS: campaign budgets, bid strategies, ad frequency caps, creative refresh, audience targeting (lookalikes, retargeting, interest-based), campaign objectives, ad set structure, placement optimisation (Feed vs Stories vs Reels), and Advantage+ settings. Treat Advantage+ as the default optimisation frame when a campaign has enough conversion signal. Write from an Andromeda-aware lens: broad clean signals, stronger creative diversity, and clear optimisation events usually beat hyper-granular targeting when the data is already working.`,
 
         google_ads: `You are a senior paid search specialist at a UK digital marketing agency analysing Google Ads performance.
 DATA AVAILABLE: clicks, impressions, CTR, CPC, conversions, conversion value, ROAS, CPA, cost, search impression share, IS lost (budget), IS lost (rank), quality score. You will also receive campaign-level data (name, status, bid strategy, daily budget, impression share breakdown) and landing page URLs with click/conversion data.
@@ -1064,9 +1066,24 @@ AVAILABLE LEVERS: channel budget reallocation based on revenue contribution, ema
         .filter(Boolean)
         .join("\n\n");
 
+      const platformSpecificRecommendationContext =
+        channelType === "meta"
+          ? `Meta-specific recommendation framing:
+- Treat Advantage+ as the default modern delivery frame when the campaign already has useful conversion signal. Only narrow audiences when the data clearly shows a reason.
+- Assume Meta's delivery system rewards broad, clean signals, enough creative variation, and clear optimisation events. When frequency rises but ROAS is still healthy, say refresh the creative or expand the audience before you say pause.
+- For paused ad sets inside active campaigns, tell the user to reactivate only for a controlled retest when prior results justify it; otherwise keep them paused and build a fresh variant.`
+          : "";
+
       const recPrompt = `Client: ${clientName ?? "client"} | Period: ${dateRange ?? "selected period"}
 
 ${clientContextBlock}
+
+${
+  platformSpecificRecommendationContext
+    ? `${platformSpecificRecommendationContext}
+`
+    : ""
+}
 
 For each numbered alert below, write ONE specific, immediately actionable recommendation (1–2 sentences max).
 
@@ -1084,6 +1101,7 @@ MANDATORY FORMAT RULES:
 6. If the signal genuinely requires investigation before a fix, still start with the action: "**Check** GA4 → Acquisition → Traffic Sources for [date range] — the 95% session drop suggests a tracking break or paid channel going dark; if confirmed, [specific fix]."
 7. Do NOT fabricate numbers or metrics not present in the data. Do NOT invent benchmarks. Do NOT cite a number from the context block as a "problem to fix" if it is already healthy.
 8. British English at all times.
+9. Write like an operator, not a commentator: short, decisive, specific, and action-first. Avoid hedging phrases such as "you may want to", "consider", "could", or "might" unless the alert itself is genuinely ambiguous.
 
 ${contextBlock ? `Channel data:\n${contextBlock}\n` : ""}
 Alerts:
