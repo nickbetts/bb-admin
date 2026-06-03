@@ -891,7 +891,7 @@ export default function SalesHandoffPage() {
         size="xl"
         footer={null}
       >
-        <div className="space-y-3">
+        <div className="space-y-8">
           {/* Info Box */}
           <div className="flex gap-2.5 rounded-xl border border-indigo-100 bg-indigo-50/60 px-3.5 py-3 dark:border-indigo-900/40 dark:bg-indigo-950/20">
             <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-300">
@@ -916,9 +916,9 @@ export default function SalesHandoffPage() {
           ) : null}
         </div>
 
-        <form id="sales-handoff-form" onSubmit={handleSubmit} className="mt-6 space-y-8">
+        <form id="sales-handoff-form" onSubmit={handleSubmit} className="mt-12 space-y-14">
           {/* Stepper progress */}
-          <div className="flex items-center gap-1.5" aria-hidden="true">
+          <div className="flex items-center gap-1.5 pt-3" aria-hidden="true">
             {[1, 2, 3, 4, 5, 6].map((step) => (
               <div
                 key={step}
@@ -941,24 +941,25 @@ export default function SalesHandoffPage() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -12 }}
               transition={{ duration: 0.2, ease: "easeOut" }}
+              className="pb-4"
             >
               {/* STEP 1: Client Context */}
               {formStep === 1 && (
-                <div className="space-y-8">
-                  <div className="space-y-2">
-                    <p className="text-[11px] font-semibold tracking-wide text-indigo-500 uppercase dark:text-indigo-400">
+                <div className="space-y-14">
+                  <div className="space-y-2.5">
+                    <p className="py-2.5 text-[11px] font-semibold tracking-wide text-indigo-500 uppercase dark:text-indigo-400">
                       Step 1 of 6
                     </p>
-                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                    <h2 className="py-2.5 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
                       Who&apos;s the prospect?
                     </h2>
-                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                    <p className="py-2.5 text-sm text-zinc-600 dark:text-zinc-400">
                       Company name and website to get started.
                     </p>
                   </div>
 
-                  <div className="space-y-6">
-                    <div className="grid gap-4">
+                  <div className="space-y-12">
+                    <div className="grid gap-2.5">
                       <label className="flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">
                         <Building2 className="h-4 w-4 text-indigo-400" />
                         <span>Company name</span>
@@ -973,7 +974,7 @@ export default function SalesHandoffPage() {
                       />
                     </div>
 
-                    <div className="grid gap-4">
+                    <div className="grid gap-2.5">
                       <label className="flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">
                         <Globe className="h-4 w-4 text-indigo-400" />
                         <span>Website</span>
@@ -992,8 +993,8 @@ export default function SalesHandoffPage() {
 
               {/* STEP 2: Target Audience */}
               {formStep === 2 && (
-                <div className="space-y-8">
-                  <div className="space-y-2">
+                <div className="space-y-14">
+                  <div className="space-y-5">
                     <p className="text-[11px] font-semibold tracking-wide text-indigo-500 uppercase dark:text-indigo-400">
                       Step 2 of 6
                     </p>
@@ -1005,7 +1006,7 @@ export default function SalesHandoffPage() {
                     </p>
                   </div>
 
-                  <div className="grid gap-4">
+                  <div className="grid gap-7">
                     <label className="flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">
                       <Users className="h-4 w-4 text-indigo-400" />
                       <span>Audience description</span>
@@ -1025,8 +1026,8 @@ export default function SalesHandoffPage() {
 
               {/* STEP 3: Timing & Budget */}
               {formStep === 3 && (
-                <div className="space-y-8">
-                  <div className="space-y-2">
+                <div className="space-y-14">
+                  <div className="space-y-5">
                     <p className="text-[11px] font-semibold tracking-wide text-indigo-500 uppercase dark:text-indigo-400">
                       Step 3 of 6
                     </p>
@@ -1038,8 +1039,8 @@ export default function SalesHandoffPage() {
                     </p>
                   </div>
 
-                  <div className="space-y-6">
-                    <div className="grid gap-4">
+                  <div className="space-y-12">
+                    <div className="grid gap-7">
                       <label className="flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">
                         <CalendarClock className="h-4 w-4 text-indigo-400" />
                         <span>Second call date and time</span>
@@ -1068,7 +1069,7 @@ export default function SalesHandoffPage() {
                       )}
                     </div>
 
-                    <div className="grid gap-4">
+                    <div className="grid gap-7">
                       <label className="flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">
                         <Wallet className="h-4 w-4 text-indigo-400" />
                         <span>Budget range per month</span>
@@ -1132,7 +1133,7 @@ export default function SalesHandoffPage() {
                     )}
 
                     {urgentOverride && (
-                      <div className="grid gap-4">
+                      <div className="grid gap-7">
                         <label className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
                           Why is this urgent?
                         </label>
@@ -1152,8 +1153,8 @@ export default function SalesHandoffPage() {
 
               {/* STEP 4: Services */}
               {formStep === 4 && (
-                <div className="space-y-8">
-                  <div className="space-y-2">
+                <div className="space-y-14">
+                  <div className="space-y-5">
                     <p className="text-[11px] font-semibold tracking-wide text-indigo-500 uppercase dark:text-indigo-400">
                       Step 4 of 6
                     </p>
@@ -1165,7 +1166,7 @@ export default function SalesHandoffPage() {
                     </p>
                   </div>
 
-                  <div className="grid gap-4">
+                  <div className="grid gap-7">
                     {serviceOptions.map((service) => {
                       const checked = form.interestedServices.includes(service);
                       return (
@@ -1193,8 +1194,8 @@ export default function SalesHandoffPage() {
 
               {/* STEP 5: Planning Notes (REQUIRED) */}
               {formStep === 5 && (
-                <div className="space-y-8">
-                  <div className="space-y-2">
+                <div className="space-y-14">
+                  <div className="space-y-5">
                     <p className="text-[11px] font-semibold tracking-wide text-indigo-500 uppercase dark:text-indigo-400">
                       Step 5 of 6
                     </p>
