@@ -1693,7 +1693,7 @@ function SettingsPanelInner() {
           <div>
             <h2 className="card-title">ClickUp Integration</h2>
             <p className="card-subtitle">
-              Used to automatically create go-live checklists, sales handoff tasks, and set the
+              Used to automatically create go-live checklists, sales request tasks, and set the
               default allocation list for Time Checker. Get your personal API token from{" "}
               <a
                 href="https://app.clickup.com/settings/apps"
@@ -1723,7 +1723,7 @@ function SettingsPanelInner() {
                 marginBottom: 4,
               }}
             >
-              Sales handoff ClickUp list ID
+              Sales request ClickUp list ID
             </label>
             <Input
               className="font-mono text-[13px]"
@@ -1732,7 +1732,7 @@ function SettingsPanelInner() {
               placeholder="901202558111"
             />
             <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 4 }}>
-              Sales handoff tasks are created in this list.
+              Sales request tasks are created in this list.
             </p>
           </div>
           <div style={{ marginBottom: 12 }}>
@@ -1802,7 +1802,7 @@ function SettingsPanelInner() {
                 marginBottom: 4,
               }}
             >
-              Sales handoff service options (one per line)
+              Sales request service options (one per line)
             </label>
             <Textarea
               rows={6}
@@ -1822,7 +1822,7 @@ function SettingsPanelInner() {
                 marginBottom: 4,
               }}
             >
-              Sales handoff progress checklist (one per line)
+              Sales request progress checklist (one per line)
             </label>
             <Textarea
               rows={4}
@@ -1845,7 +1845,7 @@ function SettingsPanelInner() {
                 marginBottom: 4,
               }}
             >
-              Sales handoff auto-assignees
+              Sales request auto-assignees
             </label>
             <div
               style={{
@@ -1900,7 +1900,7 @@ function SettingsPanelInner() {
               )}
             </div>
             <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 4 }}>
-              Tick which ClickUp users should be auto-assigned to sales handoff tasks.
+              Tick which ClickUp users should be auto-assigned to sales request tasks.
             </p>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
@@ -1920,7 +1920,7 @@ function SettingsPanelInner() {
           </div>
           {clickupApiToken && (
             <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 8 }}>
-              ✓ ClickUp token configured. Go-live checklists and sales handoff tasks can be created
+              ✓ ClickUp token configured. Go-live checklists and sales request tasks can be created
               automatically.
             </p>
           )}

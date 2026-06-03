@@ -141,7 +141,7 @@ const STATIC_ITEMS = [
     group: "Agency Tools",
   },
   {
-    label: "Sales Handoff",
+    label: "Sales Requests",
     href: "/tools/sales-handoff",
     icon: <ClipboardList size={14} />,
     group: "Agency Tools",

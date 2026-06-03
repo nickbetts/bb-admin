@@ -679,9 +679,9 @@ export default function SalesHandoffPage() {
             <ClipboardList className="h-5 w-5" />
           </div>
           <div>
-            <h1 className="page-title">Sales Handoff</h1>
+            <h1 className="page-title">Sales Requests</h1>
             <p className="page-desc">
-              Capture first-call context and manage pipeline handoffs to marketing.
+              Capture first-call context and manage pipeline requests to marketing.
             </p>
           </div>
         </div>

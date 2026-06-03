@@ -234,7 +234,7 @@ const toolsNavItems: NavItem[] = [
   },
   {
     href: "/tools/sales-handoff",
-    label: "Sales Handoff",
+    label: "Sales Requests",
     icon: <ClipboardList className="h-4 w-4" />,
     permission: "sales_handoff",
   },
