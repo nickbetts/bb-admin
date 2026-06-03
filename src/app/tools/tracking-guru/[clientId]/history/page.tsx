@@ -2,6 +2,7 @@
 
 import { use, useState, useEffect } from "react";
 import Link from "next/link";
+import { TrackingClientNav } from "@/components/tracking/TrackingClientNav";
 import { Card } from "@/components/ui/shadcn/card";
 import { LoadingSpinner } from "@/components/ui/index";
 import { ArrowLeft, CheckCircle, AlertCircle, XCircle } from "lucide-react";
@@ -82,11 +83,16 @@ export default function HistoryPage({ params }: HistoryPageProps) {
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center gap-4">
-        <Link href="/tools/tracking-guru" className="transition-opacity hover:opacity-70">
+        <Link
+          href={`/tools/tracking-guru/${clientId}`}
+          className="transition-opacity hover:opacity-70"
+        >
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <h1 className="text-3xl font-bold">Audit History</h1>
       </div>
+
+      <TrackingClientNav clientId={clientId} />
 
       {error && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">{error}</div>

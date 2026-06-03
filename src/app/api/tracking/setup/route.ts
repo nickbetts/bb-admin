@@ -70,7 +70,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       clientId,
+      gtmAccountId,
+      gtmContainerApiId,
       gtmContainerId,
+      gtmWorkspaceId,
       ga4PropertyId,
       metaPixelId,
       googleAdsConversionId,
@@ -102,7 +105,10 @@ export async function POST(request: NextRequest) {
       setup = await prisma.trackingSetup.update({
         where: { id: existingSetup.id },
         data: {
+          ...(gtmAccountId !== undefined && { gtmAccountId }),
+          ...(gtmContainerApiId !== undefined && { gtmContainerApiId }),
           ...(gtmContainerId !== undefined && { gtmContainerId }),
+          ...(gtmWorkspaceId !== undefined && { gtmWorkspaceId }),
           ...(ga4PropertyId !== undefined && { ga4PropertyId }),
           ...(metaPixelId !== undefined && { metaPixelId }),
           ...(googleAdsConversionId !== undefined && { googleAdsConversionId }),
@@ -114,7 +120,10 @@ export async function POST(request: NextRequest) {
       setup = await prisma.trackingSetup.create({
         data: {
           clientId,
+          gtmAccountId: gtmAccountId || null,
+          gtmContainerApiId: gtmContainerApiId || null,
           gtmContainerId: gtmContainerId || null,
+          gtmWorkspaceId: gtmWorkspaceId || "1",
           ga4PropertyId: ga4PropertyId || null,
           metaPixelId: metaPixelId || null,
           googleAdsConversionId: googleAdsConversionId || null,
@@ -141,15 +150,27 @@ export async function PUT(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { setupId, gtmContainerId, ga4PropertyId, metaPixelId, googleAdsConversionId, status } =
-      body;
+    const {
+      setupId,
+      gtmAccountId,
+      gtmContainerApiId,
+      gtmContainerId,
+      gtmWorkspaceId,
+      ga4PropertyId,
+      metaPixelId,
+      googleAdsConversionId,
+      status,
+    } = body;
 
     if (!setupId) {
       return NextResponse.json({ error: "setupId is required" }, { status: 400 });
     }
 
     const updateData: Record<string, string | null | undefined> = {};
+    if (gtmAccountId !== undefined) updateData.gtmAccountId = gtmAccountId;
+    if (gtmContainerApiId !== undefined) updateData.gtmContainerApiId = gtmContainerApiId;
     if (gtmContainerId !== undefined) updateData.gtmContainerId = gtmContainerId;
+    if (gtmWorkspaceId !== undefined) updateData.gtmWorkspaceId = gtmWorkspaceId;
     if (ga4PropertyId !== undefined) updateData.ga4PropertyId = ga4PropertyId;
     if (metaPixelId !== undefined) updateData.metaPixelId = metaPixelId;
     if (googleAdsConversionId !== undefined)
