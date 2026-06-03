@@ -15,7 +15,7 @@ const MODAL_WIDTHS: Record<ModalSize, number> = {
 interface ModalProps {
   open: boolean;
   onClose: () => void;
-  title?: string;
+  title?: ReactNode;
   description?: string;
   size?: ModalSize;
   children?: ReactNode;
@@ -84,7 +84,7 @@ export function Modal({
   useEffect(() => {
     if (!open || !panelRef.current) return;
     const focusable = panelRef.current.querySelectorAll<HTMLElement>(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
     );
     const first = focusable[0];
     if (first) {
@@ -99,8 +99,8 @@ export function Modal({
       if (!panelRef.current || e.key !== "Tab") return;
       const focusable = Array.from(
         panelRef.current.querySelectorAll<HTMLElement>(
-          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-        )
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
       );
       if (focusable.length === 0) return;
       const first = focusable[0];
@@ -177,10 +177,23 @@ export function Modal({
             }}
           >
             {title && (
-              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  justifyContent: "space-between",
+                  gap: 12,
+                }}
+              >
                 <h2
                   id="modal-title"
-                  style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "var(--text)", lineHeight: 1.3 }}
+                  style={{
+                    margin: 0,
+                    fontSize: 16,
+                    fontWeight: 600,
+                    color: "var(--text)",
+                    lineHeight: 1.3,
+                  }}
                 >
                   {title}
                 </h2>
@@ -197,7 +210,12 @@ export function Modal({
             {description && (
               <p
                 id="modal-description"
-                style={{ margin: title ? "6px 0 0" : 0, fontSize: 13, color: "var(--text-2)", lineHeight: 1.5 }}
+                style={{
+                  margin: title ? "6px 0 0" : 0,
+                  fontSize: 13,
+                  color: "var(--text-2)",
+                  lineHeight: 1.5,
+                }}
               >
                 {description}
               </p>

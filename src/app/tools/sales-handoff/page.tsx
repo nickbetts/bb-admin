@@ -764,7 +764,12 @@ export default function SalesHandoffPage() {
       <Modal
         open={showCreateModal}
         onClose={() => setShowCreateModal(false)}
-        title="Create New Handoff"
+        title={
+          <span className="inline-flex items-center gap-2">
+            <ClipboardList className="h-5 w-5 text-indigo-500" />
+            Create New Request
+          </span>
+        }
         description="Turn first-call notes into a tracked delivery workflow."
         size="xl"
         footer={
@@ -942,10 +947,15 @@ export default function SalesHandoffPage() {
           </div>
 
           <div className="grid gap-2.5">
-            <label className="form-label flex items-center gap-1.5">
-              <Sparkles className="h-3.5 w-3.5 text-zinc-400" />
-              Services they might be interested in
-            </label>
+            <div>
+              <label className="form-label flex items-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5 text-zinc-400" />
+                Services they might be interested in
+              </label>
+              <p className="mt-0.5 text-xs" style={{ color: "var(--text-3)" }}>
+                Select all that apply — this shapes the plan we put together.
+              </p>
+            </div>
             <div className="flex flex-wrap gap-2">
               {serviceOptions.map((service) => {
                 const checked = form.interestedServices.includes(service);
@@ -956,17 +966,13 @@ export default function SalesHandoffPage() {
                     onClick={() => toggleService(service)}
                     aria-pressed={checked}
                     className={cn(
-                      "inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
+                      "inline-flex items-center gap-1.5 rounded-lg border px-3.5 py-2 text-sm font-medium transition-all",
                       checked
-                        ? "border-indigo-300 bg-indigo-50 text-indigo-700 dark:border-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300"
-                        : "border-zinc-200 text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-900",
+                        ? "border-indigo-400 bg-indigo-500 text-white shadow-sm dark:border-indigo-500 dark:bg-indigo-600"
+                        : "border-zinc-200 bg-white text-zinc-600 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-indigo-700 dark:hover:bg-indigo-950/40 dark:hover:text-indigo-300",
                     )}
                   >
-                    {checked ? (
-                      <Check className="h-3.5 w-3.5" />
-                    ) : (
-                      <Plus className="h-3.5 w-3.5 opacity-40" />
-                    )}
+                    {checked && <Check className="h-3.5 w-3.5" />}
                     {service}
                   </button>
                 );
@@ -974,7 +980,26 @@ export default function SalesHandoffPage() {
             </div>
           </div>
 
-          <div className="grid gap-1.5">
+          <div className="grid gap-2">
+            <div
+              className="flex items-start gap-3 rounded-xl border px-4 py-3"
+              style={{
+                borderColor: "var(--accent-subtle, #c7d2fe)",
+                background: "var(--accent-faint, #eef2ff)",
+              }}
+            >
+              <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-indigo-500" />
+              <div>
+                <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>
+                  The more you share, the better the plan
+                </p>
+                <p className="mt-0.5 text-xs leading-relaxed" style={{ color: "var(--text-2)" }}>
+                  Include goals, timelines, blockers, decision-makers, budget sensitivities, and
+                  anything else that came up on the call. Marketing uses this to build a tailored
+                  strategy — every detail counts.
+                </p>
+              </div>
+            </div>
             <label className="form-label flex items-center gap-1.5">
               <MessageSquareText className="h-3.5 w-3.5 text-zinc-400" />
               Other information
@@ -983,9 +1008,14 @@ export default function SalesHandoffPage() {
               className="form-input"
               value={form.otherInformation}
               onChange={(event) => update("otherInformation", event.target.value)}
-              placeholder="Add goals, timelines, blockers, and decision-makers from the call."
-              rows={4}
+              placeholder="e.g. CEO is the decision-maker, they're launching in September, already trialled Google Ads with another agency and had a bad experience, budget is flexible if ROI is proven…"
+              rows={6}
             />
+            {form.otherInformation.length > 0 && (
+              <p className="text-right text-xs" style={{ color: "var(--text-3)" }}>
+                {form.otherInformation.length} characters
+              </p>
+            )}
           </div>
         </form>
       </Modal>
