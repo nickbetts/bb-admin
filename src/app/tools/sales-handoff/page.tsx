@@ -750,23 +750,25 @@ export default function SalesHandoffPage() {
 
   return (
     <div className="page max-w-350">
-      {/* ═════ HERO HEADER ═════ */}
-      <div className="mb-16 space-y-10">
+      {/* ═════ HEADER ═════ */}
+      <div className="mb-12 space-y-8">
         {/* Title + CTA */}
-        <div className="flex flex-col items-start justify-between gap-8 lg:flex-row lg:items-end">
+        <div className="flex items-start justify-between gap-6">
           <div>
-            <h1 className="text-5xl font-black text-zinc-900 dark:text-zinc-100">Sales Requests</h1>
-            <p className="mt-4 max-w-xl text-xl text-zinc-600 dark:text-zinc-400">
-              Capture first-call context and hand marketing a sharper, more actionable brief.
+            <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+              Sales Requests
+            </h1>
+            <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+              Capture first-call context and hand marketing sharper briefs
             </p>
           </div>
-          <div className="flex flex-col gap-4 sm:flex-row">
+          <div className="flex gap-3">
             <button
               type="button"
               onClick={() => setShowSettingsPanel(true)}
-              className="inline-flex items-center justify-center gap-3 rounded-2xl border-2 border-zinc-300 bg-white px-8 py-4 text-lg font-bold text-zinc-900 transition hover:border-zinc-400 hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:border-zinc-500 dark:hover:bg-zinc-800"
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
             >
-              <Settings className="h-6 w-6" />
+              <Settings className="h-4 w-4" />
               <span>Settings</span>
             </button>
             <button
@@ -776,84 +778,74 @@ export default function SalesHandoffPage() {
                 setShowCreateModal(true);
                 setFormStep(1);
               }}
-              className="inline-flex items-center justify-center gap-3 rounded-2xl bg-linear-to-br from-indigo-600 to-indigo-700 px-8 py-4 text-lg font-bold text-white shadow-lg transition hover:from-indigo-700 hover:to-indigo-800 dark:from-indigo-500 dark:to-indigo-600"
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
             >
-              <Plus className="h-6 w-6" />
+              <Plus className="h-4 w-4" />
               <span>New Request</span>
             </button>
           </div>
         </div>
 
-        {/* Premium Stats Grid (2x2) */}
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+        {/* Clean Stats Grid */}
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
           {/* Total Requests */}
-          <div className="group relative overflow-hidden rounded-3xl border-2 border-blue-200 bg-linear-to-br from-blue-50 to-blue-50/50 p-8 transition hover:border-blue-300 dark:border-blue-900/50 dark:from-blue-950/30 dark:to-blue-950/10">
-            <div className="absolute top-0 right-0 h-32 w-32 rounded-full bg-blue-100/50 blur-3xl dark:bg-blue-900/20" />
-            <div className="relative space-y-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-600/10 transition group-hover:bg-blue-600/20">
-                <ClipboardList className="h-8 w-8 text-blue-600 dark:text-blue-400" />
-              </div>
+          <div className="rounded-lg border border-zinc-200 bg-white p-4 transition hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900/50">
+            <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm font-bold tracking-widest text-blue-600 uppercase dark:text-blue-400">
+                <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
                   Total Requests
                 </p>
-                <p className="mt-3 text-5xl font-black text-blue-900 dark:text-blue-100">
+                <p className="mt-2 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
                   {handoffHistory.length}
                 </p>
+              </div>
+              <div className="rounded-md bg-zinc-100 p-2 dark:bg-zinc-800">
+                <ClipboardList className="h-4 w-4 text-zinc-600 dark:text-zinc-400" />
               </div>
             </div>
           </div>
 
           {/* In Progress */}
-          <div className="group relative overflow-hidden rounded-3xl border-2 border-amber-200 bg-linear-to-br from-amber-50 to-amber-50/50 p-8 transition hover:border-amber-300 dark:border-amber-900/50 dark:from-amber-950/30 dark:to-amber-950/10">
-            <div className="absolute top-0 right-0 h-32 w-32 rounded-full bg-amber-100/50 blur-3xl dark:bg-amber-900/20" />
-            <div className="relative space-y-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-600/10 transition group-hover:bg-amber-600/20">
-                <Zap className="h-8 w-8 text-amber-600 dark:text-amber-400" />
-              </div>
+          <div className="rounded-lg border border-zinc-200 bg-white p-4 transition hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900/50">
+            <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm font-bold tracking-widest text-amber-600 uppercase dark:text-amber-400">
-                  In Progress
-                </p>
-                <p className="mt-3 text-5xl font-black text-amber-900 dark:text-amber-100">
+                <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">In Progress</p>
+                <p className="mt-2 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
                   {handoffHistory.filter((h) => h.status === "delivery_in_progress").length}
                 </p>
+              </div>
+              <div className="rounded-md bg-amber-100 p-2 dark:bg-amber-900/30">
+                <Zap className="h-4 w-4 text-amber-600 dark:text-amber-400" />
               </div>
             </div>
           </div>
 
           {/* Completed */}
-          <div className="group relative overflow-hidden rounded-3xl border-2 border-emerald-200 bg-linear-to-br from-emerald-50 to-emerald-50/50 p-8 transition hover:border-emerald-300 dark:border-emerald-900/50 dark:from-emerald-950/30 dark:to-emerald-950/10">
-            <div className="absolute top-0 right-0 h-32 w-32 rounded-full bg-emerald-100/50 blur-3xl dark:bg-emerald-900/20" />
-            <div className="relative space-y-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-600/10 transition group-hover:bg-emerald-600/20">
-                <Check className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
-              </div>
+          <div className="rounded-lg border border-zinc-200 bg-white p-4 transition hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900/50">
+            <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm font-bold tracking-widest text-emerald-600 uppercase dark:text-emerald-400">
-                  Completed
-                </p>
-                <p className="mt-3 text-5xl font-black text-emerald-900 dark:text-emerald-100">
+                <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Completed</p>
+                <p className="mt-2 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
                   {handoffHistory.filter((h) => h.status === "delivery_complete").length}
                 </p>
+              </div>
+              <div className="rounded-md bg-emerald-100 p-2 dark:bg-emerald-900/30">
+                <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
               </div>
             </div>
           </div>
 
           {/* Synced to ClickUp */}
-          <div className="group relative overflow-hidden rounded-3xl border-2 border-violet-200 bg-linear-to-br from-violet-50 to-violet-50/50 p-8 transition hover:border-violet-300 dark:border-violet-900/50 dark:from-violet-950/30 dark:to-violet-950/10">
-            <div className="absolute top-0 right-0 h-32 w-32 rounded-full bg-violet-100/50 blur-3xl dark:bg-violet-900/20" />
-            <div className="relative space-y-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-violet-600/10 transition group-hover:bg-violet-600/20">
-                <ExternalLink className="h-8 w-8 text-violet-600 dark:text-violet-400" />
-              </div>
+          <div className="rounded-lg border border-zinc-200 bg-white p-4 transition hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900/50">
+            <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm font-bold tracking-widest text-violet-600 uppercase dark:text-violet-400">
-                  Synced
-                </p>
-                <p className="mt-3 text-5xl font-black text-violet-900 dark:text-violet-100">
+                <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Synced</p>
+                <p className="mt-2 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
                   {handoffHistory.filter((h) => h.clickupTaskId).length}
                 </p>
+              </div>
+              <div className="rounded-md bg-violet-100 p-2 dark:bg-violet-900/30">
+                <ExternalLink className="h-4 w-4 text-violet-600 dark:text-violet-400" />
               </div>
             </div>
           </div>
