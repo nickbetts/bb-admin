@@ -11,6 +11,7 @@
     "christian-kohler.path-intellisense",
     "ms-vscode.vscode-json",
     "yoavbls.pretty-ts-errors",
-    "usernamehw.errorlens"
+    "usernamehw.errorlens",
+    "21st.21st-extension"
   ]
 }

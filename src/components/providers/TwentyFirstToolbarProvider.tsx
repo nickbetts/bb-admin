@@ -1,11 +1,8 @@
 "use client";
 
 import { TwentyFirstToolbar } from "@21st-extension/toolbar-next";
+import { ReactPlugin } from "@21st-extension/react";
 
 export function TwentyFirstToolbarProvider() {
-  if (process.env.NODE_ENV !== "development") {
-    return null;
-  }
-
-  return <TwentyFirstToolbar config={{ plugins: [] }} />;
+  return <TwentyFirstToolbar config={{ plugins: [ReactPlugin] }} />;
 }

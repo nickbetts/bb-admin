@@ -2,7 +2,7 @@
 @plugin "tailwindcss-animate";
 
 /* =============================================
-   DESIGN TOKENS
+  DESIGN TOKENS
 ============================================= */
 :root {
   /* Colors */
@@ -131,20 +131,18 @@
 }
 
 /* =============================================
-   RESET
+  RESET (Override Tailwind base to ensure utilities apply)
 ============================================= */
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-* {
-  margin: 0;
-  padding: 0;
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
 }
 
 /* =============================================
-   BASE
+  BASE (Element styles)
 ============================================= */
 html {
   -webkit-font-smoothing: antialiased;
