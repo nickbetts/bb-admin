@@ -13,7 +13,6 @@ import {
   Loader2,
   Plus,
   Settings,
-  Sparkles,
   Users,
   Wallet,
   Zap,
