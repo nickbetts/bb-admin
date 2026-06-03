@@ -916,7 +916,7 @@ export default function SalesHandoffPage() {
           ) : null}
         </div>
 
-        <form id="sales-handoff-form" onSubmit={handleSubmit} className="mt-6 space-y-6">
+        <form id="sales-handoff-form" onSubmit={handleSubmit} className="mt-6 space-y-8">
           {/* Stepper progress */}
           <div className="flex items-center gap-1.5" aria-hidden="true">
             {[1, 2, 3, 4, 5, 6].map((step) => (
@@ -944,21 +944,21 @@ export default function SalesHandoffPage() {
             >
               {/* STEP 1: Client Context */}
               {formStep === 1 && (
-                <div className="space-y-6">
-                  <div>
+                <div className="space-y-8">
+                  <div className="space-y-2">
                     <p className="text-[11px] font-semibold tracking-wide text-indigo-500 uppercase dark:text-indigo-400">
                       Step 1 of 6
                     </p>
-                    <h2 className="mt-2 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
                       Who&apos;s the prospect?
                     </h2>
-                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
                       Company name and website to get started.
                     </p>
                   </div>
 
-                  <div className="space-y-4">
-                    <div className="grid gap-2">
+                  <div className="space-y-6">
+                    <div className="grid gap-4">
                       <label className="flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">
                         <Building2 className="h-4 w-4 text-indigo-400" />
                         <span>Company name</span>
@@ -973,7 +973,7 @@ export default function SalesHandoffPage() {
                       />
                     </div>
 
-                    <div className="grid gap-2">
+                    <div className="grid gap-4">
                       <label className="flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">
                         <Globe className="h-4 w-4 text-indigo-400" />
                         <span>Website</span>
@@ -992,20 +992,20 @@ export default function SalesHandoffPage() {
 
               {/* STEP 2: Target Audience */}
               {formStep === 2 && (
-                <div className="space-y-6">
-                  <div>
+                <div className="space-y-8">
+                  <div className="space-y-2">
                     <p className="text-[11px] font-semibold tracking-wide text-indigo-500 uppercase dark:text-indigo-400">
                       Step 2 of 6
                     </p>
-                    <h2 className="mt-2 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
                       Target audience
                     </h2>
-                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
                       Who are they selling to and what pain points came up?
                     </p>
                   </div>
 
-                  <div className="grid gap-2">
+                  <div className="grid gap-4">
                     <label className="flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">
                       <Users className="h-4 w-4 text-indigo-400" />
                       <span>Audience description</span>
@@ -1025,21 +1025,21 @@ export default function SalesHandoffPage() {
 
               {/* STEP 3: Timing & Budget */}
               {formStep === 3 && (
-                <div className="space-y-6">
-                  <div>
+                <div className="space-y-8">
+                  <div className="space-y-2">
                     <p className="text-[11px] font-semibold tracking-wide text-indigo-500 uppercase dark:text-indigo-400">
                       Step 3 of 6
                     </p>
-                    <h2 className="mt-2 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
                       Timeline and budget
                     </h2>
-                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
                       When&apos;s the second call and what&apos;s the budget range?
                     </p>
                   </div>
 
-                  <div className="space-y-4">
-                    <div className="grid gap-2">
+                  <div className="space-y-6">
+                    <div className="grid gap-4">
                       <label className="flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">
                         <CalendarClock className="h-4 w-4 text-indigo-400" />
                         <span>Second call date and time</span>
@@ -1068,7 +1068,7 @@ export default function SalesHandoffPage() {
                       )}
                     </div>
 
-                    <div className="grid gap-2">
+                    <div className="grid gap-4">
                       <label className="flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">
                         <Wallet className="h-4 w-4 text-indigo-400" />
                         <span>Budget range per month</span>
@@ -1113,7 +1113,7 @@ export default function SalesHandoffPage() {
                     </div>
 
                     {enforce48HourNotice && violatesNoticeWindow && allowUrgentOverride && (
-                      <div className="rounded-md border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/50 dark:bg-amber-950/30">
+                      <div className="rounded-md border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/50 dark:bg-amber-950/30">
                         <label className="flex cursor-pointer items-center gap-2">
                           <input
                             type="checkbox"
@@ -1125,14 +1125,14 @@ export default function SalesHandoffPage() {
                             Mark as urgent
                           </span>
                         </label>
-                        <p className="mt-1 ml-6 text-xs text-amber-800 dark:text-amber-200/90">
+                        <p className="mt-2 ml-6 text-xs text-amber-800 dark:text-amber-200/90">
                           Use only if timing can&apos;t be moved
                         </p>
                       </div>
                     )}
 
                     {urgentOverride && (
-                      <div className="grid gap-2">
+                      <div className="grid gap-4">
                         <label className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
                           Why is this urgent?
                         </label>
@@ -1152,20 +1152,20 @@ export default function SalesHandoffPage() {
 
               {/* STEP 4: Services */}
               {formStep === 4 && (
-                <div className="space-y-6">
-                  <div>
+                <div className="space-y-8">
+                  <div className="space-y-2">
                     <p className="text-[11px] font-semibold tracking-wide text-indigo-500 uppercase dark:text-indigo-400">
                       Step 4 of 6
                     </p>
-                    <h2 className="mt-2 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
                       Services interested in
                     </h2>
-                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
                       Select all that apply.
                     </p>
                   </div>
 
-                  <div className="grid gap-2">
+                  <div className="grid gap-4">
                     {serviceOptions.map((service) => {
                       const checked = form.interestedServices.includes(service);
                       return (
@@ -1193,20 +1193,20 @@ export default function SalesHandoffPage() {
 
               {/* STEP 5: Planning Notes (REQUIRED) */}
               {formStep === 5 && (
-                <div className="space-y-6">
-                  <div>
+                <div className="space-y-8">
+                  <div className="space-y-2">
                     <p className="text-[11px] font-semibold tracking-wide text-indigo-500 uppercase dark:text-indigo-400">
                       Step 5 of 6
                     </p>
-                    <h2 className="mt-2 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
                       Planning notes
                     </h2>
-                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
                       Provide context for the marketing team.
                     </p>
                   </div>
 
-                  <div className="grid gap-2">
+                  <div className="grid gap-4">
                     <label className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
                       What should we know?
                     </label>
@@ -1229,15 +1229,15 @@ export default function SalesHandoffPage() {
 
               {/* STEP 6: Review */}
               {formStep === 6 && (
-                <div className="space-y-6">
-                  <div>
+                <div className="space-y-8">
+                  <div className="space-y-2">
                     <p className="text-[11px] font-semibold tracking-wide text-indigo-500 uppercase dark:text-indigo-400">
                       Step 6 of 6
                     </p>
-                    <h2 className="mt-2 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
                       Review and send
                     </h2>
-                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
                       Check everything looks right before sending to marketing.
                     </p>
                   </div>
