@@ -776,7 +776,7 @@ export default function SalesHandoffPage() {
                 setShowCreateModal(true);
                 setFormStep(1);
               }}
-              className="inline-flex items-center justify-center gap-3 rounded-2xl bg-gradient-to-br from-indigo-600 to-indigo-700 px-8 py-4 text-lg font-bold text-white shadow-lg transition hover:from-indigo-700 hover:to-indigo-800 dark:from-indigo-500 dark:to-indigo-600"
+              className="inline-flex items-center justify-center gap-3 rounded-2xl bg-linear-to-br from-indigo-600 to-indigo-700 px-8 py-4 text-lg font-bold text-white shadow-lg transition hover:from-indigo-700 hover:to-indigo-800 dark:from-indigo-500 dark:to-indigo-600"
             >
               <Plus className="h-6 w-6" />
               <span>New Request</span>
@@ -787,7 +787,7 @@ export default function SalesHandoffPage() {
         {/* Premium Stats Grid (2x2) */}
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
           {/* Total Requests */}
-          <div className="group relative overflow-hidden rounded-3xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-blue-50/50 p-8 transition hover:border-blue-300 dark:border-blue-900/50 dark:from-blue-950/30 dark:to-blue-950/10">
+          <div className="group relative overflow-hidden rounded-3xl border-2 border-blue-200 bg-linear-to-br from-blue-50 to-blue-50/50 p-8 transition hover:border-blue-300 dark:border-blue-900/50 dark:from-blue-950/30 dark:to-blue-950/10">
             <div className="absolute top-0 right-0 h-32 w-32 rounded-full bg-blue-100/50 blur-3xl dark:bg-blue-900/20" />
             <div className="relative space-y-4">
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-600/10 transition group-hover:bg-blue-600/20">
@@ -805,7 +805,7 @@ export default function SalesHandoffPage() {
           </div>
 
           {/* In Progress */}
-          <div className="group relative overflow-hidden rounded-3xl border-2 border-amber-200 bg-gradient-to-br from-amber-50 to-amber-50/50 p-8 transition hover:border-amber-300 dark:border-amber-900/50 dark:from-amber-950/30 dark:to-amber-950/10">
+          <div className="group relative overflow-hidden rounded-3xl border-2 border-amber-200 bg-linear-to-br from-amber-50 to-amber-50/50 p-8 transition hover:border-amber-300 dark:border-amber-900/50 dark:from-amber-950/30 dark:to-amber-950/10">
             <div className="absolute top-0 right-0 h-32 w-32 rounded-full bg-amber-100/50 blur-3xl dark:bg-amber-900/20" />
             <div className="relative space-y-4">
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-600/10 transition group-hover:bg-amber-600/20">
@@ -823,7 +823,7 @@ export default function SalesHandoffPage() {
           </div>
 
           {/* Completed */}
-          <div className="group relative overflow-hidden rounded-3xl border-2 border-emerald-200 bg-gradient-to-br from-emerald-50 to-emerald-50/50 p-8 transition hover:border-emerald-300 dark:border-emerald-900/50 dark:from-emerald-950/30 dark:to-emerald-950/10">
+          <div className="group relative overflow-hidden rounded-3xl border-2 border-emerald-200 bg-linear-to-br from-emerald-50 to-emerald-50/50 p-8 transition hover:border-emerald-300 dark:border-emerald-900/50 dark:from-emerald-950/30 dark:to-emerald-950/10">
             <div className="absolute top-0 right-0 h-32 w-32 rounded-full bg-emerald-100/50 blur-3xl dark:bg-emerald-900/20" />
             <div className="relative space-y-4">
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-600/10 transition group-hover:bg-emerald-600/20">
@@ -841,7 +841,7 @@ export default function SalesHandoffPage() {
           </div>
 
           {/* Synced to ClickUp */}
-          <div className="group relative overflow-hidden rounded-3xl border-2 border-violet-200 bg-gradient-to-br from-violet-50 to-violet-50/50 p-8 transition hover:border-violet-300 dark:border-violet-900/50 dark:from-violet-950/30 dark:to-violet-950/10">
+          <div className="group relative overflow-hidden rounded-3xl border-2 border-violet-200 bg-linear-to-br from-violet-50 to-violet-50/50 p-8 transition hover:border-violet-300 dark:border-violet-900/50 dark:from-violet-950/30 dark:to-violet-950/10">
             <div className="absolute top-0 right-0 h-32 w-32 rounded-full bg-violet-100/50 blur-3xl dark:bg-violet-900/20" />
             <div className="relative space-y-4">
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-violet-600/10 transition group-hover:bg-violet-600/20">
