@@ -13,6 +13,7 @@ import {
   Loader2,
   MessageSquareText,
   Plus,
+  Settings,
   ShieldAlert,
   Sparkles,
   Users,
@@ -29,6 +30,7 @@ import {
   SalesHandoffDetailDrawer as SalesHandoffDrawer,
   type SalesHandoffDetail,
 } from "@/components/sales-handoff/SalesHandoffDetailDrawer";
+import { SalesHandoffSettingsPanel } from "@/components/sales-handoff/SalesHandoffSettingsPanel";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
@@ -197,6 +199,7 @@ export default function SalesHandoffPage() {
   const [createdTaskUrl, setCreatedTaskUrl] = useState<string | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showSettingsPanel, setShowSettingsPanel] = useState(false);
 
   const [serviceOptions, setServiceOptions] = useState<string[]>(DEFAULT_SERVICE_OPTIONS);
   const [enforce48HourNotice, setEnforce48HourNotice] = useState(true);
@@ -686,17 +689,28 @@ export default function SalesHandoffPage() {
             </p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            setFieldError(null);
-            setShowCreateModal(true);
-          }}
-          className="btn btn-primary inline-flex items-center gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          New Handoff
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowSettingsPanel(true)}
+            className="btn btn-ghost inline-flex items-center gap-2"
+            aria-label="Open handoff settings"
+          >
+            <Settings className="h-4 w-4" />
+            Settings
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setFieldError(null);
+              setShowCreateModal(true);
+            }}
+            className="btn btn-primary inline-flex items-center gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            New Handoff
+          </button>
+        </div>
       </div>
 
       {!clickupListConfigured ? (
@@ -725,6 +739,11 @@ export default function SalesHandoffPage() {
           setSelectedHandoffId(handoff.id);
         }}
         onStatusChange={updateHandoffStatus}
+      />
+
+      <SalesHandoffSettingsPanel
+        open={showSettingsPanel}
+        onClose={() => setShowSettingsPanel(false)}
       />
 
       <SalesHandoffDrawer

@@ -34,7 +34,12 @@ const DEFAULT_SERVICE_OPTIONS = [
 
 const DEFAULT_ASSIGNEES = ["Nick Betts", "Connor James"];
 
-const SALES_HANDOFF_CHECKLIST_NAME = "Marketing Handoff Progress";
+const DEFAULT_TASK_NAME_PREFIX = "Sales Handoff";
+const DEFAULT_CHECKLIST_NAME = "Marketing Handoff Progress";
+const DEFAULT_DESC_HEADING_PROSPECT = "Prospect Summary";
+const DEFAULT_DESC_HEADING_AUDIENCE = "Target Audience";
+const DEFAULT_DESC_HEADING_SERVICES = "Services of Interest";
+const DEFAULT_DESC_HEADING_CONTEXT = "Additional Context from Sales";
 
 const SALES_HANDOFF_STATUSES = [
   "draft",
@@ -134,6 +139,12 @@ async function getSalesHandoffSettings(): Promise<{
   listId: string;
   enforce48HourNotice: boolean;
   allowUrgentOverride: boolean;
+  taskNamePrefix: string;
+  checklistName: string;
+  descHeadingProspect: string;
+  descHeadingAudience: string;
+  descHeadingServices: string;
+  descHeadingContext: string;
 }> {
   const rows = await prisma.appSetting.findMany({
     where: {
@@ -146,6 +157,12 @@ async function getSalesHandoffSettings(): Promise<{
           "clickupSalesHandoffListId",
           "clickupSalesHandoffEnforce48HourNotice",
           "clickupSalesHandoffAllowUrgentOverride",
+          "salesHandoffTaskNamePrefix",
+          "salesHandoffChecklistName",
+          "salesHandoffDescHeadingProspect",
+          "salesHandoffDescHeadingAudience",
+          "salesHandoffDescHeadingServices",
+          "salesHandoffDescHeadingContext",
         ],
       },
     },
@@ -165,6 +182,16 @@ async function getSalesHandoffSettings(): Promise<{
     listId: cleanText(settings.clickupSalesHandoffListId) || DEFAULT_SALES_HANDOFF_LIST_ID,
     enforce48HourNotice: parseBooleanSetting(settings.clickupSalesHandoffEnforce48HourNotice, true),
     allowUrgentOverride: parseBooleanSetting(settings.clickupSalesHandoffAllowUrgentOverride, true),
+    taskNamePrefix: cleanText(settings.salesHandoffTaskNamePrefix) || DEFAULT_TASK_NAME_PREFIX,
+    checklistName: cleanText(settings.salesHandoffChecklistName) || DEFAULT_CHECKLIST_NAME,
+    descHeadingProspect:
+      cleanText(settings.salesHandoffDescHeadingProspect) || DEFAULT_DESC_HEADING_PROSPECT,
+    descHeadingAudience:
+      cleanText(settings.salesHandoffDescHeadingAudience) || DEFAULT_DESC_HEADING_AUDIENCE,
+    descHeadingServices:
+      cleanText(settings.salesHandoffDescHeadingServices) || DEFAULT_DESC_HEADING_SERVICES,
+    descHeadingContext:
+      cleanText(settings.salesHandoffDescHeadingContext) || DEFAULT_DESC_HEADING_CONTEXT,
   };
 }
 
@@ -236,13 +263,20 @@ function buildTaskDescription(input: {
   otherInformation: string;
   urgentOverride: boolean;
   urgentReason: string;
+  headings?: {
+    prospect?: string;
+    audience?: string;
+    services?: string;
+    context?: string;
+  };
 }): string {
   const formattedSecondCall = formatSecondCallDateTime(input.secondCallAt);
   const noticeStatus = buildNoticeStatus(input.hoursUntilCall);
   const roundedNoticeHours = Math.max(0, Number.parseFloat(input.hoursUntilCall.toFixed(2)));
+  const h = input.headings ?? {};
 
   return [
-    "**Prospect Summary**",
+    `**${h.prospect ?? DEFAULT_DESC_HEADING_PROSPECT}**`,
     `- **Prospect:** ${input.prospectName}`,
     `- **Website:** ${input.website}`,
     `- **Budget range:** ${input.budgetRange}`,
@@ -252,15 +286,15 @@ function buildTaskDescription(input: {
     `- **Urgent override requested:** ${input.urgentOverride ? "Yes" : "No"}`,
     ...(input.urgentReason ? [`- **Urgent override reason:** ${input.urgentReason}`] : []),
     "",
-    "**Target Audience**",
+    `**${h.audience ?? DEFAULT_DESC_HEADING_AUDIENCE}**`,
     input.targetAudienceSummary,
     "",
-    "**Services of Interest**",
+    `**${h.services ?? DEFAULT_DESC_HEADING_SERVICES}**`,
     input.interestedServices.length > 0
       ? input.interestedServices.map((service) => `- ${service}`).join("\n")
       : "None selected",
     "",
-    "**Additional Context from Sales**",
+    `**${h.context ?? DEFAULT_DESC_HEADING_CONTEXT}**`,
     input.otherInformation || "No additional context provided.",
   ].join("\n");
 }
@@ -471,6 +505,12 @@ export async function POST(request: NextRequest) {
       listId,
       enforce48HourNotice,
       allowUrgentOverride,
+      taskNamePrefix,
+      checklistName,
+      descHeadingProspect,
+      descHeadingAudience,
+      descHeadingServices,
+      descHeadingContext,
     } = await getSalesHandoffSettings();
 
     if (!prospectName) {
@@ -560,7 +600,7 @@ export async function POST(request: NextRequest) {
       assigneeIds = resolvedAssigneeIds;
     }
 
-    const taskName = `Sales Handoff - ${prospectName}`;
+    const taskName = `${taskNamePrefix} - ${prospectName}`;
     const description = buildTaskDescription({
       prospectName,
       website,
@@ -572,6 +612,12 @@ export async function POST(request: NextRequest) {
       otherInformation,
       urgentOverride,
       urgentReason,
+      headings: {
+        prospect: descHeadingProspect,
+        audience: descHeadingAudience,
+        services: descHeadingServices,
+        context: descHeadingContext,
+      },
     });
 
     let handoffId: string | null = null;
@@ -649,7 +695,7 @@ export async function POST(request: NextRequest) {
         assigneeIds,
         secondCallAtMs,
         description,
-        SALES_HANDOFF_CHECKLIST_NAME,
+        checklistName,
         true,
       );
     } catch (error) {
