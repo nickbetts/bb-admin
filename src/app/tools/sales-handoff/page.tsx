@@ -958,7 +958,11 @@ export default function SalesHandoffPage() {
                     </p>
                   </div>
 
+                  <div aria-hidden="true" className="h-3" />
+
                   <div className="space-y-12">
+                    <div aria-hidden="true" className="h-2.5" />
+
                     <div className="grid gap-2.5">
                       <label className="flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">
                         <Building2 className="h-4 w-4 text-indigo-400" />
@@ -974,6 +978,8 @@ export default function SalesHandoffPage() {
                       />
                     </div>
 
+                    <div aria-hidden="true" className="h-2" />
+
                     <div className="grid gap-2.5">
                       <label className="flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">
                         <Globe className="h-4 w-4 text-indigo-400" />
@@ -988,6 +994,8 @@ export default function SalesHandoffPage() {
                       />
                     </div>
                   </div>
+
+                  <div aria-hidden="true" className="h-3" />
                 </div>
               )}
 
@@ -1313,8 +1321,10 @@ export default function SalesHandoffPage() {
             </motion.div>
           </AnimatePresence>
 
+          <div aria-hidden="true" className="h-3" />
+
           {/* Navigation */}
-          <div className="mt-8 flex items-center justify-between gap-3 border-t border-zinc-200 pt-6 dark:border-zinc-800">
+          <div className="flex items-center justify-between gap-3 border-t border-zinc-200 pt-6 dark:border-zinc-800">
             {formStep > 1 && (
               <button
                 type="button"
