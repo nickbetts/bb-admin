@@ -14,7 +14,6 @@ import {
   MessageSquareText,
   Plus,
   Settings,
-  ShieldAlert,
   Sparkles,
   Users,
   Wallet,
@@ -49,7 +48,6 @@ interface SalesHandoffConfigResponse {
   services?: string[];
   enforce48HourNotice?: boolean | string;
   allowUrgentOverride?: boolean | string;
-  clickupListConfigured?: boolean | string;
 }
 
 interface SalesHandoffHistoryItem {
@@ -204,7 +202,6 @@ export default function SalesHandoffPage() {
   const [serviceOptions, setServiceOptions] = useState<string[]>(DEFAULT_SERVICE_OPTIONS);
   const [enforce48HourNotice, setEnforce48HourNotice] = useState(true);
   const [allowUrgentOverride, setAllowUrgentOverride] = useState(true);
-  const [clickupListConfigured, setClickupListConfigured] = useState(true);
   const [urgentOverride, setUrgentOverride] = useState(false);
   const [urgentReason, setUrgentReason] = useState("");
 
@@ -455,7 +452,6 @@ export default function SalesHandoffPage() {
         }
         setEnforce48HourNotice(parseBooleanSetting(data.enforce48HourNotice, true));
         setAllowUrgentOverride(parseBooleanSetting(data.allowUrgentOverride, true));
-        setClickupListConfigured(parseBooleanSetting(data.clickupListConfigured, true));
       } catch {
         // Keep defaults when config cannot be read.
       }
@@ -712,16 +708,6 @@ export default function SalesHandoffPage() {
           </button>
         </div>
       </div>
-
-      {!clickupListConfigured ? (
-        <div className="mb-6 flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3.5 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
-          <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-500 dark:text-amber-400" />
-          <p>
-            Sales handoff list ID is not configured. Tasks will use the default list until an admin
-            sets this in settings.
-          </p>
-        </div>
-      ) : null}
 
       <SalesHandoffPipelineBoard
         handoffs={handoffHistory}
