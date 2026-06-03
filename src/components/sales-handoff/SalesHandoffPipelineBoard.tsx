@@ -673,7 +673,7 @@ export function SalesHandoffPipelineBoard({
     const nextStatus = String(overId);
     if (!isKnownSalesHandoffStatus(nextStatus)) return;
     const currentStatus = activeData.status;
-    if (!currentStatus || !isKnownSalesHandoffStatus(currentStatus)) return;
+    if (!currentStatus) return;
     if (currentStatus === nextStatus) return;
     void onStatusChange(String(event.active.id), nextStatus);
   }
