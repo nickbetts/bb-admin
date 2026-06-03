@@ -145,8 +145,91 @@ export interface ClickUpTaskDetail {
   archived?: boolean;
 }
 
+interface ClickUpCommentUser {
+  id?: number | string;
+  username?: string | null;
+  email?: string | null;
+  profilePicture?: string | null;
+}
+
+interface ClickUpComment {
+  id?: string | number;
+  comment_text?: string | null;
+  comment?: string | null;
+  date?: string | number | null;
+  date_created?: string | number | null;
+  user?: ClickUpCommentUser | null;
+}
+
+interface ClickUpTaskCommentsResponse {
+  comments?: ClickUpComment[];
+}
+
+export interface ClickUpTaskComment {
+  id: string;
+  text: string;
+  createdAt: string | null;
+  user: {
+    id: string | null;
+    username: string | null;
+    email: string | null;
+    profilePicture: string | null;
+  } | null;
+}
+
 interface UpdateClickUpTaskInput {
   status?: string;
+}
+
+function normaliseClickUpTimestamp(raw: string | number | null | undefined): string | null {
+  if (typeof raw === "number" && Number.isFinite(raw)) {
+    return new Date(raw).toISOString();
+  }
+
+  if (typeof raw === "string") {
+    const trimmed = raw.trim();
+    if (!trimmed) return null;
+
+    const asNumber = Number.parseInt(trimmed, 10);
+    if (Number.isFinite(asNumber) && String(asNumber) === trimmed) {
+      return new Date(asNumber).toISOString();
+    }
+
+    const parsed = new Date(trimmed);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed.toISOString();
+    }
+  }
+
+  return null;
+}
+
+function mapClickUpTaskComment(comment: ClickUpComment): ClickUpTaskComment | null {
+  const text =
+    typeof comment.comment_text === "string"
+      ? comment.comment_text.trim()
+      : typeof comment.comment === "string"
+        ? comment.comment.trim()
+        : "";
+
+  if (!text) return null;
+
+  return {
+    id: String(
+      comment.id ??
+        `${comment.user?.id ?? "unknown"}-${comment.date ?? comment.date_created ?? Date.now()}`,
+    ),
+    text,
+    createdAt: normaliseClickUpTimestamp(comment.date_created ?? comment.date),
+    user: comment.user
+      ? {
+          id: comment.user.id != null ? String(comment.user.id) : null,
+          username: comment.user.username ?? null,
+          email: comment.user.email ?? null,
+          profilePicture: comment.user.profilePicture ?? null,
+        }
+      : null,
+  };
 }
 
 // ─── Token resolution ─────────────────────────────────────────────────────────
@@ -380,6 +463,39 @@ export async function updateClickUpTaskStatus(
   status: string,
 ): Promise<ClickUpTaskDetail> {
   return updateClickUpTask(taskId, { status });
+}
+
+export async function getClickUpTaskComments(taskId: string): Promise<ClickUpTaskComment[]> {
+  const token = await getClickUpToken();
+  const response = await clickupFetch<ClickUpTaskCommentsResponse>(
+    `/task/${taskId}/comment`,
+    token,
+  );
+  return (response.comments ?? [])
+    .map(mapClickUpTaskComment)
+    .filter((comment): comment is ClickUpTaskComment => comment !== null);
+}
+
+export async function createClickUpTaskComment(input: {
+  taskId: string;
+  commentText: string;
+  notifyAll?: boolean;
+}): Promise<ClickUpTaskComment> {
+  const token = await getClickUpToken();
+  const response = await clickupFetch<ClickUpComment>(`/task/${input.taskId}/comment`, token, {
+    method: "POST",
+    body: JSON.stringify({
+      comment_text: input.commentText,
+      notify_all: input.notifyAll ?? false,
+    }),
+  });
+
+  const mapped = mapClickUpTaskComment(response);
+  if (!mapped) {
+    throw new Error("ClickUp comment response was empty");
+  }
+
+  return mapped;
 }
 
 const HOURS_FIELD_HINT_REGEX = /(hour|hrs?|allocated|prescribed|retainer|contracted)/i;

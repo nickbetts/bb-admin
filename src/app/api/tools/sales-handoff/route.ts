@@ -685,7 +685,7 @@ export async function POST(request: NextRequest) {
         clickupTaskUrl: result.taskUrl,
         clickupSyncStatus: "synced",
         clickupLastSyncedAt: new Date(),
-        status: "in_progress",
+        status: "submitted",
       },
     });
 

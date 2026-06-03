@@ -25,6 +25,7 @@ import {
   type SalesHandoffStatus,
 } from "@/components/sales-handoff/SalesHandoffPipelineBoard";
 import {
+  type SalesHandoffComment,
   SalesHandoffDetailDrawer as SalesHandoffDrawer,
   type SalesHandoffDetail,
 } from "@/components/sales-handoff/SalesHandoffDetailDrawer";
@@ -108,6 +109,12 @@ interface SalesHandoffPatchResponse {
 interface SalesHandoffDetailResponse {
   error?: string;
   handoff?: SalesHandoffDetail;
+}
+
+interface SalesHandoffCommentsResponse {
+  error?: string;
+  comments?: SalesHandoffComment[];
+  comment?: SalesHandoffComment;
 }
 
 const DEFAULT_SERVICE_OPTIONS = [
@@ -209,6 +216,13 @@ export default function SalesHandoffPage() {
   );
   const [selectedHandoffLoading, setSelectedHandoffLoading] = useState(false);
   const [selectedHandoffError, setSelectedHandoffError] = useState<string | null>(null);
+  const [selectedHandoffComments, setSelectedHandoffComments] = useState<SalesHandoffComment[]>([]);
+  const [selectedHandoffCommentsLoading, setSelectedHandoffCommentsLoading] = useState(false);
+  const [selectedHandoffCommentsError, setSelectedHandoffCommentsError] = useState<string | null>(
+    null,
+  );
+  const [commentDraft, setCommentDraft] = useState("");
+  const [commentSending, setCommentSending] = useState(false);
   const [notesDraft, setNotesDraft] = useState("");
   const [notesSaving, setNotesSaving] = useState(false);
 
@@ -374,6 +388,58 @@ export default function SalesHandoffPage() {
     }
   }, [notesDraft, patchHandoff, selectedHandoffId, toast]);
 
+  const loadSelectedHandoffComments = useCallback(async (handoffId: string) => {
+    setSelectedHandoffCommentsLoading(true);
+    setSelectedHandoffCommentsError(null);
+
+    try {
+      const res = await fetch(`/api/tools/sales-handoff/${handoffId}/comments`);
+      const data = (await res.json()) as SalesHandoffCommentsResponse;
+
+      if (!res.ok) {
+        throw new Error(data.error ?? "Failed to load ClickUp comments");
+      }
+
+      setSelectedHandoffComments(Array.isArray(data.comments) ? data.comments : []);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to load ClickUp comments";
+      setSelectedHandoffCommentsError(message);
+    } finally {
+      setSelectedHandoffCommentsLoading(false);
+    }
+  }, []);
+
+  const sendSelectedHandoffComment = useCallback(async () => {
+    if (!selectedHandoffId || commentDraft.trim().length === 0) return;
+
+    setCommentSending(true);
+    try {
+      const res = await fetch(`/api/tools/sales-handoff/${selectedHandoffId}/comments`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ body: commentDraft.trim() }),
+      });
+
+      const data = (await res.json()) as SalesHandoffCommentsResponse;
+      if (!res.ok) {
+        throw new Error(data.error ?? "Failed to send ClickUp comment");
+      }
+
+      if (data.comment) {
+        setSelectedHandoffComments((prev) => [...prev, data.comment as SalesHandoffComment]);
+      }
+      setCommentDraft("");
+      toast("Comment sent to ClickUp", "success");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to send ClickUp comment";
+      toast(message, "error");
+    } finally {
+      setCommentSending(false);
+    }
+  }, [commentDraft, selectedHandoffId, toast]);
+
   useEffect(() => {
     async function loadConfig() {
       try {
@@ -401,6 +467,10 @@ export default function SalesHandoffPage() {
       setSelectedHandoffDetail(null);
       setSelectedHandoffError(null);
       setSelectedHandoffLoading(false);
+      setSelectedHandoffComments([]);
+      setSelectedHandoffCommentsError(null);
+      setSelectedHandoffCommentsLoading(false);
+      setCommentDraft("");
       setNotesDraft("");
       return;
     }
@@ -435,11 +505,12 @@ export default function SalesHandoffPage() {
     }
 
     void loadHandoffDetail();
+    void loadSelectedHandoffComments(selectedHandoffId);
 
     return () => {
       cancelled = true;
     };
-  }, [selectedHandoffId]);
+  }, [loadSelectedHandoffComments, selectedHandoffId]);
 
   const secondCallAtTimestamp = useMemo(() => {
     if (!form.secondCallAt.trim()) return null;
@@ -662,10 +733,19 @@ export default function SalesHandoffPage() {
         error={selectedHandoffError}
         handoff={selectedHandoffSummary}
         detail={selectedHandoffDetail}
+        comments={selectedHandoffComments}
+        commentsLoading={selectedHandoffCommentsLoading}
+        commentsError={selectedHandoffCommentsError}
+        commentDraft={commentDraft}
+        commentSending={commentSending}
         notesDraft={notesDraft}
         notesSaving={notesSaving}
         statusUpdating={historyUpdatingId === selectedHandoffId}
         onClose={() => setSelectedHandoffId(null)}
+        onCommentChange={setCommentDraft}
+        onSendComment={() => {
+          void sendSelectedHandoffComment();
+        }}
         onNotesChange={setNotesDraft}
         onSaveNotes={() => {
           void saveSelectedNotes();

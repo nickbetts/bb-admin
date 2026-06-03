@@ -21,6 +21,18 @@ import type {
   SalesHandoffStatus,
 } from "@/components/sales-handoff/SalesHandoffPipelineBoard";
 
+export interface SalesHandoffComment {
+  id: string;
+  text: string;
+  createdAt: string | null;
+  user: {
+    id: string | null;
+    username: string | null;
+    email: string | null;
+    profilePicture: string | null;
+  } | null;
+}
+
 export interface SalesHandoffDetailEvent {
   id: string;
   eventType: string;
@@ -97,10 +109,17 @@ interface SalesHandoffDetailDrawerProps {
   error: string | null;
   handoff: SalesHandoffPipelineItem | null;
   detail: SalesHandoffDetail | null;
+  comments: SalesHandoffComment[];
+  commentsLoading: boolean;
+  commentsError: string | null;
+  commentDraft: string;
+  commentSending: boolean;
   notesDraft: string;
   notesSaving: boolean;
   statusUpdating: boolean;
   onClose: () => void;
+  onCommentChange: (value: string) => void;
+  onSendComment: () => void;
   onNotesChange: (value: string) => void;
   onSaveNotes: () => void;
   onStatusChange: (status: SalesHandoffStatus) => void;
@@ -163,10 +182,17 @@ export function SalesHandoffDetailDrawer({
   error,
   handoff,
   detail,
+  comments,
+  commentsLoading,
+  commentsError,
+  commentDraft,
+  commentSending,
   notesDraft,
   notesSaving,
   statusUpdating,
   onClose,
+  onCommentChange,
+  onSendComment,
   onNotesChange,
   onSaveNotes,
   onStatusChange,
@@ -187,6 +213,8 @@ export function SalesHandoffDetailDrawer({
   const noteBaseline = detail?.notes ?? "";
   const notesDirty = notesDraft.trim() !== noteBaseline.trim();
   const relativeHours = formatRelativeHours(detail?.hoursUntilCall);
+  const canShowComments = !!detail?.clickupTaskId;
+  const canSendComment = commentDraft.trim().length > 0 && !commentSending;
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 60, display: "flex" }}>
@@ -434,6 +462,132 @@ export function SalesHandoffDetailDrawer({
             </div>
           ) : detail ? (
             <>
+              <section>
+                <p
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: "var(--text-3)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.06em",
+                    marginBottom: 10,
+                  }}
+                >
+                  Shared ClickUp comments
+                </p>
+                <div className="card" style={{ padding: 16, display: "grid", gap: 12 }}>
+                  {canShowComments ? (
+                    <>
+                      <div style={{ display: "grid", gap: 10 }}>
+                        {commentsLoading ? (
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 8,
+                              fontSize: 13,
+                              color: "var(--text-3)",
+                            }}
+                          >
+                            <Loader2 className="h-4 w-4 animate-spin" /> Loading ClickUp comments…
+                          </div>
+                        ) : commentsError ? (
+                          <p style={{ fontSize: 13, color: "#b91c1c" }}>{commentsError}</p>
+                        ) : comments.length > 0 ? (
+                          comments.map((comment) => (
+                            <div
+                              key={comment.id}
+                              style={{
+                                display: "grid",
+                                gap: 4,
+                                borderRadius: 12,
+                                border: "1px solid var(--border)",
+                                padding: "10px 12px",
+                              }}
+                            >
+                              <div
+                                style={{
+                                  display: "flex",
+                                  justifyContent: "space-between",
+                                  gap: 12,
+                                }}
+                              >
+                                <p style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>
+                                  {comment.user?.username ?? comment.user?.email ?? "ClickUp user"}
+                                </p>
+                                <p style={{ fontSize: 11, color: "var(--text-3)" }}>
+                                  {comment.createdAt
+                                    ? formatDateTime(comment.createdAt)
+                                    : "Unknown time"}
+                                </p>
+                              </div>
+                              <p
+                                style={{
+                                  fontSize: 13,
+                                  color: "var(--text-2)",
+                                  lineHeight: 1.6,
+                                  whiteSpace: "pre-wrap",
+                                }}
+                              >
+                                {comment.text}
+                              </p>
+                            </div>
+                          ))
+                        ) : (
+                          <p style={{ fontSize: 13, color: "var(--text-3)" }}>
+                            No ClickUp comments yet.
+                          </p>
+                        )}
+                      </div>
+
+                      <div style={{ display: "grid", gap: 8 }}>
+                        <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>
+                          Add comment to ClickUp task
+                        </label>
+                        <textarea
+                          className="form-input"
+                          rows={3}
+                          value={commentDraft}
+                          onChange={(event) => onCommentChange(event.target.value)}
+                          placeholder="Post a shared update to the ClickUp task."
+                          style={{ resize: "vertical" }}
+                        />
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            gap: 12,
+                          }}
+                        >
+                          <p style={{ fontSize: 12, color: "var(--text-3)" }}>
+                            Shared with the ClickUp task conversation.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={onSendComment}
+                            disabled={!canSendComment}
+                            className="btn btn-secondary btn-sm"
+                            style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+                          >
+                            {commentSending ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <MessageSquareText className="h-3.5 w-3.5" />
+                            )}
+                            {commentSending ? "Sending…" : "Send to ClickUp"}
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <p style={{ fontSize: 13, color: "var(--text-3)" }}>
+                      Comments become available once the ClickUp task has been created.
+                    </p>
+                  )}
+                </div>
+              </section>
+
               <section>
                 <p
                   style={{
