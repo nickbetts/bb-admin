@@ -4,7 +4,7 @@ import { use, useState, useEffect } from "react";
 import Link from "next/link";
 import { Card } from "@/components/ui/shadcn/card";
 import { LoadingSpinner } from "@/components/ui/index";
-import { ArrowLeft, Plus, Trash2, Edit2, Check } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Check } from "lucide-react";
 
 interface TrackingEvent {
   id: string;

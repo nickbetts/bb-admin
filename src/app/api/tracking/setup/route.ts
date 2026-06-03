@@ -34,18 +34,23 @@ export async function GET(request: NextRequest) {
       where: whereClause,
       include: {
         events: true,
-        audits: {
-          orderBy: { createdAt: "desc" },
-          take: 5,
-        },
       },
     });
 
     if (!setup) {
       return NextResponse.json({ error: "Setup not found" }, { status: 404 });
     }
+    // Fetch recent audits separately using clientId
+    const recentAudits = await prisma.trackingAudit.findMany({
+      where: { clientId: setup.clientId },
+      orderBy: { auditedAt: "desc" },
+      take: 5,
+    });
 
-    return NextResponse.json(setup);
+    return NextResponse.json({
+      ...setup,
+      audits: recentAudits,
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("Error fetching setup:", error);

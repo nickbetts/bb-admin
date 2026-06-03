@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Card } from "@/components/ui/shadcn/card";
 import { LoadingSpinner } from "@/components/ui/index";
-import { BarChart3, Settings, Zap, Bug, History } from "lucide-react";
+import { BarChart3, Zap, Bug, History } from "lucide-react";
 
 interface TrackingSetup {
   id: string;

@@ -50,37 +50,51 @@ export async function POST(request: NextRequest) {
       details?: string;
       trackingPixel?: string;
     }
-    const testResults: Record<string, string | TestResult | undefined> = {
+    const testResults: Record<string, unknown> = {
       clientId,
       clientName: client.name,
       eventName,
       eventData,
-      results: {},
+      results: {} as Record<string, TestResult>,
     };
 
     // Test GA4
     if (platforms.includes("ga4") && setup?.ga4PropertyId) {
-      testResults.results.ga4 = await testGA4Event(setup.ga4PropertyId, eventName, eventData);
+      (testResults.results as Record<string, TestResult>).ga4 = await testGA4Event(
+        setup.ga4PropertyId,
+        eventName,
+        eventData,
+      );
     } else if (platforms.includes("ga4")) {
-      testResults.results.ga4 = { status: "SKIPPED", message: "No GA4 property ID configured" };
+      (testResults.results as Record<string, TestResult>).ga4 = {
+        status: "SKIPPED",
+        message: "No GA4 property ID configured",
+      };
     }
 
     // Test Meta
     if (platforms.includes("meta") && setup?.metaPixelId) {
-      testResults.results.meta = await testMetaPixel(setup.metaPixelId, eventName, eventData);
+      (testResults.results as Record<string, TestResult>).meta = await testMetaPixel(
+        setup.metaPixelId,
+        eventName,
+        eventData,
+      );
     } else if (platforms.includes("meta")) {
-      testResults.results.meta = { status: "SKIPPED", message: "No Meta pixel ID configured" };
+      (testResults.results as Record<string, TestResult>).meta = {
+        status: "SKIPPED",
+        message: "No Meta pixel ID configured",
+      };
     }
 
     // Test Google Ads
     if (platforms.includes("google-ads") && setup?.googleAdsConversionId) {
-      testResults.results.googleAds = await testGoogleAdsConversion(
+      (testResults.results as Record<string, TestResult>).googleAds = await testGoogleAdsConversion(
         setup.googleAdsConversionId,
         eventName,
         eventData,
       );
     } else if (platforms.includes("google-ads")) {
-      testResults.results.googleAds = {
+      (testResults.results as Record<string, TestResult>).googleAds = {
         status: "SKIPPED",
         message: "No Google Ads conversion ID configured",
       };
@@ -96,18 +110,12 @@ export async function POST(request: NextRequest) {
           eventData,
           results: testResults.results,
         }),
-        status: Object.values(testResults.results).some((r) => {
-          if (typeof r === "object" && r !== null && "status" in r) {
-            return (r as Record<string, string>).status === "SUCCESS";
-          }
-          return false;
+        status: Object.values(testResults.results as Record<string, TestResult>).some((r) => {
+          return r?.status === "SUCCESS";
         })
           ? "PASS"
-          : Object.values(testResults.results).some((r) => {
-                if (typeof r === "object" && r !== null && "status" in r) {
-                  return (r as Record<string, string>).status === "ERROR";
-                }
-                return false;
+          : Object.values(testResults.results as Record<string, TestResult>).some((r) => {
+                return r?.status === "ERROR";
               })
             ? "FAIL"
             : "WARNING",
