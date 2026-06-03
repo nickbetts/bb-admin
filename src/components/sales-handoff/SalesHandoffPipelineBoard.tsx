@@ -545,8 +545,6 @@ export function SalesHandoffPipelineBoard({
 
   const [search, setSearch] = useState("");
   const [ownerFilter, setOwnerFilter] = useState<string>("all");
-  const [urgentOnly, setUrgentOnly] = useState(false);
-  const [syncFailedOnly, setSyncFailedOnly] = useState(false);
   const [nowMs, setNowMs] = useState<number>(() => Date.now());
 
   useEffect(() => {
@@ -568,8 +566,6 @@ export function SalesHandoffPipelineBoard({
     const lowerSearch = search.trim().toLowerCase();
     return handoffs
       .filter((handoff) => {
-        if (urgentOnly && !handoff.urgentOverride) return false;
-        if (syncFailedOnly && handoff.clickupSyncStatus !== "failed") return false;
         if (ownerFilter !== "all") {
           const ownerKey = handoff.owner?.id ?? handoff.owner?.email ?? "";
           if (ownerKey !== ownerFilter) return false;
@@ -587,7 +583,7 @@ export function SalesHandoffPipelineBoard({
         return haystack.includes(lowerSearch);
       })
       .sort((a, b) => new Date(a.secondCallAt).getTime() - new Date(b.secondCallAt).getTime());
-  }, [handoffs, ownerFilter, search, syncFailedOnly, urgentOnly]);
+  }, [handoffs, ownerFilter, search]);
 
   const groupedHandoffs = useMemo(() => {
     const buckets: Record<SalesHandoffStatus, SalesHandoffPipelineItem[]> = {
@@ -778,44 +774,6 @@ export function SalesHandoffPipelineBoard({
               </option>
             ))}
           </select>
-
-          <button
-            type="button"
-            onClick={() => setUrgentOnly((prev) => !prev)}
-            style={{
-              height: "36px",
-              borderRadius: "var(--r-sm)",
-              border: urgentOnly ? "1px solid #fcd34d" : "1px solid var(--border)",
-              background: urgentOnly ? "#fffbeb" : "var(--bg)",
-              color: urgentOnly ? "#92400e" : "var(--text-2)",
-              padding: "0 14px",
-              fontSize: "13px",
-              fontWeight: 500,
-              cursor: "pointer",
-              transition: "all 0.15s ease",
-            }}
-          >
-            Urgent only
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setSyncFailedOnly((prev) => !prev)}
-            style={{
-              height: "36px",
-              borderRadius: "var(--r-sm)",
-              border: syncFailedOnly ? "1px solid #fca5a5" : "1px solid var(--border)",
-              background: syncFailedOnly ? "#fef2f2" : "var(--bg)",
-              color: syncFailedOnly ? "#991b1b" : "var(--text-2)",
-              padding: "0 14px",
-              fontSize: "13px",
-              fontWeight: 500,
-              cursor: "pointer",
-              transition: "all 0.15s ease",
-            }}
-          >
-            Sync failed
-          </button>
         </div>
       </div>
 
