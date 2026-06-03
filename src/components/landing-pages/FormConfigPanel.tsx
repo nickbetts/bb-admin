@@ -6,7 +6,7 @@
  * Controlled component — parent owns `value` and gets `onChange`.
  */
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import {
   AlertTriangle,
   Webhook,
@@ -41,6 +41,7 @@ interface Props {
   value: LpFormConfig;
   onChange: (next: LpFormConfig) => void;
   lpId: string;
+  clientId?: string | null;
 }
 
 const inputStyle: React.CSSProperties = {
@@ -89,13 +90,27 @@ function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-export function FormConfigPanel({ value, onChange, lpId }: Props) {
+export function FormConfigPanel({ value, onChange, lpId, clientId }: Props) {
   const [emailInput, setEmailInput] = useState("");
   const [emailError, setEmailError] = useState<string | null>(null);
   const [thankYouTestEmail, setThankYouTestEmail] = useState("");
   const [thankYouTestError, setThankYouTestError] = useState<string | null>(null);
   const [thankYouTestStatus, setThankYouTestStatus] = useState<string | null>(null);
   const [thankYouTestLoading, setThankYouTestLoading] = useState(false);
+
+  // ── API key credential states ────────────────────────────────────────────
+  const [resendKey, setResendKey] = useState("");
+  const [resendKeyFocused, setResendKeyFocused] = useState(false);
+  const [resendKeySaving, setResendKeySaving] = useState(false);
+  const [resendKeyStatus, setResendKeyStatus] = useState<string | null>(null);
+  const [resendKeyError, setResendKeyError] = useState<string | null>(null);
+
+  const [klaviyoKey, setKlaviyoKey] = useState("");
+  const [klaviyoKeyFocused, setKlaviyoKeyFocused] = useState(false);
+  const [klaviyoKeySaving, setKlaviyoKeySaving] = useState(false);
+  const [klaviyoKeyStatus, setKlaviyoKeyStatus] = useState<string | null>(null);
+  const [klaviyoKeyError, setKlaviyoKeyError] = useState<string | null>(null);
+
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -110,6 +125,82 @@ export function FormConfigPanel({ value, onChange, lpId }: Props) {
   const [aiFieldPrompt, setAiFieldPrompt] = useState("");
   const [aiFieldLoading, setAiFieldLoading] = useState(false);
   const [aiFieldError, setAiFieldError] = useState<string | null>(null);
+
+  // ── Load existing API key values on mount ─────────────────────────────────
+  useEffect(() => {
+    // Load Resend API key from settings (visible to any authenticated user;
+    // value will be "•••redacted•••" if set and caller lacks settings permission)
+    void fetch("/api/settings")
+      .then((r) => r.json())
+      .then((s: Record<string, string>) => {
+        if (s.resendApiKey) setResendKey("•••redacted•••");
+      })
+      .catch(() => undefined);
+
+    // Load Klaviyo API key from the associated client
+    if (clientId) {
+      void fetch(`/api/clients/${clientId}`)
+        .then((r) => r.json())
+        .then((c: { klaviyoApiKey?: string | null }) => {
+          if (c.klaviyoApiKey) setKlaviyoKey("•••redacted•••");
+        })
+        .catch(() => undefined);
+    }
+  }, [lpId, clientId]);
+
+  // ── Credential save handlers ──────────────────────────────────────────────
+  async function handleResendKeySave() {
+    const key = resendKey.trim();
+    if (!key || key === "•••redacted•••") return;
+    setResendKeySaving(true);
+    setResendKeyError(null);
+    setResendKeyStatus(null);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resendApiKey: key }),
+      });
+      if (!res.ok) {
+        const d = (await res.json()) as { error?: string };
+        setResendKeyError(d.error ?? "Failed to save Resend API key.");
+      } else {
+        setResendKeyStatus("Resend API key saved.");
+        setResendKey("•••redacted•••");
+      }
+    } catch {
+      setResendKeyError("Network error — could not save.");
+    } finally {
+      setResendKeySaving(false);
+    }
+  }
+
+  async function handleKlaviyoKeySave() {
+    if (!clientId) return;
+    const key = klaviyoKey.trim();
+    if (!key || key === "•••redacted•••") return;
+    setKlaviyoKeySaving(true);
+    setKlaviyoKeyError(null);
+    setKlaviyoKeyStatus(null);
+    try {
+      const res = await fetch(`/api/clients/${clientId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ klaviyoApiKey: key }),
+      });
+      if (!res.ok) {
+        const d = (await res.json()) as { error?: string };
+        setKlaviyoKeyError(d.error ?? "Failed to save Klaviyo API key.");
+      } else {
+        setKlaviyoKeyStatus("Klaviyo API key saved.");
+        setKlaviyoKey("•••redacted•••");
+      }
+    } catch {
+      setKlaviyoKeyError("Network error — could not save.");
+    } finally {
+      setKlaviyoKeySaving(false);
+    }
+  }
 
   const notifyEmails = value.notifyEmails ?? [];
   const fields = useMemo(() => value.fields ?? [], [value.fields]);
@@ -977,6 +1068,143 @@ export function FormConfigPanel({ value, onChange, lpId }: Props) {
                   flow in Klaviyo to send the thank-you email.
                 </p>
               </div>
+
+              {/* ── Resend API key (resend / client-domain) ── */}
+              {(thankYouEmail.provider === "resend" ||
+                thankYouEmail.provider === "client-domain") && (
+                <div
+                  style={{
+                    background: "var(--surface-2)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "var(--r)",
+                    padding: "10px 12px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 6,
+                  }}
+                >
+                  <label style={labelStyle}>Resend API key</label>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <input
+                      type="password"
+                      value={resendKey}
+                      onChange={(e) => {
+                        setResendKey(e.target.value);
+                        if (resendKeyStatus) setResendKeyStatus(null);
+                        if (resendKeyError) setResendKeyError(null);
+                      }}
+                      onFocus={() => {
+                        if (resendKey === "•••redacted•••") {
+                          setResendKey("");
+                          setResendKeyFocused(true);
+                        }
+                      }}
+                      onBlur={() => setResendKeyFocused(false)}
+                      placeholder="re_xxxxxxxxxxxxxxxxxxxx"
+                      autoComplete="off"
+                      style={inputStyle}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void handleResendKeySave()}
+                      disabled={
+                        resendKeySaving || !resendKey.trim() || resendKey === "•••redacted•••"
+                      }
+                      className="btn btn-secondary btn-sm"
+                      style={{ flexShrink: 0 }}
+                    >
+                      {resendKeySaving ? (
+                        <Loader2 size={12} style={{ animation: "spin 1s linear infinite" }} />
+                      ) : null}
+                      {resendKeySaving ? "Saving…" : "Save"}
+                    </button>
+                  </div>
+                  {resendKeyError && (
+                    <p style={{ ...hintStyle, color: "var(--danger)" }}>{resendKeyError}</p>
+                  )}
+                  {resendKeyStatus && (
+                    <p style={{ ...hintStyle, color: "var(--success-text)" }}>{resendKeyStatus}</p>
+                  )}
+                  <p style={hintStyle}>
+                    Global Resend API key used to dispatch emails. Only admins can update this.
+                  </p>
+                </div>
+              )}
+
+              {/* ── Klaviyo API key (klaviyo provider) ── */}
+              {thankYouEmail.provider === "klaviyo" && (
+                <div
+                  style={{
+                    background: "var(--surface-2)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "var(--r)",
+                    padding: "10px 12px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 6,
+                  }}
+                >
+                  <label style={labelStyle}>Klaviyo API key (client)</label>
+                  {!clientId ? (
+                    <p style={{ ...hintStyle, color: "var(--warning-text)" }}>
+                      No client linked to this landing page — assign a client first to configure the
+                      Klaviyo API key.
+                    </p>
+                  ) : (
+                    <>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        <input
+                          type="password"
+                          value={klaviyoKey}
+                          onChange={(e) => {
+                            setKlaviyoKey(e.target.value);
+                            if (klaviyoKeyStatus) setKlaviyoKeyStatus(null);
+                            if (klaviyoKeyError) setKlaviyoKeyError(null);
+                          }}
+                          onFocus={() => {
+                            if (klaviyoKey === "•••redacted•••") {
+                              setKlaviyoKey("");
+                              setKlaviyoKeyFocused(true);
+                            }
+                          }}
+                          onBlur={() => setKlaviyoKeyFocused(false)}
+                          placeholder="pk_xxxxxxxxxxxxxxxxxxxxxxxx"
+                          autoComplete="off"
+                          style={inputStyle}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => void handleKlaviyoKeySave()}
+                          disabled={
+                            klaviyoKeySaving ||
+                            !klaviyoKey.trim() ||
+                            klaviyoKey === "•••redacted•••"
+                          }
+                          className="btn btn-secondary btn-sm"
+                          style={{ flexShrink: 0 }}
+                        >
+                          {klaviyoKeySaving ? (
+                            <Loader2 size={12} style={{ animation: "spin 1s linear infinite" }} />
+                          ) : null}
+                          {klaviyoKeySaving ? "Saving…" : "Save"}
+                        </button>
+                      </div>
+                      {klaviyoKeyError && (
+                        <p style={{ ...hintStyle, color: "var(--danger)" }}>{klaviyoKeyError}</p>
+                      )}
+                      {klaviyoKeyStatus && (
+                        <p style={{ ...hintStyle, color: "var(--success-text)" }}>
+                          {klaviyoKeyStatus}
+                        </p>
+                      )}
+                    </>
+                  )}
+                  <p style={hintStyle}>
+                    Klaviyo private API key for this client. Used to trigger Klaviyo flow events on
+                    new leads. Saved to the client record — shared across all their LPs.
+                  </p>
+                </div>
+              )}
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                 <div>
