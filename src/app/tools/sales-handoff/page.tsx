@@ -964,7 +964,7 @@ export default function SalesHandoffPage() {
                     Company name and website to get started.
                   </p>
 
-                  <div aria-hidden="true" className="h-2.5" />
+                  <div aria-hidden="true" className="h-5" />
 
                   <div className="flex flex-col">
                     <label className="flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">
