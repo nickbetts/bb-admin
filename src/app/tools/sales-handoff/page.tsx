@@ -598,34 +598,6 @@ export default function SalesHandoffPage() {
     ].filter(Boolean).length;
   }, [form]);
 
-  const requestReadiness = useMemo(() => {
-    if (secondCallInPast) {
-      return {
-        label: "Fix the call timing",
-        tone: "text-rose-600 bg-rose-50 border-rose-200 dark:text-rose-300 dark:bg-rose-950/30 dark:border-rose-900/50",
-      };
-    }
-
-    if (enforce48HourNotice && violatesNoticeWindow && !urgentOverride) {
-      return {
-        label: "Urgent override required",
-        tone: "text-amber-700 bg-amber-50 border-amber-200 dark:text-amber-300 dark:bg-amber-950/30 dark:border-amber-900/50",
-      };
-    }
-
-    if (canSubmit) {
-      return {
-        label: "Ready to request",
-        tone: "text-emerald-700 bg-emerald-50 border-emerald-200 dark:text-emerald-300 dark:bg-emerald-950/30 dark:border-emerald-900/50",
-      };
-    }
-
-    return {
-      label: "Complete the key fields",
-      tone: "text-zinc-700 bg-zinc-50 border-zinc-200 dark:text-zinc-300 dark:bg-zinc-900 dark:border-zinc-800",
-    };
-  }, [canSubmit, enforce48HourNotice, secondCallInPast, urgentOverride, violatesNoticeWindow]);
-
   const canSubmit = useMemo(() => {
     const hasRequiredFields =
       form.prospectName.trim().length > 0 &&
@@ -654,6 +626,34 @@ export default function SalesHandoffPage() {
     urgentReason,
     violatesNoticeWindow,
   ]);
+
+  const requestReadiness = useMemo(() => {
+    if (secondCallInPast) {
+      return {
+        label: "Fix the call timing",
+        tone: "text-rose-600 bg-rose-50 border-rose-200 dark:text-rose-300 dark:bg-rose-950/30 dark:border-rose-900/50",
+      };
+    }
+
+    if (enforce48HourNotice && violatesNoticeWindow && !urgentOverride) {
+      return {
+        label: "Urgent override required",
+        tone: "text-amber-700 bg-amber-50 border-amber-200 dark:text-amber-300 dark:bg-amber-950/30 dark:border-amber-900/50",
+      };
+    }
+
+    if (canSubmit) {
+      return {
+        label: "Ready to request",
+        tone: "text-emerald-700 bg-emerald-50 border-emerald-200 dark:text-emerald-300 dark:bg-emerald-950/30 dark:border-emerald-900/50",
+      };
+    }
+
+    return {
+      label: "Complete the key fields",
+      tone: "text-zinc-700 bg-zinc-50 border-zinc-200 dark:text-zinc-300 dark:bg-zinc-900 dark:border-zinc-800",
+    };
+  }, [canSubmit, enforce48HourNotice, secondCallInPast, urgentOverride, violatesNoticeWindow]);
 
   useEffect(() => {
     if (!violatesNoticeWindow) {
