@@ -750,88 +750,89 @@ export default function SalesHandoffPage() {
 
   return (
     <div className="page max-w-350">
-      {/* Header with Stats */}
-      <div className="mb-8 space-y-6">
+      {/* Header Section */}
+      <div className="mb-12 space-y-8">
+        {/* Title */}
         <div>
-          <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">Sales Requests</h1>
-          <p className="mt-2 text-base text-zinc-600 dark:text-zinc-400">
+          <h1 className="text-4xl font-bold text-zinc-900 dark:text-zinc-100">Sales Requests</h1>
+          <p className="mt-3 text-lg text-zinc-600 dark:text-zinc-400">
             Capture first-call context and hand marketing a sharper brief.
           </p>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-4 gap-4">
-          <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-5 dark:border-blue-900/40 dark:bg-blue-950/20">
-            <div className="flex items-center justify-between gap-3">
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 gap-6 lg:grid-cols-4">
+          <div className="rounded-2xl border border-blue-200 bg-blue-50/60 p-6 dark:border-blue-900/40 dark:bg-blue-950/20">
+            <div className="space-y-3">
+              <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-blue-600/10">
+                <ClipboardList className="h-7 w-7 text-blue-600 dark:text-blue-400" />
+              </div>
               <div>
-                <p className="text-xs font-medium text-blue-600 dark:text-blue-400">
+                <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
                   Total Requests
                 </p>
-                <p className="mt-2 text-2xl font-bold text-blue-900 dark:text-blue-100">
+                <p className="mt-2 text-3xl font-bold text-blue-900 dark:text-blue-100">
                   {handoffHistory.length}
                 </p>
               </div>
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-600/10">
-                <ClipboardList className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              </div>
             </div>
           </div>
 
-          <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-5 dark:border-amber-900/40 dark:bg-amber-950/20">
-            <div className="flex items-center justify-between gap-3">
+          <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-6 dark:border-amber-900/40 dark:bg-amber-950/20">
+            <div className="space-y-3">
+              <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-amber-600/10">
+                <Zap className="h-7 w-7 text-amber-600 dark:text-amber-400" />
+              </div>
               <div>
-                <p className="text-xs font-medium text-amber-600 dark:text-amber-400">
+                <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
                   In Progress
                 </p>
-                <p className="mt-2 text-2xl font-bold text-amber-900 dark:text-amber-100">
+                <p className="mt-2 text-3xl font-bold text-amber-900 dark:text-amber-100">
                   {handoffHistory.filter((h) => h.status === "delivery_in_progress").length}
                 </p>
               </div>
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-amber-600/10">
-                <Zap className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-              </div>
             </div>
           </div>
 
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-5 dark:border-emerald-900/40 dark:bg-emerald-950/20">
-            <div className="flex items-center justify-between gap-3">
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-6 dark:border-emerald-900/40 dark:bg-emerald-950/20">
+            <div className="space-y-3">
+              <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-emerald-600/10">
+                <Check className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
+              </div>
               <div>
-                <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
                   Completed
                 </p>
-                <p className="mt-2 text-2xl font-bold text-emerald-900 dark:text-emerald-100">
+                <p className="mt-2 text-3xl font-bold text-emerald-900 dark:text-emerald-100">
                   {handoffHistory.filter((h) => h.status === "delivery_complete").length}
                 </p>
               </div>
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-emerald-600/10">
-                <Check className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-              </div>
             </div>
           </div>
 
-          <div className="rounded-xl border border-violet-200 bg-violet-50/50 p-5 dark:border-violet-900/40 dark:bg-violet-950/20">
-            <div className="flex items-center justify-between gap-3">
+          <div className="rounded-2xl border border-violet-200 bg-violet-50/60 p-6 dark:border-violet-900/40 dark:bg-violet-950/20">
+            <div className="space-y-3">
+              <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-violet-600/10">
+                <ExternalLink className="h-7 w-7 text-violet-600 dark:text-violet-400" />
+              </div>
               <div>
-                <p className="text-xs font-medium text-violet-600 dark:text-violet-400">Synced</p>
-                <p className="mt-2 text-2xl font-bold text-violet-900 dark:text-violet-100">
+                <p className="text-sm font-medium text-violet-600 dark:text-violet-400">Synced</p>
+                <p className="mt-2 text-3xl font-bold text-violet-900 dark:text-violet-100">
                   {handoffHistory.filter((h) => h.clickupTaskId).length}
                 </p>
-              </div>
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-violet-600/10">
-                <ExternalLink className="h-5 w-5 text-violet-600 dark:text-violet-400" />
               </div>
             </div>
           </div>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-4 sm:flex-row">
           <button
             type="button"
             onClick={() => setShowSettingsPanel(true)}
-            className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-5 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-7 py-3.5 text-base font-semibold text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
           >
-            <Settings className="h-4 w-4" />
+            <Settings className="h-5 w-5" />
             Settings
           </button>
           <button
@@ -841,9 +842,9 @@ export default function SalesHandoffPage() {
               setShowCreateModal(true);
               setFormStep(1);
             }}
-            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-7 py-3.5 text-base font-semibold text-white transition hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600"
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="h-5 w-5" />
             New Request
           </button>
         </div>
