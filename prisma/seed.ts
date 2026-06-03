@@ -12,10 +12,10 @@ async function main() {
   const hashedPassword = await bcrypt.hash("admin123", 12);
 
   const admin = await prisma.user.upsert({
-    where: { email: "admin@i3media.co.uk" },
+    where: { email: "admin@i3media.net" },
     update: {},
     create: {
-      email: "admin@i3media.co.uk",
+      email: "admin@i3media.net",
       name: "Admin",
       password: hashedPassword,
       role: "admin",
@@ -56,13 +56,62 @@ async function main() {
 
   // Default task categories (kanban boards). Idempotent via stable IDs + upsert.
   const defaultCategories = [
-    { id: "tcat_paid_social",     name: "Paid Social",     slug: "paid-social",     color: "#ec4899", icon: "Megaphone", sortOrder: 10 },
-    { id: "tcat_content",         name: "Content",         slug: "content",         color: "#8b5cf6", icon: "PenLine",   sortOrder: 20 },
-    { id: "tcat_outreach",        name: "Outreach",        slug: "outreach",        color: "#0ea5e9", icon: "Send",      sortOrder: 30 },
-    { id: "tcat_technical",       name: "Technical",       slug: "technical",       color: "#64748b", icon: "Wrench",    sortOrder: 40 },
-    { id: "tcat_paid_search",     name: "Paid Search",     slug: "paid-search",     color: "#10b981", icon: "Search",    sortOrder: 50 },
-    { id: "tcat_email_marketing", name: "Email Marketing", slug: "email-marketing", color: "#f59e0b", icon: "Mail",      sortOrder: 60 },
-    { id: "tcat_reporting",       name: "Reporting",       slug: "reporting",       color: "#6366f1", icon: "BarChart3", sortOrder: 70 },
+    {
+      id: "tcat_paid_social",
+      name: "Paid Social",
+      slug: "paid-social",
+      color: "#ec4899",
+      icon: "Megaphone",
+      sortOrder: 10,
+    },
+    {
+      id: "tcat_content",
+      name: "Content",
+      slug: "content",
+      color: "#8b5cf6",
+      icon: "PenLine",
+      sortOrder: 20,
+    },
+    {
+      id: "tcat_outreach",
+      name: "Outreach",
+      slug: "outreach",
+      color: "#0ea5e9",
+      icon: "Send",
+      sortOrder: 30,
+    },
+    {
+      id: "tcat_technical",
+      name: "Technical",
+      slug: "technical",
+      color: "#64748b",
+      icon: "Wrench",
+      sortOrder: 40,
+    },
+    {
+      id: "tcat_paid_search",
+      name: "Paid Search",
+      slug: "paid-search",
+      color: "#10b981",
+      icon: "Search",
+      sortOrder: 50,
+    },
+    {
+      id: "tcat_email_marketing",
+      name: "Email Marketing",
+      slug: "email-marketing",
+      color: "#f59e0b",
+      icon: "Mail",
+      sortOrder: 60,
+    },
+    {
+      id: "tcat_reporting",
+      name: "Reporting",
+      slug: "reporting",
+      color: "#6366f1",
+      icon: "BarChart3",
+      sortOrder: 70,
+    },
   ];
 
   for (const c of defaultCategories) {
@@ -81,7 +130,7 @@ async function main() {
 
   console.log("\n🎉 Database seeded successfully!");
   console.log("\nLogin credentials:");
-  console.log("  Email:    admin@i3media.co.uk");
+  console.log("  Email:    admin@i3media.net");
   console.log("  Password: admin123");
 }
 

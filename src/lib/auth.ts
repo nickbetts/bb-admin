@@ -109,7 +109,7 @@ export interface SessionUser {
 // Used as fallback for legacy (3-part) session tokens
 const LEGACY_ADMIN_USER: SessionUser = {
   id: "admin",
-  email: "admin@i3media.co.uk",
+  email: "admin@i3media.net",
   name: "i3media Admin",
   role: "admin",
   permissions: [...ALL_PERMISSIONS],

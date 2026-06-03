@@ -4,9 +4,18 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/activity-logger";
 
-const APP_PASSWORD = process.env.APP_PASSWORD ?? "i3ganggang";
+const APP_PASSWORD = process.env.APP_PASSWORD ?? "admin123";
 const SESSION_SECRET = process.env.SESSION_SECRET ?? "i3media-session-secret";
 const SESSION_DAYS = 7;
+const ADMIN_EMAIL_ALIASES: Record<string, string[]> = {
+  "admin@i3media.net": ["admin@i3media.co.uk"],
+  "admin@i3media.co.uk": ["admin@i3media.net"],
+};
+
+function getEmailCandidates(email: string): string[] {
+  const normalised = email.toLowerCase().trim();
+  return [normalised, ...(ADMIN_EMAIL_ALIASES[normalised] ?? [])];
+}
 
 /** New format: `expiresAt|userId|nonce|signature` */
 function createSessionToken(userId: string): string {
@@ -49,7 +58,9 @@ export async function POST(request: NextRequest) {
 
     // ── DB user look-up (email + bcrypt) ──────────────────────────────────────
     if (email) {
-      const user = await prisma.user.findUnique({ where: { email: email.toLowerCase().trim() } });
+      const user = await prisma.user.findFirst({
+        where: { email: { in: getEmailCandidates(email) } },
+      });
       if (user) {
         const valid = await bcrypt.compare(password, user.password);
         if (!valid) {
@@ -67,7 +78,7 @@ export async function POST(request: NextRequest) {
         if (user.mustChangePassword) {
           return NextResponse.json(
             { success: true, mustChangePassword: true },
-            { headers: response.headers }
+            { headers: response.headers },
           );
         }
         return response;
