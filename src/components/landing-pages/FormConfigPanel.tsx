@@ -92,6 +92,10 @@ function isValidEmail(email: string): boolean {
 export function FormConfigPanel({ value, onChange, lpId }: Props) {
   const [emailInput, setEmailInput] = useState("");
   const [emailError, setEmailError] = useState<string | null>(null);
+  const [thankYouTestEmail, setThankYouTestEmail] = useState("");
+  const [thankYouTestError, setThankYouTestError] = useState<string | null>(null);
+  const [thankYouTestStatus, setThankYouTestStatus] = useState<string | null>(null);
+  const [thankYouTestLoading, setThankYouTestLoading] = useState(false);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -158,6 +162,46 @@ export function FormConfigPanel({ value, onChange, lpId }: Props) {
       setThankYouPreviewError("Could not generate thank-you preview right now.");
     } finally {
       setThankYouPreviewLoading(false);
+    }
+  }
+
+  async function handleThankYouTestSend() {
+    const recipientEmail = thankYouTestEmail.trim();
+    setThankYouTestError(null);
+    setThankYouTestStatus(null);
+
+    if (!recipientEmail) {
+      setThankYouTestError("Enter an email address to send the test to.");
+      return;
+    }
+
+    if (!isValidEmail(recipientEmail)) {
+      setThankYouTestError("Please enter a valid email address.");
+      return;
+    }
+
+    setThankYouTestLoading(true);
+    try {
+      const res = await fetch(`/api/tools/landing-pages/${lpId}/thank-you-test`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ config: thankYouEmail, recipientEmail }),
+      });
+
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        message?: string;
+      };
+
+      if (!res.ok) {
+        throw new Error(data.error ?? "Test send failed");
+      }
+
+      setThankYouTestStatus(data.message ?? "Test email sent.");
+    } catch (error) {
+      setThankYouTestError(error instanceof Error ? error.message : "Test send failed");
+    } finally {
+      setThankYouTestLoading(false);
     }
   }
 
@@ -985,6 +1029,55 @@ export function FormConfigPanel({ value, onChange, lpId }: Props) {
                   Merge tags: <code>{"{{lead.name}}"}</code>, <code>{"{{lead.email}}"}</code>,{" "}
                   <code>{"{{lead.phone}}"}</code>, <code>{"{{lead.message}}"}</code>,{" "}
                   <code>{"{{lp.title}}"}</code>, <code>{"{{client.name}}"}</code>
+                </p>
+              </div>
+
+              <div>
+                <label style={labelStyle}>Send test email</label>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <input
+                    type="email"
+                    value={thankYouTestEmail}
+                    onChange={(e) => {
+                      setThankYouTestEmail(e.target.value);
+                      if (thankYouTestError) setThankYouTestError(null);
+                      if (thankYouTestStatus) setThankYouTestStatus(null);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        void handleThankYouTestSend();
+                      }
+                    }}
+                    placeholder="team@example.com"
+                    style={inputStyle}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void handleThankYouTestSend()}
+                    disabled={thankYouTestLoading}
+                    className="btn btn-secondary btn-sm"
+                    style={{ flexShrink: 0 }}
+                  >
+                    {thankYouTestLoading ? (
+                      <Loader2 size={12} style={{ animation: "spin 1s linear infinite" }} />
+                    ) : null}
+                    {thankYouTestLoading ? "Sending…" : "Send test"}
+                  </button>
+                </div>
+                {thankYouTestError && (
+                  <p style={{ ...hintStyle, color: "var(--danger)", marginTop: 6 }}>
+                    {thankYouTestError}
+                  </p>
+                )}
+                {thankYouTestStatus && (
+                  <p style={{ ...hintStyle, color: "var(--success-text)", marginTop: 6 }}>
+                    {thankYouTestStatus}
+                  </p>
+                )}
+                <p style={hintStyle}>
+                  Sends a sample thank-you email using the current settings. Klaviyo mode triggers
+                  the configured flow event rather than sending a direct email itself.
                 </p>
               </div>
 
