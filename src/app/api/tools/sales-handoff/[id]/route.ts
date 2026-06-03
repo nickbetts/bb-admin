@@ -12,26 +12,44 @@ import {
 export const dynamic = "force-dynamic";
 
 const SALES_HANDOFF_STATUSES = [
-  "draft",
-  "submitted",
-  "in_progress",
-  "ready_for_meeting",
-  "completed",
-  "blocked",
-  "cancelled",
+  "plan_requested",
+  "on_hold",
+  "plan_in_progress",
+  "ready_for_review",
+  "internal_sign_off_done",
+  "presented_to_client",
+  "won",
+  "lost",
+  "archived",
 ] as const;
 
 // Maps Stratos internal statuses to ClickUp status names in priority order.
-// Primary candidates match this workspace's actual ClickUp statuses:
-//   PIPELINE, ON-HOLD, HANDOFF READY, DISCUSSION, IN PROGRESS, ACTION, CLOSED
+// Matches list 901218556745 statuses:
+//   PLAN REQUESTED, ON HOLD, PLAN IN PROGRESS, READY FOR REVIEW,
+//   INTERNAL SIGN OFF DONE, PRESENTED TO CLIENT, WON, LOST, ARCHIVED
 const CLICKUP_STATUS_CANDIDATES: Record<(typeof SALES_HANDOFF_STATUSES)[number], string[]> = {
-  draft: ["pipeline", "to do", "todo", "open", "backlog", "draft"],
-  submitted: ["discussion", "pipeline", "to do", "todo", "open", "new"],
-  in_progress: ["in progress", "in-progress", "progress", "doing", "active"],
-  ready_for_meeting: ["handoff ready", "ready for meeting", "ready", "review", "awaiting"],
-  completed: ["action", "complete", "completed", "done", "resolved"],
-  blocked: ["on-hold", "on hold", "on_hold", "blocked", "paused", "hold", "stuck", "waiting"],
-  cancelled: ["closed", "cancelled", "canceled", "void"],
+  plan_requested: ["plan requested", "to do", "todo", "open", "new"],
+  on_hold: ["on hold", "on-hold", "on_hold", "blocked", "paused", "hold", "stuck", "waiting"],
+  plan_in_progress: [
+    "plan in progress",
+    "in progress",
+    "in-progress",
+    "progress",
+    "doing",
+    "active",
+  ],
+  ready_for_review: ["ready for review", "ready", "review", "awaiting"],
+  internal_sign_off_done: [
+    "internal sign off done",
+    "sign off done",
+    "internal sign off",
+    "sign off",
+    "approved",
+  ],
+  presented_to_client: ["presented to client", "presented", "client review", "proposal sent"],
+  won: ["won", "closed won", "win"],
+  lost: ["lost", "closed lost", "churned", "cancelled", "canceled"],
+  archived: ["archived", "closed", "void"],
 };
 
 /**

@@ -7,7 +7,7 @@ import { useToast } from "@/components/ui/Toast";
 import { Toggle } from "@/components/ui/Toggle";
 
 const SETTING_DEFAULTS = {
-  salesHandoffTaskNamePrefix: "Sales Handoff",
+  salesHandoffTaskNamePrefix: "Sales Request",
   salesHandoffChecklistName: "Marketing Handoff Progress",
   salesHandoffDescHeadingProspect: "Prospect Summary",
   salesHandoffDescHeadingAudience: "Target Audience",
@@ -106,7 +106,7 @@ export function SalesHandoffSettingsPanel({ open, onClose }: SalesHandoffSetting
 
   if (!open) return null;
 
-  const taskNamePreview = `${settings.salesHandoffTaskNamePrefix.trim() || "Sales Handoff"} - Prospect Name`;
+  const taskNamePreview = `${settings.salesHandoffTaskNamePrefix.trim() || "Sales Request"} - Prospect Name`;
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 60, display: "flex" }}>
@@ -193,7 +193,7 @@ export function SalesHandoffSettingsPanel({ open, onClose }: SalesHandoffSetting
                     className="form-input"
                     value={settings.salesHandoffTaskNamePrefix}
                     onChange={(e) => update("salesHandoffTaskNamePrefix", e.target.value)}
-                    placeholder="Sales Handoff"
+                    placeholder="Sales Request"
                   />
                   <p style={{ fontSize: "12px", color: "var(--text-3)", marginTop: "8px" }}>
                     Preview:{" "}
@@ -307,7 +307,7 @@ export function SalesHandoffSettingsPanel({ open, onClose }: SalesHandoffSetting
                       className="form-input font-mono"
                       value={settings.clickupSalesHandoffListId}
                       onChange={(e) => update("clickupSalesHandoffListId", e.target.value)}
-                      placeholder="901202558111"
+                      placeholder="901218556745"
                     />
                     <p style={{ fontSize: "12px", color: "var(--text-3)", marginTop: "6px" }}>
                       Numeric ClickUp list ID where tasks are created

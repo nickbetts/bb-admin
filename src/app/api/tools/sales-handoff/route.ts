@@ -20,7 +20,7 @@ interface SalesHandoffBody {
   idempotencyKey?: string;
 }
 
-const DEFAULT_SALES_HANDOFF_LIST_ID = "901202558111";
+const DEFAULT_SALES_HANDOFF_LIST_ID = "901218556745";
 
 const DEFAULT_SERVICE_OPTIONS = [
   "Google PPC",
@@ -42,13 +42,15 @@ const DEFAULT_DESC_HEADING_SERVICES = "Services of Interest";
 const DEFAULT_DESC_HEADING_CONTEXT = "Additional Context from Sales";
 
 const SALES_HANDOFF_STATUSES = [
-  "draft",
-  "submitted",
-  "in_progress",
-  "ready_for_meeting",
-  "completed",
-  "blocked",
-  "cancelled",
+  "plan_requested",
+  "on_hold",
+  "plan_in_progress",
+  "ready_for_review",
+  "internal_sign_off_done",
+  "presented_to_client",
+  "won",
+  "lost",
+  "archived",
 ] as const;
 
 const MAX_HISTORY_LIMIT = 100;

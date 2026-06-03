@@ -1729,7 +1729,7 @@ function SettingsPanelInner() {
               className="font-mono text-[13px]"
               value={clickupSalesHandoffListIdInput}
               onChange={(e) => setClickupSalesHandoffListIdInput(e.target.value)}
-              placeholder="901202558111"
+              placeholder="901218556745"
             />
             <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 4 }}>
               Sales request tasks are created in this list.

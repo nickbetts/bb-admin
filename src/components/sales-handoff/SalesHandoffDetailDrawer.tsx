@@ -126,13 +126,15 @@ interface SalesHandoffDetailDrawerProps {
 }
 
 const STATUS_OPTIONS: Array<{ status: SalesHandoffStatus; label: string; color: string }> = [
-  { status: "draft", label: "Draft", color: "#f59e0b" },
-  { status: "submitted", label: "New", color: "#0ea5e9" },
-  { status: "in_progress", label: "In Progress", color: "#6366f1" },
-  { status: "ready_for_meeting", label: "Ready", color: "#10b981" },
-  { status: "blocked", label: "Blocked", color: "#ef4444" },
-  { status: "completed", label: "Completed", color: "#22c55e" },
-  { status: "cancelled", label: "Cancelled", color: "#94a3b8" },
+  { status: "plan_requested", label: "Plan Requested", color: "#0ea5e9" },
+  { status: "on_hold", label: "On Hold", color: "#f97316" },
+  { status: "plan_in_progress", label: "Plan In Progress", color: "#f59e0b" },
+  { status: "ready_for_review", label: "Ready for Review", color: "#6366f1" },
+  { status: "internal_sign_off_done", label: "Sign Off Done", color: "#8b5cf6" },
+  { status: "presented_to_client", label: "Presented to Client", color: "#10b981" },
+  { status: "won", label: "Won", color: "#22c55e" },
+  { status: "lost", label: "Lost", color: "#ef4444" },
+  { status: "archived", label: "Archived", color: "#94a3b8" },
 ];
 
 function formatDateTime(value: string): string {

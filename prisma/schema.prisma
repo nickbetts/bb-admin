@@ -789,7 +789,7 @@ model SalesHandoff {
   urgentReason              String?
   hoursUntilCall            Float?
   noticeStatus              String?
-  status                    String              @default("submitted")
+  status                    String              @default("plan_requested")
   clickupTaskId             String?             @unique
   clickupTaskUrl            String?
   clickupListId             String?

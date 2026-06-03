@@ -29,13 +29,15 @@ import {
 import { cn } from "@/lib/utils";
 
 export type SalesHandoffStatus =
-  | "draft"
-  | "submitted"
-  | "in_progress"
-  | "ready_for_meeting"
-  | "completed"
-  | "blocked"
-  | "cancelled";
+  | "plan_requested"
+  | "on_hold"
+  | "plan_in_progress"
+  | "ready_for_review"
+  | "internal_sign_off_done"
+  | "presented_to_client"
+  | "won"
+  | "lost"
+  | "archived";
 
 export interface SalesHandoffPipelineItem {
   id: string;
@@ -79,56 +81,72 @@ const STATUS_COLUMNS: Array<{
   dotColor: string;
 }> = [
   {
-    status: "draft",
-    label: "Pipeline",
-    color: "#f59e0b",
-    lightBg: "rgba(245,158,11,0.06)",
-    textClass: "text-amber-700 dark:text-amber-400",
-    dotColor: "#f59e0b",
-  },
-  {
-    status: "submitted",
-    label: "Discussion",
+    status: "plan_requested",
+    label: "Plan Requested",
     color: "#0ea5e9",
     lightBg: "rgba(14,165,233,0.06)",
     textClass: "text-sky-700 dark:text-sky-400",
     dotColor: "#0ea5e9",
   },
   {
-    status: "in_progress",
-    label: "In Progress",
+    status: "on_hold",
+    label: "On Hold",
+    color: "#f97316",
+    lightBg: "rgba(249,115,22,0.06)",
+    textClass: "text-orange-700 dark:text-orange-400",
+    dotColor: "#f97316",
+  },
+  {
+    status: "plan_in_progress",
+    label: "Plan In Progress",
+    color: "#f59e0b",
+    lightBg: "rgba(245,158,11,0.06)",
+    textClass: "text-amber-700 dark:text-amber-400",
+    dotColor: "#f59e0b",
+  },
+  {
+    status: "ready_for_review",
+    label: "Ready for Review",
     color: "#6366f1",
     lightBg: "rgba(99,102,241,0.06)",
     textClass: "text-indigo-700 dark:text-indigo-400",
     dotColor: "#6366f1",
   },
   {
-    status: "ready_for_meeting",
-    label: "Handoff Ready",
+    status: "internal_sign_off_done",
+    label: "Sign Off Done",
+    color: "#8b5cf6",
+    lightBg: "rgba(139,92,246,0.06)",
+    textClass: "text-violet-700 dark:text-violet-400",
+    dotColor: "#8b5cf6",
+  },
+  {
+    status: "presented_to_client",
+    label: "Presented",
     color: "#10b981",
     lightBg: "rgba(16,185,129,0.06)",
     textClass: "text-emerald-700 dark:text-emerald-400",
     dotColor: "#10b981",
   },
   {
-    status: "blocked",
-    label: "On-Hold",
-    color: "#ef4444",
-    lightBg: "rgba(239,68,68,0.06)",
-    textClass: "text-rose-700 dark:text-rose-400",
-    dotColor: "#ef4444",
-  },
-  {
-    status: "completed",
-    label: "Action",
+    status: "won",
+    label: "Won",
     color: "#22c55e",
     lightBg: "rgba(34,197,94,0.06)",
     textClass: "text-green-700 dark:text-green-400",
     dotColor: "#22c55e",
   },
   {
-    status: "cancelled",
-    label: "Closed",
+    status: "lost",
+    label: "Lost",
+    color: "#ef4444",
+    lightBg: "rgba(239,68,68,0.06)",
+    textClass: "text-rose-700 dark:text-rose-400",
+    dotColor: "#ef4444",
+  },
+  {
+    status: "archived",
+    label: "Archived",
     color: "#94a3b8",
     lightBg: "rgba(148,163,184,0.06)",
     textClass: "text-zinc-500 dark:text-zinc-400",
@@ -190,7 +208,12 @@ function formatDateTime(value: string): string {
 }
 
 function isOpenStatus(status: SalesHandoffStatus): boolean {
-  return status !== "completed" && status !== "cancelled";
+  return (
+    status !== "presented_to_client" &&
+    status !== "won" &&
+    status !== "lost" &&
+    status !== "archived"
+  );
 }
 
 function ownerInitials(owner: SalesHandoffPipelineItem["owner"]): string {
@@ -608,13 +631,15 @@ export function SalesHandoffPipelineBoard({
 
   const groupedHandoffs = useMemo(() => {
     const buckets: Record<SalesHandoffStatus, SalesHandoffPipelineItem[]> = {
-      draft: [],
-      submitted: [],
-      in_progress: [],
-      ready_for_meeting: [],
-      completed: [],
-      blocked: [],
-      cancelled: [],
+      plan_requested: [],
+      on_hold: [],
+      plan_in_progress: [],
+      ready_for_review: [],
+      internal_sign_off_done: [],
+      presented_to_client: [],
+      won: [],
+      lost: [],
+      archived: [],
     };
     for (const handoff of filteredHandoffs) {
       buckets[handoff.status].push(handoff);
