@@ -642,7 +642,8 @@ export function SalesHandoffPipelineBoard({
       archived: [],
     };
     for (const handoff of filteredHandoffs) {
-      buckets[handoff.status].push(handoff);
+      const bucket = buckets[handoff.status] ?? buckets["plan_requested"];
+      bucket.push(handoff);
     }
     return buckets;
   }, [filteredHandoffs]);
