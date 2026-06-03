@@ -5,15 +5,12 @@ import {
   AlertTriangle,
   Building2,
   CalendarClock,
-  ChevronDown,
-  ChevronUp,
   Check,
   ClipboardList,
   ExternalLink,
   Globe,
   Info,
   Loader2,
-  MessageSquareText,
   Plus,
   Settings,
   Sparkles,
@@ -210,13 +207,13 @@ export default function SalesHandoffPage() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
+  const [formStep, setFormStep] = useState(1);
 
   const [serviceOptions, setServiceOptions] = useState<string[]>(DEFAULT_SERVICE_OPTIONS);
   const [enforce48HourNotice, setEnforce48HourNotice] = useState(true);
   const [allowUrgentOverride, setAllowUrgentOverride] = useState(true);
   const [urgentOverride, setUrgentOverride] = useState(false);
   const [urgentReason, setUrgentReason] = useState("");
-  const [showPlanningNotes, setShowPlanningNotes] = useState(false);
 
   const [handoffHistory, setHandoffHistory] = useState<SalesHandoffHistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
@@ -588,16 +585,6 @@ export default function SalesHandoffPage() {
     return enforce48HourNotice && allowUrgentOverride && violatesNoticeWindow && urgentOverride;
   }, [allowUrgentOverride, enforce48HourNotice, urgentOverride, violatesNoticeWindow]);
 
-  const completedRequiredFields = useMemo(() => {
-    return [
-      form.prospectName.trim().length > 0,
-      form.website.trim().length > 0,
-      form.targetAudienceSummary.trim().length > 0,
-      form.secondCallAt.trim().length > 0,
-      form.budgetRange.trim().length > 0,
-    ].filter(Boolean).length;
-  }, [form]);
-
   const canSubmit = useMemo(() => {
     const hasRequiredFields =
       form.prospectName.trim().length > 0 &&
@@ -879,7 +866,11 @@ export default function SalesHandoffPage() {
 
       <Modal
         open={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
+        onClose={() => {
+          setShowCreateModal(false);
+          setFormStep(1);
+          setFieldError(null);
+        }}
         title={
           <span className="inline-flex items-center gap-2">
             <ClipboardList className="h-5 w-5 text-indigo-500" />
@@ -887,31 +878,8 @@ export default function SalesHandoffPage() {
           </span>
         }
         description="Turn first-call notes into a tracked delivery workflow."
-        size="xl"
-        footer={
-          <>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={() => setShowCreateModal(false)}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              form="sales-handoff-form"
-              className="btn btn-primary inline-flex items-center gap-2"
-              disabled={submitting || !canSubmit}
-            >
-              {submitting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Zap className="h-4 w-4" />
-              )}
-              {submitting ? "Sending request..." : "Request a Marketing Plan"}
-            </button>
-          </>
-        }
+        size="2xl"
+        footer={null}
       >
         <div className="space-y-2.5">
           <div className="relative overflow-hidden rounded-2xl border border-indigo-200/70 bg-[linear-gradient(135deg,rgba(99,102,241,0.08),rgba(34,211,238,0.08))] px-4 py-3 dark:border-indigo-900/50 dark:bg-[linear-gradient(135deg,rgba(99,102,241,0.18),rgba(34,211,238,0.08))]">
@@ -941,455 +909,429 @@ export default function SalesHandoffPage() {
           ) : null}
         </div>
 
-        <form
-          id="sales-handoff-form"
-          onSubmit={handleSubmit}
-          className="mt-4 grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]"
-        >
-          <div className="grid gap-5">
-            <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
-              <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/50">
-                <div className="mb-4">
-                  <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-                    Client context
-                  </p>
-                  <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                    Add the core business details marketing needs before shaping the plan.
-                  </p>
-                </div>
-
-                <div className="grid gap-4">
-                  <div className="grid gap-2">
-                    <label className="inline-flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-200">
-                      <Building2 className="h-4 w-4 shrink-0 text-zinc-400" />
-                      <span>Prospect or company name</span>
-                    </label>
-                    <input
-                      className="form-input h-12 px-4 text-sm"
-                      value={form.prospectName}
-                      onChange={(event) => update("prospectName", event.target.value)}
-                      placeholder="Acme Sportswear"
-                      required
-                    />
-                  </div>
-
-                  <div className="grid gap-2">
-                    <label className="inline-flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-200">
-                      <Globe className="h-4 w-4 shrink-0 text-zinc-400" />
-                      <span>Website URL</span>
-                    </label>
-                    <input
-                      className="form-input h-12 px-4 text-sm"
-                      value={form.website}
-                      onChange={(event) => update("website", event.target.value)}
-                      placeholder="https://www.example.com"
-                      required
-                    />
-                  </div>
-
-                  <div className="grid gap-2">
-                    <label className="inline-flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-200">
-                      <Users className="h-4 w-4 shrink-0 text-zinc-400" />
-                      <span>Target audience summary</span>
-                    </label>
-                    <textarea
-                      className="form-input min-h-32 px-4 py-3 text-sm leading-6"
-                      value={form.targetAudienceSummary}
-                      onChange={(event) => update("targetAudienceSummary", event.target.value)}
-                      placeholder="Who are they selling to, and what pain points came up on the call?"
-                      rows={4}
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/50">
-                <div className="mb-4">
-                  <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-                    Timing and budget
-                  </p>
-                  <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                    Confirm the next milestone and the commercial range before the request is sent.
-                  </p>
-                </div>
-
-                <div className="grid gap-4">
-                  <div className="grid gap-2">
-                    <label className="inline-flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-200">
-                      <CalendarClock className="h-4 w-4 shrink-0 text-zinc-400" />
-                      <span>Second call date and time</span>
-                    </label>
-                    <input
-                      type="datetime-local"
-                      className="form-input h-12 px-4 text-sm"
-                      value={form.secondCallAt}
-                      onChange={(event) => update("secondCallAt", event.target.value)}
-                      required
-                    />
-                  </div>
-
-                  <div className="grid gap-2">
-                    <label className="inline-flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-200">
-                      <Wallet className="h-4 w-4 shrink-0 text-zinc-400" />
-                      <span>Budget range</span>
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <div className="relative flex-1">
-                        <span className="absolute top-1/2 left-4 -translate-y-1/2 text-sm text-zinc-500">
-                          £
-                        </span>
-                        <input
-                          type="number"
-                          className="form-input h-12 w-full pr-4 pl-8 text-sm"
-                          value={form.budgetRange.split("-")[0]?.trim() || ""}
-                          onChange={(event) => {
-                            const min = event.target.value;
-                            const max = form.budgetRange.split("-")[1]?.trim() || "";
-                            update("budgetRange", max ? `${min} - ${max}` : min);
-                          }}
-                          placeholder="3,000"
-                          required
-                        />
-                      </div>
-                      <span className="text-xs font-medium text-zinc-500">to</span>
-                      <div className="relative flex-1">
-                        <span className="absolute top-1/2 left-4 -translate-y-1/2 text-sm text-zinc-500">
-                          £
-                        </span>
-                        <input
-                          type="number"
-                          className="form-input h-12 w-full pr-4 pl-8 text-sm"
-                          value={form.budgetRange.split("-")[1]?.trim() || ""}
-                          onChange={(event) => {
-                            const min = form.budgetRange.split("-")[0]?.trim() || "";
-                            const max = event.target.value;
-                            update("budgetRange", min ? `${min} - ${max}` : max);
-                          }}
-                          placeholder="5,000"
-                          required
-                        />
-                      </div>
-                      <span className="shrink-0 text-xs font-medium text-zinc-500">/month</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+        <form id="sales-handoff-form" onSubmit={handleSubmit} className="mt-6">
+          {fieldError && (
+            <div className="mb-6 flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50/80 px-5 py-4 dark:border-rose-900/60 dark:bg-rose-950/30">
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-rose-500 dark:text-rose-400" />
+              <p className="text-sm text-rose-700 dark:text-rose-200">{fieldError}</p>
             </div>
+          )}
 
-            <div className="grid gap-1.5">
-              {noticeHours !== null ? (
-                <p
-                  className={cn(
-                    "inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
-                    secondCallInPast || violatesNoticeWindow
-                      ? "bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-300"
-                      : "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300",
-                  )}
-                >
-                  <CalendarClock className="h-3 w-3" />
-                  {secondCallInPast
-                    ? "Second call must be in the future."
-                    : `Notice window: ${noticeHours.toFixed(1)} hours before the second call.`}
+          {/* STEP 1: Client Context */}
+          {formStep === 1 && (
+            <div className="space-y-8">
+              <div>
+                <p className="text-xs font-semibold tracking-[0.12em] text-indigo-600 uppercase dark:text-indigo-400">
+                  Step 1 of 6
                 </p>
-              ) : null}
-            </div>
+                <h2 className="mt-3 text-3xl font-bold text-zinc-900 dark:text-zinc-100">
+                  Who&apos;s the prospect?
+                </h2>
+                <p className="mt-2 text-base text-zinc-600 dark:text-zinc-400">
+                  Let&apos;s start with the basics. We&apos;ll build the full brief from here.
+                </p>
+              </div>
 
-            {enforce48HourNotice && violatesNoticeWindow && allowUrgentOverride ? (
-              <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3.5 dark:border-amber-900/60 dark:bg-amber-950/30">
-                <label className="flex cursor-pointer items-center gap-2.5 text-sm font-semibold text-amber-800 dark:text-amber-200">
+              <div className="space-y-6">
+                <div className="grid gap-3">
+                  <label className="inline-flex items-center gap-2 text-base font-semibold text-zinc-900 dark:text-zinc-100">
+                    <Building2 className="h-5 w-5 text-zinc-400" />
+                    <span>Company or prospect name</span>
+                  </label>
                   <input
-                    type="checkbox"
-                    className="h-4 w-4 accent-amber-600"
-                    checked={urgentOverride}
-                    onChange={(event) => setUrgentOverride(event.target.checked)}
+                    className="form-input h-16 rounded-2xl px-6 text-lg"
+                    value={form.prospectName}
+                    onChange={(event) => update("prospectName", event.target.value)}
+                    placeholder="e.g. Local Gym Chain"
+                    required
+                    autoFocus
                   />
-                  <span className="inline-flex items-center gap-1.5">
-                    <Zap className="h-3.5 w-3.5" />
-                    Mark as urgent override
-                  </span>
-                </label>
-                <p className="mt-1.5 pl-6.5 text-xs text-amber-700 dark:text-amber-300/90">
-                  Use this only when the second call timing cannot be moved.
-                </p>
+                </div>
 
-                {urgentOverride ? (
-                  <div className="mt-3 grid gap-1.5">
-                    <label className="form-label">Urgent reason</label>
+                <div className="grid gap-3">
+                  <label className="inline-flex items-center gap-2 text-base font-semibold text-zinc-900 dark:text-zinc-100">
+                    <Globe className="h-5 w-5 text-zinc-400" />
+                    <span>Website URL</span>
+                  </label>
+                  <input
+                    className="form-input h-16 rounded-2xl px-6 text-lg"
+                    value={form.website}
+                    onChange={(event) => update("website", event.target.value)}
+                    placeholder="https://example.com"
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 2: Target Audience */}
+          {formStep === 2 && (
+            <div className="space-y-8">
+              <div>
+                <p className="text-xs font-semibold tracking-[0.12em] text-indigo-600 uppercase dark:text-indigo-400">
+                  Step 2 of 6
+                </p>
+                <h2 className="mt-3 text-3xl font-bold text-zinc-900 dark:text-zinc-100">
+                  Who are they selling to?
+                </h2>
+                <p className="mt-2 text-base text-zinc-600 dark:text-zinc-400">
+                  Describe their target audience and what pain points came up.
+                </p>
+              </div>
+
+              <div className="grid gap-3">
+                <label className="inline-flex items-center gap-2 text-base font-semibold text-zinc-900 dark:text-zinc-100">
+                  <Users className="h-5 w-5 text-zinc-400" />
+                  <span>Target audience summary</span>
+                </label>
+                <textarea
+                  className="form-input min-h-48 rounded-2xl px-6 py-5 text-lg leading-relaxed"
+                  value={form.targetAudienceSummary}
+                  onChange={(event) => update("targetAudienceSummary", event.target.value)}
+                  placeholder="Who are they selling to, and what pain points came up on the call?"
+                  rows={6}
+                  required
+                  autoFocus
+                />
+              </div>
+            </div>
+          )}
+
+          {/* STEP 3: Timing & Budget */}
+          {formStep === 3 && (
+            <div className="space-y-8">
+              <div>
+                <p className="text-xs font-semibold tracking-[0.12em] text-indigo-600 uppercase dark:text-indigo-400">
+                  Step 3 of 6
+                </p>
+                <h2 className="mt-3 text-3xl font-bold text-zinc-900 dark:text-zinc-100">
+                  When and for how much?
+                </h2>
+                <p className="mt-2 text-base text-zinc-600 dark:text-zinc-400">
+                  Confirm the timeline and commercial range.
+                </p>
+              </div>
+
+              <div className="space-y-6">
+                <div className="grid gap-3">
+                  <label className="inline-flex items-center gap-2 text-base font-semibold text-zinc-900 dark:text-zinc-100">
+                    <CalendarClock className="h-5 w-5 text-zinc-400" />
+                    <span>Second call date and time</span>
+                  </label>
+                  <input
+                    type="datetime-local"
+                    className="form-input h-16 rounded-2xl px-6 text-lg"
+                    value={form.secondCallAt}
+                    onChange={(event) => update("secondCallAt", event.target.value)}
+                    required
+                    autoFocus
+                  />
+                  {noticeHours !== null && (
+                    <p
+                      className={cn(
+                        "text-sm font-medium",
+                        secondCallInPast || violatesNoticeWindow
+                          ? "text-rose-600 dark:text-rose-400"
+                          : "text-emerald-600 dark:text-emerald-400",
+                      )}
+                    >
+                      {secondCallInPast
+                        ? "⚠️ Second call must be in the future."
+                        : `✓ Notice window: ${noticeHours.toFixed(1)} hours`}
+                    </p>
+                  )}
+                </div>
+
+                <div className="grid gap-3">
+                  <label className="inline-flex items-center gap-2 text-base font-semibold text-zinc-900 dark:text-zinc-100">
+                    <Wallet className="h-5 w-5 text-zinc-400" />
+                    <span>Budget range</span>
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <div className="relative flex-1">
+                      <span className="absolute top-1/2 left-6 -translate-y-1/2 text-lg text-zinc-500">
+                        £
+                      </span>
+                      <input
+                        type="number"
+                        className="form-input h-16 w-full rounded-2xl pr-6 pl-12 text-lg"
+                        value={form.budgetRange.split("-")[0]?.trim() || ""}
+                        onChange={(event) => {
+                          const min = event.target.value;
+                          const max = form.budgetRange.split("-")[1]?.trim() || "";
+                          update("budgetRange", max ? `${min} - ${max}` : min);
+                        }}
+                        placeholder="3,000"
+                        required
+                      />
+                    </div>
+                    <span className="text-base font-medium text-zinc-500">to</span>
+                    <div className="relative flex-1">
+                      <span className="absolute top-1/2 left-6 -translate-y-1/2 text-lg text-zinc-500">
+                        £
+                      </span>
+                      <input
+                        type="number"
+                        className="form-input h-16 w-full rounded-2xl pr-6 pl-12 text-lg"
+                        value={form.budgetRange.split("-")[1]?.trim() || ""}
+                        onChange={(event) => {
+                          const min = form.budgetRange.split("-")[0]?.trim() || "";
+                          const max = event.target.value;
+                          update("budgetRange", min ? `${min} - ${max}` : max);
+                        }}
+                        placeholder="5,000"
+                        required
+                      />
+                    </div>
+                    <span className="shrink-0 text-base font-medium text-zinc-500">/mo</span>
+                  </div>
+                </div>
+
+                {enforce48HourNotice && violatesNoticeWindow && allowUrgentOverride && (
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-5 dark:border-amber-900/60 dark:bg-amber-950/30">
+                    <label className="flex cursor-pointer items-center gap-3">
+                      <input
+                        type="checkbox"
+                        className="h-5 w-5 accent-amber-600"
+                        checked={urgentOverride}
+                        onChange={(event) => setUrgentOverride(event.target.checked)}
+                      />
+                      <span className="text-base font-semibold text-amber-900 dark:text-amber-100">
+                        Mark as urgent override
+                      </span>
+                    </label>
+                    <p className="mt-2 ml-8 text-sm text-amber-800 dark:text-amber-200/90">
+                      Only use this when the second call timing can&apos;t be moved.
+                    </p>
+                  </div>
+                )}
+
+                {urgentOverride && (
+                  <div className="grid gap-3">
+                    <label className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
+                      Why does this need urgent processing?
+                    </label>
                     <textarea
-                      className="form-input px-4 py-3"
+                      className="form-input min-h-32 rounded-2xl px-6 py-5 text-lg"
                       value={urgentReason}
                       onChange={(event) => setUrgentReason(event.target.value)}
-                      placeholder="Why does this need to proceed with less than 48 hours notice?"
-                      rows={3}
+                      placeholder="Explain why this can't wait 48 hours…"
+                      rows={4}
                       required={requiresUrgentReason}
                     />
                   </div>
-                ) : null}
-              </div>
-            ) : null}
-
-            {enforce48HourNotice && violatesNoticeWindow && !allowUrgentOverride ? (
-              <div className="flex items-start gap-2.5 rounded-xl border border-rose-200 bg-rose-50/80 px-3.5 py-2.5 text-xs text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200">
-                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-500 dark:text-rose-400" />
-                <p>
-                  Urgent override is disabled by policy. Move the second call to at least 48 hours
-                  from now.
-                </p>
-              </div>
-            ) : null}
-
-            <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/50">
-              <div className="grid gap-3">
-                <div>
-                  <label className="inline-flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-200">
-                    <Sparkles className="h-4 w-4 shrink-0 text-zinc-400" />
-                    <span>Services they might be interested in</span>
-                  </label>
-                  <p className="mt-1 text-xs" style={{ color: "var(--text-3)" }}>
-                    Select all that apply. This shapes the plan we put together.
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2.5">
-                  {serviceOptions.map((service) => {
-                    const checked = form.interestedServices.includes(service);
-                    return (
-                      <button
-                        key={service}
-                        type="button"
-                        onClick={() => toggleService(service)}
-                        aria-pressed={checked}
-                        className={cn(
-                          "inline-flex min-h-11 items-center gap-2 rounded-xl border px-4 py-2.5 text-sm leading-none font-medium transition-all",
-                          checked
-                            ? "border-indigo-500 bg-indigo-500 text-white shadow-sm shadow-indigo-500/15 dark:border-indigo-500 dark:bg-indigo-600"
-                            : "border-zinc-200 bg-zinc-50 text-zinc-700 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-indigo-700 dark:hover:bg-indigo-950/40 dark:hover:text-indigo-300",
-                        )}
-                      >
-                        {checked && <Check className="h-3.5 w-3.5 shrink-0" />}
-                        {service}
-                      </button>
-                    );
-                  })}
-                </div>
+                )}
               </div>
             </div>
+          )}
 
-            <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/50">
-              <div className="grid gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowPlanningNotes((prev) => !prev)}
-                  className="flex items-start justify-between gap-3 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-left transition-colors hover:border-indigo-200 hover:bg-indigo-50/60 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-indigo-900 dark:hover:bg-indigo-950/20"
-                >
-                  <div className="flex items-start gap-3">
-                    <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-indigo-500" />
-                    <div>
-                      <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>
-                        Add planning notes
-                      </p>
-                      <p
-                        className="mt-0.5 text-xs leading-relaxed"
-                        style={{ color: "var(--text-2)" }}
-                      >
-                        Strongly recommended. Goals, blockers, decision-makers, and launch context
-                        help marketing shape a better plan.
-                      </p>
-                    </div>
-                  </div>
-                  {showPlanningNotes ? (
-                    <ChevronUp className="mt-0.5 h-4 w-4 shrink-0 text-zinc-400" />
-                  ) : (
-                    <ChevronDown className="mt-0.5 h-4 w-4 shrink-0 text-zinc-400" />
-                  )}
-                </button>
-
-                {showPlanningNotes || form.otherInformation.trim().length > 0 ? (
-                  <>
-                    <div
-                      className="flex items-start gap-3 rounded-xl border px-4 py-3"
-                      style={{
-                        borderColor: "var(--accent-subtle, #c7d2fe)",
-                        background: "var(--accent-faint, #eef2ff)",
-                      }}
-                    >
-                      <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-indigo-500" />
-                      <div>
-                        <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>
-                          The more you share, the better the plan
-                        </p>
-                        <p
-                          className="mt-0.5 text-xs leading-relaxed"
-                          style={{ color: "var(--text-2)" }}
-                        >
-                          Include goals, timelines, blockers, decision-makers, budget sensitivities,
-                          and anything else that came up on the call. Marketing uses this to build a
-                          tailored strategy. Every detail counts.
-                        </p>
-                      </div>
-                    </div>
-                    <label className="inline-flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-200">
-                      <MessageSquareText className="h-4 w-4 shrink-0 text-zinc-400" />
-                      <span>Other information</span>
-                    </label>
-                    <textarea
-                      className="form-input min-h-36 px-4 py-3 text-sm leading-6"
-                      value={form.otherInformation}
-                      onChange={(event) => update("otherInformation", event.target.value)}
-                      placeholder="e.g. CEO is the decision-maker, they're launching in September, already trialled Google Ads with another agency and had a bad experience, budget is flexible if ROI is proven…"
-                      rows={6}
-                    />
-                    {form.otherInformation.length > 0 && (
-                      <p className="text-right text-xs" style={{ color: "var(--text-3)" }}>
-                        {form.otherInformation.length} characters
-                      </p>
-                    )}
-                  </>
-                ) : null}
-              </div>
-            </div>
-          </div>
-
-          <aside className="xl:sticky xl:top-0 xl:self-start">
-            <div className="grid gap-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/50">
+          {/* STEP 4: Services */}
+          {formStep === 4 && (
+            <div className="space-y-8">
               <div>
-                <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-                  Request summary
+                <p className="text-xs font-semibold tracking-[0.12em] text-indigo-600 uppercase dark:text-indigo-400">
+                  Step 4 of 6
                 </p>
-                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                  Live view of what marketing will receive.
+                <h2 className="mt-3 text-3xl font-bold text-zinc-900 dark:text-zinc-100">
+                  What services?
+                </h2>
+                <p className="mt-2 text-base text-zinc-600 dark:text-zinc-400">
+                  Select everything they might be interested in.
+                </p>
+              </div>
+
+              <div className="grid gap-4">
+                {serviceOptions.map((service) => {
+                  const checked = form.interestedServices.includes(service);
+                  return (
+                    <button
+                      key={service}
+                      type="button"
+                      onClick={() => toggleService(service)}
+                      className={cn(
+                        "flex items-center justify-between rounded-2xl border-2 px-6 py-4 text-lg font-semibold transition-all",
+                        checked
+                          ? "border-indigo-500 bg-indigo-50 text-indigo-900 dark:border-indigo-500 dark:bg-indigo-950/40 dark:text-indigo-100"
+                          : "border-zinc-200 bg-white text-zinc-700 hover:border-indigo-300 hover:bg-indigo-50/30 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-indigo-700 dark:hover:bg-indigo-950/20",
+                      )}
+                    >
+                      <span>{service}</span>
+                      {checked && <Check className="h-6 w-6" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* STEP 5: Planning Notes (REQUIRED) */}
+          {formStep === 5 && (
+            <div className="space-y-8">
+              <div>
+                <p className="text-xs font-semibold tracking-[0.12em] text-indigo-600 uppercase dark:text-indigo-400">
+                  Step 5 of 6
+                </p>
+                <h2 className="mt-3 text-3xl font-bold text-zinc-900 dark:text-zinc-100">
+                  Planning notes
+                </h2>
+                <p className="mt-2 text-base text-zinc-600 dark:text-zinc-400">
+                  The more detail you provide, the better the plan we&apos;ll build.
+                </p>
+              </div>
+
+              <div className="grid gap-3">
+                <label className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
+                  What else should marketing know?
+                </label>
+                <textarea
+                  className="form-input min-h-64 rounded-2xl px-6 py-5 text-lg leading-relaxed"
+                  value={form.otherInformation}
+                  onChange={(event) => update("otherInformation", event.target.value)}
+                  placeholder="Goals, timelines, blockers, decision-makers, budget sensitivities, previous agency experience, launch date, competitive landscape, anything relevant to building a winning strategy…"
+                  rows={8}
+                  required
+                />
+                {form.otherInformation.length > 0 && (
+                  <p className="text-right text-sm text-zinc-500 dark:text-zinc-400">
+                    {form.otherInformation.length} characters
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* STEP 6: Review */}
+          {formStep === 6 && (
+            <div className="space-y-8">
+              <div>
+                <p className="text-xs font-semibold tracking-[0.12em] text-indigo-600 uppercase dark:text-indigo-400">
+                  Step 6 of 6 — Review
+                </p>
+                <h2 className="mt-3 text-3xl font-bold text-zinc-900 dark:text-zinc-100">
+                  Ready to send?
+                </h2>
+                <p className="mt-2 text-base text-zinc-600 dark:text-zinc-400">
+                  Here&apos;s what marketing will receive.
                 </p>
               </div>
 
               <div
                 className={cn(
-                  "rounded-xl border px-3 py-2.5 text-sm font-semibold",
+                  "rounded-2xl border-2 px-6 py-4 text-lg font-semibold",
                   requestReadiness.tone,
                 )}
               >
                 {requestReadiness.label}
               </div>
 
-              <div className="grid gap-3">
-                <p className="text-[11px] font-semibold tracking-[0.08em] text-zinc-500 uppercase dark:text-zinc-400">
-                  Completion checklist
-                </p>
-
-                <div className="flex items-center gap-2.5 rounded-lg border border-zinc-200 bg-zinc-50/50 px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-900/30">
-                  <div
-                    className={cn(
-                      "flex h-5 w-5 items-center justify-center rounded-md border",
-                      form.prospectName.trim()
-                        ? "border-emerald-300 bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-950/40"
-                        : "border-zinc-300 bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800/40",
-                    )}
-                  >
-                    {form.prospectName.trim() && (
-                      <Check className="h-3 w-3 text-emerald-700 dark:text-emerald-300" />
-                    )}
-                  </div>
-                  <span className="text-sm text-zinc-700 dark:text-zinc-300">Prospect name</span>
-                </div>
-
-                <div className="flex items-center gap-2.5 rounded-lg border border-zinc-200 bg-zinc-50/50 px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-900/30">
-                  <div
-                    className={cn(
-                      "flex h-5 w-5 items-center justify-center rounded-md border",
-                      form.website.trim()
-                        ? "border-emerald-300 bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-950/40"
-                        : "border-zinc-300 bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800/40",
-                    )}
-                  >
-                    {form.website.trim() && (
-                      <Check className="h-3 w-3 text-emerald-700 dark:text-emerald-300" />
-                    )}
-                  </div>
-                  <span className="text-sm text-zinc-700 dark:text-zinc-300">Website URL</span>
-                </div>
-
-                <div className="flex items-center gap-2.5 rounded-lg border border-zinc-200 bg-zinc-50/50 px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-900/30">
-                  <div
-                    className={cn(
-                      "flex h-5 w-5 items-center justify-center rounded-md border",
-                      form.targetAudienceSummary.trim()
-                        ? "border-emerald-300 bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-950/40"
-                        : "border-zinc-300 bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800/40",
-                    )}
-                  >
-                    {form.targetAudienceSummary.trim() && (
-                      <Check className="h-3 w-3 text-emerald-700 dark:text-emerald-300" />
-                    )}
-                  </div>
-                  <span className="text-sm text-zinc-700 dark:text-zinc-300">Audience summary</span>
-                </div>
-
-                <div className="flex items-center gap-2.5 rounded-lg border border-zinc-200 bg-zinc-50/50 px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-900/30">
-                  <div
-                    className={cn(
-                      "flex h-5 w-5 items-center justify-center rounded-md border",
-                      form.secondCallAt.trim()
-                        ? "border-emerald-300 bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-950/40"
-                        : "border-zinc-300 bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800/40",
-                    )}
-                  >
-                    {form.secondCallAt.trim() && (
-                      <Check className="h-3 w-3 text-emerald-700 dark:text-emerald-300" />
-                    )}
-                  </div>
-                  <span className="text-sm text-zinc-700 dark:text-zinc-300">Call timing</span>
-                </div>
-
-                <div className="flex items-center gap-2.5 rounded-lg border border-zinc-200 bg-zinc-50/50 px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-900/30">
-                  <div
-                    className={cn(
-                      "flex h-5 w-5 items-center justify-center rounded-md border",
-                      form.budgetRange.trim()
-                        ? "border-emerald-300 bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-950/40"
-                        : "border-zinc-300 bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800/40",
-                    )}
-                  >
-                    {form.budgetRange.trim() && (
-                      <Check className="h-3 w-3 text-emerald-700 dark:text-emerald-300" />
-                    )}
-                  </div>
-                  <span className="text-sm text-zinc-700 dark:text-zinc-300">Budget range</span>
-                </div>
-              </div>
-
-              {form.interestedServices.length > 0 && (
-                <div className="grid gap-2">
-                  <p className="text-[11px] font-semibold tracking-[0.08em] text-zinc-500 uppercase dark:text-zinc-400">
-                    Selected services
+              <div className="space-y-4 rounded-2xl border border-zinc-200 bg-zinc-50/50 p-6 dark:border-zinc-800 dark:bg-zinc-900/30">
+                <div>
+                  <p className="text-sm font-semibold tracking-wider text-zinc-500 uppercase">
+                    Prospect
                   </p>
-                  <div className="flex flex-wrap gap-2">
-                    {form.interestedServices.map((service) => (
-                      <span
-                        key={service}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 dark:border-indigo-900/50 dark:bg-indigo-950/30 dark:text-indigo-300"
-                      >
-                        <Check className="h-3 w-3" />
-                        {service}
-                      </span>
-                    ))}
+                  <p className="mt-2 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                    {form.prospectName}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm font-semibold tracking-wider text-zinc-500 uppercase">
+                    Website
+                  </p>
+                  <p className="mt-2 text-lg break-all text-zinc-700 dark:text-zinc-300">
+                    {form.website}
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-semibold tracking-wider text-zinc-500 uppercase">
+                      Budget
+                    </p>
+                    <p className="mt-2 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                      £{form.budgetRange}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold tracking-wider text-zinc-500 uppercase">
+                      Call timing
+                    </p>
+                    <p className="mt-2 text-lg text-zinc-700 dark:text-zinc-300">
+                      {form.secondCallAt ? "Scheduled ✓" : "—"}
+                    </p>
                   </div>
                 </div>
-              )}
 
-              <div className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50/50 px-3 py-2.5 text-xs dark:border-zinc-800 dark:bg-zinc-900/30">
-                <span
-                  className={cn(
-                    "h-2 w-2 rounded-full",
-                    form.otherInformation.trim() ? "bg-emerald-500" : "bg-zinc-300",
-                  )}
-                />
-                <span className="text-zinc-700 dark:text-zinc-300">
-                  {form.otherInformation.trim()
-                    ? "Planning notes added"
-                    : "Planning notes optional"}
-                </span>
+                {form.interestedServices.length > 0 && (
+                  <div>
+                    <p className="text-sm font-semibold tracking-wider text-zinc-500 uppercase">
+                      Services
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {form.interestedServices.map((service) => (
+                        <span
+                          key={service}
+                          className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-100 px-3 py-1.5 text-sm font-medium text-indigo-900 dark:border-indigo-900/50 dark:bg-indigo-950/40 dark:text-indigo-200"
+                        >
+                          {service}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
-          </aside>
+          )}
+
+          {/* Navigation */}
+          <div className="mt-10 flex items-center justify-between gap-4">
+            {formStep > 1 && (
+              <button
+                type="button"
+                onClick={() => setFormStep(formStep - 1)}
+                className="btn btn-ghost text-base"
+              >
+                ← Back
+              </button>
+            )}
+            <div className="flex-1" />
+            {formStep < 6 ? (
+              <button
+                type="button"
+                onClick={() => setFormStep(formStep + 1)}
+                disabled={
+                  (formStep === 1 && (!form.prospectName.trim() || !form.website.trim())) ||
+                  (formStep === 2 && !form.targetAudienceSummary.trim()) ||
+                  (formStep === 3 &&
+                    (!form.secondCallAt.trim() || !form.budgetRange.trim() || secondCallInPast)) ||
+                  (formStep === 4 && form.interestedServices.length === 0) ||
+                  (formStep === 5 && !form.otherInformation.trim())
+                }
+                className="btn btn-primary text-base"
+              >
+                Next →
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={submitting || !canSubmit}
+                className="btn btn-primary inline-flex items-center gap-2 text-base"
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    Sending…
+                  </>
+                ) : (
+                  <>
+                    <Zap className="h-5 w-5" />
+                    Send to Marketing
+                  </>
+                )}
+              </button>
+            )}
+          </div>
         </form>
       </Modal>
 
