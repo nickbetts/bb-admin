@@ -25,10 +25,18 @@ interface ClickUpFolder {
   name: string;
 }
 
+interface ClickUpListStatus {
+  status: string;
+  color?: string;
+  type?: string;
+  orderindex?: number;
+}
+
 interface ClickUpList {
   id: string;
   name: string;
-  status?: { status: string };
+  status?: ClickUpListStatus | { status: string };
+  statuses?: ClickUpListStatus[];
 }
 
 interface ClickUpMember {
@@ -316,6 +324,24 @@ export async function getClickUpLists(
     token,
   );
   return lists.map((l) => ({ id: l.id, name: l.name }));
+}
+
+/**
+ * Returns available statuses for a ClickUp list.
+ */
+export async function getClickUpListStatuses(listId: string): Promise<string[]> {
+  try {
+    const token = await getClickUpToken();
+    const list = await clickupFetch<ClickUpList>(`/list/${listId}`, token);
+    // Extract status names from the statuses array
+    const statuses = list.statuses ?? [];
+    return statuses
+      .map((s) => s.status)
+      .filter((s): s is string => typeof s === "string" && s.length > 0);
+  } catch (error) {
+    console.error(`Failed to fetch ClickUp list ${listId} statuses:`, error);
+    return [];
+  }
 }
 
 /**

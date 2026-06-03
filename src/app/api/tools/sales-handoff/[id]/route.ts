@@ -4,6 +4,7 @@ import { getSession, hasPermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/activity-logger";
 import { updateClickUpTaskStatus } from "@/lib/clickup";
+import { getClickUpListStatuses } from "@/lib/clickup";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +38,28 @@ const CLICKUP_STATUS_CANDIDATES: Record<(typeof SALES_HANDOFF_STATUSES)[number],
   cancelled: ["cancelled", "canceled", "closed"],
 };
 
+/**
+ * Maps internal sales handoff statuses to ClickUp status candidates in priority order.
+ * When a match is found in ClickUp statuses, it will be used first.
+ */
+function getStatusCandidatesForClickUp(
+  status: (typeof SALES_HANDOFF_STATUSES)[number],
+  availableClickUpStatuses: string[],
+): string[] {
+  const candidates = CLICKUP_STATUS_CANDIDATES[status] ?? [];
+  const lowerCandidates = candidates.map((s) => s.toLowerCase());
+  const lowerClickUp = availableClickUpStatuses.map((s) => s.toLowerCase());
+
+  // First, return exact matches (case-insensitive) from ClickUp statuses
+  const matches = availableClickUpStatuses.filter(
+    (s, i) => lowerClickUp[i] && lowerCandidates.includes(lowerClickUp[i]),
+  );
+
+  // Then, return candidates that don't exist in ClickUp (for backward compatibility)
+  const nonMatches = candidates.filter((c) => !lowerClickUp.includes(c.toLowerCase()));
+
+  return Array.from(new Set([...matches, ...nonMatches]));
+}
 interface SalesHandoffPatchBody {
   status?: string;
   ownerUserId?: string | null;
@@ -78,11 +101,25 @@ function getClickUpStatusCandidates(status: (typeof SALES_HANDOFF_STATUSES)[numb
 async function pushStatusToClickUp(input: {
   clickupTaskId: string;
   status: (typeof SALES_HANDOFF_STATUSES)[number];
+  clickupListId?: string | null;
 }): Promise<
   | { ok: true; pushedStatus: string; taskUrl: string | null; attemptedStatuses: string[] }
   | { ok: false; errorMessage: string; attemptedStatuses: string[] }
 > {
-  const attemptedStatuses = getClickUpStatusCandidates(input.status);
+  // Fetch actual ClickUp statuses if we have the list ID
+  let candidateStatuses = getClickUpStatusCandidates(input.status);
+  if (input.clickupListId) {
+    try {
+      const availableStatuses = await getClickUpListStatuses(input.clickupListId);
+      if (availableStatuses.length > 0) {
+        candidateStatuses = getStatusCandidatesForClickUp(input.status, availableStatuses);
+      }
+    } catch (error) {
+      console.error("Failed to fetch ClickUp list statuses, falling back to candidates:", error);
+    }
+  }
+
+  const attemptedStatuses = candidateStatuses;
   let lastError = "Unknown ClickUp error";
 
   for (const candidate of attemptedStatuses) {
@@ -351,6 +388,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       const pushResult = await pushStatusToClickUp({
         clickupTaskId: existing.clickupTaskId,
         status: nextStatus,
+        clickupListId: existing.clickupListId,
       });
 
       if (pushResult.ok) {
