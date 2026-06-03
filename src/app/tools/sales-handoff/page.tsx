@@ -5,6 +5,8 @@ import {
   AlertTriangle,
   Building2,
   CalendarClock,
+  ChevronDown,
+  ChevronUp,
   Check,
   ClipboardList,
   ExternalLink,
@@ -214,6 +216,7 @@ export default function SalesHandoffPage() {
   const [allowUrgentOverride, setAllowUrgentOverride] = useState(true);
   const [urgentOverride, setUrgentOverride] = useState(false);
   const [urgentReason, setUrgentReason] = useState("");
+  const [showPlanningNotes, setShowPlanningNotes] = useState(false);
 
   const [handoffHistory, setHandoffHistory] = useState<SalesHandoffHistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
@@ -585,6 +588,44 @@ export default function SalesHandoffPage() {
     return enforce48HourNotice && allowUrgentOverride && violatesNoticeWindow && urgentOverride;
   }, [allowUrgentOverride, enforce48HourNotice, urgentOverride, violatesNoticeWindow]);
 
+  const completedRequiredFields = useMemo(() => {
+    return [
+      form.prospectName.trim().length > 0,
+      form.website.trim().length > 0,
+      form.targetAudienceSummary.trim().length > 0,
+      form.secondCallAt.trim().length > 0,
+      form.budgetRange.trim().length > 0,
+    ].filter(Boolean).length;
+  }, [form]);
+
+  const requestReadiness = useMemo(() => {
+    if (secondCallInPast) {
+      return {
+        label: "Fix the call timing",
+        tone: "text-rose-600 bg-rose-50 border-rose-200 dark:text-rose-300 dark:bg-rose-950/30 dark:border-rose-900/50",
+      };
+    }
+
+    if (enforce48HourNotice && violatesNoticeWindow && !urgentOverride) {
+      return {
+        label: "Urgent override required",
+        tone: "text-amber-700 bg-amber-50 border-amber-200 dark:text-amber-300 dark:bg-amber-950/30 dark:border-amber-900/50",
+      };
+    }
+
+    if (canSubmit) {
+      return {
+        label: "Ready to request",
+        tone: "text-emerald-700 bg-emerald-50 border-emerald-200 dark:text-emerald-300 dark:bg-emerald-950/30 dark:border-emerald-900/50",
+      };
+    }
+
+    return {
+      label: "Complete the key fields",
+      tone: "text-zinc-700 bg-zinc-50 border-zinc-200 dark:text-zinc-300 dark:bg-zinc-900 dark:border-zinc-800",
+    };
+  }, [canSubmit, enforce48HourNotice, secondCallInPast, urgentOverride, violatesNoticeWindow]);
+
   const canSubmit = useMemo(() => {
     const hasRequiredFields =
       form.prospectName.trim().length > 0 &&
@@ -749,6 +790,7 @@ export default function SalesHandoffPage() {
             type="button"
             onClick={() => {
               setFieldError(null);
+              setShowPlanningNotes(false);
               setShowCreateModal(true);
             }}
             className="btn btn-primary inline-flex items-center gap-2"
@@ -860,243 +902,390 @@ export default function SalesHandoffPage() {
           ) : null}
         </div>
 
-        <form id="sales-handoff-form" onSubmit={handleSubmit} className="mt-4 grid gap-5">
-          <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
-            <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/50">
-              <div className="mb-4">
-                <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-                  Client context
-                </p>
-                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                  Add the core business details marketing needs before shaping the plan.
-                </p>
+        <form
+          id="sales-handoff-form"
+          onSubmit={handleSubmit}
+          className="mt-4 grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]"
+        >
+          <div className="grid gap-5">
+            <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
+              <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/50">
+                <div className="mb-4">
+                  <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                    Client context
+                  </p>
+                  <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                    Add the core business details marketing needs before shaping the plan.
+                  </p>
+                </div>
+
+                <div className="grid gap-4">
+                  <div className="grid gap-2">
+                    <label className="inline-flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-200">
+                      <Building2 className="h-4 w-4 shrink-0 text-zinc-400" />
+                      <span>Prospect or company name</span>
+                    </label>
+                    <input
+                      className="form-input h-12 px-4 text-sm"
+                      value={form.prospectName}
+                      onChange={(event) => update("prospectName", event.target.value)}
+                      placeholder="Acme Sportswear"
+                      required
+                    />
+                  </div>
+
+                  <div className="grid gap-2">
+                    <label className="inline-flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-200">
+                      <Globe className="h-4 w-4 shrink-0 text-zinc-400" />
+                      <span>Website URL</span>
+                    </label>
+                    <input
+                      className="form-input h-12 px-4 text-sm"
+                      value={form.website}
+                      onChange={(event) => update("website", event.target.value)}
+                      placeholder="https://www.example.com"
+                      required
+                    />
+                  </div>
+
+                  <div className="grid gap-2">
+                    <label className="inline-flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-200">
+                      <Users className="h-4 w-4 shrink-0 text-zinc-400" />
+                      <span>Target audience summary</span>
+                    </label>
+                    <textarea
+                      className="form-input min-h-32 px-4 py-3 text-sm leading-6"
+                      value={form.targetAudienceSummary}
+                      onChange={(event) => update("targetAudienceSummary", event.target.value)}
+                      placeholder="Who are they selling to, and what pain points came up on the call?"
+                      rows={4}
+                      required
+                    />
+                  </div>
+                </div>
               </div>
 
-              <div className="grid gap-4">
-                <div className="grid gap-2">
-                  <label className="inline-flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-200">
-                    <Building2 className="h-4 w-4 shrink-0 text-zinc-400" />
-                    <span>Prospect or company name</span>
-                  </label>
-                  <input
-                    className="form-input h-12 px-4 text-sm"
-                    value={form.prospectName}
-                    onChange={(event) => update("prospectName", event.target.value)}
-                    placeholder="Acme Sportswear"
-                    required
-                  />
+              <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/50">
+                <div className="mb-4">
+                  <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                    Timing and budget
+                  </p>
+                  <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                    Confirm the next milestone and the commercial range before the request is sent.
+                  </p>
                 </div>
 
-                <div className="grid gap-2">
-                  <label className="inline-flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-200">
-                    <Globe className="h-4 w-4 shrink-0 text-zinc-400" />
-                    <span>Website URL</span>
-                  </label>
-                  <input
-                    className="form-input h-12 px-4 text-sm"
-                    value={form.website}
-                    onChange={(event) => update("website", event.target.value)}
-                    placeholder="https://www.example.com"
-                    required
-                  />
-                </div>
+                <div className="grid gap-4">
+                  <div className="grid gap-2">
+                    <label className="inline-flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-200">
+                      <CalendarClock className="h-4 w-4 shrink-0 text-zinc-400" />
+                      <span>Second call date and time</span>
+                    </label>
+                    <input
+                      type="datetime-local"
+                      className="form-input h-12 px-4 text-sm"
+                      value={form.secondCallAt}
+                      onChange={(event) => update("secondCallAt", event.target.value)}
+                      required
+                    />
+                  </div>
 
-                <div className="grid gap-2">
-                  <label className="inline-flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-200">
-                    <Users className="h-4 w-4 shrink-0 text-zinc-400" />
-                    <span>Target audience summary</span>
-                  </label>
-                  <textarea
-                    className="form-input min-h-[128px] px-4 py-3 text-sm leading-6"
-                    value={form.targetAudienceSummary}
-                    onChange={(event) => update("targetAudienceSummary", event.target.value)}
-                    placeholder="Who are they selling to, and what pain points came up on the call?"
-                    rows={4}
-                    required
-                  />
+                  <div className="grid gap-2">
+                    <label className="inline-flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-200">
+                      <Wallet className="h-4 w-4 shrink-0 text-zinc-400" />
+                      <span>Budget range</span>
+                    </label>
+                    <input
+                      className="form-input h-12 px-4 text-sm"
+                      value={form.budgetRange}
+                      onChange={(event) => update("budgetRange", event.target.value)}
+                      placeholder="e.g. GBP 3,000 to 5,000 per month"
+                      required
+                    />
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/50">
-              <div className="mb-4">
-                <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-                  Timing and budget
+            <div className="grid gap-1.5">
+              {noticeHours !== null ? (
+                <p
+                  className={cn(
+                    "inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
+                    secondCallInPast || violatesNoticeWindow
+                      ? "bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-300"
+                      : "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300",
+                  )}
+                >
+                  <CalendarClock className="h-3 w-3" />
+                  {secondCallInPast
+                    ? "Second call must be in the future."
+                    : `Notice window: ${noticeHours.toFixed(1)} hours before the second call.`}
                 </p>
-                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                  Confirm the next milestone and the commercial range before the request is sent.
-                </p>
-              </div>
-
-              <div className="grid gap-4">
-                <div className="grid gap-2">
-                  <label className="inline-flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-200">
-                    <CalendarClock className="h-4 w-4 shrink-0 text-zinc-400" />
-                    <span>Second call date and time</span>
-                  </label>
-                  <input
-                    type="datetime-local"
-                    className="form-input h-12 px-4 text-sm"
-                    value={form.secondCallAt}
-                    onChange={(event) => update("secondCallAt", event.target.value)}
-                    required
-                  />
-                </div>
-
-                <div className="grid gap-2">
-                  <label className="inline-flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-200">
-                    <Wallet className="h-4 w-4 shrink-0 text-zinc-400" />
-                    <span>Budget range</span>
-                  </label>
-                  <input
-                    className="form-input h-12 px-4 text-sm"
-                    value={form.budgetRange}
-                    onChange={(event) => update("budgetRange", event.target.value)}
-                    placeholder="e.g. GBP 3,000 to 5,000 per month"
-                    required
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid gap-1.5">
-            {noticeHours !== null ? (
-              <p
-                className={cn(
-                  "inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
-                  secondCallInPast || violatesNoticeWindow
-                    ? "bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-300"
-                    : "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300",
-                )}
-              >
-                <CalendarClock className="h-3 w-3" />
-                {secondCallInPast
-                  ? "Second call must be in the future."
-                  : `Notice window: ${noticeHours.toFixed(1)} hours before the second call.`}
-              </p>
-            ) : null}
-          </div>
-
-          {enforce48HourNotice && violatesNoticeWindow && allowUrgentOverride ? (
-            <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3.5 dark:border-amber-900/60 dark:bg-amber-950/30">
-              <label className="flex cursor-pointer items-center gap-2.5 text-sm font-semibold text-amber-800 dark:text-amber-200">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 accent-amber-600"
-                  checked={urgentOverride}
-                  onChange={(event) => setUrgentOverride(event.target.checked)}
-                />
-                <span className="inline-flex items-center gap-1.5">
-                  <Zap className="h-3.5 w-3.5" />
-                  Mark as urgent override
-                </span>
-              </label>
-              <p className="mt-1.5 pl-6.5 text-xs text-amber-700 dark:text-amber-300/90">
-                Use this only when the second call timing cannot be moved.
-              </p>
-
-              {urgentOverride ? (
-                <div className="mt-3 grid gap-1.5">
-                  <label className="form-label">Urgent reason</label>
-                  <textarea
-                    className="form-input"
-                    value={urgentReason}
-                    onChange={(event) => setUrgentReason(event.target.value)}
-                    placeholder="Why does this need to proceed with less than 48 hours notice?"
-                    rows={3}
-                    required={requiresUrgentReason}
-                  />
-                </div>
               ) : null}
             </div>
-          ) : null}
 
-          {enforce48HourNotice && violatesNoticeWindow && !allowUrgentOverride ? (
-            <div className="flex items-start gap-2.5 rounded-xl border border-rose-200 bg-rose-50/80 px-3.5 py-2.5 text-xs text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200">
-              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-500 dark:text-rose-400" />
-              <p>
-                Urgent override is disabled by policy. Move the second call to at least 48 hours
-                from now.
-              </p>
-            </div>
-          ) : null}
-
-          <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/50">
-            <div className="grid gap-3">
-              <div>
-                <label className="inline-flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-200">
-                  <Sparkles className="h-4 w-4 shrink-0 text-zinc-400" />
-                  <span>Services they might be interested in</span>
+            {enforce48HourNotice && violatesNoticeWindow && allowUrgentOverride ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3.5 dark:border-amber-900/60 dark:bg-amber-950/30">
+                <label className="flex cursor-pointer items-center gap-2.5 text-sm font-semibold text-amber-800 dark:text-amber-200">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 accent-amber-600"
+                    checked={urgentOverride}
+                    onChange={(event) => setUrgentOverride(event.target.checked)}
+                  />
+                  <span className="inline-flex items-center gap-1.5">
+                    <Zap className="h-3.5 w-3.5" />
+                    Mark as urgent override
+                  </span>
                 </label>
-                <p className="mt-1 text-xs" style={{ color: "var(--text-3)" }}>
-                  Select all that apply. This shapes the plan we put together.
+                <p className="mt-1.5 pl-6.5 text-xs text-amber-700 dark:text-amber-300/90">
+                  Use this only when the second call timing cannot be moved.
+                </p>
+
+                {urgentOverride ? (
+                  <div className="mt-3 grid gap-1.5">
+                    <label className="form-label">Urgent reason</label>
+                    <textarea
+                      className="form-input px-4 py-3"
+                      value={urgentReason}
+                      onChange={(event) => setUrgentReason(event.target.value)}
+                      placeholder="Why does this need to proceed with less than 48 hours notice?"
+                      rows={3}
+                      required={requiresUrgentReason}
+                    />
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
+            {enforce48HourNotice && violatesNoticeWindow && !allowUrgentOverride ? (
+              <div className="flex items-start gap-2.5 rounded-xl border border-rose-200 bg-rose-50/80 px-3.5 py-2.5 text-xs text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200">
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-500 dark:text-rose-400" />
+                <p>
+                  Urgent override is disabled by policy. Move the second call to at least 48 hours
+                  from now.
                 </p>
               </div>
-              <div className="flex flex-wrap gap-2.5">
-                {serviceOptions.map((service) => {
-                  const checked = form.interestedServices.includes(service);
-                  return (
-                    <button
-                      key={service}
-                      type="button"
-                      onClick={() => toggleService(service)}
-                      aria-pressed={checked}
-                      className={cn(
-                        "inline-flex min-h-11 items-center gap-2 rounded-xl border px-4 py-2.5 text-sm leading-none font-medium transition-all",
-                        checked
-                          ? "border-indigo-500 bg-indigo-500 text-white shadow-sm shadow-indigo-500/15 dark:border-indigo-500 dark:bg-indigo-600"
-                          : "border-zinc-200 bg-zinc-50 text-zinc-700 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-indigo-700 dark:hover:bg-indigo-950/40 dark:hover:text-indigo-300",
-                      )}
-                    >
-                      {checked && <Check className="h-3.5 w-3.5 shrink-0" />}
-                      {service}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
+            ) : null}
 
-          <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/50">
-            <div className="grid gap-3">
-              <div
-                className="flex items-start gap-3 rounded-xl border px-4 py-3"
-                style={{
-                  borderColor: "var(--accent-subtle, #c7d2fe)",
-                  background: "var(--accent-faint, #eef2ff)",
-                }}
-              >
-                <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-indigo-500" />
+            <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/50">
+              <div className="grid gap-3">
                 <div>
-                  <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>
-                    The more you share, the better the plan
-                  </p>
-                  <p className="mt-0.5 text-xs leading-relaxed" style={{ color: "var(--text-2)" }}>
-                    Include goals, timelines, blockers, decision-makers, budget sensitivities, and
-                    anything else that came up on the call. Marketing uses this to build a tailored
-                    strategy. Every detail counts.
+                  <label className="inline-flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-200">
+                    <Sparkles className="h-4 w-4 shrink-0 text-zinc-400" />
+                    <span>Services they might be interested in</span>
+                  </label>
+                  <p className="mt-1 text-xs" style={{ color: "var(--text-3)" }}>
+                    Select all that apply. This shapes the plan we put together.
                   </p>
                 </div>
+                <div className="flex flex-wrap gap-2.5">
+                  {serviceOptions.map((service) => {
+                    const checked = form.interestedServices.includes(service);
+                    return (
+                      <button
+                        key={service}
+                        type="button"
+                        onClick={() => toggleService(service)}
+                        aria-pressed={checked}
+                        className={cn(
+                          "inline-flex min-h-11 items-center gap-2 rounded-xl border px-4 py-2.5 text-sm leading-none font-medium transition-all",
+                          checked
+                            ? "border-indigo-500 bg-indigo-500 text-white shadow-sm shadow-indigo-500/15 dark:border-indigo-500 dark:bg-indigo-600"
+                            : "border-zinc-200 bg-zinc-50 text-zinc-700 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-indigo-700 dark:hover:bg-indigo-950/40 dark:hover:text-indigo-300",
+                        )}
+                      >
+                        {checked && <Check className="h-3.5 w-3.5 shrink-0" />}
+                        {service}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-              <label className="inline-flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-200">
-                <MessageSquareText className="h-4 w-4 shrink-0 text-zinc-400" />
-                <span>Other information</span>
-              </label>
-              <textarea
-                className="form-input min-h-[144px] px-4 py-3 text-sm leading-6"
-                value={form.otherInformation}
-                onChange={(event) => update("otherInformation", event.target.value)}
-                placeholder="e.g. CEO is the decision-maker, they're launching in September, already trialled Google Ads with another agency and had a bad experience, budget is flexible if ROI is proven…"
-                rows={6}
-              />
-              {form.otherInformation.length > 0 && (
-                <p className="text-right text-xs" style={{ color: "var(--text-3)" }}>
-                  {form.otherInformation.length} characters
-                </p>
-              )}
+            </div>
+
+            <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/50">
+              <div className="grid gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowPlanningNotes((prev) => !prev)}
+                  className="flex items-start justify-between gap-3 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-left transition-colors hover:border-indigo-200 hover:bg-indigo-50/60 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-indigo-900 dark:hover:bg-indigo-950/20"
+                >
+                  <div className="flex items-start gap-3">
+                    <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-indigo-500" />
+                    <div>
+                      <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>
+                        Add planning notes
+                      </p>
+                      <p
+                        className="mt-0.5 text-xs leading-relaxed"
+                        style={{ color: "var(--text-2)" }}
+                      >
+                        Strongly recommended. Goals, blockers, decision-makers, and launch context
+                        help marketing shape a better plan.
+                      </p>
+                    </div>
+                  </div>
+                  {showPlanningNotes ? (
+                    <ChevronUp className="mt-0.5 h-4 w-4 shrink-0 text-zinc-400" />
+                  ) : (
+                    <ChevronDown className="mt-0.5 h-4 w-4 shrink-0 text-zinc-400" />
+                  )}
+                </button>
+
+                {showPlanningNotes || form.otherInformation.trim().length > 0 ? (
+                  <>
+                    <div
+                      className="flex items-start gap-3 rounded-xl border px-4 py-3"
+                      style={{
+                        borderColor: "var(--accent-subtle, #c7d2fe)",
+                        background: "var(--accent-faint, #eef2ff)",
+                      }}
+                    >
+                      <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-indigo-500" />
+                      <div>
+                        <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>
+                          The more you share, the better the plan
+                        </p>
+                        <p
+                          className="mt-0.5 text-xs leading-relaxed"
+                          style={{ color: "var(--text-2)" }}
+                        >
+                          Include goals, timelines, blockers, decision-makers, budget sensitivities,
+                          and anything else that came up on the call. Marketing uses this to build a
+                          tailored strategy. Every detail counts.
+                        </p>
+                      </div>
+                    </div>
+                    <label className="inline-flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-200">
+                      <MessageSquareText className="h-4 w-4 shrink-0 text-zinc-400" />
+                      <span>Other information</span>
+                    </label>
+                    <textarea
+                      className="form-input min-h-36 px-4 py-3 text-sm leading-6"
+                      value={form.otherInformation}
+                      onChange={(event) => update("otherInformation", event.target.value)}
+                      placeholder="e.g. CEO is the decision-maker, they're launching in September, already trialled Google Ads with another agency and had a bad experience, budget is flexible if ROI is proven…"
+                      rows={6}
+                    />
+                    {form.otherInformation.length > 0 && (
+                      <p className="text-right text-xs" style={{ color: "var(--text-3)" }}>
+                        {form.otherInformation.length} characters
+                      </p>
+                    )}
+                  </>
+                ) : null}
+              </div>
             </div>
           </div>
+
+          <aside className="xl:sticky xl:top-0 xl:self-start">
+            <div className="grid gap-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/50">
+              <div>
+                <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                  Request summary
+                </p>
+                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                  Live view of what marketing will receive.
+                </p>
+              </div>
+
+              <div
+                className={cn(
+                  "rounded-xl border px-3 py-2.5 text-sm font-semibold",
+                  requestReadiness.tone,
+                )}
+              >
+                {requestReadiness.label}
+              </div>
+
+              <div className="grid gap-3 rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900/60">
+                <div>
+                  <p className="text-[11px] font-semibold tracking-[0.08em] text-zinc-500 uppercase dark:text-zinc-400">
+                    Prospect
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                    {form.prospectName.trim() || "Not added yet"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-semibold tracking-[0.08em] text-zinc-500 uppercase dark:text-zinc-400">
+                    Website
+                  </p>
+                  <p className="mt-1 text-sm break-all text-zinc-700 dark:text-zinc-300">
+                    {form.website.trim() || "No website yet"}
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-[11px] font-semibold tracking-[0.08em] text-zinc-500 uppercase dark:text-zinc-400">
+                      Budget
+                    </p>
+                    <p className="mt-1 text-sm text-zinc-700 dark:text-zinc-300">
+                      {form.budgetRange.trim() || "Not set"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-semibold tracking-[0.08em] text-zinc-500 uppercase dark:text-zinc-400">
+                      Call timing
+                    </p>
+                    <p className="mt-1 text-sm text-zinc-700 dark:text-zinc-300">
+                      {form.secondCallAt.trim() ? "Scheduled" : "Not set"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-2">
+                <p className="text-[11px] font-semibold tracking-[0.08em] text-zinc-500 uppercase dark:text-zinc-400">
+                  Readiness checks
+                </p>
+                <div className="flex items-center justify-between rounded-xl border border-zinc-200 px-3 py-2 dark:border-zinc-800">
+                  <span className="text-sm text-zinc-700 dark:text-zinc-300">Core fields</span>
+                  <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+                    {completedRequiredFields}/5 complete
+                  </span>
+                </div>
+                <div className="flex items-center justify-between rounded-xl border border-zinc-200 px-3 py-2 dark:border-zinc-800">
+                  <span className="text-sm text-zinc-700 dark:text-zinc-300">
+                    Services selected
+                  </span>
+                  <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+                    {form.interestedServices.length || 0}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between rounded-xl border border-zinc-200 px-3 py-2 dark:border-zinc-800">
+                  <span className="text-sm text-zinc-700 dark:text-zinc-300">Planning notes</span>
+                  <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+                    {form.otherInformation.trim().length > 0 ? "Added" : "Recommended"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid gap-2">
+                <p className="text-[11px] font-semibold tracking-[0.08em] text-zinc-500 uppercase dark:text-zinc-400">
+                  Selected services
+                </p>
+                {form.interestedServices.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {form.interestedServices.map((service) => (
+                      <span
+                        key={service}
+                        className="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300"
+                      >
+                        {service}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                    No services selected yet.
+                  </p>
+                )}
+              </div>
+            </div>
+          </aside>
         </form>
       </Modal>
 
