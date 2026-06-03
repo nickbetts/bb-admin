@@ -74,6 +74,8 @@ export interface SendEmailOptions {
   subject: string;
   html: string;
   text?: string;
+  fromName?: string;
+  fromEmail?: string;
 }
 
 export async function sendEmail(opts: SendEmailOptions): Promise<void> {
@@ -86,9 +88,10 @@ export async function sendEmail(opts: SendEmailOptions): Promise<void> {
   }
 
   const { client, from } = await getResendClient();
+  const sender = resolveSender(from, opts.fromName, opts.fromEmail);
 
   const { error } = await client.emails.send({
-    from,
+    from: sender,
     to: Array.isArray(opts.to) ? opts.to : [opts.to],
     subject: opts.subject,
     html: opts.html,
@@ -96,6 +99,15 @@ export async function sendEmail(opts: SendEmailOptions): Promise<void> {
   });
 
   if (error) throw new Error(`Resend error: ${error.message}`);
+}
+
+function resolveSender(defaultFrom: string, fromName?: string, fromEmail?: string): string {
+  const email = (fromEmail ?? "").trim();
+  const name = (fromName ?? "").trim();
+
+  if (!email) return defaultFrom;
+  if (!name) return email;
+  return `${name} <${email}>`;
 }
 
 // ── Lead notification email builder ─────────────────────────────────────────
@@ -117,9 +129,7 @@ export interface LeadEmailContext {
 
 /** Fallback: convert snake_case / kebab-case to "Title Case" without AI. */
 function formatFieldLabel(key: string): string {
-  return key
-    .replace(/[_-]/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+  return key.replace(/[_-]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 /**
@@ -157,14 +167,19 @@ async function resolveFieldLabels(
     const parsed = JSON.parse(raw) as Record<string, string>;
     // Merge — only override keys that got a non-empty string back
     return Object.fromEntries(
-      keys.map((k) => [k, typeof parsed[k] === "string" && parsed[k].trim() ? parsed[k].trim() : fallback[k]]),
+      keys.map((k) => [
+        k,
+        typeof parsed[k] === "string" && parsed[k].trim() ? parsed[k].trim() : fallback[k],
+      ]),
     );
   } catch {
     return fallback;
   }
 }
 
-export async function buildLeadNotificationHtml(ctx: LeadEmailContext): Promise<{ html: string; text: string }> {
+export async function buildLeadNotificationHtml(
+  ctx: LeadEmailContext,
+): Promise<{ html: string; text: string }> {
   const { lpTitle, clientName, fields, fieldDefs, referrer, submittedAt } = ctx;
 
   // ── Determine ordered entries and labels ─────────────────────────────────
@@ -188,15 +203,19 @@ export async function buildLeadNotificationHtml(ctx: LeadEmailContext): Promise<
 
   // ── Fields table ─────────────────────────────────────────────────────────
   const fieldRows = orderedEntries
-    .map(([k, v]) => `<tr>
+    .map(
+      ([k, v]) => `<tr>
       <td style="padding:6px 12px;color:#6b7280;white-space:nowrap;border-bottom:1px solid #f3f4f6;font-size:13px">${escapeHtml(labels[k] ?? formatFieldLabel(k))}</td>
       <td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;font-size:13px;font-weight:500;color:#111">${escapeHtml(v)}</td>
-    </tr>`)
+    </tr>`,
+    )
     .join("");
 
   const metaRows = [
     `<tr><td style="padding:6px 12px;color:#6b7280;font-size:13px">Submitted</td><td style="padding:6px 12px;font-size:13px;color:#6b7280">${(submittedAt ?? new Date()).toUTCString()}</td></tr>`,
-    referrer ? `<tr><td style="padding:6px 12px;color:#6b7280;font-size:13px">Referrer</td><td style="padding:6px 12px;font-size:13px;color:#6b7280">${escapeHtml(referrer)}</td></tr>` : "",
+    referrer
+      ? `<tr><td style="padding:6px 12px;color:#6b7280;font-size:13px">Referrer</td><td style="padding:6px 12px;font-size:13px;color:#6b7280">${escapeHtml(referrer)}</td></tr>`
+      : "",
   ].join("");
 
   const table = `
@@ -222,12 +241,18 @@ export async function buildLeadNotificationHtml(ctx: LeadEmailContext): Promise<
 </body>
 </html>`;
 
-  const textLines = orderedEntries.map(([k, v]) => `${labels[k] ?? formatFieldLabel(k)}: ${v}`).join("\n");
+  const textLines = orderedEntries
+    .map(([k, v]) => `${labels[k] ?? formatFieldLabel(k)}: ${v}`)
+    .join("\n");
   const text = `New lead from "${lpTitle}"\n\n${textLines}`;
 
   return { html, text };
 }
 
 function escapeHtml(str: string): string {
-  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }

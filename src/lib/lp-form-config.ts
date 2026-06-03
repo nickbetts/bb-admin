@@ -79,6 +79,25 @@ export interface LpFormConfig {
    * Populated by the form field editor in the landing page editor sidebar.
    */
   fields?: LpFormField[];
+  /** Optional per-LP thank-you email settings sent to the captured lead */
+  thankYouEmail?: LpThankYouEmailConfig;
+}
+
+export type LpThankYouEmailProvider = "resend" | "klaviyo" | "client-domain";
+
+export interface LpThankYouEmailConfig {
+  /** Enable/disable automated thank-you emails for this LP */
+  enabled: boolean;
+  /** Delivery provider for the thank-you email */
+  provider: LpThankYouEmailProvider;
+  /** Display name shown in the sender line when the provider supports it */
+  fromName?: string;
+  /** Optional sender address (used for client-domain / resend override) */
+  senderEmail?: string;
+  /** Subject line for the thank-you email */
+  subject?: string;
+  /** HTML body template supporting simple merge tags */
+  templateHtml?: string;
 }
 
 export function parseLpFormConfig(raw: string | null | undefined): LpFormConfig {
@@ -92,6 +111,37 @@ export function parseLpFormConfig(raw: string | null | undefined): LpFormConfig 
 
 export function serialiseLpFormConfig(cfg: LpFormConfig): string {
   return JSON.stringify(cfg);
+}
+
+export function normaliseThankYouEmailConfig(value: unknown): LpThankYouEmailConfig | undefined {
+  if (!value || typeof value !== "object") return undefined;
+
+  const raw = value as Record<string, unknown>;
+  const providerRaw = typeof raw.provider === "string" ? raw.provider.trim().toLowerCase() : "";
+  const provider: LpThankYouEmailProvider =
+    providerRaw === "klaviyo" || providerRaw === "client-domain" ? providerRaw : "resend";
+
+  const enabled = Boolean(raw.enabled);
+  const fromName = sanitiseOptionalText(raw.fromName, 120);
+  const senderEmail = sanitiseOptionalText(raw.senderEmail, 200);
+  const subject = sanitiseOptionalText(raw.subject, 200);
+  const templateHtml = sanitiseOptionalText(raw.templateHtml, 20000);
+
+  return {
+    enabled,
+    provider,
+    fromName,
+    senderEmail,
+    subject,
+    templateHtml,
+  };
+}
+
+function sanitiseOptionalText(value: unknown, maxLength: number): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  return trimmed.slice(0, maxLength);
 }
 
 /**

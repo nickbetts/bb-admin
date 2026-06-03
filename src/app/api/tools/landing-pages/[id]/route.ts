@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sanitiseAnalyticsConfig } from "@/lib/lp-analytics";
+import { normaliseThankYouEmailConfig } from "@/lib/lp-form-config";
 import { logActivity } from "@/lib/activity-logger";
 
 export const dynamic = "force-dynamic";
@@ -56,7 +57,16 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   if (body.title !== undefined) data.title = body.title;
   if (body.slug !== undefined) data.slug = body.slug;
   if (body.status !== undefined) data.status = body.status;
-  if (body.formConfig !== undefined) data.formConfig = JSON.stringify(body.formConfig);
+  if (body.formConfig !== undefined) {
+    const formConfig = body.formConfig ?? {};
+    const nextFormConfig = {
+      ...formConfig,
+      thankYouEmail: normaliseThankYouEmailConfig(
+        (formConfig as Record<string, unknown>).thankYouEmail,
+      ),
+    };
+    data.formConfig = JSON.stringify(nextFormConfig);
+  }
   if (body.analyticsConfig !== undefined) {
     data.analyticsConfig = JSON.stringify(sanitiseAnalyticsConfig(body.analyticsConfig));
   }

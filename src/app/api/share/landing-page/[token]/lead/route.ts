@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { parseLpFormConfig } from "@/lib/lp-form-config";
 import { sendEmail, buildLeadNotificationHtml, SmtpNotConfiguredError } from "@/lib/email";
+import { dispatchThankYouEmail } from "@/lib/lp-thank-you-email";
 import { attemptLeadWebhookDelivery, getNextWebhookRetryAt } from "@/lib/lp-lead-webhook";
 import { verifyTurnstileToken } from "@/lib/turnstile";
 
@@ -25,7 +26,12 @@ interface LeadPageContext {
   formConfig: string;
   briefJson: string;
   clientId: string | null;
-  client: { contactEmails: string | null } | null;
+  client: {
+    id: string;
+    name: string;
+    contactEmails: string | null;
+    klaviyoApiKey: string | null;
+  } | null;
 }
 
 interface CapturedLeadShape {
@@ -110,7 +116,10 @@ function normaliseEmailList(list: string[]): string[] {
   return normalised;
 }
 
-function resolveNotifyEmails(configNotifyEmails: string[] | undefined, clientContactEmailsRaw: string | null | undefined): string[] {
+function resolveNotifyEmails(
+  configNotifyEmails: string[] | undefined,
+  clientContactEmailsRaw: string | null | undefined,
+): string[] {
   if (configNotifyEmails && configNotifyEmails.length > 0) {
     return normaliseEmailList(configNotifyEmails);
   }
@@ -170,12 +179,17 @@ async function attemptEmailDelivery(input: {
 }): Promise<DeliveryChannelResult> {
   const { landingPage, formConfig, lead, body, referrer } = input;
 
-  const resolvedNotifyEmails = resolveNotifyEmails(formConfig.notifyEmails, landingPage.client?.contactEmails);
+  const resolvedNotifyEmails = resolveNotifyEmails(
+    formConfig.notifyEmails,
+    landingPage.client?.contactEmails,
+  );
   if (resolvedNotifyEmails.length === 0) return makeSkippedResult(false);
 
   const lpTitle = landingPage.title ?? "Landing Page";
   const stringFields = Object.fromEntries(
-    Object.entries(body).filter(([, value]) => typeof value === "string" && (value as string).trim()) as [string, string][]
+    Object.entries(body).filter(
+      ([, value]) => typeof value === "string" && (value as string).trim(),
+    ) as [string, string][],
   );
 
   let clientName: string | undefined;
@@ -240,7 +254,7 @@ async function attemptEmailDelivery(input: {
 // POST /api/share/landing-page/[token]/lead — capture form submission (public, no auth)
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ token: string }> }
+  { params }: { params: Promise<{ token: string }> },
 ) {
   const { token } = await params;
 
@@ -251,8 +265,19 @@ export async function POST(
   const landingPage = await prisma.landingPage.findUnique({
     where: { shareToken: token },
     select: {
-      id: true, title: true, formConfig: true, briefJson: true, clientId: true,
-      client: { select: { contactEmails: true } },
+      id: true,
+      title: true,
+      formConfig: true,
+      briefJson: true,
+      clientId: true,
+      client: {
+        select: {
+          id: true,
+          name: true,
+          contactEmails: true,
+          klaviyoApiKey: true,
+        },
+      },
     },
   });
 
@@ -269,12 +294,16 @@ export async function POST(
 
   // ── Turnstile bot-protection check ────────────────────────────────────────
   const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? undefined;
-  const turnstileToken = typeof body["cf-turnstile-response"] === "string"
-    ? (body["cf-turnstile-response"] as string)
-    : undefined;
+  const turnstileToken =
+    typeof body["cf-turnstile-response"] === "string"
+      ? (body["cf-turnstile-response"] as string)
+      : undefined;
   const turnstileOk = await verifyTurnstileToken(turnstileToken, clientIp);
   if (!turnstileOk) {
-    return NextResponse.json({ error: "Security check failed. Please refresh and try again." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Security check failed. Please refresh and try again." },
+      { status: 400 },
+    );
   }
 
   // Strip the Turnstile token from the body before storing — it's a one-time
@@ -293,7 +322,8 @@ export async function POST(
       const candidate = normaliseEmailCandidate(v);
       const isExactKey = key === "email";
       if (isLikelyEmail(candidate) || (isExactKey && candidate.includes("@"))) {
-        email = candidate; break;
+        email = candidate;
+        break;
       }
     }
   }
@@ -310,13 +340,19 @@ export async function POST(
     for (const v of Object.values(body)) {
       const candidate = normaliseEmailCandidate(v);
       if (isLikelyEmail(candidate)) {
-        email = candidate; break;
+        email = candidate;
+        break;
       }
     }
   }
 
   if (!email) {
-    console.error("[lead] No email found in submission. Keys:", Object.keys(body), "Values:", Object.fromEntries(Object.entries(body).map(([k, v]) => [k, typeof v])));
+    console.error(
+      "[lead] No email found in submission. Keys:",
+      Object.keys(body),
+      "Values:",
+      Object.fromEntries(Object.entries(body).map(([k, v]) => [k, typeof v])),
+    );
     return NextResponse.json({ error: "A valid email address is required" }, { status: 400 });
   }
 
@@ -324,16 +360,23 @@ export async function POST(
   // Prefer a single "name"/"fullName" key; otherwise concatenate first + last variants
   let name = "";
   const nameEntries = Object.entries(body)
-    .filter(([k, v]) => typeof v === "string" && k.toLowerCase().includes("name") && !k.toLowerCase().includes("email"))
+    .filter(
+      ([k, v]) =>
+        typeof v === "string" &&
+        k.toLowerCase().includes("name") &&
+        !k.toLowerCase().includes("email"),
+    )
     .map(([k, v]) => ({ k: k.toLowerCase(), v: (v as string).trim() }));
 
-  const fullNameEntry = nameEntries.find(e => e.k === "name" || e.k === "fullname" || e.k === "full_name" || e.k === "full-name");
+  const fullNameEntry = nameEntries.find(
+    (e) => e.k === "name" || e.k === "fullname" || e.k === "full_name" || e.k === "full-name",
+  );
   if (fullNameEntry) {
     name = fullNameEntry.v;
   } else {
     // Gather "first" then "last" names in order
-    const first = nameEntries.find(e => e.k.includes("first"));
-    const last = nameEntries.find(e => e.k.includes("last"));
+    const first = nameEntries.find((e) => e.k.includes("first"));
+    const last = nameEntries.find((e) => e.k.includes("last"));
     name = [first?.v, last?.v].filter(Boolean).join(" ");
     if (!name) {
       // Any name-like field will do
@@ -346,8 +389,12 @@ export async function POST(
   let phoneVal: string | null = null;
   for (const [k, v] of Object.entries(body)) {
     const kl = k.toLowerCase();
-    if (typeof v === "string" && (kl.includes("phone") || kl.includes("mobile") || kl.includes("whatsapp"))) {
-      phoneVal = v.trim().slice(0, 50); break;
+    if (
+      typeof v === "string" &&
+      (kl.includes("phone") || kl.includes("mobile") || kl.includes("whatsapp"))
+    ) {
+      phoneVal = v.trim().slice(0, 50);
+      break;
     }
   }
 
@@ -355,8 +402,15 @@ export async function POST(
   let message: string | null = null;
   for (const [k, v] of Object.entries(body)) {
     const kl = k.toLowerCase();
-    if (typeof v === "string" && (kl.includes("message") || kl.includes("enquiry") || kl.includes("notes") || kl.includes("comment"))) {
-      message = v.trim().slice(0, 2000); break;
+    if (
+      typeof v === "string" &&
+      (kl.includes("message") ||
+        kl.includes("enquiry") ||
+        kl.includes("notes") ||
+        kl.includes("comment"))
+    ) {
+      message = v.trim().slice(0, 2000);
+      break;
     }
   }
 
@@ -406,18 +460,43 @@ export async function POST(
     }),
   ]);
 
+  const thankYouDelivery = await dispatchThankYouEmail({
+    config: formConfig.thankYouEmail,
+    lead: {
+      id: capturedLead.id,
+      name: capturedLead.name,
+      email: capturedLead.email,
+      phone: capturedLead.phone,
+      message: capturedLead.message,
+      createdAt: capturedLead.createdAt,
+    },
+    landingPage: {
+      id: landingPage.id,
+      title: landingPage.title,
+    },
+    client: landingPage.client
+      ? {
+          id: landingPage.client.id,
+          name: landingPage.client.name,
+          klaviyoApiKey: landingPage.client.klaviyoApiKey,
+        }
+      : undefined,
+    submittedFields: body,
+  });
+
+  if (thankYouDelivery.status === "failed") {
+    console.error("[lead-thank-you] Delivery failed:", thankYouDelivery.error);
+  }
+
   const hasConfiguredChannel = webhookDelivery.configured || emailDelivery.configured;
   const hasSuccessfulChannel = webhookDelivery.status === "sent" || emailDelivery.status === "sent";
   const attemptCount = Number(webhookDelivery.configured) + Number(emailDelivery.configured);
   const now = new Date();
   const webhookAttemptNumber = webhookDelivery.configured ? 1 : null;
-  const nextWebhookRetryAt = (
-    webhookDelivery.status === "failed"
-    && webhookDelivery.retryable
-    && webhookAttemptNumber
-  )
-    ? getNextWebhookRetryAt(webhookAttemptNumber, now)
-    : null;
+  const nextWebhookRetryAt =
+    webhookDelivery.status === "failed" && webhookDelivery.retryable && webhookAttemptNumber
+      ? getNextWebhookRetryAt(webhookAttemptNumber, now)
+      : null;
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -468,6 +547,12 @@ export async function POST(
       attempted: webhookDelivery.attempted,
       status: webhookDelivery.status,
     },
+    thankYou: {
+      configured: thankYouDelivery.configured,
+      attempted: thankYouDelivery.attempted,
+      status: thankYouDelivery.status,
+      provider: thankYouDelivery.provider ?? null,
+    },
   };
 
   if (hasSuccessfulChannel) {
@@ -482,17 +567,18 @@ export async function POST(
         leadId: lead.id,
         delivery,
       },
-      { status: 503 }
+      { status: 503 },
     );
   }
 
   return NextResponse.json(
     {
-      error: "We could not deliver your enquiry right now. Please try again or contact us directly.",
+      error:
+        "We could not deliver your enquiry right now. Please try again or contact us directly.",
       captured: true,
       leadId: lead.id,
       delivery,
     },
-    { status: 502 }
+    { status: 502 },
   );
 }
