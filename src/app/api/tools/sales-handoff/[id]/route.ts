@@ -23,7 +23,17 @@ const CLICKUP_STATUS_CANDIDATES: Record<(typeof SALES_HANDOFF_STATUSES)[number],
   in_progress: ["in progress", "progress", "doing", "active"],
   ready_for_meeting: ["ready for meeting", "ready", "review", "awaiting"],
   completed: ["complete", "completed", "done", "closed", "resolved"],
-  blocked: ["blocked", "on hold", "hold", "stuck"],
+  blocked: [
+    "on hold",
+    "on_hold",
+    "paused",
+    "blocked",
+    "hold",
+    "stuck",
+    "suspended",
+    "waiting",
+    "pending",
+  ],
   cancelled: ["cancelled", "canceled", "closed"],
 };
 
