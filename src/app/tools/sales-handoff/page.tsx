@@ -785,7 +785,7 @@ export default function SalesHandoffPage() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
           <MetricCard
             title="Total"
             value={handoffHistory.length}
@@ -798,6 +798,13 @@ export default function SalesHandoffPage() {
             value={handoffHistory.filter((h) => h.status === "plan_in_progress").length}
             icon={<Zap className="h-5 w-5" />}
             color="orange"
+            loading={historyLoading}
+          />
+          <MetricCard
+            title="On Hold"
+            value={handoffHistory.filter((h) => h.status === "on_hold").length}
+            icon={<AlertTriangle className="h-5 w-5" />}
+            color="amber"
             loading={historyLoading}
           />
           <MetricCard
