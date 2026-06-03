@@ -151,6 +151,24 @@ export interface ClickUpTaskDetail {
   status?: ClickUpTaskStatus;
   checklists?: ClickUpChecklistDetail[];
   archived?: boolean;
+  list?: { id?: string; name?: string };
+}
+
+/**
+ * Fetches the available statuses for a task by looking up the task's list.
+ * Useful when clickupListId is not stored locally.
+ */
+export async function getClickUpTaskListStatuses(taskId: string): Promise<string[]> {
+  try {
+    const token = await getClickUpToken();
+    const task = await clickupFetch<ClickUpTaskDetail>(`/task/${taskId}`, token);
+    const listId = task.list?.id;
+    if (!listId) return [];
+    return getClickUpListStatuses(listId);
+  } catch (error) {
+    console.error(`Failed to fetch list statuses for task ${taskId}:`, error);
+    return [];
+  }
 }
 
 interface ClickUpCommentUser {

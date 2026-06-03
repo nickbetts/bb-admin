@@ -3,8 +3,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession, hasPermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/activity-logger";
-import { updateClickUpTaskStatus } from "@/lib/clickup";
-import { getClickUpListStatuses } from "@/lib/clickup";
+import {
+  updateClickUpTaskStatus,
+  getClickUpListStatuses,
+  getClickUpTaskListStatuses,
+} from "@/lib/clickup";
 
 export const dynamic = "force-dynamic";
 
@@ -19,23 +22,14 @@ const SALES_HANDOFF_STATUSES = [
 ] as const;
 
 const CLICKUP_STATUS_CANDIDATES: Record<(typeof SALES_HANDOFF_STATUSES)[number], string[]> = {
-  draft: ["to do", "todo", "open", "backlog"],
-  submitted: ["to do", "todo", "open", "backlog"],
-  in_progress: ["in progress", "progress", "doing", "active"],
-  ready_for_meeting: ["ready for meeting", "ready", "review", "awaiting"],
-  completed: ["complete", "completed", "done", "closed", "resolved"],
-  blocked: [
-    "on hold",
-    "on_hold",
-    "paused",
-    "blocked",
-    "hold",
-    "stuck",
-    "suspended",
-    "waiting",
-    "pending",
-  ],
-  cancelled: ["cancelled", "canceled", "closed"],
+  // ClickUp display label variants listed first, then fallbacks
+  draft: ["draft", "to do", "todo", "open", "backlog"],
+  submitted: ["new", "to do", "todo", "open", "backlog", "submitted"],
+  in_progress: ["in progress", "in-progress", "progress", "doing", "active"],
+  ready_for_meeting: ["ready", "ready for meeting", "review", "awaiting", "pending review"],
+  completed: ["completed", "complete", "done", "closed", "resolved"],
+  blocked: ["blocked", "on hold", "on_hold", "paused", "hold", "stuck", "suspended", "waiting"],
+  cancelled: ["cancelled", "canceled", "closed", "void"],
 };
 
 /**
@@ -106,17 +100,21 @@ async function pushStatusToClickUp(input: {
   | { ok: true; pushedStatus: string; taskUrl: string | null; attemptedStatuses: string[] }
   | { ok: false; errorMessage: string; attemptedStatuses: string[] }
 > {
-  // Fetch actual ClickUp statuses if we have the list ID
+  // Fetch actual ClickUp statuses — prefer list ID, fall back to looking it up via the task
   let candidateStatuses = getClickUpStatusCandidates(input.status);
-  if (input.clickupListId) {
-    try {
-      const availableStatuses = await getClickUpListStatuses(input.clickupListId);
-      if (availableStatuses.length > 0) {
-        candidateStatuses = getStatusCandidatesForClickUp(input.status, availableStatuses);
+  try {
+    const availableStatuses = input.clickupListId
+      ? await getClickUpListStatuses(input.clickupListId)
+      : await getClickUpTaskListStatuses(input.clickupTaskId);
+    if (availableStatuses.length > 0) {
+      candidateStatuses = getStatusCandidatesForClickUp(input.status, availableStatuses);
+      // If no candidates matched ClickUp statuses, include ALL ClickUp statuses as final fallbacks
+      if (candidateStatuses.length === 0) {
+        candidateStatuses = availableStatuses;
       }
-    } catch (error) {
-      console.error("Failed to fetch ClickUp list statuses, falling back to candidates:", error);
     }
+  } catch (error) {
+    console.error("Failed to fetch ClickUp statuses, falling back to candidates:", error);
   }
 
   const attemptedStatuses = candidateStatuses;
