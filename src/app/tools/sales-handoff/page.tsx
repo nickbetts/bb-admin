@@ -954,7 +954,7 @@ export default function SalesHandoffPage() {
                     Step 1 of 6
                   </p>
 
-                  <div aria-hidden="true" className="h-2.5" />
+                  <div aria-hidden="true" className="h-5" />
 
                   <h2 className="py-2.5 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
                     Who&apos;s the prospect?
@@ -1328,7 +1328,7 @@ export default function SalesHandoffPage() {
           <div aria-hidden="true" className="h-2.5" />
 
           {/* Navigation */}
-          <div className="flex items-center justify-between gap-3 border-t border-zinc-200 pt-6 dark:border-zinc-800">
+          <div className="flex items-center justify-between gap-3 pt-6">
             {formStep > 1 && (
               <button
                 type="button"
