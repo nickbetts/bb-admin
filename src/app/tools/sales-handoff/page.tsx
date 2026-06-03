@@ -825,18 +825,20 @@ export default function SalesHandoffPage() {
       </div>
 
       {/* Kanban Board */}
-      <SalesHandoffPipelineBoard
-        handoffs={handoffHistory}
-        loading={historyLoading}
-        error={historyError}
-        syncing={historySyncing}
-        lastSyncedLabel={formatBoardRefreshLabel(historyLastLoadedAt)}
-        updatingId={historyUpdatingId}
-        onOpenHandoff={(handoff) => {
-          setSelectedHandoffId(handoff.id);
-        }}
-        onStatusChange={updateHandoffStatus}
-      />
+      <div className="mt-6">
+        <SalesHandoffPipelineBoard
+          handoffs={handoffHistory}
+          loading={historyLoading}
+          error={historyError}
+          syncing={historySyncing}
+          lastSyncedLabel={formatBoardRefreshLabel(historyLastLoadedAt)}
+          updatingId={historyUpdatingId}
+          onOpenHandoff={(handoff) => {
+            setSelectedHandoffId(handoff.id);
+          }}
+          onStatusChange={updateHandoffStatus}
+        />
+      </div>
 
       <SalesHandoffSettingsPanel
         open={showSettingsPanel}
