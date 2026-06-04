@@ -913,6 +913,32 @@ export default function TrackingOverviewPage({ params }: TrackingOverviewPagePro
                 Chat can review this setup, suggest tracking changes, and only applies writes after
                 your explicit approval.
               </p>
+              <div className="grid gap-2 rounded-lg border border-(--border) bg-(--bg) p-3 text-xs text-(--text-2)">
+                <p className="font-medium text-(--text)">Junior quickstart</p>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" size="sm" asChild>
+                    <Link
+                      href={`/tools/tracking-guru/${clientId}/chat?prompt=${encodeURIComponent("Run a full tracking audit and explain it for a junior marketer")}`}
+                    >
+                      Guided audit in chat
+                    </Link>
+                  </Button>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link
+                      href={`/tools/tracking-guru/${clientId}/chat?prompt=${encodeURIComponent("Tell me exactly what to set up next, step by step")}`}
+                    >
+                      What should I do next?
+                    </Link>
+                  </Button>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link
+                      href={`/tools/tracking-guru/${clientId}/chat?prompt=${encodeURIComponent("Propose tracking changes and wait for my approval before each one")}`}
+                    >
+                      Make changes conversationally
+                    </Link>
+                  </Button>
+                </div>
+              </div>
             </CardContent>
           </Card>
 

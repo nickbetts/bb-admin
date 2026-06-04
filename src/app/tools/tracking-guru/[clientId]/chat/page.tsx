@@ -2,7 +2,18 @@
 
 import { use, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Bot, CheckCircle2, Loader2, Send, Sparkles } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import {
+  ArrowLeft,
+  Bot,
+  CheckCircle2,
+  ClipboardCheck,
+  Loader2,
+  Send,
+  ShieldCheck,
+  Sparkles,
+  WandSparkles,
+} from "lucide-react";
 import { TrackingClientNav } from "@/components/tracking/TrackingClientNav";
 import { LoadingSpinner } from "@/components/ui/index";
 import { Button } from "@/components/ui/shadcn/button";
@@ -76,6 +87,7 @@ function makeId() {
 
 export default function TrackingChatPage({ params }: TrackingChatPageProps) {
   const { clientId } = use(params);
+  const searchParams = useSearchParams();
   const [setup, setSetup] = useState<TrackingSetupResponse | null>(null);
   const [events, setEvents] = useState<TrackingEventSummary[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -86,6 +98,7 @@ export default function TrackingChatPage({ params }: TrackingChatPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [actionNotes, setActionNotes] = useState<Record<string, string>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const starterPromptAppliedRef = useRef(false);
 
   const recentAudit = useMemo(() => setup?.audits?.[0] ?? null, [setup]);
   const quickPrompts = useMemo(() => {
@@ -109,9 +122,63 @@ export default function TrackingChatPage({ params }: TrackingChatPageProps) {
 
     prompts.push("Audit my full tracking setup");
     prompts.push("What events should I be tracking for ecommerce?");
+    prompts.push("Explain what I should do next in plain English for a junior marketer");
 
     return [...new Set(prompts)].slice(0, 4);
   }, [events.length, setup]);
+
+  const setupChecklist = useMemo(
+    () => [
+      {
+        label: "GTM target",
+        done: !!setup?.gtmAccountId && !!setup?.gtmContainerApiId && !!setup?.gtmWorkspaceId,
+      },
+      { label: "GA4 property", done: !!setup?.ga4PropertyId },
+      { label: "Meta pixel", done: !!setup?.metaPixelId },
+      { label: "Google Ads conversion", done: !!setup?.googleAdsConversionId },
+      { label: "At least one event", done: events.length > 0 },
+    ],
+    [events.length, setup],
+  );
+
+  const setupReadiness = useMemo(() => {
+    const completed = setupChecklist.filter((item) => item.done).length;
+    return Math.round((completed / setupChecklist.length) * 100);
+  }, [setupChecklist]);
+
+  const recommendedPrompt = useMemo(() => {
+    if (!setup?.gtmAccountId || !setup?.gtmContainerApiId || !setup?.gtmWorkspaceId) {
+      return "Walk me through connecting GTM step by step like I am new";
+    }
+    if (!setup.ga4PropertyId) {
+      return "Help me finish GA4 setup and explain each field";
+    }
+    if (events.length === 0) {
+      return "Create a beginner-friendly event tracking plan and propose the first events";
+    }
+    return "Run a full tracking audit and explain priorities in plain English";
+  }, [events.length, setup]);
+
+  const describeActionForHumans = (action: ProposedAction): string => {
+    const eventName =
+      typeof action.params?.eventName === "string" ? action.params.eventName : "the event";
+    switch (action.type) {
+      case "update_setup":
+        return "updated this client setup settings";
+      case "create_event":
+        return `created ${eventName}`;
+      case "activate_event":
+        return `activated ${eventName}`;
+      case "delete_event":
+        return `deleted ${eventName}`;
+      case "create_gtm_event_tag":
+        return `created a GTM tag for ${eventName}`;
+      case "publish_workspace":
+        return "published the selected GTM workspace";
+      default:
+        return "applied the proposed tracking change";
+    }
+  };
 
   const loadContext = async () => {
     const setupResponse = await fetch(`/api/tracking/setup?clientId=${clientId}`);
@@ -147,6 +214,23 @@ export default function TrackingChatPage({ params }: TrackingChatPageProps) {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    if (
+      starterPromptAppliedRef.current ||
+      loading ||
+      messages.length > 0 ||
+      input.trim().length > 0
+    ) {
+      return;
+    }
+
+    const starterPrompt = searchParams.get("prompt");
+    if (!starterPrompt) return;
+
+    setInput(starterPrompt);
+    starterPromptAppliedRef.current = true;
+  }, [input, loading, messages.length, searchParams]);
 
   const sendMessage = async (messageText: string) => {
     const trimmed = messageText.trim();
@@ -207,6 +291,13 @@ export default function TrackingChatPage({ params }: TrackingChatPageProps) {
   };
 
   const approveAction = async (action: ProposedAction) => {
+    if (action.type === "publish_workspace") {
+      const confirmed = globalThis.confirm(
+        "Publish workspace now? This can make live GTM changes.",
+      );
+      if (!confirmed) return;
+    }
+
     setExecutingActionId(action.id);
     setError(null);
 
@@ -237,7 +328,7 @@ export default function TrackingChatPage({ params }: TrackingChatPageProps) {
         {
           id: makeId(),
           role: "assistant",
-          content: `Applied: ${actionNote}`,
+          content: `Done. I ${describeActionForHumans(action)}. ${actionNote}`,
         },
       ]);
     } catch (err) {
@@ -306,6 +397,57 @@ export default function TrackingChatPage({ params }: TrackingChatPageProps) {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="rounded-xl border border-(--border) bg-(--bg) p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <p className="flex items-center gap-2 text-sm font-semibold text-(--text)">
+                      <WandSparkles className="h-4 w-4" />
+                      New here? Start here
+                    </p>
+                    <p className="text-sm text-(--text-2)">
+                      Ask naturally, review proposed changes, then approve anything you want to
+                      apply.
+                    </p>
+                  </div>
+                  <div className="rounded-full border border-(--border) bg-(--surface) px-3 py-1 text-xs font-medium text-(--text-2)">
+                    Setup readiness: {setupReadiness}%
+                  </div>
+                </div>
+
+                <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => void sendMessage(recommendedPrompt)}
+                  >
+                    <ClipboardCheck className="mr-2 h-4 w-4" />
+                    Start guided check
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() =>
+                      void sendMessage(
+                        "Explain this setup in plain English and tell me the next 3 actions",
+                      )
+                    }
+                  >
+                    <Bot className="mr-2 h-4 w-4" />
+                    Explain like I am new
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() =>
+                      void sendMessage("Run a conversational audit and prioritise fixes")
+                    }
+                  >
+                    <ShieldCheck className="mr-2 h-4 w-4" />
+                    Audit conversationally
+                  </Button>
+                </div>
+              </div>
+
               <div className="flex flex-wrap gap-2">
                 {quickPrompts.map((prompt) => (
                   <Button
@@ -362,6 +504,9 @@ export default function TrackingChatPage({ params }: TrackingChatPageProps) {
                                     {action.title}
                                   </div>
                                   <p className="text-sm text-sky-900/80">{action.description}</p>
+                                  <p className="text-xs text-sky-900/70">
+                                    This will {describeActionForHumans(action)}.
+                                  </p>
                                 </div>
                                 <Button
                                   type="button"
@@ -428,6 +573,10 @@ export default function TrackingChatPage({ params }: TrackingChatPageProps) {
                     )}
                   </Button>
                 </div>
+                <p className="text-xs text-(--text-3)">
+                  Tip: ask for plain-English explanations any time, for example &ldquo;Explain the
+                  audit results for a junior marketer&rdquo;.
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -448,6 +597,27 @@ export default function TrackingChatPage({ params }: TrackingChatPageProps) {
                   </div>
                 </div>
                 <div className="grid gap-3">
+                  {setupChecklist.map((item) => (
+                    <div
+                      key={item.label}
+                      className="rounded-lg border border-(--border) bg-(--bg) p-3"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="text-xs tracking-wide text-(--text-3) uppercase">
+                          {item.label}
+                        </div>
+                        <div
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                            item.done
+                              ? "bg-emerald-100 text-emerald-700"
+                              : "bg-amber-100 text-amber-700"
+                          }`}
+                        >
+                          {item.done ? "Done" : "Needed"}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                   <div className="rounded-lg border border-(--border) bg-(--bg) p-3">
                     <div className="text-xs tracking-wide text-(--text-3) uppercase">GTM</div>
                     <div className="mt-1">Account: {setup?.gtmAccountId ?? "Not set"}</div>
