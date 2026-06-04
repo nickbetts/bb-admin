@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, use } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ArrowLeft, ExternalLink, RefreshCw } from "lucide-react";
+import { ArrowLeft, ExternalLink, RefreshCw, Rocket, Wrench } from "lucide-react";
 import { TrackingClientNav } from "@/components/tracking/TrackingClientNav";
 import { LoadingSpinner } from "@/components/ui/index";
 import { Button } from "@/components/ui/shadcn/button";
@@ -73,6 +73,17 @@ interface TrackingOverviewPageProps {
   params: Promise<{ clientId: string }>;
 }
 
+interface GTMDeployResponse {
+  success: boolean;
+  action: "create_event_tag" | "publish_workspace";
+  trigger?: { triggerId: string; name: string; type: string };
+  tag?: { tagId: string; name: string; type: string };
+  publishResult?: {
+    containerVersionId?: string;
+    containerVersionName?: string;
+  } | null;
+}
+
 export default function TrackingOverviewPage({ params }: TrackingOverviewPageProps) {
   const { clientId } = use(params);
   const searchParams = useSearchParams();
@@ -80,8 +91,12 @@ export default function TrackingOverviewPage({ params }: TrackingOverviewPagePro
   const [targets, setTargets] = useState<GTMTargetsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deployingTag, setDeployingTag] = useState(false);
+  const [publishingWorkspace, setPublishingWorkspace] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [deployMessage, setDeployMessage] = useState<string | null>(null);
+  const [eventTagName, setEventTagName] = useState("purchase");
   const [formData, setFormData] = useState({
     gtmAccountId: "",
     gtmContainerApiId: "",
@@ -99,6 +114,13 @@ export default function TrackingOverviewPage({ params }: TrackingOverviewPagePro
       ) ?? null,
     [formData.gtmContainerApiId, targets?.containers],
   );
+
+  const canDeployToGTM =
+    !!setup &&
+    !!formData.gtmAccountId &&
+    !!formData.gtmContainerApiId &&
+    !!formData.gtmWorkspaceId &&
+    !!formData.ga4PropertyId;
 
   const fetchSetup = async () => {
     const response = await fetch(`/api/tracking/setup?clientId=${clientId}`);
@@ -251,6 +273,75 @@ export default function TrackingOverviewPage({ params }: TrackingOverviewPagePro
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleCreateEventTag = async () => {
+    if (!eventTagName.trim()) {
+      setError("Event name is required before creating a GTM event tag");
+      return;
+    }
+
+    setDeployingTag(true);
+    setError(null);
+    setDeployMessage(null);
+
+    try {
+      const response = await fetch("/api/tracking/gtm/deploy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "create_event_tag",
+          clientId,
+          eventName: eventTagName.trim(),
+        }),
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(payload?.error || "Failed to create GTM event tag");
+      }
+
+      const payload = (await response.json()) as GTMDeployResponse;
+      setDeployMessage(
+        `Created trigger ${payload.trigger?.name ?? ""} and tag ${payload.tag?.name ?? ""} in the selected GTM workspace.`,
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setDeployingTag(false);
+    }
+  };
+
+  const handlePublishWorkspace = async () => {
+    setPublishingWorkspace(true);
+    setError(null);
+    setDeployMessage(null);
+
+    try {
+      const response = await fetch("/api/tracking/gtm/deploy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "publish_workspace",
+          clientId,
+          versionName: `Tracking Guru publish ${new Date().toISOString()}`,
+        }),
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(payload?.error || "Failed to publish GTM workspace");
+      }
+
+      const payload = (await response.json()) as GTMDeployResponse;
+      setDeployMessage(
+        `Published GTM workspace successfully${payload.publishResult?.containerVersionId ? ` (version ${payload.publishResult.containerVersionId})` : ""}.`,
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setPublishingWorkspace(false);
     }
   };
 
@@ -498,6 +589,62 @@ export default function TrackingOverviewPage({ params }: TrackingOverviewPagePro
                   </Link>
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>GTM Deploy Actions</CardTitle>
+              <CardDescription>
+                Create GTM event tags and publish the selected workspace without leaving Tracking
+                Guru.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-(--text)">Custom event name</label>
+                <Input
+                  value={eventTagName}
+                  onChange={(event) => setEventTagName(event.target.value.toLowerCase())}
+                  placeholder="purchase"
+                  disabled={!canDeployToGTM || deployingTag || publishingWorkspace}
+                />
+                <p className="text-xs text-(--text-3)">
+                  This will create both a custom event trigger and a GA4 event tag.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="secondary"
+                  onClick={handleCreateEventTag}
+                  disabled={!canDeployToGTM || deployingTag || publishingWorkspace}
+                >
+                  <Wrench className="h-4 w-4" />
+                  {deployingTag ? "Creating tag..." : "Create Event Tag"}
+                </Button>
+
+                <Button
+                  onClick={handlePublishWorkspace}
+                  disabled={!canDeployToGTM || deployingTag || publishingWorkspace}
+                >
+                  <Rocket className="h-4 w-4" />
+                  {publishingWorkspace ? "Publishing..." : "Publish Workspace"}
+                </Button>
+              </div>
+
+              {!canDeployToGTM && (
+                <p className="rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-xs text-yellow-800">
+                  Save a complete GTM target (account, container, workspace) and GA4 property ID to
+                  enable deploy actions.
+                </p>
+              )}
+
+              {deployMessage && (
+                <p className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700">
+                  {deployMessage}
+                </p>
+              )}
             </CardContent>
           </Card>
         </div>
