@@ -61,7 +61,7 @@ interface TrackingChatPageProps {
   params: Promise<{ clientId: string }>;
 }
 
-const QUICK_PROMPTS = [
+const DEFAULT_QUICK_PROMPTS = [
   "Audit my full tracking setup",
   "What events should I be tracking for ecommerce?",
   "Create a standard purchase event",
@@ -88,6 +88,30 @@ export default function TrackingChatPage({ params }: TrackingChatPageProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const recentAudit = useMemo(() => setup?.audits?.[0] ?? null, [setup]);
+  const quickPrompts = useMemo(() => {
+    if (!setup) return DEFAULT_QUICK_PROMPTS;
+
+    const prompts: string[] = [];
+    const gtmConnected =
+      !!setup.gtmAccountId && !!setup.gtmContainerApiId && !!setup.gtmWorkspaceId;
+
+    if (!gtmConnected) {
+      prompts.push("Help me fix my GTM configuration");
+    }
+
+    if (!setup.ga4PropertyId) {
+      prompts.push("Help me configure GA4 tracking");
+    }
+
+    if (events.length === 0) {
+      prompts.push("Create a standard purchase event");
+    }
+
+    prompts.push("Audit my full tracking setup");
+    prompts.push("What events should I be tracking for ecommerce?");
+
+    return [...new Set(prompts)].slice(0, 4);
+  }, [events.length, setup]);
 
   const loadContext = async () => {
     const setupResponse = await fetch(`/api/tracking/setup?clientId=${clientId}`);
@@ -202,11 +226,20 @@ export default function TrackingChatPage({ params }: TrackingChatPageProps) {
         throw new Error(payload.error || "Failed to execute approved tracking action");
       }
 
+      const actionNote = payload.message || "Action executed";
       setActionNotes((current) => ({
         ...current,
-        [action.id]: payload.message || "Action executed",
+        [action.id]: actionNote,
       }));
       await loadContext();
+      setMessages((current) => [
+        ...current,
+        {
+          id: makeId(),
+          role: "assistant",
+          content: `Applied: ${actionNote}`,
+        },
+      ]);
     } catch (err) {
       setActionNotes((current) => ({
         ...current,
@@ -245,6 +278,15 @@ export default function TrackingChatPage({ params }: TrackingChatPageProps) {
               Ask the assistant to audit, plan, and prepare tracking updates. Nothing is written
               until you approve it.
             </p>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+              <span className="rounded-full border border-(--border) bg-(--surface) px-2.5 py-1 text-(--text-2)">
+                Setup: {setup?.status ?? "Not configured"}
+              </span>
+              <span className="rounded-full border border-(--border) bg-(--surface) px-2.5 py-1 text-(--text-2)">
+                Latest audit:{" "}
+                {recentAudit ? `${recentAudit.auditType} · ${recentAudit.status}` : "No audit yet"}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -265,7 +307,7 @@ export default function TrackingChatPage({ params }: TrackingChatPageProps) {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex flex-wrap gap-2">
-                {QUICK_PROMPTS.map((prompt) => (
+                {quickPrompts.map((prompt) => (
                   <Button
                     key={prompt}
                     type="button"
@@ -311,15 +353,15 @@ export default function TrackingChatPage({ params }: TrackingChatPageProps) {
                           {message.proposedActions.map((action) => (
                             <div
                               key={action.id}
-                              className="rounded-xl border border-amber-200 bg-amber-50 p-4"
+                              className="rounded-xl border border-sky-200 bg-sky-50 p-4"
                             >
                               <div className="flex flex-wrap items-start justify-between gap-3">
                                 <div className="space-y-1">
-                                  <div className="flex items-center gap-2 text-sm font-semibold text-amber-900">
+                                  <div className="flex items-center gap-2 text-sm font-semibold text-sky-900">
                                     <CheckCircle2 className="h-4 w-4" />
                                     {action.title}
                                   </div>
-                                  <p className="text-sm text-amber-900/80">{action.description}</p>
+                                  <p className="text-sm text-sky-900/80">{action.description}</p>
                                 </div>
                                 <Button
                                   type="button"
@@ -340,10 +382,10 @@ export default function TrackingChatPage({ params }: TrackingChatPageProps) {
                                   )}
                                 </Button>
                               </div>
-                              <div className="mt-3 space-y-2 text-xs text-amber-900/80">
+                              <div className="mt-3 space-y-2 text-xs text-sky-900/80">
                                 <p>{action.reasoning}</p>
                                 {actionNotes[action.id] && (
-                                  <div className="rounded-md border border-amber-200 bg-white px-3 py-2 text-amber-950">
+                                  <div className="rounded-md border border-sky-200 bg-white px-3 py-2 text-sky-950">
                                     {actionNotes[action.id]}
                                   </div>
                                 )}

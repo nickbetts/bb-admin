@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, use } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ArrowLeft, ExternalLink, Loader2, RefreshCw, Rocket, Wrench } from "lucide-react";
+import { ArrowLeft, Bot, ExternalLink, Loader2, RefreshCw, Rocket, Wrench } from "lucide-react";
 import { TrackingClientNav } from "@/components/tracking/TrackingClientNav";
 import { LoadingSpinner } from "@/components/ui/index";
 import { Button } from "@/components/ui/shadcn/button";
@@ -889,8 +889,14 @@ export default function TrackingOverviewPage({ params }: TrackingOverviewPagePro
                 of asking you to browse accounts repeatedly.
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-3">
               <div className="flex flex-wrap gap-2">
+                <Button asChild>
+                  <Link href={`/tools/tracking-guru/${clientId}/chat`}>
+                    <Bot className="h-4 w-4" />
+                    Ask AI in chat
+                  </Link>
+                </Button>
                 <Button variant="secondary" asChild>
                   <Link href={`/tools/tracking-guru/${clientId}/audit`}>Run audit</Link>
                 </Button>
@@ -903,6 +909,10 @@ export default function TrackingOverviewPage({ params }: TrackingOverviewPagePro
                   </Link>
                 </Button>
               </div>
+              <p className="text-xs text-(--text-3)">
+                Chat can review this setup, suggest tracking changes, and only applies writes after
+                your explicit approval.
+              </p>
             </CardContent>
           </Card>
 
