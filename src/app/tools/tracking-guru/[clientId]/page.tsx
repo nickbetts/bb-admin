@@ -67,6 +67,23 @@ interface MetaPixelOption {
   adAccountName: string;
 }
 
+interface GoogleAdsAccountOption {
+  id: string;
+  name: string;
+  currencyCode: string;
+  isManager: boolean;
+}
+
+interface GoogleAdsConversionActionOption {
+  id: string;
+  name: string;
+  category: string;
+  type: string;
+  conversions: number;
+  conversionsValue: number;
+  costPerConversion: number;
+}
+
 interface GTMTargetsResponse {
   connected: boolean;
   connection: GTMConnectionSummary | null;
@@ -116,6 +133,12 @@ export default function TrackingOverviewPage({ params }: TrackingOverviewPagePro
   const [metaPixels, setMetaPixels] = useState<MetaPixelOption[]>([]);
   const [metaLoading, setMetaLoading] = useState(true);
   const [metaError, setMetaError] = useState<string | null>(null);
+  const [googleAdsAccounts, setGoogleAdsAccounts] = useState<GoogleAdsAccountOption[]>([]);
+  const [googleAdsActions, setGoogleAdsActions] = useState<GoogleAdsConversionActionOption[]>([]);
+  const [googleAdsLoading, setGoogleAdsLoading] = useState(true);
+  const [googleAdsActionsLoading, setGoogleAdsActionsLoading] = useState(false);
+  const [googleAdsError, setGoogleAdsError] = useState<string | null>(null);
+  const [selectedGoogleAdsCustomerId, setSelectedGoogleAdsCustomerId] = useState("");
   const [formData, setFormData] = useState({
     gtmAccountId: "",
     gtmContainerApiId: "",
@@ -140,6 +163,14 @@ export default function TrackingOverviewPage({ params }: TrackingOverviewPagePro
     !!formData.gtmContainerApiId &&
     !!formData.gtmWorkspaceId &&
     !!formData.ga4PropertyId;
+
+  const parseCustomerIdFromConversionId = (conversionId: string): string => {
+    const match = conversionId.match(/^AW-(\d+)(?:\/\d+)?$/i);
+    return match?.[1] ?? "";
+  };
+
+  const formatConversionId = (customerId: string, conversionActionId: string): string =>
+    `AW-${customerId.replace(/-/g, "")}/${conversionActionId}`;
 
   const fetchSetup = async () => {
     const response = await fetch(`/api/tracking/setup?clientId=${clientId}`);
@@ -268,6 +299,93 @@ export default function TrackingOverviewPage({ params }: TrackingOverviewPagePro
 
     loadMetaPixels();
   }, []);
+
+  useEffect(() => {
+    const loadGoogleAdsAccounts = async () => {
+      try {
+        const response = await fetch("/api/google-ads/accounts");
+        const payload = (await response.json()) as GoogleAdsAccountOption[] | { error?: string };
+
+        if (!response.ok) {
+          throw new Error(
+            "error" in payload && payload.error
+              ? payload.error
+              : "Failed to load Google Ads accounts",
+          );
+        }
+
+        if (!Array.isArray(payload)) {
+          throw new Error("Unexpected Google Ads accounts response");
+        }
+
+        const nonManagerAccounts = payload.filter((account) => !account.isManager);
+        const accountOptions = nonManagerAccounts.length > 0 ? nonManagerAccounts : payload;
+
+        setGoogleAdsAccounts(accountOptions);
+
+        const parsedCustomer = parseCustomerIdFromConversionId(formData.googleAdsConversionId);
+        const defaultCustomer =
+          parsedCustomer && accountOptions.some((account) => account.id === parsedCustomer)
+            ? parsedCustomer
+            : (accountOptions[0]?.id ?? "");
+
+        setSelectedGoogleAdsCustomerId(defaultCustomer);
+        setGoogleAdsError(null);
+      } catch (err) {
+        setGoogleAdsError(
+          err instanceof Error ? err.message : "Failed to load Google Ads accounts",
+        );
+      } finally {
+        setGoogleAdsLoading(false);
+      }
+    };
+
+    loadGoogleAdsAccounts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const loadGoogleAdsConversionActions = async () => {
+      if (!selectedGoogleAdsCustomerId) {
+        setGoogleAdsActions([]);
+        return;
+      }
+
+      setGoogleAdsActionsLoading(true);
+      try {
+        const response = await fetch(
+          `/api/google-ads/conversion-actions?customerId=${encodeURIComponent(selectedGoogleAdsCustomerId)}`,
+        );
+        const payload = (await response.json()) as
+          | GoogleAdsConversionActionOption[]
+          | { error?: string };
+
+        if (!response.ok) {
+          throw new Error(
+            "error" in payload && payload.error
+              ? payload.error
+              : "Failed to load Google Ads conversion actions",
+          );
+        }
+
+        if (!Array.isArray(payload)) {
+          throw new Error("Unexpected Google Ads conversion actions response");
+        }
+
+        setGoogleAdsActions(payload);
+        setGoogleAdsError(null);
+      } catch (err) {
+        setGoogleAdsActions([]);
+        setGoogleAdsError(
+          err instanceof Error ? err.message : "Failed to load Google Ads conversion actions",
+        );
+      } finally {
+        setGoogleAdsActionsLoading(false);
+      }
+    };
+
+    loadGoogleAdsConversionActions();
+  }, [selectedGoogleAdsCustomerId]);
 
   const handleAccountChange = async (accountId: string) => {
     setFormData((current) => ({
@@ -633,16 +751,81 @@ export default function TrackingOverviewPage({ params }: TrackingOverviewPagePro
                 <label className="text-sm font-medium text-(--text)">
                   Google Ads conversion ID
                 </label>
-                <Input
-                  value={formData.googleAdsConversionId}
-                  onChange={(event) =>
-                    setFormData((current) => ({
-                      ...current,
-                      googleAdsConversionId: event.target.value,
-                    }))
-                  }
-                  placeholder="AW-123456789"
-                />
+                {googleAdsLoading ? (
+                  <div className="flex items-center gap-2 rounded-md border border-(--border) bg-(--surface) px-3 py-2 text-sm text-(--text-3)">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading Google Ads accounts...
+                  </div>
+                ) : googleAdsError || googleAdsAccounts.length === 0 ? (
+                  <div className="space-y-2">
+                    <Input
+                      value={formData.googleAdsConversionId}
+                      onChange={(event) =>
+                        setFormData((current) => ({
+                          ...current,
+                          googleAdsConversionId: event.target.value,
+                        }))
+                      }
+                      placeholder="AW-123456789/987654321"
+                    />
+                    <p className="text-xs text-(--text-3)">
+                      {googleAdsError ??
+                        "No Google Ads accounts were returned, so enter the conversion ID manually."}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Select
+                      value={selectedGoogleAdsCustomerId}
+                      onChange={(event) => setSelectedGoogleAdsCustomerId(event.target.value)}
+                    >
+                      <option value="">Select a Google Ads account</option>
+                      {googleAdsAccounts.map((account) => (
+                        <option key={account.id} value={account.id}>
+                          {account.name} ({account.id})
+                        </option>
+                      ))}
+                    </Select>
+
+                    {googleAdsActionsLoading ? (
+                      <div className="flex items-center gap-2 rounded-md border border-(--border) bg-(--surface) px-3 py-2 text-sm text-(--text-3)">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Loading conversion actions...
+                      </div>
+                    ) : googleAdsActions.length > 0 ? (
+                      <Select
+                        value={formData.googleAdsConversionId}
+                        onChange={(event) =>
+                          setFormData((current) => ({
+                            ...current,
+                            googleAdsConversionId: event.target.value,
+                          }))
+                        }
+                      >
+                        <option value="">Select a conversion action</option>
+                        {googleAdsActions.map((action) => {
+                          const value = formatConversionId(selectedGoogleAdsCustomerId, action.id);
+                          return (
+                            <option key={action.id} value={value}>
+                              {action.name} ({action.conversions} conv)
+                            </option>
+                          );
+                        })}
+                      </Select>
+                    ) : (
+                      <Input
+                        value={formData.googleAdsConversionId}
+                        onChange={(event) =>
+                          setFormData((current) => ({
+                            ...current,
+                            googleAdsConversionId: event.target.value,
+                          }))
+                        }
+                        placeholder={`AW-${selectedGoogleAdsCustomerId}/123456789`}
+                      />
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-end md:col-span-2">
