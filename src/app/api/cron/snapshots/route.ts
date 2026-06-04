@@ -62,7 +62,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 const SEMRUSH_SNAPSHOT_INTERVAL_DAYS = 21;
-const SEMRUSH_SNAPSHOT_ANCHOR_ISO = "2026-06-01";
+const SEMRUSH_SNAPSHOT_ANCHOR_ISO = "2026-06-12";
 const SEMRUSH_TAGGED_LIMIT_SNAPSHOT = 150;
 
 type PlatformKey =
