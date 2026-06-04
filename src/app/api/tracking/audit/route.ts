@@ -8,6 +8,70 @@ import {
   validateGoogleAdsTracking,
   type ValidationResult,
 } from "@/lib/tracking-validation";
+import { getGTMWorkspaceStatus } from "@/lib/gtm-api";
+
+async function validateSavedGTMTarget(
+  gtmContainerId: string | null | undefined,
+  gtmAccountId: string | null | undefined,
+  gtmContainerApiId: string | null | undefined,
+  gtmWorkspaceId: string | null | undefined,
+): Promise<ValidationResult> {
+  const base = validateGTMConfig(gtmContainerId);
+
+  if (!gtmAccountId || !gtmContainerApiId || !gtmWorkspaceId) {
+    return {
+      ...base,
+      status: base.status === "FAIL" ? "FAIL" : "WARNING",
+      findings: [
+        ...base.findings,
+        {
+          status: "WARNING",
+          message: "GTM API target is incomplete (account/container/workspace)",
+          recommendation: "Open Tracking Setup and select a GTM account, container, and workspace.",
+        },
+      ],
+    };
+  }
+
+  try {
+    const workspace = await getGTMWorkspaceStatus(gtmAccountId, gtmContainerApiId, gtmWorkspaceId);
+    const findings = [...base.findings];
+
+    findings.push({
+      status: "PASS",
+      message: `GTM workspace reachable: ${workspace.workspacePath}`,
+    });
+
+    findings.push({
+      status: "PASS",
+      message: `Workspace contains ${workspace.tagCount} tag(s) and ${workspace.triggerCount} trigger(s)`,
+    });
+
+    return {
+      platform: "GTM",
+      status: findings.some((f) => f.status === "FAIL")
+        ? "FAIL"
+        : findings.some((f) => f.status === "WARNING")
+          ? "WARNING"
+          : "PASS",
+      findings,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return {
+      platform: "GTM",
+      status: "WARNING",
+      findings: [
+        ...base.findings,
+        {
+          status: "WARNING",
+          message: "Unable to verify live GTM workspace state",
+          recommendation: message,
+        },
+      ],
+    };
+  }
+}
 
 export async function GET(request: NextRequest) {
   const session = await getSession();
@@ -38,7 +102,10 @@ export async function GET(request: NextRequest) {
         trackingSetups: {
           select: {
             id: true,
+            gtmAccountId: true,
+            gtmContainerApiId: true,
             gtmContainerId: true,
+            gtmWorkspaceId: true,
             ga4PropertyId: true,
             metaPixelId: true,
             googleAdsConversionId: true,
@@ -61,7 +128,14 @@ export async function GET(request: NextRequest) {
 
     // Audit each requested platform
     if (platforms.includes("gtm")) {
-      results.push(validateGTMConfig(setup?.gtmContainerId));
+      results.push(
+        await validateSavedGTMTarget(
+          setup?.gtmContainerId,
+          setup?.gtmAccountId,
+          setup?.gtmContainerApiId,
+          setup?.gtmWorkspaceId,
+        ),
+      );
     }
 
     if (platforms.includes("ga4")) {

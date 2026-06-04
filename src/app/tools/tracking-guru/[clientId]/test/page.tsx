@@ -18,6 +18,7 @@ interface TestResponse {
   clientName: string;
   eventName: string;
   results: {
+    gtm?: TestResult;
     ga4?: TestResult;
     meta?: TestResult;
     googleAds?: TestResult;
@@ -56,7 +57,7 @@ export default function TestPage({ params }: TestPageProps) {
           clientId,
           eventName,
           eventData: parsedEventData,
-          platforms: ["ga4", "meta", "google-ads"],
+          platforms: ["gtm", "ga4", "meta", "google-ads"],
         }),
       });
 

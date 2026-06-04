@@ -35,6 +35,30 @@ export interface GTMTriggerSummary {
   type: string;
 }
 
+export interface GTMWorkspaceStatus {
+  workspaceId: string;
+  workspacePath: string;
+  tagCount: number;
+  triggerCount: number;
+}
+
+export interface GTMCreatedTrigger {
+  triggerId: string;
+  name: string;
+  type: string;
+}
+
+export interface GTMCreatedTag {
+  tagId: string;
+  name: string;
+  type: string;
+}
+
+export interface GTMPublishResult {
+  containerVersionId?: string;
+  containerVersionName?: string;
+}
+
 async function getGTMAccessToken(): Promise<string> {
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
     throw new Error("GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be configured");
@@ -93,6 +117,26 @@ async function getGTMJson<T>(path: string): Promise<T> {
   const accessToken = await getGTMAccessToken();
   const response = await fetch(`${GTM_BASE_URL}${path}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(`GTM API error (${response.status}): ${message}`);
+  }
+
+  return (await response.json()) as T;
+}
+
+async function postGTMJson<T>(path: string, payload: unknown): Promise<T> {
+  const accessToken = await getGTMAccessToken();
+  const response = await fetch(`${GTM_BASE_URL}${path}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
     cache: "no-store",
   });
 
@@ -211,4 +255,118 @@ export async function listGTMTriggers(
 
 export function getGTMPreviewUrl(containerPublicId: string): string {
   return `https://tagassistant.google.com/#container=${encodeURIComponent(containerPublicId)}`;
+}
+
+export async function getGTMWorkspaceStatus(
+  accountId: string,
+  containerId: string,
+  workspaceId: string,
+): Promise<GTMWorkspaceStatus> {
+  const [tags, triggers] = await Promise.all([
+    listGTMTags(accountId, containerId, workspaceId),
+    listGTMTriggers(accountId, containerId, workspaceId),
+  ]);
+
+  return {
+    workspaceId,
+    workspacePath: `accounts/${accountId}/containers/${containerId}/workspaces/${workspaceId}`,
+    tagCount: tags.length,
+    triggerCount: triggers.length,
+  };
+}
+
+export async function createGTMCustomEventTrigger(
+  accountId: string,
+  containerId: string,
+  workspaceId: string,
+  name: string,
+  customEventFilter: string,
+): Promise<GTMCreatedTrigger> {
+  const payload = {
+    name,
+    type: "customEvent",
+    customEventFilter: [
+      {
+        type: "equals",
+        parameter: [
+          { type: "template", key: "arg0", value: "{{_event}}" },
+          { type: "template", key: "arg1", value: customEventFilter },
+        ],
+      },
+    ],
+  };
+
+  const response = await postGTMJson<{
+    triggerId: string;
+    name?: string;
+    type?: string;
+  }>(
+    `/accounts/${accountId}/containers/${containerId}/workspaces/${workspaceId}/triggers`,
+    payload,
+  );
+
+  return {
+    triggerId: response.triggerId,
+    name: response.name ?? name,
+    type: response.type ?? "customEvent",
+  };
+}
+
+export async function createGTMGA4EventTag(
+  accountId: string,
+  containerId: string,
+  workspaceId: string,
+  name: string,
+  measurementId: string,
+  eventName: string,
+  firingTriggerId: string,
+): Promise<GTMCreatedTag> {
+  const payload = {
+    name,
+    type: "gaawe",
+    parameter: [
+      { type: "template", key: "measurementId", value: measurementId },
+      { type: "template", key: "eventName", value: eventName },
+    ],
+    firingTriggerId: [firingTriggerId],
+  };
+
+  const response = await postGTMJson<{
+    tagId: string;
+    name?: string;
+    type?: string;
+  }>(`/accounts/${accountId}/containers/${containerId}/workspaces/${workspaceId}/tags`, payload);
+
+  return {
+    tagId: response.tagId,
+    name: response.name ?? name,
+    type: response.type ?? "gaawe",
+  };
+}
+
+export async function publishGTMWorkspace(
+  accountId: string,
+  containerId: string,
+  workspaceId: string,
+  versionName: string,
+): Promise<GTMPublishResult> {
+  const response = await postGTMJson<{
+    containerVersion?: { containerVersionId?: string; name?: string };
+  }>(`/accounts/${accountId}/containers/${containerId}/workspaces/${workspaceId}:create_version`, {
+    name: versionName,
+    notes: "Published via Tracking Guru",
+  });
+
+  const versionId = response.containerVersion?.containerVersionId;
+  if (versionId) {
+    await postGTMJson(
+      `/accounts/${accountId}/containers/${containerId}/versions/${versionId}:publish`,
+      {},
+    );
+  }
+
+  return {
+    containerVersionId: versionId,
+    containerVersionName: response.containerVersion?.name,
+  };
 }

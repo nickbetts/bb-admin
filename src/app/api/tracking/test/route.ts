@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getGTMPreviewUrl, getGTMWorkspaceStatus } from "@/lib/gtm-api";
 
 export async function POST(request: NextRequest) {
   const session = await getSession();
@@ -12,7 +13,12 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { clientId, eventName, eventData, platforms = ["ga4", "meta", "google-ads"] } = body;
+    const {
+      clientId,
+      eventName,
+      eventData,
+      platforms = ["ga4", "meta", "google-ads", "gtm"],
+    } = body;
 
     if (!clientId || !eventName) {
       return NextResponse.json({ error: "clientId and eventName are required" }, { status: 400 });
@@ -27,7 +33,10 @@ export async function POST(request: NextRequest) {
         trackingSetups: {
           select: {
             id: true,
+            gtmAccountId: true,
+            gtmContainerApiId: true,
             gtmContainerId: true,
+            gtmWorkspaceId: true,
             ga4PropertyId: true,
             metaPixelId: true,
             googleAdsConversionId: true,
@@ -100,6 +109,16 @@ export async function POST(request: NextRequest) {
       };
     }
 
+    // Test GTM target
+    if (platforms.includes("gtm")) {
+      (testResults.results as Record<string, TestResult>).gtm = await testGTMTarget(
+        setup?.gtmAccountId,
+        setup?.gtmContainerApiId,
+        setup?.gtmWorkspaceId,
+        setup?.gtmContainerId,
+      );
+    }
+
     // Save test result to database
     await prisma.trackingAudit.create({
       data: {
@@ -131,6 +150,44 @@ export async function POST(request: NextRequest) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("Test tracking error:", error);
     return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+async function testGTMTarget(
+  gtmAccountId: string | null | undefined,
+  gtmContainerApiId: string | null | undefined,
+  gtmWorkspaceId: string | null | undefined,
+  gtmContainerPublicId: string | null | undefined,
+): Promise<{
+  status: string;
+  message: string;
+  details?: string;
+  trackingPixel?: string;
+}> {
+  if (!gtmAccountId || !gtmContainerApiId || !gtmWorkspaceId) {
+    return {
+      status: "SKIPPED",
+      message: "GTM account/container/workspace is not fully configured",
+    };
+  }
+
+  try {
+    const workspace = await getGTMWorkspaceStatus(gtmAccountId, gtmContainerApiId, gtmWorkspaceId);
+    const previewUrl = gtmContainerPublicId ? getGTMPreviewUrl(gtmContainerPublicId) : undefined;
+
+    return {
+      status: "SUCCESS",
+      message: "GTM workspace target is reachable and ready",
+      details: `${workspace.tagCount} tag(s), ${workspace.triggerCount} trigger(s) in workspace ${workspace.workspaceId}`,
+      trackingPixel: previewUrl,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return {
+      status: "ERROR",
+      message: "GTM target test failed",
+      details: message,
+    };
   }
 }
 
