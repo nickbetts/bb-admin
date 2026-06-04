@@ -14,6 +14,8 @@ import {
   Globe,
   Clock,
   BarChart3,
+  ClipboardCheck,
+  AlertTriangle,
 } from "lucide-react";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { ClientBackLink } from "@/components/ui/ClientBackLink";
@@ -37,6 +39,50 @@ interface LandingPageItem {
   client: { id: string; name: string } | null;
   user: { id: string; name: string | null; email: string };
   _count: { leads: number; versions: number };
+}
+
+type AuditStatus = "pass" | "warn" | "fail";
+
+interface FormAuditIssue {
+  code: string;
+  message: string;
+}
+
+interface FormAuditMetrics {
+  formCount: number;
+  detectedFieldCount: number;
+  configuredFieldCount: number;
+  duplicateFieldCount: number;
+}
+
+interface FormAuditResult {
+  status: AuditStatus;
+  issueCount: number;
+  warningCount: number;
+  issues: FormAuditIssue[];
+  warnings: FormAuditIssue[];
+  metrics: FormAuditMetrics;
+}
+
+interface FormAuditPage {
+  id: string;
+  title: string;
+  status: string;
+  updatedAt: string;
+  audit: FormAuditResult;
+}
+
+interface FormAuditClientGroup {
+  clientId: string | null;
+  clientName: string;
+  summary: Record<AuditStatus, number>;
+  pages: FormAuditPage[];
+}
+
+interface FormAuditResponse {
+  checkedAt: string;
+  summary: { total: number; pass: number; warn: number; fail: number };
+  clients: FormAuditClientGroup[];
 }
 
 function GoogleIcon() {
@@ -174,6 +220,10 @@ export default function LandingPagesPage() {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditError, setAuditError] = useState<string | null>(null);
+  const [auditData, setAuditData] = useState<FormAuditResponse | null>(null);
+  const [auditFilter, setAuditFilter] = useState<"all" | "fail" | "warn">("all");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -224,6 +274,27 @@ export default function LandingPagesPage() {
     }
   }
 
+  async function handleRunFormAudit() {
+    setAuditLoading(true);
+    setAuditError(null);
+    try {
+      const qs = clientId ? `?clientId=${encodeURIComponent(clientId)}` : "";
+      const res = await fetch(`/api/tools/landing-pages/form-audit${qs}`);
+      const data = await res.json();
+      if (!res.ok) {
+        setAuditData(null);
+        setAuditError(data.error ?? "Unable to run form checks.");
+        return;
+      }
+      setAuditData(data as FormAuditResponse);
+    } catch {
+      setAuditData(null);
+      setAuditError("Unable to run form checks.");
+    } finally {
+      setAuditLoading(false);
+    }
+  }
+
   const filtered = pages.filter((p) => {
     if (!search) return true;
     const q = search.toLowerCase();
@@ -236,6 +307,21 @@ export default function LandingPagesPage() {
     if (aArchived === bArchived) return 0;
     return aArchived ? 1 : -1;
   });
+
+  const filteredAuditClients =
+    auditData?.clients
+      .map((group) => ({
+        ...group,
+        pages:
+          auditFilter === "all"
+            ? group.pages
+            : group.pages.filter((page) =>
+                auditFilter === "fail"
+                  ? page.audit.status === "fail"
+                  : page.audit.status === "warn",
+              ),
+      }))
+      .filter((group) => group.pages.length > 0) ?? [];
 
   function renderCard(p: LandingPageItem) {
     const isArchived = p.status === "archived";
@@ -471,18 +557,220 @@ export default function LandingPagesPage() {
             </p>
           </div>
         </div>
-        <Link
-          href="/tools/landing-pages/new"
-          className="btn btn-primary btn-sm"
-          style={{ gap: 6, display: "inline-flex", alignItems: "center" }}
-        >
-          <Plus style={{ width: 14, height: 14 }} /> New Landing Page
-        </Link>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <button
+            className="btn btn-ghost btn-sm"
+            style={{ gap: 6, display: "inline-flex", alignItems: "center" }}
+            onClick={handleRunFormAudit}
+            disabled={auditLoading}
+          >
+            <ClipboardCheck style={{ width: 14, height: 14 }} />
+            {auditLoading ? "Checking forms…" : "Check All Forms"}
+          </button>
+          <Link
+            href="/tools/landing-pages/new"
+            className="btn btn-primary btn-sm"
+            style={{ gap: 6, display: "inline-flex", alignItems: "center" }}
+          >
+            <Plus style={{ width: 14, height: 14 }} /> New Landing Page
+          </Link>
+        </div>
       </div>
 
       {!loading && pages.length > 0 && (
         <div style={{ marginBottom: 20 }}>
           <SearchInput value={search} onChange={setSearch} placeholder="Search landing pages..." />
+        </div>
+      )}
+
+      {(auditLoading || auditError || auditData) && (
+        <div className="card" style={{ marginBottom: 20, padding: 16 }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+              gap: 12,
+              marginBottom: 12,
+            }}
+          >
+            <div>
+              <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>
+                Form Checker Results
+              </p>
+              {auditData && (
+                <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 4 }}>
+                  Last run: {new Date(auditData.checkedAt).toLocaleString("en-GB")}
+                </p>
+              )}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={() => setAuditFilter("all")}
+                disabled={auditFilter === "all"}
+              >
+                All
+              </button>
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={() => setAuditFilter("fail")}
+                disabled={auditFilter === "fail"}
+              >
+                Failures
+              </button>
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={() => setAuditFilter("warn")}
+                disabled={auditFilter === "warn"}
+              >
+                Warnings
+              </button>
+            </div>
+          </div>
+
+          {auditLoading && (
+            <p style={{ fontSize: 13, color: "var(--text-3)" }}>
+              Running checks across landing pages…
+            </p>
+          )}
+
+          {auditError && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "10px 12px",
+                borderRadius: 10,
+                background: "var(--warning-bg)",
+                color: "var(--warning-text)",
+              }}
+            >
+              <AlertTriangle style={{ width: 14, height: 14 }} />
+              <span style={{ fontSize: 13 }}>{auditError}</span>
+            </div>
+          )}
+
+          {auditData && (
+            <>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+                <span className="badge badge-neutral">Scanned: {auditData.summary.total}</span>
+                <span className="badge badge-success">Pass: {auditData.summary.pass}</span>
+                <span className="badge badge-warning">Warnings: {auditData.summary.warn}</span>
+                <span className="badge badge-danger">Fails: {auditData.summary.fail}</span>
+              </div>
+
+              {filteredAuditClients.length === 0 ? (
+                <p style={{ fontSize: 13, color: "var(--text-3)" }}>
+                  No pages match the selected filter.
+                </p>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {filteredAuditClients.map((group) => (
+                    <div
+                      key={group.clientId ?? "unassigned"}
+                      className="card"
+                      style={{ padding: 12 }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: 8,
+                          marginBottom: 8,
+                        }}
+                      >
+                        <p style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>
+                          {group.clientName}
+                        </p>
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                          <span className="badge badge-success">{group.summary.pass} pass</span>
+                          <span className="badge badge-warning">{group.summary.warn} warn</span>
+                          <span className="badge badge-danger">{group.summary.fail} fail</span>
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        {group.pages.map((page) => (
+                          <div
+                            key={page.id}
+                            style={{
+                              border: "1px solid var(--border-subtle)",
+                              borderRadius: 10,
+                              padding: "10px 12px",
+                            }}
+                          >
+                            <div
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                gap: 8,
+                                marginBottom: 6,
+                              }}
+                            >
+                              <Link
+                                href={`/tools/landing-pages/${page.id}`}
+                                style={{ fontSize: 13, fontWeight: 600 }}
+                              >
+                                {page.title}
+                              </Link>
+                              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                                <span
+                                  className={
+                                    page.audit.status === "pass"
+                                      ? "badge badge-success"
+                                      : page.audit.status === "warn"
+                                        ? "badge badge-warning"
+                                        : "badge badge-danger"
+                                  }
+                                >
+                                  {page.audit.status}
+                                </span>
+                                <span style={{ fontSize: 11, color: "var(--text-4)" }}>
+                                  Updated {new Date(page.updatedAt).toLocaleDateString("en-GB")}
+                                </span>
+                              </div>
+                            </div>
+                            <p style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 4 }}>
+                              Forms: {page.audit.metrics.formCount} · Fields:{" "}
+                              {page.audit.metrics.detectedFieldCount} · Configured:{" "}
+                              {page.audit.metrics.configuredFieldCount}
+                            </p>
+                            {page.audit.issues.length > 0 && (
+                              <ul style={{ margin: 0, paddingLeft: 18 }}>
+                                {page.audit.issues.map((issue) => (
+                                  <li
+                                    key={`issue-${page.id}-${issue.code}-${issue.message}`}
+                                    style={{ fontSize: 12, color: "var(--danger)" }}
+                                  >
+                                    {issue.message}
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                            {page.audit.warnings.length > 0 && (
+                              <ul style={{ margin: 0, paddingLeft: 18 }}>
+                                {page.audit.warnings.map((warning) => (
+                                  <li
+                                    key={`warning-${page.id}-${warning.code}-${warning.message}`}
+                                    style={{ fontSize: 12, color: "var(--warning-text)" }}
+                                  >
+                                    {warning.message}
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
 
