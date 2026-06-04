@@ -12,6 +12,7 @@ const tabs = [
   { label: "Overview", href: (clientId: string) => `/tools/tracking-guru/${clientId}` },
   { label: "Audit", href: (clientId: string) => `/tools/tracking-guru/${clientId}/audit` },
   { label: "Events", href: (clientId: string) => `/tools/tracking-guru/${clientId}/events` },
+  { label: "Chat", href: (clientId: string) => `/tools/tracking-guru/${clientId}/chat` },
   { label: "Test", href: (clientId: string) => `/tools/tracking-guru/${clientId}/test` },
   { label: "History", href: (clientId: string) => `/tools/tracking-guru/${clientId}/history` },
 ];

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, use } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ArrowLeft, ExternalLink, RefreshCw, Rocket, Wrench } from "lucide-react";
+import { ArrowLeft, ExternalLink, Loader2, RefreshCw, Rocket, Wrench } from "lucide-react";
 import { TrackingClientNav } from "@/components/tracking/TrackingClientNav";
 import { LoadingSpinner } from "@/components/ui/index";
 import { Button } from "@/components/ui/shadcn/button";
@@ -54,6 +54,12 @@ interface GTMWorkspaceSummary {
   description?: string;
 }
 
+interface GA4Property {
+  id: string;
+  displayName: string;
+  account: string;
+}
+
 interface GTMTargetsResponse {
   connected: boolean;
   connection: GTMConnectionSummary | null;
@@ -97,6 +103,9 @@ export default function TrackingOverviewPage({ params }: TrackingOverviewPagePro
   const [success, setSuccess] = useState<string | null>(null);
   const [deployMessage, setDeployMessage] = useState<string | null>(null);
   const [eventTagName, setEventTagName] = useState("purchase");
+  const [ga4Properties, setGa4Properties] = useState<GA4Property[]>([]);
+  const [ga4Loading, setGa4Loading] = useState(true);
+  const [ga4Error, setGa4Error] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     gtmAccountId: "",
     gtmContainerApiId: "",
@@ -193,6 +202,34 @@ export default function TrackingOverviewPage({ params }: TrackingOverviewPagePro
       setError(`Google GTM connection failed: ${oauthError}`);
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    const loadGa4Properties = async () => {
+      try {
+        const response = await fetch("/api/ga4/properties");
+        const payload = (await response.json()) as GA4Property[] | { error?: string };
+
+        if (!response.ok) {
+          throw new Error(
+            "error" in payload && payload.error ? payload.error : "Failed to load GA4 properties",
+          );
+        }
+
+        if (!Array.isArray(payload)) {
+          throw new Error("Unexpected GA4 properties response");
+        }
+
+        setGa4Properties(payload);
+        setGa4Error(null);
+      } catch (err) {
+        setGa4Error(err instanceof Error ? err.message : "Failed to load GA4 properties");
+      } finally {
+        setGa4Loading(false);
+      }
+    };
+
+    loadGa4Properties();
+  }, []);
 
   const handleAccountChange = async (accountId: string) => {
     setFormData((current) => ({
@@ -478,13 +515,43 @@ export default function TrackingOverviewPage({ params }: TrackingOverviewPagePro
             <CardContent className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-(--text)">GA4 property ID</label>
-                <Input
-                  value={formData.ga4PropertyId}
-                  onChange={(event) =>
-                    setFormData((current) => ({ ...current, ga4PropertyId: event.target.value }))
-                  }
-                  placeholder="G-XXXXXXXXXX"
-                />
+                {ga4Loading ? (
+                  <div className="flex items-center gap-2 rounded-md border border-(--border) bg-(--surface) px-3 py-2 text-sm text-(--text-3)">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading GA4 properties...
+                  </div>
+                ) : ga4Error || ga4Properties.length === 0 ? (
+                  <div className="space-y-2">
+                    <Input
+                      value={formData.ga4PropertyId}
+                      onChange={(event) =>
+                        setFormData((current) => ({
+                          ...current,
+                          ga4PropertyId: event.target.value,
+                        }))
+                      }
+                      placeholder="G-XXXXXXXXXX"
+                    />
+                    <p className="text-xs text-(--text-3)">
+                      {ga4Error ??
+                        "No GA4 properties were returned, so enter the property ID manually."}
+                    </p>
+                  </div>
+                ) : (
+                  <Select
+                    value={formData.ga4PropertyId}
+                    onChange={(event) =>
+                      setFormData((current) => ({ ...current, ga4PropertyId: event.target.value }))
+                    }
+                  >
+                    <option value="">Select a GA4 property</option>
+                    {ga4Properties.map((property) => (
+                      <option key={property.id} value={property.id}>
+                        {property.displayName} ({property.account})
+                      </option>
+                    ))}
+                  </Select>
+                )}
               </div>
 
               <div className="space-y-2">
