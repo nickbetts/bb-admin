@@ -1,0 +1,27 @@
+{
+  "plan": {
+    "sections": {
+      "audiences": [{ "name": "Parents" }, { "name": "Club Managers" }],
+      "contentCalendar": [
+        {
+          "month": "June",
+          "blogPosts": [
+            {
+              "title": "Summer Camp Prep",
+              "angle": "Written for unknown segment, addresses planning stress"
+            }
+          ]
+        }
+      ],
+      "googleAdsCampaigns": {
+        "aiNegativesWithReason": [{ "keyword": "summer camps free", "reason": "Low intent" }]
+      }
+    }
+  },
+  "brain": {
+    "audiences": [{ "name": "Parents" }]
+  },
+  "sources": {
+    "campaignFocusPeriods": [{ "label": "Summer Camps", "description": "Peak push" }]
+  }
+}

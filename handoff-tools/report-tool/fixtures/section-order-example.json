@@ -1,0 +1,4 @@
+{
+  "visibleBlocks": ["kpis", "chart", "campaigns"],
+  "targetBlock": "chart"
+}
