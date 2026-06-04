@@ -61,7 +61,7 @@ import { getDomainAuthority } from "@/lib/domain-authority";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-const SEMRUSH_SNAPSHOT_INTERVAL_DAYS = 14;
+const SEMRUSH_SNAPSHOT_INTERVAL_DAYS = 21;
 const SEMRUSH_SNAPSHOT_ANCHOR_ISO = "2026-06-01";
 const SEMRUSH_TAGGED_LIMIT_SNAPSHOT = 150;
 
@@ -907,7 +907,7 @@ async function detectAndNotifyAnomalies(
 // Triggered by Vercel cron (vercel.json "0 2 * * *") or admin "Run Now" button.
 // Only fetches the current calendar month; skips any platform already fetched
 // in the last 23 hours to conserve API quota.
-// SEO (SEMrush) snapshots are additionally throttled to a 14-day cadence.
+// SEO (SEMrush) snapshots are additionally throttled to a 21-day cadence.
 
 export async function POST(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
