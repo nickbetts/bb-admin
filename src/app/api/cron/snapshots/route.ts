@@ -2,13 +2,57 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { notifyAdmins } from "@/lib/notifications";
 import { getOpenAiClient } from "@/lib/openai-client";
-import { getGA4Overview, getGA4DailyData, getGA4TrafficSources, getGA4TopPages, getGA4ConversionEvents } from "@/lib/ga4";
-import { getGoogleAdsOverview, getGoogleAdsCampaignsEnriched, getGoogleAdsDailyData, getGoogleAdsSearchTerms, getGoogleAdsDeviceBreakdown, getGoogleAdsAvgQualityScore } from "@/lib/google-ads";
-import { getMetaAdsOverview, getMetaCampaignsEnriched, getMetaAdCreatives, getMetaDailyData } from "@/lib/meta";
-import { getGSCOverview, getGSCTopQueries, getGSCTopPages, getGSCDailyData, getGSCDevices, getGSCBrandedSplit } from "@/lib/search-console";
-import { getDomainOverview, getTopOrganicKeywords, getKeywordPositionDistribution, getCompetitors, getSemrushTrackedKeywords, getSemrushAIVisibility, getSemrushTrackedKeywordsWithTags } from "@/lib/semrush";
-import { getTikTokAdsOverview, getTikTokCampaigns, getTikTokCreatives, getTikTokAudienceDemographics } from "@/lib/tiktok-ads";
-import { getMicrosoftAdsOverview, getMicrosoftAdsCampaigns, getMicrosoftAdsKeywords, getMicrosoftAdsSearchTerms, getMicrosoftAdsDeviceBreakdown } from "@/lib/microsoft-ads";
+import {
+  getGA4Overview,
+  getGA4DailyData,
+  getGA4TrafficSources,
+  getGA4TopPages,
+  getGA4ConversionEvents,
+} from "@/lib/ga4";
+import {
+  getGoogleAdsOverview,
+  getGoogleAdsCampaignsEnriched,
+  getGoogleAdsDailyData,
+  getGoogleAdsSearchTerms,
+  getGoogleAdsDeviceBreakdown,
+  getGoogleAdsAvgQualityScore,
+} from "@/lib/google-ads";
+import {
+  getMetaAdsOverview,
+  getMetaCampaignsEnriched,
+  getMetaAdCreatives,
+  getMetaDailyData,
+} from "@/lib/meta";
+import {
+  getGSCOverview,
+  getGSCTopQueries,
+  getGSCTopPages,
+  getGSCDailyData,
+  getGSCDevices,
+  getGSCBrandedSplit,
+} from "@/lib/search-console";
+import {
+  getDomainOverview,
+  getTopOrganicKeywords,
+  getKeywordPositionDistribution,
+  getCompetitors,
+  getSemrushTrackedKeywords,
+  getSemrushAIVisibility,
+  getSemrushTrackedKeywordsWithTags,
+} from "@/lib/semrush";
+import {
+  getTikTokAdsOverview,
+  getTikTokCampaigns,
+  getTikTokCreatives,
+  getTikTokAudienceDemographics,
+} from "@/lib/tiktok-ads";
+import {
+  getMicrosoftAdsOverview,
+  getMicrosoftAdsCampaigns,
+  getMicrosoftAdsKeywords,
+  getMicrosoftAdsSearchTerms,
+  getMicrosoftAdsDeviceBreakdown,
+} from "@/lib/microsoft-ads";
 import { getWooCommerceStats, getWooCommerceCustomerData } from "@/lib/woocommerce";
 import { getShopifyStats, getShopifyCustomerData } from "@/lib/shopify";
 import { getCoreWebVitals } from "@/lib/core-web-vitals";
@@ -17,7 +61,27 @@ import { getDomainAuthority } from "@/lib/domain-authority";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-type PlatformKey = "ga4" | "googleads" | "meta" | "searchconsole" | "seo" | "tiktok" | "microsoftads" | "woocommerce" | "shopify" | "cwv" | "linkedin" | "klaviyo" | "youtube" | "hubspot" | "callrail" | "moz";
+const SEMRUSH_SNAPSHOT_INTERVAL_DAYS = 14;
+const SEMRUSH_SNAPSHOT_ANCHOR_ISO = "2026-06-01";
+const SEMRUSH_TAGGED_LIMIT_SNAPSHOT = 150;
+
+type PlatformKey =
+  | "ga4"
+  | "googleads"
+  | "meta"
+  | "searchconsole"
+  | "seo"
+  | "tiktok"
+  | "microsoftads"
+  | "woocommerce"
+  | "shopify"
+  | "cwv"
+  | "linkedin"
+  | "klaviyo"
+  | "youtube"
+  | "hubspot"
+  | "callrail"
+  | "moz";
 
 type SnapshotResult = {
   metrics: Record<string, number>;
@@ -25,21 +89,32 @@ type SnapshotResult = {
 };
 
 type ClientRow = {
-  id: string; name: string;
-  ga4PropertyId: string | null; googleAdsCustomerId: string | null;
-  metaAccountId: string | null; metaAccessToken: string | null;
-  searchConsoleSiteUrl: string | null; semrushDomain: string | null;
-  semrushProjectId: number | null; semrushCampaignIds: string | null;
-  tiktokAdvertiserId: string | null; tiktokAccessToken: string | null;
+  id: string;
+  name: string;
+  ga4PropertyId: string | null;
+  googleAdsCustomerId: string | null;
+  metaAccountId: string | null;
+  metaAccessToken: string | null;
+  searchConsoleSiteUrl: string | null;
+  semrushDomain: string | null;
+  semrushProjectId: number | null;
+  semrushCampaignIds: string | null;
+  tiktokAdvertiserId: string | null;
+  tiktokAccessToken: string | null;
   microsoftAdsAccountId: string | null;
-  woocommerceUrl: string | null; woocommerceKey: string | null; woocommerceSecret: string | null;
-  shopifyStoreDomain: string | null; shopifyAccessToken: string | null;
+  woocommerceUrl: string | null;
+  woocommerceKey: string | null;
+  woocommerceSecret: string | null;
+  shopifyStoreDomain: string | null;
+  shopifyAccessToken: string | null;
   cwvUrl: string | null;
-  linkedinAccountId: string | null; linkedinAccessToken: string | null;
+  linkedinAccountId: string | null;
+  linkedinAccessToken: string | null;
   klaviyoApiKey: string | null;
   youtubeChannelId: string | null;
   hubspotAccessToken: string | null;
-  callrailAccountId: string | null; callrailApiKey: string | null;
+  callrailAccountId: string | null;
+  callrailApiKey: string | null;
   website: string | null;
 };
 
@@ -52,19 +127,36 @@ function currentMonthRange(): { start: string; end: string } {
   return { start, end };
 }
 
+function isSemrushSnapshotDay(now: Date): boolean {
+  const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const anchor = new Date(`${SEMRUSH_SNAPSHOT_ANCHOR_ISO}T00:00:00.000Z`);
+  const anchorUtc = Date.UTC(anchor.getUTCFullYear(), anchor.getUTCMonth(), anchor.getUTCDate());
+
+  if (todayUtc < anchorUtc) return false;
+
+  const daysSinceAnchor = Math.floor((todayUtc - anchorUtc) / (24 * 60 * 60 * 1000));
+  return daysSinceAnchor % SEMRUSH_SNAPSHOT_INTERVAL_DAYS === 0;
+}
+
 async function fetchPlatformMetrics(
   platform: PlatformKey,
   client: ClientRow,
   start: string,
-  end: string
+  end: string,
 ): Promise<SnapshotResult | null> {
   switch (platform) {
     case "ga4": {
       const d = await getGA4Overview(client.ga4PropertyId!, start, end);
       const metrics: Record<string, number> = {
-        sessions: d.sessions, users: d.users, newUsers: d.newUsers, pageviews: d.pageviews,
-        bounceRate: d.bounceRate, avgSessionDuration: d.avgSessionDuration,
-        conversionRate: d.conversionRate, engagedSessions: d.engagedSessions, engagementRate: d.engagementRate,
+        sessions: d.sessions,
+        users: d.users,
+        newUsers: d.newUsers,
+        pageviews: d.pageviews,
+        bounceRate: d.bounceRate,
+        avgSessionDuration: d.avgSessionDuration,
+        conversionRate: d.conversionRate,
+        engagedSessions: d.engagedSessions,
+        engagementRate: d.engagementRate,
       };
       const [dailyR, sourcesR, pagesR, eventsR] = await Promise.allSettled([
         getGA4DailyData(client.ga4PropertyId!, start, end),
@@ -86,9 +178,15 @@ async function fetchPlatformMetrics(
       const roas = cost > 0 ? d.conversionsValue / cost : 0;
       const cpa = d.conversions > 0 ? cost / d.conversions : 0;
       const metrics: Record<string, number> = {
-        clicks: d.clicks, impressions: d.impressions, costMicros: d.costMicros,
-        conversions: d.conversions, conversionsValue: d.conversionsValue,
-        ctr, cost, roas, cpa,
+        clicks: d.clicks,
+        impressions: d.impressions,
+        costMicros: d.costMicros,
+        conversions: d.conversions,
+        conversionsValue: d.conversionsValue,
+        ctr,
+        cost,
+        roas,
+        cpa,
       };
       const [campaignsR, dailyR, searchR, devicesR, qsR] = await Promise.allSettled([
         getGoogleAdsCampaignsEnriched(client.googleAdsCustomerId!, start, end),
@@ -102,16 +200,26 @@ async function fetchPlatformMetrics(
       if (dailyR.status === "fulfilled") campaignData.daily = dailyR.value;
       if (searchR.status === "fulfilled") campaignData.searchTerms = searchR.value;
       if (devicesR.status === "fulfilled") campaignData.deviceBreakdown = devicesR.value;
-      if (qsR.status === "fulfilled" && qsR.value != null) { campaignData.avgQualityScore = qsR.value; metrics.avgQualityScore = qsR.value; }
+      if (qsR.status === "fulfilled" && qsR.value != null) {
+        campaignData.avgQualityScore = qsR.value;
+        metrics.avgQualityScore = qsR.value;
+      }
       return { metrics, campaignData };
     }
     case "meta": {
       const accessToken = client.metaAccessToken ?? process.env.META_ACCESS_TOKEN ?? "";
       const d = await getMetaAdsOverview(client.metaAccountId!, accessToken, start, end);
       const metrics: Record<string, number> = {
-        totalSpend: d.totalSpend, totalClicks: d.totalClicks, totalImpressions: d.totalImpressions,
-        totalConversions: d.totalConversions, avgCpm: d.avgCpm, avgCtr: d.avgCtr, avgRoas: d.avgRoas,
-        avgCpc: d.avgCpc, reach: d.reach, frequency: d.frequency,
+        totalSpend: d.totalSpend,
+        totalClicks: d.totalClicks,
+        totalImpressions: d.totalImpressions,
+        totalConversions: d.totalConversions,
+        avgCpm: d.avgCpm,
+        avgCtr: d.avgCtr,
+        avgRoas: d.avgRoas,
+        avgCpc: d.avgCpc,
+        reach: d.reach,
+        frequency: d.frequency,
       };
       const [campaignsR, creativesR, dailyR] = await Promise.allSettled([
         getMetaCampaignsEnriched(client.metaAccountId!, accessToken, start, end),
@@ -126,7 +234,12 @@ async function fetchPlatformMetrics(
     }
     case "searchconsole": {
       const d = await getGSCOverview(client.searchConsoleSiteUrl!, start, end);
-      const metrics: Record<string, number> = { clicks: d.clicks, impressions: d.impressions, ctr: d.ctr, position: d.position };
+      const metrics: Record<string, number> = {
+        clicks: d.clicks,
+        impressions: d.impressions,
+        ctr: d.ctr,
+        position: d.position,
+      };
       const [queriesR, pagesR, dailyR, devicesR, brandedR] = await Promise.allSettled([
         getGSCTopQueries(client.searchConsoleSiteUrl!, start, end, 20),
         getGSCTopPages(client.searchConsoleSiteUrl!, start, end),
@@ -145,8 +258,10 @@ async function fetchPlatformMetrics(
     case "seo": {
       const d = await getDomainOverview(client.semrushDomain!);
       const metrics: Record<string, number> = {
-        organicTraffic: d.organicTraffic, organicKeywords: d.organicKeywords,
-        organicCost: d.organicCost, paidTraffic: d.paidTraffic,
+        organicTraffic: d.organicTraffic,
+        organicKeywords: d.organicKeywords,
+        organicCost: d.organicCost,
+        paidTraffic: d.paidTraffic,
       };
       const enrichCalls: Promise<unknown>[] = [
         getTopOrganicKeywords(client.semrushDomain!, "uk", 10),
@@ -154,14 +269,27 @@ async function fetchPlatformMetrics(
         getCompetitors(client.semrushDomain!, "uk", 10),
       ];
       // Tracked keywords and AI visibility require campaign IDs
-      const campaignIds: string[] = client.semrushCampaignIds ? JSON.parse(client.semrushCampaignIds) : [];
+      const campaignIds: string[] = client.semrushCampaignIds
+        ? JSON.parse(client.semrushCampaignIds)
+        : [];
       const firstCampaignId = campaignIds[0] ?? null;
       const tagDateBegin = start.replace(/-/g, "");
       const tagDateEnd = end.replace(/-/g, "");
       if (firstCampaignId) {
-        enrichCalls.push(getSemrushTrackedKeywords(firstCampaignId, undefined, client.semrushDomain ?? undefined));
+        enrichCalls.push(
+          getSemrushTrackedKeywords(firstCampaignId, undefined, client.semrushDomain ?? undefined),
+        );
         enrichCalls.push(getSemrushAIVisibility(firstCampaignId));
-        enrichCalls.push(getSemrushTrackedKeywordsWithTags(firstCampaignId, tagDateBegin, tagDateEnd, undefined, client.semrushDomain ?? undefined));
+        enrichCalls.push(
+          getSemrushTrackedKeywordsWithTags(
+            firstCampaignId,
+            tagDateBegin,
+            tagDateEnd,
+            undefined,
+            client.semrushDomain ?? undefined,
+            SEMRUSH_TAGGED_LIMIT_SNAPSHOT,
+          ),
+        );
       }
       const settled = await Promise.allSettled(enrichCalls);
       const campaignData: Record<string, unknown> = {};
@@ -173,7 +301,8 @@ async function fetchPlatformMetrics(
         if (settled[4]?.status === "fulfilled") {
           const aiVis = settled[4].value as { aiVisibilityScore?: number };
           campaignData.aiVisibility = aiVis;
-          if (typeof aiVis?.aiVisibilityScore === "number") metrics.aiVisibilityScore = aiVis.aiVisibilityScore;
+          if (typeof aiVis?.aiVisibilityScore === "number")
+            metrics.aiVisibilityScore = aiVis.aiVisibilityScore;
         }
         if (settled[5]?.status === "fulfilled") campaignData.taggedKeywords = settled[5].value;
       }
@@ -183,9 +312,17 @@ async function fetchPlatformMetrics(
       const token = client.tiktokAccessToken ?? "";
       const d = await getTikTokAdsOverview(client.tiktokAdvertiserId!, token, start, end);
       const metrics: Record<string, number> = {
-        spend: d.spend, impressions: d.impressions, clicks: d.clicks, conversions: d.conversions,
-        ctr: d.ctr, cpc: d.cpc, cpm: d.cpm, costPerConversion: d.costPerConversion,
-        videoViews: d.videoViews, reach: d.reach, frequency: d.frequency,
+        spend: d.spend,
+        impressions: d.impressions,
+        clicks: d.clicks,
+        conversions: d.conversions,
+        ctr: d.ctr,
+        cpc: d.cpc,
+        cpm: d.cpm,
+        costPerConversion: d.costPerConversion,
+        videoViews: d.videoViews,
+        reach: d.reach,
+        frequency: d.frequency,
       };
       const [campaignsR, creativesR, demoR] = await Promise.allSettled([
         getTikTokCampaigns(client.tiktokAdvertiserId!, token, start, end),
@@ -201,9 +338,16 @@ async function fetchPlatformMetrics(
     case "microsoftads": {
       const d = await getMicrosoftAdsOverview(client.microsoftAdsAccountId!, start, end);
       const metrics: Record<string, number> = {
-        spend: d.spend, impressions: d.impressions, clicks: d.clicks, conversions: d.conversions,
-        revenue: d.revenue, roas: d.roas, ctr: d.ctr, cpc: d.cpc,
-        costPerConversion: d.costPerConversion, impressionSharePercent: d.impressionSharePercent,
+        spend: d.spend,
+        impressions: d.impressions,
+        clicks: d.clicks,
+        conversions: d.conversions,
+        revenue: d.revenue,
+        roas: d.roas,
+        ctr: d.ctr,
+        cpc: d.cpc,
+        costPerConversion: d.costPerConversion,
+        impressionSharePercent: d.impressionSharePercent,
       };
       const [campaignsR, keywordsR, searchR, devicesR] = await Promise.allSettled([
         getMicrosoftAdsCampaigns(client.microsoftAdsAccountId!, start, end),
@@ -219,41 +363,90 @@ async function fetchPlatformMetrics(
       return { metrics, campaignData };
     }
     case "woocommerce": {
-      const d = await getWooCommerceStats(client.woocommerceUrl!, client.woocommerceKey ?? "", client.woocommerceSecret ?? "", start, end);
-      const metrics: Record<string, number> = { totalRevenue: d.totalRevenue, totalOrders: d.totalOrders, averageOrderValue: d.averageOrderValue };
+      const d = await getWooCommerceStats(
+        client.woocommerceUrl!,
+        client.woocommerceKey ?? "",
+        client.woocommerceSecret ?? "",
+        start,
+        end,
+      );
+      const metrics: Record<string, number> = {
+        totalRevenue: d.totalRevenue,
+        totalOrders: d.totalOrders,
+        averageOrderValue: d.averageOrderValue,
+      };
       const campaignData: Record<string, unknown> = {
-        topProducts: d.topProducts, ordersByStatus: d.ordersByStatus, revenueByDay: d.revenueByDay,
+        topProducts: d.topProducts,
+        ordersByStatus: d.ordersByStatus,
+        revenueByDay: d.revenueByDay,
       };
       const [customerR] = await Promise.allSettled([
-        getWooCommerceCustomerData(client.woocommerceUrl!, client.woocommerceKey ?? "", client.woocommerceSecret ?? "", start, end),
+        getWooCommerceCustomerData(
+          client.woocommerceUrl!,
+          client.woocommerceKey ?? "",
+          client.woocommerceSecret ?? "",
+          start,
+          end,
+        ),
       ]);
       if (customerR.status === "fulfilled") campaignData.customerSummary = customerR.value;
       return { metrics, campaignData };
     }
     case "shopify": {
-      const d = await getShopifyStats(client.shopifyStoreDomain!, client.shopifyAccessToken ?? "", start, end);
-      const metrics: Record<string, number> = { totalRevenue: d.totalRevenue, totalOrders: d.totalOrders, averageOrderValue: d.averageOrderValue };
+      const d = await getShopifyStats(
+        client.shopifyStoreDomain!,
+        client.shopifyAccessToken ?? "",
+        start,
+        end,
+      );
+      const metrics: Record<string, number> = {
+        totalRevenue: d.totalRevenue,
+        totalOrders: d.totalOrders,
+        averageOrderValue: d.averageOrderValue,
+      };
       const campaignData: Record<string, unknown> = {
-        topProducts: d.topProducts, ordersByStatus: d.ordersByStatus, revenueByDay: d.revenueByDay,
+        topProducts: d.topProducts,
+        ordersByStatus: d.ordersByStatus,
+        revenueByDay: d.revenueByDay,
       };
       const [customerR] = await Promise.allSettled([
-        getShopifyCustomerData(client.shopifyStoreDomain!, client.shopifyAccessToken ?? "", start, end),
+        getShopifyCustomerData(
+          client.shopifyStoreDomain!,
+          client.shopifyAccessToken ?? "",
+          start,
+          end,
+        ),
       ]);
       if (customerR.status === "fulfilled") campaignData.customerSummary = customerR.value;
       return { metrics, campaignData };
     }
     case "cwv": {
       const d = await getCoreWebVitals(client.cwvUrl!);
-      const metrics: Record<string, number> = { lcp: d.lcp?.p75 ?? 0, cls: d.cls?.p75 ?? 0, inp: d.inp?.p75 ?? 0, fid: d.fid?.p75 ?? 0, ttfb: d.ttfb?.p75 ?? 0 };
+      const metrics: Record<string, number> = {
+        lcp: d.lcp?.p75 ?? 0,
+        cls: d.cls?.p75 ?? 0,
+        inp: d.inp?.p75 ?? 0,
+        fid: d.fid?.p75 ?? 0,
+        ttfb: d.ttfb?.p75 ?? 0,
+      };
       const campaignData: Record<string, unknown> = {
         overallCategory: d.overallCategory,
-        lcpDetail: d.lcp, clsDetail: d.cls, inpDetail: d.inp, fidDetail: d.fid, ttfbDetail: d.ttfb,
+        lcpDetail: d.lcp,
+        clsDetail: d.cls,
+        inpDetail: d.inp,
+        fidDetail: d.fid,
+        ttfbDetail: d.ttfb,
       };
       if (d.fcp) campaignData.fcpDetail = d.fcp;
       return { metrics, campaignData };
     }
     case "linkedin":
-      return fetchLinkedInOverview(client.linkedinAccountId!, client.linkedinAccessToken!, start, end);
+      return fetchLinkedInOverview(
+        client.linkedinAccountId!,
+        client.linkedinAccessToken!,
+        start,
+        end,
+      );
     case "klaviyo":
       return fetchKlaviyoOverview(client.klaviyoApiKey!, start, end);
     case "youtube":
@@ -266,7 +459,14 @@ async function fetchPlatformMetrics(
       const domain = client.semrushDomain ?? client.cwvUrl ?? client.website;
       if (!domain) return null;
       const d = await getDomainAuthority(domain);
-      return { metrics: { domainAuthority: d.domainAuthority, pageAuthority: d.pageAuthority, spamScore: d.spamScore, rootDomainsLinking: d.rootDomainsLinking } };
+      return {
+        metrics: {
+          domainAuthority: d.domainAuthority,
+          pageAuthority: d.pageAuthority,
+          spamScore: d.spamScore,
+          rootDomainsLinking: d.rootDomainsLinking,
+        },
+      };
     }
   }
 }
@@ -291,7 +491,7 @@ async function fetchLinkedInOverview(
 
   if (!res.ok) throw new Error(`LinkedIn API ${res.status}`);
 
-  const data = await res.json() as {
+  const data = (await res.json()) as {
     elements?: Array<{
       impressions?: number;
       clicks?: number;
@@ -302,7 +502,11 @@ async function fetchLinkedInOverview(
   };
 
   const elements = data.elements ?? [];
-  let impressions = 0, clicks = 0, spend = 0, conversions = 0, reach = 0;
+  let impressions = 0,
+    clicks = 0,
+    spend = 0,
+    conversions = 0,
+    reach = 0;
   for (const el of elements) {
     impressions += el.impressions ?? 0;
     clicks += el.clicks ?? 0;
@@ -344,13 +548,21 @@ async function fetchKlaviyoOverview(
     }),
   });
 
-  let sends = 0, openRate = 0, clickRate = 0, revenue = 0;
+  let sends = 0,
+    openRate = 0,
+    clickRate = 0,
+    revenue = 0;
   if (metricsRes.ok) {
-    const mData = await metricsRes.json() as {
+    const mData = (await metricsRes.json()) as {
       data?: {
         attributes?: {
           results?: Array<{
-            statistics?: { delivered?: number; open_rate?: number; click_rate?: number; revenue?: number };
+            statistics?: {
+              delivered?: number;
+              open_rate?: number;
+              click_rate?: number;
+              revenue?: number;
+            };
           }>;
         };
       };
@@ -376,19 +588,32 @@ async function fetchKlaviyoOverview(
       },
     });
     if (listsRes.ok) {
-      const listsData = await listsRes.json() as {
+      const listsData = (await listsRes.json()) as {
         data?: Array<{ attributes?: { profile_count?: number } }>;
       };
-      totalProfiles = (listsData.data ?? []).reduce((s, l) => s + (l.attributes?.profile_count ?? 0), 0);
+      totalProfiles = (listsData.data ?? []).reduce(
+        (s, l) => s + (l.attributes?.profile_count ?? 0),
+        0,
+      );
     }
-  } catch { /* non-critical */ }
+  } catch {
+    /* non-critical */
+  }
 
-  return { metrics: { sends, opens, clicks, revenue, openRate: openRate * 100, clickRate: clickRate * 100, totalProfiles } };
+  return {
+    metrics: {
+      sends,
+      opens,
+      clicks,
+      revenue,
+      openRate: openRate * 100,
+      clickRate: clickRate * 100,
+      totalProfiles,
+    },
+  };
 }
 
-async function fetchYouTubeOverview(
-  channelId: string,
-): Promise<SnapshotResult | null> {
+async function fetchYouTubeOverview(channelId: string): Promise<SnapshotResult | null> {
   const apiKey = process.env.GOOGLE_API_KEY;
   if (!apiKey) return null;
 
@@ -399,7 +624,7 @@ async function fetchYouTubeOverview(
 
   if (!res.ok) throw new Error(`YouTube API ${res.status}`);
 
-  const data = await res.json() as {
+  const data = (await res.json()) as {
     items?: Array<{
       statistics?: {
         subscriberCount?: string;
@@ -421,23 +646,31 @@ async function fetchYouTubeOverview(
   };
 }
 
-async function fetchHubSpotOverview(
-  accessToken: string,
-): Promise<SnapshotResult> {
+async function fetchHubSpotOverview(accessToken: string): Promise<SnapshotResult> {
   const headers = {
     Authorization: `Bearer ${accessToken}`,
     "Content-Type": "application/json",
   };
 
   const [contactsRes, dealsRes] = await Promise.all([
-    fetch("https://api.hubapi.com/crm/v3/objects/contacts?limit=100&properties=lifecyclestage", { headers }),
-    fetch("https://api.hubapi.com/crm/v3/objects/deals?limit=100&properties=amount,dealstage,closedate,createdate", { headers }),
+    fetch("https://api.hubapi.com/crm/v3/objects/contacts?limit=100&properties=lifecyclestage", {
+      headers,
+    }),
+    fetch(
+      "https://api.hubapi.com/crm/v3/objects/deals?limit=100&properties=amount,dealstage,closedate,createdate",
+      { headers },
+    ),
   ]);
 
   if (!contactsRes.ok || !dealsRes.ok) throw new Error(`HubSpot API error`);
 
-  const contactsData = await contactsRes.json() as { total?: number; results: Array<{ properties: Record<string, string> }> };
-  const dealsData = await dealsRes.json() as { results: Array<{ properties: Record<string, string> }> };
+  const contactsData = (await contactsRes.json()) as {
+    total?: number;
+    results: Array<{ properties: Record<string, string> }>;
+  };
+  const dealsData = (await dealsRes.json()) as {
+    results: Array<{ properties: Record<string, string> }>;
+  };
 
   const deals = dealsData.results.map((d) => ({
     amount: parseFloat(d.properties.amount ?? "0"),
@@ -446,14 +679,29 @@ async function fetchHubSpotOverview(
     createdate: d.properties.createdate ?? "",
   }));
 
-  const openDeals = deals.filter((d) => d.dealstage !== "closedwon" && d.dealstage !== "closedlost");
+  const openDeals = deals.filter(
+    (d) => d.dealstage !== "closedwon" && d.dealstage !== "closedlost",
+  );
   const pipelineValue = openDeals.reduce((sum, d) => sum + d.amount, 0);
-  const closedWonValue = deals.filter((d) => d.dealstage === "closedwon").reduce((sum, d) => sum + d.amount, 0);
+  const closedWonValue = deals
+    .filter((d) => d.dealstage === "closedwon")
+    .reduce((sum, d) => sum + d.amount, 0);
 
-  const closedWonDeals = deals.filter((d) => d.dealstage === "closedwon" && d.closedate && d.createdate);
-  const dealVelocityDays = closedWonDeals.length > 0
-    ? Math.round(closedWonDeals.reduce((sum, d) => sum + (new Date(d.closedate).getTime() - new Date(d.createdate).getTime()) / (1000 * 60 * 60 * 24), 0) / closedWonDeals.length)
-    : 0;
+  const closedWonDeals = deals.filter(
+    (d) => d.dealstage === "closedwon" && d.closedate && d.createdate,
+  );
+  const dealVelocityDays =
+    closedWonDeals.length > 0
+      ? Math.round(
+          closedWonDeals.reduce(
+            (sum, d) =>
+              sum +
+              (new Date(d.closedate).getTime() - new Date(d.createdate).getTime()) /
+                (1000 * 60 * 60 * 24),
+            0,
+          ) / closedWonDeals.length,
+        )
+      : 0;
 
   return {
     metrics: {
@@ -487,7 +735,7 @@ async function fetchCallRailOverview(
 
   if (!callsRes.ok) throw new Error(`CallRail API ${callsRes.status}`);
 
-  const data = await callsRes.json() as {
+  const data = (await callsRes.json()) as {
     calls: Array<{ duration: number; answered: boolean }>;
     total_records: number;
   };
@@ -512,11 +760,36 @@ async function fetchCallRailOverview(
 // ── Anomaly detection ─────────────────────────────────────────────────────────
 
 const HIGHER_IS_BETTER: Record<string, string[]> = {
-  ga4: ["sessions", "users", "newUsers", "pageviews", "conversionRate", "engagedSessions", "engagementRate", "avgSessionDuration"],
-  googleads: ["clicks", "impressions", "conversions", "conversionsValue", "ctr", "roas", "avgQualityScore"],
+  ga4: [
+    "sessions",
+    "users",
+    "newUsers",
+    "pageviews",
+    "conversionRate",
+    "engagedSessions",
+    "engagementRate",
+    "avgSessionDuration",
+  ],
+  googleads: [
+    "clicks",
+    "impressions",
+    "conversions",
+    "conversionsValue",
+    "ctr",
+    "roas",
+    "avgQualityScore",
+  ],
   meta: ["totalClicks", "totalImpressions", "totalConversions", "avgRoas", "avgCtr", "reach"],
   tiktok: ["clicks", "impressions", "conversions", "ctr", "videoViews", "reach"],
-  microsoftads: ["clicks", "impressions", "conversions", "revenue", "roas", "ctr", "impressionSharePercent"],
+  microsoftads: [
+    "clicks",
+    "impressions",
+    "conversions",
+    "revenue",
+    "roas",
+    "ctr",
+    "impressionSharePercent",
+  ],
   searchconsole: ["clicks", "impressions", "ctr"],
   seo: ["organicTraffic", "organicKeywords", "organicCost", "aiVisibilityScore"],
   linkedin: ["clicks", "impressions", "conversions", "reach"],
@@ -558,7 +831,8 @@ async function detectAndNotifyAnomalies(
   if (!previousSnapshots.length) return;
 
   const prevMetrics = JSON.parse(previousSnapshots[0].metrics) as Record<string, number>;
-  const highAlerts: { metric: string; direction: string; changePercent: number; detail: string }[] = [];
+  const highAlerts: { metric: string; direction: string; changePercent: number; detail: string }[] =
+    [];
   const higherBetter = HIGHER_IS_BETTER[platform] ?? [];
   const lowerBetter = LOWER_IS_BETTER[platform] ?? [];
 
@@ -576,9 +850,25 @@ async function detectAndNotifyAnomalies(
       const severity = absChange >= 50 ? "high" : "medium";
       const detail = `${key} ${isUp ? "increased" : "decreased"} by ${changePct.toFixed(1)}% (${prevVal.toLocaleString()} → ${currentVal.toLocaleString()})`;
       await prisma.detectedAnomaly.create({
-        data: { clientId, platform, metric: key, severity, direction: isUp ? "up" : "down", changePercent: changePct, detail, periodStart, periodEnd },
+        data: {
+          clientId,
+          platform,
+          metric: key,
+          severity,
+          direction: isUp ? "up" : "down",
+          changePercent: changePct,
+          detail,
+          periodStart,
+          periodEnd,
+        },
       });
-      if (severity === "high") highAlerts.push({ metric: key, direction: isUp ? "up" : "down", changePercent: changePct, detail });
+      if (severity === "high")
+        highAlerts.push({
+          metric: key,
+          direction: isUp ? "up" : "down",
+          changePercent: changePct,
+          detail,
+        });
     }
   }
 
@@ -588,12 +878,19 @@ async function detectAndNotifyAnomalies(
       const openai = await getOpenAiClient();
       const completion = await openai.chat.completions.create({
         model: "gpt-5.4-nano",
-        messages: [{ role: "user", content: `In 2 sentences, explain the most likely cause of these metric changes for ${clientName} on ${platform}:\n${highAlerts.map((a) => `- ${a.detail}`).join("\n")}\nBe specific and actionable.` }],
+        messages: [
+          {
+            role: "user",
+            content: `In 2 sentences, explain the most likely cause of these metric changes for ${clientName} on ${platform}:\n${highAlerts.map((a) => `- ${a.detail}`).join("\n")}\nBe specific and actionable.`,
+          },
+        ],
         temperature: 0.2,
         max_completion_tokens: 150,
       });
       aiHypothesis = completion.choices[0]?.message?.content ?? "";
-    } catch { /* non-critical */ }
+    } catch {
+      /* non-critical */
+    }
     const alertSummary = highAlerts.map((a) => a.detail).join("; ");
     await notifyAdmins({
       clientId,
@@ -610,6 +907,7 @@ async function detectAndNotifyAnomalies(
 // Triggered by Vercel cron (vercel.json "0 2 * * *") or admin "Run Now" button.
 // Only fetches the current calendar month; skips any platform already fetched
 // in the last 23 hours to conserve API quota.
+// SEO (SEMrush) snapshots are additionally throttled to a 14-day cadence.
 
 export async function POST(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
@@ -619,6 +917,8 @@ export async function POST(request: NextRequest) {
   }
 
   const triggeredBy = new URL(request.url).searchParams.get("triggeredBy") ?? "cron";
+  const forceSemrush = new URL(request.url).searchParams.get("forceSemrush") === "1";
+  const shouldRunSemrush = forceSemrush || isSemrushSnapshotDay(new Date());
 
   // CronLog — uses `as any` because VS Code TS cache may lag behind prisma generate
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -631,66 +931,118 @@ export async function POST(request: NextRequest) {
     const clients = await prisma.client.findMany({
       where: { status: { notIn: ["lost", "churned"] } },
       select: {
-        id: true, name: true,
-        ga4PropertyId: true, googleAdsCustomerId: true,
-        metaAccountId: true, metaAccessToken: true,
-        searchConsoleSiteUrl: true, semrushDomain: true,
-        semrushProjectId: true, semrushCampaignIds: true,
-        tiktokAdvertiserId: true, tiktokAccessToken: true,
+        id: true,
+        name: true,
+        ga4PropertyId: true,
+        googleAdsCustomerId: true,
+        metaAccountId: true,
+        metaAccessToken: true,
+        searchConsoleSiteUrl: true,
+        semrushDomain: true,
+        semrushProjectId: true,
+        semrushCampaignIds: true,
+        tiktokAdvertiserId: true,
+        tiktokAccessToken: true,
         microsoftAdsAccountId: true,
-        woocommerceUrl: true, woocommerceKey: true, woocommerceSecret: true,
-        shopifyStoreDomain: true, shopifyAccessToken: true,
+        woocommerceUrl: true,
+        woocommerceKey: true,
+        woocommerceSecret: true,
+        shopifyStoreDomain: true,
+        shopifyAccessToken: true,
         cwvUrl: true,
-        linkedinAccountId: true, linkedinAccessToken: true,
+        linkedinAccountId: true,
+        linkedinAccessToken: true,
         klaviyoApiKey: true,
         youtubeChannelId: true,
         hubspotAccessToken: true,
-        callrailAccountId: true, callrailApiKey: true,
+        callrailAccountId: true,
+        callrailApiKey: true,
         website: true,
       },
     });
 
     const { start, end } = currentMonthRange();
 
+    if (!shouldRunSemrush) {
+      console.log(
+        `[cron/snapshots] SEO snapshot cadence skip: next run is every ${SEMRUSH_SNAPSHOT_INTERVAL_DAYS} days from ${SEMRUSH_SNAPSHOT_ANCHOR_ISO}`,
+      );
+    }
+
     // Build set of client+platform combos already fetched today to skip them
     const twentyThreeHoursAgo = new Date(Date.now() - 23 * 60 * 60 * 1000);
     const recentSnaps = new Set(
-      (await prisma.metricSnapshot.findMany({
-        where: { periodStart: start, createdAt: { gte: twentyThreeHoursAgo } },
-        select: { clientId: true, sectionType: true },
-      })).map((s) => `${s.clientId}|${s.sectionType}`)
+      (
+        await prisma.metricSnapshot.findMany({
+          where: { periodStart: start, createdAt: { gte: twentyThreeHoursAgo } },
+          select: { clientId: true, sectionType: true },
+        })
+      ).map((s) => `${s.clientId}|${s.sectionType}`),
     );
 
-    const results: { clientId: string; clientName: string; sections: string[]; skipped: string[]; errors: string[] }[] = [];
-    let snapshotsNew = 0, snapshotsSkipped = 0, errors = 0;
+    const results: {
+      clientId: string;
+      clientName: string;
+      sections: string[];
+      skipped: string[];
+      errors: string[];
+    }[] = [];
+    let snapshotsNew = 0,
+      snapshotsSkipped = 0,
+      errors = 0;
 
     for (const client of clients) {
       const row = {
-        clientId: client.id, clientName: client.name,
-        sections: [] as string[], skipped: [] as string[], errors: [] as string[],
+        clientId: client.id,
+        clientName: client.name,
+        sections: [] as string[],
+        skipped: [] as string[],
+        errors: [] as string[],
       };
 
       const allPlatforms: Array<{ key: PlatformKey; check: string | null }> = [
-        { key: "ga4",           check: client.ga4PropertyId },
-        { key: "googleads",     check: client.googleAdsCustomerId },
-        { key: "meta",          check: client.metaAccountId },
+        { key: "ga4", check: client.ga4PropertyId },
+        { key: "googleads", check: client.googleAdsCustomerId },
+        { key: "meta", check: client.metaAccountId },
         { key: "searchconsole", check: client.searchConsoleSiteUrl },
-        { key: "seo",           check: client.semrushDomain },
-        { key: "tiktok",        check: client.tiktokAdvertiserId && client.tiktokAccessToken ? client.tiktokAdvertiserId : null },
-        { key: "microsoftads",  check: client.microsoftAdsAccountId },
-        { key: "woocommerce",   check: client.woocommerceUrl },
-        { key: "shopify",       check: client.shopifyStoreDomain },
-        { key: "cwv",           check: client.cwvUrl },
-        { key: "linkedin",      check: client.linkedinAccountId && client.linkedinAccessToken ? client.linkedinAccountId : null },
-        { key: "klaviyo",       check: client.klaviyoApiKey },
-        { key: "youtube",       check: client.youtubeChannelId },
-        { key: "hubspot",       check: client.hubspotAccessToken },
-        { key: "callrail",      check: client.callrailAccountId && client.callrailApiKey ? client.callrailAccountId : null },
-        { key: "moz",           check: client.semrushDomain ?? client.cwvUrl ?? client.website },
+        { key: "seo", check: client.semrushDomain },
+        {
+          key: "tiktok",
+          check:
+            client.tiktokAdvertiserId && client.tiktokAccessToken
+              ? client.tiktokAdvertiserId
+              : null,
+        },
+        { key: "microsoftads", check: client.microsoftAdsAccountId },
+        { key: "woocommerce", check: client.woocommerceUrl },
+        { key: "shopify", check: client.shopifyStoreDomain },
+        { key: "cwv", check: client.cwvUrl },
+        {
+          key: "linkedin",
+          check:
+            client.linkedinAccountId && client.linkedinAccessToken
+              ? client.linkedinAccountId
+              : null,
+        },
+        { key: "klaviyo", check: client.klaviyoApiKey },
+        { key: "youtube", check: client.youtubeChannelId },
+        { key: "hubspot", check: client.hubspotAccessToken },
+        {
+          key: "callrail",
+          check:
+            client.callrailAccountId && client.callrailApiKey ? client.callrailAccountId : null,
+        },
+        { key: "moz", check: client.semrushDomain ?? client.cwvUrl ?? client.website },
       ];
 
       for (const { key, check } of allPlatforms) {
         if (!check) continue;
+
+        if (key === "seo" && !shouldRunSemrush) {
+          row.skipped.push("seo_cadence");
+          snapshotsSkipped++;
+          continue;
+        }
 
         if (recentSnaps.has(`${client.id}|${key}`)) {
           row.skipped.push(key);
@@ -702,14 +1054,29 @@ export async function POST(request: NextRequest) {
           const result = await fetchPlatformMetrics(key, client as ClientRow, start, end);
           if (!result) continue;
 
-          const campaignDataStr = result.campaignData && Object.keys(result.campaignData).length > 0
-            ? JSON.stringify(result.campaignData)
-            : null;
+          const campaignDataStr =
+            result.campaignData && Object.keys(result.campaignData).length > 0
+              ? JSON.stringify(result.campaignData)
+              : null;
 
           await prisma.metricSnapshot.upsert({
-            where: { clientId_sectionType_periodStart_periodEnd: { clientId: client.id, sectionType: key, periodStart: start, periodEnd: end } },
+            where: {
+              clientId_sectionType_periodStart_periodEnd: {
+                clientId: client.id,
+                sectionType: key,
+                periodStart: start,
+                periodEnd: end,
+              },
+            },
             update: { metrics: JSON.stringify(result.metrics), campaignData: campaignDataStr },
-            create: { clientId: client.id, sectionType: key, periodStart: start, periodEnd: end, metrics: JSON.stringify(result.metrics), campaignData: campaignDataStr },
+            create: {
+              clientId: client.id,
+              sectionType: key,
+              periodStart: start,
+              periodEnd: end,
+              metrics: JSON.stringify(result.metrics),
+              campaignData: campaignDataStr,
+            },
           });
           row.sections.push(key);
           snapshotsNew++;
@@ -717,7 +1084,10 @@ export async function POST(request: NextRequest) {
           try {
             await detectAndNotifyAnomalies(client.id, client.name, key, result.metrics, start, end);
           } catch (err) {
-            console.error(`[cron/snapshots] Anomaly detection failed for ${client.name}/${key}:`, err);
+            console.error(
+              `[cron/snapshots] Anomaly detection failed for ${client.name}/${key}:`,
+              err,
+            );
           }
         } catch (err) {
           const msg = err instanceof Error ? err.message.slice(0, 120) : "Unknown error";
@@ -729,7 +1099,9 @@ export async function POST(request: NextRequest) {
       results.push(row);
     }
 
-    console.log(`[cron/snapshots] Done: ${snapshotsNew} new, ${snapshotsSkipped} skipped, ${errors} errors across ${clients.length} clients`);
+    console.log(
+      `[cron/snapshots] Done: ${snapshotsNew} new, ${snapshotsSkipped} skipped, ${errors} errors across ${clients.length} clients`,
+    );
 
     // --- Sync ClientGoal currentValue from latest MetricSnapshot data ---
     let goalsSynced = 0;
@@ -757,7 +1129,9 @@ export async function POST(request: NextRequest) {
                 const parsed = JSON.parse(snap.metrics) as Record<string, unknown>;
                 const val = parsed[goal.metric];
                 if (typeof val === "number" && isFinite(val)) extractedValue = val;
-              } catch { /* corrupt JSON — skip this snapshot */ }
+              } catch {
+                /* corrupt JSON — skip this snapshot */
+              }
             }
           } else {
             // No specific channel — search all sectionTypes for a matching metric
@@ -776,7 +1150,9 @@ export async function POST(request: NextRequest) {
                   extractedValue = val;
                   break;
                 }
-              } catch { /* corrupt JSON — skip this snapshot */ }
+              } catch {
+                /* corrupt JSON — skip this snapshot */
+              }
             }
           }
 
@@ -791,7 +1167,9 @@ export async function POST(request: NextRequest) {
           console.error(`[cron/snapshots] Goal sync failed for goal ${goal.id}:`, goalErr);
         }
       }
-      console.log(`[cron/snapshots] Goal sync complete: ${goalsSynced}/${activeGoals.length} goals updated`);
+      console.log(
+        `[cron/snapshots] Goal sync complete: ${goalsSynced}/${activeGoals.length} goals updated`,
+      );
     } catch (goalSyncErr) {
       console.error("[cron/snapshots] Goal sync batch error:", goalSyncErr);
     }
@@ -809,13 +1187,30 @@ export async function POST(request: NextRequest) {
       },
     }) as Promise<unknown>);
 
-    return NextResponse.json({ success: true, clientsProcessed: clients.length, snapshotsNew, snapshotsSkipped, errors, goalsSynced, results });
+    return NextResponse.json({
+      success: true,
+      clientsProcessed: clients.length,
+      snapshotsNew,
+      snapshotsSkipped,
+      errors,
+      goalsSynced,
+      results,
+    });
   } catch (error) {
     console.error("[cron/snapshots] Fatal error:", error);
-    await (db.cronLog.update({
-      where: { id: log.id },
-      data: { status: "error", completedAt: new Date(), errors: 1, details: JSON.stringify([{ error: error instanceof Error ? error.message : "Fatal error" }]) },
-    }) as Promise<unknown>).catch(() => {});
+    await (
+      db.cronLog.update({
+        where: { id: log.id },
+        data: {
+          status: "error",
+          completedAt: new Date(),
+          errors: 1,
+          details: JSON.stringify([
+            { error: error instanceof Error ? error.message : "Fatal error" },
+          ]),
+        },
+      }) as Promise<unknown>
+    ).catch(() => {});
     return NextResponse.json({ error: "Snapshot automation failed" }, { status: 500 });
   }
 }
