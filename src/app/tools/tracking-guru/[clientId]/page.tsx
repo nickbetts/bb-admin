@@ -60,6 +60,13 @@ interface GA4Property {
   account: string;
 }
 
+interface MetaPixelOption {
+  id: string;
+  name: string;
+  adAccountId: string;
+  adAccountName: string;
+}
+
 interface GTMTargetsResponse {
   connected: boolean;
   connection: GTMConnectionSummary | null;
@@ -106,6 +113,9 @@ export default function TrackingOverviewPage({ params }: TrackingOverviewPagePro
   const [ga4Properties, setGa4Properties] = useState<GA4Property[]>([]);
   const [ga4Loading, setGa4Loading] = useState(true);
   const [ga4Error, setGa4Error] = useState<string | null>(null);
+  const [metaPixels, setMetaPixels] = useState<MetaPixelOption[]>([]);
+  const [metaLoading, setMetaLoading] = useState(true);
+  const [metaError, setMetaError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     gtmAccountId: "",
     gtmContainerApiId: "",
@@ -229,6 +239,34 @@ export default function TrackingOverviewPage({ params }: TrackingOverviewPagePro
     };
 
     loadGa4Properties();
+  }, []);
+
+  useEffect(() => {
+    const loadMetaPixels = async () => {
+      try {
+        const response = await fetch("/api/meta/pixels");
+        const payload = (await response.json()) as MetaPixelOption[] | { error?: string };
+
+        if (!response.ok) {
+          throw new Error(
+            "error" in payload && payload.error ? payload.error : "Failed to load Meta pixels",
+          );
+        }
+
+        if (!Array.isArray(payload)) {
+          throw new Error("Unexpected Meta pixels response");
+        }
+
+        setMetaPixels(payload);
+        setMetaError(null);
+      } catch (err) {
+        setMetaError(err instanceof Error ? err.message : "Failed to load Meta pixels");
+      } finally {
+        setMetaLoading(false);
+      }
+    };
+
+    loadMetaPixels();
   }, []);
 
   const handleAccountChange = async (accountId: string) => {
@@ -556,13 +594,39 @@ export default function TrackingOverviewPage({ params }: TrackingOverviewPagePro
 
               <div className="space-y-2">
                 <label className="text-sm font-medium text-(--text)">Meta pixel ID</label>
-                <Input
-                  value={formData.metaPixelId}
-                  onChange={(event) =>
-                    setFormData((current) => ({ ...current, metaPixelId: event.target.value }))
-                  }
-                  placeholder="123456789012345"
-                />
+                {metaLoading ? (
+                  <div className="flex items-center gap-2 rounded-md border border-(--border) bg-(--surface) px-3 py-2 text-sm text-(--text-3)">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading Meta pixels...
+                  </div>
+                ) : metaError || metaPixels.length === 0 ? (
+                  <div className="space-y-2">
+                    <Input
+                      value={formData.metaPixelId}
+                      onChange={(event) =>
+                        setFormData((current) => ({ ...current, metaPixelId: event.target.value }))
+                      }
+                      placeholder="123456789012345"
+                    />
+                    <p className="text-xs text-(--text-3)">
+                      {metaError ?? "No Meta pixels were returned, so enter the pixel ID manually."}
+                    </p>
+                  </div>
+                ) : (
+                  <Select
+                    value={formData.metaPixelId}
+                    onChange={(event) =>
+                      setFormData((current) => ({ ...current, metaPixelId: event.target.value }))
+                    }
+                  >
+                    <option value="">Select a Meta pixel</option>
+                    {metaPixels.map((pixel) => (
+                      <option key={pixel.id} value={pixel.id}>
+                        {pixel.name} ({pixel.adAccountName})
+                      </option>
+                    ))}
+                  </Select>
+                )}
               </div>
 
               <div className="space-y-2 md:col-span-2">
