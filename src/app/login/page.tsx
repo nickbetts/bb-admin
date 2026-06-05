@@ -52,7 +52,7 @@ export default function LoginPage() {
         <section className="w-full rounded-3xl border border-black/10 bg-white/90 p-8 shadow-[0_30px_80px_rgba(43,31,18,0.18)] backdrop-blur">
           <div className="mb-8 flex flex-col items-center gap-4 text-center">
             <Image
-              src="/images/logo-full-black.svg"
+              src="/primary-logo-dark.svg"
               alt="Betts & Burton"
               width={220}
               height={56}
