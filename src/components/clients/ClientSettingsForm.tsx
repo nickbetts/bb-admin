@@ -29,8 +29,6 @@ interface Client {
   slug: string;
   website: string | null;
   logoUrl: string | null;
-  semrushProjectId?: number | null;
-  semrushCampaignIds?: string | null;
   ga4PropertyId: string | null;
   ga4PropertyName: string | null;
   metaAccountId: string | null;
@@ -90,20 +88,6 @@ interface MetaAccount {
   name: string;
 }
 
-interface SemrushProject {
-  projectId: number;
-  projectName: string;
-  domain: string;
-}
-
-interface SemrushCampaign {
-  id: string;
-  label: string;
-  device: string;
-  location: string;
-  keywordsCount: number;
-}
-
 interface GoogleAdsAccount {
   id: string;
   name: string;
@@ -147,34 +131,20 @@ export function ClientSettingsForm({
   const [ga4EmailCopied, setGa4EmailCopied] = useState(false);
   const [gscEmailCopied, setGscEmailCopied] = useState(false);
   const [metaAccounts, setMetaAccounts] = useState<MetaAccount[]>([]);
-  const [semrushProjects, setSemrushProjects] = useState<SemrushProject[]>([]);
-  const [semrushCampaigns, setSemrushCampaigns] = useState<SemrushCampaign[]>([]);
-  const [semrushCampaignIds, setSemrushCampaignIds] = useState<string[]>(() => {
-    try {
-      return JSON.parse(client.semrushCampaignIds ?? "[]") as string[];
-    } catch {
-      return [];
-    }
-  });
-  const [campaignsLoading, setCampaignsLoading] = useState(false);
   const [googleAdsAccounts, setGoogleAdsAccounts] = useState<GoogleAdsAccount[]>([]);
   const [gscSites, setGscSites] = useState<GSCSite[]>([]);
   const [ga4Loading, setGa4Loading] = useState(true);
   const [metaLoading, setMetaLoading] = useState(true);
-  const [semrushLoading, setSemrushLoading] = useState(true);
   const [googleAdsLoading, setGoogleAdsLoading] = useState(true);
   const [gscLoading, setGscLoading] = useState(true);
   const [ga4FetchError, setGa4FetchError] = useState("");
   const [metaFetchError, setMetaFetchError] = useState("");
-  const [semrushFetchError, setSemrushFetchError] = useState("");
-  const [campaignsFetchError, setCampaignsFetchError] = useState("");
   const [googleAdsFetchError, setGoogleAdsFetchError] = useState("");
   const [gscFetchError, setGscFetchError] = useState("");
 
   const [form, setForm] = useState({
     name: client.name,
     website: client.website ?? "",
-    semrushProjectId: client.semrushProjectId ?? (null as number | null),
     ga4PropertyId: client.ga4PropertyId ?? "",
     ga4PropertyName: client.ga4PropertyName ?? "",
     metaAccountId: client.metaAccountId ?? "",
@@ -303,11 +273,6 @@ export function ClientSettingsForm({
       .catch(() => setMetaFetchError("Failed to load Meta accounts"))
       .finally(() => setMetaLoading(false));
 
-    setSemrushProjects([]);
-    setSemrushCampaigns([]);
-    setSemrushFetchError("Legacy SEO connector has been retired.");
-    setSemrushLoading(false);
-
     fetch("/api/google-ads/accounts")
       .then((r) => r.json())
       .then((data) => {
@@ -340,26 +305,6 @@ export function ClientSettingsForm({
     return () => clearInterval(interval);
   }, [backfilling]);
 
-  async function fetchCampaignsForProject(projectId: number) {
-    setCampaignsLoading(true);
-    setCampaignsFetchError("");
-    try {
-      const res = await fetch(`/api/semrush/campaigns?projectId=${projectId}`);
-      const data = await res.json();
-      if (!res.ok || data.error) {
-        setCampaignsFetchError(data.error ?? "Failed to load campaigns");
-        setSemrushCampaigns([]);
-      } else {
-        setSemrushCampaigns(Array.isArray(data) ? data : []);
-      }
-    } catch {
-      setCampaignsFetchError("Failed to load campaigns");
-      setSemrushCampaigns([]);
-    } finally {
-      setCampaignsLoading(false);
-    }
-  }
-
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>,
   ) {
@@ -378,8 +323,6 @@ export function ClientSettingsForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
-          semrushCampaignIds:
-            semrushCampaignIds.length > 0 ? JSON.stringify(semrushCampaignIds) : null,
           contractedHours: contractedHours.length > 0 ? JSON.stringify(contractedHours) : null,
           // Transform competitorDomains textarea to JSON array
           competitorDomains: form.competitorDomains.trim()

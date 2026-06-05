@@ -160,26 +160,26 @@ export default async function ClientPage({ params, searchParams }: Props) {
               <span
                 className="badge badge-orange"
                 style={{ padding: "6px 14px", fontSize: 13 }}
-                title={`SemRush: ${client.website}`}
+                title={`SEO: ${client.website}`}
               >
                 <span
                   style={{
                     width: 7,
                     height: 7,
                     borderRadius: "50%",
-                    background: "var(--channel-semrush)",
+                    background: "var(--channel-seo)",
                     display: "inline-block",
                   }}
                 />
-                SemRush · {client.website}
+                SEO · {client.website}
               </span>
             ) : (
               <span
                 className="badge badge-slate"
                 style={{ padding: "6px 14px", fontSize: 13 }}
-                title="SemRush not configured"
+                title="SEO website not configured"
               >
-                SemRush not configured
+                SEO website not configured
               </span>
             )}
             {client.ga4PropertyId ? (

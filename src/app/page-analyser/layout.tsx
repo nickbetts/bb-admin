@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Page Analyser — i3 Media StratOS",
     description:
-      "Score any landing page across CRO, SEO, Mobile, and Forms. Get AI-generated fixes and SemRush competitive benchmarks.",
+      "Score any landing page across CRO, SEO, Mobile, and Forms. Get AI-generated fixes and competitive benchmarking.",
     type: "website",
   },
 };

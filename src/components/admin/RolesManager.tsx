@@ -73,7 +73,7 @@ const PERMISSION_GROUPS = [
     items: [
       { key: "tab:signals", label: "Signals" },
       { key: "tab:overview", label: "Overview" },
-      { key: "tab:seo", label: "SEO / SemRush" },
+      { key: "tab:seo", label: "SEO / Organic Search" },
       { key: "tab:web", label: "Web Analytics (GA4)" },
       { key: "tab:searchconsole", label: "Search Console" },
       { key: "tab:paid", label: "Paid Social (Meta)" },
@@ -102,7 +102,7 @@ const PERMISSION_GROUPS = [
       { key: "settings:ai", label: "AI Report Instructions" },
       { key: "settings:signals", label: "Signals & Alerts" },
       { key: "settings:lp", label: "Landing-page tracking defaults" },
-      { key: "settings:seo", label: "SemRush" },
+      { key: "settings:seo", label: "SEO" },
       { key: "settings:ga4", label: "Google Analytics 4" },
       { key: "settings:meta", label: "Meta Ads" },
       { key: "settings:googleads", label: "Google Ads" },

@@ -39,7 +39,7 @@ const features = [
   {
     icon: <Layers size={20} />,
     title: "16 channel integrations",
-    desc: "GA4, Google Ads, Meta, TikTok, LinkedIn, Klaviyo, YouTube, HubSpot, CallRail, SemRush, Search Console, Moz, Microsoft Ads, WooCommerce, Shopify, and Core Web Vitals.",
+    desc: "GA4, Google Ads, Meta, TikTok, LinkedIn, Klaviyo, YouTube, HubSpot, CallRail, Search Console, Moz, Microsoft Ads, WooCommerce, Shopify, and Core Web Vitals.",
   },
   {
     icon: <BarChart3 size={20} />,
@@ -78,7 +78,7 @@ const channels = [
   { name: "YouTube", color: "#ff0000" },
   { name: "HubSpot", color: "#ff7a59" },
   { name: "CallRail", color: "#10b981" },
-  { name: "SemRush", color: "#f97316" },
+  { name: "SEO", color: "#f97316" },
   { name: "Search Console", color: "#4285f4" },
   { name: "Microsoft Ads", color: "#00a4ef" },
   { name: "WooCommerce", color: "#7f54b3" },

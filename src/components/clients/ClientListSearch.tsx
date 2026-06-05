@@ -234,7 +234,7 @@ export function ClientListSearch({ clients }: { clients: ClientItem[] }) {
               </div>
 
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 16 }}>
-                {client.website && <span className="badge badge-orange">SemRush</span>}
+                {client.website && <span className="badge badge-orange">SEO</span>}
                 {client.ga4PropertyId && <span className="badge badge-blue">GA4</span>}
                 {client.metaAccountId && <span className="badge badge-indigo">Meta Ads</span>}
                 {client.googleAdsCustomerId && (

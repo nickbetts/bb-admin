@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
         if (sections.length === 0) {
           const availableSections: { type: string; title: string; check: boolean }[] = [
             { type: "overview", title: "Cross-Channel Overview", check: true },
-            { type: "seo", title: "SEO / SemRush", check: !!client.website },
+            { type: "seo", title: "SEO / Organic Search", check: !!client.website },
             { type: "ga4", title: "Web Analytics (GA4)", check: !!client.ga4PropertyId },
             {
               type: "searchconsole",

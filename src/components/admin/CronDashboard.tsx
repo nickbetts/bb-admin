@@ -403,8 +403,8 @@ export function CronDashboard() {
           }}
         >
           <span>
-            <span style={{ fontWeight: 600, color: "var(--text-2)" }}>SEMrush</span> — unit-based
-            quota. Balance zero = 402 error. Check SEMrush account. Cron skips SEMrush on 402.
+            <span style={{ fontWeight: 600, color: "var(--text-2)" }}>SEO data</span> — snapshot
+            coverage depends on connected Search Console/website sources.
           </span>
           <span>
             <span style={{ fontWeight: 600, color: "var(--text-2)" }}>Google Ads</span> — 15,000

@@ -46,8 +46,8 @@ const features = [
   },
   {
     icon: <ScanLine size={20} />,
-    title: "SemRush benchmarking",
-    desc: "Compare your page against competitors using SemRush domain data. See where you rank relative to others in your space.",
+    title: "SEO benchmarking",
+    desc: "Compare your page against competitors using organic search data. See where you rank relative to others in your space.",
   },
   {
     icon: <Zap size={20} />,
@@ -463,7 +463,7 @@ export default function PageAnalyserPage() {
                 "Four scoring categories: CRO, SEO, Mobile, Forms",
                 "0-100 scores with colour-coded severity",
                 "AI-generated fix recommendations",
-                "SemRush competitive benchmarking",
+                "SEO competitive benchmarking",
               ].map((item, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <CheckCircle2 size={14} color={accentLight} style={{ flexShrink: 0 }} />

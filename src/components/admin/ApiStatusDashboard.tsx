@@ -25,7 +25,6 @@ interface OpenAiUsage {
 
 interface ApiStatusData {
   env: {
-    semrush: boolean;
     openai: boolean;
     meta: boolean;
     googleOAuth: boolean;
@@ -34,11 +33,6 @@ interface ApiStatusData {
   platformCounts: Record<string, number>;
   totalClients: number;
   googleConnections: { count: number; accounts: Array<{ email: string; label: string | null }> };
-  semrush: {
-    configured: boolean;
-    units: number | null;
-    history: Array<{ date: string; balance: number }>;
-  };
   openai: { configured: boolean; usage: OpenAiUsage | null };
   platformErrors: Record<string, number>;
   cronStats: {
@@ -99,46 +93,6 @@ const INTEGRATIONS: Integration[] = [
       d.googleConnections.accounts.length > 0
         ? d.googleConnections.accounts.map((a) => a.email).join(", ")
         : null,
-  },
-  {
-    id: "semrush",
-    name: "SEMrush",
-    category: "SEO",
-    docsUrl: "https://developer.semrush.com/api/",
-    billingUrl: "https://www.semrush.com/billing/",
-    rateLimits: [
-      "Credits consumed per API request (varies by report type)",
-      "Domain overview: ~10 units/call",
-      "Backlinks export: ~1 unit/row",
-      "Keyword reports: ~10 units/call",
-    ],
-    configured: (d) => d.semrush.configured,
-    clientCount: (d) => d.platformCounts.seo ?? 0,
-    badge: (d) => {
-      if (!d.semrush.configured)
-        return { label: "Not configured", color: "var(--text-2)", bg: "#f3f4f6" };
-      if (d.semrush.units === null)
-        return { label: "API key set", color: "var(--info-text)", bg: "#dbeafe" };
-      if (d.semrush.units === 0)
-        return { label: "0 units — top up!", color: "var(--danger-text)", bg: "#fee2e2" };
-      if (d.semrush.units < 1000)
-        return {
-          label: `${d.semrush.units.toLocaleString()} units left`,
-          color: "#d97706",
-          bg: "#fef3c7",
-        };
-      return {
-        label: `${d.semrush.units.toLocaleString()} units`,
-        color: "var(--success-text)",
-        bg: "#dcfce7",
-      };
-    },
-    detail: (d) =>
-      d.semrush.units !== null
-        ? `${d.semrush.units.toLocaleString()} API units remaining in your plan`
-        : d.semrush.configured
-          ? "Units balance could not be fetched"
-          : null,
   },
   {
     id: "openai",
@@ -318,14 +272,7 @@ function formatRelative(iso: string): string {
   return `${Math.round(diff / 86400)}d ago`;
 }
 
-const CATEGORY_ORDER = [
-  "Analytics & Advertising",
-  "AI",
-  "Advertising",
-  "Ecommerce",
-  "Performance",
-  "SEO",
-];
+const CATEGORY_ORDER = ["Analytics & Advertising", "AI", "Advertising", "Ecommerce", "Performance"];
 
 // ── Component ────────────────────────────────────────────────────────────────
 
@@ -395,21 +342,6 @@ export function ApiStatusDashboard() {
             label: "Google Accounts",
             value: data.googleConnections.count,
             color: data.googleConnections.count > 0 ? "#15803d" : "var(--text-3)",
-          },
-          {
-            label: "SEMrush Units",
-            value:
-              data.semrush.units !== null
-                ? data.semrush.units.toLocaleString()
-                : data.semrush.configured
-                  ? "—"
-                  : "n/a",
-            color:
-              data.semrush.units === 0
-                ? "#b91c1c"
-                : data.semrush.units !== null && data.semrush.units < 1000
-                  ? "#d97706"
-                  : "#15803d",
           },
           {
             label: "Last Cron Run",
@@ -712,267 +644,6 @@ export function ApiStatusDashboard() {
                           </p>
                         </div>
                       )}
-
-                      {/* SEMrush units breakdown — used vs remaining */}
-                      {integration.id === "semrush" &&
-                        data.semrush.configured &&
-                        data.semrush.units !== null &&
-                        (() => {
-                          const remaining = data.semrush.units;
-                          const history = data.semrush.history ?? [];
-                          // "Used" = highest recorded balance minus current balance (tracks consumption since we started measuring)
-                          const highWater = history.reduce(
-                            (m, e) => Math.max(m, e.balance),
-                            remaining,
-                          );
-                          const used = highWater - remaining;
-                          const total = highWater; // best proxy for plan total we have
-                          const usedPct = total > 0 ? Math.round((used / total) * 100) : 0;
-                          const lowBalance = remaining < 1000;
-                          const noBalance = remaining === 0;
-
-                          return (
-                            <div style={{ marginTop: 14 }}>
-                              <p
-                                style={{
-                                  fontSize: 11,
-                                  fontWeight: 700,
-                                  color: "var(--text-3)",
-                                  letterSpacing: "0.05em",
-                                  textTransform: "uppercase",
-                                  marginBottom: 8,
-                                }}
-                              >
-                                Credit usage
-                              </p>
-
-                              {/* Stat cards row */}
-                              <div
-                                style={{
-                                  display: "flex",
-                                  gap: 12,
-                                  flexWrap: "wrap",
-                                  marginBottom: 12,
-                                }}
-                              >
-                                {[
-                                  {
-                                    label: "Units remaining",
-                                    value: remaining.toLocaleString(),
-                                    colour: noBalance
-                                      ? "#b91c1c"
-                                      : lowBalance
-                                        ? "#d97706"
-                                        : "#15803d",
-                                    bg: noBalance ? "#fef2f2" : lowBalance ? "#fffbeb" : "#f0fdf4",
-                                    highlight: true,
-                                  },
-                                  used > 0
-                                    ? {
-                                        label: "Units used",
-                                        value: used.toLocaleString(),
-                                        colour: "var(--text)",
-                                        bg: "var(--bg-2, #f8f8f8)",
-                                        highlight: false,
-                                      }
-                                    : null,
-                                  {
-                                    label: "Clients configured",
-                                    value: (data.platformCounts.seo ?? 0).toString(),
-                                    colour: "var(--text)",
-                                    bg: "var(--bg-2, #f8f8f8)",
-                                    highlight: false,
-                                  },
-                                  history.length >= 2
-                                    ? {
-                                        label: "Tracking since",
-                                        value: history[0].date,
-                                        colour: "var(--text-3)",
-                                        bg: "var(--bg-2, #f8f8f8)",
-                                        highlight: false,
-                                      }
-                                    : null,
-                                ]
-                                  .filter(Boolean)
-                                  .map(
-                                    (s) =>
-                                      s && (
-                                        <div
-                                          key={s.label}
-                                          style={{
-                                            padding: "8px 14px",
-                                            borderRadius: 8,
-                                            background: s.bg,
-                                            border: "1px solid var(--border)",
-                                            minWidth: 120,
-                                          }}
-                                        >
-                                          <p
-                                            style={{
-                                              fontSize: 10,
-                                              fontWeight: 600,
-                                              color: "var(--text-3)",
-                                              textTransform: "uppercase",
-                                              letterSpacing: "0.04em",
-                                              marginBottom: 2,
-                                            }}
-                                          >
-                                            {s.label}
-                                          </p>
-                                          <p
-                                            style={{
-                                              fontSize: s.label === "Tracking since" ? 13 : 18,
-                                              fontWeight: 700,
-                                              color: s.colour,
-                                            }}
-                                          >
-                                            {s.value}
-                                          </p>
-                                        </div>
-                                      ),
-                                  )}
-                              </div>
-
-                              {/* Progress bar (used vs remaining) */}
-                              {used > 0 && (
-                                <div style={{ marginBottom: 10 }}>
-                                  <div
-                                    style={{
-                                      display: "flex",
-                                      justifyContent: "space-between",
-                                      fontSize: 11,
-                                      color: "var(--text-3)",
-                                      marginBottom: 4,
-                                    }}
-                                  >
-                                    <span>
-                                      {used.toLocaleString()} used ({usedPct}%)
-                                    </span>
-                                    <span>{remaining.toLocaleString()} remaining</span>
-                                  </div>
-                                  <div
-                                    style={{
-                                      height: 8,
-                                      borderRadius: 4,
-                                      background: "var(--border)",
-                                      overflow: "hidden",
-                                    }}
-                                  >
-                                    <div
-                                      style={{
-                                        height: "100%",
-                                        borderRadius: 4,
-                                        width: `${Math.min(100, usedPct)}%`,
-                                        background: noBalance
-                                          ? "#ef4444"
-                                          : lowBalance
-                                            ? "#f59e0b"
-                                            : "#22c55e",
-                                        transition: "width 0.5s ease",
-                                      }}
-                                    />
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Balance history spark-line (SVG) */}
-                              {history.length >= 2 &&
-                                (() => {
-                                  const vals = history.map((e) => e.balance);
-                                  const minV = Math.min(...vals);
-                                  const maxV = Math.max(...vals);
-                                  const W = 280;
-                                  const H = 40;
-                                  const pts = vals
-                                    .map((v, i) => {
-                                      const x = (i / (vals.length - 1)) * W;
-                                      const y =
-                                        maxV === minV
-                                          ? H / 2
-                                          : H - ((v - minV) / (maxV - minV)) * H;
-                                      return `${x.toFixed(1)},${y.toFixed(1)}`;
-                                    })
-                                    .join(" ");
-                                  return (
-                                    <div style={{ marginBottom: 8 }}>
-                                      <p
-                                        style={{
-                                          fontSize: 10,
-                                          fontWeight: 600,
-                                          color: "var(--text-3)",
-                                          letterSpacing: "0.04em",
-                                          textTransform: "uppercase",
-                                          marginBottom: 4,
-                                        }}
-                                      >
-                                        Balance history ({history.length} readings)
-                                      </p>
-                                      <svg
-                                        viewBox={`0 0 ${W} ${H}`}
-                                        style={{
-                                          width: "100%",
-                                          maxWidth: W,
-                                          height: H,
-                                          display: "block",
-                                        }}
-                                      >
-                                        <polyline
-                                          points={pts}
-                                          fill="none"
-                                          stroke="#22c55e"
-                                          strokeWidth="2"
-                                          strokeLinejoin="round"
-                                        />
-                                        {vals.map((v, i) => {
-                                          const x = (i / (vals.length - 1)) * W;
-                                          const y =
-                                            maxV === minV
-                                              ? H / 2
-                                              : H - ((v - minV) / (maxV - minV)) * H;
-                                          return (
-                                            <circle
-                                              key={i}
-                                              cx={x.toFixed(1)}
-                                              cy={y.toFixed(1)}
-                                              r="3"
-                                              fill="#22c55e"
-                                            />
-                                          );
-                                        })}
-                                      </svg>
-                                      <div
-                                        style={{
-                                          display: "flex",
-                                          justifyContent: "space-between",
-                                          fontSize: 10,
-                                          color: "var(--text-3)",
-                                        }}
-                                      >
-                                        <span>{history[0].date}</span>
-                                        <span>{history[history.length - 1].date}</span>
-                                      </div>
-                                    </div>
-                                  );
-                                })()}
-
-                              <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>
-                                {used === 0
-                                  ? "Usage tracking starts from today — check back tomorrow to see consumption."
-                                  : "Usage calculated from highest recorded balance. Typical cost: ~10 units/overview · ~40 units/keyword report."}{" "}
-                                Top up at{" "}
-                                <a
-                                  href="https://www.semrush.com/billing/"
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  style={{ color: "var(--primary, #6366f1)" }}
-                                >
-                                  semrush.com/billing
-                                </a>
-                                .
-                              </p>
-                            </div>
-                          );
-                        })()}
                     </div>
 
                     {/* Right: rate limits + links */}
