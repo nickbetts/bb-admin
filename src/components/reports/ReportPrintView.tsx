@@ -3,7 +3,6 @@
 import { useEffect, useMemo } from "react";
 import { parsePeriodToDateRange, formatDateDisplay, getPreviousPeriod } from "@/lib/utils";
 import { isTextSection, TEXT_SECTION_LABELS, type TextSectionType } from "@/lib/report-blocks";
-import { SemrushSection } from "@/components/dashboard/SemrushSection";
 import { GA4Section } from "@/components/dashboard/GA4Section";
 import { MetaSection } from "@/components/dashboard/MetaSection";
 import { GoogleAdsSection } from "@/components/dashboard/GoogleAdsSection";
@@ -19,16 +18,28 @@ import { YouTubeSection } from "@/components/dashboard/YouTubeSection";
 import { HubSpotSection } from "@/components/dashboard/HubSpotSection";
 import { CallRailSection } from "@/components/dashboard/CallRailSection";
 import { CoreWebVitalsSection } from "@/components/dashboard/CoreWebVitalsSection";
-import { CompetitorIntelligenceSection } from "@/components/dashboard/CompetitorIntelligenceSection";
 import { TextSection } from "@/components/reports/TextSection";
 import { ScreenshotsSection } from "@/components/reports/ScreenshotsSection";
 
 const SECTION_LABEL_MAP: Record<string, string> = {
-  seo: "SEO", web: "Web", ga4: "GA4", paid_social: "Paid Social", meta: "Meta",
-  googleads: "Google Ads", searchconsole: "Search Console", ecommerce: "E-Commerce",
-  shopify: "Shopify", woocommerce: "WooCommerce", overview: "Overview",
-  youtube: "YouTube", hubspot: "HubSpot", callrail: "CallRail", klaviyo: "Klaviyo",
-  linkedin: "LinkedIn", tiktok: "TikTok", microsoft_ads: "Microsoft Ads",
+  seo: "SEO",
+  web: "Web",
+  ga4: "GA4",
+  paid_social: "Paid Social",
+  meta: "Meta",
+  googleads: "Google Ads",
+  searchconsole: "Search Console",
+  ecommerce: "E-Commerce",
+  shopify: "Shopify",
+  woocommerce: "WooCommerce",
+  overview: "Overview",
+  youtube: "YouTube",
+  hubspot: "HubSpot",
+  callrail: "CallRail",
+  klaviyo: "Klaviyo",
+  linkedin: "LinkedIn",
+  tiktok: "TikTok",
+  microsoft_ads: "Microsoft Ads",
 };
 function formatSectionLabel(key: string): string {
   return SECTION_LABEL_MAP[key] ?? key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, " ");
@@ -36,7 +47,7 @@ function formatSectionLabel(key: string): string {
 
 const SECTION_SUBTITLES: Record<string, string> = {
   overview: "High-level performance snapshot across all channels",
-  seo: "Organic search visibility via SEMrush",
+  seo: "Organic search visibility via Google Search Console",
   web: "Site traffic data via Google Analytics 4",
   paid_social: "Paid social advertising via Meta Ads",
   googleads: "Paid search advertising via Google Ads",
@@ -113,7 +124,13 @@ interface Report {
   screenshots: Screenshot[];
 }
 
-export function ReportPrintView({ report, showDescriptions = true }: { report: Report; showDescriptions?: boolean }) {
+export function ReportPrintView({
+  report,
+  showDescriptions = true,
+}: {
+  report: Report;
+  showDescriptions?: boolean;
+}) {
   const derived = parsePeriodToDateRange(report.period);
   const startDate = report.customStartDate || derived.startDate;
   const endDate = report.customEndDate || derived.endDate;
@@ -134,12 +151,6 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
       });
   })();
 
-  // Stable parsed array — keeps the reference identity steady across renders.
-  const semrushCampaignIds = useMemo<string[]>(() => {
-    try { return JSON.parse(report.client.semrushCampaignIds ?? "[]") as string[]; }
-    catch { return []; }
-  }, [report.client.semrushCampaignIds]);
-
   const sectionContainerStyle = {
     marginBottom: 64,
     position: "relative" as const,
@@ -153,7 +164,11 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
     crossSectionStories?: { sections: string[]; narrative: string }[];
   } | null = (() => {
     if (!report.narrativeData) return null;
-    try { return JSON.parse(report.narrativeData); } catch { return null; }
+    try {
+      return JSON.parse(report.narrativeData);
+    } catch {
+      return null;
+    }
   })();
 
   const narrativeBlock = narrativeResult ? (
@@ -166,28 +181,92 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
         padding: "20px 24px",
       }}
     >
-      <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--accent-hover)", marginBottom: 12 }}>
+      <p
+        style={{
+          fontSize: 11,
+          fontWeight: 700,
+          textTransform: "uppercase",
+          letterSpacing: "0.07em",
+          color: "var(--accent-hover)",
+          marginBottom: 12,
+        }}
+      >
         Report Narrative
       </p>
       {narrativeResult.executiveSummary && (
-        <p style={{ fontSize: 14, color: "#1e293b", lineHeight: 1.7, whiteSpace: "pre-wrap", marginBottom: narrativeResult.keyThemes ? 12 : 0 }}>
+        <p
+          style={{
+            fontSize: 14,
+            color: "#1e293b",
+            lineHeight: 1.7,
+            whiteSpace: "pre-wrap",
+            marginBottom: narrativeResult.keyThemes ? 12 : 0,
+          }}
+        >
           {narrativeResult.executiveSummary}
         </p>
       )}
       {narrativeResult.keyThemes && narrativeResult.keyThemes.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: narrativeResult.crossSectionStories ? 12 : 0 }}>
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 6,
+            marginBottom: narrativeResult.crossSectionStories ? 12 : 0,
+          }}
+        >
           {narrativeResult.keyThemes.map((theme, i) => (
-            <span key={i} style={{ fontSize: 11, fontWeight: 500, color: "var(--accent-hover)", background: "rgba(99,102,241,0.12)", padding: "2px 10px", borderRadius: 99 }}>{theme}</span>
+            <span
+              key={i}
+              style={{
+                fontSize: 11,
+                fontWeight: 500,
+                color: "var(--accent-hover)",
+                background: "rgba(99,102,241,0.12)",
+                padding: "2px 10px",
+                borderRadius: 99,
+              }}
+            >
+              {theme}
+            </span>
           ))}
         </div>
       )}
       {narrativeResult.crossSectionStories && narrativeResult.crossSectionStories.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--accent-hover)", opacity: 0.7, marginBottom: 4 }}>Cross-channel stories</p>
+          <p
+            style={{
+              fontSize: 11,
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              color: "var(--accent-hover)",
+              opacity: 0.7,
+              marginBottom: 4,
+            }}
+          >
+            Cross-channel stories
+          </p>
           {narrativeResult.crossSectionStories.map((story, i) => (
-            <div key={i} style={{ background: "rgba(255,255,255,0.6)", borderRadius: 6, padding: "8px 12px" }}>
-              <p style={{ fontSize: 11, fontWeight: 600, color: "var(--accent-hover)", marginBottom: 3 }}>{story.sections.map(formatSectionLabel).join(" + ")}</p>
-              <p style={{ fontSize: 13, color: "#1e293b", lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{story.narrative}</p>
+            <div
+              key={i}
+              style={{ background: "rgba(255,255,255,0.6)", borderRadius: 6, padding: "8px 12px" }}
+            >
+              <p
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: "var(--accent-hover)",
+                  marginBottom: 3,
+                }}
+              >
+                {story.sections.map(formatSectionLabel).join(" + ")}
+              </p>
+              <p
+                style={{ fontSize: 13, color: "#1e293b", lineHeight: 1.55, whiteSpace: "pre-wrap" }}
+              >
+                {story.narrative}
+              </p>
             </div>
           ))}
         </div>
@@ -239,8 +318,7 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
   return (
     <div
       style={{
-        fontFamily:
-          "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
         background: "var(--surface)",
         color: "#1e293b",
         maxWidth: 1100,
@@ -264,7 +342,9 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
             padding: "36px 40px",
           }}
         >
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+          <div
+            style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}
+          >
             <div>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/primary-logo.svg" alt="i3media" style={{ height: 32, marginBottom: 20 }} />
@@ -297,9 +377,10 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
                 {formatDateDisplay(startDate)} – {formatDateDisplay(endDate)}
                 {" · vs "}
                 {(() => {
-                  const prev = (compareStartDate && compareEndDate)
-                    ? { startDate: compareStartDate, endDate: compareEndDate }
-                    : getPreviousPeriod(startDate, endDate);
+                  const prev =
+                    compareStartDate && compareEndDate
+                      ? { startDate: compareStartDate, endDate: compareEndDate }
+                      : getPreviousPeriod(startDate, endDate);
                   return `${formatDateDisplay(prev.startDate)} – ${formatDateDisplay(prev.endDate)}`;
                 })()}
               </p>
@@ -309,7 +390,12 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
               <img
                 src={report.client.logoUrl}
                 alt={report.client.name}
-                style={{ height: 48, objectFit: "contain", filter: "brightness(0) invert(1)", opacity: 0.85 }}
+                style={{
+                  height: 48,
+                  objectFit: "contain",
+                  filter: "brightness(0) invert(1)",
+                  opacity: 0.85,
+                }}
               />
             )}
           </div>
@@ -340,9 +426,7 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
 
       {/* Sections */}
       {enabledSections.map((section) => {
-        const sectionScreenshots = report.screenshots.filter(
-          (s) => s.sectionId === section.id
-        );
+        const sectionScreenshots = report.screenshots.filter((s) => s.sectionId === section.id);
 
         const screenshotsBlock =
           sectionScreenshots.length > 0 ? (
@@ -400,9 +484,10 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
               {formatDateDisplay(startDate)} – {formatDateDisplay(endDate)}
               {" · vs "}
               {(() => {
-                const prev = (compareStartDate && compareEndDate)
-                  ? { startDate: compareStartDate, endDate: compareEndDate }
-                  : getPreviousPeriod(startDate, endDate);
+                const prev =
+                  compareStartDate && compareEndDate
+                    ? { startDate: compareStartDate, endDate: compareEndDate }
+                    : getPreviousPeriod(startDate, endDate);
                 return `${formatDateDisplay(prev.startDate)} – ${formatDateDisplay(prev.endDate)}`;
               })()}
             </p>
@@ -427,9 +512,10 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
           : undefined;
 
         const visibleBlocks = cardConfig?.visibleBlocks;
-        const hiddenCards = cardConfig?.hiddenCards && Object.keys(cardConfig.hiddenCards).length > 0
-          ? cardConfig.hiddenCards
-          : undefined;
+        const hiddenCards =
+          cardConfig?.hiddenCards && Object.keys(cardConfig.hiddenCards).length > 0
+            ? cardConfig.hiddenCards
+            : undefined;
 
         // Executive summary
         if (section.sectionType === "executive_summary") {
@@ -473,7 +559,14 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
                 </div>
                 <div style={{ padding: "20px 24px" }}>
                   {section.commentary ? (
-                    <p style={{ fontSize: 14, color: "#1e293b", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
+                    <p
+                      style={{
+                        fontSize: 14,
+                        color: "#1e293b",
+                        lineHeight: 1.7,
+                        whiteSpace: "pre-wrap",
+                      }}
+                    >
                       {section.commentary}
                     </p>
                   ) : (
@@ -491,17 +584,29 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
         if (isTextSection(section.sectionType)) {
           if (section.sectionType === "text_screenshots") {
             return (
-              <div key={section.id} id={`section-${section.id}`} data-section-type={section.sectionType} style={sectionContainerStyle}>
+              <div
+                key={section.id}
+                id={`section-${section.id}`}
+                data-section-type={section.sectionType}
+                style={sectionContainerStyle}
+              >
                 <ScreenshotsSection
                   screenshots={report.screenshots.filter((s) => !s.sectionId)}
-                  title={TEXT_SECTION_LABELS[section.sectionType as TextSectionType] ?? section.title}
+                  title={
+                    TEXT_SECTION_LABELS[section.sectionType as TextSectionType] ?? section.title
+                  }
                   onDelete={async () => {}}
                 />
               </div>
             );
           }
           return (
-            <div key={section.id} id={`section-${section.id}`} data-section-type={section.sectionType} style={sectionContainerStyle}>
+            <div
+              key={section.id}
+              id={`section-${section.id}`}
+              data-section-type={section.sectionType}
+              style={sectionContainerStyle}
+            >
               <TextSection
                 sectionId={section.id}
                 reportId={report.id}
@@ -529,7 +634,12 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
         );
 
         return (
-          <div key={section.id} id={`section-${section.id}`} data-section-type={section.sectionType} style={sectionContainerStyle}>
+          <div
+            key={section.id}
+            id={`section-${section.id}`}
+            data-section-type={section.sectionType}
+            style={sectionContainerStyle}
+          >
             {section.sectionType === "overview" && (
               <OverviewSection
                 client={report.client}
@@ -544,13 +654,13 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
               />
             )}
             {section.sectionType === "seo" &&
-              (report.client.semrushDomain ? (
-                <SemrushSection
-                  domain={report.client.semrushDomain}
-                  projectId={report.client.semrushProjectId}
-                  campaignIds={semrushCampaignIds}
+              (report.client.searchConsoleSiteUrl ? (
+                <SearchConsoleSection
+                  siteUrl={report.client.searchConsoleSiteUrl}
                   startDate={startDate}
                   endDate={endDate}
+                  compareStartDate={compareStartDate ?? undefined}
+                  compareEndDate={compareEndDate ?? undefined}
                   visibleBlocks={visibleBlocks}
                   hiddenCards={hiddenCards}
                   hideAlerts
@@ -560,7 +670,7 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
               ) : (
                 <>
                   {afterHeader}
-                  {unconfiguredNotice("No SEMrush domain connected.")}
+                  {unconfiguredNotice("No Search Console property connected.")}
                 </>
               ))}
             {section.sectionType === "web" &&
@@ -823,11 +933,9 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
             {section.sectionType === "competitor_intelligence" && (
               <>
                 {afterHeader}
-                <CompetitorIntelligenceSection
-                  clientId={report.client.id}
-                  semrushDomain={report.client.semrushDomain}
-                  visibleBlocks={visibleBlocks}
-                />
+                {unconfiguredNotice(
+                  "Competitor Intelligence has been retired with SEMrush removal.",
+                )}
               </>
             )}
           </div>
@@ -881,7 +989,6 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
           </div>
         </div>
       )}
-
     </div>
   );
 }

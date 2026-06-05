@@ -2,7 +2,7 @@
 
 ## Project overview
 
-i3media Report is an internal agency platform built with **Next.js 16 (App Router) + React 19 + TypeScript + Prisma + Tailwind CSS v4**, deployed on **Vercel**. It aggregates data from 16 marketing channels (GA4, Google Ads, Meta, TikTok, Microsoft Ads, LinkedIn, Klaviyo, YouTube, HubSpot, CallRail, SemRush, Search Console, Moz, WooCommerce, Shopify, Core Web Vitals) and surfaces AI-powered insights via **OpenAI** (GPT-4o / GPT-4o-mini).
+i3media Report is an internal agency platform built with **Next.js 16 (App Router) + React 19 + TypeScript + Prisma + Tailwind CSS v4**, deployed on **Vercel**. It aggregates data from 15 marketing channels (GA4, Google Ads, Meta, TikTok, Microsoft Ads, LinkedIn, Klaviyo, YouTube, HubSpot, CallRail, Search Console, Moz, WooCommerce, Shopify, Core Web Vitals) and surfaces AI-powered insights via **OpenAI** (GPT-4o / GPT-4o-mini).
 
 > **Coding agents available:** Specialised sub-agent instructions live in `.github/agents/`:
 >
@@ -257,7 +257,6 @@ Knip (`npm run knip`) is available for dependency/export/file hygiene and should
 | `NEXTAUTH_SECRET`                                                                                                           | ✅                           | ✅ any random string                                            |
 | `BLOB_READ_WRITE_TOKEN`                                                                                                     | ✅                           | ✅ `vercel_blob_rw_placeholder`                                 |
 | `OPENAI_API_KEY`                                                                                                            | ✅                           | ✅ `placeholder` (AI features won't work)                       |
-| `SEMRUSH_API_KEY`                                                                                                           | ✅                           | ✅ `placeholder`                                                |
 | `GA4_CLIENT_EMAIL`                                                                                                          | ✅                           | ✅ `placeholder`                                                |
 | `GA4_PRIVATE_KEY`                                                                                                           | ✅                           | ✅ `placeholder`                                                |
 | `META_ACCESS_TOKEN`                                                                                                         | ✅                           | ✅ `placeholder`                                                |

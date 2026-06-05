@@ -40,7 +40,6 @@ jobs:
           # Stub values so env validation / module imports succeed during build.
           # Real secrets are never needed for a static Next.js build.
           BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN != '' && secrets.BLOB_READ_WRITE_TOKEN || 'vercel_blob_rw_placeholder' }}
-          SEMRUSH_API_KEY: ${{ secrets.SEMRUSH_API_KEY != '' && secrets.SEMRUSH_API_KEY || 'placeholder' }}
           SESSION_SECRET: placeholder-session-secret-for-ci
           NEXTAUTH_SECRET: placeholder-nextauth-secret-for-ci
           CRON_SECRET: placeholder-cron-secret-for-ci

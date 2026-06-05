@@ -73,25 +73,79 @@ interface DetectedCompetitor {
 // ─── Fun mode chaos ──────────────────────────────────────────────────────────
 
 const CHAOS_EMOJIS = [
-  "😺","😹","🐈","😻","🙀","😾","🐈‍⬛","🐾","✨","🌟",
-  "💕","💖","💗","💞","💓","💘","🥰","😍","😘","💋",
-  "💅","🦩","🎈","🎉","🎆","🎇","🐶","🐟","🍓","🥩",
-  "🐔","🐣","🦆","🐢","🫶","👋","💀","👀","💫","🌈",
-  "🔥","💥","⚡","🌸","🍑","🍆","🦄","🐸","🤌","👁️",
-  "🫀","🧠","🫦","💩","👾","🤖","🎪","🎠","🪄","🎭",
+  "😺",
+  "😹",
+  "🐈",
+  "😻",
+  "🙀",
+  "😾",
+  "🐈‍⬛",
+  "🐾",
+  "✨",
+  "🌟",
+  "💕",
+  "💖",
+  "💗",
+  "💞",
+  "💓",
+  "💘",
+  "🥰",
+  "😍",
+  "😘",
+  "💋",
+  "💅",
+  "🦩",
+  "🎈",
+  "🎉",
+  "🎆",
+  "🎇",
+  "🐶",
+  "🐟",
+  "🍓",
+  "🥩",
+  "🐔",
+  "🐣",
+  "🦆",
+  "🐢",
+  "🫶",
+  "👋",
+  "💀",
+  "👀",
+  "💫",
+  "🌈",
+  "🔥",
+  "💥",
+  "⚡",
+  "🌸",
+  "🍑",
+  "🍆",
+  "🦄",
+  "🐸",
+  "🤌",
+  "👁️",
+  "🫀",
+  "🧠",
+  "🫦",
+  "💩",
+  "👾",
+  "🤖",
+  "🎪",
+  "🎠",
+  "🪄",
+  "🎭",
 ];
 
 interface Particle {
   id: number;
   emoji: string;
-  x: number;      // vw units
-  y: number;      // vh units
+  x: number; // vw units
+  y: number; // vh units
   size: number;
   rotation: number;
   initialRotation: number;
   rotationSpeed: number; // degrees/s
-  vx: number;     // vw/s
-  vy: number;     // vh/s
+  vx: number; // vw/s
+  vy: number; // vh/s
   wobble: number; // sine wave amplitude in vw
   wobbleSpeed: number;
   scale: number;
@@ -124,21 +178,48 @@ function ChaosOverlay({ active }: { active: boolean }) {
         // Spawn from random edges or center of screen
         const edge = Math.floor(Math.random() * 5);
         let x: number, y: number, vx: number, vy: number;
-        if (edge === 0) { x = Math.random() * 100; y = 105; vx = (Math.random() - 0.5) * 8; vy = -(10 + Math.random() * 15); } // bottom
-        else if (edge === 1) { x = -5; y = Math.random() * 100; vx = 6 + Math.random() * 8; vy = (Math.random() - 0.5) * 8; } // left
-        else if (edge === 2) { x = 105; y = Math.random() * 100; vx = -(6 + Math.random() * 8); vy = (Math.random() - 0.5) * 8; } // right
-        else if (edge === 3) { x = Math.random() * 100; y = -5; vx = (Math.random() - 0.5) * 8; vy = 6 + Math.random() * 10; } // top
-        else { x = 30 + Math.random() * 40; y = 30 + Math.random() * 40; vx = (Math.random() - 0.5) * 16; vy = (Math.random() - 0.5) * 16; } // center explosion
+        if (edge === 0) {
+          x = Math.random() * 100;
+          y = 105;
+          vx = (Math.random() - 0.5) * 8;
+          vy = -(10 + Math.random() * 15);
+        } // bottom
+        else if (edge === 1) {
+          x = -5;
+          y = Math.random() * 100;
+          vx = 6 + Math.random() * 8;
+          vy = (Math.random() - 0.5) * 8;
+        } // left
+        else if (edge === 2) {
+          x = 105;
+          y = Math.random() * 100;
+          vx = -(6 + Math.random() * 8);
+          vy = (Math.random() - 0.5) * 8;
+        } // right
+        else if (edge === 3) {
+          x = Math.random() * 100;
+          y = -5;
+          vx = (Math.random() - 0.5) * 8;
+          vy = 6 + Math.random() * 10;
+        } // top
+        else {
+          x = 30 + Math.random() * 40;
+          y = 30 + Math.random() * 40;
+          vx = (Math.random() - 0.5) * 16;
+          vy = (Math.random() - 0.5) * 16;
+        } // center explosion
 
         return {
           id: nextId.current++,
           emoji: CHAOS_EMOJIS[Math.floor(Math.random() * CHAOS_EMOJIS.length)],
-          x, y,
+          x,
+          y,
           size: 14 + Math.floor(Math.random() * 16),
           rotation: Math.random() * 360,
           initialRotation: Math.random() * 360,
           rotationSpeed: (Math.random() > 0.5 ? 1 : -1) * (20 + Math.random() * 40),
-          vx, vy,
+          vx,
+          vy,
           wobble: 3 + Math.random() * 8,
           wobbleSpeed: 2 + Math.random() * 5,
           scale: 0.5 + Math.random() * 1.5,
@@ -174,13 +255,16 @@ function ChaosOverlay({ active }: { active: boolean }) {
               opacity: Math.max(0, 1 - (age / p.lifespan) ** 1.5),
             };
           })
-          .filter((p) => p.opacity > 0.01)
+          .filter((p) => p.opacity > 0.01),
       );
       raf = requestAnimationFrame(animate);
     };
     raf = requestAnimationFrame(animate);
 
-    return () => { clearInterval(spawnInterval); cancelAnimationFrame(raf); };
+    return () => {
+      clearInterval(spawnInterval);
+      cancelAnimationFrame(raf);
+    };
   }, [active]);
 
   if (!active) return null;
@@ -189,28 +273,45 @@ function ChaosOverlay({ active }: { active: boolean }) {
     <>
       {/* Full-screen flash on burst */}
       {flash && (
-        <div style={{
-          position: "fixed", inset: 0, zIndex: 9998, pointerEvents: "none",
-          background: "linear-gradient(135deg, rgba(249,168,212,0.25), rgba(167,139,250,0.2), rgba(253,224,71,0.2))",
-        }} />
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9998,
+            pointerEvents: "none",
+            background:
+              "linear-gradient(135deg, rgba(249,168,212,0.25), rgba(167,139,250,0.2), rgba(253,224,71,0.2))",
+          }}
+        />
       )}
       {/* Full-viewport particle layer — breaks OUT of the container */}
-      <div style={{
-        position: "fixed", inset: 0, zIndex: 9999, pointerEvents: "none", overflow: "visible",
-      }}>
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 9999,
+          pointerEvents: "none",
+          overflow: "visible",
+        }}
+      >
         {particles.map((p) => (
-          <span key={p.id} style={{
-            position: "absolute",
-            left: `${p.x}vw`,
-            top: `${p.y}vh`,
-            fontSize: p.size,
-            opacity: p.opacity,
-            transform: `rotate(${p.rotation}deg) scale(${p.scale})`,
-            userSelect: "none",
-            lineHeight: 1,
-            willChange: "transform, opacity",
-            filter: p.size > 36 ? "drop-shadow(0 0 8px rgba(249,168,212,0.8))" : "none",
-          }}>{p.emoji}</span>
+          <span
+            key={p.id}
+            style={{
+              position: "absolute",
+              left: `${p.x}vw`,
+              top: `${p.y}vh`,
+              fontSize: p.size,
+              opacity: p.opacity,
+              transform: `rotate(${p.rotation}deg) scale(${p.scale})`,
+              userSelect: "none",
+              lineHeight: 1,
+              willChange: "transform, opacity",
+              filter: p.size > 36 ? "drop-shadow(0 0 8px rgba(249,168,212,0.8))" : "none",
+            }}
+          >
+            {p.emoji}
+          </span>
         ))}
       </div>
     </>
@@ -265,7 +366,10 @@ function useFunProgress(active: boolean): string {
       setMsg(shuffled[indexRef.current]);
     }, 3500);
 
-    return () => { clearTimeout(first); clearInterval(id); };
+    return () => {
+      clearTimeout(first);
+      clearInterval(id);
+    };
   }, [active]);
 
   return msg;
@@ -361,7 +465,6 @@ const METHODOLOGY_STEPS = [
   },
 ];
 
-
 function MethodologyAccordion() {
   const [open, setOpen] = useState(false);
   return (
@@ -422,17 +525,28 @@ function MethodologyAccordion() {
                 gap: 16,
                 paddingBottom: i < METHODOLOGY_STEPS.length - 1 ? 20 : 0,
                 marginBottom: i < METHODOLOGY_STEPS.length - 1 ? 20 : 0,
-                borderBottom: i < METHODOLOGY_STEPS.length - 1 ? "1px solid var(--border-subtle, var(--border))" : "none",
+                borderBottom:
+                  i < METHODOLOGY_STEPS.length - 1
+                    ? "1px solid var(--border-subtle, var(--border))"
+                    : "none",
               }}
             >
               {/* Step number + connector */}
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  flexShrink: 0,
+                }}
+              >
                 <div
                   style={{
                     width: 32,
                     height: 32,
                     borderRadius: "50%",
-                    background: "var(--accent-bg, color-mix(in srgb, var(--accent) 12%, transparent))",
+                    background:
+                      "var(--accent-bg, color-mix(in srgb, var(--accent) 12%, transparent))",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -443,12 +557,22 @@ function MethodologyAccordion() {
                   {step.icon}
                 </div>
                 {i < METHODOLOGY_STEPS.length - 1 && (
-                  <div style={{ width: 1, flex: 1, minHeight: 16, background: "var(--border)", marginTop: 6 }} />
+                  <div
+                    style={{
+                      width: 1,
+                      flex: 1,
+                      minHeight: 16,
+                      background: "var(--border)",
+                      marginTop: 6,
+                    }}
+                  />
                 )}
               </div>
               {/* Content */}
               <div style={{ paddingTop: 4 }}>
-                <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 600, color: "var(--text)" }}>
+                <p
+                  style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 600, color: "var(--text)" }}
+                >
                   {i + 1}. {step.label}
                 </p>
                 <p style={{ margin: 0, fontSize: 12.5, color: "var(--text-3)", lineHeight: 1.6 }}>
@@ -481,7 +605,7 @@ export default function ContentStrategyPage() {
   const [clientName, setClientName] = useState("");
   const [clientId, setClientId] = useState("");
   const [period, setPeriod] = useState(
-    new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" })
+    new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" }),
   );
   const [dragOver, setDragOver] = useState(false);
   const [creatingClient, setCreatingClient] = useState(false);
@@ -499,7 +623,7 @@ export default function ContentStrategyPage() {
   const [copied, setCopied] = useState(false);
 
   // Mode toggle
-  const [mode, setMode] = useState<GenerationMode>("semrush");
+  const [mode, setMode] = useState<GenerationMode>("upload");
 
   // Inline new-client (SEMrush mode)
   const [creatingClientSemrush, setCreatingClientSemrush] = useState(false);
@@ -531,11 +655,12 @@ export default function ContentStrategyPage() {
     const stored = localStorage.getItem("cs-fun-mode");
     return stored === null ? true : stored === "1";
   });
-  const toggleFunMode = () => setFunMode((v) => {
-    const next = !v;
-    localStorage.setItem("cs-fun-mode", next ? "1" : "0");
-    return next;
-  });
+  const toggleFunMode = () =>
+    setFunMode((v) => {
+      const next = !v;
+      localStorage.setItem("cs-fun-mode", next ? "1" : "0");
+      return next;
+    });
   const funMessage = useFunProgress(generating);
   const elapsedTime = useGenerationTimer(generating);
 
@@ -597,12 +722,19 @@ export default function ContentStrategyPage() {
           iframeRef.current?.contentWindow?.postMessage({ type: "cs:save:result", success }, "*");
           if (success) setPreviewHtml(html);
         } catch {
-          iframeRef.current?.contentWindow?.postMessage({ type: "cs:save:result", success: false }, "*");
+          iframeRef.current?.contentWindow?.postMessage(
+            { type: "cs:save:result", success: false },
+            "*",
+          );
         }
       }
 
       if (event.data.type === "cs:regen") {
-        const { idx, data, strategyId } = event.data as { idx: string; data: Record<string, unknown>; strategyId: string };
+        const { idx, data, strategyId } = event.data as {
+          idx: string;
+          data: Record<string, unknown>;
+          strategyId: string;
+        };
         try {
           const res = await fetch("/api/ai/content-strategy-regen", {
             method: "POST",
@@ -618,24 +750,35 @@ export default function ContentStrategyPage() {
             }),
           });
           const result = await res.json();
-          iframeRef.current?.contentWindow?.postMessage({
-            type: "cs:regen:result",
-            idx,
-            notes: result.notes ?? "",
-            error: result.error,
-          }, "*");
+          iframeRef.current?.contentWindow?.postMessage(
+            {
+              type: "cs:regen:result",
+              idx,
+              notes: result.notes ?? "",
+              error: result.error,
+            },
+            "*",
+          );
         } catch {
-          iframeRef.current?.contentWindow?.postMessage({
-            type: "cs:regen:result",
-            idx,
-            notes: "",
-            error: "Network error",
-          }, "*");
+          iframeRef.current?.contentWindow?.postMessage(
+            {
+              type: "cs:regen:result",
+              idx,
+              notes: "",
+              error: "Network error",
+            },
+            "*",
+          );
         }
       }
 
       if (event.data.type === "cs:add") {
-        const { sectionType, strategyId, existing, btnId } = event.data as { sectionType: string; strategyId: string; existing: string[]; btnId: string };
+        const { sectionType, strategyId, existing, btnId } = event.data as {
+          sectionType: string;
+          strategyId: string;
+          existing: string[];
+          btnId: string;
+        };
         try {
           const res = await fetch("/api/ai/content-strategy-regen", {
             method: "POST",
@@ -648,25 +791,31 @@ export default function ContentStrategyPage() {
             }),
           });
           const result = await res.json();
-          iframeRef.current?.contentWindow?.postMessage({
-            type: "cs:add:result",
-            sectionType,
-            btnId,
-            title: result.title ?? "",
-            notes: result.notes ?? "",
-            keywords: result.keywords ?? [],
-            error: result.error,
-          }, "*");
+          iframeRef.current?.contentWindow?.postMessage(
+            {
+              type: "cs:add:result",
+              sectionType,
+              btnId,
+              title: result.title ?? "",
+              notes: result.notes ?? "",
+              keywords: result.keywords ?? [],
+              error: result.error,
+            },
+            "*",
+          );
         } catch {
-          iframeRef.current?.contentWindow?.postMessage({
-            type: "cs:add:result",
-            sectionType,
-            btnId,
-            title: "",
-            notes: "",
-            keywords: [],
-            error: "Network error",
-          }, "*");
+          iframeRef.current?.contentWindow?.postMessage(
+            {
+              type: "cs:add:result",
+              sectionType,
+              btnId,
+              title: "",
+              notes: "",
+              keywords: [],
+              error: "Network error",
+            },
+            "*",
+          );
         }
       }
     }
@@ -707,7 +856,7 @@ export default function ContentStrategyPage() {
         setError(data.error);
       } else {
         setSuccess(
-          `Content strategy generated! ${data.stats.totalPageOptimisations} page optimisations, ${data.stats.totalLandingPages} landing pages, ${data.stats.totalBlogPosts} blog posts, ${data.stats.totalLinkTargets} link targets.`
+          `Content strategy generated! ${data.stats.totalPageOptimisations} page optimisations, ${data.stats.totalLandingPages} landing pages, ${data.stats.totalBlogPosts} blog posts, ${data.stats.totalLinkTargets} link targets.`,
         );
         setFile(null);
         loadStrategies();
@@ -755,9 +904,7 @@ export default function ContentStrategyPage() {
 
   async function handleShare(id: string) {
     try {
-      const res = await fetch(
-        `/api/tools/content-strategy?action=share&id=${id}`
-      );
+      const res = await fetch(`/api/tools/content-strategy?action=share&id=${id}`);
       const data = await res.json();
       if (data.shareToken) {
         setSharingId(id);
@@ -784,7 +931,14 @@ export default function ContentStrategyPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!(await confirm({ title: "Delete this content strategy?", description: "This cannot be undone.", confirmLabel: "Delete", danger: true })))
+    if (
+      !(await confirm({
+        title: "Delete this content strategy?",
+        description: "This cannot be undone.",
+        confirmLabel: "Delete",
+        danger: true,
+      }))
+    )
       return;
     try {
       await fetch(`/api/tools/content-strategy?id=${id}`, {
@@ -804,7 +958,10 @@ export default function ContentStrategyPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, status: toArchive ? "archived" : "live" }),
       });
-      if (!res.ok) { setError("Failed to update strategy status"); return; }
+      if (!res.ok) {
+        setError("Failed to update strategy status");
+        return;
+      }
       toast(toArchive ? "Strategy archived" : "Strategy restored", "success");
       loadStrategies();
     } catch {
@@ -817,11 +974,14 @@ export default function ContentStrategyPage() {
       setError("This strategy is not linked to a client — cannot export actions.");
       return;
     }
-    if (!(await confirm({
-      title: "Convert this strategy to action items?",
-      description: `Each page optimisation, landing page, blog post and link target in "${title}" will be created as an open action on the client. Existing actions will not be modified.`,
-      confirmLabel: "Create actions",
-    }))) return;
+    if (
+      !(await confirm({
+        title: "Convert this strategy to action items?",
+        description: `Each page optimisation, landing page, blog post and link target in "${title}" will be created as an open action on the client. Existing actions will not be modified.`,
+        confirmLabel: "Create actions",
+      }))
+    )
+      return;
     try {
       const res = await fetch(`/api/tools/content-strategy/${id}/export-actions`, {
         method: "POST",
@@ -836,7 +996,10 @@ export default function ContentStrategyPage() {
       if (data.created === 0) {
         toast("No exportable items found in this strategy.", "warning");
       } else {
-        toast(`Created ${data.created} action${data.created === 1 ? "" : "s"} from "${title}"`, "success");
+        toast(
+          `Created ${data.created} action${data.created === 1 ? "" : "s"} from "${title}"`,
+          "success",
+        );
       }
     } catch {
       setError("Failed to export actions");
@@ -868,7 +1031,10 @@ export default function ContentStrategyPage() {
   async function handleAddSemrushToClient() {
     const rawDomain = addSemrushDomain.trim();
     if (!rawDomain || !clientId) return;
-    const domain = rawDomain.replace(/^https?:\/\//i, "").replace(/^www\./i, "").replace(/\/.*$/, "");
+    const domain = rawDomain
+      .replace(/^https?:\/\//i, "")
+      .replace(/^www\./i, "")
+      .replace(/\/.*$/, "");
     const currentClient = clients.find((c) => c.id === clientId);
     if (!currentClient) return;
 
@@ -905,7 +1071,7 @@ export default function ContentStrategyPage() {
       // 3. Update local clients list
       const updatedDomain = projData.domain ?? domain;
       setClients((prev) =>
-        prev.map((c) => c.id === clientId ? { ...c, semrushDomain: updatedDomain } : c)
+        prev.map((c) => (c.id === clientId ? { ...c, semrushDomain: updatedDomain } : c)),
       );
       setSemrushDomain(updatedDomain);
       setAddingSemrushToClient(false);
@@ -925,7 +1091,10 @@ export default function ContentStrategyPage() {
     const name = newClientName.trim();
     const rawDomain = newClientDomain.trim();
     if (!name || !rawDomain) return;
-    const domain = rawDomain.replace(/^https?:\/\//i, "").replace(/^www\./i, "").replace(/\/.*$/, "");
+    const domain = rawDomain
+      .replace(/^https?:\/\//i, "")
+      .replace(/^www\./i, "")
+      .replace(/\/.*$/, "");
 
     setNewClientCreating(true);
     setError("");
@@ -1018,13 +1187,21 @@ export default function ContentStrategyPage() {
   }
 
   async function addCustomCompetitor() {
-    const raw = customCompetitorInput.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/$/, "");
+    const raw = customCompetitorInput
+      .trim()
+      .toLowerCase()
+      .replace(/^https?:\/\//, "")
+      .replace(/^www\./, "")
+      .replace(/\/$/, "");
     if (!raw) return;
     if (detectedCompetitors.some((c) => c.domain === raw)) {
       setCustomCompetitorInput("");
       return;
     }
-    setDetectedCompetitors((prev) => [...prev, { domain: raw, commonKeywords: 0, manual: true, checking: !!clientId }]);
+    setDetectedCompetitors((prev) => [
+      ...prev,
+      { domain: raw, commonKeywords: 0, manual: true, checking: !!clientId },
+    ]);
     setCustomCompetitorInput("");
 
     if (!clientId) return;
@@ -1041,17 +1218,21 @@ export default function ContentStrategyPage() {
       });
       const data = await res.json();
       setDetectedCompetitors((prev) =>
-        prev.map((c) => c.domain === raw ? {
-          ...c,
-          commonKeywords: data.commonKeywords ?? 0,
-          scraped: data.scraped ?? false,
-          pageContext: data.pageContext ?? undefined,
-          checking: false,
-        } : c)
+        prev.map((c) =>
+          c.domain === raw
+            ? {
+                ...c,
+                commonKeywords: data.commonKeywords ?? 0,
+                scraped: data.scraped ?? false,
+                pageContext: data.pageContext ?? undefined,
+                checking: false,
+              }
+            : c,
+        ),
       );
     } catch {
       setDetectedCompetitors((prev) =>
-        prev.map((c) => c.domain === raw ? { ...c, checking: false } : c)
+        prev.map((c) => (c.domain === raw ? { ...c, checking: false } : c)),
       );
     }
   }
@@ -1103,7 +1284,9 @@ export default function ContentStrategyPage() {
         return;
       }
 
-      setSuccess("Generation started — you can navigate away and come back. The strategy will appear below when ready.");
+      setSuccess(
+        "Generation started — you can navigate away and come back. The strategy will appear below when ready.",
+      );
       setSemrushBrief("");
       loadStrategies();
     } catch {
@@ -1119,72 +1302,153 @@ export default function ContentStrategyPage() {
       <ClientBackLink />
       <ClientFilterBanner />
       {/* PR5 deprecation notice — Grand Plan supersedes standalone content strategies */}
-      <div style={{ background: "var(--warning-bg, #fef9c3)", border: "1px solid var(--warning-border, #fde68a)", borderRadius: 10, padding: "10px 14px", marginBottom: 16, display: "flex", gap: 10, alignItems: "flex-start" }}>
+      <div
+        style={{
+          background: "var(--warning-bg, #fef9c3)",
+          border: "1px solid var(--warning-border, #fde68a)",
+          borderRadius: 10,
+          padding: "10px 14px",
+          marginBottom: 16,
+          display: "flex",
+          gap: 10,
+          alignItems: "flex-start",
+        }}
+      >
         <span style={{ fontSize: 16 }}>⚠️</span>
         <div style={{ fontSize: 13, color: "var(--text-2, #78350f)" }}>
-          <strong>Content Strategy is being retired.</strong> New content plans should be created as a{" "}
-          <Link href="/tools/grand-plan/new" style={{ color: "var(--accent)", fontWeight: 600, textDecoration: "underline" }}>Grand Plan</Link>{" "}
-          — which includes keyword research, paid media, and a shareable client microsite alongside the content plan.
-          Existing strategies remain fully accessible here.
+          <strong>Content Strategy is being retired.</strong> New content plans should be created as
+          a{" "}
+          <Link
+            href="/tools/grand-plan/new"
+            style={{ color: "var(--accent)", fontWeight: 600, textDecoration: "underline" }}
+          >
+            Grand Plan
+          </Link>{" "}
+          — which includes keyword research, paid media, and a shareable client microsite alongside
+          the content plan. Existing strategies remain fully accessible here.
         </div>
       </div>
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 28 }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          marginBottom: 28,
+        }}
+      >
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", margin: 0 }}>Content Strategy Creator</h1>
-          <p style={{ fontSize: 13, color: "var(--text-3)", marginTop: 4 }}>Generate a polished, shareable content strategy document from SEMrush data or a keyword spreadsheet.</p>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", margin: 0 }}>
+            Content Strategy Creator
+          </h1>
+          <p style={{ fontSize: 13, color: "var(--text-3)", marginTop: 4 }}>
+            Generate a polished, shareable content strategy document from a keyword spreadsheet.
+          </p>
         </div>
       </div>
 
       {/* Alerts */}
       {error && (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 16px", marginBottom: 20, background: "var(--danger-bg)", border: "1px solid var(--danger-border)", borderRadius: "var(--r)", color: "var(--danger-text)", fontSize: 13 }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            padding: "12px 16px",
+            marginBottom: 20,
+            background: "var(--danger-bg)",
+            border: "1px solid var(--danger-border)",
+            borderRadius: "var(--r)",
+            color: "var(--danger-text)",
+            fontSize: 13,
+          }}
+        >
           <span>{error}</span>
-          <button onClick={() => setError("")} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "var(--danger-text)" }}><X style={{ width: 14, height: 14 }} /></button>
+          <button
+            onClick={() => setError("")}
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: 4,
+              color: "var(--danger-text)",
+            }}
+          >
+            <X style={{ width: 14, height: 14 }} />
+          </button>
         </div>
       )}
       {success && (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 16px", marginBottom: 20, background: "var(--success-bg)", border: "1px solid var(--success-border)", borderRadius: "var(--r)", color: "var(--success-text)", fontSize: 13 }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            padding: "12px 16px",
+            marginBottom: 20,
+            background: "var(--success-bg)",
+            border: "1px solid var(--success-border)",
+            borderRadius: "var(--r)",
+            color: "var(--success-text)",
+            fontSize: 13,
+          }}
+        >
           <span>{success}</span>
-          <button onClick={() => setSuccess("")} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "var(--success-text)" }}><X style={{ width: 14, height: 14 }} /></button>
+          <button
+            onClick={() => setSuccess("")}
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: 4,
+              color: "var(--success-text)",
+            }}
+          >
+            <X style={{ width: 14, height: 14 }} />
+          </button>
         </div>
       )}
 
       {/* Generate Card */}
       <div className="card" style={{ marginBottom: 28 }}>
-        <div className="card-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div
+          className="card-header"
+          style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
+        >
           <div>
             <h2 className="card-title">Generate New Strategy</h2>
             <p className="card-subtitle">
               {mode === "semrush"
-                ? "Automatically generate a content strategy from SEMrush data"
+                ? "SEMrush mode has been retired"
                 : "Upload an Excel keyword research spreadsheet to create a client-ready document"}
             </p>
           </div>
           {/* Mode toggle */}
-          <div style={{ display: "flex", background: "var(--bg)", borderRadius: "var(--r)", padding: 3, gap: 2, flexShrink: 0 }}>
-            <button
-              type="button"
-              onClick={() => setMode("semrush")}
-              style={{
-                display: "flex", alignItems: "center", gap: 6,
-                padding: "7px 14px", borderRadius: "var(--r-sm)", border: "none", cursor: "pointer",
-                fontSize: 13, fontWeight: mode === "semrush" ? 600 : 400,
-                background: mode === "semrush" ? "var(--surface)" : "transparent",
-                color: mode === "semrush" ? "var(--accent)" : "var(--text-3)",
-                boxShadow: mode === "semrush" ? "var(--shadow-xs)" : "none",
-                transition: "all 0.15s ease",
-              }}
-            >
-              <Zap style={{ width: 14, height: 14 }} /> SEMrush
-            </button>
+          <div
+            style={{
+              display: "flex",
+              background: "var(--bg)",
+              borderRadius: "var(--r)",
+              padding: 3,
+              gap: 2,
+              flexShrink: 0,
+            }}
+          >
             <button
               type="button"
               onClick={() => setMode("upload")}
               style={{
-                display: "flex", alignItems: "center", gap: 6,
-                padding: "7px 14px", borderRadius: "var(--r-sm)", border: "none", cursor: "pointer",
-                fontSize: 13, fontWeight: mode === "upload" ? 600 : 400,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "7px 14px",
+                borderRadius: "var(--r-sm)",
+                border: "none",
+                cursor: "pointer",
+                fontSize: 13,
+                fontWeight: mode === "upload" ? 600 : 400,
                 background: mode === "upload" ? "var(--surface)" : "transparent",
                 color: mode === "upload" ? "var(--accent)" : "var(--text-3)",
                 boxShadow: mode === "upload" ? "var(--shadow-xs)" : "none",
@@ -1196,22 +1460,42 @@ export default function ContentStrategyPage() {
           </div>
         </div>
         <div className="card-body">
-
           {/* ─── SEMrush Mode ─── */}
+          {mode === "semrush" && (
+            <div style={{ fontSize: 13, color: "var(--text-3)", padding: "12px 0" }}>
+              SEMrush mode has been retired. Use Upload mode to generate content strategies.
+            </div>
+          )}
           {mode === "semrush" && (
             <form onSubmit={handleSemrushGenerate}>
               {/* Client selector + Domain display */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 16,
+                  marginBottom: 20,
+                }}
+              >
                 <div>
-                  <label className="form-label">Client <span style={{ color: "var(--danger)" }}>*</span></label>
+                  <label className="form-label">
+                    Client <span style={{ color: "var(--danger)" }}>*</span>
+                  </label>
                   {creatingClientSemrush ? (
-                    <div style={{
-                      padding: "14px 16px", borderRadius: "var(--r-sm)",
-                      border: "1px solid var(--accent-border, #c4b5fd)",
-                      background: "var(--accent-bg)", display: "flex",
-                      flexDirection: "column", gap: 10,
-                    }}>
-                      <p style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", margin: 0 }}>
+                    <div
+                      style={{
+                        padding: "14px 16px",
+                        borderRadius: "var(--r-sm)",
+                        border: "1px solid var(--accent-border, #c4b5fd)",
+                        background: "var(--accent-bg)",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 10,
+                      }}
+                    >
+                      <p
+                        style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", margin: 0 }}
+                      >
                         New client + SEMrush project
                       </p>
                       <input
@@ -1234,21 +1518,38 @@ export default function ContentStrategyPage() {
                       <div style={{ display: "flex", gap: 8 }}>
                         <button
                           type="button"
-                          disabled={!newClientName.trim() || !newClientDomain.trim() || newClientCreating}
+                          disabled={
+                            !newClientName.trim() || !newClientDomain.trim() || newClientCreating
+                          }
                           className="btn btn-primary btn-sm"
                           style={{ flex: 1 }}
                           onClick={handleCreateClientForSemrush}
                         >
                           {newClientCreating ? (
-                            <><Loader2 style={{ width: 13, height: 13, animation: "spin 1s linear infinite" }} /> Creating…</>
+                            <>
+                              <Loader2
+                                style={{
+                                  width: 13,
+                                  height: 13,
+                                  animation: "spin 1s linear infinite",
+                                }}
+                              />{" "}
+                              Creating…
+                            </>
                           ) : (
-                            <><Plus style={{ width: 13, height: 13 }} /> Create &amp; use</>
+                            <>
+                              <Plus style={{ width: 13, height: 13 }} /> Create &amp; use
+                            </>
                           )}
                         </button>
                         <button
                           type="button"
                           className="btn btn-ghost btn-sm"
-                          onClick={() => { setCreatingClientSemrush(false); setNewClientName(""); setNewClientDomain(""); }}
+                          onClick={() => {
+                            setCreatingClientSemrush(false);
+                            setNewClientName("");
+                            setNewClientDomain("");
+                          }}
                         >
                           Cancel
                         </button>
@@ -1272,11 +1573,15 @@ export default function ContentStrategyPage() {
                               const l = selectedClient.contentStrategyLimits
                                 ? JSON.parse(selectedClient.contentStrategyLimits)
                                 : {};
-                              setLimitPageOpts(l.pageOptimisations ? String(l.pageOptimisations) : "");
+                              setLimitPageOpts(
+                                l.pageOptimisations ? String(l.pageOptimisations) : "",
+                              );
                               setLimitLandingPages(l.landingPages ? String(l.landingPages) : "");
                               setLimitBlogPosts(l.blogPosts ? String(l.blogPosts) : "");
                               setLimitLinkTargets(l.linkTargets ? String(l.linkTargets) : "");
-                            } catch { /* ignore parse errors */ }
+                            } catch {
+                              /* ignore parse errors */
+                            }
                             if (selectedClient.semrushDomain) {
                               handleDetectCompetitors(e.target.value);
                             } else {
@@ -1293,7 +1598,8 @@ export default function ContentStrategyPage() {
                         <option value="">Select client…</option>
                         {clients.map((c) => (
                           <option key={c.id} value={c.id}>
-                            {c.name}{c.semrushDomain ? "" : " (no SEMrush domain)"}
+                            {c.name}
+                            {c.semrushDomain ? "" : " (no SEMrush domain)"}
                           </option>
                         ))}
                       </select>
@@ -1311,21 +1617,39 @@ export default function ContentStrategyPage() {
                 </div>
                 <div>
                   <label className="form-label">Domain</label>
-                  <div style={{
-                    display: "flex", alignItems: "center", gap: 8,
-                    padding: "9px 12px", borderRadius: "var(--r-sm)",
-                    border: "1px solid var(--border)", background: "var(--bg)",
-                    fontSize: 13, color: semrushDomain ? "var(--text)" : "var(--text-4)",
-                    minHeight: 42,
-                  }}>
-                    <Globe style={{ width: 14, height: 14, color: "var(--text-4)", flexShrink: 0 }} />
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "9px 12px",
+                      borderRadius: "var(--r-sm)",
+                      border: "1px solid var(--border)",
+                      background: "var(--bg)",
+                      fontSize: 13,
+                      color: semrushDomain ? "var(--text)" : "var(--text-4)",
+                      minHeight: 42,
+                    }}
+                  >
+                    <Globe
+                      style={{ width: 14, height: 14, color: "var(--text-4)", flexShrink: 0 }}
+                    />
                     {semrushDomain || "Auto-filled from client settings"}
                     {clientId && clients.find((c) => c.id === clientId)?.searchConsoleSiteUrl && (
-                      <span style={{
-                        marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 4,
-                        fontSize: 11, color: "var(--success)", fontWeight: 500,
-                        padding: "2px 8px", borderRadius: 999, background: "var(--success-bg)",
-                      }}>
+                      <span
+                        style={{
+                          marginLeft: "auto",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4,
+                          fontSize: 11,
+                          color: "var(--success)",
+                          fontWeight: 500,
+                          padding: "2px 8px",
+                          borderRadius: 999,
+                          background: "var(--success-bg)",
+                        }}
+                      >
                         GSC connected — fewer SEMrush units
                       </span>
                     )}
@@ -1337,13 +1661,20 @@ export default function ContentStrategyPage() {
               {clientId && !semrushDomain && !creatingClientSemrush && (
                 <div style={{ marginBottom: 16 }}>
                   {addingSemrushToClient ? (
-                    <div style={{
-                      padding: "14px 16px", borderRadius: "var(--r-sm)",
-                      border: "1px solid var(--accent-border, #c4b5fd)",
-                      background: "var(--accent-bg)", display: "flex",
-                      flexDirection: "column", gap: 10,
-                    }}>
-                      <p style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", margin: 0 }}>
+                    <div
+                      style={{
+                        padding: "14px 16px",
+                        borderRadius: "var(--r-sm)",
+                        border: "1px solid var(--accent-border, #c4b5fd)",
+                        background: "var(--accent-bg)",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 10,
+                      }}
+                    >
+                      <p
+                        style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", margin: 0 }}
+                      >
                         Create SEMrush project for {clients.find((c) => c.id === clientId)?.name}
                       </p>
                       <div style={{ display: "flex", gap: 8 }}>
@@ -1355,7 +1686,12 @@ export default function ContentStrategyPage() {
                           placeholder="Domain (e.g. example.com)"
                           autoFocus
                           style={{ flex: 1, marginBottom: 0 }}
-                          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddSemrushToClient(); } }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              handleAddSemrushToClient();
+                            }
+                          }}
                         />
                         <button
                           type="button"
@@ -1365,7 +1701,16 @@ export default function ContentStrategyPage() {
                           onClick={handleAddSemrushToClient}
                         >
                           {addSemrushSaving ? (
-                            <><Loader2 style={{ width: 13, height: 13, animation: "spin 1s linear infinite" }} /> Saving…</>
+                            <>
+                              <Loader2
+                                style={{
+                                  width: 13,
+                                  height: 13,
+                                  animation: "spin 1s linear infinite",
+                                }}
+                              />{" "}
+                              Saving…
+                            </>
                           ) : (
                             <>Create &amp; link</>
                           )}
@@ -1374,18 +1719,29 @@ export default function ContentStrategyPage() {
                           type="button"
                           className="btn btn-ghost btn-sm"
                           style={{ flexShrink: 0 }}
-                          onClick={() => { setAddingSemrushToClient(false); setAddSemrushDomain(""); }}
+                          onClick={() => {
+                            setAddingSemrushToClient(false);
+                            setAddSemrushDomain("");
+                          }}
                         >
                           Cancel
                         </button>
                       </div>
                     </div>
                   ) : (
-                    <div style={{
-                      display: "flex", alignItems: "center", gap: 10, padding: "10px 14px",
-                      background: "var(--warning-bg, #fffbeb)", border: "1px solid var(--warning-border, #fde68a)",
-                      borderRadius: "var(--r-sm)", fontSize: 13, color: "var(--warning-text, #92400e)",
-                    }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        padding: "10px 14px",
+                        background: "var(--warning-bg, #fffbeb)",
+                        border: "1px solid var(--warning-border, #fde68a)",
+                        borderRadius: "var(--r-sm)",
+                        fontSize: 13,
+                        color: "var(--warning-text, #92400e)",
+                      }}
+                    >
                       <AlertCircle style={{ width: 15, height: 15, flexShrink: 0 }} />
                       <span style={{ flex: 1 }}>This client has no SEMrush domain configured.</span>
                       <button
@@ -1403,10 +1759,22 @@ export default function ContentStrategyPage() {
 
               {/* Competitors */}
               <div style={{ marginBottom: 20 }}>
-                <label className="form-label" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <label
+                  className="form-label"
+                  style={{ display: "flex", alignItems: "center", gap: 6 }}
+                >
                   <Search style={{ width: 12, height: 12 }} />
                   Competitors
-                  {detectingCompetitors && <Loader2 style={{ width: 12, height: 12, animation: "spin 1s linear infinite", color: "var(--accent)" }} />}
+                  {detectingCompetitors && (
+                    <Loader2
+                      style={{
+                        width: 12,
+                        height: 12,
+                        animation: "spin 1s linear infinite",
+                        color: "var(--accent)",
+                      }}
+                    />
+                  )}
                 </label>
                 {detectedCompetitors.length > 0 && (
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
@@ -1414,8 +1782,11 @@ export default function ContentStrategyPage() {
                       <div
                         key={c.domain}
                         style={{
-                          display: "flex", alignItems: "center", gap: 6,
-                          padding: "6px 10px 6px 12px", borderRadius: 999,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                          padding: "6px 10px 6px 12px",
+                          borderRadius: 999,
                           background: c.manual ? "var(--bg)" : "var(--accent-bg)",
                           border: `1px solid ${c.manual ? "var(--border)" : "var(--accent-border, #c4b5fd)"}`,
                           fontSize: 13,
@@ -1423,18 +1794,55 @@ export default function ContentStrategyPage() {
                         }}
                       >
                         <span style={{ fontWeight: 500 }}>{c.domain}</span>
-                        {c.checking
-                          ? <Loader2 style={{ width: 10, height: 10, animation: "spin 1s linear infinite", color: "var(--text-4)" }} />
-                          : c.scraped
-                            ? <span style={{ fontSize: 10, color: "var(--warning, #d97706)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>scraped</span>
-                            : c.manual && c.commonKeywords === 0
-                              ? <span style={{ fontSize: 10, color: "var(--text-4)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>not found</span>
-                              : <span style={{ fontSize: 11, color: "var(--text-3)" }}>({c.commonKeywords.toLocaleString()} common)</span>
-                        }
+                        {c.checking ? (
+                          <Loader2
+                            style={{
+                              width: 10,
+                              height: 10,
+                              animation: "spin 1s linear infinite",
+                              color: "var(--text-4)",
+                            }}
+                          />
+                        ) : c.scraped ? (
+                          <span
+                            style={{
+                              fontSize: 10,
+                              color: "var(--warning, #d97706)",
+                              fontWeight: 600,
+                              textTransform: "uppercase",
+                              letterSpacing: "0.04em",
+                            }}
+                          >
+                            scraped
+                          </span>
+                        ) : c.manual && c.commonKeywords === 0 ? (
+                          <span
+                            style={{
+                              fontSize: 10,
+                              color: "var(--text-4)",
+                              fontWeight: 600,
+                              textTransform: "uppercase",
+                              letterSpacing: "0.04em",
+                            }}
+                          >
+                            not found
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: 11, color: "var(--text-3)" }}>
+                            ({c.commonKeywords.toLocaleString()} common)
+                          </span>
+                        )}
                         <button
                           type="button"
                           onClick={() => removeCompetitor(c.domain)}
-                          style={{ background: "none", border: "none", cursor: "pointer", padding: 2, color: "var(--text-4)", display: "flex" }}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            cursor: "pointer",
+                            padding: 2,
+                            color: "var(--text-4)",
+                            display: "flex",
+                          }}
                         >
                           <X style={{ width: 12, height: 12 }} />
                         </button>
@@ -1457,7 +1865,12 @@ export default function ContentStrategyPage() {
                     className="form-input"
                     value={customCompetitorInput}
                     onChange={(e) => setCustomCompetitorInput(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCustomCompetitor(); } }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addCustomCompetitor();
+                      }
+                    }}
                     placeholder="Add competitor domain (e.g. competitor.com)"
                     style={{ flex: 1, marginBottom: 0 }}
                   />
@@ -1490,17 +1903,27 @@ export default function ContentStrategyPage() {
               <div style={{ marginBottom: 20 }}>
                 <label className="form-label" style={{ marginBottom: 8 }}>
                   Monthly output limits
-                  <span style={{ fontWeight: 400, color: "var(--text-3)", marginLeft: 6 }}>— leave blank for no limit</span>
+                  <span style={{ fontWeight: 400, color: "var(--text-3)", marginLeft: 6 }}>
+                    — leave blank for no limit
+                  </span>
                 </label>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10 }}>
-                  {([
-                    { label: "Page optimisations", value: limitPageOpts, set: setLimitPageOpts },
-                    { label: "Landing pages", value: limitLandingPages, set: setLimitLandingPages },
-                    { label: "Blog posts", value: limitBlogPosts, set: setLimitBlogPosts },
-                    { label: "Link targets", value: limitLinkTargets, set: setLimitLinkTargets },
-                  ] as { label: string; value: string; set: (v: string) => void }[]).map(({ label, value, set }) => (
+                  {(
+                    [
+                      { label: "Page optimisations", value: limitPageOpts, set: setLimitPageOpts },
+                      {
+                        label: "Landing pages",
+                        value: limitLandingPages,
+                        set: setLimitLandingPages,
+                      },
+                      { label: "Blog posts", value: limitBlogPosts, set: setLimitBlogPosts },
+                      { label: "Link targets", value: limitLinkTargets, set: setLimitLinkTargets },
+                    ] as { label: string; value: string; set: (v: string) => void }[]
+                  ).map(({ label, value, set }) => (
                     <div key={label} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                      <span style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 500 }}>{label}</span>
+                      <span style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 500 }}>
+                        {label}
+                      </span>
                       <input
                         type="number"
                         className="form-input"
@@ -1516,7 +1939,14 @@ export default function ContentStrategyPage() {
                 </div>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 16, alignItems: "end" }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr auto",
+                  gap: 16,
+                  alignItems: "end",
+                }}
+              >
                 <div>
                   <label className="form-label">Period</label>
                   <input
@@ -1546,19 +1976,38 @@ export default function ContentStrategyPage() {
                 </div>
                 <div>
                   <label className="form-label">AI Model</label>
-                  <div style={{ display: "flex", background: "var(--bg)", borderRadius: "var(--r)", padding: 3, gap: 2, height: 42 }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      background: "var(--bg)",
+                      borderRadius: "var(--r)",
+                      padding: 3,
+                      gap: 2,
+                      height: 42,
+                    }}
+                  >
                     <button
                       type="button"
                       onClick={() => setAiModel("claude-opus-4-6")}
                       title="Claude Opus 4.6 — more creative, better at following complex instructions"
                       style={{
-                        flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
-                        padding: "6px 10px", borderRadius: "var(--r-sm)", border: "none", cursor: "pointer",
-                        fontSize: 12, fontWeight: aiModel === "claude-opus-4-6" ? 600 : 400,
-                        background: aiModel === "claude-opus-4-6" ? "var(--surface)" : "transparent",
+                        flex: 1,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 5,
+                        padding: "6px 10px",
+                        borderRadius: "var(--r-sm)",
+                        border: "none",
+                        cursor: "pointer",
+                        fontSize: 12,
+                        fontWeight: aiModel === "claude-opus-4-6" ? 600 : 400,
+                        background:
+                          aiModel === "claude-opus-4-6" ? "var(--surface)" : "transparent",
                         color: aiModel === "claude-opus-4-6" ? "var(--accent)" : "var(--text-3)",
                         boxShadow: aiModel === "claude-opus-4-6" ? "var(--shadow-xs)" : "none",
-                        transition: "all 0.15s ease", whiteSpace: "nowrap",
+                        transition: "all 0.15s ease",
+                        whiteSpace: "nowrap",
                       }}
                     >
                       ✦ Claude
@@ -1568,13 +2017,22 @@ export default function ContentStrategyPage() {
                       onClick={() => setAiModel("gpt-5.4")}
                       title="GPT-5.4 — fast and reliable"
                       style={{
-                        flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
-                        padding: "6px 10px", borderRadius: "var(--r-sm)", border: "none", cursor: "pointer",
-                        fontSize: 12, fontWeight: aiModel === "gpt-5.4" ? 600 : 400,
+                        flex: 1,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 5,
+                        padding: "6px 10px",
+                        borderRadius: "var(--r-sm)",
+                        border: "none",
+                        cursor: "pointer",
+                        fontSize: 12,
+                        fontWeight: aiModel === "gpt-5.4" ? 600 : 400,
                         background: aiModel === "gpt-5.4" ? "var(--surface)" : "transparent",
                         color: aiModel === "gpt-5.4" ? "var(--accent)" : "var(--text-3)",
                         boxShadow: aiModel === "gpt-5.4" ? "var(--shadow-xs)" : "none",
-                        transition: "all 0.15s ease", whiteSpace: "nowrap",
+                        transition: "all 0.15s ease",
+                        whiteSpace: "nowrap",
                       }}
                     >
                       ⚡ GPT-5.4
@@ -1584,14 +2042,27 @@ export default function ContentStrategyPage() {
                 <div>
                   <button
                     type="submit"
-                    disabled={generating || !clientId || !semrushDomain || creatingClientSemrush || addingSemrushToClient}
+                    disabled={
+                      generating ||
+                      !clientId ||
+                      !semrushDomain ||
+                      creatingClientSemrush ||
+                      addingSemrushToClient
+                    }
                     className="btn btn-primary"
                     style={{ whiteSpace: "nowrap", height: 42 }}
                   >
                     {generating ? (
-                      <><Loader2 style={{ width: 16, height: 16, animation: "spin 1s linear infinite" }} /> Generating…</>
+                      <>
+                        <Loader2
+                          style={{ width: 16, height: 16, animation: "spin 1s linear infinite" }}
+                        />{" "}
+                        Generating…
+                      </>
                     ) : (
-                      <><Zap style={{ width: 16, height: 16 }} /> Generate Strategy</>
+                      <>
+                        <Zap style={{ width: 16, height: 16 }} /> Generate Strategy
+                      </>
                     )}
                   </button>
                 </div>
@@ -1604,11 +2075,16 @@ export default function ContentStrategyPage() {
                   onClick={toggleFunMode}
                   title={funMode ? "Disable uwu chaos mode" : "Enable uwu chaos mode"}
                   style={{
-                    fontSize: 11, padding: "3px 10px", borderRadius: 99,
+                    fontSize: 11,
+                    padding: "3px 10px",
+                    borderRadius: 99,
                     border: `1px solid ${funMode ? "#f9a8d4" : "var(--border)"}`,
                     background: funMode ? "#fdf2f8" : "var(--surface)",
                     color: funMode ? "#db2777" : "var(--text-3)",
-                    cursor: "pointer", display: "flex", alignItems: "center", gap: 5,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
                     transition: "all 0.15s",
                   }}
                 >
@@ -1618,15 +2094,23 @@ export default function ContentStrategyPage() {
 
               {/* Progress indicator */}
               {generating && (
-                <div style={{
-                  display: "flex", alignItems: "center", gap: 10, marginTop: 16,
-                  padding: "12px 16px", borderRadius: "var(--r-sm)",
-                  background: funMode ? "linear-gradient(135deg, #fdf2f8 0%, #eff6ff 50%, #fef9c3 100%)" : "var(--accent-bg)",
-                  fontSize: 13,
-                  color: funMode ? "#9333ea" : "var(--accent)",
-                  border: funMode ? "1px solid #f9a8d4" : "none",
-                  animation: funMode ? "uwuPulse 2s ease-in-out infinite" : "none",
-                }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    marginTop: 16,
+                    padding: "12px 16px",
+                    borderRadius: "var(--r-sm)",
+                    background: funMode
+                      ? "linear-gradient(135deg, #fdf2f8 0%, #eff6ff 50%, #fef9c3 100%)"
+                      : "var(--accent-bg)",
+                    fontSize: 13,
+                    color: funMode ? "#9333ea" : "var(--accent)",
+                    border: funMode ? "1px solid #f9a8d4" : "none",
+                    animation: funMode ? "uwuPulse 2s ease-in-out infinite" : "none",
+                  }}
+                >
                   <style>{`
                     @keyframes uwuPulse {
                       0%, 100% { box-shadow: 0 0 0 0 rgba(249,168,212,0.4); }
@@ -1638,20 +2122,34 @@ export default function ContentStrategyPage() {
                     }
                   `}</style>
                   <ChaosOverlay active={funMode && generating} />
-                  <Loader2 style={{
-                    width: 14, height: 14,
-                    animation: funMode ? "spin 0.6s linear infinite" : "spin 1s linear infinite",
-                    flexShrink: 0,
-                  }} />
-                  <span style={{
-                    flex: 1,
-                    animation: funMode ? "uwuWiggle 0.8s ease-in-out infinite" : "none",
-                    display: "inline-block",
-                    fontWeight: funMode ? 600 : 400,
-                  }}>
+                  <Loader2
+                    style={{
+                      width: 14,
+                      height: 14,
+                      animation: funMode ? "spin 0.6s linear infinite" : "spin 1s linear infinite",
+                      flexShrink: 0,
+                    }}
+                  />
+                  <span
+                    style={{
+                      flex: 1,
+                      animation: funMode ? "uwuWiggle 0.8s ease-in-out infinite" : "none",
+                      display: "inline-block",
+                      fontWeight: funMode ? 600 : 400,
+                    }}
+                  >
                     {funMode ? funMessage : "Generating content strategy…"}
                   </span>
-                  <span style={{ fontVariantNumeric: "tabular-nums", opacity: 0.7, fontSize: 12, whiteSpace: "nowrap" }}>{elapsedTime}</span>
+                  <span
+                    style={{
+                      fontVariantNumeric: "tabular-nums",
+                      opacity: 0.7,
+                      fontSize: 12,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {elapsedTime}
+                  </span>
                 </div>
               )}
             </form>
@@ -1659,172 +2157,256 @@ export default function ContentStrategyPage() {
 
           {/* ─── Upload Mode ─── */}
           {mode === "upload" && (
-          <form onSubmit={handleGenerate}>
-            <div
-              style={{
-                border: `2px dashed ${dragOver ? "var(--accent)" : file ? "var(--success)" : "var(--border)"}`,
-                borderRadius: "var(--r)",
-                padding: file ? "20px 24px" : "40px 24px",
-                textAlign: "center",
-                background: dragOver ? "var(--accent-bg)" : file ? "#f0fdf4" : "var(--bg)",
-                transition: "all 0.15s ease",
-                cursor: file ? "default" : "pointer",
-                marginBottom: 24,
-              }}
-              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={handleDrop}
-              onClick={() => { if (!file) document.getElementById("file-input")?.click(); }}
-            >
-              {file ? (
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14 }}>
-                  <div style={{ width: 40, height: 40, borderRadius: "var(--r-sm)", background: "var(--success-bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <FileSpreadsheet style={{ width: 20, height: 20, color: "var(--success)" }} />
-                  </div>
-                  <div style={{ textAlign: "left" }}>
-                    <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text)", margin: 0 }}>{file.name}</p>
-                    <p style={{ fontSize: 12, color: "var(--text-3)", margin: 0 }}>{(file.size / 1024).toFixed(0)} KB</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); setFile(null); }}
-                    style={{ marginLeft: 8, background: "none", border: "none", cursor: "pointer", padding: 6, color: "var(--text-4)", borderRadius: "var(--r-sm)" }}
+            <form onSubmit={handleGenerate}>
+              <div
+                style={{
+                  border: `2px dashed ${dragOver ? "var(--accent)" : file ? "var(--success)" : "var(--border)"}`,
+                  borderRadius: "var(--r)",
+                  padding: file ? "20px 24px" : "40px 24px",
+                  textAlign: "center",
+                  background: dragOver ? "var(--accent-bg)" : file ? "#f0fdf4" : "var(--bg)",
+                  transition: "all 0.15s ease",
+                  cursor: file ? "default" : "pointer",
+                  marginBottom: 24,
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDragOver(true);
+                }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={handleDrop}
+                onClick={() => {
+                  if (!file) document.getElementById("file-input")?.click();
+                }}
+              >
+                {file ? (
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 14,
+                    }}
                   >
-                    <X style={{ width: 16, height: 16 }} />
-                  </button>
-                </div>
-              ) : (
-                <div>
-                  <div style={{ width: 52, height: 52, borderRadius: "var(--r)", background: "var(--accent-bg)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
-                    <Upload style={{ width: 24, height: 24, color: "var(--accent)" }} />
-                  </div>
-                  <p style={{ fontSize: 14, fontWeight: 500, color: "var(--text)", margin: "0 0 4px" }}>Drag & drop your file here</p>
-                  <p style={{ fontSize: 13, color: "var(--text-3)", margin: "0 0 16px" }}>Supports .xlsx, .xls, .csv, .docx, and .txt files up to 10 MB</p>
-                  <label className="btn btn-secondary btn-sm" style={{ cursor: "pointer" }}>
-                    Choose File
-                    <input
-                      id="file-input"
-                      type="file"
-                      accept=".xlsx,.xls,.csv,.docx,.txt"
-                      style={{ display: "none" }}
-                      onChange={(e) => {
-                        const f = e.target.files?.[0];
-                        if (f) setFile(f);
-                      }}
-                    />
-                  </label>
-                </div>
-              )}
-            </div>
-
-            {/* Form fields */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 16, alignItems: "end" }}>
-              <div>
-                <label className="form-label">Client <span style={{ color: "var(--danger)" }}>*</span></label>
-                {creatingClient ? (
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <input
-                      type="text"
-                      className="form-input"
-                      value={clientName}
-                      onChange={(e) => setClientName(e.target.value)}
-                      placeholder="New client name"
-                      autoFocus
-                    />
-                    <button
-                      type="button"
-                      disabled={!clientName.trim() || generating}
-                      className="btn btn-primary btn-sm"
-                      style={{ flexShrink: 0, height: 42 }}
-                      onClick={async () => {
-                        if (!clientName.trim()) return;
-                        try {
-                          const res = await fetch("/api/clients", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ name: clientName.trim() }),
-                          });
-                          const newClient = await res.json();
-                          if (newClient.error) {
-                            setError(newClient.error);
-                            return;
-                          }
-                          setClients((prev) => [...prev, { id: newClient.id, name: newClient.name }].sort((a, b) => a.name.localeCompare(b.name)));
-                          setClientId(newClient.id);
-                          setClientName(newClient.name);
-                          setCreatingClient(false);
-                          setSuccess(`Client "${newClient.name}" created`);
-                        } catch {
-                          setError("Failed to create client");
-                        }
+                    <div
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: "var(--r-sm)",
+                        background: "var(--success-bg)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
                       }}
                     >
-                      <Plus style={{ width: 14, height: 14 }} /> Create
-                    </button>
+                      <FileSpreadsheet style={{ width: 20, height: 20, color: "var(--success)" }} />
+                    </div>
+                    <div style={{ textAlign: "left" }}>
+                      <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text)", margin: 0 }}>
+                        {file.name}
+                      </p>
+                      <p style={{ fontSize: 12, color: "var(--text-3)", margin: 0 }}>
+                        {(file.size / 1024).toFixed(0)} KB
+                      </p>
+                    </div>
                     <button
                       type="button"
-                      className="btn btn-ghost btn-sm"
-                      style={{ flexShrink: 0, height: 42 }}
-                      onClick={() => { setCreatingClient(false); setClientName(""); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setFile(null);
+                      }}
+                      style={{
+                        marginLeft: 8,
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        padding: 6,
+                        color: "var(--text-4)",
+                        borderRadius: "var(--r-sm)",
+                      }}
                     >
-                      Cancel
+                      <X style={{ width: 16, height: 16 }} />
                     </button>
                   </div>
                 ) : (
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <select
-                      className="form-input"
-                      value={clientId}
-                      onChange={(e) => {
-                        const selectedClient = clients.find((c) => c.id === e.target.value);
-                        setClientId(e.target.value);
-                        if (selectedClient) setClientName(selectedClient.name);
-                        else setClientName("");
+                  <div>
+                    <div
+                      style={{
+                        width: 52,
+                        height: 52,
+                        borderRadius: "var(--r)",
+                        background: "var(--accent-bg)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        margin: "0 auto 16px",
                       }}
-                      style={{ flex: 1 }}
                     >
-                      <option value="">Select client…</option>
-                      {clients.map((c) => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-sm"
-                      style={{ flexShrink: 0, height: 42 }}
-                      onClick={() => setCreatingClient(true)}
+                      <Upload style={{ width: 24, height: 24, color: "var(--accent)" }} />
+                    </div>
+                    <p
+                      style={{
+                        fontSize: 14,
+                        fontWeight: 500,
+                        color: "var(--text)",
+                        margin: "0 0 4px",
+                      }}
                     >
-                      <Plus style={{ width: 14, height: 14 }} /> New
-                    </button>
+                      Drag & drop your file here
+                    </p>
+                    <p style={{ fontSize: 13, color: "var(--text-3)", margin: "0 0 16px" }}>
+                      Supports .xlsx, .xls, .csv, .docx, and .txt files up to 10 MB
+                    </p>
+                    <label className="btn btn-secondary btn-sm" style={{ cursor: "pointer" }}>
+                      Choose File
+                      <input
+                        id="file-input"
+                        type="file"
+                        accept=".xlsx,.xls,.csv,.docx,.txt"
+                        style={{ display: "none" }}
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) setFile(f);
+                        }}
+                      />
+                    </label>
                   </div>
                 )}
               </div>
-              <div>
-                <label className="form-label">Period</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={period}
-                  onChange={(e) => setPeriod(e.target.value)}
-                  placeholder="e.g. April 2026"
-                />
-              </div>
-              <div>
-                <button
-                  type="submit"
-                  disabled={generating || !file || !clientId}
-                  className="btn btn-primary"
-                  style={{ whiteSpace: "nowrap", height: 42 }}
-                >
-                  {generating ? (
-                    <><Loader2 style={{ width: 16, height: 16, animation: "spin 1s linear infinite" }} /> Generating…</>
+
+              {/* Form fields */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr auto",
+                  gap: 16,
+                  alignItems: "end",
+                }}
+              >
+                <div>
+                  <label className="form-label">
+                    Client <span style={{ color: "var(--danger)" }}>*</span>
+                  </label>
+                  {creatingClient ? (
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={clientName}
+                        onChange={(e) => setClientName(e.target.value)}
+                        placeholder="New client name"
+                        autoFocus
+                      />
+                      <button
+                        type="button"
+                        disabled={!clientName.trim() || generating}
+                        className="btn btn-primary btn-sm"
+                        style={{ flexShrink: 0, height: 42 }}
+                        onClick={async () => {
+                          if (!clientName.trim()) return;
+                          try {
+                            const res = await fetch("/api/clients", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ name: clientName.trim() }),
+                            });
+                            const newClient = await res.json();
+                            if (newClient.error) {
+                              setError(newClient.error);
+                              return;
+                            }
+                            setClients((prev) =>
+                              [...prev, { id: newClient.id, name: newClient.name }].sort((a, b) =>
+                                a.name.localeCompare(b.name),
+                              ),
+                            );
+                            setClientId(newClient.id);
+                            setClientName(newClient.name);
+                            setCreatingClient(false);
+                            setSuccess(`Client "${newClient.name}" created`);
+                          } catch {
+                            setError("Failed to create client");
+                          }
+                        }}
+                      >
+                        <Plus style={{ width: 14, height: 14 }} /> Create
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        style={{ flexShrink: 0, height: 42 }}
+                        onClick={() => {
+                          setCreatingClient(false);
+                          setClientName("");
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
                   ) : (
-                    <><FileSpreadsheet style={{ width: 16, height: 16 }} /> Generate Strategy</>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <select
+                        className="form-input"
+                        value={clientId}
+                        onChange={(e) => {
+                          const selectedClient = clients.find((c) => c.id === e.target.value);
+                          setClientId(e.target.value);
+                          if (selectedClient) setClientName(selectedClient.name);
+                          else setClientName("");
+                        }}
+                        style={{ flex: 1 }}
+                      >
+                        <option value="">Select client…</option>
+                        {clients.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        style={{ flexShrink: 0, height: 42 }}
+                        onClick={() => setCreatingClient(true)}
+                      >
+                        <Plus style={{ width: 14, height: 14 }} /> New
+                      </button>
+                    </div>
                   )}
-                </button>
+                </div>
+                <div>
+                  <label className="form-label">Period</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={period}
+                    onChange={(e) => setPeriod(e.target.value)}
+                    placeholder="e.g. April 2026"
+                  />
+                </div>
+                <div>
+                  <button
+                    type="submit"
+                    disabled={generating || !file || !clientId}
+                    className="btn btn-primary"
+                    style={{ whiteSpace: "nowrap", height: 42 }}
+                  >
+                    {generating ? (
+                      <>
+                        <Loader2
+                          style={{ width: 16, height: 16, animation: "spin 1s linear infinite" }}
+                        />{" "}
+                        Generating…
+                      </>
+                    ) : (
+                      <>
+                        <FileSpreadsheet style={{ width: 16, height: 16 }} /> Generate Strategy
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
-            </div>
-          </form>
+            </form>
           )}
         </div>
       </div>
@@ -1832,24 +2414,53 @@ export default function ContentStrategyPage() {
       {/* Strategies List */}
       <div className="card" style={{ padding: 0 }}>
         <div className="card-header">
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", flexWrap: "wrap", gap: 12 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              width: "100%",
+              flexWrap: "wrap",
+              gap: 12,
+            }}
+          >
             <div>
               <h2 className="card-title">Generated Strategies</h2>
-              <p className="card-subtitle">{strategies.length} {strategies.length === 1 ? "strategy" : "strategies"} {archiveView === "archived" ? "archived" : archiveView === "all" ? "total" : "active"}</p>
+              <p className="card-subtitle">
+                {strategies.length} {strategies.length === 1 ? "strategy" : "strategies"}{" "}
+                {archiveView === "archived"
+                  ? "archived"
+                  : archiveView === "all"
+                    ? "total"
+                    : "active"}
+              </p>
             </div>
             {/* Archive filter tabs */}
-            <div style={{ display: "flex", gap: 4, background: "var(--bg-2)", borderRadius: "var(--r-sm)", padding: 4 }}>
+            <div
+              style={{
+                display: "flex",
+                gap: 4,
+                background: "var(--bg-2)",
+                borderRadius: "var(--r-sm)",
+                padding: 4,
+              }}
+            >
               {(["live", "archived", "all"] as const).map((v) => (
                 <button
                   key={v}
                   type="button"
                   onClick={() => setArchiveView(v)}
                   style={{
-                    fontSize: 12, fontWeight: 500, padding: "4px 12px",
-                    borderRadius: "var(--r-sm)", border: "none", cursor: "pointer",
+                    fontSize: 12,
+                    fontWeight: 500,
+                    padding: "4px 12px",
+                    borderRadius: "var(--r-sm)",
+                    border: "none",
+                    cursor: "pointer",
                     background: archiveView === v ? "var(--surface)" : "transparent",
                     color: archiveView === v ? "var(--text)" : "var(--text-3)",
-                    boxShadow: archiveView === v ? "var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.1))" : "none",
+                    boxShadow:
+                      archiveView === v ? "var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.1))" : "none",
                     transition: "all 0.15s",
                   }}
                 >
@@ -1862,14 +2473,27 @@ export default function ContentStrategyPage() {
 
         {loading ? (
           <div style={{ padding: 60, textAlign: "center" }}>
-            <Loader2 style={{ width: 24, height: 24, animation: "spin 1s linear infinite", color: "var(--accent)", margin: "0 auto 10px", display: "block" }} />
+            <Loader2
+              style={{
+                width: 24,
+                height: 24,
+                animation: "spin 1s linear infinite",
+                color: "var(--accent)",
+                margin: "0 auto 10px",
+                display: "block",
+              }}
+            />
             <p style={{ fontSize: 13, color: "var(--text-3)", margin: 0 }}>Loading strategies…</p>
           </div>
         ) : strategies.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-state-icon"><FileSpreadsheet style={{ width: 24, height: 24 }} /></div>
+            <div className="empty-state-icon">
+              <FileSpreadsheet style={{ width: 24, height: 24 }} />
+            </div>
             <p className="empty-state-title">No content strategies yet</p>
-            <p className="empty-state-desc">Generate a content strategy from SEMrush data or upload a keyword research spreadsheet to get started.</p>
+            <p className="empty-state-desc">
+              Upload a keyword research spreadsheet to generate a content strategy.
+            </p>
           </div>
         ) : (
           <div>
@@ -1877,29 +2501,66 @@ export default function ContentStrategyPage() {
               <div
                 key={s.id}
                 style={{
-                  display: "flex", alignItems: "center", gap: 16,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 16,
                   padding: "16px 20px",
                   borderTop: i > 0 ? "1px solid var(--border-subtle)" : undefined,
                   transition: "background 0.1s",
                 }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--bg)"; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLElement).style.background = "var(--bg)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLElement).style.background = "transparent";
+                }}
               >
                 {/* Icon */}
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: "var(--accent-bg)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <div
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 10,
+                    background: "var(--accent-bg)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
                   <FileSpreadsheet style={{ width: 18, height: 18, color: "var(--accent)" }} />
                 </div>
 
                 {/* Content */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text)", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <p
+                    style={{
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: "var(--text)",
+                      margin: 0,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
                     {s.title}
                   </p>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3, flexWrap: "wrap" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      marginTop: 3,
+                      flexWrap: "wrap",
+                    }}
+                  >
                     {s.client?.name && (
                       <>
                         <Users style={{ width: 11, height: 11, color: "var(--text-4)" }} />
-                        <span style={{ fontSize: 12, color: "var(--text-3)" }}>{s.client.name}</span>
+                        <span style={{ fontSize: 12, color: "var(--text-3)" }}>
+                          {s.client.name}
+                        </span>
                         <span style={{ color: "var(--text-4)" }}>·</span>
                       </>
                     )}
@@ -1907,13 +2568,22 @@ export default function ContentStrategyPage() {
                     <span style={{ fontSize: 12, color: "var(--text-3)" }}>{s.period}</span>
                     <span style={{ color: "var(--text-4)" }}>·</span>
                     <span style={{ fontSize: 12, color: "var(--text-3)" }}>
-                      {new Date(s.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}{" "}
-                      {new Date(s.createdAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+                      {new Date(s.createdAt).toLocaleDateString("en-GB", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      })}{" "}
+                      {new Date(s.createdAt).toLocaleTimeString("en-GB", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
                     </span>
                     {s.createdBy && (
                       <>
                         <span style={{ color: "var(--text-4)" }}>·</span>
-                        <span style={{ fontSize: 12, color: "var(--text-3)" }}>by {s.createdBy}</span>
+                        <span style={{ fontSize: 12, color: "var(--text-3)" }}>
+                          by {s.createdBy}
+                        </span>
                       </>
                     )}
                     {s.generationMs && (
@@ -1930,20 +2600,43 @@ export default function ContentStrategyPage() {
                       <>
                         <span style={{ color: "var(--text-4)" }}>·</span>
                         <Eye style={{ width: 11, height: 11, color: "var(--text-4)" }} />
-                        <span style={{ fontSize: 12, color: "var(--text-3)" }}>{s.viewCount} views</span>
+                        <span style={{ fontSize: 12, color: "var(--text-3)" }}>
+                          {s.viewCount} views
+                        </span>
                       </>
                     )}
                     {s.shareToken && (
-                      <span className="badge badge-indigo" style={{ fontSize: 11, padding: "2px 8px", marginLeft: 4 }}>Shared</span>
+                      <span
+                        className="badge badge-indigo"
+                        style={{ fontSize: 11, padding: "2px 8px", marginLeft: 4 }}
+                      >
+                        Shared
+                      </span>
                     )}
                     {s.status === "archived" && (
-                      <span className="badge badge-slate" style={{ fontSize: 11, padding: "2px 8px", marginLeft: 4 }}>Archived</span>
+                      <span
+                        className="badge badge-slate"
+                        style={{ fontSize: 11, padding: "2px 8px", marginLeft: 4 }}
+                      >
+                        Archived
+                      </span>
                     )}
                     {s.generationStatus === "generating" && (
                       <>
                         <span style={{ color: "var(--text-4)" }}>·</span>
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, color: "var(--accent)", fontWeight: 500 }}>
-                          <Loader2 style={{ width: 11, height: 11, animation: "spin 1s linear infinite" }} />
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4,
+                            fontSize: 11,
+                            color: "var(--accent)",
+                            fontWeight: 500,
+                          }}
+                        >
+                          <Loader2
+                            style={{ width: 11, height: 11, animation: "spin 1s linear infinite" }}
+                          />
                           Generating…
                         </span>
                       </>
@@ -1953,7 +2646,11 @@ export default function ContentStrategyPage() {
                         <span style={{ color: "var(--text-4)" }}>·</span>
                         <span
                           className="badge badge-red"
-                          style={{ fontSize: 11, padding: "2px 8px", cursor: s.generationError ? "help" : undefined }}
+                          style={{
+                            fontSize: 11,
+                            padding: "2px 8px",
+                            cursor: s.generationError ? "help" : undefined,
+                          }}
                           title={s.generationError ?? undefined}
                         >
                           Failed
@@ -1965,13 +2662,31 @@ export default function ContentStrategyPage() {
 
                 {/* Actions */}
                 <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-                  <button onClick={() => handlePreview(s.id)} className="btn btn-ghost btn-sm" title="Preview" style={{ padding: 8 }} disabled={s.generationStatus === "generating"}>
+                  <button
+                    onClick={() => handlePreview(s.id)}
+                    className="btn btn-ghost btn-sm"
+                    title="Preview"
+                    style={{ padding: 8 }}
+                    disabled={s.generationStatus === "generating"}
+                  >
                     <Eye style={{ width: 15, height: 15 }} />
                   </button>
-                  <button onClick={() => handleDownload(s.id, s.title)} className="btn btn-ghost btn-sm" title="Download" style={{ padding: 8 }} disabled={s.generationStatus === "generating"}>
+                  <button
+                    onClick={() => handleDownload(s.id, s.title)}
+                    className="btn btn-ghost btn-sm"
+                    title="Download"
+                    style={{ padding: 8 }}
+                    disabled={s.generationStatus === "generating"}
+                  >
                     <Download style={{ width: 15, height: 15 }} />
                   </button>
-                  <button onClick={() => handleShare(s.id)} className="btn btn-ghost btn-sm" title="Share" style={{ padding: 8 }} disabled={s.generationStatus === "generating"}>
+                  <button
+                    onClick={() => handleShare(s.id)}
+                    className="btn btn-ghost btn-sm"
+                    title="Share"
+                    style={{ padding: 8 }}
+                    disabled={s.generationStatus === "generating"}
+                  >
                     <Share2 style={{ width: 15, height: 15 }} />
                   </button>
                   {s.shareToken && (
@@ -1984,7 +2699,11 @@ export default function ContentStrategyPage() {
                   <button
                     onClick={() => handleExportToActions(s.id, s.title, Boolean(s.client))}
                     className="btn btn-ghost btn-sm"
-                    title={s.client ? "Convert to action items" : "Link this strategy to a client to enable action export"}
+                    title={
+                      s.client
+                        ? "Convert to action items"
+                        : "Link this strategy to a client to enable action export"
+                    }
                     style={{ padding: 8 }}
                     disabled={s.generationStatus === "generating" || !s.client}
                   >
@@ -1996,9 +2715,18 @@ export default function ContentStrategyPage() {
                     title={s.status === "archived" ? "Restore strategy" : "Archive strategy"}
                     style={{ padding: 8 }}
                   >
-                    {s.status === "archived" ? <ArchiveRestore style={{ width: 15, height: 15 }} /> : <Archive style={{ width: 15, height: 15 }} />}
+                    {s.status === "archived" ? (
+                      <ArchiveRestore style={{ width: 15, height: 15 }} />
+                    ) : (
+                      <Archive style={{ width: 15, height: 15 }} />
+                    )}
                   </button>
-                  <button onClick={() => handleDelete(s.id)} className="btn btn-ghost btn-sm" title="Delete" style={{ padding: 8, color: "var(--danger)" }}>
+                  <button
+                    onClick={() => handleDelete(s.id)}
+                    className="btn btn-ghost btn-sm"
+                    title="Delete"
+                    style={{ padding: 8, color: "var(--danger)" }}
+                  >
                     <Trash2 style={{ width: 15, height: 15 }} />
                   </button>
                 </div>
@@ -2013,11 +2741,45 @@ export default function ContentStrategyPage() {
 
       {/* Share Modal */}
       {sharingId && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)" }}>
-          <div style={{ background: "var(--surface)", borderRadius: "var(--r-lg)", boxShadow: "var(--shadow)", maxWidth: 460, width: "100%", padding: 28, margin: 16 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-              <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", margin: 0 }}>Share Strategy</h3>
-              <button onClick={() => setSharingId(null)} className="btn btn-ghost btn-sm" style={{ padding: 6 }}>
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 50,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(0,0,0,0.4)",
+            backdropFilter: "blur(4px)",
+          }}
+        >
+          <div
+            style={{
+              background: "var(--surface)",
+              borderRadius: "var(--r-lg)",
+              boxShadow: "var(--shadow)",
+              maxWidth: 460,
+              width: "100%",
+              padding: 28,
+              margin: 16,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 20,
+              }}
+            >
+              <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", margin: 0 }}>
+                Share Strategy
+              </h3>
+              <button
+                onClick={() => setSharingId(null)}
+                className="btn btn-ghost btn-sm"
+                style={{ padding: 6 }}
+              >
                 <X style={{ width: 16, height: 16 }} />
               </button>
             </div>
@@ -2033,15 +2795,26 @@ export default function ContentStrategyPage() {
                   value={`${typeof window !== "undefined" ? window.location.origin : ""}/share/content-strategy/${shareToken}`}
                   style={{ background: "var(--bg)", fontSize: 13, fontFamily: "monospace" }}
                 />
-                <button onClick={copyShareLink} className="btn btn-primary" style={{ flexShrink: 0 }}>
-                  {copied ? <Check style={{ width: 15, height: 15 }} /> : <Copy style={{ width: 15, height: 15 }} />}
+                <button
+                  onClick={copyShareLink}
+                  className="btn btn-primary"
+                  style={{ flexShrink: 0 }}
+                >
+                  {copied ? (
+                    <Check style={{ width: 15, height: 15 }} />
+                  ) : (
+                    <Copy style={{ width: 15, height: 15 }} />
+                  )}
                 </button>
               </div>
             </div>
 
             {/* Password protection */}
             <div style={{ marginBottom: 20 }}>
-              <label className="form-label" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <label
+                className="form-label"
+                style={{ display: "flex", alignItems: "center", gap: 6 }}
+              >
                 <Lock style={{ width: 12, height: 12 }} />
                 Password protection (optional)
               </label>
@@ -2053,7 +2826,11 @@ export default function ContentStrategyPage() {
                   onChange={(e) => setSharePassword(e.target.value)}
                   placeholder="Leave empty for no password"
                 />
-                <button onClick={handleSetPassword} className="btn btn-secondary" style={{ flexShrink: 0 }}>
+                <button
+                  onClick={handleSetPassword}
+                  className="btn btn-secondary"
+                  style={{ flexShrink: 0 }}
+                >
                   {sharePassword ? "Set" : "Remove"}
                 </button>
               </div>
@@ -2076,10 +2853,42 @@ export default function ContentStrategyPage() {
 
       {/* Preview Modal */}
       {previewHtml && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }}>
-          <div style={{ background: "var(--surface)", borderRadius: "var(--r-lg)", boxShadow: "var(--shadow)", width: "95vw", height: "90vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
-              <h3 style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", margin: 0 }}>{previewTitle}</h3>
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 50,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(0,0,0,0.5)",
+            backdropFilter: "blur(4px)",
+          }}
+        >
+          <div
+            style={{
+              background: "var(--surface)",
+              borderRadius: "var(--r-lg)",
+              boxShadow: "var(--shadow)",
+              width: "95vw",
+              height: "90vh",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "16px 20px",
+                borderBottom: "1px solid var(--border)",
+              }}
+            >
+              <h3 style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", margin: 0 }}>
+                {previewTitle}
+              </h3>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <button
                   onClick={() => {
@@ -2108,7 +2917,15 @@ export default function ContentStrategyPage() {
                 >
                   <Download style={{ width: 14, height: 14 }} /> Download
                 </button>
-                <button onClick={() => { setPreviewHtml(""); setPreviewTitle(""); setPreviewStrategyId(null); }} className="btn btn-ghost btn-sm" style={{ padding: 6 }}>
+                <button
+                  onClick={() => {
+                    setPreviewHtml("");
+                    setPreviewTitle("");
+                    setPreviewStrategyId(null);
+                  }}
+                  className="btn btn-ghost btn-sm"
+                  style={{ padding: 6 }}
+                >
                   <X style={{ width: 18, height: 18 }} />
                 </button>
               </div>

@@ -81,37 +81,49 @@ export default function NewClientPage() {
   useEffect(() => {
     fetch("/api/ga4/properties")
       .then((r) => r.json())
-      .then((data) => { if (data.error) setGa4FetchError(data.error); else setGa4Properties(data); })
+      .then((data) => {
+        if (data.error) setGa4FetchError(data.error);
+        else setGa4Properties(data);
+      })
       .catch(() => setGa4FetchError("Failed to load GA4 properties"))
       .finally(() => setGa4Loading(false));
 
     fetch("/api/meta/accounts")
       .then((r) => r.json())
-      .then((data) => { if (data.error) setMetaFetchError(data.error); else setMetaAccounts(data); })
+      .then((data) => {
+        if (data.error) setMetaFetchError(data.error);
+        else setMetaAccounts(data);
+      })
       .catch(() => setMetaFetchError("Failed to load Meta accounts"))
       .finally(() => setMetaLoading(false));
 
-    fetch("/api/semrush/projects")
-      .then((r) => r.json())
-      .then((data) => { if (data.error) setSemrushFetchError(data.error); else setSemrushProjects(data); })
-      .catch(() => setSemrushFetchError("Failed to load SEMrush projects"))
-      .finally(() => setSemrushLoading(false));
+    setSemrushProjects([]);
+    setSemrushFetchError("SEMrush has been retired. Use Search Console and GA4 for SEO analysis.");
+    setSemrushLoading(false);
 
     fetch("/api/google-ads/accounts")
       .then((r) => r.json())
-      .then((data) => { if (data.error) setGoogleAdsFetchError(data.error); else setGoogleAdsAccounts(data); })
+      .then((data) => {
+        if (data.error) setGoogleAdsFetchError(data.error);
+        else setGoogleAdsAccounts(data);
+      })
       .catch(() => setGoogleAdsFetchError("Failed to load Google Ads accounts"))
       .finally(() => setGoogleAdsLoading(false));
 
     fetch("/api/search-console/sites")
       .then((r) => r.json())
-      .then((data) => { if (data.error) setGscFetchError(data.error); else setGscSites(data); })
+      .then((data) => {
+        if (data.error) setGscFetchError(data.error);
+        else setGscSites(data);
+      })
       .catch(() => setGscFetchError("Failed to load Search Console sites"))
       .finally(() => setGscLoading(false));
 
     fetch("/api/ga4/service-account")
       .then((r) => r.json())
-      .then((data) => { if (data.email) setGa4ServiceAccountEmail(data.email); })
+      .then((data) => {
+        if (data.email) setGa4ServiceAccountEmail(data.email);
+      })
       .catch(() => setGa4ServiceAccountEmailError(true));
   }, []);
 
@@ -127,7 +139,7 @@ export default function NewClientPage() {
   }, [backfilling]);
 
   function handleChange(
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>,
   ) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   }
@@ -155,14 +167,20 @@ export default function NewClientPage() {
         setBackfilling(false);
 
         if (!backfillRes.ok) {
-          const backfillData = await backfillRes.json().catch(() => ({})) as { error?: string };
-          setError(`Client created, but historical snapshot backfill failed: ${backfillData.error ?? "Unknown error"}`);
+          const backfillData = (await backfillRes.json().catch(() => ({}))) as { error?: string };
+          setError(
+            `Client created, but historical snapshot backfill failed: ${backfillData.error ?? "Unknown error"}`,
+          );
           return;
         }
 
-        const backfillData = await backfillRes.json().catch(() => ({})) as { totalErrors?: number };
+        const backfillData = (await backfillRes.json().catch(() => ({}))) as {
+          totalErrors?: number;
+        };
         if ((backfillData.totalErrors ?? 0) > 0) {
-          setError("Client created and backfill finished with some channel errors. You can rerun snapshots in Settings.");
+          setError(
+            "Client created and backfill finished with some channel errors. You can rerun snapshots in Settings.",
+          );
         }
         router.push(`/clients/${client.slug}`);
       } else {
@@ -183,7 +201,7 @@ export default function NewClientPage() {
         <div>
           <Link
             href="/clients"
-            className="flex items-center gap-1.5 text-sm mb-2"
+            className="mb-2 flex items-center gap-1.5 text-sm"
             style={{ color: "var(--text-3)" }}
           >
             <ArrowLeft className="h-4 w-4" />
@@ -249,48 +267,29 @@ export default function NewClientPage() {
                   <option value="lost">Lost</option>
                 </optgroup>
               </select>
-              <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 6 }}>Lead pipeline = prospect (Hub, SEMrush &amp; Competitors only). Active = signed client with full channel access.</p>
+              <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 6 }}>
+                Lead pipeline = prospect (Hub + SEO only). Active = signed client with full channel
+                access.
+              </p>
             </div>
           </div>
         </div>
 
-        {/* SEMrush */}
+        {/* SEO provider notice */}
         <div className="card">
           <div className="card-header">
             <div className="flex items-center gap-3">
-              <span className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-xs font-bold text-orange-600">S</span>
-              <h2 className="card-title">SemRush</h2>
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-orange-100 text-xs font-bold text-orange-600">
+                S
+              </span>
+              <h2 className="card-title">SEO Data Source</h2>
             </div>
           </div>
           <div className="card-body">
-            <div>
-              <label className="form-label">Project</label>
-              {semrushLoading ? (
-                <div className="form-input" style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-3)" }}>
-                  <Loader2 className="h-4 w-4 animate-spin" /> Loading projects…
-                </div>
-              ) : semrushFetchError ? (
-                <>
-                  <input type="text" name="semrushDomain" value={form.semrushDomain} onChange={handleChange} placeholder="example.com" className="form-input" />
-                  <p className="text-xs text-red-600 mt-1">{semrushFetchError}</p>
-                </>
-              ) : (
-                <select
-                  name="semrushDomain"
-                  value={form.semrushDomain}
-                  onChange={(e) => {
-                    const selected = semrushProjects.find((p) => p.domain === e.target.value);
-                    setForm((prev) => ({ ...prev, semrushDomain: e.target.value, semrushProjectId: selected?.projectId ?? null }));
-                  }}
-                  className="form-input"
-                >
-                  <option value="">— Select a project —</option>
-                  {semrushProjects.map((p) => (
-                    <option key={p.projectId} value={p.domain}>{p.projectName} — {p.domain}</option>
-                  ))}
-                </select>
-              )}
-            </div>
+            <p style={{ fontSize: 13, color: "var(--text-3)" }}>
+              SEMrush has been retired. Configure Search Console and GA4 below to power SEO
+              reporting.
+            </p>
           </div>
         </div>
 
@@ -298,7 +297,9 @@ export default function NewClientPage() {
         <div className="card">
           <div className="card-header">
             <div className="flex items-center gap-3">
-              <span className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-600">G</span>
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-600">
+                G
+              </span>
               <h2 className="card-title">Google Analytics 4</h2>
             </div>
           </div>
@@ -306,13 +307,23 @@ export default function NewClientPage() {
             <div>
               <label className="form-label">Property</label>
               {ga4Loading ? (
-                <div className="form-input" style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-3)" }}>
+                <div
+                  className="form-input"
+                  style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-3)" }}
+                >
                   <Loader2 className="h-4 w-4 animate-spin" /> Loading properties…
                 </div>
               ) : ga4FetchError ? (
                 <>
-                  <input type="text" name="ga4PropertyId" value={form.ga4PropertyId} onChange={handleChange} placeholder="123456789" className="form-input" />
-                  <p className="text-xs text-red-600 mt-1">{ga4FetchError}</p>
+                  <input
+                    type="text"
+                    name="ga4PropertyId"
+                    value={form.ga4PropertyId}
+                    onChange={handleChange}
+                    placeholder="123456789"
+                    className="form-input"
+                  />
+                  <p className="mt-1 text-xs text-red-600">{ga4FetchError}</p>
                 </>
               ) : (
                 <select
@@ -320,47 +331,136 @@ export default function NewClientPage() {
                   value={form.ga4PropertyId}
                   onChange={(e) => {
                     const prop = ga4Properties.find((p) => p.id === e.target.value);
-                    setForm((prev) => ({ ...prev, ga4PropertyId: e.target.value, ga4PropertyName: prop?.displayName ?? "" }));
+                    setForm((prev) => ({
+                      ...prev,
+                      ga4PropertyId: e.target.value,
+                      ga4PropertyName: prop?.displayName ?? "",
+                    }));
                   }}
                   className="form-input"
                 >
                   <option value="">— Select a GA4 property —</option>
                   {ga4Properties.map((p) => (
-                    <option key={p.id} value={p.id}>{p.displayName} ({p.account})</option>
+                    <option key={p.id} value={p.id}>
+                      {p.displayName} ({p.account})
+                    </option>
                   ))}
                 </select>
               )}
             </div>
-            <div style={{ borderRadius: "var(--r)", border: "1px solid var(--info-border)", background: "var(--info-bg)", padding: "12px 16px", fontSize: 13, color: "var(--info-text)" }}>
+            <div
+              style={{
+                borderRadius: "var(--r)",
+                border: "1px solid var(--info-border)",
+                background: "var(--info-bg)",
+                padding: "12px 16px",
+                fontSize: 13,
+                color: "var(--info-text)",
+              }}
+            >
               <p style={{ fontWeight: 600, marginBottom: 6 }}>Property not in the list?</p>
               <p style={{ marginBottom: 8, color: "var(--info-text)", lineHeight: 1.5 }}>
-                This app uses a Google service account to read Analytics data. The property will only appear
-                once that service account has been granted <strong>Viewer</strong> access inside Google Analytics.
+                This app uses a Google service account to read Analytics data. The property will
+                only appear once that service account has been granted <strong>Viewer</strong>{" "}
+                access inside Google Analytics.
               </p>
-              <ol style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 5, color: "var(--info-text)", lineHeight: 1.5 }}>
-                <li>Open <a href="https://analytics.google.com" target="_blank" rel="noopener noreferrer" style={{ color: "var(--info)", textDecoration: "underline" }}>analytics.google.com</a> and go to the GA4 property you want to add</li>
-                <li>Click <strong>Admin</strong> (bottom-left) → <strong>Property Access Management</strong></li>
-                <li>Click <strong>+ Add users</strong> and paste the service account email below</li>
-                <li>Set the role to <strong>Viewer</strong> and click <strong>Add</strong></li>
+              <ol
+                style={{
+                  margin: 0,
+                  paddingLeft: 18,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 5,
+                  color: "var(--info-text)",
+                  lineHeight: 1.5,
+                }}
+              >
+                <li>
+                  Open{" "}
+                  <a
+                    href="https://analytics.google.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: "var(--info)", textDecoration: "underline" }}
+                  >
+                    analytics.google.com
+                  </a>{" "}
+                  and go to the GA4 property you want to add
+                </li>
+                <li>
+                  Click <strong>Admin</strong> (bottom-left) →{" "}
+                  <strong>Property Access Management</strong>
+                </li>
+                <li>
+                  Click <strong>+ Add users</strong> and paste the service account email below
+                </li>
+                <li>
+                  Set the role to <strong>Viewer</strong> and click <strong>Add</strong>
+                </li>
                 <li>Come back here and refresh — the property will appear in the dropdown</li>
               </ol>
               {ga4ServiceAccountEmail && (
-                <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--surface)", border: "1px solid var(--info-border)", borderRadius: "var(--r-sm)", padding: "8px 12px", marginTop: 12 }}>
-                  <code style={{ flex: 1, fontSize: 12, fontFamily: "monospace", color: "var(--info-text)", wordBreak: "break-all", userSelect: "all" as const }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    background: "var(--surface)",
+                    border: "1px solid var(--info-border)",
+                    borderRadius: "var(--r-sm)",
+                    padding: "8px 12px",
+                    marginTop: 12,
+                  }}
+                >
+                  <code
+                    style={{
+                      flex: 1,
+                      fontSize: 12,
+                      fontFamily: "monospace",
+                      color: "var(--info-text)",
+                      wordBreak: "break-all",
+                      userSelect: "all" as const,
+                    }}
+                  >
                     {ga4ServiceAccountEmail}
                   </code>
                   <button
                     type="button"
-                    onClick={() => { navigator.clipboard.writeText(ga4ServiceAccountEmail); setGa4EmailCopied(true); setTimeout(() => setGa4EmailCopied(false), 2000); }}
-                    style={{ flexShrink: 0, fontSize: 11, fontWeight: 500, background: "var(--info-bg)", border: "1px solid var(--info-border)", borderRadius: 6, padding: "4px 10px", cursor: "pointer", color: "var(--info-text)" }}
+                    onClick={() => {
+                      navigator.clipboard.writeText(ga4ServiceAccountEmail);
+                      setGa4EmailCopied(true);
+                      setTimeout(() => setGa4EmailCopied(false), 2000);
+                    }}
+                    style={{
+                      flexShrink: 0,
+                      fontSize: 11,
+                      fontWeight: 500,
+                      background: "var(--info-bg)",
+                      border: "1px solid var(--info-border)",
+                      borderRadius: 6,
+                      padding: "4px 10px",
+                      cursor: "pointer",
+                      color: "var(--info-text)",
+                    }}
                   >
                     {ga4EmailCopied ? "Copied ✓" : "Copy"}
                   </button>
                 </div>
               )}
               {ga4ServiceAccountEmailError && (
-                <p style={{ fontSize: 12, color: "var(--warning-text)", marginTop: 10, background: "var(--warning-bg)", border: "1px solid var(--warning-border)", borderRadius: 6, padding: "6px 10px" }}>
-                  Could not fetch service account email — verify <code>GA4_CLIENT_EMAIL</code> is set in environment variables.
+                <p
+                  style={{
+                    fontSize: 12,
+                    color: "var(--warning-text)",
+                    marginTop: 10,
+                    background: "var(--warning-bg)",
+                    border: "1px solid var(--warning-border)",
+                    borderRadius: 6,
+                    padding: "6px 10px",
+                  }}
+                >
+                  Could not fetch service account email — verify <code>GA4_CLIENT_EMAIL</code> is
+                  set in environment variables.
                 </p>
               )}
             </div>
@@ -371,7 +471,9 @@ export default function NewClientPage() {
         <div className="card">
           <div className="card-header">
             <div className="flex items-center gap-3">
-              <span className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-xs font-bold text-indigo-600">M</span>
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-600">
+                M
+              </span>
               <h2 className="card-title">Meta Ads</h2>
             </div>
           </div>
@@ -379,13 +481,23 @@ export default function NewClientPage() {
             <div>
               <label className="form-label">Ad Account</label>
               {metaLoading ? (
-                <div className="form-input" style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-3)" }}>
+                <div
+                  className="form-input"
+                  style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-3)" }}
+                >
                   <Loader2 className="h-4 w-4 animate-spin" /> Loading ad accounts…
                 </div>
               ) : metaFetchError ? (
                 <>
-                  <input type="text" name="metaAccountId" value={form.metaAccountId} onChange={handleChange} placeholder="123456789012345" className="form-input" />
-                  <p className="text-xs text-red-600 mt-1">{metaFetchError}</p>
+                  <input
+                    type="text"
+                    name="metaAccountId"
+                    value={form.metaAccountId}
+                    onChange={handleChange}
+                    placeholder="123456789012345"
+                    className="form-input"
+                  />
+                  <p className="mt-1 text-xs text-red-600">{metaFetchError}</p>
                 </>
               ) : (
                 <select
@@ -393,13 +505,19 @@ export default function NewClientPage() {
                   value={form.metaAccountId}
                   onChange={(e) => {
                     const acc = metaAccounts.find((a) => a.id === e.target.value);
-                    setForm((prev) => ({ ...prev, metaAccountId: e.target.value, metaAccountName: acc?.name ?? "" }));
+                    setForm((prev) => ({
+                      ...prev,
+                      metaAccountId: e.target.value,
+                      metaAccountName: acc?.name ?? "",
+                    }));
                   }}
                   className="form-input"
                 >
                   <option value="">— Select an ad account —</option>
                   {metaAccounts.map((a) => (
-                    <option key={a.id} value={a.id}>{a.name}</option>
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                    </option>
                   ))}
                 </select>
               )}
@@ -411,7 +529,9 @@ export default function NewClientPage() {
         <div className="card">
           <div className="card-header">
             <div className="flex items-center gap-3">
-              <span className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center text-xs font-bold text-yellow-700">A</span>
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-100 text-xs font-bold text-yellow-700">
+                A
+              </span>
               <h2 className="card-title">Google Ads</h2>
             </div>
           </div>
@@ -419,35 +539,60 @@ export default function NewClientPage() {
             <div>
               <label className="form-label">Customer Account</label>
               {googleAdsLoading ? (
-                <div className="form-input" style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-3)" }}>
+                <div
+                  className="form-input"
+                  style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-3)" }}
+                >
                   <Loader2 className="h-4 w-4 animate-spin" /> Loading accounts…
                 </div>
-              ) : !googleAdsFetchError && (
-                <select
-                  value={googleAdsAccounts.some((a) => a.id === form.googleAdsCustomerId) ? form.googleAdsCustomerId : ""}
-                  onChange={(e) => {
-                    const acc = googleAdsAccounts.find((a) => a.id === e.target.value);
-                    setForm((prev) => ({ ...prev, googleAdsCustomerId: e.target.value, googleAdsAccountName: acc && acc.name !== acc.id ? acc.name : "" }));
-                  }}
-                  className="form-input"
-                  style={{ marginBottom: 10 }}
-                >
-                  <option value="">— Pick from list —</option>
-                  {googleAdsAccounts.map((a) => (
-                    <option key={a.id} value={a.id}>{a.name !== a.id ? `${a.name} (${a.id})` : a.id}</option>
-                  ))}
-                </select>
+              ) : (
+                !googleAdsFetchError && (
+                  <select
+                    value={
+                      googleAdsAccounts.some((a) => a.id === form.googleAdsCustomerId)
+                        ? form.googleAdsCustomerId
+                        : ""
+                    }
+                    onChange={(e) => {
+                      const acc = googleAdsAccounts.find((a) => a.id === e.target.value);
+                      setForm((prev) => ({
+                        ...prev,
+                        googleAdsCustomerId: e.target.value,
+                        googleAdsAccountName: acc && acc.name !== acc.id ? acc.name : "",
+                      }));
+                    }}
+                    className="form-input"
+                    style={{ marginBottom: 10 }}
+                  >
+                    <option value="">— Pick from list —</option>
+                    {googleAdsAccounts.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name !== a.id ? `${a.name} (${a.id})` : a.id}
+                      </option>
+                    ))}
+                  </select>
+                )
               )}
               <input
                 type="text"
                 name="googleAdsCustomerId"
                 value={form.googleAdsCustomerId}
-                onChange={(e) => setForm((prev) => ({ ...prev, googleAdsCustomerId: e.target.value, googleAdsAccountName: "" }))}
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    googleAdsCustomerId: e.target.value,
+                    googleAdsAccountName: "",
+                  }))
+                }
                 placeholder="Enter account ID (e.g. 6943796207)"
                 className="form-input"
               />
-              <p className="text-xs text-slate-500 mt-1.5">Not in the list? Paste the account ID directly above.</p>
-              {googleAdsFetchError && <p className="text-xs text-red-600 mt-1">{googleAdsFetchError}</p>}
+              <p className="mt-1.5 text-xs text-slate-500">
+                Not in the list? Paste the account ID directly above.
+              </p>
+              {googleAdsFetchError && (
+                <p className="mt-1 text-xs text-red-600">{googleAdsFetchError}</p>
+              )}
             </div>
           </div>
         </div>
@@ -456,7 +601,9 @@ export default function NewClientPage() {
         <div className="card">
           <div className="card-header">
             <div className="flex items-center gap-3">
-              <span className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-xs font-bold text-green-700">SC</span>
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-green-100 text-xs font-bold text-green-700">
+                SC
+              </span>
               <h2 className="card-title">Google Search Console</h2>
             </div>
           </div>
@@ -464,25 +611,45 @@ export default function NewClientPage() {
             <div>
               <label className="form-label">Site URL</label>
               {gscLoading ? (
-                <div className="form-input" style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-3)" }}>
+                <div
+                  className="form-input"
+                  style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-3)" }}
+                >
                   <Loader2 className="h-4 w-4 animate-spin" /> Loading sites…
                 </div>
               ) : gscFetchError ? (
                 <>
-                  <input type="text" name="searchConsoleSiteUrl" value={form.searchConsoleSiteUrl} onChange={handleChange} placeholder="https://example.com/ or sc-domain:example.com" className="form-input" />
-                  <p className="text-xs text-amber-600 mt-1">{gscFetchError} — enter site URL manually above.</p>
+                  <input
+                    type="text"
+                    name="searchConsoleSiteUrl"
+                    value={form.searchConsoleSiteUrl}
+                    onChange={handleChange}
+                    placeholder="https://example.com/ or sc-domain:example.com"
+                    className="form-input"
+                  />
+                  <p className="mt-1 text-xs text-amber-600">
+                    {gscFetchError} — enter site URL manually above.
+                  </p>
                 </>
               ) : (
                 <>
                   <select
-                    value={gscSites.some((s) => s.siteUrl === form.searchConsoleSiteUrl) ? form.searchConsoleSiteUrl : ""}
-                    onChange={(e) => setForm((prev) => ({ ...prev, searchConsoleSiteUrl: e.target.value }))}
+                    value={
+                      gscSites.some((s) => s.siteUrl === form.searchConsoleSiteUrl)
+                        ? form.searchConsoleSiteUrl
+                        : ""
+                    }
+                    onChange={(e) =>
+                      setForm((prev) => ({ ...prev, searchConsoleSiteUrl: e.target.value }))
+                    }
                     className="form-input"
                     style={{ marginBottom: 10 }}
                   >
                     <option value="">— Pick from list —</option>
                     {gscSites.map((s) => (
-                      <option key={s.siteUrl} value={s.siteUrl}>{s.siteUrl} ({s.permissionLevel})</option>
+                      <option key={s.siteUrl} value={s.siteUrl}>
+                        {s.siteUrl} ({s.permissionLevel})
+                      </option>
                     ))}
                   </select>
                   <input
@@ -493,40 +660,125 @@ export default function NewClientPage() {
                     placeholder="https://example.com/ or sc-domain:example.com"
                     className="form-input"
                   />
-                  <p className="text-xs text-slate-500 mt-1.5">Not in the list? Paste the site URL directly above.</p>
+                  <p className="mt-1.5 text-xs text-slate-500">
+                    Not in the list? Paste the site URL directly above.
+                  </p>
                 </>
               )}
             </div>
-            <div style={{ borderRadius: "var(--r)", border: "1px solid var(--success-border)", background: "var(--success-bg)", padding: "12px 16px", fontSize: 13, color: "var(--success-text)" }}>
+            <div
+              style={{
+                borderRadius: "var(--r)",
+                border: "1px solid var(--success-border)",
+                background: "var(--success-bg)",
+                padding: "12px 16px",
+                fontSize: 13,
+                color: "var(--success-text)",
+              }}
+            >
               <p style={{ fontWeight: 600, marginBottom: 6 }}>Site not in the list?</p>
               <p style={{ marginBottom: 8, color: "var(--success-text)", lineHeight: 1.5 }}>
-                This app uses a Google service account to read Search Console data. The site will only appear
-                once that service account has been added as a <strong>Full User</strong> inside Google Search Console.
+                This app uses a Google service account to read Search Console data. The site will
+                only appear once that service account has been added as a <strong>Full User</strong>{" "}
+                inside Google Search Console.
               </p>
-              <ol style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 5, color: "var(--success-text)", lineHeight: 1.5 }}>
-                <li>Open <a href="https://search.google.com/search-console" target="_blank" rel="noopener noreferrer" style={{ color: "var(--success-text)", textDecoration: "underline" }}>search.google.com/search-console</a> and select the property</li>
-                <li>Click <strong>Settings</strong> (bottom-left) → <strong>Users and permissions</strong></li>
-                <li>Click <strong>Add user</strong> and paste the service account email below</li>
-                <li>Set the permission to <strong>Full</strong> and click <strong>Add</strong></li>
+              <ol
+                style={{
+                  margin: 0,
+                  paddingLeft: 18,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 5,
+                  color: "var(--success-text)",
+                  lineHeight: 1.5,
+                }}
+              >
+                <li>
+                  Open{" "}
+                  <a
+                    href="https://search.google.com/search-console"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: "var(--success-text)", textDecoration: "underline" }}
+                  >
+                    search.google.com/search-console
+                  </a>{" "}
+                  and select the property
+                </li>
+                <li>
+                  Click <strong>Settings</strong> (bottom-left) →{" "}
+                  <strong>Users and permissions</strong>
+                </li>
+                <li>
+                  Click <strong>Add user</strong> and paste the service account email below
+                </li>
+                <li>
+                  Set the permission to <strong>Full</strong> and click <strong>Add</strong>
+                </li>
                 <li>Come back here and refresh — the site will appear in the dropdown</li>
               </ol>
               {ga4ServiceAccountEmail && (
-                <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--surface)", border: "1px solid var(--success-border)", borderRadius: "var(--r-sm)", padding: "8px 12px", marginTop: 12 }}>
-                  <code style={{ flex: 1, fontSize: 12, fontFamily: "monospace", color: "var(--success-text)", wordBreak: "break-all", userSelect: "all" as const }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    background: "var(--surface)",
+                    border: "1px solid var(--success-border)",
+                    borderRadius: "var(--r-sm)",
+                    padding: "8px 12px",
+                    marginTop: 12,
+                  }}
+                >
+                  <code
+                    style={{
+                      flex: 1,
+                      fontSize: 12,
+                      fontFamily: "monospace",
+                      color: "var(--success-text)",
+                      wordBreak: "break-all",
+                      userSelect: "all" as const,
+                    }}
+                  >
                     {ga4ServiceAccountEmail}
                   </code>
                   <button
                     type="button"
-                    onClick={() => { navigator.clipboard.writeText(ga4ServiceAccountEmail); setGscEmailCopied(true); setTimeout(() => setGscEmailCopied(false), 2000); }}
-                    style={{ flexShrink: 0, fontSize: 11, fontWeight: 500, background: "var(--success-bg)", border: "1px solid var(--success-border)", borderRadius: 6, padding: "4px 10px", cursor: "pointer", color: "var(--success-text)" }}
+                    onClick={() => {
+                      navigator.clipboard.writeText(ga4ServiceAccountEmail);
+                      setGscEmailCopied(true);
+                      setTimeout(() => setGscEmailCopied(false), 2000);
+                    }}
+                    style={{
+                      flexShrink: 0,
+                      fontSize: 11,
+                      fontWeight: 500,
+                      background: "var(--success-bg)",
+                      border: "1px solid var(--success-border)",
+                      borderRadius: 6,
+                      padding: "4px 10px",
+                      cursor: "pointer",
+                      color: "var(--success-text)",
+                    }}
                   >
                     {gscEmailCopied ? "Copied ✓" : "Copy"}
                   </button>
                 </div>
               )}
               {ga4ServiceAccountEmailError && (
-                <p style={{ fontSize: 12, color: "var(--warning-text)", marginTop: 10, background: "var(--warning-bg)", border: "1px solid var(--warning-border)", borderRadius: 6, padding: "6px 10px" }}>
-                  Could not fetch service account email — verify <code>GA4_CLIENT_EMAIL</code> is set in environment variables.
+                <p
+                  style={{
+                    fontSize: 12,
+                    color: "var(--warning-text)",
+                    marginTop: 10,
+                    background: "var(--warning-bg)",
+                    border: "1px solid var(--warning-border)",
+                    borderRadius: 6,
+                    padding: "6px 10px",
+                  }}
+                >
+                  Could not fetch service account email — verify <code>GA4_CLIENT_EMAIL</code> is
+                  set in environment variables.
                 </p>
               )}
             </div>
@@ -537,7 +789,9 @@ export default function NewClientPage() {
         <div className="card">
           <div className="card-header">
             <div className="flex items-center gap-3">
-              <span className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center text-xs font-bold text-violet-700">AI</span>
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-100 text-xs font-bold text-violet-700">
+                AI
+              </span>
               <h2 className="card-title">AI Report Instructions</h2>
             </div>
           </div>
@@ -547,21 +801,33 @@ export default function NewClientPage() {
               <textarea
                 name="aiReportInstructions"
                 value={form.aiReportInstructions}
-                onChange={(e) => setForm((prev) => ({ ...prev, aiReportInstructions: e.target.value }))}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, aiReportInstructions: e.target.value }))
+                }
                 rows={4}
                 placeholder="e.g. Always mention our brand values. Focus on lead generation goals. Avoid competitor comparisons."
                 className="form-input"
                 style={{ resize: "vertical", fontFamily: "inherit", lineHeight: 1.6 }}
               />
-              <p className="text-xs text-slate-500 mt-1.5">
-                These instructions are injected into the AI prompt when generating report commentary for this client. Leave blank to use default behaviour.
+              <p className="mt-1.5 text-xs text-slate-500">
+                These instructions are injected into the AI prompt when generating report commentary
+                for this client. Leave blank to use default behaviour.
               </p>
             </div>
           </div>
         </div>
 
         {error && (
-          <div style={{ padding: "12px 16px", background: "var(--danger-bg)", border: "1px solid var(--danger-border)", borderRadius: "var(--r-sm)", fontSize: 14, color: "var(--danger-text)" }}>
+          <div
+            style={{
+              padding: "12px 16px",
+              background: "var(--danger-bg)",
+              border: "1px solid var(--danger-border)",
+              borderRadius: "var(--r-sm)",
+              fontSize: 14,
+              color: "var(--danger-text)",
+            }}
+          >
             {error}
           </div>
         )}

@@ -3,7 +3,6 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { RefreshDataButton } from "@/components/ui/RefreshDataButton";
-import { SemrushSection } from "./SemrushSection";
 import { GA4Section } from "./GA4Section";
 import { MetaSection } from "./MetaSection";
 import { GoogleAdsSection } from "./GoogleAdsSection";
@@ -27,7 +26,6 @@ import { CallRailSection } from "./CallRailSection";
 import { ActionsSection } from "./ActionsSection";
 import { CommunicationsSection } from "./CommunicationsSection";
 import { PortalThreadsPanel } from "./PortalThreadsPanel";
-import { CompetitorIntelligenceSection } from "./CompetitorIntelligenceSection";
 import { StrategyDocumentPanel } from "./StrategyDocumentPanel";
 import { MeetingBriefingPanel } from "./MeetingBriefingPanel";
 import { SectionErrorBoundary } from "./shared/SectionErrorBoundary";
@@ -83,19 +81,69 @@ const periods = [
   { value: "custom", label: "Custom" },
 ];
 
-type Tab = "hub" | "signals" | "overview" | "seo" | "web" | "paid" | "googleads" | "searchconsole" | "ecommerce" | "tiktok" | "microsoftads" | "cwv" | "linkedin" | "klaviyo" | "goals" | "hubspot" | "youtube" | "callrail" | "actions" | "communications" | "competitors" | "strategy" | "financials";
+type Tab =
+  | "hub"
+  | "signals"
+  | "overview"
+  | "seo"
+  | "web"
+  | "paid"
+  | "googleads"
+  | "searchconsole"
+  | "ecommerce"
+  | "tiktok"
+  | "microsoftads"
+  | "cwv"
+  | "linkedin"
+  | "klaviyo"
+  | "goals"
+  | "hubspot"
+  | "youtube"
+  | "callrail"
+  | "actions"
+  | "communications"
+  | "strategy"
+  | "financials";
 
 function toDateInputValue(d: Date) {
   return d.toISOString().split("T")[0];
 }
 
-const VALID_TABS: Tab[] = ["hub", "signals", "overview", "seo", "web", "paid", "googleads", "searchconsole", "ecommerce", "tiktok", "microsoftads", "cwv", "linkedin", "klaviyo", "goals", "hubspot", "youtube", "callrail", "actions", "communications", "competitors", "strategy", "financials"];
+const VALID_TABS: Tab[] = [
+  "hub",
+  "signals",
+  "overview",
+  "seo",
+  "web",
+  "paid",
+  "googleads",
+  "searchconsole",
+  "ecommerce",
+  "tiktok",
+  "microsoftads",
+  "cwv",
+  "linkedin",
+  "klaviyo",
+  "goals",
+  "hubspot",
+  "youtube",
+  "callrail",
+  "actions",
+  "communications",
+  "strategy",
+  "financials",
+];
 
 function getDefaultTab(_client: Client): Tab {
   return "hub";
 }
 
-export function ClientDashboard({ client, period: initialPeriod, userRole, permissions = [] }: ClientDashboardProps) {
+export function ClientDashboard({
+  client,
+  period: initialPeriod,
+  userRole,
+  permissions = [],
+}: ClientDashboardProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -127,27 +175,35 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
     }
   });
 
-  const toggleFav = useCallback((tabId: Tab) => {
-    setFavTabs((prev) => {
-      const next = new Set(prev);
-      if (next.has(tabId)) next.delete(tabId);
-      else next.add(tabId);
-      try {
-        window.localStorage.setItem(favKey, JSON.stringify(Array.from(next)));
-      } catch { /* ignore quota errors */ }
-      return next;
-    });
-  }, [favKey]);
+  const toggleFav = useCallback(
+    (tabId: Tab) => {
+      setFavTabs((prev) => {
+        const next = new Set(prev);
+        if (next.has(tabId)) next.delete(tabId);
+        else next.add(tabId);
+        try {
+          window.localStorage.setItem(favKey, JSON.stringify(Array.from(next)));
+        } catch {
+          /* ignore quota errors */
+        }
+        return next;
+      });
+    },
+    [favKey],
+  );
 
-  const handleTabChange = useCallback((tab: Tab) => {
-    setTabTransitioning(true);
-    setActiveTab(tab);
-    // Persist active tab to URL so refresh + back-button work as expected.
-    const params = new URLSearchParams(searchParams?.toString() ?? "");
-    params.set("tab", tab);
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-    setTimeout(() => setTabTransitioning(false), 200);
-  }, [router, pathname, searchParams]);
+  const handleTabChange = useCallback(
+    (tab: Tab) => {
+      setTabTransitioning(true);
+      setActiveTab(tab);
+      // Persist active tab to URL so refresh + back-button work as expected.
+      const params = new URLSearchParams(searchParams?.toString() ?? "");
+      params.set("tab", tab);
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+      setTimeout(() => setTabTransitioning(false), 200);
+    },
+    [router, pathname, searchParams],
+  );
 
   // Sync state if user navigates with browser back/forward to a different ?tab=.
   useEffect(() => {
@@ -175,7 +231,7 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
   const isRestricted = isInLeadFunnel || isClosed;
 
   // Tab visibility: if the role has any "tab:" permissions, restrict to only those tabs
-  const tabPermissions = permissions.filter(p => p.startsWith("tab:")).map(p => p.slice(4));
+  const tabPermissions = permissions.filter((p) => p.startsWith("tab:")).map((p) => p.slice(4));
   const hasTabRestrictions = tabPermissions.length > 0;
 
   const today = toDateInputValue(new Date());
@@ -200,76 +256,113 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
 
     if (client.googleAdsCustomerId) {
       fetches.push(
-        fetch(`/api/google-ads?customerId=${encodeURIComponent(client.googleAdsCustomerId)}&startDate=${startDate}&endDate=${endDate}`)
-          .then(r => r.ok ? r.json() : null)
-          .then(json => {
+        fetch(
+          `/api/google-ads?customerId=${encodeURIComponent(client.googleAdsCustomerId)}&startDate=${startDate}&endDate=${endDate}`,
+        )
+          .then((r) => (r.ok ? r.json() : null))
+          .then((json) => {
             if (json?.overview) {
               const o = json.overview;
-              summaries.push({ platform: "Google Ads", metrics: { spend: `£${(o.costMicros / 1e6).toFixed(0)}`, clicks: o.clicks, conversions: o.conversions, ROAS: o.conversionsValue > 0 && o.costMicros > 0 ? `${(o.conversionsValue / (o.costMicros / 1e6)).toFixed(2)}×` : "N/A" } });
+              summaries.push({
+                platform: "Google Ads",
+                metrics: {
+                  spend: `£${(o.costMicros / 1e6).toFixed(0)}`,
+                  clicks: o.clicks,
+                  conversions: o.conversions,
+                  ROAS:
+                    o.conversionsValue > 0 && o.costMicros > 0
+                      ? `${(o.conversionsValue / (o.costMicros / 1e6)).toFixed(2)}×`
+                      : "N/A",
+                },
+              });
             }
           })
-          .catch(() => {})
+          .catch(() => {}),
       );
     }
     if (client.metaAccountId) {
       fetches.push(
-        fetch(`/api/meta?clientId=${encodeURIComponent(client.id)}&startDate=${startDate}&endDate=${endDate}&type=overview`)
-          .then(r => r.ok ? r.json() : null)
-          .then(json => {
+        fetch(
+          `/api/meta?clientId=${encodeURIComponent(client.id)}&startDate=${startDate}&endDate=${endDate}&type=overview`,
+        )
+          .then((r) => (r.ok ? r.json() : null))
+          .then((json) => {
             if (json?.totalSpend != null) {
               const o = json;
-              summaries.push({ platform: "Meta Ads", metrics: { spend: `£${o.totalSpend?.toFixed(0) ?? 0}`, clicks: o.totalClicks ?? 0, conversions: o.totalConversions ?? 0, ROAS: `${(o.avgRoas ?? 0).toFixed(2)}×` } });
+              summaries.push({
+                platform: "Meta Ads",
+                metrics: {
+                  spend: `£${o.totalSpend?.toFixed(0) ?? 0}`,
+                  clicks: o.totalClicks ?? 0,
+                  conversions: o.totalConversions ?? 0,
+                  ROAS: `${(o.avgRoas ?? 0).toFixed(2)}×`,
+                },
+              });
             }
           })
-          .catch(() => {})
+          .catch(() => {}),
       );
     }
     if (client.ga4PropertyId) {
       fetches.push(
-        fetch(`/api/ga4?propertyId=${encodeURIComponent(client.ga4PropertyId)}&startDate=${startDate}&endDate=${endDate}`)
-          .then(r => r.ok ? r.json() : null)
-          .then(json => {
+        fetch(
+          `/api/ga4?propertyId=${encodeURIComponent(client.ga4PropertyId)}&startDate=${startDate}&endDate=${endDate}`,
+        )
+          .then((r) => (r.ok ? r.json() : null))
+          .then((json) => {
             if (json) {
-              summaries.push({ platform: "GA4", metrics: { sessions: json.sessions ?? 0, users: json.users ?? 0, bounceRate: `${(json.bounceRate ?? 0).toFixed(1)}%`, conversionRate: `${(json.conversionRate ?? 0).toFixed(2)}%` } });
+              summaries.push({
+                platform: "GA4",
+                metrics: {
+                  sessions: json.sessions ?? 0,
+                  users: json.users ?? 0,
+                  bounceRate: `${(json.bounceRate ?? 0).toFixed(1)}%`,
+                  conversionRate: `${(json.conversionRate ?? 0).toFixed(2)}%`,
+                },
+              });
             }
           })
-          .catch(() => {})
+          .catch(() => {}),
       );
     }
     if (client.searchConsoleSiteUrl) {
       fetches.push(
-        fetch(`/api/search-console?siteUrl=${encodeURIComponent(client.searchConsoleSiteUrl)}&startDate=${startDate}&endDate=${endDate}`)
-          .then(r => r.ok ? r.json() : null)
-          .then(json => {
+        fetch(
+          `/api/search-console?siteUrl=${encodeURIComponent(client.searchConsoleSiteUrl)}&startDate=${startDate}&endDate=${endDate}`,
+        )
+          .then((r) => (r.ok ? r.json() : null))
+          .then((json) => {
             if (json) {
-              summaries.push({ platform: "Search Console", metrics: { clicks: json.clicks ?? 0, impressions: json.impressions ?? 0, CTR: `${((json.ctr ?? 0) * 100).toFixed(2)}%`, avgPosition: (json.position ?? 0).toFixed(1) } });
+              summaries.push({
+                platform: "Search Console",
+                metrics: {
+                  clicks: json.clicks ?? 0,
+                  impressions: json.impressions ?? 0,
+                  CTR: `${((json.ctr ?? 0) * 100).toFixed(2)}%`,
+                  avgPosition: (json.position ?? 0).toFixed(1),
+                },
+              });
             }
           })
-          .catch(() => {})
+          .catch(() => {}),
       );
     }
-    if (client.semrushDomain) {
-      fetches.push(
-        fetch(`/api/semrush?domain=${encodeURIComponent(client.semrushDomain)}`)
-          .then(r => r.ok ? r.json() : null)
-          .then(json => {
-            if (json?.overview) {
-              const o = json.overview;
-              summaries.push({ platform: "SEMrush", metrics: { organicTraffic: o.organicTraffic ?? 0, organicKeywords: o.organicKeywords ?? 0, organicCost: `£${(o.organicCost ?? 0).toFixed(0)}` } });
-            }
-          })
-          .catch(() => {})
-      );
-    }
-
     Promise.all(fetches).then(() => {
-      if (summaries.length < 2) { setCrossCtx({}); return; }
+      if (summaries.length < 2) {
+        setCrossCtx({});
+        return;
+      }
       const ctx: Record<string, string> = {};
       for (const s of summaries) {
         ctx[s.platform] = buildCrossContextString(summaries, s.platform);
       }
       // Also build one keyed by section type identifiers used in the components
-      const keyMap: Record<string, string> = { "Google Ads": "googleads", "Meta Ads": "meta", "GA4": "ga4", "Search Console": "searchconsole", "SEMrush": "semrush" };
+      const keyMap: Record<string, string> = {
+        "Google Ads": "googleads",
+        "Meta Ads": "meta",
+        GA4: "ga4",
+        "Search Console": "searchconsole",
+      };
       const result: Record<string, string> = {};
       for (const [platName, ctx_str] of Object.entries(ctx)) {
         const key = keyMap[platName];
@@ -286,14 +379,18 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
     { id: "hub", label: "Hub", available: true },
     { id: "signals", label: "Signals", available: true },
     { id: "overview", label: "Overview", available: true },
-    { id: "seo", label: "SEO / SemRush", available: !!client.semrushDomain },
+    { id: "seo", label: "SEO", available: !!client.searchConsoleSiteUrl },
     { id: "web", label: "Web Analytics (GA4)", available: !!client.ga4PropertyId },
     { id: "searchconsole", label: "Search Console", available: !!client.searchConsoleSiteUrl },
     { id: "paid", label: "Paid Social (Meta)", available: !!client.metaAccountId },
     { id: "googleads", label: "Paid Search (Google Ads)", available: !!client.googleAdsCustomerId },
     { id: "tiktok", label: "TikTok Ads", available: !!client.tiktokAdvertiserId },
     { id: "microsoftads", label: "Microsoft Ads", available: !!client.microsoftAdsAccountId },
-    { id: "ecommerce", label: "E-Commerce", available: !!(client.woocommerceUrl || client.shopifyStoreDomain) },
+    {
+      id: "ecommerce",
+      label: "E-Commerce",
+      available: !!(client.woocommerceUrl || client.shopifyStoreDomain),
+    },
     { id: "cwv", label: "Core Web Vitals", available: !!(client.cwvUrl || client.website) },
     { id: "linkedin", label: "LinkedIn Ads", available: !!client.linkedinAccountId },
     { id: "klaviyo", label: "Email (Klaviyo)", available: !!client.klaviyoApiKey },
@@ -301,18 +398,21 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
     { id: "hubspot", label: "HubSpot CRM", available: !!client.hubspotAccessToken },
     { id: "youtube", label: "YouTube", available: !!client.youtubeChannelId },
     { id: "callrail", label: "CallRail", available: !!client.callrailAccountId },
-    { id: "competitors", label: "Competitors", available: true },
     { id: "actions", label: "Actions", available: true },
     { id: "communications", label: "Communications", available: true },
     { id: "strategy", label: "Strategy", available: true },
     { id: "financials", label: "Financials", available: true },
-  ].map((tab) => ({
-    ...tab,
-    // Lead funnel: Hub + SEMrush + Competitors. Closed: Hub only. Active: all.
-    available: tab.available && (!hasTabRestrictions || tabPermissions.includes(tab.id))
-      && (!isInLeadFunnel || LEAD_ALLOWED_TABS.includes(tab.id))
-      && (!isClosed || tab.id === "hub"),
-  })).filter((tab) => tab.available)
+  ]
+    .map((tab) => ({
+      ...tab,
+      // Lead funnel: Hub + SEMrush + Competitors. Closed: Hub only. Active: all.
+      available:
+        tab.available &&
+        (!hasTabRestrictions || tabPermissions.includes(tab.id)) &&
+        (!isInLeadFunnel || LEAD_ALLOWED_TABS.includes(tab.id)) &&
+        (!isClosed || tab.id === "hub"),
+    }))
+    .filter((tab) => tab.available)
     // Sort: Hub stays first, then pinned favourites (preserving original order), then the rest.
     .sort((a, b) => {
       if (a.id === "hub") return -1;
@@ -326,15 +426,19 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
     <div>
       {/* Status banner — shown for non-active clients */}
       {isRestricted && (
-        <div style={{
-          padding: "12px 18px", marginBottom: 20, borderRadius: 12,
-          background: isClosed ? "rgba(100,116,139,0.06)" : "rgba(245,158,11,0.08)",
-          border: `1px solid ${isClosed ? "rgba(100,116,139,0.2)" : "rgba(245,158,11,0.25)"}`,
-        }}>
+        <div
+          style={{
+            padding: "12px 18px",
+            marginBottom: 20,
+            borderRadius: 12,
+            background: isClosed ? "rgba(100,116,139,0.06)" : "rgba(245,158,11,0.08)",
+            border: `1px solid ${isClosed ? "rgba(100,116,139,0.2)" : "rgba(245,158,11,0.25)"}`,
+          }}
+        >
           <span style={{ fontSize: 13, color: "var(--text-2)" }}>
             {isClosed
               ? `This client is ${client.status === "churned" ? "churned" : "marked as lost"} — only the Hub is available.`
-              : "This prospect is in the lead pipeline — Hub, SEMrush, and Competitors are available. Mark as Active once signed."}
+              : "This prospect is in the lead pipeline — Hub and SEO are available. Mark as Active once signed."}
           </span>
         </div>
       )}
@@ -347,7 +451,13 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
           role="tablist"
           aria-label="Dashboard sections"
           onKeyDown={(e) => {
-            if (e.key !== "ArrowLeft" && e.key !== "ArrowRight" && e.key !== "Home" && e.key !== "End") return;
+            if (
+              e.key !== "ArrowLeft" &&
+              e.key !== "ArrowRight" &&
+              e.key !== "Home" &&
+              e.key !== "End"
+            )
+              return;
             e.preventDefault();
             const idx = tabs.findIndex((t) => t.id === activeTab);
             if (idx === -1) return;
@@ -379,7 +489,11 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
                 aria-controls={`tab-panel-${tab.id}`}
                 aria-label={`${tab.label} tab${isFav ? " (pinned)" : ""}`}
                 tabIndex={activeTab === tab.id ? 0 : -1}
-                className={cn("tab-btn", activeTab === tab.id && "active", isFav && "tab-btn-pinned")}
+                className={cn(
+                  "tab-btn",
+                  activeTab === tab.id && "active",
+                  isFav && "tab-btn-pinned",
+                )}
               >
                 {tab.label}
                 {canPin && (
@@ -423,7 +537,6 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
               `meta:${client.metaAccountId ?? client.id}`,
               `googleads:${client.googleAdsCustomerId ?? client.id}`,
               `searchconsole:${client.searchConsoleSiteUrl ?? client.id}`,
-              `semrush:`,
               `tiktok:${client.tiktokAdvertiserId ?? client.id}`,
               `microsoftads:${client.microsoftAdsAccountId ?? client.id}`,
               `linkedin:${client.linkedinAccountId ?? client.id}`,
@@ -468,198 +581,267 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
         role="tabpanel"
         aria-labelledby={`tab-${activeTab}`}
         tabIndex={-1}
-        style={{ opacity: tabTransitioning ? 0.5 : 1, pointerEvents: tabTransitioning ? "none" : "auto", transition: "opacity 0.2s" }}
+        style={{
+          opacity: tabTransitioning ? 0.5 : 1,
+          pointerEvents: tabTransitioning ? "none" : "auto",
+          transition: "opacity 0.2s",
+        }}
       >
-      <SectionErrorBoundary>
-      {activeTab === "hub" && (
-        <HubSection clientId={client.id} clientSlug={client.slug} clientName={client.name} />
-      )}
+        <SectionErrorBoundary>
+          {activeTab === "hub" && (
+            <HubSection clientId={client.id} clientSlug={client.slug} clientName={client.name} />
+          )}
 
-      {activeTab === "signals" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-          <ActionQueueSection clientId={client.id} />
-          <SignalsSection client={client} startDate={startDate} endDate={endDate} />
-        </div>
-      )}
+          {activeTab === "signals" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+              <ActionQueueSection clientId={client.id} />
+              <SignalsSection client={client} startDate={startDate} endDate={endDate} />
+            </div>
+          )}
 
-      {activeTab === "overview" && (
-        <OverviewSection client={client} startDate={startDate} endDate={endDate} />
-      )}
+          {activeTab === "overview" && (
+            <OverviewSection client={client} startDate={startDate} endDate={endDate} />
+          )}
 
-      {activeTab === "seo" && client.semrushDomain ? (
-        <SemrushSection domain={client.semrushDomain} projectId={client.semrushProjectId} campaignIds={(() => { try { return JSON.parse(client.semrushCampaignIds ?? "[]") as string[]; } catch { return []; } })()} startDate={startDate} endDate={endDate} crossPlatformContext={crossCtx.semrush} />
-      ) : activeTab === "seo" ? (
-        <NotConfigured
-          name="SEO / SemRush"
-          description="Add a SemRush domain in client settings to see organic traffic, keyword rankings and traffic value"
-          settingsHref={`/clients/${client.slug}/settings`}
-        />
-      ) : null}
+          {activeTab === "seo" && client.searchConsoleSiteUrl ? (
+            <SearchConsoleSection
+              siteUrl={client.searchConsoleSiteUrl}
+              startDate={startDate}
+              endDate={endDate}
+              googleAdsCustomerId={client.googleAdsCustomerId}
+              crossPlatformContext={crossCtx.searchconsole}
+            />
+          ) : activeTab === "seo" ? (
+            <NotConfigured
+              name="SEO"
+              description="Add a Search Console site URL in client settings to see clicks, impressions, CTR and keyword rankings"
+              settingsHref={`/clients/${client.slug}/settings`}
+            />
+          ) : null}
 
-      {activeTab === "web" && client.ga4PropertyId ? (
-        <GA4Section propertyId={client.ga4PropertyId} clientId={client.id} clientName={client.name} startDate={startDate} endDate={endDate} crossPlatformContext={crossCtx.ga4} />
-      ) : activeTab === "web" ? (
-        <NotConfigured
-          name="Web Analytics (GA4)"
-          description="Add a GA4 Property ID in client settings to see sessions, users and page analytics"
-          settingsHref={`/clients/${client.slug}/settings`}
-        />
-      ) : null}
+          {activeTab === "web" && client.ga4PropertyId ? (
+            <GA4Section
+              propertyId={client.ga4PropertyId}
+              clientId={client.id}
+              clientName={client.name}
+              startDate={startDate}
+              endDate={endDate}
+              crossPlatformContext={crossCtx.ga4}
+            />
+          ) : activeTab === "web" ? (
+            <NotConfigured
+              name="Web Analytics (GA4)"
+              description="Add a GA4 Property ID in client settings to see sessions, users and page analytics"
+              settingsHref={`/clients/${client.slug}/settings`}
+            />
+          ) : null}
 
-      {activeTab === "paid" && client.metaAccountId ? (
-        <MetaSection clientId={client.id} clientName={client.name} startDate={startDate} endDate={endDate} crossPlatformContext={crossCtx.meta} clickFraudToken={client.clickFraudToken} signalConfig={client.signalConfig} />
-      ) : activeTab === "paid" ? (
-        <NotConfigured
-          name="Paid Social (Meta)"
-          description="Add a Meta Ads account ID in client settings to see spend, impressions, and campaign performance"
-          settingsHref={`/clients/${client.slug}/settings`}
-        />
-      ) : null}
+          {activeTab === "paid" && client.metaAccountId ? (
+            <MetaSection
+              clientId={client.id}
+              clientName={client.name}
+              startDate={startDate}
+              endDate={endDate}
+              crossPlatformContext={crossCtx.meta}
+              clickFraudToken={client.clickFraudToken}
+              signalConfig={client.signalConfig}
+            />
+          ) : activeTab === "paid" ? (
+            <NotConfigured
+              name="Paid Social (Meta)"
+              description="Add a Meta Ads account ID in client settings to see spend, impressions, and campaign performance"
+              settingsHref={`/clients/${client.slug}/settings`}
+            />
+          ) : null}
 
-      {activeTab === "googleads" && client.googleAdsCustomerId ? (
-        <GoogleAdsSection customerId={client.googleAdsCustomerId} clientId={client.id} clientName={client.name} startDate={startDate} endDate={endDate} crossPlatformContext={crossCtx.googleads} clickFraudToken={client.clickFraudToken} signalConfig={client.signalConfig} />
-      ) : activeTab === "googleads" ? (
-        <NotConfigured
-          name="Paid Search (Google Ads)"
-          description="Add a Google Ads customer ID in client settings to see spend, clicks, conversions and ROAS"
-          settingsHref={`/clients/${client.slug}/settings`}
-        />
-      ) : null}
+          {activeTab === "googleads" && client.googleAdsCustomerId ? (
+            <GoogleAdsSection
+              customerId={client.googleAdsCustomerId}
+              clientId={client.id}
+              clientName={client.name}
+              startDate={startDate}
+              endDate={endDate}
+              crossPlatformContext={crossCtx.googleads}
+              clickFraudToken={client.clickFraudToken}
+              signalConfig={client.signalConfig}
+            />
+          ) : activeTab === "googleads" ? (
+            <NotConfigured
+              name="Paid Search (Google Ads)"
+              description="Add a Google Ads customer ID in client settings to see spend, clicks, conversions and ROAS"
+              settingsHref={`/clients/${client.slug}/settings`}
+            />
+          ) : null}
 
-      {activeTab === "searchconsole" && client.searchConsoleSiteUrl ? (
-        <SearchConsoleSection siteUrl={client.searchConsoleSiteUrl} startDate={startDate} endDate={endDate} googleAdsCustomerId={client.googleAdsCustomerId} crossPlatformContext={crossCtx.searchconsole} />
-      ) : activeTab === "searchconsole" ? (
-        <NotConfigured
-          name="Search Console"
-          description="Add a Search Console site URL in client settings to see clicks, impressions, CTR and keyword rankings"
-          settingsHref={`/clients/${client.slug}/settings`}
-        />
-      ) : null}
+          {activeTab === "searchconsole" && client.searchConsoleSiteUrl ? (
+            <SearchConsoleSection
+              siteUrl={client.searchConsoleSiteUrl}
+              startDate={startDate}
+              endDate={endDate}
+              googleAdsCustomerId={client.googleAdsCustomerId}
+              crossPlatformContext={crossCtx.searchconsole}
+            />
+          ) : activeTab === "searchconsole" ? (
+            <NotConfigured
+              name="Search Console"
+              description="Add a Search Console site URL in client settings to see clicks, impressions, CTR and keyword rankings"
+              settingsHref={`/clients/${client.slug}/settings`}
+            />
+          ) : null}
 
-      {activeTab === "ecommerce" && (client.woocommerceUrl || client.shopifyStoreDomain) ? (
-        <EcommerceSection
-          clientId={client.id}
-          platform={client.shopifyStoreDomain ? "shopify" : "woocommerce"}
-          startDate={startDate}
-          endDate={endDate}
-        />
-      ) : activeTab === "ecommerce" ? (
-        <NotConfigured
-          name="E-Commerce"
-          description="Add WooCommerce or Shopify credentials in client settings to see order and revenue data"
-          settingsHref={`/clients/${client.slug}/settings`}
-        />
-      ) : null}
+          {activeTab === "ecommerce" && (client.woocommerceUrl || client.shopifyStoreDomain) ? (
+            <EcommerceSection
+              clientId={client.id}
+              platform={client.shopifyStoreDomain ? "shopify" : "woocommerce"}
+              startDate={startDate}
+              endDate={endDate}
+            />
+          ) : activeTab === "ecommerce" ? (
+            <NotConfigured
+              name="E-Commerce"
+              description="Add WooCommerce or Shopify credentials in client settings to see order and revenue data"
+              settingsHref={`/clients/${client.slug}/settings`}
+            />
+          ) : null}
 
-      {activeTab === "tiktok" && client.tiktokAdvertiserId ? (
-        <TikTokSection clientId={client.id} clientName={client.name} startDate={startDate} endDate={endDate} crossPlatformContext={crossCtx.combined} />
-      ) : activeTab === "tiktok" ? (
-        <NotConfigured
-          name="TikTok Ads"
-          description="Add a TikTok Advertiser ID in client settings to see spend, video views, and campaign performance"
-          settingsHref={`/clients/${client.slug}/settings`}
-        />
-      ) : null}
+          {activeTab === "tiktok" && client.tiktokAdvertiserId ? (
+            <TikTokSection
+              clientId={client.id}
+              clientName={client.name}
+              startDate={startDate}
+              endDate={endDate}
+              crossPlatformContext={crossCtx.combined}
+            />
+          ) : activeTab === "tiktok" ? (
+            <NotConfigured
+              name="TikTok Ads"
+              description="Add a TikTok Advertiser ID in client settings to see spend, video views, and campaign performance"
+              settingsHref={`/clients/${client.slug}/settings`}
+            />
+          ) : null}
 
-      {activeTab === "microsoftads" && client.microsoftAdsAccountId ? (
-        <MicrosoftAdsSection clientId={client.id} clientName={client.name} startDate={startDate} endDate={endDate} crossPlatformContext={crossCtx.combined} />
-      ) : activeTab === "microsoftads" ? (
-        <NotConfigured
-          name="Microsoft Ads"
-          description="Add a Microsoft Ads account ID in client settings to see Bing search campaign performance"
-          settingsHref={`/clients/${client.slug}/settings`}
-        />
-      ) : null}
+          {activeTab === "microsoftads" && client.microsoftAdsAccountId ? (
+            <MicrosoftAdsSection
+              clientId={client.id}
+              clientName={client.name}
+              startDate={startDate}
+              endDate={endDate}
+              crossPlatformContext={crossCtx.combined}
+            />
+          ) : activeTab === "microsoftads" ? (
+            <NotConfigured
+              name="Microsoft Ads"
+              description="Add a Microsoft Ads account ID in client settings to see Bing search campaign performance"
+              settingsHref={`/clients/${client.slug}/settings`}
+            />
+          ) : null}
 
-      {activeTab === "cwv" ? (
-        <CoreWebVitalsSection url={(client.cwvUrl || client.website) ?? ""} />
-      ) : null}
+          {activeTab === "cwv" ? (
+            <CoreWebVitalsSection url={(client.cwvUrl || client.website) ?? ""} />
+          ) : null}
 
-      {activeTab === "linkedin" && client.linkedinAccountId ? (
-        <LinkedInSection
-          clientId={client.id}
-          clientName={client.name}
-          accountId={client.linkedinAccountId}
-          accessToken={client.linkedinAccessToken}
-          startDate={startDate}
-          endDate={endDate}
-          crossPlatformContext={crossCtx.combined}
-        />
-      ) : activeTab === "linkedin" ? (
-        <NotConfigured
-          name="LinkedIn Ads"
-          description="Add a LinkedIn Ads account ID and access token in client settings to see campaign performance"
-          settingsHref={`/clients/${client.slug}/settings`}
-        />
-      ) : null}
+          {activeTab === "linkedin" && client.linkedinAccountId ? (
+            <LinkedInSection
+              clientId={client.id}
+              clientName={client.name}
+              accountId={client.linkedinAccountId}
+              accessToken={client.linkedinAccessToken}
+              startDate={startDate}
+              endDate={endDate}
+              crossPlatformContext={crossCtx.combined}
+            />
+          ) : activeTab === "linkedin" ? (
+            <NotConfigured
+              name="LinkedIn Ads"
+              description="Add a LinkedIn Ads account ID and access token in client settings to see campaign performance"
+              settingsHref={`/clients/${client.slug}/settings`}
+            />
+          ) : null}
 
-      {activeTab === "klaviyo" && client.klaviyoApiKey ? (
-        <KlaviyoSection clientId={client.id} clientName={client.name} startDate={startDate} endDate={endDate} crossPlatformContext={crossCtx.combined} />
-      ) : activeTab === "klaviyo" ? (
-        <NotConfigured
-          name="Email Marketing (Klaviyo)"
-          description="Add a Klaviyo API key in client settings to see email campaign performance"
-          settingsHref={`/clients/${client.slug}/settings`}
-        />
-      ) : null}
+          {activeTab === "klaviyo" && client.klaviyoApiKey ? (
+            <KlaviyoSection
+              clientId={client.id}
+              clientName={client.name}
+              startDate={startDate}
+              endDate={endDate}
+              crossPlatformContext={crossCtx.combined}
+            />
+          ) : activeTab === "klaviyo" ? (
+            <NotConfigured
+              name="Email Marketing (Klaviyo)"
+              description="Add a Klaviyo API key in client settings to see email campaign performance"
+              settingsHref={`/clients/${client.slug}/settings`}
+            />
+          ) : null}
 
-      {activeTab === "goals" && (
-        <GoalsSection clientId={client.id} />
-      )}
+          {activeTab === "goals" && <GoalsSection clientId={client.id} />}
 
-      {activeTab === "hubspot" && client.hubspotAccessToken ? (
-        <HubSpotSection clientId={client.id} clientName={client.name} crossPlatformContext={crossCtx.combined} />
-      ) : activeTab === "hubspot" ? (
-        <NotConfigured name="HubSpot CRM" description="Add your HubSpot access token in client settings to see contacts, deals and pipeline value" settingsHref={`/clients/${client.slug}/settings`} />
-      ) : null}
+          {activeTab === "hubspot" && client.hubspotAccessToken ? (
+            <HubSpotSection
+              clientId={client.id}
+              clientName={client.name}
+              crossPlatformContext={crossCtx.combined}
+            />
+          ) : activeTab === "hubspot" ? (
+            <NotConfigured
+              name="HubSpot CRM"
+              description="Add your HubSpot access token in client settings to see contacts, deals and pipeline value"
+              settingsHref={`/clients/${client.slug}/settings`}
+            />
+          ) : null}
 
-      {activeTab === "youtube" && client.youtubeChannelId ? (
-        <YouTubeSection clientId={client.id} clientName={client.name} crossPlatformContext={crossCtx.combined} />
-      ) : activeTab === "youtube" ? (
-        <NotConfigured name="YouTube Analytics" description="Add your YouTube Channel ID in client settings to see views, watch time and top videos" settingsHref={`/clients/${client.slug}/settings`} />
-      ) : null}
+          {activeTab === "youtube" && client.youtubeChannelId ? (
+            <YouTubeSection
+              clientId={client.id}
+              clientName={client.name}
+              crossPlatformContext={crossCtx.combined}
+            />
+          ) : activeTab === "youtube" ? (
+            <NotConfigured
+              name="YouTube Analytics"
+              description="Add your YouTube Channel ID in client settings to see views, watch time and top videos"
+              settingsHref={`/clients/${client.slug}/settings`}
+            />
+          ) : null}
 
-      {activeTab === "callrail" && client.callrailAccountId ? (
-        <CallRailSection clientId={client.id} clientName={client.name} crossPlatformContext={crossCtx.combined} />
-      ) : activeTab === "callrail" ? (
-        <NotConfigured name="CallRail" description="Add your CallRail account ID and API key in client settings to see call tracking data" settingsHref={`/clients/${client.slug}/settings`} />
-      ) : null}
+          {activeTab === "callrail" && client.callrailAccountId ? (
+            <CallRailSection
+              clientId={client.id}
+              clientName={client.name}
+              crossPlatformContext={crossCtx.combined}
+            />
+          ) : activeTab === "callrail" ? (
+            <NotConfigured
+              name="CallRail"
+              description="Add your CallRail account ID and API key in client settings to see call tracking data"
+              settingsHref={`/clients/${client.slug}/settings`}
+            />
+          ) : null}
 
-      {activeTab === "competitors" && (
-        <CompetitorIntelligenceSection clientId={client.id} semrushDomain={client.semrushDomain} />
-      )}
+          {activeTab === "actions" && <ActionsSection clientId={client.id} />}
 
-      {activeTab === "actions" && (
-        <ActionsSection clientId={client.id} />
-      )}
+          {activeTab === "communications" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+              <PortalThreadsPanel clientId={client.id} />
+              <CommunicationsSection clientId={client.id} />
+            </div>
+          )}
 
-      {activeTab === "communications" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-          <PortalThreadsPanel clientId={client.id} />
-          <CommunicationsSection clientId={client.id} />
-        </div>
-      )}
+          {activeTab === "strategy" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+              <StrategyDocumentPanel
+                clientId={client.id}
+                clientName={client.name}
+                crossPlatformData={crossCtx as Record<string, unknown>}
+              />
+              <MeetingBriefingPanel clientId={client.id} clientName={client.name} />
+            </div>
+          )}
 
-      {activeTab === "strategy" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-          <StrategyDocumentPanel
-            clientId={client.id}
-            clientName={client.name}
-            crossPlatformData={crossCtx as Record<string, unknown>}
-          />
-          <MeetingBriefingPanel
-            clientId={client.id}
-            clientName={client.name}
-          />
-        </div>
-      )}
-
-      {activeTab === "financials" && (
-        <FinancialsSection clientId={client.id} />
-      )}
-
-      </SectionErrorBoundary>
-      </div>{/* end tab content wrapper */}
+          {activeTab === "financials" && <FinancialsSection clientId={client.id} />}
+        </SectionErrorBoundary>
+      </div>
+      {/* end tab content wrapper */}
 
       {/* AI Chat panel — always visible when any platform is connected */}
       <AiChatPanel clientId={client.id} clientName={client.name} />

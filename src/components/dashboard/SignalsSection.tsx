@@ -575,124 +575,104 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
 
     try {
       // ── Parallel platform data fetches ──────────────────────────────────────
-      const [metaResult, gadsResult, scResult, ga4Result, semrushResult, crossResult] =
-        await Promise.allSettled([
-          // Meta: campaigns-enriched, adsets, creatives, overview, prev-overview, audiences (all in parallel)
-          client.metaAccountId
-            ? Promise.all([
-                fetch(
-                  `/api/meta?clientId=${client.id}&type=campaigns-enriched&startDate=${startDate}&endDate=${endDate}`,
-                )
-                  .then((r) => (r.ok ? r.json() : null))
-                  .catch(() => null),
-                fetch(
-                  `/api/meta?clientId=${client.id}&type=adsets&startDate=${startDate}&endDate=${endDate}`,
-                )
-                  .then((r) => (r.ok ? r.json() : null))
-                  .catch(() => null),
-                fetch(
-                  `/api/meta?clientId=${client.id}&type=creatives&startDate=${startDate}&endDate=${endDate}`,
-                )
-                  .then((r) => (r.ok ? r.json() : null))
-                  .catch(() => null),
-                fetch(
-                  `/api/meta?clientId=${client.id}&type=overview&startDate=${startDate}&endDate=${endDate}`,
-                )
-                  .then((r) => (r.ok ? r.json() : null))
-                  .catch(() => null),
-                fetch(
-                  `/api/meta?clientId=${client.id}&type=overview&startDate=${prevStart}&endDate=${prevEnd}`,
-                )
-                  .then((r) => (r.ok ? r.json() : null))
-                  .catch(() => null),
-                fetch(
-                  `/api/meta?clientId=${client.id}&type=audiences&startDate=${startDate}&endDate=${endDate}`,
-                )
-                  .then((r) => (r.ok ? r.json() : null))
-                  .catch(() => null),
-              ])
-            : Promise.resolve(null),
-
-          // Google Ads: single endpoint returns all data
-          client.googleAdsCustomerId
-            ? fetch(
-                `/api/google-ads?customerId=${client.googleAdsCustomerId}&startDate=${startDate}&endDate=${endDate}`,
+      const [metaResult, gadsResult, scResult, ga4Result, crossResult] = await Promise.allSettled([
+        // Meta: campaigns-enriched, adsets, creatives, overview, prev-overview, audiences (all in parallel)
+        client.metaAccountId
+          ? Promise.all([
+              fetch(
+                `/api/meta?clientId=${client.id}&type=campaigns-enriched&startDate=${startDate}&endDate=${endDate}`,
               )
                 .then((r) => (r.ok ? r.json() : null))
-                .catch(() => null)
-            : Promise.resolve(null),
-
-          // Search Console: bulk mode — current + previous data + top queries in one call
-          client.searchConsoleSiteUrl
-            ? fetch(
-                `/api/search-console?siteUrl=${encodeURIComponent(client.searchConsoleSiteUrl)}&startDate=${startDate}&endDate=${endDate}&type=bulk`,
+                .catch(() => null),
+              fetch(
+                `/api/meta?clientId=${client.id}&type=adsets&startDate=${startDate}&endDate=${endDate}`,
               )
                 .then((r) => (r.ok ? r.json() : null))
-                .catch(() => null)
-            : Promise.resolve(null),
+                .catch(() => null),
+              fetch(
+                `/api/meta?clientId=${client.id}&type=creatives&startDate=${startDate}&endDate=${endDate}`,
+              )
+                .then((r) => (r.ok ? r.json() : null))
+                .catch(() => null),
+              fetch(
+                `/api/meta?clientId=${client.id}&type=overview&startDate=${startDate}&endDate=${endDate}`,
+              )
+                .then((r) => (r.ok ? r.json() : null))
+                .catch(() => null),
+              fetch(
+                `/api/meta?clientId=${client.id}&type=overview&startDate=${prevStart}&endDate=${prevEnd}`,
+              )
+                .then((r) => (r.ok ? r.json() : null))
+                .catch(() => null),
+              fetch(
+                `/api/meta?clientId=${client.id}&type=audiences&startDate=${startDate}&endDate=${endDate}`,
+              )
+                .then((r) => (r.ok ? r.json() : null))
+                .catch(() => null),
+            ])
+          : Promise.resolve(null),
 
-          // GA4: current overview + traffic sources + previous overview (all in parallel)
-          client.ga4PropertyId
-            ? Promise.all([
-                fetch(
-                  `/api/ga4?propertyId=${client.ga4PropertyId}&startDate=${startDate}&endDate=${endDate}&type=overview`,
-                )
-                  .then((r) => (r.ok ? r.json() : null))
-                  .catch(() => null),
-                fetch(
-                  `/api/ga4?propertyId=${client.ga4PropertyId}&startDate=${startDate}&endDate=${endDate}&type=sources`,
-                )
-                  .then((r) => (r.ok ? r.json() : null))
-                  .catch(() => null),
-                fetch(
-                  `/api/ga4?propertyId=${client.ga4PropertyId}&startDate=${prevStart}&endDate=${prevEnd}&type=overview`,
-                )
-                  .then((r) => (r.ok ? r.json() : null))
-                  .catch(() => null),
-              ])
-            : Promise.resolve(null),
-
-          // SEMrush: overview + keywords (both in parallel)
-          client.semrushDomain
-            ? Promise.all([
-                fetch(
-                  `/api/semrush?domain=${encodeURIComponent(client.semrushDomain)}&type=overview`,
-                )
-                  .then((r) => (r.ok ? r.json() : null))
-                  .catch(() => null),
-                fetch(
-                  `/api/semrush?domain=${encodeURIComponent(client.semrushDomain)}&type=keywords`,
-                )
-                  .then((r) => (r.ok ? r.json() : null))
-                  .catch(() => null),
-              ])
-            : Promise.resolve(null),
-
-          // Cross-platform intelligence — client health + ad comparison + cross alerts
-          Promise.all([
-            fetch(
-              `/api/cross/client-health?clientId=${client.id}&startDate=${startDate}&endDate=${endDate}`,
+        // Google Ads: single endpoint returns all data
+        client.googleAdsCustomerId
+          ? fetch(
+              `/api/google-ads?customerId=${client.googleAdsCustomerId}&startDate=${startDate}&endDate=${endDate}`,
             )
               .then((r) => (r.ok ? r.json() : null))
-              .catch(() => null),
-            fetch(
-              `/api/cross/ad-comparison?clientId=${client.id}&startDate=${startDate}&endDate=${endDate}`,
+              .catch(() => null)
+          : Promise.resolve(null),
+
+        // Search Console: bulk mode — current + previous data + top queries in one call
+        client.searchConsoleSiteUrl
+          ? fetch(
+              `/api/search-console?siteUrl=${encodeURIComponent(client.searchConsoleSiteUrl)}&startDate=${startDate}&endDate=${endDate}&type=bulk`,
             )
               .then((r) => (r.ok ? r.json() : null))
-              .catch(() => null),
-            fetch(
-              `/api/cross/alerts?clientId=${client.id}&startDate=${startDate}&endDate=${endDate}`,
-            )
-              .then((r) => (r.ok ? r.json() : null))
-              .catch(() => null),
-          ]),
-        ]);
+              .catch(() => null)
+          : Promise.resolve(null),
+
+        // GA4: current overview + traffic sources + previous overview (all in parallel)
+        client.ga4PropertyId
+          ? Promise.all([
+              fetch(
+                `/api/ga4?propertyId=${client.ga4PropertyId}&startDate=${startDate}&endDate=${endDate}&type=overview`,
+              )
+                .then((r) => (r.ok ? r.json() : null))
+                .catch(() => null),
+              fetch(
+                `/api/ga4?propertyId=${client.ga4PropertyId}&startDate=${startDate}&endDate=${endDate}&type=sources`,
+              )
+                .then((r) => (r.ok ? r.json() : null))
+                .catch(() => null),
+              fetch(
+                `/api/ga4?propertyId=${client.ga4PropertyId}&startDate=${prevStart}&endDate=${prevEnd}&type=overview`,
+              )
+                .then((r) => (r.ok ? r.json() : null))
+                .catch(() => null),
+            ])
+          : Promise.resolve(null),
+
+        // Cross-platform intelligence — client health + ad comparison + cross alerts
+        Promise.all([
+          fetch(
+            `/api/cross/client-health?clientId=${client.id}&startDate=${startDate}&endDate=${endDate}`,
+          )
+            .then((r) => (r.ok ? r.json() : null))
+            .catch(() => null),
+          fetch(
+            `/api/cross/ad-comparison?clientId=${client.id}&startDate=${startDate}&endDate=${endDate}`,
+          )
+            .then((r) => (r.ok ? r.json() : null))
+            .catch(() => null),
+          fetch(`/api/cross/alerts?clientId=${client.id}&startDate=${startDate}&endDate=${endDate}`)
+            .then((r) => (r.ok ? r.json() : null))
+            .catch(() => null),
+        ]),
+      ]);
 
       const metaData = metaResult.status === "fulfilled" ? metaResult.value : null;
       const gadsData = gadsResult.status === "fulfilled" ? gadsResult.value : null;
       const scData = scResult.status === "fulfilled" ? scResult.value : null;
       const ga4ResultVal = ga4Result.status === "fulfilled" ? ga4Result.value : null;
-      const semrushResultVal = semrushResult.status === "fulfilled" ? semrushResult.value : null;
       const crossData = crossResult.status === "fulfilled" ? crossResult.value : null;
       const clientHealthData = Array.isArray(crossData) ? crossData[0] : null;
       const adComparisonData = Array.isArray(crossData) ? crossData[1] : null;
@@ -702,12 +682,6 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
       const ga4Data = Array.isArray(ga4ResultVal) ? ga4ResultVal[0] : ga4ResultVal;
       const ga4Sources = Array.isArray(ga4ResultVal) ? (ga4ResultVal[1] ?? []) : [];
       const ga4PrevData = Array.isArray(ga4ResultVal) ? ga4ResultVal[2] : null;
-
-      // Unpack SEMrush sub-results
-      const semrushOverview = Array.isArray(semrushResultVal)
-        ? semrushResultVal[0]
-        : semrushResultVal;
-      const semrushKeywords = Array.isArray(semrushResultVal) ? (semrushResultVal[1] ?? []) : [];
 
       // ── COMPUTED CHECKS ────────────────────────────────────────────────────
 
@@ -1572,14 +1546,6 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
           const pos = typeof o.position === "number" ? o.position.toFixed(1) : "n/a";
           lines.push(`\u2022 Search Console: ${clicks} clicks${prevC}, avg pos ${pos}`);
         }
-        if (semrushOverview) {
-          const o = semrushOverview as Record<string, number>;
-          const traffic =
-            typeof o.organicTraffic === "number" ? o.organicTraffic.toLocaleString() : "n/a";
-          const keywords =
-            typeof o.organicKeywords === "number" ? o.organicKeywords.toLocaleString() : "n/a";
-          lines.push(`\u2022 SEMrush: ${traffic} organic traffic, ${keywords} keywords`);
-        }
         if (clientHealthData?.score != null) {
           lines.push(
             `\u2022 Client Health: score ${clientHealthData.score}/100, grade ${clientHealthData.grade ?? "N/A"}, trend: ${clientHealthData.trend ?? "stable"}`,
@@ -1637,33 +1603,6 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
             })
             .join(" | ");
           lines.push(`\u2022 Search Console Top Queries: ${qStr}`);
-        }
-        // SEMrush top organic keywords (with volume and position change)
-        if (Array.isArray(semrushKeywords) && semrushKeywords.length) {
-          const kwStr = (
-            semrushKeywords as Array<{
-              keyword: string;
-              position: number;
-              previousPosition: number;
-              searchVolume: number;
-              trafficPercent: number;
-            }>
-          )
-            .slice(0, 10)
-            .map((kw) => {
-              const delta = kw.previousPosition > 0 ? kw.previousPosition - kw.position : null;
-              const dStr =
-                delta != null
-                  ? delta > 0
-                    ? ` \u2191${delta}`
-                    : delta < 0
-                      ? ` \u2193${Math.abs(delta)}`
-                      : ""
-                  : "";
-              return `"${kw.keyword}" pos${kw.position}${dStr} vol${kw.searchVolume.toLocaleString()}`;
-            })
-            .join(" | ");
-          lines.push(`\u2022 SEMrush Top Keywords: ${kwStr}`);
         }
         // Google Ads top search terms (what people actually typed)
         if (gadsData?.searchTerms?.length) {
@@ -1890,29 +1829,6 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
                     .join("\n"),
               );
             channelContext = lines.join("\n");
-          } else if (platform === "SEMrush" && semrushOverview) {
-            const ov = semrushOverview as Record<string, number>;
-            const kws = semrushKeywords as Array<{
-              keyword: string;
-              position: number;
-              searchVolume: number;
-            }>;
-            const lines = [
-              "Channel: SEMrush (organic SEO visibility data)",
-              `Overview: ${ov.organicTraffic?.toLocaleString() ?? "n/a"} organic traffic, ${ov.organicKeywords?.toLocaleString() ?? "n/a"} keywords`,
-            ];
-            if (kws.length)
-              lines.push(
-                "Top keywords: " +
-                  kws
-                    .slice(0, 5)
-                    .map(
-                      (k) =>
-                        `"${k.keyword}" pos ${k.position} (vol ${k.searchVolume.toLocaleString()})`,
-                    )
-                    .join(", "),
-              );
-            channelContext = lines.join("\n");
           }
 
           fetch("/api/ai/summary", {
@@ -2024,7 +1940,6 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
     client.googleAdsCustomerId,
     client.ga4PropertyId,
     client.searchConsoleSiteUrl,
-    client.semrushDomain,
     startDate,
     endDate,
   ]);
@@ -2055,7 +1970,6 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
     client.googleAdsCustomerId && "Google Ads",
     client.ga4PropertyId && "GA4",
     client.searchConsoleSiteUrl && "Search Console",
-    client.semrushDomain && "SEMrush",
   ].filter(Boolean) as string[];
 
   const activePlatformsInSignals = [...new Set(signals.map((s) => s.platform))];
