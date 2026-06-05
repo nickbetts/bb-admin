@@ -347,7 +347,11 @@ export function ReportPrintView({
           >
             <div>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/primary-logo.svg" alt="i3media" style={{ height: 32, marginBottom: 20 }} />
+              <img
+                src="/primary-logo.svg"
+                alt="Betts & Burton"
+                style={{ height: 32, marginBottom: 20 }}
+              />
               <p
                 style={{
                   fontSize: 11,

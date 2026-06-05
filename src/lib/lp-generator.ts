@@ -120,7 +120,7 @@ async function fetchImageBlock(url: string): Promise<{
         headers: {
           // Mimic a browser to avoid bot-detection rejections
           "User-Agent":
-            "Mozilla/5.0 (compatible; i3media-lp-generator/1.0; +https://stratos.i3media.co.uk)",
+            "Mozilla/5.0 (compatible; i3media-lp-generator/1.0; +https://bettsandburton.com)",
           Accept: "image/webp,image/png,image/jpeg,image/*",
         },
       });

@@ -119,7 +119,11 @@ export default function LandingNav({
             href="/login"
             style={{ display: "flex", alignItems: "center", gap: 14, textDecoration: "none" }}
           >
-            <img src="/primary-logo.svg" style={{ height: 26, width: "auto" }} alt="i3MEDIA" />
+            <img
+              src="/primary-logo.svg"
+              style={{ height: 26, width: "auto" }}
+              alt="Betts & Burton"
+            />
             <div style={{ width: 1, height: 20, background: "rgba(255,255,255,0.12)" }} />
             <span
               style={{

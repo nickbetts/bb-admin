@@ -187,7 +187,7 @@ export default function GrandPlanSharePage({ params }: { params: Promise<{ token
       {/* Desktop CTA bar (top-right) — hidden on small screens */}
       <div className="fixed top-3 right-3 z-[200] hidden items-center gap-2 md:flex">
         <a
-          href="https://calendly.com/i3media"
+          href="https://calendly.com/bettsandburton"
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-900 shadow-lg transition-colors hover:bg-slate-50"
@@ -244,7 +244,7 @@ export default function GrandPlanSharePage({ params }: { params: Promise<{ token
       {/* Mobile bottom action bar — avoids colliding with the in-document sticky nav */}
       <div className="fixed inset-x-0 bottom-0 z-[200] flex items-center gap-2 border-t border-slate-200 bg-white/95 px-3 py-2 shadow-[0_-8px_24px_-12px_rgba(15,23,42,0.25)] backdrop-blur md:hidden">
         <a
-          href="https://calendly.com/i3media"
+          href="https://calendly.com/bettsandburton"
           target="_blank"
           rel="noopener noreferrer"
           className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white py-2.5 text-sm font-medium text-slate-900"
@@ -422,7 +422,7 @@ function I3Logo({ className }: { className?: string }) {
       viewBox="0 0 161 53"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      aria-label="i3media"
+      aria-label="Betts & Burton"
       className={className}
     >
       <path

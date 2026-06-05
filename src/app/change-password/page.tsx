@@ -7,44 +7,106 @@ export default async function ChangePasswordPage() {
   if (!session) redirect("/login");
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#0f0f15", padding: "24px", position: "relative", overflow: "hidden" }}>
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "#0f0f15",
+        padding: "24px",
+        position: "relative",
+        overflow: "hidden",
+      }}
+    >
       {/* Animated orbs */}
-      <div className="login-orb-1" style={{
-        position: "absolute", width: 600, height: 600, top: "-15%", left: "-10%", pointerEvents: "none",
-        background: "radial-gradient(circle, rgba(99,102,241,0.35) 0%, transparent 70%)",
-        borderRadius: "50%",
-      }} />
-      <div className="login-orb-2" style={{
-        position: "absolute", width: 500, height: 500, bottom: "-15%", right: "-5%", pointerEvents: "none",
-        background: "radial-gradient(circle, rgba(168,85,247,0.3) 0%, transparent 70%)",
-        borderRadius: "50%",
-      }} />
+      <div
+        className="login-orb-1"
+        style={{
+          position: "absolute",
+          width: 600,
+          height: 600,
+          top: "-15%",
+          left: "-10%",
+          pointerEvents: "none",
+          background: "radial-gradient(circle, rgba(99,102,241,0.35) 0%, transparent 70%)",
+          borderRadius: "50%",
+        }}
+      />
+      <div
+        className="login-orb-2"
+        style={{
+          position: "absolute",
+          width: 500,
+          height: 500,
+          bottom: "-15%",
+          right: "-5%",
+          pointerEvents: "none",
+          background: "radial-gradient(circle, rgba(168,85,247,0.3) 0%, transparent 70%)",
+          borderRadius: "50%",
+        }}
+      />
       {/* Grid overlay */}
-      <div style={{
-        position: "absolute", inset: 0, pointerEvents: "none", opacity: 0.04,
-        backgroundImage: "linear-gradient(rgba(255,255,255,0.8) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.8) 1px, transparent 1px)",
-        backgroundSize: "40px 40px",
-      }} />
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          pointerEvents: "none",
+          opacity: 0.04,
+          backgroundImage:
+            "linear-gradient(rgba(255,255,255,0.8) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.8) 1px, transparent 1px)",
+          backgroundSize: "40px 40px",
+        }}
+      />
 
       <div style={{ position: "relative", width: "100%", maxWidth: 420 }}>
         {/* Logo */}
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 40 }}>
-          <img src="/primary-logo.svg" style={{ height: 36, width: "auto" }} alt="i3media" />
+          <img src="/primary-logo.svg" style={{ height: 36, width: "auto" }} alt="Betts & Burton" />
         </div>
 
         <div style={{ marginBottom: 32, textAlign: "center" }}>
-          <div style={{
-            width: 52, height: 52, borderRadius: 14, margin: "0 auto 20px",
-            background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.3)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
-            <svg xmlns="http://www.w3.org/2000/svg" style={{ width: 22, height: 22, color: "#818cf8" }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <div
+            style={{
+              width: 52,
+              height: 52,
+              borderRadius: 14,
+              margin: "0 auto 20px",
+              background: "rgba(99,102,241,0.15)",
+              border: "1px solid rgba(99,102,241,0.3)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              style={{ width: 22, height: 22, color: "#818cf8" }}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
               <path d="M7 11V7a5 5 0 0 1 10 0v4" />
             </svg>
           </div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, color: "white", letterSpacing: "-0.02em", marginBottom: 8 }}>Set your password</h1>
-          <p style={{ fontSize: 14, color: "rgba(255,255,255,0.4)", lineHeight: 1.6 }}>Choose a new password to continue. You only need to do this once.</p>
+          <h1
+            style={{
+              fontSize: 24,
+              fontWeight: 700,
+              color: "white",
+              letterSpacing: "-0.02em",
+              marginBottom: 8,
+            }}
+          >
+            Set your password
+          </h1>
+          <p style={{ fontSize: 14, color: "rgba(255,255,255,0.4)", lineHeight: 1.6 }}>
+            Choose a new password to continue. You only need to do this once.
+          </p>
         </div>
 
         <ChangePasswordForm />

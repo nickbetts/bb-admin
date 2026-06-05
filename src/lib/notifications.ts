@@ -43,7 +43,15 @@ function parsePrefs(raw: string | null | undefined): NotificationPrefs {
       email: true,
       slack: false,
       digestFrequency: "immediate",
-      enabledTypes: ["anomaly", "report_ready", "report_sent", "report_opened", "proposal_viewed", "integration_error", "snapshot_complete"],
+      enabledTypes: [
+        "anomaly",
+        "report_ready",
+        "report_sent",
+        "report_opened",
+        "proposal_viewed",
+        "integration_error",
+        "snapshot_complete",
+      ],
     };
   }
   try {
@@ -111,14 +119,28 @@ export async function notifyUser(input: CreateNotificationInput) {
   // Email delivery
   if (prefs.email && user?.email) {
     await deliverEmail(user.email, input.title, input.body).catch((err) =>
-      console.error("[notifications] Email delivery failed for user", input.userId, "type", input.type, ":", err)
+      console.error(
+        "[notifications] Email delivery failed for user",
+        input.userId,
+        "type",
+        input.type,
+        ":",
+        err,
+      ),
     );
   }
 
   // Slack delivery
   if (prefs.slack && prefs.slackWebhook) {
     await deliverSlack(prefs.slackWebhook, input.title, input.body, input.severity).catch((err) =>
-      console.error("[notifications] Slack delivery failed for user", input.userId, "type", input.type, ":", err)
+      console.error(
+        "[notifications] Slack delivery failed for user",
+        input.userId,
+        "type",
+        input.type,
+        ":",
+        err,
+      ),
     );
   }
 
@@ -134,7 +156,7 @@ export async function notifyAdmins(input: Omit<CreateNotificationInput, "userId"
   });
 
   const results = await Promise.allSettled(
-    admins.map((admin) => notifyUser({ ...input, userId: admin.id }))
+    admins.map((admin) => notifyUser({ ...input, userId: admin.id })),
   );
 
   return results.filter((r) => r.status === "fulfilled").length;
@@ -154,7 +176,7 @@ async function deliverEmail(to: string, subject: string, body: string) {
     return;
   }
 
-  const fromAddress = config.emailFromAddress || "reports@i3media.com";
+  const fromAddress = config.emailFromAddress || "nick@bettsandburton.com";
   const provider = config.emailProvider || "resend";
 
   if (provider === "resend") {
@@ -172,7 +194,7 @@ async function deliverEmail(to: string, subject: string, body: string) {
           <h2 style="color:#1a1a1a;margin:0 0 16px">${subject}</h2>
           <p style="color:#444;line-height:1.6">${body}</p>
           <hr style="border:none;border-top:1px solid #eee;margin:24px 0" />
-          <p style="color:#999;font-size:12px">i3media Report Platform</p>
+          <p style="color:#999;font-size:12px">Betts & Burton Report Platform</p>
         </div>`,
       }),
     });

@@ -91,7 +91,9 @@ To grant us access to your Google Ads account, please follow these steps:
 
 7. Click "Send invitation"
 
-We will receive an email notification and accept straight away.${managerLine ? `
+We will receive an email notification and accept straight away.${
+    managerLine
+      ? `
 
 — OR — (preferred for long-term account management) —
 
@@ -101,7 +103,9 @@ To link your account to our Manager account instead:
 2. Under "Account access", click "Link to a manager account"
 3. Enter our Manager Account ID:${managerLine}
 4. Click "Send link request"
-5. We'll approve it within the hour.` : ""}
+5. We'll approve it within the hour.`
+      : ""
+  }
 
 — ALTERNATIVELY —
 
@@ -265,14 +269,28 @@ function buildShareUrl(agency: AgencySettings, platforms: Set<Platform>): string
 function Step({ n, color, text }: { n: number; color: string; text: string }) {
   return (
     <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 10 }}>
-      <div style={{
-        width: 22, height: 22, borderRadius: "50%", flexShrink: 0,
-        background: color, color: "white",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: 11, fontWeight: 700, marginTop: 2,
-      }}>{n}</div>
-      <p style={{ margin: 0, fontSize: 13, color: "var(--text-2)", lineHeight: 1.65 }}
-        dangerouslySetInnerHTML={{ __html: text }} />
+      <div
+        style={{
+          width: 22,
+          height: 22,
+          borderRadius: "50%",
+          flexShrink: 0,
+          background: color,
+          color: "white",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 11,
+          fontWeight: 700,
+          marginTop: 2,
+        }}
+      >
+        {n}
+      </div>
+      <p
+        style={{ margin: 0, fontSize: 13, color: "var(--text-2)", lineHeight: 1.65 }}
+        dangerouslySetInnerHTML={{ __html: text }}
+      />
     </div>
   );
 }
@@ -281,7 +299,18 @@ function StepDivider({ label }: { label: string }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "16px 0 14px" }}>
       <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
-      <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.07em", whiteSpace: "nowrap" }}>{label}</span>
+      <span
+        style={{
+          fontSize: 10,
+          fontWeight: 700,
+          color: "var(--text-3)",
+          textTransform: "uppercase",
+          letterSpacing: "0.07em",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {label}
+      </span>
       <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
     </div>
   );
@@ -289,11 +318,20 @@ function StepDivider({ label }: { label: string }) {
 
 function InfoBox({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{
-      marginTop: 12, padding: "10px 14px", borderRadius: 8,
-      background: "var(--surface-2, #f8fafc)", border: "1px solid var(--border)",
-      fontSize: 12, color: "var(--text-3)", lineHeight: 1.55,
-    }}>{children}</div>
+    <div
+      style={{
+        marginTop: 12,
+        padding: "10px 14px",
+        borderRadius: 8,
+        background: "var(--surface-2, #f8fafc)",
+        border: "1px solid var(--border)",
+        fontSize: 12,
+        color: "var(--text-3)",
+        lineHeight: 1.55,
+      }}
+    >
+      {children}
+    </div>
   );
 }
 
@@ -305,24 +343,64 @@ function renderPlatformSteps(p: Platform, agency: AgencySettings): React.ReactNo
     const managerId = agency.googleAdsManagerId ? formatGadsId(agency.googleAdsManagerId) : "";
     return (
       <>
-        <Step n={1} color={c} text='Log in to <a href="https://ads.google.com" target="_blank" rel="noopener noreferrer" style="color:inherit;font-weight:600">Google Ads</a>' />
-        <Step n={2} color={c} text='Click the <strong>Admin icon (⚙️)</strong> in the top-right corner' />
-        <Step n={3} color={c} text='Select <strong>"Access and security"</strong> from the left-hand menu' />
-        <Step n={4} color={c} text='Click the blue <strong>"+"</strong> button to invite a new user' />
+        <Step
+          n={1}
+          color={c}
+          text='Log in to <a href="https://ads.google.com" target="_blank" rel="noopener noreferrer" style="color:inherit;font-weight:600">Google Ads</a>'
+        />
+        <Step
+          n={2}
+          color={c}
+          text="Click the <strong>Admin icon (⚙️)</strong> in the top-right corner"
+        />
+        <Step
+          n={3}
+          color={c}
+          text='Select <strong>"Access and security"</strong> from the left-hand menu'
+        />
+        <Step
+          n={4}
+          color={c}
+          text='Click the blue <strong>"+"</strong> button to invite a new user'
+        />
         <Step n={5} color={c} text={`Enter our email address: ${email}`} />
-        <Step n={6} color={c} text='Set the access level to <strong>"Standard"</strong> — full campaign management without billing access' />
+        <Step
+          n={6}
+          color={c}
+          text='Set the access level to <strong>"Standard"</strong> — full campaign management without billing access'
+        />
         <Step n={7} color={c} text='Click <strong>"Send invitation"</strong>' />
         {managerId && (
           <>
             <StepDivider label="Or link via manager account (preferred)" />
-            <Step n={1} color={c} text='In Google Ads, go to <strong>Admin → Account settings</strong>' />
-            <Step n={2} color={c} text='Under <strong>"Account access"</strong>, click <strong>"Link to a manager account"</strong>' />
-            <Step n={3} color={c} text={`Enter our Manager Account ID: <strong style="font-family:monospace">${managerId}</strong>`} />
-            <Step n={4} color={c} text='Click <strong>"Send link request"</strong> — we will approve it within the hour' />
+            <Step
+              n={1}
+              color={c}
+              text="In Google Ads, go to <strong>Admin → Account settings</strong>"
+            />
+            <Step
+              n={2}
+              color={c}
+              text='Under <strong>"Account access"</strong>, click <strong>"Link to a manager account"</strong>'
+            />
+            <Step
+              n={3}
+              color={c}
+              text={`Enter our Manager Account ID: <strong style="font-family:monospace">${managerId}</strong>`}
+            />
+            <Step
+              n={4}
+              color={c}
+              text='Click <strong>"Send link request"</strong> — we will approve it within the hour'
+            />
           </>
         )}
         <InfoBox>
-          <strong>Prefer a simpler option?</strong> Just send us your <strong>Google Ads Customer ID</strong> — the 10-digit number (e.g. <span style={{ fontFamily: "monospace" }}>123-456-7890</span>) shown at the top of your Google Ads account. We&apos;ll send the access request from our end and you simply approve it.
+          <strong>Prefer a simpler option?</strong> Just send us your{" "}
+          <strong>Google Ads Customer ID</strong> — the 10-digit number (e.g.{" "}
+          <span style={{ fontFamily: "monospace" }}>123-456-7890</span>) shown at the top of your
+          Google Ads account. We&apos;ll send the access request from our end and you simply approve
+          it.
         </InfoBox>
       </>
     );
@@ -332,14 +410,32 @@ function renderPlatformSteps(p: Platform, agency: AgencySettings): React.ReactNo
     const bizId = agency.metaBusinessId;
     return (
       <>
-        <Step n={1} color={c} text='Go to <a href="https://business.facebook.com" target="_blank" rel="noopener noreferrer" style="color:inherit;font-weight:600">Meta Business Manager</a>' />
-        <Step n={2} color={c} text='Click the <strong>⚙️ Settings</strong> gear icon in the top-left sidebar' />
+        <Step
+          n={1}
+          color={c}
+          text='Go to <a href="https://business.facebook.com" target="_blank" rel="noopener noreferrer" style="color:inherit;font-weight:600">Meta Business Manager</a>'
+        />
+        <Step
+          n={2}
+          color={c}
+          text="Click the <strong>⚙️ Settings</strong> gear icon in the top-left sidebar"
+        />
         <Step n={3} color={c} text='In the left menu, select <strong>"Ad Accounts"</strong>' />
-        <Step n={4} color={c} text='Select the ad account you want to share' />
+        <Step n={4} color={c} text="Select the ad account you want to share" />
         <Step n={5} color={c} text='Click <strong>"Assign Partners"</strong>' />
-        {bizId
-          ? <Step n={6} color={c} text={`Enter our Business Manager ID: <strong style="font-family:monospace">${bizId}</strong>`} />
-          : <Step n={6} color={c} text='Enter our <strong>Business Manager ID</strong> (your account manager will provide this)' />}
+        {bizId ? (
+          <Step
+            n={6}
+            color={c}
+            text={`Enter our Business Manager ID: <strong style="font-family:monospace">${bizId}</strong>`}
+          />
+        ) : (
+          <Step
+            n={6}
+            color={c}
+            text="Enter our <strong>Business Manager ID</strong> (your account manager will provide this)"
+          />
+        )}
         <Step n={7} color={c} text='Select access level: <strong>"Advertiser"</strong>' />
         <Step n={8} color={c} text='Click <strong>"Confirm"</strong>' />
         <InfoBox>Repeat steps 4–8 for each ad account if you have more than one.</InfoBox>
@@ -350,10 +446,22 @@ function renderPlatformSteps(p: Platform, agency: AgencySettings): React.ReactNo
   if (p === "linkedin") {
     return (
       <>
-        <Step n={1} color={c} text='Log in to <a href="https://www.linkedin.com/campaignmanager" target="_blank" rel="noopener noreferrer" style="color:inherit;font-weight:600">LinkedIn Campaign Manager</a>' />
-        <Step n={2} color={c} text='Click on the <strong>account name</strong> in the top navigation bar' />
+        <Step
+          n={1}
+          color={c}
+          text='Log in to <a href="https://www.linkedin.com/campaignmanager" target="_blank" rel="noopener noreferrer" style="color:inherit;font-weight:600">LinkedIn Campaign Manager</a>'
+        />
+        <Step
+          n={2}
+          color={c}
+          text="Click on the <strong>account name</strong> in the top navigation bar"
+        />
         <Step n={3} color={c} text='Select <strong>"Account Settings"</strong> from the dropdown' />
-        <Step n={4} color={c} text='In the left sidebar, navigate to <strong>"Manage Access"</strong>' />
+        <Step
+          n={4}
+          color={c}
+          text='In the left sidebar, navigate to <strong>"Manage Access"</strong>'
+        />
         <Step n={5} color={c} text='Click <strong>"Add User"</strong>' />
         <Step n={6} color={c} text={`Enter our email address: ${email}`} />
         <Step n={7} color={c} text='Set the role to <strong>"Account Manager"</strong>' />
@@ -367,19 +475,46 @@ function renderPlatformSteps(p: Platform, agency: AgencySettings): React.ReactNo
     return (
       <>
         <StepDivider label="Step 1 — Add your account manager" />
-        <Step n={1} color={c} text='Log in to <a href="https://analytics.google.com" target="_blank" rel="noopener noreferrer" style="color:inherit;font-weight:600">Google Analytics</a>' />
-        <Step n={2} color={c} text='Click the <strong>Admin gear icon (⚙️)</strong> at the bottom of the left sidebar' />
-        <Step n={3} color={c} text='In the Property column, click <strong>"Property Access Management"</strong>' />
-        <Step n={4} color={c} text='Click the <strong>"+"</strong> button (top right) → <strong>"Add users"</strong>' />
+        <Step
+          n={1}
+          color={c}
+          text='Log in to <a href="https://analytics.google.com" target="_blank" rel="noopener noreferrer" style="color:inherit;font-weight:600">Google Analytics</a>'
+        />
+        <Step
+          n={2}
+          color={c}
+          text="Click the <strong>Admin gear icon (⚙️)</strong> at the bottom of the left sidebar"
+        />
+        <Step
+          n={3}
+          color={c}
+          text='In the Property column, click <strong>"Property Access Management"</strong>'
+        />
+        <Step
+          n={4}
+          color={c}
+          text='Click the <strong>"+"</strong> button (top right) → <strong>"Add users"</strong>'
+        />
         <Step n={5} color={c} text={`Enter our email: ${email}`} />
         <Step n={6} color={c} text='Select the role: <strong>"Editor"</strong>' />
         <Step n={7} color={c} text='Click <strong>"Add"</strong>' />
         <StepDivider label="Step 2 — Add our reporting system" />
-        <Step n={4} color={c} text='Click <strong>"+"</strong> → <strong>"Add users"</strong> again' />
-        <Step n={5} color={c} text={`Enter the service account: <strong style="font-family:monospace;font-size:12px">${SERVICE_ACCOUNT_EMAIL}</strong>`} />
+        <Step
+          n={4}
+          color={c}
+          text='Click <strong>"+"</strong> → <strong>"Add users"</strong> again'
+        />
+        <Step
+          n={5}
+          color={c}
+          text={`Enter the service account: <strong style="font-family:monospace;font-size:12px">${SERVICE_ACCOUNT_EMAIL}</strong>`}
+        />
         <Step n={6} color={c} text='Select the role: <strong>"Viewer"</strong>' />
         <Step n={7} color={c} text='Click <strong>"Add"</strong>' />
-        <InfoBox>The service account is used by our reporting tool to read your data automatically. It cannot make any changes to your account.</InfoBox>
+        <InfoBox>
+          The service account is used by our reporting tool to read your data automatically. It
+          cannot make any changes to your account.
+        </InfoBox>
       </>
     );
   }
@@ -388,9 +523,21 @@ function renderPlatformSteps(p: Platform, agency: AgencySettings): React.ReactNo
   return (
     <>
       <StepDivider label="Step 1 — Add your account manager" />
-      <Step n={1} color={c} text='Log in to <a href="https://search.google.com/search-console" target="_blank" rel="noopener noreferrer" style="color:inherit;font-weight:600">Google Search Console</a>' />
-      <Step n={2} color={c} text='Select your <strong>property</strong> (your website domain) from the left-hand sidebar' />
-      <Step n={3} color={c} text='Click the <strong>⚙️ Settings</strong> icon at the bottom of the sidebar' />
+      <Step
+        n={1}
+        color={c}
+        text='Log in to <a href="https://search.google.com/search-console" target="_blank" rel="noopener noreferrer" style="color:inherit;font-weight:600">Google Search Console</a>'
+      />
+      <Step
+        n={2}
+        color={c}
+        text="Select your <strong>property</strong> (your website domain) from the left-hand sidebar"
+      />
+      <Step
+        n={3}
+        color={c}
+        text="Click the <strong>⚙️ Settings</strong> icon at the bottom of the sidebar"
+      />
       <Step n={4} color={c} text='Click <strong>"Users and permissions"</strong>' />
       <Step n={5} color={c} text='Click <strong>"Add User"</strong> (top right)' />
       <Step n={6} color={c} text={`Enter our email: ${email}`} />
@@ -398,10 +545,17 @@ function renderPlatformSteps(p: Platform, agency: AgencySettings): React.ReactNo
       <Step n={8} color={c} text='Click <strong>"Add"</strong>' />
       <StepDivider label="Step 2 — Add our reporting system" />
       <Step n={5} color={c} text='Click <strong>"Add User"</strong> again' />
-      <Step n={6} color={c} text={`Enter the service account: <strong style="font-family:monospace;font-size:12px">${SERVICE_ACCOUNT_EMAIL}</strong>`} />
+      <Step
+        n={6}
+        color={c}
+        text={`Enter the service account: <strong style="font-family:monospace;font-size:12px">${SERVICE_ACCOUNT_EMAIL}</strong>`}
+      />
       <Step n={7} color={c} text='Set permission to <strong>"Full"</strong>' />
       <Step n={8} color={c} text='Click <strong>"Add"</strong>' />
-      <InfoBox>You need to be an <strong>Owner</strong> of the property to add users. The service account reads your search data automatically and cannot make changes.</InfoBox>
+      <InfoBox>
+        You need to be an <strong>Owner</strong> of the property to add users. The service account
+        reads your search data automatically and cannot make changes.
+      </InfoBox>
     </>
   );
 }
@@ -410,7 +564,7 @@ function renderPlatformSteps(p: Platform, agency: AgencySettings): React.ReactNo
 
 export default function AccessRequesterPage() {
   const [platforms, setPlatforms] = useState<Set<Platform>>(
-    new Set(["googleAds", "meta", "linkedin", "googleAnalytics", "searchConsole"])
+    new Set(["googleAds", "meta", "linkedin", "googleAnalytics", "searchConsole"]),
   );
   const [agency, setAgency] = useState<AgencySettings>({
     agencyName: "i3media",
@@ -428,14 +582,19 @@ export default function AccessRequesterPage() {
   // Load settings from DB on mount
   useEffect(() => {
     fetch("/api/settings")
-      .then((r) => r.ok ? r.json() : null)
+      .then((r) => (r.ok ? r.json() : null))
       .then((data: Record<string, string> | null) => {
-        if (!data) { setSettingsOpen(true); return; }
+        if (!data) {
+          setSettingsOpen(true);
+          return;
+        }
         const merged: Partial<AgencySettings> = {};
         if (data.accessRequesterAgencyName) merged.agencyName = data.accessRequesterAgencyName;
         if (data.accessRequesterAgencyEmail) merged.agencyEmail = data.accessRequesterAgencyEmail;
-        if (data.accessRequesterGadsManagerId) merged.googleAdsManagerId = data.accessRequesterGadsManagerId;
-        if (data.accessRequesterMetaBusinessId) merged.metaBusinessId = data.accessRequesterMetaBusinessId;
+        if (data.accessRequesterGadsManagerId)
+          merged.googleAdsManagerId = data.accessRequesterGadsManagerId;
+        if (data.accessRequesterMetaBusinessId)
+          merged.metaBusinessId = data.accessRequesterMetaBusinessId;
         if (Object.keys(merged).length) setAgency((p) => ({ ...p, ...merged }));
         if (!merged.agencyEmail) setSettingsOpen(true);
       })
@@ -456,7 +615,9 @@ export default function AccessRequesterPage() {
           accessRequesterMetaBusinessId: updated.metaBusinessId,
         }),
       });
-    } catch { /* ignore */ } finally {
+    } catch {
+      /* ignore */
+    } finally {
       setSavingSettings(false);
     }
   }
@@ -483,7 +644,9 @@ export default function AccessRequesterPage() {
       await navigator.clipboard.writeText(text);
       setCopied(key);
       setTimeout(() => setCopied(null), 2000);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 
   function handleGenerateShareLink() {
@@ -496,21 +659,29 @@ export default function AccessRequesterPage() {
       await navigator.clipboard.writeText(shareUrl);
       setShareUrlCopied(true);
       setTimeout(() => setShareUrlCopied(false), 2000);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 
   const settingsComplete = agency.agencyEmail.trim().length > 0;
 
   return (
     <div className="page" style={{ maxWidth: 820 }}>
-
       {/* ── Header ── */}
       <div style={{ display: "flex", alignItems: "flex-start", gap: 14, marginBottom: 28 }}>
-        <div style={{
-          width: 44, height: 44, borderRadius: 12,
-          background: "var(--gradient-accent)",
-          display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-        }}>
+        <div
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: 12,
+            background: "var(--gradient-accent)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+          }}
+        >
           <KeyRound style={{ width: 22, height: 22, color: "white" }} />
         </div>
         <div>
@@ -518,34 +689,57 @@ export default function AccessRequesterPage() {
             Access Requester
           </h1>
           <p style={{ fontSize: 13, color: "var(--text-3)", marginTop: 4 }}>
-            Generate platform access instructions to send to clients — or create a shareable link they can follow at their own pace.
+            Generate platform access instructions to send to clients — or create a shareable link
+            they can follow at their own pace.
           </p>
         </div>
       </div>
 
       {/* ── Warning banner ── */}
       {!settingsComplete && (
-        <div style={{
-          display: "flex", alignItems: "flex-start", gap: 10,
-          background: "var(--warning-bg, #fffbeb)", border: "1px solid #f59e0b",
-          borderRadius: 10, padding: "12px 16px", marginBottom: 20,
-          color: "#92400e", fontSize: 13,
-        }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 10,
+            background: "var(--warning-bg, #fffbeb)",
+            border: "1px solid #f59e0b",
+            borderRadius: 10,
+            padding: "12px 16px",
+            marginBottom: 20,
+            color: "#92400e",
+            fontSize: 13,
+          }}
+        >
           <Info style={{ width: 15, height: 15, marginTop: 1, flexShrink: 0 }} />
-          <span>Set your <strong>agency email address</strong> in Agency Settings below before generating instructions.</span>
+          <span>
+            Set your <strong>agency email address</strong> in Agency Settings below before
+            generating instructions.
+          </span>
         </div>
       )}
 
       {/* ── Agency Settings ── */}
-      <div style={{
-        background: "var(--surface)", border: "1px solid var(--border)",
-        borderRadius: 12, marginBottom: 20, overflow: "hidden",
-      }}>
+      <div
+        style={{
+          background: "var(--surface)",
+          border: "1px solid var(--border)",
+          borderRadius: 12,
+          marginBottom: 20,
+          overflow: "hidden",
+        }}
+      >
         <button
           onClick={() => setSettingsOpen((v) => !v)}
           style={{
-            width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
-            padding: "14px 18px", background: "transparent", border: "none", cursor: "pointer",
+            width: "100%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "14px 18px",
+            background: "transparent",
+            border: "none",
+            cursor: "pointer",
             color: "var(--text)",
           }}
         >
@@ -553,16 +747,26 @@ export default function AccessRequesterPage() {
             <Settings2 style={{ width: 15, height: 15, color: "var(--text-3)" }} />
             <span style={{ fontWeight: 600, fontSize: 14 }}>Agency Settings</span>
             {settingsComplete && (
-              <span style={{
-                fontSize: 11, fontWeight: 500, padding: "2px 8px",
-                borderRadius: 50, background: "var(--success-bg, #f0fdf4)",
-                color: "var(--success, #16a34a)", border: "1px solid #bbf7d0",
-              }}>{savingSettings ? "Saving…" : "Saved"}</span>
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 500,
+                  padding: "2px 8px",
+                  borderRadius: 50,
+                  background: "var(--success-bg, #f0fdf4)",
+                  color: "var(--success, #16a34a)",
+                  border: "1px solid #bbf7d0",
+                }}
+              >
+                {savingSettings ? "Saving…" : "Saved"}
+              </span>
             )}
           </div>
-          {settingsOpen
-            ? <ChevronUp style={{ width: 15, height: 15, color: "var(--text-3)" }} />
-            : <ChevronDown style={{ width: 15, height: 15, color: "var(--text-3)" }} />}
+          {settingsOpen ? (
+            <ChevronUp style={{ width: 15, height: 15, color: "var(--text-3)" }} />
+          ) : (
+            <ChevronDown style={{ width: 15, height: 15, color: "var(--text-3)" }} />
+          )}
         </button>
 
         {settingsOpen && (
@@ -572,7 +776,9 @@ export default function AccessRequesterPage() {
             </p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text-2)" }}>Agency Name</span>
+                <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text-2)" }}>
+                  Agency Name
+                </span>
                 <input
                   className="input"
                   value={agency.agencyName}
@@ -582,20 +788,24 @@ export default function AccessRequesterPage() {
                 />
               </label>
               <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text-2)" }}>Account Manager Email</span>
+                <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text-2)" }}>
+                  Account Manager Email
+                </span>
                 <input
                   className="input"
                   type="email"
                   value={agency.agencyEmail}
                   onChange={(e) => setAgency((p) => ({ ...p, agencyEmail: e.target.value }))}
                   onBlur={() => saveSettings(agency)}
-                  placeholder="hello@i3media.co.uk"
+                  placeholder="nick@bettsandburton.com"
                 />
               </label>
               <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                 <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text-2)" }}>
                   Google Ads Manager ID
-                  <span style={{ fontWeight: 400, color: "var(--text-3)", marginLeft: 4 }}>(optional)</span>
+                  <span style={{ fontWeight: 400, color: "var(--text-3)", marginLeft: 4 }}>
+                    (optional)
+                  </span>
                 </span>
                 <input
                   className="input"
@@ -608,7 +818,9 @@ export default function AccessRequesterPage() {
               <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                 <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text-2)" }}>
                   Meta Business Manager ID
-                  <span style={{ fontWeight: 400, color: "var(--text-3)", marginLeft: 4 }}>(optional)</span>
+                  <span style={{ fontWeight: 400, color: "var(--text-3)", marginLeft: 4 }}>
+                    (optional)
+                  </span>
                 </span>
                 <input
                   className="input"
@@ -624,14 +836,25 @@ export default function AccessRequesterPage() {
       </div>
 
       {/* ── Platform toggles ── */}
-      <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: 8,
+          marginBottom: 20,
+        }}
+      >
         <span style={{ fontSize: 12, color: "var(--text-3)", marginRight: 4 }}>Platforms:</span>
         {(Object.keys(PLATFORM_META) as Platform[]).map((p) => (
           <button
             key={p}
             onClick={() => togglePlatform(p)}
             style={{
-              padding: "5px 12px", borderRadius: 50, fontSize: 12, fontWeight: 500,
+              padding: "5px 12px",
+              borderRadius: 50,
+              fontSize: 12,
+              fontWeight: 500,
               cursor: "pointer",
               background: platforms.has(p) ? PLATFORM_META[p].color : "var(--surface-2, #f1f5f9)",
               color: platforms.has(p) ? "white" : "var(--text-3)",
@@ -646,69 +869,93 @@ export default function AccessRequesterPage() {
 
       {/* ── Platform cards ── */}
       <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 24 }}>
-        {(Object.keys(PLATFORM_META) as Platform[]).filter((p) => platforms.has(p)).map((p) => {
-          const meta = PLATFORM_META[p];
-          const isCopied = copied === p;
+        {(Object.keys(PLATFORM_META) as Platform[])
+          .filter((p) => platforms.has(p))
+          .map((p) => {
+            const meta = PLATFORM_META[p];
+            const isCopied = copied === p;
 
-          return (
-            <div
-              key={p}
-              style={{
-                background: "var(--surface)", border: "1px solid var(--border)",
-                borderRadius: 14, overflow: "hidden",
-              }}
-            >
-              <div style={{
-                display: "flex", alignItems: "center", justifyContent: "space-between",
-                padding: "14px 18px", borderBottom: "1px solid var(--border)",
-                borderLeft: `4px solid ${meta.color}`,
-              }}>
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text)" }}>
-                    {meta.label}
+            return (
+              <div
+                key={p}
+                style={{
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 14,
+                  overflow: "hidden",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "14px 18px",
+                    borderBottom: "1px solid var(--border)",
+                    borderLeft: `4px solid ${meta.color}`,
+                  }}
+                >
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text)" }}>
+                      {meta.label}
+                    </div>
+                    <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 1 }}>
+                      Requesting: {meta.accessLevel}
+                    </div>
                   </div>
-                  <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 1 }}>
-                    Requesting: {meta.accessLevel}
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button
+                      onClick={() => copyText(getInstructions(p), p)}
+                      className="btn btn-secondary btn-sm"
+                      style={{ gap: 5, display: "inline-flex", alignItems: "center" }}
+                    >
+                      {isCopied ? (
+                        <>
+                          <Check style={{ width: 13, height: 13 }} /> Copied!
+                        </>
+                      ) : (
+                        <>
+                          <Copy style={{ width: 13, height: 13 }} /> Copy as text
+                        </>
+                      )}
+                    </button>
+                    <a
+                      href={meta.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn-secondary btn-sm"
+                      style={{ gap: 5, display: "inline-flex", alignItems: "center" }}
+                    >
+                      <ExternalLink style={{ width: 12, height: 12 }} />
+                      Open
+                    </a>
                   </div>
                 </div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button
-                    onClick={() => copyText(getInstructions(p), p)}
-                    className="btn btn-secondary btn-sm"
-                    style={{ gap: 5, display: "inline-flex", alignItems: "center" }}
-                  >
-                    {isCopied
-                      ? <><Check style={{ width: 13, height: 13 }} /> Copied!</>
-                      : <><Copy style={{ width: 13, height: 13 }} /> Copy as text</>}
-                  </button>
-                  <a
-                    href={meta.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn btn-secondary btn-sm"
-                    style={{ gap: 5, display: "inline-flex", alignItems: "center" }}
-                  >
-                    <ExternalLink style={{ width: 12, height: 12 }} />
-                    Open
-                  </a>
-                </div>
-              </div>
 
-              <div style={{ padding: "18px 20px" }}>
-                {renderPlatformSteps(p, agency)}
+                <div style={{ padding: "18px 20px" }}>{renderPlatformSteps(p, agency)}</div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
       </div>
 
       {/* ── Generate share link ── */}
       {platforms.size > 0 && (
-        <div style={{
-          background: "var(--surface)", border: "1px solid var(--border)",
-          borderRadius: 14, padding: "18px 20px",
-        }}>
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
+        <div
+          style={{
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: 14,
+            padding: "18px 20px",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              justifyContent: "space-between",
+              gap: 16,
+            }}
+          >
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 4 }}>
                 <Link2 style={{ width: 15, height: 15, color: "var(--text-3)" }} />
@@ -717,8 +964,8 @@ export default function AccessRequesterPage() {
                 </span>
               </div>
               <p style={{ fontSize: 12, color: "var(--text-3)", margin: 0, lineHeight: 1.5 }}>
-                Generate a clean, public link with all the instructions for your client.
-                No login required — they just click and follow along.
+                Generate a clean, public link with all the instructions for your client. No login
+                required — they just click and follow along.
               </p>
             </div>
             <button
@@ -733,12 +980,18 @@ export default function AccessRequesterPage() {
           </div>
 
           {showSharePanel && shareUrl && (
-            <div style={{
-              marginTop: 16, padding: "12px 14px",
-              background: "var(--surface-2, #f8fafc)", borderRadius: 10,
-              border: "1px solid var(--border)",
-            }}>
-              <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 8, fontWeight: 500 }}>
+            <div
+              style={{
+                marginTop: 16,
+                padding: "12px 14px",
+                background: "var(--surface-2, #f8fafc)",
+                borderRadius: 10,
+                border: "1px solid var(--border)",
+              }}
+            >
+              <div
+                style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 8, fontWeight: 500 }}
+              >
                 Share this link with your client:
               </div>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -754,13 +1007,28 @@ export default function AccessRequesterPage() {
                   className="btn btn-primary btn-sm"
                   style={{ gap: 5, display: "inline-flex", alignItems: "center", flexShrink: 0 }}
                 >
-                  {shareUrlCopied
-                    ? <><Check style={{ width: 13, height: 13 }} /> Copied!</>
-                    : <><Copy style={{ width: 13, height: 13 }} /> Copy</>}
+                  {shareUrlCopied ? (
+                    <>
+                      <Check style={{ width: 13, height: 13 }} /> Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy style={{ width: 13, height: 13 }} /> Copy
+                    </>
+                  )}
                 </button>
               </div>
-              <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 8, marginBottom: 0, lineHeight: 1.5 }}>
-                The link contains only the instructions and your agency details. No sensitive data is stored — everything is encoded in the URL itself.
+              <p
+                style={{
+                  fontSize: 11,
+                  color: "var(--text-3)",
+                  marginTop: 8,
+                  marginBottom: 0,
+                  lineHeight: 1.5,
+                }}
+              >
+                The link contains only the instructions and your agency details. No sensitive data
+                is stored — everything is encoded in the URL itself.
               </p>
             </div>
           )}
@@ -769,4 +1037,3 @@ export default function AccessRequesterPage() {
     </div>
   );
 }
-

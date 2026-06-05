@@ -36,19 +36,83 @@ function useCountUp(end: number, duration = 2000, shouldStart = false) {
 }
 
 const features = [
-  { icon: <Activity size={20} />, title: "Multi-channel detection", desc: "Scans GA4, Google Ads, Meta, TikTok, LinkedIn, Klaviyo, and every other connected platform. If a metric moves significantly, you know about it." },
-  { icon: <AlertTriangle size={20} />, title: "Severity scoring", desc: "Every signal gets a severity level: critical, warning, or info. Red signals need attention now. Amber signals are worth watching. Info signals are context." },
-  { icon: <Radar size={20} />, title: "Campaign-level context", desc: "Signals don't just say 'CPC went up'. They tell you which campaign, which ad group, what changed, and by how much versus the previous period." },
-  { icon: <Zap size={20} />, title: "AI recommendations", desc: "Meridian reads each signal and suggests what to do about it. Pause a campaign, adjust a bid, investigate a landing page. Actionable, not just informational." },
-  { icon: <Filter size={20} />, title: "Smart deduplication", desc: "When the AI flags something and the computed detection catches the same thing, we merge them. You see one signal, not two saying the same thing." },
-  { icon: <History size={20} />, title: "Historical pattern matching", desc: "Signals include comparison to previous periods so you can tell whether a spike is a one-off or part of a trend that has been building for weeks." },
+  {
+    icon: <Activity size={20} />,
+    title: "Multi-channel detection",
+    desc: "Scans GA4, Google Ads, Meta, TikTok, LinkedIn, Klaviyo, and every other connected platform. If a metric moves significantly, you know about it.",
+  },
+  {
+    icon: <AlertTriangle size={20} />,
+    title: "Severity scoring",
+    desc: "Every signal gets a severity level: critical, warning, or info. Red signals need attention now. Amber signals are worth watching. Info signals are context.",
+  },
+  {
+    icon: <Radar size={20} />,
+    title: "Campaign-level context",
+    desc: "Signals don't just say 'CPC went up'. They tell you which campaign, which ad group, what changed, and by how much versus the previous period.",
+  },
+  {
+    icon: <Zap size={20} />,
+    title: "AI recommendations",
+    desc: "Meridian reads each signal and suggests what to do about it. Pause a campaign, adjust a bid, investigate a landing page. Actionable, not just informational.",
+  },
+  {
+    icon: <Filter size={20} />,
+    title: "Smart deduplication",
+    desc: "When the AI flags something and the computed detection catches the same thing, we merge them. You see one signal, not two saying the same thing.",
+  },
+  {
+    icon: <History size={20} />,
+    title: "Historical pattern matching",
+    desc: "Signals include comparison to previous periods so you can tell whether a spike is a one-off or part of a trend that has been building for weeks.",
+  },
 ];
 
 const mockSignals = [
-  { severity: "critical", channel: "Google Ads", metric: "CPC", value: "+41%", detail: "Brand campaign CPC jumped from £0.82 to £1.16 over the last 7 days. Competitor bidding likely.", color: "#ef4444", bg: "rgba(239,68,68,0.08)", border: "rgba(239,68,68,0.2)" },
-  { severity: "warning", channel: "Meta", metric: "CTR", value: "-22%", detail: "Prospecting campaign CTR dropped from 1.8% to 1.4%. Creative fatigue likely. Last refresh was 3 weeks ago.", color: "#f59e0b", bg: "rgba(245,158,11,0.08)", border: "rgba(245,158,11,0.2)" },
-  { severity: "info", channel: "GA4", metric: "Sessions", value: "+18%", detail: "Organic sessions up 18% week-on-week. Likely driven by the new blog content published on Monday.", color: "#3b82f6", bg: "rgba(59,130,246,0.08)", border: "rgba(59,130,246,0.2)" },
-  { severity: "warning", channel: "Klaviyo", metric: "Open Rate", value: "-15%", detail: "Email open rate dropped from 42% to 35.7% on the last campaign. Subject line testing recommended.", color: "#f59e0b", bg: "rgba(245,158,11,0.08)", border: "rgba(245,158,11,0.2)" },
+  {
+    severity: "critical",
+    channel: "Google Ads",
+    metric: "CPC",
+    value: "+41%",
+    detail:
+      "Brand campaign CPC jumped from £0.82 to £1.16 over the last 7 days. Competitor bidding likely.",
+    color: "#ef4444",
+    bg: "rgba(239,68,68,0.08)",
+    border: "rgba(239,68,68,0.2)",
+  },
+  {
+    severity: "warning",
+    channel: "Meta",
+    metric: "CTR",
+    value: "-22%",
+    detail:
+      "Prospecting campaign CTR dropped from 1.8% to 1.4%. Creative fatigue likely. Last refresh was 3 weeks ago.",
+    color: "#f59e0b",
+    bg: "rgba(245,158,11,0.08)",
+    border: "rgba(245,158,11,0.2)",
+  },
+  {
+    severity: "info",
+    channel: "GA4",
+    metric: "Sessions",
+    value: "+18%",
+    detail:
+      "Organic sessions up 18% week-on-week. Likely driven by the new blog content published on Monday.",
+    color: "#3b82f6",
+    bg: "rgba(59,130,246,0.08)",
+    border: "rgba(59,130,246,0.2)",
+  },
+  {
+    severity: "warning",
+    channel: "Klaviyo",
+    metric: "Open Rate",
+    value: "-15%",
+    detail:
+      "Email open rate dropped from 42% to 35.7% on the last campaign. Subject line testing recommended.",
+    color: "#f59e0b",
+    bg: "rgba(245,158,11,0.08)",
+    border: "rgba(245,158,11,0.2)",
+  },
 ];
 
 export default function SignalsPage() {
@@ -85,8 +149,10 @@ export default function SignalsPage() {
       const el = document.getElementById(id);
       if (!el) return;
       const o = new IntersectionObserver(
-        ([entry]) => { if (entry.isIntersecting) setActiveSection(id); },
-        { rootMargin: "-35% 0px -60% 0px" }
+        ([entry]) => {
+          if (entry.isIntersecting) setActiveSection(id);
+        },
+        { rootMargin: "-35% 0px -60% 0px" },
       );
       o.observe(el);
       obs.push(o);
@@ -105,15 +171,20 @@ export default function SignalsPage() {
           }
         });
       },
-      { threshold: 0.1 }
+      { threshold: 0.1 },
     );
     document.querySelectorAll<Element>(".reveal-section").forEach((el) => observer.observe(el));
     return () => observer.disconnect();
   }, []);
 
   const particles = Array.from({ length: 18 }, (_, i) => ({
-    id: i, top: `${6 + (i * 5.2) % 84}%`, left: `${4 + (i * 7.1) % 92}%`,
-    size: 1 + (i % 3), dur: `${4 + (i % 5)}s`, delay: `${-(i * 0.7)}s`, opacity: 0.05 + (i % 4) * 0.04,
+    id: i,
+    top: `${6 + ((i * 5.2) % 84)}%`,
+    left: `${4 + ((i * 7.1) % 92)}%`,
+    size: 1 + (i % 3),
+    dur: `${4 + (i % 5)}s`,
+    delay: `${-(i * 0.7)}s`,
+    opacity: 0.05 + (i % 4) * 0.04,
   }));
 
   const s1 = useCountUp(15, 1800, statsVisible);
@@ -128,73 +199,281 @@ export default function SignalsPage() {
 
   return (
     <div style={{ background: "#09090f", color: "white", fontFamily: "inherit" }}>
+      <div
+        style={{
+          position: "fixed",
+          pointerEvents: "none",
+          zIndex: 1,
+          width: 600,
+          height: 600,
+          borderRadius: "50%",
+          left: mouse.x - 300,
+          top: mouse.y - 300,
+          background: `radial-gradient(circle, rgba(236,72,153,0.06) 0%, transparent 65%)`,
+          transition: "left 0.2s ease-out, top 0.2s ease-out",
+        }}
+      />
 
-      <div style={{
-        position: "fixed", pointerEvents: "none", zIndex: 1,
-        width: 600, height: 600, borderRadius: "50%",
-        left: mouse.x - 300, top: mouse.y - 300,
-        background: `radial-gradient(circle, rgba(236,72,153,0.06) 0%, transparent 65%)`,
-        transition: "left 0.2s ease-out, top 0.2s ease-out",
-      }} />
-
-      <nav style={{
-        position: "fixed", right: 24, top: "50%", transform: "translateY(-50%)",
-        zIndex: 40, display: "flex", flexDirection: "column", gap: 1,
-        background: "rgba(9,9,15,0.88)", border: "1px solid rgba(255,255,255,0.07)",
-        borderRadius: 14, padding: "10px 6px",
-        backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
-      }} className="side-nav">
+      <nav
+        style={{
+          position: "fixed",
+          right: 24,
+          top: "50%",
+          transform: "translateY(-50%)",
+          zIndex: 40,
+          display: "flex",
+          flexDirection: "column",
+          gap: 1,
+          background: "rgba(9,9,15,0.88)",
+          border: "1px solid rgba(255,255,255,0.07)",
+          borderRadius: 14,
+          padding: "10px 6px",
+          backdropFilter: "blur(16px)",
+          WebkitBackdropFilter: "blur(16px)",
+        }}
+        className="side-nav"
+      >
         {navLinks.map(({ id, label }) => (
-          <a key={id} href={`#${id}`} onClick={(e) => {
-            e.preventDefault();
-            document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
-          }} style={{
-            display: "block", padding: "5px 12px", borderRadius: 8, fontSize: 11, fontWeight: 600,
-            color: activeSection === id ? accentLight : "rgba(255,255,255,0.2)",
-            textDecoration: "none",
-            borderLeft: activeSection === id ? `2px solid ${accent}` : "2px solid transparent",
-            whiteSpace: "nowrap", transition: "color 0.15s, border-color 0.15s",
-          }}>{label}</a>
+          <a
+            key={id}
+            href={`#${id}`}
+            onClick={(e) => {
+              e.preventDefault();
+              document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+            }}
+            style={{
+              display: "block",
+              padding: "5px 12px",
+              borderRadius: 8,
+              fontSize: 11,
+              fontWeight: 600,
+              color: activeSection === id ? accentLight : "rgba(255,255,255,0.2)",
+              textDecoration: "none",
+              borderLeft: activeSection === id ? `2px solid ${accent}` : "2px solid transparent",
+              whiteSpace: "nowrap",
+              transition: "color 0.15s, border-color 0.15s",
+            }}
+          >
+            {label}
+          </a>
         ))}
-        <div style={{ width: "100%", height: 44, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, marginTop: 8, paddingTop: 8, borderTop: "1px solid rgba(255,255,255,0.07)" }}>
-          <span style={{ fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.2)", letterSpacing: "0.06em", textTransform: "uppercase" }}>scroll</span>
-          <div style={{ width: 2, height: 32, background: "rgba(255,255,255,0.08)", borderRadius: 2, position: "relative", overflow: "hidden" }}>
-            <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: `${scrollPct}%`, background: `linear-gradient(180deg, ${accent}, #6366f1)`, transition: "height 0.1s linear", borderRadius: 2 }} />
+        <div
+          style={{
+            width: "100%",
+            height: 44,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 6,
+            marginTop: 8,
+            paddingTop: 8,
+            borderTop: "1px solid rgba(255,255,255,0.07)",
+          }}
+        >
+          <span
+            style={{
+              fontSize: 9,
+              fontWeight: 700,
+              color: "rgba(255,255,255,0.2)",
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+            }}
+          >
+            scroll
+          </span>
+          <div
+            style={{
+              width: 2,
+              height: 32,
+              background: "rgba(255,255,255,0.08)",
+              borderRadius: 2,
+              position: "relative",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                height: `${scrollPct}%`,
+                background: `linear-gradient(180deg, ${accent}, #6366f1)`,
+                transition: "height 0.1s linear",
+                borderRadius: 2,
+              }}
+            />
           </div>
         </div>
       </nav>
 
-      <LandingNav currentPage="Signals" accentColor={accent} onCtaClick={() => document.getElementById("cta")?.scrollIntoView({ behavior: "smooth" })} />
+      <LandingNav
+        currentPage="Signals"
+        accentColor={accent}
+        onCtaClick={() => document.getElementById("cta")?.scrollIntoView({ behavior: "smooth" })}
+      />
 
       {/* ── HERO ── */}
-      <section style={{ minHeight: "100vh", paddingTop: 64, position: "relative", overflow: "hidden", display: "flex", alignItems: "center" }}>
-        <div style={{ position: "absolute", width: "65%", paddingBottom: "65%", top: "-15%", left: "-15%", pointerEvents: "none", borderRadius: "50%", background: `radial-gradient(circle, rgba(236,72,153,0.25) 0%, transparent 65%)`, transform: `translateY(${parallaxY * -0.25}px)` }} className="orb-1" />
-        <div style={{ position: "absolute", width: "55%", paddingBottom: "55%", bottom: "-15%", right: "-10%", pointerEvents: "none", borderRadius: "50%", background: `radial-gradient(circle, rgba(99,102,241,0.20) 0%, transparent 65%)`, transform: `translateY(${parallaxY * -0.15}px)` }} className="orb-2" />
-        <div style={{ position: "absolute", inset: 0, pointerEvents: "none", opacity: 0.02, backgroundImage: "linear-gradient(rgba(255,255,255,0.9) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.9) 1px, transparent 1px)", backgroundSize: "40px 40px" }} />
+      <section
+        style={{
+          minHeight: "100vh",
+          paddingTop: 64,
+          position: "relative",
+          overflow: "hidden",
+          display: "flex",
+          alignItems: "center",
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            width: "65%",
+            paddingBottom: "65%",
+            top: "-15%",
+            left: "-15%",
+            pointerEvents: "none",
+            borderRadius: "50%",
+            background: `radial-gradient(circle, rgba(236,72,153,0.25) 0%, transparent 65%)`,
+            transform: `translateY(${parallaxY * -0.25}px)`,
+          }}
+          className="orb-1"
+        />
+        <div
+          style={{
+            position: "absolute",
+            width: "55%",
+            paddingBottom: "55%",
+            bottom: "-15%",
+            right: "-10%",
+            pointerEvents: "none",
+            borderRadius: "50%",
+            background: `radial-gradient(circle, rgba(99,102,241,0.20) 0%, transparent 65%)`,
+            transform: `translateY(${parallaxY * -0.15}px)`,
+          }}
+          className="orb-2"
+        />
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            pointerEvents: "none",
+            opacity: 0.02,
+            backgroundImage:
+              "linear-gradient(rgba(255,255,255,0.9) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.9) 1px, transparent 1px)",
+            backgroundSize: "40px 40px",
+          }}
+        />
         {particles.map((p) => (
-          <div key={p.id} className="hero-particle" style={{
-            position: "absolute", top: p.top, left: p.left, pointerEvents: "none",
-            width: p.size, height: p.size, borderRadius: "50%",
-            background: p.id % 3 === 0 ? `rgba(236,72,153,0.9)` : p.id % 3 === 1 ? "rgba(99,102,241,0.9)" : "rgba(255,255,255,0.8)",
-            opacity: p.opacity, animationDuration: p.dur, animationDelay: p.delay,
-          }} />
+          <div
+            key={p.id}
+            className="hero-particle"
+            style={{
+              position: "absolute",
+              top: p.top,
+              left: p.left,
+              pointerEvents: "none",
+              width: p.size,
+              height: p.size,
+              borderRadius: "50%",
+              background:
+                p.id % 3 === 0
+                  ? `rgba(236,72,153,0.9)`
+                  : p.id % 3 === 1
+                    ? "rgba(99,102,241,0.9)"
+                    : "rgba(255,255,255,0.8)",
+              opacity: p.opacity,
+              animationDuration: p.dur,
+              animationDelay: p.delay,
+            }}
+          />
         ))}
 
-        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "80px 40px", display: "grid", gridTemplateColumns: "1fr 480px", gap: 72, alignItems: "center", width: "100%", position: "relative", boxSizing: "border-box" }} className="hero-grid">
+        <div
+          style={{
+            maxWidth: 1200,
+            margin: "0 auto",
+            padding: "80px 40px",
+            display: "grid",
+            gridTemplateColumns: "1fr 480px",
+            gap: 72,
+            alignItems: "center",
+            width: "100%",
+            position: "relative",
+            boxSizing: "border-box",
+          }}
+          className="hero-grid"
+        >
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 28, flexWrap: "wrap" }}>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 14px", borderRadius: 20, background: `rgba(236,72,153,0.12)`, border: `1px solid rgba(236,72,153,0.3)` }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                marginBottom: 28,
+                flexWrap: "wrap",
+              }}
+            >
+              <div
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "6px 14px",
+                  borderRadius: 20,
+                  background: `rgba(236,72,153,0.12)`,
+                  border: `1px solid rgba(236,72,153,0.3)`,
+                }}
+              >
                 <Bell size={12} color={accentLight} />
-                <span style={{ fontSize: 12, fontWeight: 700, color: accentLight, letterSpacing: "0.08em", textTransform: "uppercase" }}>Anomaly detection</span>
+                <span
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: accentLight,
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Anomaly detection
+                </span>
               </div>
             </div>
-            <h1 style={{ fontSize: 56, fontWeight: 900, lineHeight: 1.05, letterSpacing: "-0.04em", marginBottom: 28, color: "white" }}>
+            <h1
+              style={{
+                fontSize: 56,
+                fontWeight: 900,
+                lineHeight: 1.05,
+                letterSpacing: "-0.04em",
+                marginBottom: 28,
+                color: "white",
+              }}
+            >
               <span className="hw hw1">See what moved</span>
               <br />
-              <span className="hw hw2" style={{ background: `linear-gradient(90deg, ${accentLight}, ${accent})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>before your client does.</span>
+              <span
+                className="hw hw2"
+                style={{
+                  background: `linear-gradient(90deg, ${accentLight}, ${accent})`,
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                }}
+              >
+                before your client does.
+              </span>
             </h1>
-            <p style={{ fontSize: 18, color: "rgba(255,255,255,0.6)", lineHeight: 1.8, maxWidth: 500, marginBottom: 32, fontWeight: 400 }}>
-              Automatic anomaly detection across all connected channels. Every signal gets a severity level, campaign-level context, and an AI recommendation for what to do about it.
+            <p
+              style={{
+                fontSize: 18,
+                color: "rgba(255,255,255,0.6)",
+                lineHeight: 1.8,
+                maxWidth: 500,
+                marginBottom: 32,
+                fontWeight: 400,
+              }}
+            >
+              Automatic anomaly detection across all connected channels. Every signal gets a
+              severity level, campaign-level context, and an AI recommendation for what to do about
+              it.
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 36 }}>
               {[
@@ -210,12 +489,27 @@ export default function SignalsPage() {
               ))}
             </div>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-              <a href="#features" onClick={(e) => { e.preventDefault(); document.getElementById("features")?.scrollIntoView({ behavior: "smooth" }); }} style={{
-                display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 24px", borderRadius: 10,
-                background: `linear-gradient(135deg, #db2777, ${accent})`,
-                color: "white", fontSize: 14, fontWeight: 600, textDecoration: "none",
-                boxShadow: `0 0 24px rgba(236,72,153,0.35)`,
-              }} className="cta-accent-pulse">
+              <a
+                href="#features"
+                onClick={(e) => {
+                  e.preventDefault();
+                  document.getElementById("features")?.scrollIntoView({ behavior: "smooth" });
+                }}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "13px 24px",
+                  borderRadius: 10,
+                  background: `linear-gradient(135deg, #db2777, ${accent})`,
+                  color: "white",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  textDecoration: "none",
+                  boxShadow: `0 0 24px rgba(236,72,153,0.35)`,
+                }}
+                className="cta-accent-pulse"
+              >
                 See how it works <ArrowRight size={14} />
               </a>
             </div>
@@ -223,16 +517,57 @@ export default function SignalsPage() {
 
           {/* Mockup: Signal cards */}
           <div style={{ position: "relative" }}>
-            <div style={{ position: "absolute", inset: -40, borderRadius: "50%", background: `radial-gradient(circle, rgba(236,72,153,0.15) 0%, transparent 70%)`, pointerEvents: "none" }} />
-            <div className="mockup-3d" style={{ background: "rgba(255,255,255,0.04)", border: `1px solid rgba(236,72,153,0.2)`, borderRadius: 20, overflow: "hidden", position: "relative" }}>
-              <div style={{ padding: "18px 22px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "space-between", background: `rgba(236,72,153,0.05)` }}>
+            <div
+              style={{
+                position: "absolute",
+                inset: -40,
+                borderRadius: "50%",
+                background: `radial-gradient(circle, rgba(236,72,153,0.15) 0%, transparent 70%)`,
+                pointerEvents: "none",
+              }}
+            />
+            <div
+              className="mockup-3d"
+              style={{
+                background: "rgba(255,255,255,0.04)",
+                border: `1px solid rgba(236,72,153,0.2)`,
+                borderRadius: 20,
+                overflow: "hidden",
+                position: "relative",
+              }}
+            >
+              <div
+                style={{
+                  padding: "18px 22px",
+                  borderBottom: "1px solid rgba(255,255,255,0.06)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  background: `rgba(236,72,153,0.05)`,
+                }}
+              >
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <div style={{ width: 32, height: 32, borderRadius: 8, background: `rgba(236,72,153,0.15)`, border: `1px solid rgba(236,72,153,0.3)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <div
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 8,
+                      background: `rgba(236,72,153,0.15)`,
+                      border: `1px solid rgba(236,72,153,0.3)`,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
                     <Radar size={16} color={accentLight} />
                   </div>
                   <div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "white" }}>Active Signals</div>
-                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 1 }}>Last 7 days</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "white" }}>
+                      Active Signals
+                    </div>
+                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 1 }}>
+                      Last 7 days
+                    </div>
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 6 }}>
@@ -241,25 +576,84 @@ export default function SignalsPage() {
                     { label: "2", color: "#f59e0b" },
                     { label: "1", color: "#3b82f6" },
                   ].map((b, i) => (
-                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 4, padding: "3px 8px", borderRadius: 4, background: `${b.color}15`, border: `1px solid ${b.color}30` }}>
-                      <div style={{ width: 6, height: 6, borderRadius: "50%", background: b.color }} />
-                      <span style={{ fontSize: 11, fontWeight: 700, color: b.color }}>{b.label}</span>
+                    <div
+                      key={i}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4,
+                        padding: "3px 8px",
+                        borderRadius: 4,
+                        background: `${b.color}15`,
+                        border: `1px solid ${b.color}30`,
+                      }}
+                    >
+                      <div
+                        style={{ width: 6, height: 6, borderRadius: "50%", background: b.color }}
+                      />
+                      <span style={{ fontSize: 11, fontWeight: 700, color: b.color }}>
+                        {b.label}
+                      </span>
                     </div>
                   ))}
                 </div>
               </div>
               <div style={{ display: "flex", flexDirection: "column" }}>
                 {mockSignals.map((sig, i) => (
-                  <div key={i} style={{ padding: "14px 22px", borderBottom: "1px solid rgba(255,255,255,0.05)", background: sig.bg }}>
+                  <div
+                    key={i}
+                    style={{
+                      padding: "14px 22px",
+                      borderBottom: "1px solid rgba(255,255,255,0.05)",
+                      background: sig.bg,
+                    }}
+                  >
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: sig.color, boxShadow: `0 0 6px ${sig.color}` }} />
-                      <span style={{ fontSize: 11, fontWeight: 700, color: sig.color, textTransform: "uppercase", letterSpacing: "0.06em" }}>{sig.severity}</span>
+                      <div
+                        style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: "50%",
+                          background: sig.color,
+                          boxShadow: `0 0 6px ${sig.color}`,
+                        }}
+                      />
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: sig.color,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.06em",
+                        }}
+                      >
+                        {sig.severity}
+                      </span>
                       <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)" }}>|</span>
-                      <span style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.5)" }}>{sig.channel}</span>
-                      <span style={{ marginLeft: "auto", fontSize: 12, fontWeight: 700, color: sig.color }}>{sig.value}</span>
-                      {sig.value.startsWith("+") ? <TrendingUp size={12} color={sig.color} /> : <TrendingDown size={12} color={sig.color} />}
+                      <span
+                        style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.5)" }}
+                      >
+                        {sig.channel}
+                      </span>
+                      <span
+                        style={{
+                          marginLeft: "auto",
+                          fontSize: 12,
+                          fontWeight: 700,
+                          color: sig.color,
+                        }}
+                      >
+                        {sig.value}
+                      </span>
+                      {sig.value.startsWith("+") ? (
+                        <TrendingUp size={12} color={sig.color} />
+                      ) : (
+                        <TrendingDown size={12} color={sig.color} />
+                      )}
                     </div>
-                    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", lineHeight: 1.5 }}>{sig.detail}</div>
+                    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", lineHeight: 1.5 }}>
+                      {sig.detail}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -269,27 +663,101 @@ export default function SignalsPage() {
       </section>
 
       {/* ── STATS ── */}
-      <section id="stats-row" className="reveal-section" style={{
-        padding: "80px 40px",
-        background: `linear-gradient(180deg, rgba(236,72,153,0.04) 0%, rgba(99,102,241,0.03) 100%)`,
-        borderTop: "1px solid rgba(255,255,255,0.05)", borderBottom: "1px solid rgba(255,255,255,0.05)",
-      }}>
+      <section
+        id="stats-row"
+        className="reveal-section"
+        style={{
+          padding: "80px 40px",
+          background: `linear-gradient(180deg, rgba(236,72,153,0.04) 0%, rgba(99,102,241,0.03) 100%)`,
+          borderTop: "1px solid rgba(255,255,255,0.05)",
+          borderBottom: "1px solid rgba(255,255,255,0.05)",
+        }}
+      >
         <div style={{ maxWidth: 900, margin: "0 auto" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }} className="stats-grid">
+          <div
+            style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}
+            className="stats-grid"
+          >
             {[
-              { val: s1, suffix: "", label: "Channels monitored for anomalies every day", note: "All connected platforms", color: accent },
-              { val: s2, suffix: "", label: "Severity levels to prioritise what matters most", note: "Critical, warning, info", color: "#f59e0b" },
-              { val: s3, suffix: "h", label: "Detection window for real-time monitoring", note: "Continuous scanning", color: "#6366f1" },
+              {
+                val: s1,
+                suffix: "",
+                label: "Channels monitored for anomalies every day",
+                note: "All connected platforms",
+                color: accent,
+              },
+              {
+                val: s2,
+                suffix: "",
+                label: "Severity levels to prioritise what matters most",
+                note: "Critical, warning, info",
+                color: "#f59e0b",
+              },
+              {
+                val: s3,
+                suffix: "h",
+                label: "Detection window for real-time monitoring",
+                note: "Continuous scanning",
+                color: "#6366f1",
+              },
             ].map((s, i) => (
-              <div key={i} className="stat-card stagger-in" style={{
-                background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)",
-                borderRadius: 16, padding: "32px 24px", textAlign: "center",
-                position: "relative", overflow: "hidden", animationDelay: `${i * 0.1}s`,
-              }}>
-                <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, ${s.color}, transparent)` }} />
-                <div style={{ fontSize: 48, fontWeight: 900, color: "white", letterSpacing: "-0.05em", lineHeight: 1 }}>{s.val}{s.suffix}</div>
-                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", marginTop: 10, lineHeight: 1.5 }}>{s.label}</div>
-                <div style={{ fontSize: 10, color: "rgba(255,255,255,0.25)", marginTop: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>{s.note}</div>
+              <div
+                key={i}
+                className="stat-card stagger-in"
+                style={{
+                  background: "rgba(255,255,255,0.03)",
+                  border: "1px solid rgba(255,255,255,0.07)",
+                  borderRadius: 16,
+                  padding: "32px 24px",
+                  textAlign: "center",
+                  position: "relative",
+                  overflow: "hidden",
+                  animationDelay: `${i * 0.1}s`,
+                }}
+              >
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: 3,
+                    background: `linear-gradient(90deg, ${s.color}, transparent)`,
+                  }}
+                />
+                <div
+                  style={{
+                    fontSize: 48,
+                    fontWeight: 900,
+                    color: "white",
+                    letterSpacing: "-0.05em",
+                    lineHeight: 1,
+                  }}
+                >
+                  {s.val}
+                  {s.suffix}
+                </div>
+                <div
+                  style={{
+                    fontSize: 13,
+                    color: "rgba(255,255,255,0.55)",
+                    marginTop: 10,
+                    lineHeight: 1.5,
+                  }}
+                >
+                  {s.label}
+                </div>
+                <div
+                  style={{
+                    fontSize: 10,
+                    color: "rgba(255,255,255,0.25)",
+                    marginTop: 6,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.06em",
+                  }}
+                >
+                  {s.note}
+                </div>
               </div>
             ))}
           </div>
@@ -300,29 +768,85 @@ export default function SignalsPage() {
       <section id="features" className="reveal-section" style={{ padding: "120px 40px" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: 64 }}>
-            <p style={{ fontSize: 12, fontWeight: 700, color: accentLight, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }} className="blur-reveal">How it works</p>
-            <h2 style={{ fontSize: 46, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 18, color: "white" }} className="blur-reveal">
-              Detection that actually<br />tells you what to do.
+            <p
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                color: accentLight,
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+                marginBottom: 16,
+              }}
+              className="blur-reveal"
+            >
+              How it works
+            </p>
+            <h2
+              style={{
+                fontSize: 46,
+                fontWeight: 800,
+                letterSpacing: "-0.03em",
+                marginBottom: 18,
+                color: "white",
+              }}
+              className="blur-reveal"
+            >
+              Detection that actually
+              <br />
+              tells you what to do.
             </h2>
-            <p style={{ fontSize: 16, color: "rgba(255,255,255,0.45)", maxWidth: 560, margin: "0 auto", lineHeight: 1.7 }}>
-              Most dashboards show you numbers went up or down. Signals tells you why, how much, where, and what to do next.
+            <p
+              style={{
+                fontSize: 16,
+                color: "rgba(255,255,255,0.45)",
+                maxWidth: 560,
+                margin: "0 auto",
+                lineHeight: 1.7,
+              }}
+            >
+              Most dashboards show you numbers went up or down. Signals tells you why, how much,
+              where, and what to do next.
             </p>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }} className="features-grid">
+          <div
+            style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}
+            className="features-grid"
+          >
             {features.map((f, i) => (
-              <div key={i} className="feature-card stagger-in" style={{
-                padding: "28px 24px", borderRadius: 16,
-                background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)",
-                animationDelay: `${i * 0.08}s`, transition: "transform 0.35s ease, border-color 0.3s ease, box-shadow 0.3s ease",
-              }}>
-                <div style={{
-                  width: 40, height: 40, borderRadius: 10,
-                  background: `rgba(236,72,153,0.12)`, border: `1px solid rgba(236,72,153,0.25)`,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  color: accentLight, marginBottom: 16,
-                }}>{f.icon}</div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "white", marginBottom: 8 }}>{f.title}</div>
-                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", lineHeight: 1.6 }}>{f.desc}</div>
+              <div
+                key={i}
+                className="feature-card stagger-in"
+                style={{
+                  padding: "28px 24px",
+                  borderRadius: 16,
+                  background: "rgba(255,255,255,0.03)",
+                  border: "1px solid rgba(255,255,255,0.07)",
+                  animationDelay: `${i * 0.08}s`,
+                  transition: "transform 0.35s ease, border-color 0.3s ease, box-shadow 0.3s ease",
+                }}
+              >
+                <div
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 10,
+                    background: `rgba(236,72,153,0.12)`,
+                    border: `1px solid rgba(236,72,153,0.25)`,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: accentLight,
+                    marginBottom: 16,
+                  }}
+                >
+                  {f.icon}
+                </div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "white", marginBottom: 8 }}>
+                  {f.title}
+                </div>
+                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", lineHeight: 1.6 }}>
+                  {f.desc}
+                </div>
               </div>
             ))}
           </div>
@@ -333,46 +857,153 @@ export default function SignalsPage() {
       <section id="mockup" className="reveal-section" style={{ padding: "120px 40px" }}>
         <div style={{ maxWidth: 900, margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: 56 }}>
-            <p style={{ fontSize: 12, fontWeight: 700, color: accentLight, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }} className="blur-reveal">Real signals</p>
-            <h2 style={{ fontSize: 42, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 18, color: "white" }} className="blur-reveal">
+            <p
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                color: accentLight,
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+                marginBottom: 16,
+              }}
+              className="blur-reveal"
+            >
+              Real signals
+            </p>
+            <h2
+              style={{
+                fontSize: 42,
+                fontWeight: 800,
+                letterSpacing: "-0.03em",
+                marginBottom: 18,
+                color: "white",
+              }}
+              className="blur-reveal"
+            >
               Context, not just alerts.
             </h2>
           </div>
-          <div className="mockup-3d" style={{ background: "rgba(255,255,255,0.03)", border: `1px solid rgba(236,72,153,0.15)`, borderRadius: 20, overflow: "hidden", position: "relative" }}>
-            <div style={{ padding: "20px 28px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 12 }}>
+          <div
+            className="mockup-3d"
+            style={{
+              background: "rgba(255,255,255,0.03)",
+              border: `1px solid rgba(236,72,153,0.15)`,
+              borderRadius: 20,
+              overflow: "hidden",
+              position: "relative",
+            }}
+          >
+            <div
+              style={{
+                padding: "20px 28px",
+                borderBottom: "1px solid rgba(255,255,255,0.06)",
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+              }}
+            >
               <Radar size={18} color={accentLight} />
               <span style={{ fontSize: 15, fontWeight: 700, color: "white" }}>Signal Detail</span>
-              <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 6, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)" }}>
+              <div
+                style={{
+                  marginLeft: "auto",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "4px 10px",
+                  borderRadius: 6,
+                  background: "rgba(239,68,68,0.12)",
+                  border: "1px solid rgba(239,68,68,0.25)",
+                }}
+              >
                 <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#ef4444" }} />
                 <span style={{ fontSize: 11, fontWeight: 700, color: "#ef4444" }}>CRITICAL</span>
               </div>
             </div>
             <div style={{ padding: "24px 28px" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginBottom: 20 }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr 1fr",
+                  gap: 16,
+                  marginBottom: 20,
+                }}
+              >
                 {[
                   { label: "Channel", value: "Google Ads" },
                   { label: "Metric", value: "Cost per Click" },
                   { label: "Change", value: "+41.5%", highlight: true },
                 ].map((m, i) => (
-                  <div key={i} style={{ padding: "12px 16px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10 }}>
-                    <div style={{ fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>{m.label}</div>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: m.highlight ? "#ef4444" : "white" }}>{m.value}</div>
+                  <div
+                    key={i}
+                    style={{
+                      padding: "12px 16px",
+                      background: "rgba(255,255,255,0.03)",
+                      border: "1px solid rgba(255,255,255,0.06)",
+                      borderRadius: 10,
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 9,
+                        fontWeight: 700,
+                        color: "rgba(255,255,255,0.3)",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.06em",
+                        marginBottom: 4,
+                      }}
+                    >
+                      {m.label}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 18,
+                        fontWeight: 700,
+                        color: m.highlight ? "#ef4444" : "white",
+                      }}
+                    >
+                      {m.value}
+                    </div>
                   </div>
                 ))}
               </div>
-              <div style={{ padding: "16px 20px", background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.15)", borderRadius: 12, marginBottom: 16 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#fca5a5", marginBottom: 6 }}>What happened</div>
+              <div
+                style={{
+                  padding: "16px 20px",
+                  background: "rgba(239,68,68,0.06)",
+                  border: "1px solid rgba(239,68,68,0.15)",
+                  borderRadius: 12,
+                  marginBottom: 16,
+                }}
+              >
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#fca5a5", marginBottom: 6 }}>
+                  What happened
+                </div>
                 <div style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", lineHeight: 1.6 }}>
-                  Brand campaign CPC increased from £0.82 to £1.16 over 7 days. This is a 41.5% jump, well above the normal variance for this account. The increase correlates with new competitor ads appearing in auction insights for branded terms.
+                  Brand campaign CPC increased from £0.82 to £1.16 over 7 days. This is a 41.5%
+                  jump, well above the normal variance for this account. The increase correlates
+                  with new competitor ads appearing in auction insights for branded terms.
                 </div>
               </div>
-              <div style={{ padding: "16px 20px", background: `rgba(236,72,153,0.06)`, border: `1px solid rgba(236,72,153,0.15)`, borderRadius: 12 }}>
+              <div
+                style={{
+                  padding: "16px 20px",
+                  background: `rgba(236,72,153,0.06)`,
+                  border: `1px solid rgba(236,72,153,0.15)`,
+                  borderRadius: 12,
+                }}
+              >
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
                   <Zap size={12} color={accentLight} />
-                  <span style={{ fontSize: 12, fontWeight: 700, color: accentLight }}>AI Recommendation</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: accentLight }}>
+                    AI Recommendation
+                  </span>
                 </div>
                 <div style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", lineHeight: 1.6 }}>
-                  Review auction insights for this campaign. If a competitor is bidding on your brand terms, consider increasing brand campaign bids by 15-20% to maintain position. Also check if the landing page experience score has dropped, as that can inflate CPC independently.
+                  Review auction insights for this campaign. If a competitor is bidding on your
+                  brand terms, consider increasing brand campaign bids by 15-20% to maintain
+                  position. Also check if the landing page experience score has dropped, as that can
+                  inflate CPC independently.
                 </div>
               </div>
             </div>
@@ -381,34 +1012,130 @@ export default function SignalsPage() {
       </section>
 
       {/* ── CTA ── */}
-      <section id="cta" className="reveal-section" style={{ padding: "120px 40px 140px", position: "relative", overflow: "hidden" }}>
-        <div style={{ position: "absolute", width: "80%", paddingBottom: "40%", bottom: "-20%", left: "50%", transform: "translateX(-50%)", background: `radial-gradient(ellipse, rgba(236,72,153,0.12) 0%, transparent 65%)`, pointerEvents: "none" }} />
+      <section
+        id="cta"
+        className="reveal-section"
+        style={{ padding: "120px 40px 140px", position: "relative", overflow: "hidden" }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            width: "80%",
+            paddingBottom: "40%",
+            bottom: "-20%",
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: `radial-gradient(ellipse, rgba(236,72,153,0.12) 0%, transparent 65%)`,
+            pointerEvents: "none",
+          }}
+        />
         <div style={{ maxWidth: 700, margin: "0 auto", textAlign: "center", position: "relative" }}>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 14px", borderRadius: 20, background: `rgba(236,72,153,0.12)`, border: `1px solid rgba(236,72,153,0.25)`, marginBottom: 28 }}>
-            <div style={{ width: 7, height: 7, borderRadius: "50%", background: accent, boxShadow: `0 0 8px ${accentGlow}` }} className="accent-pulse" />
-            <span style={{ fontSize: 12, fontWeight: 700, color: accentLight, letterSpacing: "0.08em", textTransform: "uppercase" }}>Included with StratOS</span>
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "6px 14px",
+              borderRadius: 20,
+              background: `rgba(236,72,153,0.12)`,
+              border: `1px solid rgba(236,72,153,0.25)`,
+              marginBottom: 28,
+            }}
+          >
+            <div
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: "50%",
+                background: accent,
+                boxShadow: `0 0 8px ${accentGlow}`,
+              }}
+              className="accent-pulse"
+            />
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                color: accentLight,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+              }}
+            >
+              Included with StratOS
+            </span>
           </div>
-          <h2 style={{ fontSize: 50, fontWeight: 900, letterSpacing: "-0.04em", marginBottom: 20, color: "white", lineHeight: 1.05 }} className="blur-reveal">
-            Know what changed.<br />
-            <span style={{ background: `linear-gradient(90deg, ${accentLight}, ${accent}, #6366f1)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Before the call.</span>
+          <h2
+            style={{
+              fontSize: 50,
+              fontWeight: 900,
+              letterSpacing: "-0.04em",
+              marginBottom: 20,
+              color: "white",
+              lineHeight: 1.05,
+            }}
+            className="blur-reveal"
+          >
+            Know what changed.
+            <br />
+            <span
+              style={{
+                background: `linear-gradient(90deg, ${accentLight}, ${accent}, #6366f1)`,
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+              }}
+            >
+              Before the call.
+            </span>
           </h2>
-          <p style={{ fontSize: 17, color: "rgba(255,255,255,0.55)", lineHeight: 1.8, marginBottom: 40 }}>
-            Signals runs automatically for every client with connected platforms. No setup required. When something moves, you will see it in your dashboard, sorted by what matters most.
+          <p
+            style={{
+              fontSize: 17,
+              color: "rgba(255,255,255,0.55)",
+              lineHeight: 1.8,
+              marginBottom: 40,
+            }}
+          >
+            Signals runs automatically for every client with connected platforms. No setup required.
+            When something moves, you will see it in your dashboard, sorted by what matters most.
           </p>
           <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
-            <a href="/login" style={{
-              display: "inline-flex", alignItems: "center", gap: 8, padding: "15px 28px", borderRadius: 12,
-              background: `linear-gradient(135deg, #db2777, ${accent})`,
-              color: "white", fontSize: 15, fontWeight: 700, textDecoration: "none",
-              boxShadow: `0 0 32px rgba(236,72,153,0.4)`,
-            }} className="cta-accent-pulse">
+            <a
+              href="/login"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "15px 28px",
+                borderRadius: 12,
+                background: `linear-gradient(135deg, #db2777, ${accent})`,
+                color: "white",
+                fontSize: 15,
+                fontWeight: 700,
+                textDecoration: "none",
+                boxShadow: `0 0 32px rgba(236,72,153,0.4)`,
+              }}
+              className="cta-accent-pulse"
+            >
               <Lock size={16} /> Sign in to your dashboard
             </a>
-            <a href="mailto:hello@i3media.co.uk" style={{
-              display: "inline-flex", alignItems: "center", gap: 8, padding: "15px 28px", borderRadius: 12,
-              background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)",
-              color: "rgba(255,255,255,0.8)", fontSize: 15, fontWeight: 600, textDecoration: "none",
-            }}>Talk to us</a>
+            <a
+              href="mailto:nick@bettsandburton.com"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "15px 28px",
+                borderRadius: 12,
+                background: "rgba(255,255,255,0.06)",
+                border: "1px solid rgba(255,255,255,0.12)",
+                color: "rgba(255,255,255,0.8)",
+                fontSize: 15,
+                fontWeight: 600,
+                textDecoration: "none",
+              }}
+            >
+              Talk to us
+            </a>
           </div>
           <p style={{ marginTop: 24, fontSize: 12, color: "rgba(255,255,255,0.25)" }}>
             No extra tools. No configuration. Runs automatically inside StratOS.
@@ -416,12 +1143,27 @@ export default function SignalsPage() {
         </div>
       </section>
 
-      <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: "24px 40px", display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 12, color: "rgba(255,255,255,0.25)" }}>
+      <div
+        style={{
+          borderTop: "1px solid rgba(255,255,255,0.06)",
+          padding: "24px 40px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          fontSize: 12,
+          color: "rgba(255,255,255,0.25)",
+        }}
+      >
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <img src="/primary-logo.svg" style={{ height: 18, opacity: 0.4 }} alt="i3MEDIA" />
+          <img src="/primary-logo.svg" style={{ height: 18, opacity: 0.4 }} alt="Betts & Burton" />
           <span>&copy; {new Date().getFullYear()} i3 Media. Signals is part of StratOS.</span>
         </div>
-        <a href="/login" style={{ color: "rgba(255,255,255,0.3)", textDecoration: "none", fontSize: 12 }}>&larr; Back to StratOS</a>
+        <a
+          href="/login"
+          style={{ color: "rgba(255,255,255,0.3)", textDecoration: "none", fontSize: 12 }}
+        >
+          &larr; Back to StratOS
+        </a>
       </div>
 
       <style>{`

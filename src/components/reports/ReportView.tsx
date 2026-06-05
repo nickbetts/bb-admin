@@ -2949,7 +2949,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src="/primary-logo.svg"
-                    alt="i3media"
+                    alt="Betts & Burton"
                     style={{ height: 36, marginBottom: 24 }}
                   />
                   <h1
@@ -3008,7 +3008,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
               }}
             >
               <p style={{ fontSize: 12, color: "var(--text-3)" }}>
-                Prepared by i3media ·{" "}
+                Prepared by Betts & Burton ·{" "}
                 {new Date().toLocaleDateString("en-GB", {
                   day: "numeric",
                   month: "long",
@@ -4628,7 +4628,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/primary-logo.svg"
-              alt="i3media"
+              alt="Betts & Burton"
               style={{ height: 28, filter: "brightness(0)" }}
             />
             <p style={{ fontSize: 12, color: "var(--text-4)" }}>

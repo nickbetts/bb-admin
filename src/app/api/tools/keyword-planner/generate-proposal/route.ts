@@ -149,7 +149,7 @@ function generateProposalHTML(params: {
           <td style="padding:10px 16px;border-bottom:1px solid #f1f5f9;color:#6366f1;text-align:right;font-weight:600">${fmtNum(kw.avgMonthlySearches)}</td>
           <td style="padding:10px 16px;border-bottom:1px solid #f1f5f9;color:#475569;text-align:center">${competitionLabel(kw.competition)}</td>
           <td style="padding:10px 16px;border-bottom:1px solid #f1f5f9;color:#475569;text-align:right">${fmtCurrency(kw.highTopOfPageBidMicros)}</td>
-        </tr>`
+        </tr>`,
     )
     .join("");
 
@@ -163,7 +163,7 @@ function generateProposalHTML(params: {
         <h3 style="font-size:15px;font-weight:700;color:#1e293b;margin:0 0 8px">${gap.title}</h3>
         <p style="font-size:13px;color:#475569;line-height:1.6;margin:0 0 8px">${gap.description}</p>
         <p style="font-size:12px;color:#ef4444;font-weight:600;margin:0">Impact: ${gap.impact}</p>
-      </div>`
+      </div>`,
     )
     .join("");
 
@@ -176,22 +176,37 @@ function generateProposalHTML(params: {
         </div>
         <h3 style="font-size:15px;font-weight:700;color:#1e293b;margin:0 0 8px">${pos.title}</h3>
         <p style="font-size:13px;color:#475569;line-height:1.6;margin:0">${pos.description}</p>
-      </div>`
+      </div>`,
     )
     .join("");
 
-  const whyUsCards = (pd.whyUs ?? [
-    { stat: "10+", title: "Years of experience", description: "Deep expertise in performance marketing across every major digital channel." },
-    { stat: "£2M+", title: "Ad spend managed", description: "Proven track record delivering results with budgets of all sizes." },
-    { stat: "3.2x", title: "Average ROAS", description: "Our clients consistently outperform industry benchmarks on return on ad spend." },
-  ])
+  const whyUsCards = (
+    pd.whyUs ?? [
+      {
+        stat: "10+",
+        title: "Years of experience",
+        description: "Deep expertise in performance marketing across every major digital channel.",
+      },
+      {
+        stat: "£2M+",
+        title: "Ad spend managed",
+        description: "Proven track record delivering results with budgets of all sizes.",
+      },
+      {
+        stat: "3.2x",
+        title: "Average ROAS",
+        description:
+          "Our clients consistently outperform industry benchmarks on return on ad spend.",
+      },
+    ]
+  )
     .map(
       (item) => `
       <div style="text-align:center;padding:32px 24px">
         <p style="font-size:48px;font-weight:900;color:#ffffff;line-height:1;margin:0 0 8px">${item.stat}</p>
         <p style="font-size:15px;font-weight:700;color:#c7d2fe;margin:0 0 10px">${item.title}</p>
         <p style="font-size:13px;color:#a5b4fc;line-height:1.6;margin:0;max-width:220px;margin-inline:auto">${item.description}</p>
-      </div>`
+      </div>`,
     )
     .join("");
 
@@ -205,7 +220,7 @@ function generateProposalHTML(params: {
           </td>
           <td style="padding:12px 16px;border-bottom:1px solid #f1f5f9;color:#6366f1;text-align:right;font-weight:600">${fmtNum(cluster.searchVolume)}/mo</td>
           <td style="padding:12px 16px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:13px">${cluster.opportunity}</td>
-        </tr>`
+        </tr>`,
     )
     .join("");
 
@@ -215,7 +230,7 @@ function generateProposalHTML(params: {
       <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px 18px">
         <p style="font-size:13px;font-weight:600;color:#1e293b;margin:0 0 4px">${article.title}</p>
         <p style="font-size:11px;color:#6366f1;margin:0">Target: ${article.targetKeyword}</p>
-      </div>`
+      </div>`,
     )
     .join("");
 
@@ -226,7 +241,7 @@ function generateProposalHTML(params: {
         <p style="font-size:16px;font-weight:700;color:#6366f1;margin:0 0 6px">${service.price}</p>
         <p style="font-size:14px;font-weight:600;color:#1e293b;margin:0 0 8px">${service.name}</p>
         ${service.description ? `<p style="font-size:13px;color:#64748b;margin:0">${service.description}</p>` : ""}
-      </div>`
+      </div>`,
     )
     .join("");
 
@@ -242,12 +257,16 @@ function generateProposalHTML(params: {
           </div>
           <p style="font-size:13px;color:#475569;margin:0;line-height:1.6">${phase.description}</p>
         </div>
-      </div>`
+      </div>`,
     )
     .join("");
 
   const totalServices = services.length;
-  const today = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+  const today = new Date().toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
   const domainLabel = (() => {
     try {
       return new URL(website).hostname.replace(/^www\./, "");
@@ -423,11 +442,15 @@ function generateProposalHTML(params: {
       <p class="section-label">01 — Situation Analysis</p>
       <h2>Where You Are Now</h2>
       <p style="font-size:16px;color:#475569;margin-bottom:40px;max-width:680px;line-height:1.7">${pd.whereYouAreNow?.summary ?? ""}</p>
-      ${positiveCards ? `
+      ${
+        positiveCards
+          ? `
       <p style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#16a34a;margin-bottom:16px">What you do well</p>
       <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:32px">
         ${positiveCards}
-      </div>` : ""}
+      </div>`
+          : ""
+      }
       <p style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#ef4444;margin-bottom:16px">Where the gaps are</p>
       <div style="display:flex;gap:20px;flex-wrap:wrap">
         ${gapCards}
@@ -476,7 +499,9 @@ function generateProposalHTML(params: {
   ${ppcForecastSection}
 
   <!-- ── 03. Keyword Clusters ── -->
-  ${(pd.keywordClusters ?? []).length > 0 ? `
+  ${
+    (pd.keywordClusters ?? []).length > 0
+      ? `
   <section style="padding:64px 0">
     <div class="container">
       <p class="section-label">03 — Keyword Clusters</p>
@@ -492,10 +517,14 @@ function generateProposalHTML(params: {
       </div>
     </div>
   </section>
-  ` : ""}
+  `
+      : ""
+  }
 
   <!-- ── 04. Content / Landing Page Strategy ── -->
-  ${pd.contentCluster?.pillarPage ? `
+  ${
+    pd.contentCluster?.pillarPage
+      ? `
   <section style="padding:64px 0;background:#fff">
     <div class="container">
       <p class="section-label">04 — ${pd.contentCluster?.type === "landing_pages" ? "Landing Pages" : "Content Strategy"}</p>
@@ -511,10 +540,14 @@ function generateProposalHTML(params: {
       </div>
     </div>
   </section>
-  ` : ""}
+  `
+      : ""
+  }
 
   <!-- ── 05. Services & Investment ── -->
-  ${services.length > 0 ? `
+  ${
+    services.length > 0
+      ? `
   <section style="padding:64px 0">
     <div class="container">
       <p class="section-label">05 — Investment</p>
@@ -525,10 +558,14 @@ function generateProposalHTML(params: {
       </div>
     </div>
   </section>
-  ` : ""}
+  `
+      : ""
+  }
 
   <!-- ── 06. Timeline ── -->
-  ${timeline.length > 0 ? `
+  ${
+    timeline.length > 0
+      ? `
   <section style="padding:64px 0;background:#fff">
     <div class="container">
       <p class="section-label">06 — Timeline</p>
@@ -539,7 +576,9 @@ function generateProposalHTML(params: {
       </div>
     </div>
   </section>
-  ` : ""}
+  `
+      : ""
+  }
 
   <!-- ── Why i3media ── -->
   <section style="background:linear-gradient(135deg,#1e1b4b 0%,#312e81 50%,#4c1d95 100%);padding:80px 0">
@@ -560,7 +599,7 @@ function generateProposalHTML(params: {
       <p style="font-size:16px;color:#475569;line-height:1.8;margin-bottom:40px">${pd.cta?.body ?? "Let's talk about how we can accelerate your digital growth. Our team is ready to build a campaign tailored specifically to your business."}</p>
       <div style="display:inline-flex;gap:16px;flex-wrap:wrap;justify-content:center">
         <div style="background:#6366f1;color:#fff;padding:14px 32px;border-radius:8px;font-size:14px;font-weight:700">Get in touch</div>
-        <div style="background:#fff;color:#6366f1;border:2px solid #6366f1;padding:14px 32px;border-radius:8px;font-size:14px;font-weight:700">hello@i3media.co.uk</div>
+        <div style="background:#fff;color:#6366f1;border:2px solid #6366f1;padding:14px 32px;border-radius:8px;font-size:14px;font-weight:700">nick@bettsandburton.com</div>
       </div>
     </div>
   </section>
@@ -634,12 +673,13 @@ export async function POST(request: NextRequest) {
       conversionRate = research.conversionRate;
       websiteContext = research.websiteContext ?? "";
     } else if (body.inlineData) {
-      ({ website, brief, adGroups, ideas, maxCpc, monthlyBudget, conversionRate } = body.inlineData);
+      ({ website, brief, adGroups, ideas, maxCpc, monthlyBudget, conversionRate } =
+        body.inlineData);
       websiteContext = body.inlineData.websiteContext ?? "";
     } else {
       return NextResponse.json(
         { error: "Either researchId or inlineData is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -658,15 +698,23 @@ export async function POST(request: NextRequest) {
     let taskBenchmarks: Array<{ task: string; hours: number }> = [];
     if (taskBenchmarksSetting?.value) {
       try {
-        taskBenchmarks = JSON.parse(taskBenchmarksSetting.value) as Array<{ task: string; hours: number }>;
-      } catch { /* ignore malformed JSON */ }
+        taskBenchmarks = JSON.parse(taskBenchmarksSetting.value) as Array<{
+          task: string;
+          hours: number;
+        }>;
+      } catch {
+        /* ignore malformed JSON */
+      }
     }
 
     // ── Compute brief type from brief text ─────────────────────────────────
     const briefLower = brief.toLowerCase();
     const hasSeoInBrief = /\b(seo|content\s+marketing|organic|blog)\b/.test(briefLower);
-    const hasSeoInServices = (proposedServices ?? []).some(s => /\b(seo|content|organic|growth)\b/i.test(s));
-    const computedBriefType: "PAID_ONLY" | "FULL_SERVICE" = hasSeoInServices || hasSeoInBrief ? "FULL_SERVICE" : "PAID_ONLY";
+    const hasSeoInServices = (proposedServices ?? []).some((s) =>
+      /\b(seo|content|organic|growth)\b/i.test(s),
+    );
+    const computedBriefType: "PAID_ONLY" | "FULL_SERVICE" =
+      hasSeoInServices || hasSeoInBrief ? "FULL_SERVICE" : "PAID_ONLY";
 
     // ── Compute stats ───────────────────────────────────────────────────────
     const totalSearchVolume = ideas.reduce((s, i) => s + i.avgMonthlySearches, 0);
@@ -674,7 +722,7 @@ export async function POST(request: NextRequest) {
     const budgetVal = parseFloat(monthlyBudget) || 0;
     const convRateVal = parseFloat(conversionRate) || 3;
     const estimatedClicks = maxCpcVal > 0 && budgetVal > 0 ? Math.round(budgetVal / maxCpcVal) : 0;
-    const estimatedConversions = Math.round(estimatedClicks * convRateVal / 100);
+    const estimatedConversions = Math.round((estimatedClicks * convRateVal) / 100);
 
     const stats = {
       totalKeywords: ideas.length,
@@ -685,11 +733,12 @@ export async function POST(request: NextRequest) {
     };
 
     // ── Build prompt context for benchmarks ────────────────────────────────
-    const benchmarksContext = taskBenchmarks.length > 0
-      ? `\nTask Time Benchmarks (hours per deliverable):\n${taskBenchmarks
-          .map((b) => `- ${b.task}: ${b.hours}h`)
-          .join("\n")}`
-      : "";
+    const benchmarksContext =
+      taskBenchmarks.length > 0
+        ? `\nTask Time Benchmarks (hours per deliverable):\n${taskBenchmarks
+            .map((b) => `- ${b.task}: ${b.hours}h`)
+            .join("\n")}`
+        : "";
 
     const hasHoursContext = benchmarksContext;
 
@@ -700,46 +749,73 @@ export async function POST(request: NextRequest) {
         const ps = JSON.parse(pricingStrategySetting.value) as {
           notes?: string;
           singleServices?: Array<{ name: string; monthlyFee: string; notes?: string }>;
-          focusPackages?: Array<{ name: string; monthlyFee: string; hoursPerMonth: number; includes: string[] }>;
+          focusPackages?: Array<{
+            name: string;
+            monthlyFee: string;
+            hoursPerMonth: number;
+            includes: string[];
+          }>;
           focusAddOns?: {
             seoFocus?: Array<{ name: string; channels: string; growth: string; elevate: string }>;
             paidFocus?: Array<{ name: string; channels: string; growth: string; elevate: string }>;
           };
-          retainerPackages?: Array<{ name: string; priceRange: string; description: string; includes: string[]; quarterlyAccelerator: string[] }>;
+          retainerPackages?: Array<{
+            name: string;
+            priceRange: string;
+            description: string;
+            includes: string[];
+            quarterlyAccelerator: string[];
+          }>;
           otherServices?: Array<{ name: string; monthlyFee: string; notes?: string }>;
         };
 
-        const lines: string[] = ["\nAgency Pricing Reference (use this ONLY as background context — do NOT quote or list prices in the proposal itself. Use it to understand the scale of engagement and to pitch the most appropriate package for this client's needs):"];
+        const lines: string[] = [
+          "\nAgency Pricing Reference (use this ONLY as background context — do NOT quote or list prices in the proposal itself. Use it to understand the scale of engagement and to pitch the most appropriate package for this client's needs):",
+        ];
 
         if (ps.notes) lines.push(`Notes: ${ps.notes}`);
 
         if (ps.singleServices?.length) {
           lines.push("\nSingle-Channel Services:");
-          ps.singleServices.forEach(s => lines.push(`  - ${s.name}: ${s.monthlyFee}/mo${s.notes ? " (" + s.notes + ")" : ""}`));
+          ps.singleServices.forEach((s) =>
+            lines.push(`  - ${s.name}: ${s.monthlyFee}/mo${s.notes ? " (" + s.notes + ")" : ""}`),
+          );
         }
 
         if (ps.focusPackages?.length) {
           lines.push("\nFocus Packages:");
-          ps.focusPackages.forEach(pkg => {
+          ps.focusPackages.forEach((pkg) => {
             lines.push(`  ${pkg.name} — ${pkg.monthlyFee}/mo, ${pkg.hoursPerMonth} hrs/mo`);
             lines.push(`    Includes: ${pkg.includes.join(", ")}`);
           });
         }
 
         if (ps.focusAddOns?.seoFocus?.length) {
-          lines.push("\nSEO Focus Add-ons (impact tiers): " + ps.focusAddOns.seoFocus.map(
-            a => `${a.name}: Channels ${a.channels}${a.growth ? " / Growth " + a.growth : ""}${a.elevate ? " / Elevate " + a.elevate : ""}`
-          ).join("; "));
+          lines.push(
+            "\nSEO Focus Add-ons (impact tiers): " +
+              ps.focusAddOns.seoFocus
+                .map(
+                  (a) =>
+                    `${a.name}: Channels ${a.channels}${a.growth ? " / Growth " + a.growth : ""}${a.elevate ? " / Elevate " + a.elevate : ""}`,
+                )
+                .join("; "),
+          );
         }
         if (ps.focusAddOns?.paidFocus?.length) {
-          lines.push("Paid Focus Add-ons (impact tiers): " + ps.focusAddOns.paidFocus.map(
-            a => `${a.name}: Channels ${a.channels}${a.elevate ? " / Elevate " + a.elevate : ""}`
-          ).join("; "));
+          lines.push(
+            "Paid Focus Add-ons (impact tiers): " +
+              ps.focusAddOns.paidFocus
+                .map(
+                  (a) =>
+                    `${a.name}: Channels ${a.channels}${a.elevate ? " / Elevate " + a.elevate : ""}`,
+                )
+                .join("; "),
+          );
         }
 
         if (ps.retainerPackages?.length) {
           lines.push("\nMulti-Channel Retainer Packages:");
-          ps.retainerPackages.forEach(pkg => {
+          ps.retainerPackages.forEach((pkg) => {
             lines.push(`  ${pkg.name} — ${pkg.priceRange}/mo`);
             lines.push(`    Includes: ${pkg.includes.join(", ")}`);
             if (pkg.quarterlyAccelerator?.length) {
@@ -750,11 +826,15 @@ export async function POST(request: NextRequest) {
 
         if (ps.otherServices?.length) {
           lines.push("\nOther Services:");
-          ps.otherServices.forEach(s => lines.push(`  - ${s.name}: ${s.monthlyFee}${s.notes ? " (" + s.notes + ")" : ""}`) );
+          ps.otherServices.forEach((s) =>
+            lines.push(`  - ${s.name}: ${s.monthlyFee}${s.notes ? " (" + s.notes + ")" : ""}`),
+          );
         }
 
         pricingContext = lines.join("\n");
-      } catch { /* ignore malformed pricing JSON */ }
+      } catch {
+        /* ignore malformed pricing JSON */
+      }
     }
 
     // ── Build selected services context ──────────────────────────────────────
@@ -768,16 +848,18 @@ export async function POST(request: NextRequest) {
           otherServices?: Array<{ name: string; monthlyFee: string }>;
         };
         const priceMap = new Map<string, string>();
-        ps2.singleServices?.forEach(s => priceMap.set(s.name, `${s.monthlyFee}/mo`));
-        ps2.focusPackages?.forEach(p => priceMap.set(p.name, `${p.monthlyFee}/mo`));
-        ps2.retainerPackages?.forEach(p => priceMap.set(p.name, `${p.priceRange}/mo`));
-        ps2.otherServices?.forEach(s => priceMap.set(s.name, s.monthlyFee));
-        const serviceLines = proposedServices.map(name => {
+        ps2.singleServices?.forEach((s) => priceMap.set(s.name, `${s.monthlyFee}/mo`));
+        ps2.focusPackages?.forEach((p) => priceMap.set(p.name, `${p.monthlyFee}/mo`));
+        ps2.retainerPackages?.forEach((p) => priceMap.set(p.name, `${p.priceRange}/mo`));
+        ps2.otherServices?.forEach((s) => priceMap.set(s.name, s.monthlyFee));
+        const serviceLines = proposedServices.map((name) => {
           const price = priceMap.get(name);
           return price ? `- ${name}: ${price}` : `- ${name}`;
         });
         selectedServicesContext = `\nPre-agreed services (the "services" array MUST contain exactly these — use their exact names and prices, no additions or removals):\n${serviceLines.join("\n")}\n`;
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
 
     const servicesNameInstruction = selectedServicesContext
@@ -853,7 +935,9 @@ ${hasHoursContext ? `IMPORTANT: Use the task benchmarks above to inform realisti
   ],
   "contentCluster": {
     "type": "${computedBriefType === "PAID_ONLY" ? "landing_pages" : "content"}",
-    ${computedBriefType === "PAID_ONLY" ? `
+    ${
+      computedBriefType === "PAID_ONLY"
+        ? `
     "pillarPage": {
       "title": "The primary campaign landing page to build or optimise — name it specifically based on the main ad group theme.",
       "description": "What this page should contain and how it should be structured to convert paid traffic from these specific keywords."
@@ -863,7 +947,8 @@ ${hasHoursContext ? `IMPORTANT: Use the task benchmarks above to inform realisti
       { "title": "Another ad-group landing page.", "targetKeyword": "matching keyword" },
       { "title": "Another ad-group landing page.", "targetKeyword": "matching keyword" },
       { "title": "Another ad-group landing page.", "targetKeyword": "matching keyword" }
-    ]` : `
+    ]`
+        : `
     "pillarPage": {
       "title": "Main pillar content topic directly relevant to ${clientName}'s core service or product.",
       "description": "Why this topic builds topical authority and what it should cover."
@@ -873,7 +958,8 @@ ${hasHoursContext ? `IMPORTANT: Use the task benchmarks above to inform realisti
       { "title": "Supporting article title.", "targetKeyword": "matching keyword" },
       { "title": "Supporting article title.", "targetKeyword": "matching keyword" },
       { "title": "Supporting article title.", "targetKeyword": "matching keyword" }
-    ]`}
+    ]`
+    }
   },
   "whyUs": [
     { "stat": "10+", "title": "Years of experience", "description": "Why this specific experience matters for ${clientName}'s sector" },
@@ -922,9 +1008,7 @@ Write in British English throughout.`;
       ],
     });
 
-    const proposalData = JSON.parse(
-      completion.choices[0].message.content ?? "{}"
-    ) as ProposalData;
+    const proposalData = JSON.parse(completion.choices[0].message.content ?? "{}") as ProposalData;
     const services = proposalData.services ?? [];
     const timeline = proposalData.timeline ?? [];
 
@@ -939,11 +1023,19 @@ Write in British English throughout.`;
       ppc: { maxCpc: maxCpcVal, monthlyBudget: budgetVal, conversionRate: convRateVal },
     });
 
-    const slugName = clientName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "client";
+    const slugName =
+      clientName
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "") || "client";
     const filename = `${slugName}-proposal.html`;
 
     // ── Save proposal to database ───────────────────────────────────────────
-    const today = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+    const today = new Date().toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
 
     // Build structured data for the interactive viewer
     const proposalDataJson = JSON.stringify({
@@ -979,7 +1071,7 @@ Write in British English throughout.`;
     console.error("generate-proposal error", err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

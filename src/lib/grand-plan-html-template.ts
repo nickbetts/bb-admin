@@ -546,11 +546,11 @@ function renderCtaClose(clientName: string): string {
     <h2 style="font-size:clamp(2rem,5vw,3.25rem);color:#fff;letter-spacing:-1.5px;margin-bottom:1.25rem">Ready when you are.</h2>
     <p style="font-size:1.1rem;color:rgba(255,255,255,.6);max-width:560px;line-height:1.7;margin-bottom:3rem">This plan is ready to execute. If you have any questions about the strategy for ${esc(clientName)}, get in touch and we can walk through it together.</p>
     <div class="cta-links">
-      <a href="mailto:hello@i3media.co.uk" class="cta-link-card">
+      <a href="mailto:nick@bettsandburton.com" class="cta-link-card">
         <span class="cta-link-icon">✉</span>
-        <div><div class="cta-link-label">Email us</div><div class="cta-link-val">hello@i3media.co.uk</div></div>
+        <div><div class="cta-link-label">Email us</div><div class="cta-link-val">nick@bettsandburton.com</div></div>
       </a>
-      <a href="https://i3media.co.uk" class="cta-link-card" target="_blank" rel="noopener">
+      <a href="https://bettsandburton.com" class="cta-link-card" target="_blank" rel="noopener">
         <span class="cta-link-icon">🌐</span>
         <div><div class="cta-link-label">Website</div><div class="cta-link-val">i3media.co.uk</div></div>
       </a>
@@ -5121,7 +5121,7 @@ document.querySelectorAll('.lp-iframe[data-lp-html]').forEach(function(iframe){
 // the same markup renders in white on dark surfaces (sticky nav, hero) and in
 // ink on light surfaces (CTA card, password gate). Original viewBox preserved.
 
-const I3_LOGO_SVG = `<svg viewBox="0 0 161 53" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="i3media">
+const I3_LOGO_SVG = `<svg viewBox="0 0 161 53" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Betts & Burton">
 <path d="M26.0013 0.853516C11.6413 0.853516 0 12.4947 0 26.8538C0 41.2136 11.6413 52.8535 26.0013 52.8535C40.362 52.8535 52.0033 41.2136 52.0033 26.8538C52.0033 12.4947 40.362 0.853516 26.0013 0.853516ZM17.6309 21.0628C18.8643 21.0598 19.8647 22.0577 19.8702 23.2935C19.8781 24.5225 18.8722 25.5247 17.6467 25.5247C16.4078 25.5278 15.4074 24.5353 15.4074 23.3044C15.3995 22.0711 16.3944 21.0683 17.6309 21.0628ZM40.3455 21.0598C39.7898 24.7824 38.4423 31.4889 38.4423 31.4889C38.4423 31.4889 37.7451 35.841 31.3004 35.8569C24.8539 35.8734 20.019 35.8868 20.019 35.8868C20.019 35.8868 19.5475 39.9833 13.7805 39.9943L16.6787 29.1662C16.6787 29.1662 17.5491 26.2896 22.5536 26.0804L21.2305 31.1638L31.1424 31.1394C31.1424 31.1394 33.5287 30.6783 33.7209 28.5477L23.2106 28.5776C23.2106 28.5776 23.7962 24.8281 28.1717 24.0773L33.6215 24.0584C33.6215 24.0584 34.8195 23.7192 34.8146 22.811V22.2443C34.8146 22.2443 34.7817 21.6155 33.9008 21.3337L23.6742 21.3666C23.6742 21.3666 20.3234 21.5453 20.307 16.6571L36.4439 16.6083C36.4439 16.6083 40.9067 17.3353 40.3455 21.0598Z" fill="currentColor"/>
 <path d="M144.133 35.8645L149.848 19.3218H154.486L160.201 35.8645H156.742L152.355 21.8533H152.004L147.567 35.8645H144.133ZM147.166 32.4557V30.225H157.594V32.4557H147.166Z" fill="currentColor"/>
 <path d="M138.913 35.8645V19.3218H142.122V35.8645H138.913Z" fill="currentColor"/>

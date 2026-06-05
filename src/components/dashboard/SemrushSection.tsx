@@ -215,12 +215,6 @@ export function SemrushSection({
   const [backlinks, setBacklinks] = useState<Backlink[]>([]);
   const [backlinkError, setBacklinkError] = useState<string | null>(null);
   const [aiVisibility, setAiVisibility] = useState<AIVisibility | null>(null);
-  const [domainAuthority, setDomainAuthority] = useState<{
-    domainAuthority: number;
-    pageAuthority: number;
-    spamScore: number;
-    rootDomainsLinking: number;
-  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [alertAiRecs, setAlertAiRecs] = useState<string[]>([]);
@@ -669,20 +663,6 @@ export function SemrushSection({
           const e = (await taggedRes.json().catch(() => ({}))) as { error?: string };
           setTaggedKwError(e.error ?? "Failed to load keyword rankings");
         }
-
-        // Domain Authority (config-gated — silently skip if not available)
-        try {
-          const daRes = await fetch(
-            `/api/seo/domain-authority?domain=${encodeURIComponent(domain)}`,
-            { signal: controller.signal },
-          );
-          if (daRes.ok) {
-            const da = await daRes.json();
-            setDomainAuthority(da);
-          }
-        } catch {
-          // DA not configured — skip
-        }
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") return;
         setError(err instanceof Error ? err.message : "Failed to load SemRush data");
@@ -1027,44 +1007,6 @@ export function SemrushSection({
                   subtitle="Equivalent PPC value"
                   icon={<TrendingUp className="h-5 w-5" />}
                   color="green"
-                />
-              )}
-            </div>
-          )}
-
-          {/* Domain Authority (config-gated — only shows if Moz key is set) */}
-          {show("kpis") && domainAuthority && (
-            <div className="grid grid-cols-2 gap-5 md:grid-cols-4">
-              {showCard("kpis", "domain_authority") && (
-                <MetricCard
-                  title="Domain Authority"
-                  value={domainAuthority.domainAuthority}
-                  subtitle="Moz DA score (0–100)"
-                  color="purple"
-                />
-              )}
-              {showCard("kpis", "page_authority") && (
-                <MetricCard
-                  title="Page Authority"
-                  value={domainAuthority.pageAuthority}
-                  subtitle="Moz PA score (0–100)"
-                  color="blue"
-                />
-              )}
-              {showCard("kpis", "linking_root_domains") && (
-                <MetricCard
-                  title="Linking Root Domains"
-                  value={formatNumber(domainAuthority.rootDomainsLinking)}
-                  subtitle="Unique domains linking"
-                  color="green"
-                />
-              )}
-              {showCard("kpis", "spam_score") && (
-                <MetricCard
-                  title="Spam Score"
-                  value={`${domainAuthority.spamScore}%`}
-                  subtitle="Higher = riskier"
-                  color={domainAuthority.spamScore > 30 ? "red" : "orange"}
                 />
               )}
             </div>

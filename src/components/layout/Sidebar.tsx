@@ -746,7 +746,7 @@ export function Sidebar({
               <img
                 src="/primary-logo-dark.svg"
                 style={{ height: 28, width: "auto" }}
-                alt="i3media"
+                alt="Betts & Burton"
               />
             </div>
             <button
@@ -882,7 +882,11 @@ export function Sidebar({
               <img src="/logo-mark.svg" style={{ width: 20, height: 20 }} alt="" />
             </div>
           ) : (
-            <img src="/primary-logo-dark.svg" style={{ height: 28, width: "auto" }} alt="i3media" />
+            <img
+              src="/primary-logo-dark.svg"
+              style={{ height: 28, width: "auto" }}
+              alt="Betts & Burton"
+            />
           )}
         </div>
         {!collapsed && (

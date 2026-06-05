@@ -790,11 +790,6 @@ model SalesHandoff {
   hoursUntilCall            Float?
   noticeStatus              String?
   status                    String              @default("plan_requested")
-  clickupTaskId             String?             @unique
-  clickupTaskUrl            String?
-  clickupListId             String?
-  clickupSyncStatus         String              @default("not_synced")
-  clickupLastSyncedAt       DateTime?
   policyEnforce48HourNotice Boolean             @default(true)
   policyAllowUrgentOverride Boolean             @default(true)
   notes                     String?
@@ -884,8 +879,6 @@ model LandingPage {
   updatedAt                 DateTime                    @updatedAt
   customSubdomain           String?
   platforms                 String                      @default("[]")
-  clickrUserId              String?
-  clickrUser                ClickrUser?                 @relation(fields: [clickrUserId], references: [id], onDelete: Cascade)
   client                    Client?                     @relation(fields: [clientId], references: [id], onDelete: Cascade)
   user                      User?                       @relation(fields: [userId], references: [id], onDelete: Cascade)
   leads                     LandingPageLead[]
@@ -896,10 +889,8 @@ model LandingPage {
 
   @@unique([clientId, slug])
   @@unique([customSubdomain, slug])
-  @@unique([clickrUserId, slug])
   @@index([clientId, createdAt])
   @@index([userId, createdAt])
-  @@index([clickrUserId, createdAt])
 }
 
 model LandingPageRefineJob {
@@ -1375,26 +1366,6 @@ model MetaAssassinImageEvent {
   @@index([createdAt])
 }
 
-model ClickrUser {
-  id                   String          @id @default(cuid())
-  email                String          @unique
-  passwordHash         String
-  name                 String?
-  planTier             String          @default("free")
-  planStatus           String          @default("active")
-  lpsThisMonth         Int             @default(0)
-  billingPeriodStart   DateTime        @default(now())
-  stripeCustomerId     String?         @unique
-  stripeSubscriptionId String?         @unique
-  createdAt            DateTime        @default(now())
-  updatedAt            DateTime        @updatedAt
-  sessions             ClickrSession[]
-  landingPages         LandingPage[]
-
-  @@index([email])
-  @@index([planTier])
-}
-
 model KeywordTrackerList {
   id        String   @id @default(cuid())
   userId    String
@@ -1406,18 +1377,6 @@ model KeywordTrackerList {
   updatedAt DateTime @updatedAt
 
   @@index([userId, updatedAt])
-}
-
-model ClickrSession {
-  id           String     @id @default(cuid())
-  clickrUserId String
-  token        String     @unique
-  expiresAt    DateTime
-  createdAt    DateTime   @default(now())
-  clickrUser   ClickrUser @relation(fields: [clickrUserId], references: [id], onDelete: Cascade)
-
-  @@index([clickrUserId])
-  @@index([token])
 }
 
 model LandingPagePaymentSession {

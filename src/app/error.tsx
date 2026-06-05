@@ -2,7 +2,13 @@
 
 import { useEffect, useState } from "react";
 
-export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+export default function Error({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
   const [showStack, setShowStack] = useState(false);
 
   useEffect(() => {
@@ -10,18 +16,48 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
   }, [error]);
 
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", padding: 24, background: "var(--bg)" }}>
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: "100vh",
+        padding: 24,
+        background: "var(--bg)",
+      }}
+    >
       <div style={{ textAlign: "center", maxWidth: 560 }}>
-        <div style={{ width: 56, height: 56, borderRadius: 16, background: "var(--danger-bg)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", fontSize: 24 }}>
+        <div
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: 16,
+            background: "var(--danger-bg)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            margin: "0 auto 20px",
+            fontSize: 24,
+          }}
+        >
           !
         </div>
-        <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)", marginBottom: 8 }}>Something went wrong</h2>
+        <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)", marginBottom: 8 }}>
+          Something went wrong
+        </h2>
         <p style={{ fontSize: 14, color: "var(--text-2)", marginBottom: 16, lineHeight: 1.6 }}>
           {error.message || "An unexpected error occurred. Please try again."}
         </p>
 
         {error.digest && (
-          <p style={{ fontSize: 12, color: "var(--text-4)", marginBottom: 16, fontFamily: "monospace" }}>
+          <p
+            style={{
+              fontSize: 12,
+              color: "var(--text-4)",
+              marginBottom: 16,
+              fontFamily: "monospace",
+            }}
+          >
             Digest: {error.digest}
           </p>
         )}
@@ -87,8 +123,11 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
         </div>
         <p style={{ fontSize: 13, color: "var(--text-3)", marginTop: 20, lineHeight: 1.6 }}>
           If this keeps happening, contact{" "}
-          <a href="mailto:hello@i3media.co.uk" style={{ color: "var(--accent)", textDecoration: "underline" }}>
-            hello@i3media.co.uk
+          <a
+            href="mailto:nick@bettsandburton.com"
+            style={{ color: "var(--accent)", textDecoration: "underline" }}
+          >
+            nick@bettsandburton.com
           </a>
         </p>
       </div>

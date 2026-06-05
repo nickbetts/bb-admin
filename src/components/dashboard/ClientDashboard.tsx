@@ -15,7 +15,6 @@ import { EcommerceSection } from "./EcommerceSection";
 import { TikTokSection } from "./TikTokSection";
 import { MicrosoftAdsSection } from "./MicrosoftAdsSection";
 import { CoreWebVitalsSection } from "./CoreWebVitalsSection";
-import { AiChatPanel } from "./AiChatPanel";
 import { LinkedInSection } from "./LinkedInSection";
 import { KlaviyoSection } from "./KlaviyoSection";
 import { GoalsSection } from "./GoalsSection";
@@ -842,9 +841,6 @@ export function ClientDashboard({
         </SectionErrorBoundary>
       </div>
       {/* end tab content wrapper */}
-
-      {/* AI Chat panel — always visible when any platform is connected */}
-      <AiChatPanel clientId={client.id} clientName={client.name} />
     </div>
   );
 }

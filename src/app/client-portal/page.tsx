@@ -34,12 +34,36 @@ function useCountUp(end: number, duration = 2000, shouldStart = false) {
 }
 
 const features = [
-  { icon: <Mail size={20} />, title: "Magic-link login", desc: "Clients sign in with their email. No passwords to manage, no credentials to share. Each link is single-use and time-limited." },
-  { icon: <Shield size={20} />, title: "Permission scopes", desc: "Control exactly what each client can see. Restrict access to specific reports, sections, or date ranges. Configurable per portal user." },
-  { icon: <FileText size={20} />, title: "Recent reports", desc: "The portal surfaces the latest shared reports automatically. Clients always see the most current data without you sending a link." },
-  { icon: <Target size={20} />, title: "Goal tracking", desc: "Show clients their marketing goals and progress. Monthly targets, actual performance, and percentage complete. Visible at a glance." },
-  { icon: <MessageCircle size={20} />, title: "Communications log", desc: "A shared timeline of actions, updates, and notes. Clients see what you have done and when. Reduces repeat questions." },
-  { icon: <Palette size={20} />, title: "Client branding", desc: "Each portal can display the client logo in the header. The portal feels like a branded experience, not a generic tool." },
+  {
+    icon: <Mail size={20} />,
+    title: "Magic-link login",
+    desc: "Clients sign in with their email. No passwords to manage, no credentials to share. Each link is single-use and time-limited.",
+  },
+  {
+    icon: <Shield size={20} />,
+    title: "Permission scopes",
+    desc: "Control exactly what each client can see. Restrict access to specific reports, sections, or date ranges. Configurable per portal user.",
+  },
+  {
+    icon: <FileText size={20} />,
+    title: "Recent reports",
+    desc: "The portal surfaces the latest shared reports automatically. Clients always see the most current data without you sending a link.",
+  },
+  {
+    icon: <Target size={20} />,
+    title: "Goal tracking",
+    desc: "Show clients their marketing goals and progress. Monthly targets, actual performance, and percentage complete. Visible at a glance.",
+  },
+  {
+    icon: <MessageCircle size={20} />,
+    title: "Communications log",
+    desc: "A shared timeline of actions, updates, and notes. Clients see what you have done and when. Reduces repeat questions.",
+  },
+  {
+    icon: <Palette size={20} />,
+    title: "Client branding",
+    desc: "Each portal can display the client logo in the header. The portal feels like a branded experience, not a generic tool.",
+  },
 ];
 
 export default function ClientPortalPage() {
@@ -76,8 +100,10 @@ export default function ClientPortalPage() {
       const el = document.getElementById(id);
       if (!el) return;
       const o = new IntersectionObserver(
-        ([entry]) => { if (entry.isIntersecting) setActiveSection(id); },
-        { rootMargin: "-35% 0px -60% 0px" }
+        ([entry]) => {
+          if (entry.isIntersecting) setActiveSection(id);
+        },
+        { rootMargin: "-35% 0px -60% 0px" },
       );
       o.observe(el);
       obs.push(o);
@@ -96,15 +122,20 @@ export default function ClientPortalPage() {
           }
         });
       },
-      { threshold: 0.1 }
+      { threshold: 0.1 },
     );
     document.querySelectorAll<Element>(".reveal-section").forEach((el) => observer.observe(el));
     return () => observer.disconnect();
   }, []);
 
   const particles = Array.from({ length: 18 }, (_, i) => ({
-    id: i, top: `${6 + (i * 5.2) % 84}%`, left: `${4 + (i * 7.1) % 92}%`,
-    size: 1 + (i % 3), dur: `${4 + (i % 5)}s`, delay: `${-(i * 0.7)}s`, opacity: 0.05 + (i % 4) * 0.04,
+    id: i,
+    top: `${6 + ((i * 5.2) % 84)}%`,
+    left: `${4 + ((i * 7.1) % 92)}%`,
+    size: 1 + (i % 3),
+    dur: `${4 + (i % 5)}s`,
+    delay: `${-(i * 0.7)}s`,
+    opacity: 0.05 + (i % 4) * 0.04,
   }));
 
   const s1 = useCountUp(0, 1800, statsVisible);
@@ -118,45 +149,279 @@ export default function ClientPortalPage() {
 
   return (
     <div style={{ background: "#09090f", color: "white", fontFamily: "inherit" }}>
-      <div style={{ position: "fixed", pointerEvents: "none", zIndex: 1, width: 600, height: 600, borderRadius: "50%", left: mouse.x - 300, top: mouse.y - 300, background: `radial-gradient(circle, rgba(192,132,252,0.06) 0%, transparent 65%)`, transition: "left 0.2s ease-out, top 0.2s ease-out" }} />
+      <div
+        style={{
+          position: "fixed",
+          pointerEvents: "none",
+          zIndex: 1,
+          width: 600,
+          height: 600,
+          borderRadius: "50%",
+          left: mouse.x - 300,
+          top: mouse.y - 300,
+          background: `radial-gradient(circle, rgba(192,132,252,0.06) 0%, transparent 65%)`,
+          transition: "left 0.2s ease-out, top 0.2s ease-out",
+        }}
+      />
 
-      <nav style={{ position: "fixed", right: 24, top: "50%", transform: "translateY(-50%)", zIndex: 40, display: "flex", flexDirection: "column", gap: 1, background: "rgba(9,9,15,0.88)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: "10px 6px", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }} className="side-nav">
+      <nav
+        style={{
+          position: "fixed",
+          right: 24,
+          top: "50%",
+          transform: "translateY(-50%)",
+          zIndex: 40,
+          display: "flex",
+          flexDirection: "column",
+          gap: 1,
+          background: "rgba(9,9,15,0.88)",
+          border: "1px solid rgba(255,255,255,0.07)",
+          borderRadius: 14,
+          padding: "10px 6px",
+          backdropFilter: "blur(16px)",
+          WebkitBackdropFilter: "blur(16px)",
+        }}
+        className="side-nav"
+      >
         {navLinks.map(({ id, label }) => (
-          <a key={id} href={`#${id}`} onClick={(e) => { e.preventDefault(); document.getElementById(id)?.scrollIntoView({ behavior: "smooth" }); }} style={{ display: "block", padding: "5px 12px", borderRadius: 8, fontSize: 11, fontWeight: 600, color: activeSection === id ? accentLight : "rgba(255,255,255,0.2)", textDecoration: "none", borderLeft: activeSection === id ? `2px solid ${accent}` : "2px solid transparent", whiteSpace: "nowrap", transition: "color 0.15s, border-color 0.15s" }}>{label}</a>
+          <a
+            key={id}
+            href={`#${id}`}
+            onClick={(e) => {
+              e.preventDefault();
+              document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+            }}
+            style={{
+              display: "block",
+              padding: "5px 12px",
+              borderRadius: 8,
+              fontSize: 11,
+              fontWeight: 600,
+              color: activeSection === id ? accentLight : "rgba(255,255,255,0.2)",
+              textDecoration: "none",
+              borderLeft: activeSection === id ? `2px solid ${accent}` : "2px solid transparent",
+              whiteSpace: "nowrap",
+              transition: "color 0.15s, border-color 0.15s",
+            }}
+          >
+            {label}
+          </a>
         ))}
-        <div style={{ width: "100%", height: 44, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, marginTop: 8, paddingTop: 8, borderTop: "1px solid rgba(255,255,255,0.07)" }}>
-          <span style={{ fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.2)", letterSpacing: "0.06em", textTransform: "uppercase" }}>scroll</span>
-          <div style={{ width: 2, height: 32, background: "rgba(255,255,255,0.08)", borderRadius: 2, position: "relative", overflow: "hidden" }}>
-            <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: `${scrollPct}%`, background: `linear-gradient(180deg, ${accent}, #a855f7)`, transition: "height 0.1s linear", borderRadius: 2 }} />
+        <div
+          style={{
+            width: "100%",
+            height: 44,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 6,
+            marginTop: 8,
+            paddingTop: 8,
+            borderTop: "1px solid rgba(255,255,255,0.07)",
+          }}
+        >
+          <span
+            style={{
+              fontSize: 9,
+              fontWeight: 700,
+              color: "rgba(255,255,255,0.2)",
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+            }}
+          >
+            scroll
+          </span>
+          <div
+            style={{
+              width: 2,
+              height: 32,
+              background: "rgba(255,255,255,0.08)",
+              borderRadius: 2,
+              position: "relative",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                height: `${scrollPct}%`,
+                background: `linear-gradient(180deg, ${accent}, #a855f7)`,
+                transition: "height 0.1s linear",
+                borderRadius: 2,
+              }}
+            />
           </div>
         </div>
       </nav>
-      <LandingNav currentPage="Client Portal" accentColor={accent} onCtaClick={() => document.getElementById("cta")?.scrollIntoView({ behavior: "smooth" })} />
+      <LandingNav
+        currentPage="Client Portal"
+        accentColor={accent}
+        onCtaClick={() => document.getElementById("cta")?.scrollIntoView({ behavior: "smooth" })}
+      />
 
       {/* ── HERO ── */}
-      <section style={{ minHeight: "100vh", paddingTop: 64, position: "relative", overflow: "hidden", display: "flex", alignItems: "center" }}>
-        <div style={{ position: "absolute", width: "65%", paddingBottom: "65%", top: "-15%", left: "-15%", pointerEvents: "none", borderRadius: "50%", background: `radial-gradient(circle, rgba(192,132,252,0.22) 0%, transparent 65%)`, transform: `translateY(${parallaxY * -0.25}px)` }} className="orb-1" />
-        <div style={{ position: "absolute", width: "55%", paddingBottom: "55%", bottom: "-15%", right: "-10%", pointerEvents: "none", borderRadius: "50%", background: `radial-gradient(circle, rgba(168,85,247,0.20) 0%, transparent 65%)`, transform: `translateY(${parallaxY * -0.15}px)` }} className="orb-2" />
-        <div style={{ position: "absolute", inset: 0, pointerEvents: "none", opacity: 0.02, backgroundImage: "linear-gradient(rgba(255,255,255,0.9) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.9) 1px, transparent 1px)", backgroundSize: "40px 40px" }} />
+      <section
+        style={{
+          minHeight: "100vh",
+          paddingTop: 64,
+          position: "relative",
+          overflow: "hidden",
+          display: "flex",
+          alignItems: "center",
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            width: "65%",
+            paddingBottom: "65%",
+            top: "-15%",
+            left: "-15%",
+            pointerEvents: "none",
+            borderRadius: "50%",
+            background: `radial-gradient(circle, rgba(192,132,252,0.22) 0%, transparent 65%)`,
+            transform: `translateY(${parallaxY * -0.25}px)`,
+          }}
+          className="orb-1"
+        />
+        <div
+          style={{
+            position: "absolute",
+            width: "55%",
+            paddingBottom: "55%",
+            bottom: "-15%",
+            right: "-10%",
+            pointerEvents: "none",
+            borderRadius: "50%",
+            background: `radial-gradient(circle, rgba(168,85,247,0.20) 0%, transparent 65%)`,
+            transform: `translateY(${parallaxY * -0.15}px)`,
+          }}
+          className="orb-2"
+        />
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            pointerEvents: "none",
+            opacity: 0.02,
+            backgroundImage:
+              "linear-gradient(rgba(255,255,255,0.9) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.9) 1px, transparent 1px)",
+            backgroundSize: "40px 40px",
+          }}
+        />
         {particles.map((p) => (
-          <div key={p.id} className="hero-particle" style={{ position: "absolute", top: p.top, left: p.left, pointerEvents: "none", width: p.size, height: p.size, borderRadius: "50%", background: p.id % 3 === 0 ? `rgba(192,132,252,0.9)` : p.id % 3 === 1 ? "rgba(168,85,247,0.9)" : "rgba(255,255,255,0.8)", opacity: p.opacity, animationDuration: p.dur, animationDelay: p.delay }} />
+          <div
+            key={p.id}
+            className="hero-particle"
+            style={{
+              position: "absolute",
+              top: p.top,
+              left: p.left,
+              pointerEvents: "none",
+              width: p.size,
+              height: p.size,
+              borderRadius: "50%",
+              background:
+                p.id % 3 === 0
+                  ? `rgba(192,132,252,0.9)`
+                  : p.id % 3 === 1
+                    ? "rgba(168,85,247,0.9)"
+                    : "rgba(255,255,255,0.8)",
+              opacity: p.opacity,
+              animationDuration: p.dur,
+              animationDelay: p.delay,
+            }}
+          />
         ))}
 
-        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "80px 40px", display: "grid", gridTemplateColumns: "1fr 480px", gap: 72, alignItems: "center", width: "100%", position: "relative", boxSizing: "border-box" }} className="hero-grid">
+        <div
+          style={{
+            maxWidth: 1200,
+            margin: "0 auto",
+            padding: "80px 40px",
+            display: "grid",
+            gridTemplateColumns: "1fr 480px",
+            gap: 72,
+            alignItems: "center",
+            width: "100%",
+            position: "relative",
+            boxSizing: "border-box",
+          }}
+          className="hero-grid"
+        >
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 28, flexWrap: "wrap" }}>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 14px", borderRadius: 20, background: `rgba(192,132,252,0.12)`, border: `1px solid rgba(192,132,252,0.3)` }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                marginBottom: 28,
+                flexWrap: "wrap",
+              }}
+            >
+              <div
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "6px 14px",
+                  borderRadius: 20,
+                  background: `rgba(192,132,252,0.12)`,
+                  border: `1px solid rgba(192,132,252,0.3)`,
+                }}
+              >
                 <Users size={12} color={accentLight} />
-                <span style={{ fontSize: 12, fontWeight: 700, color: accentLight, letterSpacing: "0.08em", textTransform: "uppercase" }}>Self-Serve Portal</span>
+                <span
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: accentLight,
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Self-Serve Portal
+                </span>
               </div>
             </div>
-            <h1 style={{ fontSize: 56, fontWeight: 900, lineHeight: 1.05, letterSpacing: "-0.04em", marginBottom: 28, color: "white" }}>
+            <h1
+              style={{
+                fontSize: 56,
+                fontWeight: 900,
+                lineHeight: 1.05,
+                letterSpacing: "-0.04em",
+                marginBottom: 28,
+                color: "white",
+              }}
+            >
               <span className="hw hw1">Give clients what they need.</span>
               <br />
-              <span className="hw hw2" style={{ background: `linear-gradient(90deg, ${accentLight}, ${accent})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Nothing more.</span>
+              <span
+                className="hw hw2"
+                style={{
+                  background: `linear-gradient(90deg, ${accentLight}, ${accent})`,
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                }}
+              >
+                Nothing more.
+              </span>
             </h1>
-            <p style={{ fontSize: 18, color: "rgba(255,255,255,0.6)", lineHeight: 1.8, maxWidth: 500, marginBottom: 32, fontWeight: 400 }}>
-              Branded dashboards with magic-link login. Clients see reports, goals, and updates you choose. No passwords, no clutter, no confusion.
+            <p
+              style={{
+                fontSize: 18,
+                color: "rgba(255,255,255,0.6)",
+                lineHeight: 1.8,
+                maxWidth: 500,
+                marginBottom: 32,
+                fontWeight: 400,
+              }}
+            >
+              Branded dashboards with magic-link login. Clients see reports, goals, and updates you
+              choose. No passwords, no clutter, no confusion.
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 36 }}>
               {[
@@ -172,7 +437,27 @@ export default function ClientPortalPage() {
               ))}
             </div>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-              <a href="#mockup" onClick={(e) => { e.preventDefault(); document.getElementById("mockup")?.scrollIntoView({ behavior: "smooth" }); }} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 24px", borderRadius: 10, background: `linear-gradient(135deg, ${accent}, #a855f7)`, color: "white", fontSize: 14, fontWeight: 600, textDecoration: "none", boxShadow: `0 0 24px rgba(192,132,252,0.35)` }} className="cta-accent-pulse">
+              <a
+                href="#mockup"
+                onClick={(e) => {
+                  e.preventDefault();
+                  document.getElementById("mockup")?.scrollIntoView({ behavior: "smooth" });
+                }}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "13px 24px",
+                  borderRadius: 10,
+                  background: `linear-gradient(135deg, ${accent}, #a855f7)`,
+                  color: "white",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  textDecoration: "none",
+                  boxShadow: `0 0 24px rgba(192,132,252,0.35)`,
+                }}
+                className="cta-accent-pulse"
+              >
                 See it in action <ArrowRight size={14} />
               </a>
             </div>
@@ -180,41 +465,126 @@ export default function ClientPortalPage() {
 
           {/* Portal dashboard mockup */}
           <div style={{ position: "relative" }}>
-            <div style={{ position: "absolute", inset: -40, borderRadius: "50%", background: `radial-gradient(circle, rgba(192,132,252,0.15) 0%, transparent 70%)`, pointerEvents: "none" }} />
-            <div className="mockup-3d" style={{ background: "rgba(255,255,255,0.04)", border: `1px solid rgba(192,132,252,0.2)`, borderRadius: 20, overflow: "hidden", position: "relative" }}>
-              <div style={{ padding: "18px 22px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "space-between", background: `rgba(192,132,252,0.05)` }}>
+            <div
+              style={{
+                position: "absolute",
+                inset: -40,
+                borderRadius: "50%",
+                background: `radial-gradient(circle, rgba(192,132,252,0.15) 0%, transparent 70%)`,
+                pointerEvents: "none",
+              }}
+            />
+            <div
+              className="mockup-3d"
+              style={{
+                background: "rgba(255,255,255,0.04)",
+                border: `1px solid rgba(192,132,252,0.2)`,
+                borderRadius: 20,
+                overflow: "hidden",
+                position: "relative",
+              }}
+            >
+              <div
+                style={{
+                  padding: "18px 22px",
+                  borderBottom: "1px solid rgba(255,255,255,0.06)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  background: `rgba(192,132,252,0.05)`,
+                }}
+              >
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <div style={{ width: 32, height: 32, borderRadius: 8, background: `rgba(192,132,252,0.15)`, border: `1px solid rgba(192,132,252,0.3)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <div
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 8,
+                      background: `rgba(192,132,252,0.15)`,
+                      border: `1px solid rgba(192,132,252,0.3)`,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
                     <Users size={16} color={accentLight} />
                   </div>
                   <div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "white" }}>BrightSparks Academy</div>
-                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 1 }}>Client Portal</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "white" }}>
+                      BrightSparks Academy
+                    </div>
+                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 1 }}>
+                      Client Portal
+                    </div>
                   </div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#10b981" }} />
-                  <span style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>sarah@brightsparks.co.uk</span>
+                  <div
+                    style={{ width: 6, height: 6, borderRadius: "50%", background: "#10b981" }}
+                  />
+                  <span style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>
+                    sarah@brightsparks.co.uk
+                  </span>
                 </div>
               </div>
 
               {/* Reports section */}
               <div style={{ padding: "16px 22px" }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.35)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>Latest Reports</div>
+                <div
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: "rgba(255,255,255,0.35)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                    marginBottom: 10,
+                  }}
+                >
+                  Latest Reports
+                </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {[
                     { title: "March 2026 Performance", date: "2 Apr 2026", sections: 12 },
                     { title: "Q1 Quarterly Review", date: "28 Mar 2026", sections: 18 },
                   ].map((report, i) => (
-                    <div key={i} style={{ padding: "12px 14px", borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div
+                      key={i}
+                      style={{
+                        padding: "12px 14px",
+                        borderRadius: 10,
+                        background: "rgba(255,255,255,0.03)",
+                        border: "1px solid rgba(255,255,255,0.06)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                      }}
+                    >
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                         <FileText size={14} color="rgba(255,255,255,0.3)" />
                         <div>
-                          <div style={{ fontSize: 12, fontWeight: 600, color: "white" }}>{report.title}</div>
-                          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", marginTop: 2 }}>{report.date} - {report.sections} sections</div>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: "white" }}>
+                            {report.title}
+                          </div>
+                          <div
+                            style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", marginTop: 2 }}
+                          >
+                            {report.date} - {report.sections} sections
+                          </div>
                         </div>
                       </div>
-                      <div style={{ padding: "4px 8px", borderRadius: 4, background: "rgba(192,132,252,0.1)", border: "1px solid rgba(192,132,252,0.2)", fontSize: 10, fontWeight: 600, color: accentLight }}>View</div>
+                      <div
+                        style={{
+                          padding: "4px 8px",
+                          borderRadius: 4,
+                          background: "rgba(192,132,252,0.1)",
+                          border: "1px solid rgba(192,132,252,0.2)",
+                          fontSize: 10,
+                          fontWeight: 600,
+                          color: accentLight,
+                        }}
+                      >
+                        View
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -222,20 +592,67 @@ export default function ClientPortalPage() {
 
               {/* Goals section */}
               <div style={{ padding: "0 22px 16px" }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.35)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>Goals</div>
+                <div
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: "rgba(255,255,255,0.35)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                    marginBottom: 10,
+                  }}
+                >
+                  Goals
+                </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {[
                     { goal: "Monthly leads", current: 142, target: 150, pct: 95 },
                     { goal: "Organic sessions", current: 8420, target: 10000, pct: 84 },
                     { goal: "ROAS", current: 4.2, target: 5.0, pct: 84 },
                   ].map((g, i) => (
-                    <div key={i} style={{ padding: "10px 14px", borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                        <span style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.6)" }}>{g.goal}</span>
-                        <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>{g.current} / {g.target}</span>
+                    <div
+                      key={i}
+                      style={{
+                        padding: "10px 14px",
+                        borderRadius: 10,
+                        background: "rgba(255,255,255,0.03)",
+                        border: "1px solid rgba(255,255,255,0.06)",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          marginBottom: 6,
+                        }}
+                      >
+                        <span
+                          style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.6)" }}
+                        >
+                          {g.goal}
+                        </span>
+                        <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>
+                          {g.current} / {g.target}
+                        </span>
                       </div>
-                      <div style={{ height: 4, background: "rgba(255,255,255,0.06)", borderRadius: 2, overflow: "hidden" }}>
-                        <div style={{ height: "100%", width: `${g.pct}%`, background: g.pct >= 90 ? "#10b981" : accent, borderRadius: 2, transition: "width 1s ease" }} />
+                      <div
+                        style={{
+                          height: 4,
+                          background: "rgba(255,255,255,0.06)",
+                          borderRadius: 2,
+                          overflow: "hidden",
+                        }}
+                      >
+                        <div
+                          style={{
+                            height: "100%",
+                            width: `${g.pct}%`,
+                            background: g.pct >= 90 ? "#10b981" : accent,
+                            borderRadius: 2,
+                            transition: "width 1s ease",
+                          }}
+                        />
                       </div>
                     </div>
                   ))}
@@ -247,19 +664,102 @@ export default function ClientPortalPage() {
       </section>
 
       {/* ── STATS ── */}
-      <section id="stats-row" className="reveal-section" style={{ padding: "80px 40px", background: `linear-gradient(180deg, rgba(192,132,252,0.04) 0%, rgba(168,85,247,0.03) 100%)`, borderTop: "1px solid rgba(255,255,255,0.05)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+      <section
+        id="stats-row"
+        className="reveal-section"
+        style={{
+          padding: "80px 40px",
+          background: `linear-gradient(180deg, rgba(192,132,252,0.04) 0%, rgba(168,85,247,0.03) 100%)`,
+          borderTop: "1px solid rgba(255,255,255,0.05)",
+          borderBottom: "1px solid rgba(255,255,255,0.05)",
+        }}
+      >
         <div style={{ maxWidth: 900, margin: "0 auto" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }} className="stats-grid">
+          <div
+            style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}
+            className="stats-grid"
+          >
             {[
-              { val: s1, suffix: " passwords", label: "Magic-link auth means clients never set or forget a password", note: "Single-use, time-limited links", color: accent },
-              { val: s2, suffix: " sections", label: "Reports, goals, communications, actions, and account overview", note: "Permission-controlled visibility", color: "#a855f7" },
-              { val: "Live", suffix: " data", label: "Reports and goals update as you publish. No manual sharing required.", note: "Always current", color: "#10b981", isText: true },
+              {
+                val: s1,
+                suffix: " passwords",
+                label: "Magic-link auth means clients never set or forget a password",
+                note: "Single-use, time-limited links",
+                color: accent,
+              },
+              {
+                val: s2,
+                suffix: " sections",
+                label: "Reports, goals, communications, actions, and account overview",
+                note: "Permission-controlled visibility",
+                color: "#a855f7",
+              },
+              {
+                val: "Live",
+                suffix: " data",
+                label: "Reports and goals update as you publish. No manual sharing required.",
+                note: "Always current",
+                color: "#10b981",
+                isText: true,
+              },
             ].map((s, i) => (
-              <div key={i} className="stat-card stagger-in" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: "32px 24px", textAlign: "center", position: "relative", overflow: "hidden", animationDelay: `${i * 0.1}s` }}>
-                <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, ${s.color}, transparent)` }} />
-                <div style={{ fontSize: 48, fontWeight: 900, color: "white", letterSpacing: "-0.05em", lineHeight: 1 }}>{"isText" in s ? s.val : s.val}{s.suffix}</div>
-                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", marginTop: 10, lineHeight: 1.5 }}>{s.label}</div>
-                <div style={{ fontSize: 10, color: "rgba(255,255,255,0.25)", marginTop: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>{s.note}</div>
+              <div
+                key={i}
+                className="stat-card stagger-in"
+                style={{
+                  background: "rgba(255,255,255,0.03)",
+                  border: "1px solid rgba(255,255,255,0.07)",
+                  borderRadius: 16,
+                  padding: "32px 24px",
+                  textAlign: "center",
+                  position: "relative",
+                  overflow: "hidden",
+                  animationDelay: `${i * 0.1}s`,
+                }}
+              >
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: 3,
+                    background: `linear-gradient(90deg, ${s.color}, transparent)`,
+                  }}
+                />
+                <div
+                  style={{
+                    fontSize: 48,
+                    fontWeight: 900,
+                    color: "white",
+                    letterSpacing: "-0.05em",
+                    lineHeight: 1,
+                  }}
+                >
+                  {"isText" in s ? s.val : s.val}
+                  {s.suffix}
+                </div>
+                <div
+                  style={{
+                    fontSize: 13,
+                    color: "rgba(255,255,255,0.55)",
+                    marginTop: 10,
+                    lineHeight: 1.5,
+                  }}
+                >
+                  {s.label}
+                </div>
+                <div
+                  style={{
+                    fontSize: 10,
+                    color: "rgba(255,255,255,0.25)",
+                    marginTop: 6,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.06em",
+                  }}
+                >
+                  {s.note}
+                </div>
               </div>
             ))}
           </div>
@@ -270,20 +770,83 @@ export default function ClientPortalPage() {
       <section id="features" className="reveal-section" style={{ padding: "120px 40px" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: 64 }}>
-            <p style={{ fontSize: 12, fontWeight: 700, color: accentLight, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }} className="blur-reveal">Portal features</p>
-            <h2 style={{ fontSize: 46, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 18, color: "white" }} className="blur-reveal">
+            <p
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                color: accentLight,
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+                marginBottom: 16,
+              }}
+              className="blur-reveal"
+            >
+              Portal features
+            </p>
+            <h2
+              style={{
+                fontSize: 46,
+                fontWeight: 800,
+                letterSpacing: "-0.03em",
+                marginBottom: 18,
+                color: "white",
+              }}
+              className="blur-reveal"
+            >
               Their dashboard. Your control.
             </h2>
-            <p style={{ fontSize: 16, color: "rgba(255,255,255,0.45)", maxWidth: 560, margin: "0 auto", lineHeight: 1.7 }}>
-              Clients get a clean, branded portal. You decide what they see and when they see it. No training required.
+            <p
+              style={{
+                fontSize: 16,
+                color: "rgba(255,255,255,0.45)",
+                maxWidth: 560,
+                margin: "0 auto",
+                lineHeight: 1.7,
+              }}
+            >
+              Clients get a clean, branded portal. You decide what they see and when they see it. No
+              training required.
             </p>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }} className="features-grid">
+          <div
+            style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}
+            className="features-grid"
+          >
             {features.map((f, i) => (
-              <div key={i} className="feature-card stagger-in" style={{ padding: "28px 24px", borderRadius: 16, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", animationDelay: `${i * 0.08}s`, transition: "transform 0.35s ease, border-color 0.3s ease, box-shadow 0.3s ease" }}>
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: `rgba(192,132,252,0.12)`, border: `1px solid rgba(192,132,252,0.25)`, display: "flex", alignItems: "center", justifyContent: "center", color: accentLight, marginBottom: 16 }}>{f.icon}</div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "white", marginBottom: 8 }}>{f.title}</div>
-                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", lineHeight: 1.6 }}>{f.desc}</div>
+              <div
+                key={i}
+                className="feature-card stagger-in"
+                style={{
+                  padding: "28px 24px",
+                  borderRadius: 16,
+                  background: "rgba(255,255,255,0.03)",
+                  border: "1px solid rgba(255,255,255,0.07)",
+                  animationDelay: `${i * 0.08}s`,
+                  transition: "transform 0.35s ease, border-color 0.3s ease, box-shadow 0.3s ease",
+                }}
+              >
+                <div
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 10,
+                    background: `rgba(192,132,252,0.12)`,
+                    border: `1px solid rgba(192,132,252,0.25)`,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: accentLight,
+                    marginBottom: 16,
+                  }}
+                >
+                  {f.icon}
+                </div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "white", marginBottom: 8 }}>
+                  {f.title}
+                </div>
+                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", lineHeight: 1.6 }}>
+                  {f.desc}
+                </div>
               </div>
             ))}
           </div>
@@ -294,38 +857,148 @@ export default function ClientPortalPage() {
       <section id="mockup" className="reveal-section" style={{ padding: "120px 40px" }}>
         <div style={{ maxWidth: 900, margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: 56 }}>
-            <p style={{ fontSize: 12, fontWeight: 700, color: accentLight, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }} className="blur-reveal">Magic-link experience</p>
-            <h2 style={{ fontSize: 42, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 18, color: "white" }} className="blur-reveal">
+            <p
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                color: accentLight,
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+                marginBottom: 16,
+              }}
+              className="blur-reveal"
+            >
+              Magic-link experience
+            </p>
+            <h2
+              style={{
+                fontSize: 42,
+                fontWeight: 800,
+                letterSpacing: "-0.03em",
+                marginBottom: 18,
+                color: "white",
+              }}
+              className="blur-reveal"
+            >
               Email. Click. Dashboard.
             </h2>
           </div>
-          <div className="mockup-3d" style={{ background: "rgba(255,255,255,0.03)", border: `1px solid rgba(192,132,252,0.15)`, borderRadius: 20, overflow: "hidden", position: "relative" }}>
-            <div style={{ padding: "28px", display: "flex", flexDirection: "column", alignItems: "center", gap: 20 }}>
+          <div
+            className="mockup-3d"
+            style={{
+              background: "rgba(255,255,255,0.03)",
+              border: `1px solid rgba(192,132,252,0.15)`,
+              borderRadius: 20,
+              overflow: "hidden",
+              position: "relative",
+            }}
+          >
+            <div
+              style={{
+                padding: "28px",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 20,
+              }}
+            >
               {/* Login flow mockup */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr auto 1fr", gap: 16, alignItems: "center", width: "100%" }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr auto 1fr auto 1fr",
+                  gap: 16,
+                  alignItems: "center",
+                  width: "100%",
+                }}
+              >
                 {[
-                  { step: "1", label: "Enter email", detail: "sarah@brightsparks.co.uk", icon: <Mail size={16} color={accentLight} /> },
+                  {
+                    step: "1",
+                    label: "Enter email",
+                    detail: "sarah@brightsparks.co.uk",
+                    icon: <Mail size={16} color={accentLight} />,
+                  },
                   null,
-                  { step: "2", label: "Click magic link", detail: "One-time link sent to inbox", icon: <Lock size={16} color={accentLight} /> },
+                  {
+                    step: "2",
+                    label: "Click magic link",
+                    detail: "One-time link sent to inbox",
+                    icon: <Lock size={16} color={accentLight} />,
+                  },
                   null,
-                  { step: "3", label: "View dashboard", detail: "Reports, goals, updates", icon: <Users size={16} color={accentLight} /> },
+                  {
+                    step: "3",
+                    label: "View dashboard",
+                    detail: "Reports, goals, updates",
+                    icon: <Users size={16} color={accentLight} />,
+                  },
                 ].map((item, i) =>
                   item === null ? (
                     <div key={i} style={{ display: "flex", justifyContent: "center" }}>
                       <ArrowRight size={16} color="rgba(255,255,255,0.15)" />
                     </div>
                   ) : (
-                    <div key={i} style={{ padding: "20px 16px", borderRadius: 14, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", textAlign: "center" }}>
-                      <div style={{ width: 36, height: 36, borderRadius: "50%", background: `rgba(192,132,252,0.12)`, border: `1px solid rgba(192,132,252,0.25)`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 10px" }}>{item.icon}</div>
-                      <div style={{ fontSize: 9, fontWeight: 700, color: accent, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>Step {item.step}</div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: "white", marginBottom: 4 }}>{item.label}</div>
-                      <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>{item.detail}</div>
+                    <div
+                      key={i}
+                      style={{
+                        padding: "20px 16px",
+                        borderRadius: 14,
+                        background: "rgba(255,255,255,0.03)",
+                        border: "1px solid rgba(255,255,255,0.08)",
+                        textAlign: "center",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: "50%",
+                          background: `rgba(192,132,252,0.12)`,
+                          border: `1px solid rgba(192,132,252,0.25)`,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          margin: "0 auto 10px",
+                        }}
+                      >
+                        {item.icon}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 9,
+                          fontWeight: 700,
+                          color: accent,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.08em",
+                          marginBottom: 4,
+                        }}
+                      >
+                        Step {item.step}
+                      </div>
+                      <div
+                        style={{ fontSize: 13, fontWeight: 700, color: "white", marginBottom: 4 }}
+                      >
+                        {item.label}
+                      </div>
+                      <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>
+                        {item.detail}
+                      </div>
                     </div>
-                  )
+                  ),
                 )}
               </div>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", textAlign: "center", lineHeight: 1.6, maxWidth: 500 }}>
-                No passwords. No account creation. Clients click the link in their email and land on their personalised dashboard. Links expire after one use.
+              <div
+                style={{
+                  fontSize: 12,
+                  color: "rgba(255,255,255,0.3)",
+                  textAlign: "center",
+                  lineHeight: 1.6,
+                  maxWidth: 500,
+                }}
+              >
+                No passwords. No account creation. Clients click the link in their email and land on
+                their personalised dashboard. Links expire after one use.
               </div>
             </div>
           </div>
@@ -333,36 +1006,158 @@ export default function ClientPortalPage() {
       </section>
 
       {/* ── CTA ── */}
-      <section id="cta" className="reveal-section" style={{ padding: "120px 40px 140px", position: "relative", overflow: "hidden" }}>
-        <div style={{ position: "absolute", width: "80%", paddingBottom: "40%", bottom: "-20%", left: "50%", transform: "translateX(-50%)", background: `radial-gradient(ellipse, rgba(192,132,252,0.12) 0%, transparent 65%)`, pointerEvents: "none" }} />
+      <section
+        id="cta"
+        className="reveal-section"
+        style={{ padding: "120px 40px 140px", position: "relative", overflow: "hidden" }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            width: "80%",
+            paddingBottom: "40%",
+            bottom: "-20%",
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: `radial-gradient(ellipse, rgba(192,132,252,0.12) 0%, transparent 65%)`,
+            pointerEvents: "none",
+          }}
+        />
         <div style={{ maxWidth: 700, margin: "0 auto", textAlign: "center", position: "relative" }}>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 14px", borderRadius: 20, background: `rgba(192,132,252,0.12)`, border: `1px solid rgba(192,132,252,0.25)`, marginBottom: 28 }}>
-            <div style={{ width: 7, height: 7, borderRadius: "50%", background: accent, boxShadow: `0 0 8px ${accentGlow}` }} className="accent-pulse" />
-            <span style={{ fontSize: 12, fontWeight: 700, color: accentLight, letterSpacing: "0.08em", textTransform: "uppercase" }}>Included with StratOS</span>
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "6px 14px",
+              borderRadius: 20,
+              background: `rgba(192,132,252,0.12)`,
+              border: `1px solid rgba(192,132,252,0.25)`,
+              marginBottom: 28,
+            }}
+          >
+            <div
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: "50%",
+                background: accent,
+                boxShadow: `0 0 8px ${accentGlow}`,
+              }}
+              className="accent-pulse"
+            />
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                color: accentLight,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+              }}
+            >
+              Included with StratOS
+            </span>
           </div>
-          <h2 style={{ fontSize: 50, fontWeight: 900, letterSpacing: "-0.04em", marginBottom: 20, color: "white", lineHeight: 1.05 }} className="blur-reveal">
-            Client-facing.<br />
-            <span style={{ background: `linear-gradient(90deg, ${accentLight}, ${accent}, #a855f7)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Agency-controlled.</span>
+          <h2
+            style={{
+              fontSize: 50,
+              fontWeight: 900,
+              letterSpacing: "-0.04em",
+              marginBottom: 20,
+              color: "white",
+              lineHeight: 1.05,
+            }}
+            className="blur-reveal"
+          >
+            Client-facing.
+            <br />
+            <span
+              style={{
+                background: `linear-gradient(90deg, ${accentLight}, ${accent}, #a855f7)`,
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+              }}
+            >
+              Agency-controlled.
+            </span>
           </h2>
-          <p style={{ fontSize: 17, color: "rgba(255,255,255,0.55)", lineHeight: 1.8, marginBottom: 40 }}>
-            Set up a portal in minutes. Invite clients with a magic link. They see what you want them to see. Every report, goal, and update in one place.
+          <p
+            style={{
+              fontSize: 17,
+              color: "rgba(255,255,255,0.55)",
+              lineHeight: 1.8,
+              marginBottom: 40,
+            }}
+          >
+            Set up a portal in minutes. Invite clients with a magic link. They see what you want
+            them to see. Every report, goal, and update in one place.
           </p>
           <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
-            <a href="/login" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "15px 28px", borderRadius: 12, background: `linear-gradient(135deg, ${accent}, #a855f7)`, color: "white", fontSize: 15, fontWeight: 700, textDecoration: "none", boxShadow: `0 0 32px rgba(192,132,252,0.4)` }} className="cta-accent-pulse">
+            <a
+              href="/login"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "15px 28px",
+                borderRadius: 12,
+                background: `linear-gradient(135deg, ${accent}, #a855f7)`,
+                color: "white",
+                fontSize: 15,
+                fontWeight: 700,
+                textDecoration: "none",
+                boxShadow: `0 0 32px rgba(192,132,252,0.4)`,
+              }}
+              className="cta-accent-pulse"
+            >
               <Lock size={16} /> Sign in to your dashboard
             </a>
-            <a href="mailto:hello@i3media.co.uk" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "15px 28px", borderRadius: 12, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.8)", fontSize: 15, fontWeight: 600, textDecoration: "none" }}>Talk to us</a>
+            <a
+              href="mailto:nick@bettsandburton.com"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "15px 28px",
+                borderRadius: 12,
+                background: "rgba(255,255,255,0.06)",
+                border: "1px solid rgba(255,255,255,0.12)",
+                color: "rgba(255,255,255,0.8)",
+                fontSize: 15,
+                fontWeight: 600,
+                textDecoration: "none",
+              }}
+            >
+              Talk to us
+            </a>
           </div>
-          <p style={{ marginTop: 24, fontSize: 12, color: "rgba(255,255,255,0.25)" }}>Client Portal is included with every StratOS plan. No per-seat charges.</p>
+          <p style={{ marginTop: 24, fontSize: 12, color: "rgba(255,255,255,0.25)" }}>
+            Client Portal is included with every StratOS plan. No per-seat charges.
+          </p>
         </div>
       </section>
 
-      <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: "24px 40px", display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 12, color: "rgba(255,255,255,0.25)" }}>
+      <div
+        style={{
+          borderTop: "1px solid rgba(255,255,255,0.06)",
+          padding: "24px 40px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          fontSize: 12,
+          color: "rgba(255,255,255,0.25)",
+        }}
+      >
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <img src="/primary-logo.svg" style={{ height: 18, opacity: 0.4 }} alt="i3MEDIA" />
+          <img src="/primary-logo.svg" style={{ height: 18, opacity: 0.4 }} alt="Betts & Burton" />
           <span>&copy; {new Date().getFullYear()} i3 Media. Client Portal is part of StratOS.</span>
         </div>
-        <a href="/login" style={{ color: "rgba(255,255,255,0.3)", textDecoration: "none", fontSize: 12 }}>&larr; Back to StratOS</a>
+        <a
+          href="/login"
+          style={{ color: "rgba(255,255,255,0.3)", textDecoration: "none", fontSize: 12 }}
+        >
+          &larr; Back to StratOS
+        </a>
       </div>
 
       <style>{`

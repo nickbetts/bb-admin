@@ -1106,7 +1106,7 @@ export default function LlmGeneratorPage() {
               <Lock size={16} /> Sign in to your dashboard
             </a>
             <a
-              href="mailto:hello@i3media.co.uk"
+              href="mailto:nick@bettsandburton.com"
               style={{
                 display: "inline-flex",
                 alignItems: "center",
@@ -1142,7 +1142,7 @@ export default function LlmGeneratorPage() {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <img src="/primary-logo.svg" style={{ height: 18, opacity: 0.4 }} alt="i3MEDIA" />
+          <img src="/primary-logo.svg" style={{ height: 18, opacity: 0.4 }} alt="Betts & Burton" />
           <span>&copy; {new Date().getFullYear()} i3 Media. LLM Generator is part of StratOS.</span>
         </div>
         <a
