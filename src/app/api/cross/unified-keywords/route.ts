@@ -4,7 +4,7 @@ import { withApiCache, withCacheBypass } from "@/lib/api-cache";
 import { prisma } from "@/lib/prisma";
 import { getGSCTopQueries } from "@/lib/search-console";
 import { getGoogleAdsSearchTerms } from "@/lib/google-ads";
-import { getTopOrganicKeywords } from "@/lib/semrush";
+import { getTopOrganicKeywords } from "@/lib/seo-retired-defaults";
 import { getMicrosoftAdsKeywords } from "@/lib/microsoft-ads";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +27,7 @@ interface UnifiedKeyword {
     conversions: number;
     qualityScore: number | null;
   };
-  semrush?: {
+  seo?: {
     position: number;
     previousPosition: number;
     traffic: number;
@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
         }
 
         // Fetch from all available sources in parallel
-        const [gscData, googleAdsData, semrushData, microsoftAdsData] = await Promise.all([
+        const [gscData, googleAdsData, seoData, microsoftAdsData] = await Promise.all([
           client.searchConsoleSiteUrl
             ? getGSCTopQueries(client.searchConsoleSiteUrl, startDate, endDate).catch(() => [])
             : Promise.resolve([]),
@@ -151,11 +151,11 @@ export async function GET(request: NextRequest) {
           entry.totalConversions += t.conversions;
         }
 
-        // SEMrush
-        for (const k of semrushData) {
+        // Legacy SEO provider dataset (retired defaults currently return an empty list)
+        for (const k of seoData) {
           const entry = getOrCreate(k.keyword);
-          if (!entry.sources.includes("semrush")) entry.sources.push("semrush");
-          entry.semrush = {
+          if (!entry.sources.includes("seo")) entry.sources.push("seo");
+          entry.seo = {
             position: k.position,
             previousPosition: k.previousPosition,
             traffic: k.trafficPercent,
@@ -192,7 +192,7 @@ export async function GET(request: NextRequest) {
         allKeywords.sort((a, b) => b.sourceCount - a.sourceCount || b.totalClicks - a.totalClicks);
 
         // Compute summary stats
-        const organicSources = new Set(["gsc", "semrush"]);
+        const organicSources = new Set(["gsc", "seo"]);
         const paidSources = new Set(["googleAds", "microsoftAds"]);
 
         let multiPlatformKeywords = 0;

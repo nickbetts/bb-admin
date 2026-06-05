@@ -168,7 +168,7 @@ export default function NewGrandPlanPage() {
   const [monthlyBudget, setMonthlyBudget] = useState("");
   const [channelBudgets, setChannelBudgets] = useState<Record<string, string>>({});
 
-  // Manual page URLs — pages the user explicitly wants the AI + SEMrush to
+  // Manual page URLs — pages the user explicitly wants the AI + SEO to
   // analyse for SEO Quick Wins and Page Optimisations (commercial /
   // transactional intent keyword recommendations: primary, secondary,
   // long-tail).
@@ -179,7 +179,7 @@ export default function NewGrandPlanPage() {
   const [suggestingAudiences, setSuggestingAudiences] = useState(false);
   const [audienceInput, setAudienceInput] = useState("");
 
-  // Competitors — chip list with auto-detect (SEMrush) + manual add (validate).
+  // Competitors — chip list with auto-detect (SEO) + manual add (validate).
   const [competitors, setCompetitors] = useState<CompetitorEntry[]>([]);
   const [detectingCompetitors, setDetectingCompetitors] = useState(false);
   const [competitorInput, setCompetitorInput] = useState("");
@@ -600,7 +600,7 @@ export default function NewGrandPlanPage() {
         }));
 
       // Parse the manual page URLs textarea: one URL per line, trim, dedupe,
-      // keep only http(s) URLs, cap at 10 to stay within the SEMrush quota
+      // keep only http(s) URLs, cap at 10 to stay within the SEO quota
       // and keep the prepare-research step inside the lambda budget.
       const manualPageUrls = Array.from(
         new Set(
@@ -1009,7 +1009,7 @@ export default function NewGrandPlanPage() {
             </div>
 
             {/* Manual page URLs to optimise — drives SEO Quick Wins + Page Optimisations
-                with per-page SEMrush keyword data and AI commercial-intent recommendations. */}
+                with per-page SEO keyword data and AI commercial-intent recommendations. */}
             <div>
               <label className="form-label">Pages to optimise (one URL per line)</label>
               <textarea
@@ -1152,7 +1152,7 @@ export default function NewGrandPlanPage() {
               </span>
             </div>
 
-            {/* Competitors — chips with auto-detect (SEMrush) + manual add */}
+            {/* Competitors — chips with auto-detect (SEO) + manual add */}
             <div>
               <div
                 style={{

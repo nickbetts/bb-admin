@@ -138,11 +138,15 @@ const PLATFORM_LABELS: Record<string, string> = {
   woocommerce: "WooCommerce",
   shopify: "Shopify",
   cwv: "Core Web Vitals",
-  semrush: "SEMrush",
   moz: "Moz",
 };
 
-function titleFor(platform: string, metric: string, direction: "up" | "down", change: number): string {
+function titleFor(
+  platform: string,
+  metric: string,
+  direction: "up" | "down",
+  change: number,
+): string {
   const platformLabel = PLATFORM_LABELS[platform] ?? platform;
   const arrow = direction === "down" ? "fell" : "rose";
   const pct = `${Math.abs(Math.round(change))}%`;

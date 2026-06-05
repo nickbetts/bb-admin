@@ -59,7 +59,7 @@ interface Client {
   contentStrategyLimits?: string | null;
 }
 
-type GenerationMode = "semrush" | "upload";
+type GenerationMode = "seo" | "upload";
 
 interface DetectedCompetitor {
   domain: string;
@@ -625,20 +625,20 @@ export default function ContentStrategyPage() {
   // Mode toggle
   const [mode, setMode] = useState<GenerationMode>("upload");
 
-  // Inline new-client (SEMrush mode)
+  // Inline new-client (SEO mode)
   const [creatingClientSemrush, setCreatingClientSemrush] = useState(false);
   const [newClientName, setNewClientName] = useState("");
   const [newClientDomain, setNewClientDomain] = useState("");
   const [newClientCreating, setNewClientCreating] = useState(false);
 
-  // Inline add-SEMrush-to-existing-client
+  // Inline add-SEO-to-existing-client
   const [addingSemrushToClient, setAddingSemrushToClient] = useState(false);
   const [addSemrushDomain, setAddSemrushDomain] = useState("");
   const [addSemrushSaving, setAddSemrushSaving] = useState(false);
 
-  // SEMrush generation state
-  const [semrushBrief, setSemrushBrief] = useState("");
-  const [semrushDatabase, setSemrushDatabase] = useState("uk");
+  // SEO generation state
+  const [seoBrief, setSemrushBrief] = useState("");
+  const [seoDatabase, setSemrushDatabase] = useState("uk");
   const [aiModel, setAiModel] = useState<"gpt-5.4" | "claude-opus-4-6">("claude-opus-4-6");
   // Per-client output limits (empty string = no limit)
   const [limitPageOpts, setLimitPageOpts] = useState("");
@@ -648,7 +648,7 @@ export default function ContentStrategyPage() {
   const [detectedCompetitors, setDetectedCompetitors] = useState<DetectedCompetitor[]>([]);
   const [detectingCompetitors, setDetectingCompetitors] = useState(false);
   const [customCompetitorInput, setCustomCompetitorInput] = useState("");
-  const [semrushProgress, setSemrushProgress] = useState("");
+  const [seoProgress, setSemrushProgress] = useState("");
   const [website, setSemrushDomain] = useState("");
   const [funMode, setFunMode] = useState<boolean>(() => {
     if (typeof window === "undefined") return true;
@@ -1026,7 +1026,7 @@ export default function ContentStrategyPage() {
     }
   }
 
-  // ── SEMrush helpers ─────────────────────────────────────────────────────
+  // ── SEO helpers ─────────────────────────────────────────────────────
 
   async function handleAddSemrushToClient() {
     const rawDomain = addSemrushDomain.trim();
@@ -1141,7 +1141,7 @@ export default function ContentStrategyPage() {
         body: JSON.stringify({
           clientId: selectedClientId,
           action: "detect-competitors",
-          database: semrushDatabase,
+          database: seoDatabase,
         }),
       });
       const data = await res.json();
@@ -1186,7 +1186,7 @@ export default function ContentStrategyPage() {
           clientId,
           action: "validate-competitor",
           competitor: raw,
-          database: semrushDatabase,
+          database: seoDatabase,
         }),
       });
       const data = await res.json();
@@ -1234,9 +1234,9 @@ export default function ContentStrategyPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           clientId,
-          brief: semrushBrief,
+          brief: seoBrief,
           period,
-          database: semrushDatabase,
+          database: seoDatabase,
           competitors: detectedCompetitors.map((c) => c.domain),
           competitorContexts: detectedCompetitors
             .filter((c) => c.scraped && c.pageContext)
@@ -1393,7 +1393,7 @@ export default function ContentStrategyPage() {
           <div>
             <h2 className="card-title">Generate New Strategy</h2>
             <p className="card-subtitle">
-              {mode === "semrush"
+              {mode === "seo"
                 ? "SEO mode has been retired"
                 : "Upload an Excel keyword research spreadsheet to create a client-ready document"}
             </p>
@@ -1433,13 +1433,13 @@ export default function ContentStrategyPage() {
           </div>
         </div>
         <div className="card-body">
-          {/* ─── SEMrush Mode ─── */}
-          {mode === "semrush" && (
+          {/* ─── SEO Mode ─── */}
+          {mode === "seo" && (
             <div style={{ fontSize: 13, color: "var(--text-3)", padding: "12px 0" }}>
               SEO mode has been retired. Use Upload mode to generate content strategies.
             </div>
           )}
-          {mode === "semrush" && (
+          {mode === "seo" && (
             <form onSubmit={handleSemrushGenerate}>
               {/* Client selector + Domain display */}
               <div
@@ -1864,7 +1864,7 @@ export default function ContentStrategyPage() {
                 <label className="form-label">Brief (optional)</label>
                 <textarea
                   className="form-input"
-                  value={semrushBrief}
+                  value={seoBrief}
                   onChange={(e) => setSemrushBrief(e.target.value)}
                   placeholder="Any specific areas to target? Locations, products, campaigns, seasonal themes…"
                   rows={3}
@@ -1934,7 +1934,7 @@ export default function ContentStrategyPage() {
                   <label className="form-label">Database</label>
                   <select
                     className="form-input"
-                    value={semrushDatabase}
+                    value={seoDatabase}
                     onChange={(e) => setSemrushDatabase(e.target.value)}
                   >
                     <option value="uk">UK</option>

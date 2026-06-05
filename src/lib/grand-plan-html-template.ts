@@ -1858,7 +1858,7 @@ function renderContentStrategy(
                             .join(" ")}`
                         : ""
                     }</div></div>`
-                  : `<div class="onpage-row"><span class="onpage-label">Currently ranks for</span><div class="onpage-val onpage-missing">No SEMrush data</div></div>`
+                  : `<div class="onpage-row"><span class="onpage-label">Currently ranks for</span><div class="onpage-val onpage-missing">No SEO data</div></div>`
               }
               <div class="onpage-row"><span class="onpage-label">FAQ status</span><div class="onpage-val">${faqPill}</div></div>
             </div>
@@ -2931,7 +2931,7 @@ function renderCompetitorIntel(competitors: any[], grounding?: string): string {
     if (source === "manual")
       return `<span class="comp-source-badge comp-source-manual">Client-named</span>`;
     if (source === "auto")
-      return `<span class="comp-source-badge comp-source-auto">SEMrush auto</span>`;
+      return `<span class="comp-source-badge comp-source-auto">SEO auto</span>`;
     if (source === "inferred")
       return `<span class="comp-source-badge comp-source-inferred">AI inferred</span>`;
     return "";
@@ -3035,10 +3035,10 @@ function renderCompetitorIntel(competitors: any[], grounding?: string): string {
         <h2>Competitor Intelligence</h2>
       ${
         grounding === "real"
-          ? `<p class="section-disclaimer" style="margin-bottom:16px;padding:12px 16px;background:rgba(16,185,129,0.07);border-left:3px solid #10b981;border-radius:4px;font-size:13px;color:#065f46;"><strong>Verified data:</strong> Competitor metrics are live figures sourced from SEMrush domain overviews, keyword analysis and backlink data. Organic traffic and keyword counts reflect current SEMrush snapshots.</p>`
+          ? `<p class="section-disclaimer" style="margin-bottom:16px;padding:12px 16px;background:rgba(16,185,129,0.07);border-left:3px solid #10b981;border-radius:4px;font-size:13px;color:#065f46;"><strong>Verified data:</strong> Competitor metrics are live figures sourced from SEO domain overviews, keyword analysis and backlink data. Organic traffic and keyword counts reflect current SEO snapshots.</p>`
           : grounding === "partial"
-            ? `<p class="section-disclaimer" style="margin-bottom:16px;padding:12px 16px;background:rgba(245,158,11,0.07);border-left:3px solid #f59e0b;border-radius:4px;font-size:13px;color:#92400e;"><strong>Partially verified:</strong> Competitors with SEMrush keyword overlap show live metrics. Manually-added competitors without overlap data show AI-estimated figures based on their homepage and industry context.</p>`
-            : `<p class="section-disclaimer" style="margin-bottom:16px;padding:12px 16px;background:rgba(59,130,246,0.06);border-left:3px solid #3b82f6;border-radius:4px;font-size:13px;color:#1e40af;"><strong>AI-generated estimates:</strong> No SEMrush domain data was available for these competitors. Metrics are AI approximations for directional planning only — run a SEMrush audit for verified figures.</p>`
+            ? `<p class="section-disclaimer" style="margin-bottom:16px;padding:12px 16px;background:rgba(245,158,11,0.07);border-left:3px solid #f59e0b;border-radius:4px;font-size:13px;color:#92400e;"><strong>Partially verified:</strong> Competitors with SEO keyword overlap show live metrics. Manually-added competitors without overlap data show AI-estimated figures based on their homepage and industry context.</p>`
+            : `<p class="section-disclaimer" style="margin-bottom:16px;padding:12px 16px;background:rgba(59,130,246,0.06);border-left:3px solid #3b82f6;border-radius:4px;font-size:13px;color:#1e40af;"><strong>AI-generated estimates:</strong> No SEO domain data was available for these competitors. Metrics are AI approximations for directional planning only — run a SEO audit for verified figures.</p>`
       }
       <table class="channel-table">
         <thead><tr><th>Domain</th><th>Organic Traffic</th><th>Organic KWs</th><th>Paid KWs</th><th>Backlinks</th></tr></thead>

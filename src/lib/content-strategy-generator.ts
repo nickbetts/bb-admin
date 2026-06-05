@@ -17,7 +17,7 @@ import {
   type SemrushDomainOverview,
   type SemrushAnchorText,
   type BriefKeywordResult,
-} from "@/lib/semrush";
+} from "@/lib/seo-retired-defaults";
 import { getGSCQueryPageCombos, type GSCQueryPageCombo } from "@/lib/search-console";
 import { withApiCache } from "@/lib/api-cache";
 import { getOpenAiClient } from "@/lib/openai-client";
@@ -94,7 +94,7 @@ interface PageOptimisation {
     schemaTypes?: string[];
     hasFaqSchema?: boolean;
     hasFaqContent?: boolean;
-    /** Total keywords SEMrush reports the page ranks for (capped at 100). */
+    /** Total keywords SEO reports the page ranks for (capped at 100). */
     totalRankingKeywords?: number;
     /** Top 10 current rankings by traffic, with position. */
     topCurrentKeywords?: { keyword: string; position: number; volume: number }[];
@@ -189,12 +189,12 @@ interface CollectedData {
   anchorTexts: SemrushAnchorText[];
   // GSC data — present when client has Search Console connected
   gscQueryPages: GSCQueryPageCombo[];
-  dataSource: "gsc+semrush" | "semrush-only";
+  dataSource: "gsc+seo" | "seo-only";
   // Sitemap URLs — existing pages on the site
   sitemapUrls: string[];
   // Brief-driven keyword research — topics from the brief not in existing data
   briefTopics: BriefKeywordResult[];
-  // Claude-expanded semantic keyword research — synonyms/alternates not in SEMrush organic
+  // Claude-expanded semantic keyword research — synonyms/alternates not in SEO organic
   expandedTopics: BriefKeywordResult[];
 }
 
@@ -217,7 +217,7 @@ interface PageGroup {
 /**
  * Extracts meaningful topic seeds from a free-text brief.
  * Returns single words (4+ chars) and 2-word phrases that can be used as
- * SEMrush phrase-match seeds to find real keyword volumes.
+ * SEO phrase-match seeds to find real keyword volumes.
  */
 function extractBriefTopics(brief: string, max = 10): string[] {
   const STOPWORDS = new Set([
@@ -375,8 +375,8 @@ function extractBriefTopics(brief: string, max = 10): string[] {
 
 /**
  * Uses Claude Haiku to identify synonyms, alternate spellings, and related topic
- * seeds that may not appear in the SEMrush organic data, then fetches real volumes
- * for those seeds via SEMrush phrase_fullsearch.
+ * seeds that may not appear in the SEO organic data, then fetches real volumes
+ * for those seeds via SEO phrase_fullsearch.
  */
 async function expandKeywordsWithClaude(
   brief: string,
@@ -388,7 +388,7 @@ async function expandKeywordsWithClaude(
 
   try {
     const anthropic = await getAnthropicClient();
-    const prompt = `You are a semantic keyword research specialist. Given a website domain, a client brief, and a sample of existing ranking keywords, identify additional topic seeds to research via SEMrush.
+    const prompt = `You are a semantic keyword research specialist. Given a website domain, a client brief, and a sample of existing ranking keywords, identify additional topic seeds to research via SEO.
 
 Focus on:
 - Synonyms and alternate spellings (e.g. "solicitor" / "lawyer" / "legal adviser", "sofa" / "couch" / "settee", "trainers" / "sneakers")
@@ -444,7 +444,7 @@ export async function collectSemrushData(
 
   // Phase 1: Fetch organic data + competitors + overview + sitemap in parallel
   // Plus brief keyword research if the brief contains recognisable topic seeds.
-  // Always fetch SEMrush organic keywords (needed for volume data even with GSC)
+  // Always fetch SEO organic keywords (needed for volume data even with GSC)
   // GSC adds real click/impression/CTR data on top
   const briefTopicSeeds = brief ? extractBriefTopics(brief, 10) : [];
   const briefCacheKey = `cs:brief:${domain}:${database}:${briefTopicSeeds.join(",")}`;
@@ -479,7 +479,7 @@ export async function collectSemrushData(
   const finalCompetitors =
     competitors.length > 0 ? competitors : detectedCompetitors.slice(0, 3).map((c) => c.domain);
 
-  // Build keyword list for difficulty check — combine GSC + SEMrush unique keywords
+  // Build keyword list for difficulty check — combine GSC + SEO unique keywords
   const allKeywords = new Set<string>();
   if (hasGsc) {
     for (const q of gscQueryPages) allKeywords.add(q.query);
@@ -521,7 +521,7 @@ export async function collectSemrushData(
     backlinks,
     anchorTexts,
     gscQueryPages,
-    dataSource: hasGsc ? "gsc+semrush" : "semrush-only",
+    dataSource: hasGsc ? "gsc+seo" : "seo-only",
     sitemapUrls,
     briefTopics,
     expandedTopics,
@@ -610,7 +610,7 @@ function groupGscByPage(combos: GSCQueryPageCombo[]): GscPageGroup[] {
   return Array.from(map.values()).sort((a, b) => b.totalClicks - a.totalClicks);
 }
 
-// ─── Estimate SEMrush API units ─────────────────────────────────────────────
+// ─── Estimate SEO API units ─────────────────────────────────────────────
 
 export function estimateApiUnits(
   hasCompetitors: boolean,
@@ -648,7 +648,7 @@ function buildAnalysisPrompt(
   competitorContexts?: { domain: string; pageContext: CompetitorPageContext }[],
   limits?: ContentStrategyLimits,
 ): string {
-  const useGsc = data.dataSource === "gsc+semrush" && data.gscQueryPages.length > 0;
+  const useGsc = data.dataSource === "gsc+seo" && data.gscQueryPages.length > 0;
   const pages = groupKeywordsByPage(data.organicKeywords);
 
   // Build difficulty lookup
@@ -664,7 +664,7 @@ function buildAnalysisPrompt(
     if (gap.keyword && gap.searchVolume > 0)
       kwPool.set(gap.keyword.toLowerCase(), gap.searchVolume);
   }
-  // Include GSC impressions as a volume proxy for queries not in SEMrush
+  // Include GSC impressions as a volume proxy for queries not in SEO
   if (useGsc) {
     const gscSeen = new Map<string, number>();
     for (const q of data.gscQueryPages) {
@@ -719,7 +719,7 @@ function buildAnalysisPrompt(
     ...singleWordPool.slice(0, 100).map(([kw, vol]) => `  "${kw}": ${vol}`),
   ].join("\n");
 
-  // ── Struggling pages (always from SEMrush for search volume accuracy) ──
+  // ── Struggling pages (always from SEO for search volume accuracy) ──
   const strugglingPages = pages.filter((p) =>
     p.keywords.some((kw) => kw.position >= 4 && kw.position <= 30 && kw.volume >= 30),
   );
@@ -770,7 +770,7 @@ function buildAnalysisPrompt(
     )
     .join("\n");
 
-  // ── Content gap (always from SEMrush) ──
+  // ── Content gap (always from SEO) ──
   const gapText = data.contentGap
     .slice(0, 100)
     .map((g) => {
@@ -877,8 +877,8 @@ function buildAnalysisPrompt(
     .join("\n");
 
   const dataSourceNote = useGsc
-    ? "DATA SOURCES: SEMrush (keyword volumes, difficulty, competitors, content gap) + Google Search Console (real clicks/impressions) + Sitemap"
-    : "DATA SOURCES: SEMrush (all data) + Sitemap";
+    ? "DATA SOURCES: SEO (keyword volumes, difficulty, competitors, content gap) + Google Search Console (real clicks/impressions) + Sitemap"
+    : "DATA SOURCES: SEO (all data) + Sitemap";
 
   return `DOMAIN: ${domain}
 CLIENT: ${clientName}
@@ -958,8 +958,8 @@ ${limits.pillarPages === 0 ? `- Pillar pages: NONE — do NOT produce any pillar
 ${
   competitorContexts && competitorContexts.length > 0
     ? `
-═══ MANUALLY-ADDED COMPETITOR INTELLIGENCE (site-scraped, no SEMrush data) ═══
-These competitors have no measurable keyword overlap in SEMrush — they may be small, new, or niche players. Their sites were scraped to provide qualitative context about what they offer and how they position themselves. Use this to identify positioning gaps, service areas they cover that the client doesn't yet rank for, and angles the client could differentiate on.
+═══ MANUALLY-ADDED COMPETITOR INTELLIGENCE (site-scraped, no SEO data) ═══
+These competitors have no measurable keyword overlap in SEO — they may be small, new, or niche players. Their sites were scraped to provide qualitative context about what they offer and how they position themselves. Use this to identify positioning gaps, service areas they cover that the client doesn't yet rank for, and angles the client could differentiate on.
 
 ${competitorContexts
   .map(({ domain: cd, pageContext: ctx }) => {
@@ -1353,7 +1353,7 @@ export async function runOnPageAudit(
 // pageOptimisations[] entries with primary keywords + notes + intent. This
 // follow-up step attaches:
 //   - the live page state (from runOnPageAudit results)
-//   - SEMrush rankings (current + total) per URL
+//   - SEO rankings (current + total) per URL
 //   - AI-generated rewrites (title, meta description), suggested keywords
 //     with potential ranking band, recommended schema, schema gaps and a
 //     full FAQ Q+A draft.
@@ -1617,13 +1617,13 @@ function parseCopyOutput(raw: Record<string, unknown>): EnrichmentOutput {
 }
 
 /**
- * Fetch SEMrush rankings + run the Haiku enrichment for each page in parallel
+ * Fetch SEO rankings + run the Haiku enrichment for each page in parallel
  * (concurrency ENRICH_CONCURRENCY, capped at ENRICH_MAX_PAGES URLs). Mutates
  * each page in place — adds `currentState`, `suggestedTitle`,
  * `suggestedMetaDescription`, `suggestedKeywords`, `recommendedSchema`,
  * `schemaGaps`, `faq`.
  *
- * Pages with no audit (fetch failed) still get SEMrush rankings if available
+ * Pages with no audit (fetch failed) still get SEO rankings if available
  * but skip the AI enrichment so the renderer can show "live page unreachable".
  */
 export async function enrichPageOptimisationsDeep(
@@ -1658,7 +1658,7 @@ export async function enrichPageOptimisationsDeep(
       }));
     } catch (err) {
       console.warn(
-        `[enrich:${url}] semrush rankings failed: ${err instanceof Error ? err.message : String(err)}`,
+        `[enrich:${url}] seo rankings failed: ${err instanceof Error ? err.message : String(err)}`,
       );
     }
 
@@ -1746,7 +1746,7 @@ export async function generateContentStrategy(
   competitorContexts?: { domain: string; pageContext: CompetitorPageContext }[],
   skipAudit?: boolean,
 ): Promise<{ data: ContentStrategyData; collectedData: CollectedData; autoCompetitors: string[] }> {
-  // Step 1: Collect data (uses GSC when available, falls back to SEMrush-only)
+  // Step 1: Collect data (uses GSC when available, falls back to SEO-only)
   const collectedData = await collectSemrushData(
     domain,
     competitors,
@@ -1766,7 +1766,7 @@ export async function generateContentStrategy(
   if (!hasAnyKeywords && !brief) {
     throw new Error(
       `No keyword data found for ${domain} and no brief provided. ` +
-        `The domain may be too new, have no organic rankings, or SEMrush may not have data for it. ` +
+        `The domain may be too new, have no organic rankings, or SEO may not have data for it. ` +
         `Provide a detailed brief so the AI can generate topic suggestions from scratch.`,
     );
   }
@@ -2111,18 +2111,18 @@ export async function generateContentStrategy(
     console.warn(`Content strategy: demoted ${primaryDedups} duplicate primaries to secondary`);
   }
 
-  // Derive quick wins from SEMrush data: pages ranking 4–10 with any keyword vol >= 100
-  // We cross-reference the page optimisations against the raw SEMrush organic data
-  const semrushPositionMap = new Map<string, number[]>();
+  // Derive quick wins from SEO data: pages ranking 4–10 with any keyword vol >= 100
+  // We cross-reference the page optimisations against the raw SEO organic data
+  const seoPositionMap = new Map<string, number[]>();
   for (const kw of collectedData.organicKeywords) {
     if (!kw.url) continue;
     const cleanUrl = kw.url.replace(/^https?:\/\//, "").replace(/^www\./, "");
-    const positions = semrushPositionMap.get(cleanUrl) ?? [];
+    const positions = seoPositionMap.get(cleanUrl) ?? [];
     positions.push(kw.position);
-    semrushPositionMap.set(cleanUrl, positions);
+    seoPositionMap.set(cleanUrl, positions);
   }
   const quickWins: PageOptimisation[] = pageOptimisations.filter((opt) => {
-    const positions = semrushPositionMap.get(opt.url) ?? [];
+    const positions = seoPositionMap.get(opt.url) ?? [];
     const hasQuickWinPosition = positions.some((pos) => pos >= 4 && pos <= 10);
     const hasVolume = opt.keywords.some((k) => k.volume >= 100);
     return hasQuickWinPosition && hasVolume;
@@ -2232,7 +2232,7 @@ function buildManualPagePriorityBlock(
   return `\n\nPRIORITY PAGES — the client explicitly asked for these URLs to be optimised. They MUST appear FIRST in the pageOptimisations array, in the same order, before any other suggestions. For each priority page:
 - Use the scraped title / H1 / meta / body snippet shown below as the rewrite anchor — do NOT invent page content.
 - "intent" MUST be "transactional" or "commercial" unless the page is unambiguously informational.
-- "keywords": the "primary" keyword MUST be commercial / transactional (someone ready to buy, enquire, book, get a quote). Use the SEMrush keywords the page already ranks for as the source pool wherever possible — prioritise lifting an existing position 4–20 keyword over the line.
+- "keywords": the "primary" keyword MUST be commercial / transactional (someone ready to buy, enquire, book, get a quote). Use the SEO keywords the page already ranks for as the source pool wherever possible — prioritise lifting an existing position 4–20 keyword over the line.
 - Include 2–4 secondary keywords (commercial variants) and 3–5 long-tail keywords (4+ words, conversational / question-led / location-modified).
 - "notes" MUST list 3–5 concrete on-page changes (rewrite H1 to lead with primary keyword; add FAQ schema; insert comparison block above the fold; tighten CTA copy; add trust signals; etc.) — specific to THIS page, not generic.
 - "impact" should be 4 or 5 for these pages (the client has already told us they matter).
@@ -2367,7 +2367,7 @@ export async function generateContentStrategySection(
   );
 
   // Build a section-specific tail (audiences + manual intel + schema). The
-  // large stable head (basePrompt: collected SEMrush/GSC data + brief +
+  // large stable head (basePrompt: collected SEO/GSC data + brief +
   // competitor context) is sent as a separate cached block so the second and
   // third section calls reuse it for ~85% input-token cost reduction and
   // ~50% lower TTFT.

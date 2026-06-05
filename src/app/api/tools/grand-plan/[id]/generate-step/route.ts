@@ -51,7 +51,7 @@ import {
   getTopOrganicKeywords,
   getBacklinks,
   getUrlOrganicKeywords,
-} from "@/lib/semrush";
+} from "@/lib/seo-retired-defaults";
 
 // 800s = Vercel Pro maximum. The heaviest steps (prepare-content with Claude
 // Opus 32k tokens, prepare-lp-refine with multi-pass critique) can exceed
@@ -206,7 +206,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     contentBrief?: { domain?: string; database?: string; brief?: string; competitors?: string };
     channelBudgets?: { googleAds?: number; metaAds?: number; linkedInAds?: number };
     aiModel?: GrandPlanModelChoice;
-    semrushRegion?: string;
+    seoRegion?: string;
     /** User-supplied URLs for SEO Quick Wins / Page Optimisations focus. */
     manualPageUrls?: string[];
     /** Per-plan caps that override the client-level content limits. */
@@ -358,7 +358,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
         await setStatus(
           id,
-          `Researching ${suggestResult.adGroups.reduce((s, g) => s + g.keywords.length, 0)} keywords via SEMrush...`,
+          `Researching ${suggestResult.adGroups.reduce((s, g) => s + g.keywords.length, 0)} keywords via SEO data...`,
         );
         const ideas = await researchKeywords(suggestResult.adGroups);
 
@@ -417,12 +417,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       }
 
       // ─── STEP: prepare-content-data ──────────────────────────────────────────
-      // Warms all SEMrush / GSC caches via withApiCache before the heavy Claude
+      // Warms all SEO / GSC caches via withApiCache before the heavy Claude
       // Opus generation step. Because every sub-call in collectSemrushData uses
       // withApiCache, this step stores the results in the DB so prepare-content
       // gets instant cache hits and its full 300 s budget goes to the AI call.
       if (step === "prepare-content-data") {
-        // Always re-warm SEMrush caches; Grand Plans regenerate from scratch.
+        // Always re-warm SEO caches; Grand Plans regenerate from scratch.
         if (!website) {
           return NextResponse.json({ ok: true, step, skipped: true });
         }
@@ -433,7 +433,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             .replace(/^https?:\/\//, "")
             .replace(/\/.*$/, "")
             .replace(/^www\./, "");
-        const csDatabase = config.semrushRegion ?? config.contentBrief?.database ?? "uk";
+        const csDatabase = config.seoRegion ?? config.contentBrief?.database ?? "uk";
         const csBrief =
           config.contentBrief?.brief ||
           brief ||
@@ -446,7 +446,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           : [];
         const searchConsoleSiteUrl = plan.client?.searchConsoleSiteUrl ?? undefined;
 
-        await setStatus(id, "Collecting SEMrush & Search Console data...");
+        await setStatus(id, "Collecting SEO & Search Console data...");
         await collectSemrushData(
           csDomain,
           csCompetitors,
@@ -461,7 +461,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       // ─── STEP: prepare-content-1 / -2 / -3 ──────────────────────────────────
       // The content strategy generation is split across three steps so each Claude
       // call targets ~8k output tokens (~160s worst case) and never approaches the
-      // 800s Vercel limit. All three share the same SEMrush cache primed by
+      // 800s Vercel limit. All three share the same SEO cache primed by
       // prepare-content-data.
       //
       //  prepare-content-1  →  pageOptimisations
@@ -486,7 +486,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             .replace(/^https?:\/\//, "")
             .replace(/\/.*$/, "")
             .replace(/^www\./, "");
-        const csDatabase = config.semrushRegion ?? config.contentBrief?.database ?? "uk";
+        const csDatabase = config.seoRegion ?? config.contentBrief?.database ?? "uk";
         const csBrief =
           config.contentBrief?.brief ||
           brief ||
@@ -513,7 +513,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           .filter(Boolean)
           .slice(0, 20);
 
-        // Pull the manual page intel (scraped + SEMrush) stashed by
+        // Pull the manual page intel (scraped + SEO) stashed by
         // prepare-research so the page optimisations call can prioritise the
         // URLs the client explicitly asked us to optimise.
         const stashForContent = safeJsonParse<
@@ -778,10 +778,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         await setStatus(id, "Auditing on-page SEO for proposed page optimisations...");
         await runOnPageAudit(csDomain, pageOpts);
 
-        // Deep enrichment: pull current SEMrush rankings + Haiku-generated
+        // Deep enrichment: pull current keyword rankings + Haiku-generated
         // rewrites (title, meta, suggested keywords with potential ranking band,
         // recommended schema, FAQ Q+A) per page. Cap 15 URLs, parallelism 5.
-        const csDatabase = config.semrushRegion ?? config.contentBrief?.database ?? "uk";
+        const csDatabase = config.seoRegion ?? config.contentBrief?.database ?? "uk";
         try {
           await setStatus(id, "Generating page rewrites & FAQ drafts...");
           await enrichPageOptimisationsDeep(
@@ -806,7 +806,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       }
 
       // ─── STEP: prepare-research ──────────────────────────────────────────────
-      // Harvests real account data (GA4, Search Console, SEMrush competitors)
+      // Harvests real account data (GA4, Search Console, SEO competitors)
       // and stashes it onto planDataJson._researchData so every downstream
       // generator can ground its recommendations in actual numbers. All calls
       // are wrapped in withApiCache (7-day TTL) so a regeneration within the
@@ -828,7 +828,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           return NextResponse.json({ ok: true, step, skipped: true });
         }
 
-        await setStatus(id, "Harvesting real account data (GA4, Search Console, SEMrush)...");
+        await setStatus(id, "Harvesting real account data (GA4, Search Console, SEO)...");
 
         const propertyId = cli?.ga4PropertyId ?? null;
         const gscSite = cli?.searchConsoleSiteUrl ?? null;
@@ -965,10 +965,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         void ga4Geo; // reserved for future use
 
         // Per-competitor enrichment (top organic keywords + backlinks). Limited
-        // to the top 4 competitors to stay inside SEMrush quota and the lambda
+        // to the top 4 competitors to stay inside SEO quota and the lambda
         // budget. Each is independently cached for 7 days.
         //
-        // SEMrush returns competitors sorted purely by keyword overlap, which
+        // SEO returns competitors sorted purely by keyword overlap, which
         // often pulls in directories, news sites, or tangentially related
         // domains (e.g. for a football academy, generic football news sites).
         // We run a Haiku relevance pass first to keep only competitors that
@@ -995,7 +995,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
               messages: [
                 {
                   role: "user",
-                  content: `You are filtering a list of SEMrush-detected competitors for a UK marketing strategy. Keep only competitors whose core offering directly competes with the client. Drop news sites, directories, generic media, or tangentially related domains that just happen to share keywords.
+                  content: `You are filtering a list of SEO-detected competitors for a UK marketing strategy. Keep only competitors whose core offering directly competes with the client. Drop news sites, directories, generic media, or tangentially related domains that just happen to share keywords.
 
 Return a JSON object: { "keep": ["domain1.com", "domain2.com", ...] } — list of domains to keep, in priority order (most directly competitive first). Aim for 4-6 entries if possible; return fewer rather than padding with weak matches.
 
@@ -1077,7 +1077,7 @@ Return ONLY valid JSON, no markdown fences.`,
           }),
         );
 
-        // Also fetch SEMrush domain overviews for any competitors the user
+        // Also fetch SEO domain overviews for any competitors the user
         // manually added on the form that are NOT already in the auto-detected
         // list. Without this, manual competitors land with no traffic / keyword
         // metrics and the generator falls back to AI estimates for them.
@@ -1091,7 +1091,7 @@ Return ONLY valid JSON, no markdown fences.`,
         const formCompsRaw = safeJsonParse<{ domain: string }[]>(plan.competitorsJson ?? null, []);
         const formOnlyCompetitors = formCompsRaw
           .filter((fc) => fc.domain && !autoEnrichedDomains.has(normDomain(fc.domain)))
-          .slice(0, 4); // cap to keep within SEMrush quota
+          .slice(0, 4); // cap to keep within SEO quota
 
         const formCompetitorEnriched = await Promise.all(
           formOnlyCompetitors.map(async (fc) => {
@@ -1134,14 +1134,14 @@ Return ONLY valid JSON, no markdown fences.`,
 
         // Per-URL intel for the user-supplied "optimise these pages" list.
         // Each URL is scraped (title / H1 / meta / body snippet) and run
-        // through SEMrush url_organic to pull the keywords that page already
+        // through SEO url_organic to pull the keywords that page already
         // ranks for. Both calls are cached for 7 days. We cap at 10 URLs
         // upstream on the form, so this is bounded work.
         const manualUrls = (config.manualPageUrls ?? [])
           .map((u) => (u || "").trim())
           .filter((u) => /^https?:\/\//i.test(u))
           .slice(0, 10);
-        const semDb = config.semrushRegion ?? "uk";
+        const semDb = config.seoRegion ?? "uk";
         const manualPageIntel: ManualPageIntel[] = manualUrls.length
           ? await Promise.all(
               manualUrls.map(async (url) => {
@@ -2623,7 +2623,7 @@ function buildSources(plan: any, config: any, brief: string): GrandPlanSources {
     searchConsole: !!accountData?.searchConsole,
     meta: !!plan.client?.metaAccountId,
     googleAds: !!plan.client?.googleAdsCustomerId,
-    semrushCompetitors: !!accountData?.competitorData?.length,
+    seoCompetitors: !!accountData?.competitorData?.length,
     customerVoice: !!customerVoice?.painPoints?.length,
   };
 

@@ -42,27 +42,27 @@ You are a specialist for **data-fetching efficiency, caching, API quota manageme
 
 ## TTL reference table
 
-| Platform | Route file | Overview TTL | Enrichment TTL | Rationale |
-|---|---|---|---|---|
-| GA4 | `src/app/api/ga4/route.ts` | 4 h | 4 h | Data lags ~4 h in GA4 |
-| GA4 (realtime) | same file, `type=realtime` | 3 min | — | Realtime endpoint |
-| Google Ads | `src/app/api/google-ads/route.ts` | 4 h | 4 h | Updates ~hourly |
-| Meta | `src/app/api/meta/route.ts` | 4 h | 4 h | Updates ~hourly |
-| Search Console | `src/app/api/search-console/route.ts` | 4 h | 4 h | Data lags 2–3 days |
-| SemRush (organic DB) | `src/app/api/semrush/route.ts` | 720 h (30 d) | same | Database updates ~monthly |
-| SemRush (backlinks) | same file | 168 h (7 d) | same | Backlink index weekly |
-| SemRush (tracking) | same file | 24 h | same | Position tracking daily |
-| TikTok | `src/app/api/tiktok/route.ts` | 4 h | 4 h | |
-| Microsoft Ads | `src/app/api/microsoft-ads/route.ts` | 4 h | 4 h | |
-| LinkedIn | `src/app/api/linkedin/route.ts` | 4 h | — | Inline fetcher in cron |
-| Klaviyo | `src/app/api/klaviyo/route.ts` | 4 h | — | Inline fetcher in cron |
-| YouTube | `src/app/api/youtube/route.ts` | 4 h | — | Channel stats endpoint |
-| HubSpot | `src/app/api/hubspot/route.ts` | 12 h | — | No date-range param |
-| CallRail | `src/app/api/callrail/route.ts` | 4 h | — | |
-| WooCommerce | `src/app/api/woocommerce/route.ts` | 4 h | 4 h | |
-| Shopify | `src/app/api/shopify/route.ts` | 4 h | 4 h | |
-| CWV | `src/app/api/cwv/route.ts` | 24 h | — | CrUX data monthly |
-| Moz | `src/app/api/moz/route.ts` | 720 h (30 d) | — | Index updates monthly |
+| Platform         | Route file                            | Overview TTL | Enrichment TTL | Rationale                 |
+| ---------------- | ------------------------------------- | ------------ | -------------- | ------------------------- |
+| GA4              | `src/app/api/ga4/route.ts`            | 4 h          | 4 h            | Data lags ~4 h in GA4     |
+| GA4 (realtime)   | same file, `type=realtime`            | 3 min        | —              | Realtime endpoint         |
+| Google Ads       | `src/app/api/google-ads/route.ts`     | 4 h          | 4 h            | Updates ~hourly           |
+| Meta             | `src/app/api/meta/route.ts`           | 4 h          | 4 h            | Updates ~hourly           |
+| Search Console   | `src/app/api/search-console/route.ts` | 4 h          | 4 h            | Data lags 2–3 days        |
+| SEO (organic DB) | `src/app/api/seo/route.ts`            | 720 h (30 d) | same           | Database updates ~monthly |
+| SEO (backlinks)  | same file                             | 168 h (7 d)  | same           | Backlink index weekly     |
+| SEO (tracking)   | same file                             | 24 h         | same           | Position tracking daily   |
+| TikTok           | `src/app/api/tiktok/route.ts`         | 4 h          | 4 h            |                           |
+| Microsoft Ads    | `src/app/api/microsoft-ads/route.ts`  | 4 h          | 4 h            |                           |
+| LinkedIn         | `src/app/api/linkedin/route.ts`       | 4 h          | —              | Inline fetcher in cron    |
+| Klaviyo          | `src/app/api/klaviyo/route.ts`        | 4 h          | —              | Inline fetcher in cron    |
+| YouTube          | `src/app/api/youtube/route.ts`        | 4 h          | —              | Channel stats endpoint    |
+| HubSpot          | `src/app/api/hubspot/route.ts`        | 12 h         | —              | No date-range param       |
+| CallRail         | `src/app/api/callrail/route.ts`       | 4 h          | —              |                           |
+| WooCommerce      | `src/app/api/woocommerce/route.ts`    | 4 h          | 4 h            |                           |
+| Shopify          | `src/app/api/shopify/route.ts`        | 4 h          | 4 h            |                           |
+| CWV              | `src/app/api/cwv/route.ts`            | 24 h         | —              | CrUX data monthly         |
+| Moz              | `src/app/api/moz/route.ts`            | 720 h (30 d) | —              | Index updates monthly     |
 
 ## Cache key conventions
 
@@ -71,8 +71,9 @@ You are a specialist for **data-fetching efficiency, caching, API quota manageme
 ```
 
 Examples:
+
 - `ga4:overview:properties/123456:2025-06-01:2025-06-30`
-- `semrush:organic-keywords:example.com:uk`
+- `seo:organic-keywords:example.com:uk`
 - `klaviyo:overview:kl_xxx:2025-06-01:2025-06-30`
 
 ## Cron snapshot architecture
@@ -82,6 +83,7 @@ Examples:
 **Schedule:** Vercel cron `0 2 * * *` (daily 2am UTC).
 
 **What it does:**
+
 1. Iterates all clients.
 2. For each enabled platform, calls `fetchPlatformMetrics(platform, client, start, end)`.
 3. Returns `{ metrics: Record<string, number>, campaignData?: Record<string, unknown> }`.
@@ -115,11 +117,11 @@ Examples:
 - **Don't** wrap overview calls in `withApiCache` inside the cron — the cron's purpose is to fetch fresh data for storage in MetricSnapshot.
 - **Do** wrap enrichment calls in `withApiCache` in route handlers — they serve dashboard requests.
 - **Keep** `campaignData` selective — store top 10–25 items, not unbounded lists.
-- **Verify** SemRush TTL values before changing — organic database TTL must stay at 720 h minimum.
+- **Verify** SEO TTL values before changing — organic database TTL must stay at 720 h minimum.
 
 ## Known tech debt
 
-- SemRush overview call in cron (`getDomainOverview`) bypasses `withApiCache`. This is intentional — the cron stores the result in MetricSnapshot, which IS the cache.
+- SEO overview call in cron (`getDomainOverview`) bypasses `withApiCache`. This is intentional — the cron stores the result in MetricSnapshot, which IS the cache.
 - LinkedIn, Klaviyo, YouTube, HubSpot, CallRail use inline fetchers in the cron file instead of dedicated lib files. These could be extracted into lib files in future.
 - YouTube cron fetcher uses the public Statistics endpoint (no OAuth) — it gets all-time subscriber/view/video counts, not date-range metrics.
 - Alerts cron (`/api/cron/alerts`) runs at 03:00 UTC, one hour after snapshots.

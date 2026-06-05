@@ -328,7 +328,7 @@ function validateExtractedData(raw: Record<string, unknown>): SpreadsheetData {
     .map(validateLinkTarget)
     .filter((t): t is LinkTarget => t !== null);
 
-  // Pass through quickWins and roadmap from SEMrush-generated data
+  // Pass through quickWins and roadmap from SEO-generated data
   const quickWins = Array.isArray(raw.quickWins)
     ? (raw.quickWins as unknown[])
         .map(validatePageOpt)
@@ -1884,7 +1884,7 @@ export async function POST(request: NextRequest) {
     let pendingId: string | null = null;
 
     if (contentType.includes("application/json")) {
-      // ── JSON body: SEMrush-generated data ──────────────────────────────
+      // ── JSON body: SEO-generated data ──────────────────────────────
       const body = await request.json();
       if (!body.spreadsheetData || typeof body.spreadsheetData !== "object") {
         return NextResponse.json({ error: "Missing strategy data" }, { status: 400 });

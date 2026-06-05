@@ -24,8 +24,8 @@ export async function POST(request: NextRequest) {
       googleAdsKeywordQualityScores,
       // Search Console: top queries with clicks/impressions/position
       searchConsoleQueries,
-      // SEMrush: organic keywords with volume/position
-      semrushKeywords,
+      // SEO: organic keywords with volume/position
+      seoKeywords,
       // Current campaign context
       campaignContext,
     } = (await request.json()) as {
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
         ctr: number;
         position: number;
       }>;
-      semrushKeywords?: Array<{
+      seoKeywords?: Array<{
         keyword: string;
         position?: number;
         volume?: number;
@@ -139,8 +139,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (semrushKeywords?.length) {
-      const top = semrushKeywords.slice(0, 20);
+    if (seoKeywords?.length) {
+      const top = seoKeywords.slice(0, 20);
       contextBlocks.push(
         `SEMRUSH ORGANIC KEYWORDS (current organic rankings):\n` +
           top
@@ -159,7 +159,7 @@ export async function POST(request: NextRequest) {
     contextBlocks.push(seasonality.promptText);
 
     const systemPrompt = `You are a senior paid search and SEO keyword strategist at Betts & Burton, a UK digital marketing agency.
-You analyse data from Google Ads, Google Search Console, and SEMrush to identify the highest-value keyword opportunities — both for paid search bidding and for content/SEO targeting.
+You analyse data from Google Ads, Google Search Console, and SEO to identify the highest-value keyword opportunities — both for paid search bidding and for content/SEO targeting.
 Your recommendations must be specific, data-backed, and commercially oriented.
 Use British English.${client.aiReportInstructions ? `\n\nClient instructions: ${client.aiReportInstructions}` : ""}`;
 

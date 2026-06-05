@@ -424,7 +424,7 @@ bettsandburton-report/
 │   │   │   ├── SignalsSection.tsx     # Cross-channel anomaly hub
 │   │   │   ├── OverviewSection.tsx    # Cross-channel overview + funnel
 │   │   │   ├── GA4Section.tsx         # Google Analytics dashboard
-│   │   │   ├── SemrushSection.tsx     # SEO/SEO dashboard
+│   │   │   ├── ShareOfVoicePanel.tsx  # SEO visibility and share-of-voice dashboard
 │   │   │   ├── MetaSection.tsx        # Meta/Facebook Ads dashboard
 │   │   │   ├── GoogleAdsSection.tsx   # Google Ads dashboard
 │   │   │   ├── SearchConsoleSection.tsx # Search Console dashboard

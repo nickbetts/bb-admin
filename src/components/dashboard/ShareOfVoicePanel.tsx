@@ -94,8 +94,8 @@ export function ShareOfVoicePanel({
                 opacity: 0.4,
               }}
             />
-            Share of Voice has been retired with SEMrush removal. Use Search Console and GA4
-            sections for organic visibility and traffic trends.
+            Share of Voice has been retired with SEO removal. Use Search Console and GA4 sections
+            for organic visibility and traffic trends.
           </div>
         )}
 

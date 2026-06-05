@@ -2,7 +2,7 @@
  * Content Generator — core library.
  *
  * Exports three main functions:
- *   generateIdeas()    — Claude Opus + web_search + SemRush → 5 ideas per content type
+ *   generateIdeas()    — Claude Opus + web_search + SEO context → 5 ideas per content type
  *   generateContent()  — Claude Opus → full copy per idea (per-type word-count targets)
  *   buildHtmlDeliverable() — Styled HTML string for download
  *
@@ -68,7 +68,7 @@ export interface GeneratedContent {
   generatedAt: string;
 }
 
-export interface SemRushContext {
+export interface SEOContext {
   domain?: string;
   organicKeywords?: number;
   organicTraffic?: number;
@@ -393,7 +393,7 @@ ${preStripped}`,
 export async function generateIdeas(params: {
   brief: string;
   contentTypes: ContentType[];
-  semrushContext?: SemRushContext;
+  seoContext?: SEOContext;
   competitors?: CompetitorContext[];
   clientName: string;
   clientWebsite?: string;
@@ -404,20 +404,20 @@ export async function generateIdeas(params: {
   const {
     brief,
     contentTypes,
-    semrushContext,
+    seoContext,
     competitors,
     clientName,
     clientWebsite,
     clientInstructions,
   } = params;
 
-  const semrushSummary = semrushContext
+  const seoSummary = seoContext
     ? `
-SEMrush data for ${semrushContext.domain ?? clientWebsite ?? "the client's domain"}:
-- Organic keywords ranking: ${semrushContext.organicKeywords ?? "unknown"}
-- Monthly organic traffic estimate: ${semrushContext.organicTraffic ?? "unknown"}
+SEO data for ${seoContext.domain ?? clientWebsite ?? "the client's domain"}:
+- Organic keywords ranking: ${seoContext.organicKeywords ?? "unknown"}
+- Monthly organic traffic estimate: ${seoContext.organicTraffic ?? "unknown"}
 - Top ranking keywords: ${
-        semrushContext.topKeywords
+        seoContext.topKeywords
           ?.slice(0, 20)
           .map((k) => `"${k.keyword}" (vol: ${k.searchVolume}, pos: ${k.position})`)
           .join(", ") ?? "none available"
@@ -460,7 +460,7 @@ Brief: ${brief}
 
 Content types to generate ideas for: ${typesRequested}
 
-${semrushSummary}
+${seoSummary}
 
 ${competitorSummary}
 
@@ -498,7 +498,7 @@ Return a JSON array where each object matches this exact shape:
 }
 
 Rules:
-- Populate volume fields using the SemRush data provided where possible. Where not available, use your best estimate based on the niche.
+- Populate volume fields using the SEO data provided where possible. Where not available, use your best estimate based on the niche.
 - Keywords must be relevant to the specific idea, not generic to the client.
 - All 5 long-tail keywords should target informational or commercial intent queries a real person would type.
 - For social media ideas: the title should describe the campaign concept, the summary should outline what posts would cover, and keywords should reflect the hashtag/topic strategy.

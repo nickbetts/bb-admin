@@ -6,16 +6,16 @@
  * - Grand Plan generator + new-plan form
  *
  * Two-stage pipeline:
- *   1. detectCompetitors(domain) — SEMrush "top 5 competing domains by keyword overlap"
+ *   1. detectCompetitors(domain) — top 5 competing domains by keyword overlap
  *   2. validateCompetitor(domain, competitor) — checks keyword overlap; if zero, scrapes
  *      the competitor's homepage for qualitative messaging context (h1, headings, CTAs).
  *
  * Both are cached in the ApiCache table for 168h (1 week).
  */
-import { getCompetitors, getSingleCompetitorOverlap } from "@/lib/semrush";
+import { getCompetitors, getSingleCompetitorOverlap } from "@/lib/seo-retired-defaults";
 import { withApiCache } from "@/lib/api-cache";
 
-// ─── Auto-detect competitors via SEMrush keyword overlap ────────────────────
+// ─── Auto-detect competitors via keyword overlap ─────────────────────────────
 
 export async function detectCompetitors(
   domain: string,
@@ -114,7 +114,7 @@ export async function validateCompetitor(
 ): Promise<{ commonKeywords: number; scraped: boolean; pageContext?: CompetitorPageContext }> {
   // Always run overlap + scrape in parallel — manually-added competitors are
   // explicit user choices, so we want messaging context regardless of whether
-  // SEMrush returns any keyword overlap.
+  // provider data returns any keyword overlap.
   const [commonKeywords, pageContext] = await Promise.all([
     withApiCache(`cs:competitor-overlap:${domain}:${competitor}:${database}`, 168, () =>
       getSingleCompetitorOverlap(domain, competitor, database),

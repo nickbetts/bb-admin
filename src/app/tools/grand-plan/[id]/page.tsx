@@ -154,7 +154,7 @@ function removableSubsectionsForSection(
 // generate-step endpoint but include estimates so the user can see whether
 // they should grab a coffee or wait.
 //
-// Note: the legacy SEMrush spreadsheet pathway (prepare-content-data /
+// Note: the legacy SEO spreadsheet pathway (prepare-content-data /
 // prepare-content-1/2/3 / prepare-content-audit) was removed in favour of the
 // Strategy Brain driving the entire content cluster section from form input.
 // Those step handlers are still present in generate-step/route.ts for any
@@ -164,7 +164,7 @@ const PIPELINE_STEPS: { key: string; label: string; estSeconds: number }[] = [
   { key: "prepare-keywords", label: "Researching keywords", estSeconds: 30 },
   {
     key: "prepare-research",
-    label: "Harvesting account data (GA4 / GSC / SEMrush)",
+    label: "Harvesting account data (GA4 / GSC / SEO)",
     estSeconds: 60,
   },
   {
@@ -346,7 +346,7 @@ export default function GrandPlanViewPage({ params }: Props) {
 
   // AbortController so the user can cancel a hung generation step. We also
   // attach a per-step hard timeout so the UI never gets stuck if the underlying
-  // function (Claude / SEMrush etc.) hangs without surfacing an error.
+  // function (Claude / SEO etc.) hangs without surfacing an error.
   const abortRef = useRef<AbortController | null>(null);
   const cancelledRef = useRef(false);
 

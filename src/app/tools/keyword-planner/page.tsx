@@ -210,7 +210,7 @@ function competitionLabel(level: string): string {
 // without access to Google's proprietary ML models.
 //
 // 1. IMPRESSION SHARE: S-curve keyed on (maxCpc / marketCpc). The marketCpc is
-//    SEMrush's Cp field — the average actual CPC paid across all advertisers,
+//    the provider CPC field — the average actual CPC paid across all advertisers,
 //    which already reflects second-price auction discounting. At ratio = 1.0
 //    (bidding exactly the market average CPC) a median bidder wins ~50% of
 //    auctions. Practical IS ceiling ~80%: even at very high bids, serving
@@ -227,13 +227,13 @@ function competitionLabel(level: string): string {
 //    Sources: FirstPageSage Apr 2025 (generic pos-1 = 2.1%, n=109 accounts);
 //    industry benchmarks (Local Services/HVAC: 3.2%, Emergency Services: 5–8%).
 //
-// 3. ACTUAL CPC: SEMrush avg CPC IS the second-price equilibrium average — the
+// 3. ACTUAL CPC: provider avg CPC IS the second-price equilibrium average — the
 //    mean of what advertisers actually pay after second-price discounting. No
 //    additional discount factor is applied (doing so would double-discount).
 //    Formula: actualCpc = min(maxCpc, marketCpc).
 //    Above market → pay market rate; below market → pay your bid (winning cheap
 //    auctions where the 2nd-highest bid ≈ your own bid).
-//    Source: Google Ads Help; SEMrush Cp field documentation.
+//    Source: Google Ads Help; keyword provider CPC field documentation.
 //
 // 4. BUDGET: Google uses monthly = daily × 30.4 (365 ÷ 12, rounded to 1 d.p.).
 //    Source: Google Ads Help — monthly spending limit page.
@@ -290,7 +290,7 @@ function positionCtrMultiplier(impressionShare: number): number {
 
 /**
  * Per-keyword monthly forecast for the Keywords tab.
- * actualCpc = min(maxCpc, marketCpc) — no additional discount, since SEMrush
+ * actualCpc = min(maxCpc, marketCpc) — no additional discount, since provider
  * avg CPC already embeds the second-price auction average paid.
  */
 function estimateForecast(idea: KeywordIdea, maxCpcMicros: number) {
@@ -305,7 +305,7 @@ function estimateForecast(idea: KeywordIdea, maxCpcMicros: number) {
   const impressions = Math.round(idea.avgMonthlySearches * isEst);
   const clicks = Math.round(impressions * ctr);
 
-  // SEMrush avg CPC is already the second-price equilibrium — no extra discount.
+  // Provider average CPC is already the second-price equilibrium — no extra discount.
   const actualCpc = Math.min(effectiveMax, marketCpc);
   const costPounds = clicks * actualCpc;
 
@@ -313,7 +313,7 @@ function estimateForecast(idea: KeywordIdea, maxCpcMicros: number) {
 }
 
 /**
- * Calculates 3-month volume change using the monthly trend data from SEMrush.
+ * Calculates 3-month volume change using monthly trend data from SEO research.
  * Compares avg of last 3 months vs avg of the preceding 3 months.
  * Returns null if there's not enough data.
  */

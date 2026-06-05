@@ -286,7 +286,7 @@ export async function POST(request: NextRequest) {
         .slice(0, 5);
       if (latest.length > 0) {
         competitorContext =
-          "\n\nCOMPETITOR INTELLIGENCE (SemRush data):\n" +
+          "\n\nCOMPETITOR INTELLIGENCE (SEO data):\n" +
           latest
             .map((c) => {
               let m: Record<string, unknown> = {};
@@ -500,7 +500,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (platforms.seo) {
-      activePlatforms.push("SEO/SemRush");
+      activePlatforms.push("SEO/SEO");
       const s = platforms.seo;
       sections.push(
         `SEO (SEMRUSH):\n  Organic Traffic: ${s.organicTraffic.toLocaleString()}, Organic Keywords: ${s.organicKeywords.toLocaleString()}, Traffic Value: £${s.organicCost.toLocaleString()}\n  Paid Traffic: ${s.paidTraffic.toLocaleString()}, Paid Keywords: ${s.paidKeywords.toLocaleString()}`,

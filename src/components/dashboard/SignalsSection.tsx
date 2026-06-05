@@ -121,7 +121,7 @@ const PLATFORM_COLOURS: Record<string, { bg: string; text: string; border: strin
   "Google Ads": { bg: "#f0fdf4", text: "#15803d", border: "#bbf7d0" },
   GA4: { bg: "#fff7ed", text: "#c2410c", border: "#fed7aa" },
   "Search Console": { bg: "#faf5ff", text: "#7e22ce", border: "#e9d5ff" },
-  SEMrush: { bg: "#f0fdfa", text: "#0f766e", border: "#99f6e4" },
+  SEO: { bg: "#f0fdfa", text: "#0f766e", border: "#99f6e4" },
 };
 
 /** Normalise DB lowercase platform slugs to the display name used by computed signals */
@@ -132,7 +132,7 @@ const PLATFORM_NORMALISE: Record<string, string> = {
   meta: "Meta",
   searchconsole: "Search Console",
   search_console: "Search Console",
-  semrush: "SEMrush",
+  seo: "SEO",
   tiktok: "TikTok",
   linkedin: "LinkedIn",
   microsoftads: "Microsoft Ads",

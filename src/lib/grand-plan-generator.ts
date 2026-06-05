@@ -352,11 +352,11 @@ interface CompetitorInsight {
   weaknesses: string[];
   /** Areas where this competitor performs well that represent opportunities for the client to address. */
   opportunities?: string[];
-  /** SEMrush common-keyword overlap with the client domain (0 = no overlap detected). */
+  /** SEO common-keyword overlap with the client domain (0 = no overlap detected). */
   commonKeywords?: number;
   /** How this competitor came into the analysis. */
   source?: "manual" | "auto" | "inferred";
-  /** Headline messaging extracted from a homepage scrape (only set when SEMrush
+  /** Headline messaging extracted from a homepage scrape (only set when SEO
    *  has no overlap data and we fell back to a site scrape). */
   pageContext?: { h1?: string; description?: string; ctaTexts?: string[] };
 }
@@ -472,7 +472,7 @@ export interface AccountResearchData {
   /**
    * User-supplied "please optimise these specific pages" URLs, with the
    * page scraped (title / H1 / meta / body snippet) and the keywords each
-   * page already ranks for via SEMrush. Drives the priority list for SEO
+   * page already ranks for via SEO. Drives the priority list for SEO
    * Quick Wins and Page Optimisations with a strong commercial /
    * transactional intent bias.
    */
@@ -572,7 +572,7 @@ export interface DataAvailability {
   searchConsole: boolean;
   meta: boolean;
   googleAds: boolean;
-  semrushCompetitors: boolean;
+  seoCompetitors: boolean;
   customerVoice: boolean;
 }
 
@@ -709,7 +709,7 @@ export interface GrandPlanSources {
   clientName: string;
   purpose: string;
   campaignFocusPeriods: CampaignFocusPeriod[];
-  /** Real data harvested by the prepare-research step (GA4, GSC, SEMrush). */
+  /** Real data harvested by the prepare-research step (GA4, GSC, SEO). */
   accountData?: AccountResearchData;
   /** Customer-voice + competitor-complaint research from Anthropic web search. */
   customerVoice?: CustomerVoiceData;
@@ -759,7 +759,7 @@ export interface GrandPlanSources {
    *  Surfaced as a directive so generators can date copy correctly. */
   period?: string;
   /** User-supplied competitor list from the new-plan form. Each entry is a
-   *  domain that has either been auto-detected via SEMrush keyword overlap
+   *  domain that has either been auto-detected via SEO keyword overlap
    *  (commonKeywords > 0) or manually added (then site-scraped if no overlap).
    *  Fed into the strategy brain and competitor intel generators. */
   competitors?: {
@@ -929,7 +929,7 @@ export async function synthesiseStrategyBrain(sources: GrandPlanSources): Promis
     .map((b: { title?: string }) => b.title)
     .filter(Boolean)
     .join(", ");
-  // Merge form-supplied competitors with auto-harvested SEMrush snapshots
+  // Merge form-supplied competitors with auto-harvested SEO snapshots
   // so the strategist sees both. Form list comes first (those are what the
   // client/account team explicitly told us to consider).
   const norm = (d: string) =>
@@ -939,10 +939,10 @@ export async function synthesiseStrategyBrain(sources: GrandPlanSources): Promis
       .replace(/\/$/, "");
   const competitorLines: string[] = [];
   for (const fc of formCompetitors.slice(0, 6)) {
-    const semrush = competitors.find((c) => norm(c.domain) === norm(fc.domain));
-    if (semrush) {
+    const seo = competitors.find((c) => norm(c.domain) === norm(fc.domain));
+    if (seo) {
       competitorLines.push(
-        `${fc.domain} [client-named, ${fc.commonKeywords ?? 0} common KWs] — ${semrush.organicTraffic} org traffic, ${semrush.organicKeywords} kws`,
+        `${fc.domain} [client-named, ${fc.commonKeywords ?? 0} common KWs] — ${seo.organicTraffic} org traffic, ${seo.organicKeywords} kws`,
       );
     } else if (fc.pageContext) {
       const ctx = fc.pageContext;
@@ -953,10 +953,10 @@ export async function synthesiseStrategyBrain(sources: GrandPlanSources): Promis
         .filter(Boolean)
         .join("; ");
       competitorLines.push(
-        `${fc.domain} [client-named, no SEMrush overlap] — ${summary || "site scraped"}`,
+        `${fc.domain} [client-named, no SEO overlap] — ${summary || "site scraped"}`,
       );
     } else {
-      competitorLines.push(`${fc.domain} [client-named, no SEMrush data]`);
+      competitorLines.push(`${fc.domain} [client-named, no SEO data]`);
     }
   }
   for (const c of competitors.slice(0, 5)) {
@@ -1187,7 +1187,7 @@ export async function generateGrandPlan(
           )
         : Promise.resolve(undefined),
       // Brain-driven content clusters — only run when no spreadsheet contentData
-      // is supplied. Replaces the legacy SEMrush spreadsheet upload pathway.
+      // is supplied. Replaces the legacy SEO spreadsheet upload pathway.
       isEnabled("contentStrategy") && !contentData
         ? runSection("Content Clusters", "contentClusters", () =>
             generateContentClusters(anthropic, contextSummary, sources),
@@ -1415,7 +1415,7 @@ export async function generateGrandPlan(
     dataSources.push({ label: "Search Console", detail: "Top queries and pages" });
   if (sources.accountData?.competitorData?.length)
     dataSources.push({
-      label: "SEMrush",
+      label: "SEO",
       detail: `${sources.accountData.competitorData.length} competitor snapshot(s)`,
     });
   if (sources.customerVoice?.queriesFired?.length)
@@ -1754,7 +1754,7 @@ function buildAccountDataBlock(sources: GrandPlanSources): string {
         (c) =>
           `${c.domain}: ${c.organicTraffic.toLocaleString()} organic visits/mo, ${c.organicKeywords.toLocaleString()} keywords, ${c.backlinks.toLocaleString()} backlinks`,
       );
-    parts.push(`SEMrush competitor snapshot:\n${lines.join("\n")}`);
+    parts.push(`SEO competitor snapshot:\n${lines.join("\n")}`);
   }
   if (parts.length === 0) return "";
   return `\n\nReal account data (use these numbers to ground recommendations — do NOT invent metrics that contradict them):\n${parts.join("\n")}`;
@@ -1846,7 +1846,7 @@ function buildManualPageIntelBlock(sources: GrandPlanSources): string {
 PRIORITY PAGES — the client explicitly asked us to optimise these URLs (paste-in list from the brief). Treat these as the FIRST priority for any SEO Quick Wins and Page Optimisations work. Recommendations for these pages MUST:
 - Use the actual title / H1 / meta / body content shown below as the rewrite anchor (do not invent page content).
 - Lead with COMMERCIAL or TRANSACTIONAL intent keywords (people ready to buy / enquire / book). Push informational keywords to a secondary role.
-- Where possible, cite the SEMrush keywords the page already ranks for and propose a clear "primary / secondary / long-tail" tier.
+- Where possible, cite the SEO keywords the page already ranks for and propose a clear "primary / secondary / long-tail" tier.
 - Suggest concrete on-page changes (title tag, meta description, H1, intra-page sections, CTA copy, schema) — not generic advice.
 
 ${lines}
@@ -4666,13 +4666,13 @@ async function generateCompetitorIntel(
   const formCompetitors = sources.competitors ?? [];
   const customerComplaints = sources.customerVoice?.competitorComplaints ?? [];
 
-  // Merge form-supplied competitors with auto-harvested SEMrush snapshots.
-  // Form list is authoritative; we enrich with any SEMrush data we already
+  // Merge form-supplied competitors with auto-harvested SEO snapshots.
+  // Form list is authoritative; we enrich with any SEO data we already
   // have for the same domain. Form competitors with no overlap surface their
   // scraped pageContext as qualitative messaging signal instead.
   type Merged = {
     domain: string;
-    semrush?: (typeof realCompetitors)[number];
+    seo?: (typeof realCompetitors)[number];
     pageContext?: { headings?: string[]; description?: string; ctaTexts?: string[]; h1?: string };
     commonKeywords?: number;
     source: "manual" | "auto" | "inferred";
@@ -4687,34 +4687,34 @@ async function generateCompetitorIntel(
 
   if (formCompetitors.length > 0) {
     for (const fc of formCompetitors) {
-      const semrush = realCompetitors.find((r) => norm(r.domain) === norm(fc.domain));
+      const seo = realCompetitors.find((r) => norm(r.domain) === norm(fc.domain));
       merged.push({
         domain: fc.domain,
-        semrush,
+        seo,
         pageContext: fc.pageContext,
         commonKeywords: fc.commonKeywords,
         source: fc.source ?? "manual",
       });
     }
     // When the user has explicitly provided a form list, ONLY use those
-    // competitors. Do NOT supplement with SEMrush-auto-detected ones —
+    // competitors. Do NOT supplement with SEO-auto-detected ones —
     // that causes deleted competitors to reappear. The form list is
     // the authoritative source of truth once the user has made a selection.
   } else if (realCompetitors.length > 0) {
     for (const r of realCompetitors) {
-      merged.push({ domain: r.domain, semrush: r, source: "auto" });
+      merged.push({ domain: r.domain, seo: r, source: "auto" });
     }
   }
 
   if (merged.length > 0) {
     const competitorBlock = merged
       .map((m) => {
-        if (m.semrush) {
-          return `${m.domain} [${m.source}${m.commonKeywords ? `, ${m.commonKeywords} common KWs` : ""}]: ${m.semrush.organicTraffic.toLocaleString()} organic visits/mo, ${m.semrush.organicKeywords.toLocaleString()} keywords, ${m.semrush.paidKeywords.toLocaleString()} paid keywords, ${m.semrush.backlinks.toLocaleString()} backlinks. Top keywords: ${m.semrush.topKeywords.slice(0, 6).join(", ")}`;
+        if (m.seo) {
+          return `${m.domain} [${m.source}${m.commonKeywords ? `, ${m.commonKeywords} common KWs` : ""}]: ${m.seo.organicTraffic.toLocaleString()} organic visits/mo, ${m.seo.organicKeywords.toLocaleString()} keywords, ${m.seo.paidKeywords.toLocaleString()} paid keywords, ${m.seo.backlinks.toLocaleString()} backlinks. Top keywords: ${m.seo.topKeywords.slice(0, 6).join(", ")}`;
         }
-        // No SEMrush data — use scraped page context as qualitative input
+        // No SEO data — use scraped page context as qualitative input
         const ctx = m.pageContext;
-        const lines = [`${m.domain} [${m.source}, no SEMrush overlap]`];
+        const lines = [`${m.domain} [${m.source}, no SEO overlap]`];
         if (ctx?.h1) lines.push(`  H1: ${ctx.h1}`);
         if (ctx?.description) lines.push(`  Meta description: ${ctx.description.slice(0, 200)}`);
         if (ctx?.headings?.length)
@@ -4743,13 +4743,13 @@ async function generateCompetitorIntel(
           messages: [
             {
               role: "user",
-              content: `You are a competitive intelligence analyst at Betts & Burton. The competitor list below is a mix of (a) competitors named on the brief by ${sources.clientName} (source: manual), (b) competitors auto-detected from SEMrush keyword overlap (source: auto), and (c) where no SEMrush data was available, scraped homepage signals (h1, headings, CTAs). Your job is ONLY to add the strengths, weaknesses, and opportunities commentary plus topKeywords (where missing). Do NOT change the numeric fields.
+              content: `You are a competitive intelligence analyst at Betts & Burton. The competitor list below is a mix of (a) competitors named on the brief by ${sources.clientName} (source: manual), (b) competitors auto-detected from SEO keyword overlap (source: auto), and (c) where no SEO data was available, scraped homepage signals (h1, headings, CTAs). Your job is ONLY to add the strengths, weaknesses, and opportunities commentary plus topKeywords (where missing). Do NOT change the numeric fields.
 
 Return a JSON object with key "competitors" containing one entry per competitor below, in the same order. Each entry:
 - domain: string (must match exactly)
-- topKeywords: string[] (5-8 keywords; pull from SEMrush data when present, otherwise infer from page headings/CTAs)
-- strengths: string[] (2-3 specific competitive strengths; reference the SEMrush numbers OR scraped messaging)
-- weaknesses: string[] (2-3 weaknesses grounded ONLY in observable evidence: SEMrush keyword/traffic gaps, or messaging gaps visible on the scraped homepage such as thin CTAs, missing service areas, no pricing transparency, or weak social proof, or specific customer complaints supplied below. NEVER invent weaknesses from "category norms" or generic sector assumptions — every entry must be traceable to something concrete about THIS competitor. If real data is absent for a competitor, return a single entry: "Insufficient public data — recommend manual research (Trustpilot, Companies House, LinkedIn) before acting on this profile.")
+- topKeywords: string[] (5-8 keywords; pull from SEO data when present, otherwise infer from page headings/CTAs)
+- strengths: string[] (2-3 specific competitive strengths; reference the SEO numbers OR scraped messaging)
+- weaknesses: string[] (2-3 weaknesses grounded ONLY in observable evidence: SEO keyword/traffic gaps, or messaging gaps visible on the scraped homepage such as thin CTAs, missing service areas, no pricing transparency, or weak social proof, or specific customer complaints supplied below. NEVER invent weaknesses from "category norms" or generic sector assumptions — every entry must be traceable to something concrete about THIS competitor. If real data is absent for a competitor, return a single entry: "Insufficient public data — recommend manual research (Trustpilot, Companies House, LinkedIn) before acting on this profile.")
 - opportunities: string[] (2-3 specific areas where this competitor performs well that ${sources.clientName} should also address — i.e. things competitors are doing well that represent real market demand. Each entry must be actionable: e.g. "They rank for X — we should target this intent too" or "Their Y is strong — match and differentiate on Z")
 
 Competitor data:
@@ -4790,21 +4790,21 @@ Rules: British English, no AI jargon, no fluff, no em dashes, no semicolons. Eac
 
     const value: CompetitorInsight[] = merged.map((m) => {
       const match = enriched.find((e) => e.domain && norm(e.domain) === norm(m.domain));
-      const semrushTopKeywords = cleanList(m.semrush?.topKeywords, 8);
+      const seoTopKeywords = cleanList(m.seo?.topKeywords, 8);
       const topKeywords = cleanList(match?.topKeywords, 8);
       const strengths = cleanList(match?.strengths, 4);
       const weaknesses = cleanList(match?.weaknesses, 4);
       const opportunities = cleanList(match?.opportunities, 4);
       const primaryKeywordSignal =
         topKeywords[0] ||
-        semrushTopKeywords[0] ||
+        seoTopKeywords[0] ||
         cleanEmDashes(String(m.pageContext?.h1 ?? "").trim()) ||
         "core buyer intent terms";
 
-      const fallbackStrengths = m.semrush
+      const fallbackStrengths = m.seo
         ? [
             cleanEmDashes(
-              `Visible footprint across ${m.semrush.organicKeywords.toLocaleString()} ranking keywords and ${m.semrush.organicTraffic.toLocaleString()} estimated monthly organic visits.`,
+              `Visible footprint across ${m.seo.organicKeywords.toLocaleString()} ranking keywords and ${m.seo.organicTraffic.toLocaleString()} estimated monthly organic visits.`,
             ),
           ]
         : [
@@ -4815,7 +4815,7 @@ Rules: British English, no AI jargon, no fluff, no em dashes, no semicolons. Eac
             ),
           ];
 
-      const fallbackWeaknesses = m.semrush
+      const fallbackWeaknesses = m.seo
         ? [
             "Evidence for conversion messaging depth and trust proof is limited in this snapshot, so a manual page audit is recommended.",
           ]
@@ -4831,11 +4831,11 @@ Rules: British English, no AI jargon, no fluff, no em dashes, no semicolons. Eac
 
       return {
         domain: cleanEmDashes(m.domain.trim()),
-        organicTraffic: m.semrush?.organicTraffic,
-        organicKeywords: m.semrush?.organicKeywords,
-        paidKeywords: m.semrush?.paidKeywords,
-        backlinks: m.semrush?.backlinks,
-        topKeywords: topKeywords.length ? topKeywords : semrushTopKeywords,
+        organicTraffic: m.seo?.organicTraffic,
+        organicKeywords: m.seo?.organicKeywords,
+        paidKeywords: m.seo?.paidKeywords,
+        backlinks: m.seo?.backlinks,
+        topKeywords: topKeywords.length ? topKeywords : seoTopKeywords,
         strengths: strengths.length ? strengths : fallbackStrengths,
         weaknesses: weaknesses.length ? weaknesses : fallbackWeaknesses,
         opportunities: opportunities.length ? opportunities : fallbackOpportunities,
@@ -4852,13 +4852,13 @@ Rules: British English, no AI jargon, no fluff, no em dashes, no semicolons. Eac
           : undefined,
       };
     });
-    const semrushCount = merged.filter((m) => m.semrush).length;
+    const seoCount = merged.filter((m) => m.seo).length;
     return {
       value,
-      grounding: semrushCount > 0 ? "real" : formCompetitors.length > 0 ? "partial" : "ai-only",
+      grounding: seoCount > 0 ? "real" : formCompetitors.length > 0 ? "partial" : "ai-only",
       sourceLabels: [
         formCompetitors.length > 0 ? `Client-supplied competitors (${formCompetitors.length})` : "",
-        semrushCount > 0 ? "SEMrush domain overview" : "",
+        seoCount > 0 ? "SEO domain overview" : "",
         customerComplaints.length ? "Customer voice (web search)" : "",
       ].filter(Boolean) as string[],
     };
@@ -4962,7 +4962,7 @@ ${context}${buildSharedContextBlocks(sources, "audiences")}`,
       topKeywords: [],
       strengths: ["Insufficient third-party competitor data was returned in this run."],
       weaknesses: ["A manual competitor review is required before acting on this section."],
-      opportunities: ["Run a manual SEMrush and market review, then regenerate this section."],
+      opportunities: ["Run a manual SEO and market review, then regenerate this section."],
       source: "inferred",
     });
   }

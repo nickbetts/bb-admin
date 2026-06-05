@@ -458,7 +458,7 @@ Generates per-channel projected metrics (impressions, clicks, CTR, conversions, 
           ┌───────────────────┼────────────────────┐
           ▼                   ▼                    ▼
    GA4Section          GoogleAdsSection       MetaSection
-   SemrushSection      SearchConsoleSection   TikTokSection
+    ShareOfVoicePanel   SearchConsoleSection   TikTokSection
    MicrosoftSection    LinkedInSection        KlaviyoSection
    YouTubeSection      HubSpotSection         CallRailSection
                               │

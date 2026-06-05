@@ -4,10 +4,32 @@ import { cn } from "@/lib/utils";
 import { Sparkline } from "./Sparkline";
 
 const CssArrowUp = () => (
-  <span style={{ display: "inline-block", width: 0, height: 0, borderLeft: "3.5px solid transparent", borderRight: "3.5px solid transparent", borderBottom: "5px solid currentColor", verticalAlign: "middle", marginRight: 3 }} />
+  <span
+    style={{
+      display: "inline-block",
+      width: 0,
+      height: 0,
+      borderLeft: "3.5px solid transparent",
+      borderRight: "3.5px solid transparent",
+      borderBottom: "5px solid currentColor",
+      verticalAlign: "middle",
+      marginRight: 3,
+    }}
+  />
 );
 const CssArrowDown = () => (
-  <span style={{ display: "inline-block", width: 0, height: 0, borderLeft: "3.5px solid transparent", borderRight: "3.5px solid transparent", borderTop: "5px solid currentColor", verticalAlign: "middle", marginRight: 3 }} />
+  <span
+    style={{
+      display: "inline-block",
+      width: 0,
+      height: 0,
+      borderLeft: "3.5px solid transparent",
+      borderRight: "3.5px solid transparent",
+      borderTop: "5px solid currentColor",
+      verticalAlign: "middle",
+      marginRight: 3,
+    }}
+  />
 );
 
 interface MetricCardProps {
@@ -47,7 +69,7 @@ const channelColorMap: Record<string, string> = {
   microsoft_ads: "#00a4ef",
   klaviyo: "#1b9c4f",
   hubspot: "#ff7a59",
-  semrush: "#ff642d",
+  seo: "#ff642d",
   shopify: "#96bf48",
   woocommerce: "#7f54b3",
   callrail: "#45d18b",
@@ -78,9 +100,42 @@ export function MetricCard({
     return (
       <div className={cn("metric-card", className)} aria-busy="true">
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ height: 11, width: "55%", borderRadius: 6, background: "var(--border)", animation: "shimmer 1.4s ease-in-out infinite", backgroundImage: "linear-gradient(90deg, var(--border) 0%, var(--border-subtle) 50%, var(--border) 100%)", backgroundSize: "400% 100%" }} />
-          <div style={{ height: 22, width: "70%", borderRadius: 6, background: "var(--border)", animation: "shimmer 1.4s ease-in-out infinite", backgroundImage: "linear-gradient(90deg, var(--border) 0%, var(--border-subtle) 50%, var(--border) 100%)", backgroundSize: "400% 100%" }} />
-          <div style={{ height: 10, width: "40%", borderRadius: 6, background: "var(--border)", animation: "shimmer 1.4s ease-in-out infinite", backgroundImage: "linear-gradient(90deg, var(--border) 0%, var(--border-subtle) 50%, var(--border) 100%)", backgroundSize: "400% 100%" }} />
+          <div
+            style={{
+              height: 11,
+              width: "55%",
+              borderRadius: 6,
+              background: "var(--border)",
+              animation: "shimmer 1.4s ease-in-out infinite",
+              backgroundImage:
+                "linear-gradient(90deg, var(--border) 0%, var(--border-subtle) 50%, var(--border) 100%)",
+              backgroundSize: "400% 100%",
+            }}
+          />
+          <div
+            style={{
+              height: 22,
+              width: "70%",
+              borderRadius: 6,
+              background: "var(--border)",
+              animation: "shimmer 1.4s ease-in-out infinite",
+              backgroundImage:
+                "linear-gradient(90deg, var(--border) 0%, var(--border-subtle) 50%, var(--border) 100%)",
+              backgroundSize: "400% 100%",
+            }}
+          />
+          <div
+            style={{
+              height: 10,
+              width: "40%",
+              borderRadius: 6,
+              background: "var(--border)",
+              animation: "shimmer 1.4s ease-in-out infinite",
+              backgroundImage:
+                "linear-gradient(90deg, var(--border) 0%, var(--border-subtle) 50%, var(--border) 100%)",
+              backgroundSize: "400% 100%",
+            }}
+          />
         </div>
       </div>
     );
@@ -99,13 +154,18 @@ export function MetricCard({
           </span>
         )}
       </div>
-      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8 }}>
+      <div
+        style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8 }}
+      >
         <p className="metric-value">{value}</p>
         {sparkline && sparkline.length >= 2 && (
           <div style={{ flexShrink: 0, marginBottom: 4 }}>
             <Sparkline
               data={sparkline}
-              color={brandColor ?? (change !== undefined && change < 0 ? "var(--danger)" : "var(--success)")}
+              color={
+                brandColor ??
+                (change !== undefined && change < 0 ? "var(--danger)" : "var(--success)")
+              }
               height={28}
               width={72}
             />
@@ -117,17 +177,36 @@ export function MetricCard({
           <div className="metric-footer-row">
             {change !== undefined && (
               <span className={cn("metric-badge", isPositive ? "up" : "down")}>
-                {isPositive ? <CssArrowUp /> : <CssArrowDown />}{isPositive ? "+" : ""}{change.toFixed(1)}%
+                {isPositive ? <CssArrowUp /> : <CssArrowDown />}
+                {isPositive ? "+" : ""}
+                {change.toFixed(1)}%
               </span>
             )}
             {changeDiff !== undefined && change !== undefined && (
-              <span style={{ fontSize: 11, fontWeight: 600, color: isPositive ? "var(--success-text)" : "var(--danger-text)" }}>
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: isPositive ? "var(--success-text)" : "var(--danger-text)",
+                }}
+              >
                 {changeDiff}
               </span>
             )}
             {yoyChange !== undefined && (
-              <span style={{ fontSize: 10, fontWeight: 600, padding: "1px 6px", borderRadius: 6, background: isYoyPositive ? "var(--info-bg)" : "var(--danger-bg)", color: isYoyPositive ? "var(--info-text)" : "var(--danger-text)", marginLeft: 2 }}>
-                YoY {isYoyPositive ? "+" : ""}{yoyChange.toFixed(1)}%
+              <span
+                style={{
+                  fontSize: 10,
+                  fontWeight: 600,
+                  padding: "1px 6px",
+                  borderRadius: 6,
+                  background: isYoyPositive ? "var(--info-bg)" : "var(--danger-bg)",
+                  color: isYoyPositive ? "var(--info-text)" : "var(--danger-text)",
+                  marginLeft: 2,
+                }}
+              >
+                YoY {isYoyPositive ? "+" : ""}
+                {yoyChange.toFixed(1)}%
               </span>
             )}
           </div>

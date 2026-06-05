@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
 
     // ── Parse request ─────────────────────────────────────────────────────
     if (contentType.includes("application/json")) {
-      const body = await request.json() as {
+      const body = (await request.json()) as {
         targetUrl?: unknown;
         moneyPageUrls?: unknown;
         competitorDomains?: unknown;
@@ -78,10 +78,14 @@ export async function POST(request: NextRequest) {
       targetUrl = typeof body.targetUrl === "string" ? body.targetUrl.trim() : null;
       targetSource = "url";
       moneyPageUrls = Array.isArray(body.moneyPageUrls)
-        ? (body.moneyPageUrls as unknown[]).filter((u): u is string => typeof u === "string" && u.trim().length > 0).map(u => u.trim())
+        ? (body.moneyPageUrls as unknown[])
+            .filter((u): u is string => typeof u === "string" && u.trim().length > 0)
+            .map((u) => u.trim())
         : [];
       competitorDomains = Array.isArray(body.competitorDomains)
-        ? (body.competitorDomains as unknown[]).filter((u): u is string => typeof u === "string" && u.trim().length > 0).map(u => u.trim())
+        ? (body.competitorDomains as unknown[])
+            .filter((u): u is string => typeof u === "string" && u.trim().length > 0)
+            .map((u) => u.trim())
         : [];
       clientId = typeof body.clientId === "string" && body.clientId ? body.clientId : null;
       title = typeof body.title === "string" && body.title ? body.title.trim() : null;
@@ -100,7 +104,9 @@ export async function POST(request: NextRequest) {
         try {
           const parsed: unknown = JSON.parse(rawMoney);
           moneyPageUrls = Array.isArray(parsed)
-            ? (parsed as unknown[]).filter((u): u is string => typeof u === "string" && u.trim().length > 0).map(u => u.trim())
+            ? (parsed as unknown[])
+                .filter((u): u is string => typeof u === "string" && u.trim().length > 0)
+                .map((u) => u.trim())
             : [];
         } catch {
           moneyPageUrls = [];
@@ -113,15 +119,12 @@ export async function POST(request: NextRequest) {
     if (moneyPageUrls.length === 0) {
       return NextResponse.json(
         { error: "At least one money page URL is required." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (targetSource === "url" && !targetUrl) {
-      return NextResponse.json(
-        { error: "A target URL is required." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "A target URL is required." }, { status: 400 });
     }
 
     // Derive domain from target URL or first money page URL
@@ -133,7 +136,9 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Create pending DB record ──────────────────────────────────────────
-    const autoTitle = title || `Internal Linking — ${domain} (${new Date().toLocaleDateString("en-GB", { month: "short", year: "numeric" })})`;
+    const autoTitle =
+      title ||
+      `Internal Linking — ${domain} (${new Date().toLocaleDateString("en-GB", { month: "short", year: "numeric" })})`;
     const record = await prisma.internalLinkingPlan.create({
       data: {
         userId: session.user.id,
@@ -178,10 +183,17 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Discover blog posts from sitemap ──────────────────────────────────
-    const { posts: blogPosts, fallback: blogFallback } = await discoverBlogPosts(domain, targetText, moneyPageUrls);
+    const { posts: blogPosts, fallback: blogFallback } = await discoverBlogPosts(
+      domain,
+      targetText,
+      moneyPageUrls,
+    );
 
-    // ── Quick-win blog post identification (P4-10 SEMrush ranking) ────────
-    const quickWinUrls = await getQuickWinUrls(domain, blogPosts.map(b => b.url));
+    // ── Quick-win blog post identification (P4-10 SEO ranking) ────────
+    const quickWinUrls = await getQuickWinUrls(
+      domain,
+      blogPosts.map((b) => b.url),
+    );
 
     // ── Anchor text diversity map ─────────────────────────────────────────
     const anchorDiversityMap = buildAnchorDiversityMap(blogPosts);
@@ -190,7 +202,7 @@ export async function POST(request: NextRequest) {
       .map(([text]) => text)
       .slice(0, 30); // cap to avoid bloating the prompt
 
-    // ── Target page SEMrush keywords (keyword gap awareness) ─────────────
+    // ── Target page SEO keywords (keyword gap awareness) ─────────────
     let targetPageKeywords: SemrushKeywordData[] = [];
     if (targetSource === "url" && targetUrl) {
       targetPageKeywords = await getTargetPageKeywords(targetUrl);
@@ -199,7 +211,7 @@ export async function POST(request: NextRequest) {
     // ── GSC keyword data for the target page ──────────────────────────────
     let gscKeywords: GscKeywordData[] = [];
 
-    // ── Competitor discovery & SEMrush enrichment ─────────────────────────
+    // ── Competitor discovery & SEO enrichment ─────────────────────────
     // Load client-saved competitor domains if a client is linked
     let clientSavedDomains: string[] = [];
     if (clientId) {
@@ -211,7 +223,9 @@ export async function POST(request: NextRequest) {
         try {
           const parsed: unknown = JSON.parse(client.competitorDomains);
           if (Array.isArray(parsed)) {
-            clientSavedDomains = (parsed as unknown[]).filter((d): d is string => typeof d === "string" && d.trim().length > 0);
+            clientSavedDomains = (parsed as unknown[]).filter(
+              (d): d is string => typeof d === "string" && d.trim().length > 0,
+            );
           }
         } catch {
           // malformed JSON — ignore
@@ -241,23 +255,17 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Compute link budget ───────────────────────────────────────────────
-    const budget = computeLinkSplit(
-      recommendLinkCount(targetWordCount),
-      moneyPageMeta.length
-    );
+    const budget = computeLinkSplit(recommendLinkCount(targetWordCount), moneyPageMeta.length);
 
     // ── Build prompt ──────────────────────────────────────────────────────
     const targetExcerpt = targetText.slice(0, 6000);
 
     const moneyPagesContext = moneyPageMeta
-      .map(
-        mp =>
-          `URL: ${mp.url}\nTitle: ${mp.title}\nH1: ${mp.h1}\nMeta: ${mp.metaDescription}`
-      )
+      .map((mp) => `URL: ${mp.url}\nTitle: ${mp.title}\nH1: ${mp.h1}\nMeta: ${mp.metaDescription}`)
       .join("\n\n");
 
     const blogCorpus = JSON.stringify(
-      blogPosts.map(bp => ({
+      blogPosts.map((bp) => ({
         url: bp.url,
         title: bp.title,
         h1: bp.h1,
@@ -266,12 +274,12 @@ export async function POST(request: NextRequest) {
         quickWin: quickWinUrls.has(bp.url), // ranks P4-10 — prioritise as inbound source
       })),
       null,
-      0 // compact
+      0, // compact
     );
 
     // Existing outbound anchors from the target page (for post-filter)
     const existingAnchors =
-      parsedTarget?.outboundAnchors.map(a => `${a.href} — "${a.text}"`).join("\n") ?? "";
+      parsedTarget?.outboundAnchors.map((a) => `${a.href} — "${a.text}"`).join("\n") ?? "";
 
     const systemPrompt = `You are a senior SEO strategist specialising in internal linking architecture. You always write in British English.
 
@@ -336,27 +344,55 @@ ${moneyPagesContext}
 ${blogCorpus}
 
 ## Existing outbound anchors from the target page (DO NOT re-suggest these)
-${existingAnchors || "(none found)"}${gscKeywords.length > 0 ? `
+${existingAnchors || "(none found)"}${
+      gscKeywords.length > 0
+        ? `
 
 ## Target page's Google Search Console data (last 90 days)
 Real search performance — high impressions with low clicks signal keyword opportunities. Prioritise anchor text that reinforces these queries:
-${gscKeywords.map(k => `  pos ${k.position.toFixed(1)} | imp ${k.impressions} | clicks ${k.clicks} | ${k.keyword}`).join("\n")}` : ""}${targetPageKeywords.length > 0 ? `
+${gscKeywords.map((k) => `  pos ${k.position.toFixed(1)} | imp ${k.impressions} | clicks ${k.clicks} | ${k.keyword}`).join("\n")}`
+        : ""
+    }${
+      targetPageKeywords.length > 0
+        ? `
 
-## Target page's SEMrush keyword rankings
-${targetPageKeywords.map(k => `  pos ${k.position} | vol ${k.searchVolume.toLocaleString("en-GB")} | ${k.keyword}`).join("\n")}` : ""}${overUsedAnchors.length > 0 ? `
+## Target page's SEO keyword rankings
+${targetPageKeywords.map((k) => `  pos ${k.position} | vol ${k.searchVolume.toLocaleString("en-GB")} | ${k.keyword}`).join("\n")}`
+        : ""
+    }${
+      overUsedAnchors.length > 0
+        ? `
 
 ## Over-used anchor texts (used 3+ times across the site — DO NOT reuse)
-${overUsedAnchors.map(a => `  "${a}"`).join("\n")}` : ""}${competitorProfiles.length > 0 ? `
+${overUsedAnchors.map((a) => `  "${a}"`).join("\n")}`
+        : ""
+    }${
+      competitorProfiles.length > 0
+        ? `
 
 ## Verified business competitors & their top organic keywords
 Use this data to identify keyword opportunities and anchor text patterns the competitors rank for but the target doesn't yet link to.
-${competitorProfiles.map(c => `### ${c.domain} (source: ${c.discoveredBy})
+${competitorProfiles
+  .map(
+    (c) => `### ${c.domain} (source: ${c.discoveredBy})
 Top keywords (position | volume | keyword):
-${c.topKeywords.length > 0
-  ? c.topKeywords.slice(0, 10).map(k => `  pos ${k.position} | vol ${k.searchVolume.toLocaleString("en-GB")} | ${k.keyword}`).join("\n")
-  : c.aiTopics?.length
-    ? `  AI-inferred topics (no SEMrush data): ${c.aiTopics.join(", ")}`
-    : "  (no keyword data available)"}`).join("\n\n")}` : ""}
+${
+  c.topKeywords.length > 0
+    ? c.topKeywords
+        .slice(0, 10)
+        .map(
+          (k) =>
+            `  pos ${k.position} | vol ${k.searchVolume.toLocaleString("en-GB")} | ${k.keyword}`,
+        )
+        .join("\n")
+    : c.aiTopics?.length
+      ? `  AI-inferred topics (no SEO data): ${c.aiTopics.join(", ")}`
+      : "  (no keyword data available)"
+}`,
+  )
+  .join("\n\n")}`
+        : ""
+    }
 
 Please generate exactly ${budget.moneyPage} money-page link(s), ${budget.outbound} outbound link(s), and ${budget.inbound} inbound link(s). Prioritise the highest-value opportunities.`;
 
@@ -371,7 +407,7 @@ Please generate exactly ${budget.moneyPage} money-page link(s), ${budget.outboun
 
     await logAnthropicUsage("internal-linking", aiResponse);
 
-    const textBlock = aiResponse.content.find(b => b.type === "text");
+    const textBlock = aiResponse.content.find((b) => b.type === "text");
     const rawContent = textBlock && textBlock.type === "text" ? textBlock.text.trim() : "{}";
     const jsonMatch = rawContent.match(/```(?:json)?\s*([\s\S]*?)```/);
     const jsonStr = jsonMatch ? jsonMatch[1].trim() : rawContent;
@@ -391,11 +427,11 @@ Please generate exactly ${budget.moneyPage} money-page link(s), ${budget.outboun
 
     // ── Post-filter: remove already-present anchor pairs (Consideration 3) ─
     const existingAnchorsSet = new Set(
-      parsedTarget?.outboundAnchors.map(a => `${a.href}::${a.text.toLowerCase()}`) ?? []
+      parsedTarget?.outboundAnchors.map((a) => `${a.href}::${a.text.toLowerCase()}`) ?? [],
     );
 
     function filterSuggestions(suggestions: LinkSuggestion[]): LinkSuggestion[] {
-      return suggestions.filter(s => {
+      return suggestions.filter((s) => {
         const key = `${s.targetUrl}::${s.anchorText.toLowerCase()}`;
         return !existingAnchorsSet.has(key);
       });
@@ -409,11 +445,15 @@ Please generate exactly ${budget.moneyPage} money-page link(s), ${budget.outboun
 
     // ── Persist result ────────────────────────────────────────────────────
     const inputJson = {
-      sitemapSnapshot: blogPosts.map(b => b.url),
+      sitemapSnapshot: blogPosts.map((b) => b.url),
       parsedTargetWordCount: targetWordCount,
-      moneyPageMeta: moneyPageMeta.map(mp => ({ url: mp.url, title: mp.title, h1: mp.h1 })),
+      moneyPageMeta: moneyPageMeta.map((mp) => ({ url: mp.url, title: mp.title, h1: mp.h1 })),
       budgetUsed: budget,
-      competitorProfiles: competitorProfiles.map(c => ({ domain: c.domain, discoveredBy: c.discoveredBy, keywordCount: c.topKeywords.length })),
+      competitorProfiles: competitorProfiles.map((c) => ({
+        domain: c.domain,
+        discoveredBy: c.discoveredBy,
+        keywordCount: c.topKeywords.length,
+      })),
       quickWinCount: quickWinUrls.size,
       overUsedAnchorCount: overUsedAnchors.length,
       targetKeywordCount: targetPageKeywords.length,

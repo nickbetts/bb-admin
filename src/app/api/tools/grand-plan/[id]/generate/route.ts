@@ -146,7 +146,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
         if (suggestResult.adGroups.length > 0) {
           await setProgress(
-            `Researching ${suggestResult.adGroups.reduce((s, g) => s + g.keywords.length, 0)} keywords via SEMrush...`,
+            `Researching ${suggestResult.adGroups.reduce((s, g) => s + g.keywords.length, 0)} keywords via SEO...`,
           );
           const ideas = await researchKeywords(suggestResult.adGroups);
 

@@ -3,7 +3,7 @@ import { getGA4Overview } from "@/lib/ga4";
 import { getGoogleAdsOverview } from "@/lib/google-ads";
 import { getMetaAdsOverview } from "@/lib/meta";
 import { getGSCOverview } from "@/lib/search-console";
-import { getDomainOverview } from "@/lib/semrush";
+import { getDomainOverview } from "@/lib/seo-retired-defaults";
 import { getTikTokAdsOverview } from "@/lib/tiktok-ads";
 import { getMicrosoftAdsOverview } from "@/lib/microsoft-ads";
 import { getWooCommerceStats } from "@/lib/woocommerce";

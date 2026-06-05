@@ -24,7 +24,10 @@ const cacheCtx = new AsyncLocalStorage<{ bypass: boolean }>();
  * Inside the callback, every `withApiCache(...)` invocation honours the
  * bypass flag automatically — no explicit opts argument needed.
  */
-export function withCacheBypass<T>(request: Request | NextRequest, fn: () => Promise<T>): Promise<T> {
+export function withCacheBypass<T>(
+  request: Request | NextRequest,
+  fn: () => Promise<T>,
+): Promise<T> {
   return cacheCtx.run({ bypass: shouldBypassCache(request) }, fn);
 }
 
@@ -35,7 +38,7 @@ export function withCacheBypass<T>(request: Request | NextRequest, fn: () => Pro
  * calling the external API. Otherwise `fetchFn` is called, the result is
  * stored, and returned.
  *
- * @param key       Unique cache key – e.g. "semrush:overview:example.com:uk"
+ * @param key       Unique cache key – e.g. "seo:overview:example.com:uk"
  * @param ttlHours  How many hours the cached value is valid (default: 24)
  * @param fetchFn   Async function that calls the real external API
  * @param opts.bypass  When true, skip the cache read but still WRITE the
@@ -47,7 +50,7 @@ export async function withApiCache<T>(
   key: string,
   ttlHours: number,
   fetchFn: () => Promise<T>,
-  opts: { bypass?: boolean } = {}
+  opts: { bypass?: boolean } = {},
 ): Promise<T> {
   const now = new Date();
   const bypass = opts.bypass ?? cacheCtx.getStore()?.bypass ?? false;

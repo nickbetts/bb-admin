@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { getKeywordVolumeMetrics } from "@/lib/semrush";
+import { getKeywordVolumeMetrics } from "@/lib/seo-retired-defaults";
 import { crawlSiteForKeywordContext } from "@/lib/landing-page-analyzer";
 import { getOpenAiClient, logOpenAiUsage } from "@/lib/openai-client";
 import { prisma } from "@/lib/prisma";
@@ -39,9 +39,9 @@ interface SmartDefaultsBody {
 
 type RequestBody = SuggestBody | ResearchBody | SmartDefaultsBody;
 
-// ── Google Ads location ID → SEMrush database code ──────────────────────────
+// ── Google Ads location ID → SEO database code ──────────────────────────────
 
-const LOCATION_TO_SEMRUSH_DB: Record<string, string> = {
+const LOCATION_TO_SEO_DB: Record<string, string> = {
   "2826": "uk",
   "2840": "us",
   "2036": "au",
@@ -81,7 +81,9 @@ export async function POST(request: NextRequest) {
           : `(Website could not be crawled \u2014 use URL context only)`,
         ``,
         `Client brief: ${brief}`,
-      ].filter(Boolean).join("\n");
+      ]
+        .filter(Boolean)
+        .join("\n");
 
       const completion = await openai.chat.completions.create({
         model: "gpt-5.4-nano",
@@ -137,14 +139,22 @@ Return ONLY this JSON (no markdown, no explanation):
       await logOpenAiUsage("keyword-planner", completion);
 
       const raw = completion.choices[0]?.message?.content ?? "{}";
-      let parsed: { adGroups?: AdGroupSeed[]; rationale?: string; briefScope?: string; briefAnalysis?: string };
+      let parsed: {
+        adGroups?: AdGroupSeed[];
+        rationale?: string;
+        briefScope?: string;
+        briefAnalysis?: string;
+      };
       try {
         parsed = JSON.parse(raw);
       } catch {
         const match = raw.match(/\{[\s\S]*\}/);
         if (match) {
-          try { parsed = JSON.parse(match[0]); }
-          catch { parsed = { adGroups: [], rationale: "Could not parse AI response." }; }
+          try {
+            parsed = JSON.parse(match[0]);
+          } catch {
+            parsed = { adGroups: [], rationale: "Could not parse AI response." };
+          }
         } else {
           parsed = { adGroups: [], rationale: "Could not parse AI response." };
         }
@@ -197,10 +207,10 @@ Return ONLY this JSON (no markdown, no explanation):
         return NextResponse.json({ error: "No keywords provided." }, { status: 400 });
       }
 
-      // Map location ID to SEMrush database
-      const database = LOCATION_TO_SEMRUSH_DB[location ?? "2826"] ?? "uk";
+      // Map location ID to SEO database
+      const database = LOCATION_TO_SEO_DB[location ?? "2826"] ?? "uk";
 
-      // Fetch keyword volume data via SEMrush
+      // Fetch keyword volume data via SEO data provider
       const rawIdeas = await getKeywordVolumeMetrics(allKeywords, database);
 
       // Filter to keywords that match our original keyword list (volume filter already applied inside)
@@ -256,7 +266,9 @@ Example: { "conversionRate": 4.5, "reasoning": "Local plumbing services convert 
               `Website: ${website}`,
               brief ? `Business description: ${brief}` : "",
               keywords.length ? `Top keywords: ${keywords.slice(0, 15).join(", ")}` : "",
-            ].filter(Boolean).join("\n"),
+            ]
+              .filter(Boolean)
+              .join("\n"),
           },
         ],
       });
@@ -269,7 +281,12 @@ Example: { "conversionRate": 4.5, "reasoning": "Local plumbing services convert 
         result = JSON.parse(raw);
       } catch {
         const match = raw.match(/\{[\s\S]*\}/);
-        if (match) try { result = JSON.parse(match[0]); } catch { /* ignore */ }
+        if (match)
+          try {
+            result = JSON.parse(match[0]);
+          } catch {
+            /* ignore */
+          }
       }
 
       const cr =

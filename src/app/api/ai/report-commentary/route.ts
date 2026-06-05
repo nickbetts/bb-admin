@@ -12,7 +12,7 @@ const SECTION_LABELS: Record<string, string> = {
   overview: "Overview & Commentary",
   ga4: "Google Analytics 4 (Website Traffic)",
   web: "Google Analytics 4 (Website Traffic)",
-  seo: "SEO / Organic Search (SEMrush)",
+  seo: "SEO / Organic Search (SEO)",
   googleads: "Google Ads (Paid Search)",
   paid_social: "Paid Social (Meta Ads)",
   meta: "Paid Social (Meta Ads)",
@@ -298,7 +298,7 @@ ${spinInstruction}
 
 SECTION-SPECIFIC GUIDANCE:
 - For paid channels (Google Ads, Meta, TikTok, Microsoft Ads, LinkedIn): reference spend efficiency, ROAS/CPA trends, and conversion performance. Mention specific campaigns or ads by name if campaign data is provided. Note any optimisation work underway.
-- For organic channels (SEO/SemRush, Search Console): focus on visibility trends, keyword growth, and traffic quality. Frame ranking improvements as ongoing strategy outcomes.
+- For organic channels (SEO/SEO, Search Console): focus on visibility trends, keyword growth, and traffic quality. Frame ranking improvements as ongoing strategy outcomes.
 - For website analytics (GA4): discuss traffic quality, user engagement, and conversion patterns. Relate to the broader marketing effort across channels.
 - For email (Klaviyo): highlight campaign performance, engagement trends, and revenue impact. Reference specific high-performing campaigns.
 - For CRM (HubSpot): discuss pipeline health and lead progression. Tie back to marketing activity outcomes.

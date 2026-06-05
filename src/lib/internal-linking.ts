@@ -18,7 +18,7 @@ import {
   getTopOrganicKeywords,
   getUrlOrganicKeywords,
   type SemrushKeywordData,
-} from "@/lib/semrush";
+} from "@/lib/seo-retired-defaults";
 import { getGSCQueryPageCombos } from "@/lib/search-console";
 import { withApiCache } from "@/lib/api-cache";
 
@@ -53,7 +53,7 @@ export interface CompetitorProfile {
   domain: string;
   topKeywords: { keyword: string; searchVolume: number; position: number }[];
   discoveredBy: "user" | "client" | "ai";
-  /** Keyword topics inferred by AI web search when SEMrush has no data */
+  /** Keyword topics inferred by AI web search when SEO provider data has no data */
   aiTopics?: string[];
 }
 
@@ -429,14 +429,14 @@ Select the ${MAX_BLOG_POSTS} most topically relevant URLs.`;
 
 /**
  * Build a list of up to 5 true business competitors, then enrich each with
- * SEMrush organic keyword data.
+ * organic keyword data.
  *
  * Priority order for competitor sources:
  *   1. userProvidedDomains   — passed explicitly in the API request body
  *   2. clientSavedDomains    — stored in the Client.competitorDomains DB field
  *   3. AI web-search         — only used to fill gaps when total < 5
  *
- * SEMrush's own keyword-overlap competitor detection is intentionally NOT used.
+ * Keyword-overlap competitor detection is intentionally NOT used.
  */
 export async function discoverAndAnalyseCompetitors(
   targetDomain: string,
@@ -513,11 +513,11 @@ Return ONLY a JSON array of ${needed + 2} competitor domain names (no www prefix
   // ── 3. Cap at 5 ───────────────────────────────────────────────────────────
   const competitors = merged.slice(0, 5);
 
-  // ── 4. SEMrush enrichment ─────────────────────────────────────────────────
+  // ── 4. SEO enrichment ─────────────────────────────────────────────────────
   const profiles: CompetitorProfile[] = await Promise.all(
     competitors.map(async ({ domain, source }) => {
       try {
-        const keywords = await withApiCache(`semrush-top-kws:${domain}`, 24, () =>
+        const keywords = await withApiCache(`seo-top-kws:${domain}`, 24, () =>
           getTopOrganicKeywords(domain, "uk", 20),
         );
         return {
@@ -530,14 +530,14 @@ Return ONLY a JSON array of ${needed + 2} competitor domain names (no www prefix
           discoveredBy: source,
         } satisfies CompetitorProfile;
       } catch (err) {
-        console.error(`[internal-linking] SEMrush enrichment failed for ${domain}:`, err);
+        console.error(`[internal-linking] SEO enrichment failed for ${domain}:`, err);
         return { domain, topKeywords: [], discoveredBy: source } satisfies CompetitorProfile;
       }
     }),
   );
 
-  // ── 5. AI fallback for competitors with no SEMrush keyword data ───────────
-  // SEMrush only tracks domains with sufficient indexed keywords. Small or
+  // ── 5. AI fallback for competitors with no keyword data ───────────────────
+  // Some providers only track domains with sufficient indexed keywords. Small or
   // niche sites may legitimately return 0 results. Use AI web search to
   // infer the topics/keywords they target so Claude still has useful signal.
   for (const profile of profiles) {
@@ -608,7 +608,7 @@ export function computeLinkSplit(total: number, moneyPageCount: number): LinkBud
 // ─── Quick-win URL detection ──────────────────────────────────────────────────
 
 /**
- * Cross-reference the blog corpus with domain-level SEMrush data to identify
+ * Cross-reference the blog corpus with domain-level SEO keyword data to identify
  * blog posts that rank P4-10 — these are "quick wins" for inbound links
  * because they already have Google trust and just need a nudge.
  *
@@ -618,7 +618,7 @@ export async function getQuickWinUrls(domain: string, blogUrls: string[]): Promi
   if (blogUrls.length === 0) return new Set();
 
   try {
-    const keywords = await withApiCache(`semrush-domain-organic:${domain}:200`, 24, () =>
+    const keywords = await withApiCache(`seo-domain-organic:${domain}:200`, 24, () =>
       getTopOrganicKeywords(domain, "uk", 200),
     );
 
@@ -675,11 +675,11 @@ export function buildAnchorDiversityMap(pages: ParsedPage[]): Map<string, number
 
 /**
  * Fetch the organic keywords the target URL already ranks for.
- * Returns empty array silently if SEMrush is unavailable.
+ * Returns empty array silently if keyword data is unavailable.
  */
 export async function getTargetPageKeywords(url: string): Promise<SemrushKeywordData[]> {
   try {
-    return await withApiCache(`semrush-url-organic:${url}`, 24, () =>
+    return await withApiCache(`seo-url-organic:${url}`, 24, () =>
       getUrlOrganicKeywords(url, "uk", 25),
     );
   } catch (err) {

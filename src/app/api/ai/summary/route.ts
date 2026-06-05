@@ -506,7 +506,7 @@ const SECTION_CONFIGS: Record<
     },
   },
   seo: {
-    name: "SEO (SemRush)",
+    name: "SEO (SEO)",
     higherIsBetter: [
       "organicTraffic",
       "organicKeywords",
@@ -909,7 +909,7 @@ KEY PATTERNS TO IDENTIFY:
 - Session duration dropping → page experience issue or thin content → review top landing pages for content depth and load speed.
 SUGGEST ACTIONS AROUND: traffic source investigation, landing page experience improvements, conversion funnel analysis, tracking/tagging fixes, content and UX changes, audience quality assessment, and cross-channel attribution.`,
 
-        semrush: `You are a senior SEO specialist at a UK digital marketing agency analysing SEMrush organic search visibility data.
+        seo: `You are a senior SEO specialist at a UK digital marketing agency analysing SEO organic search visibility data.
 DATA AVAILABLE: organic traffic estimate, organic keywords count, traffic value (£), paid traffic, paid keywords. You may also receive top organic keywords with position changes and competitor landscape data (competitor domains with their organic traffic, keywords, and domain authority).
 CRITICAL CONSTRAINT: Do not suggest paid media actions — this is organic visibility data.
 KEY PATTERNS TO IDENTIFY:
@@ -1246,7 +1246,7 @@ INSTRUCTIONS:
 5. Where budget changes are recommended, state the specific amount (e.g. "Increase from £20/day to £28/day") if the data supports it.
 6. For bid strategy changes, name the exact strategy to apply (e.g. "Switch to Target CPA at £18" or "Apply a +15% mobile bid adjustment") and the exact location in the platform (e.g. "Google Ads → Campaigns → [name] → Settings → Bidding").
 7. For audience changes, name the exact audience segments to create or exclude and reference specific ad sets or campaigns by name.
-8. USE THE KEYWORD AND SEARCH TERM DATA: if crossPlatformContext includes "Google Ads Top Search Terms", identify wasted spend terms (clicks + cost, 0 conversions) and name them as negatives to add. Identify high-converting terms and flag them for exact-match campaigns or bid adjustments. If it includes "Search Console Top Queries" or "SEMrush Top Keywords", identify queries with: (a) position 4–10 with decent volume → content or bid optimisation opportunity; (b) position worsening vs previous period → content refresh needed; (c) high impressions but low CTR → title/meta description fix. Name the specific queries in your recommendation.
+8. USE THE KEYWORD AND SEARCH TERM DATA: if crossPlatformContext includes "Google Ads Top Search Terms", identify wasted spend terms (clicks + cost, 0 conversions) and name them as negatives to add. Identify high-converting terms and flag them for exact-match campaigns or bid adjustments. If it includes "Search Console Top Queries" or "SEO Top Keywords", identify queries with: (a) position 4–10 with decent volume → content or bid optimisation opportunity; (b) position worsening vs previous period → content refresh needed; (c) high impressions but low CTR → title/meta description fix. Name the specific queries in your recommendation.
 9. USE THE GA4 TRAFFIC SOURCE DATA: if crossPlatformContext includes "GA4 Traffic Sources", identify which source/medium combinations have high bounce rate or low conversions despite session volume — name them and recommend specific actions (e.g. "google/cpc has 12% bounce but 0 conversions — check landing page alignment").
 10. Identify any signals that CONTRADICT each other and explain the trade-off.
 11. Do NOT repeat signals verbatim — synthesise them into a strategic narrative.
@@ -1287,7 +1287,7 @@ Output the result as clean HTML only — no markdown, no code fences, no preambl
 
     const openai = await getOpenAiClient();
 
-    // Fetch competitor context for SEO/SemRush section types
+    // Fetch competitor context for SEO/SEO section types
     let competitorContext = "";
     if (clientId && (sectionType === "seo" || sectionType === "searchconsole")) {
       try {
@@ -1478,7 +1478,7 @@ For PAID SOCIAL (Meta Ads, TikTok, LinkedIn):
 - For TikTok specifically: all recommendations must consider video-first, UGC-native creative format.
 - For LinkedIn specifically: frame CPC/CPL in context of B2B lead value, not just raw cost.
 
-For SEO (SemRush, Search Console): Focus on organic visibility trends, keyword position movements, CTR optimisation, and competitive context when competitor data is provided. NEVER suggest paid media actions for organic channels.
+For SEO (SEO, Search Console): Focus on organic visibility trends, keyword position movements, CTR optimisation, and competitive context when competitor data is provided. NEVER suggest paid media actions for organic channels.
 
 For WEB ANALYTICS (GA4): Investigate traffic quality and on-site behaviour. Cross-reference with traffic source data. Focus on conversion rate trends, engagement patterns, and funnel drop-off points. Do not suggest platform-specific budget changes unless data clearly ties to a specific paid channel.
 

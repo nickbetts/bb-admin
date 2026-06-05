@@ -37,7 +37,7 @@ const BOT_UA_PATTERNS = [
   "facebookexternalhit",
   "twitterbot",
   "linkedinbot",
-  "semrushbot",
+  "seobot",
   "ahrefsbot",
   "mj12bot",
   "dotbot",
@@ -106,7 +106,7 @@ function resolveClientIp(request: NextRequest): string {
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ token: string }> }
+  { params }: { params: Promise<{ token: string }> },
 ) {
   try {
     const { token } = await params;
@@ -175,13 +175,19 @@ export async function POST(
       },
     });
 
-    return NextResponse.json({ ok: true, blocked: isSuspicious }, {
-      headers: { "Access-Control-Allow-Origin": "*" },
-    });
+    return NextResponse.json(
+      { ok: true, blocked: isSuspicious },
+      {
+        headers: { "Access-Control-Allow-Origin": "*" },
+      },
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("Click protection event error:", error);
-    return NextResponse.json({ error: message }, { status: 500, headers: { "Access-Control-Allow-Origin": "*" } });
+    return NextResponse.json(
+      { error: message },
+      { status: 500, headers: { "Access-Control-Allow-Origin": "*" } },
+    );
   }
 }
 
@@ -196,4 +202,3 @@ export async function OPTIONS() {
     },
   });
 }
-

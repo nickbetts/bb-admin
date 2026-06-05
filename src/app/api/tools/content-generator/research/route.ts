@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { withApiCache } from "@/lib/api-cache";
-import { getDomainOverview, getTopOrganicKeywords } from "@/lib/semrush";
+import { getDomainOverview, getTopOrganicKeywords } from "@/lib/seo-retired-defaults";
 import { detectCompetitors, validateCompetitor } from "@/lib/competitor-research";
 import { generateIdeas } from "@/lib/content-generator";
 import type { ContentType, CompetitorContext } from "@/lib/content-generator";
@@ -10,7 +10,7 @@ import type { ContentType, CompetitorContext } from "@/lib/content-generator";
 export const dynamic = "force-dynamic";
 
 // POST /api/tools/content-generator/research
-// Runs SemRush research + competitor scraping + Claude idea generation.
+// Runs SEO research + competitor scraping + Claude idea generation.
 // Body: { id, competitors?: string[], database?: string }
 export async function POST(request: NextRequest) {
   const session = await getSession();
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
       .replace(/^www\./, "")
       .replace(/\/$/, "");
 
-    // ── SemRush research ────────────────────────────────────────────────────
+    // ── SEO research ────────────────────────────────────────────────────────
     const [domainOverview, topKeywords] = await Promise.all([
       rawDomain
         ? withApiCache(`cg:domain-overview:${rawDomain}:${db}`, 48, () =>
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
         : Promise.resolve([]),
     ]);
 
-    const semrushContext = {
+    const seoContext = {
       domain: rawDomain || undefined,
       organicKeywords: domainOverview?.organicKeywords,
       organicTraffic: domainOverview?.organicTraffic,
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
     let competitorData: CompetitorContext[] = [];
 
     if (rawDomain) {
-      // Auto-detect via SemRush (up to 5)
+      // Auto-detect via keyword overlap (up to 5)
       const autoDetected = await detectCompetitors(rawDomain, db).catch(() => []);
       competitorData = autoDetected.map((c) => ({
         domain: c.domain,
@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
       data: {
         statusMessage: "Generating content ideas…",
         competitorsJson,
-        keywordResearchJson: JSON.stringify(semrushContext),
+        keywordResearchJson: JSON.stringify(seoContext),
       },
     });
 
@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
     const ideas = await generateIdeas({
       brief: record.brief,
       contentTypes,
-      semrushContext,
+      seoContext,
       competitors: competitorData,
       clientName: record.client.name,
       clientWebsite: rawDomain || record.websiteUrl || undefined,
@@ -151,7 +151,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ ideas, semrushContext, competitors: competitorData });
+    return NextResponse.json({ ideas, seoContext, competitors: competitorData });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("Content generator research error:", error);

@@ -69,7 +69,7 @@ export async function getPinterestAdsOverview(
   accountId: string,
   accessToken: string,
   startDate: string,
-  endDate: string
+  endDate: string,
 ): Promise<PinterestAdsOverview> {
   const response = await fetch(`https://api.pinterest.com/v5/ad_accounts/${accountId}/analytics`, {
     method: "GET",
@@ -100,6 +100,7 @@ export async function getPinterestAdsOverview(
 ```
 
 Key rules for the lib file:
+
 - Export named interfaces for each return type.
 - Always provide `?? 0` / `?? ""` fallbacks — external APIs are unreliable.
 - Throw `new Error("ChannelName API error: ...")` on non-OK responses.
@@ -123,10 +124,10 @@ export async function GET(request: NextRequest) {
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { searchParams } = new URL(request.url);
-    const clientId  = searchParams.get("clientId");
-    const type      = searchParams.get("type") ?? "overview";
+    const clientId = searchParams.get("clientId");
+    const type = searchParams.get("type") ?? "overview";
     const startDate = searchParams.get("startDate") ?? "30daysAgo";
-    const endDate   = searchParams.get("endDate") ?? "today";
+    const endDate = searchParams.get("endDate") ?? "today";
 
     if (!clientId) return NextResponse.json({ error: "clientId is required" }, { status: 400 });
 
@@ -137,7 +138,10 @@ export async function GET(request: NextRequest) {
     });
 
     if (!client?.pinterestAdsAccountId || !client?.pinterestAdsAccessToken) {
-      return NextResponse.json({ error: "Pinterest Ads not configured for this client" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Pinterest Ads not configured for this client" },
+        { status: 400 },
+      );
     }
 
     const { pinterestAdsAccountId: accountId, pinterestAdsAccessToken: accessToken } = client;
@@ -146,11 +150,15 @@ export async function GET(request: NextRequest) {
     switch (type) {
       case "overview":
         return NextResponse.json(
-          await withApiCache(cacheKey, 4, () => getPinterestAdsOverview(accountId, accessToken, startDate, endDate))
+          await withApiCache(cacheKey, 4, () =>
+            getPinterestAdsOverview(accountId, accessToken, startDate, endDate),
+          ),
         );
       case "campaigns":
         return NextResponse.json(
-          await withApiCache(cacheKey, 4, () => getPinterestAdsCampaigns(accountId, accessToken, startDate, endDate))
+          await withApiCache(cacheKey, 4, () =>
+            getPinterestAdsCampaigns(accountId, accessToken, startDate, endDate),
+          ),
         );
       default:
         return NextResponse.json({ error: "Invalid type" }, { status: 400 });
@@ -164,8 +172,9 @@ export async function GET(request: NextRequest) {
 ```
 
 Cache TTL guidance:
+
 - 4 hours — channels with today's data (most paid channels)
-- 24 hours — daily-refresh only channels (SemRush, Moz)
+- 24 hours — daily-refresh only channels (SEO, Moz)
 - 1 hour — near-realtime channels
 
 ### 4. Report blocks (`src/lib/report-blocks.ts`)
@@ -187,12 +196,12 @@ Follow the GA4Section component as a template. Key props interface:
 ```typescript
 interface PinterestAdsSectionProps {
   accountId: string;
-  accessToken: string;           // Or fetch via clientId if preferred
+  accessToken: string; // Or fetch via clientId if preferred
   startDate: string;
   endDate: string;
   compareStartDate?: string;
   compareEndDate?: string;
-  visibleBlocks?: string[];      // Controls which blocks to render
+  visibleBlocks?: string[]; // Controls which blocks to render
   clientId?: string;
   clientName?: string;
   crossPlatformContext?: string;
@@ -203,6 +212,7 @@ interface PinterestAdsSectionProps {
 ```
 
 Inside the component:
+
 - Use `useState` / `useEffect` to fetch from `"/api/pinterest-ads?type=overview&..."`.
 - Check `visibleBlocks` before rendering each block: `if (!isBlockVisible("kpis", visibleBlocks)) return null`.
 - Include `<AiInsightsPanel>` for AI commentary (pass `sectionType="pinterest_ads"` and the loaded metrics).

@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
 
   try {
-    const body = await request.json() as {
+    const body = (await request.json()) as {
       targetUrls?: unknown;
       moneyPageUrls?: unknown;
       competitorDomains?: unknown;
@@ -71,13 +71,20 @@ export async function POST(request: NextRequest) {
     };
 
     const targetUrls = Array.isArray(body.targetUrls)
-      ? (body.targetUrls as unknown[]).filter((u): u is string => typeof u === "string" && u.trim().length > 0).map(u => u.trim()).slice(0, 8)
+      ? (body.targetUrls as unknown[])
+          .filter((u): u is string => typeof u === "string" && u.trim().length > 0)
+          .map((u) => u.trim())
+          .slice(0, 8)
       : [];
     const moneyPageUrls = Array.isArray(body.moneyPageUrls)
-      ? (body.moneyPageUrls as unknown[]).filter((u): u is string => typeof u === "string" && u.trim().length > 0).map(u => u.trim())
+      ? (body.moneyPageUrls as unknown[])
+          .filter((u): u is string => typeof u === "string" && u.trim().length > 0)
+          .map((u) => u.trim())
       : [];
     const competitorDomains = Array.isArray(body.competitorDomains)
-      ? (body.competitorDomains as unknown[]).filter((u): u is string => typeof u === "string" && u.trim().length > 0).map(u => u.trim())
+      ? (body.competitorDomains as unknown[])
+          .filter((u): u is string => typeof u === "string" && u.trim().length > 0)
+          .map((u) => u.trim())
       : [];
     const clientId = typeof body.clientId === "string" && body.clientId ? body.clientId : null;
     const titlePrefix = typeof body.title === "string" && body.title ? body.title.trim() : null;
@@ -86,7 +93,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "At least one target URL is required." }, { status: 400 });
     }
     if (moneyPageUrls.length === 0) {
-      return NextResponse.json({ error: "At least one money page URL is required." }, { status: 400 });
+      return NextResponse.json(
+        { error: "At least one money page URL is required." },
+        { status: 400 },
+      );
     }
 
     let domain: string;
@@ -98,18 +108,30 @@ export async function POST(request: NextRequest) {
 
     // ── Shared corpus (run once for all URLs) ─────────────────────────────
     const moneyPageResults = await Promise.allSettled(
-      moneyPageUrls.map(u =>
-        withApiCache(`internal-linking:money-page:${u}`, 24, () => fetchAndParsePage(u))
-      )
+      moneyPageUrls.map((u) =>
+        withApiCache(`internal-linking:money-page:${u}`, 24, () => fetchAndParsePage(u)),
+      ),
     );
     const moneyPageMeta: Awaited<ReturnType<typeof fetchAndParsePage>>[] = moneyPageResults
-      .filter((r): r is PromiseFulfilledResult<Awaited<ReturnType<typeof fetchAndParsePage>>> => r.status === "fulfilled")
-      .map(r => r.value);
+      .filter(
+        (r): r is PromiseFulfilledResult<Awaited<ReturnType<typeof fetchAndParsePage>>> =>
+          r.status === "fulfilled",
+      )
+      .map((r) => r.value);
 
     // Use combined text from money pages as topic context for sitemap preselection
-    const sharedTopicText = moneyPageMeta.map(mp => `${mp.title} ${mp.h1} ${mp.metaDescription}`).join(" ");
-    const { posts: blogPosts, fallback: blogFallback } = await discoverBlogPosts(domain, sharedTopicText, moneyPageUrls);
-    const quickWinUrls = await getQuickWinUrls(domain, blogPosts.map(b => b.url));
+    const sharedTopicText = moneyPageMeta
+      .map((mp) => `${mp.title} ${mp.h1} ${mp.metaDescription}`)
+      .join(" ");
+    const { posts: blogPosts, fallback: blogFallback } = await discoverBlogPosts(
+      domain,
+      sharedTopicText,
+      moneyPageUrls,
+    );
+    const quickWinUrls = await getQuickWinUrls(
+      domain,
+      blogPosts.map((b) => b.url),
+    );
     const anchorDiversityMap = buildAnchorDiversityMap(blogPosts);
     const overUsedAnchors = Array.from(anchorDiversityMap.entries())
       .filter(([, count]) => count >= 3)
@@ -128,9 +150,13 @@ export async function POST(request: NextRequest) {
         try {
           const parsed: unknown = JSON.parse(client.competitorDomains);
           if (Array.isArray(parsed)) {
-            clientSavedDomains = (parsed as unknown[]).filter((d): d is string => typeof d === "string" && d.trim().length > 0);
+            clientSavedDomains = (parsed as unknown[]).filter(
+              (d): d is string => typeof d === "string" && d.trim().length > 0,
+            );
           }
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
       }
       gscSiteUrl = client?.searchConsoleSiteUrl ?? null;
     }
@@ -150,7 +176,7 @@ export async function POST(request: NextRequest) {
     }
 
     const blogCorpus = JSON.stringify(
-      blogPosts.map(bp => ({
+      blogPosts.map((bp) => ({
         url: bp.url,
         title: bp.title,
         h1: bp.h1,
@@ -159,11 +185,11 @@ export async function POST(request: NextRequest) {
         quickWin: quickWinUrls.has(bp.url),
       })),
       null,
-      0
+      0,
     );
 
     const moneyPagesContext = moneyPageMeta
-      .map(mp => `URL: ${mp.url}\nTitle: ${mp.title}\nH1: ${mp.h1}\nMeta: ${mp.metaDescription}`)
+      .map((mp) => `URL: ${mp.url}\nTitle: ${mp.title}\nH1: ${mp.h1}\nMeta: ${mp.metaDescription}`)
       .join("\n\n");
 
     // ── Run AI analysis for each target URL sequentially ──────────────────
@@ -206,7 +232,9 @@ export async function POST(request: NextRequest) {
           : [];
 
         const budget = computeLinkSplit(recommendLinkCount(targetWordCount), moneyPageMeta.length);
-        const existingAnchors = parsedTarget.outboundAnchors.map(a => `${a.href} — "${a.text}"`).join("\n");
+        const existingAnchors = parsedTarget.outboundAnchors
+          .map((a) => `${a.href} — "${a.text}"`)
+          .join("\n");
 
         const targetExcerpt = targetText.slice(0, 6000);
 
@@ -248,27 +276,52 @@ ${moneyPagesContext}
 ${blogCorpus}
 
 ## Existing outbound anchors (DO NOT re-suggest)
-${existingAnchors || "(none found)"}${gscKeywords.length > 0 ? `
+${existingAnchors || "(none found)"}${
+          gscKeywords.length > 0
+            ? `
 
 ## Target page's Google Search Console data (last 90 days)
 Real search performance — high impressions with low clicks signal keyword opportunities:
-${gscKeywords.map(k => `  pos ${k.position.toFixed(1)} | imp ${k.impressions} | clicks ${k.clicks} | ${k.keyword}`).join("\n")}` : ""}${targetPageKeywords.length > 0 ? `
+${gscKeywords.map((k) => `  pos ${k.position.toFixed(1)} | imp ${k.impressions} | clicks ${k.clicks} | ${k.keyword}`).join("\n")}`
+            : ""
+        }${
+          targetPageKeywords.length > 0
+            ? `
 
-## Target page SEMrush keyword rankings
-${targetPageKeywords.map(k => `  pos ${k.position} | vol ${k.searchVolume.toLocaleString("en-GB")} | ${k.keyword}`).join("\n")}` : ""}${overUsedAnchors.length > 0 ? `
+## Target page SEO keyword rankings
+${targetPageKeywords.map((k) => `  pos ${k.position} | vol ${k.searchVolume.toLocaleString("en-GB")} | ${k.keyword}`).join("\n")}`
+            : ""
+        }${
+          overUsedAnchors.length > 0
+            ? `
 
 ## Over-used anchor texts (DO NOT reuse)
-${overUsedAnchors.map(a => `  "${a}"`).join("\n")}` : ""}${competitorProfiles.length > 0 ? `
+${overUsedAnchors.map((a) => `  "${a}"`).join("\n")}`
+            : ""
+        }${
+          competitorProfiles.length > 0
+            ? `
 
 ## Competitors & top keywords
-${competitorProfiles.map(c => {
-          const kwData = c.topKeywords.length > 0
-            ? c.topKeywords.slice(0, 10).map(k => `  pos ${k.position} | vol ${k.searchVolume.toLocaleString("en-GB")} | ${k.keyword}`).join("\n")
-            : c.aiTopics?.length
-              ? `  AI-inferred topics: ${c.aiTopics.join(", ")}`
-              : "  (no data)";
-          return `### ${c.domain}\n${kwData}`;
-        }).join("\n\n")}` : ""}
+${competitorProfiles
+  .map((c) => {
+    const kwData =
+      c.topKeywords.length > 0
+        ? c.topKeywords
+            .slice(0, 10)
+            .map(
+              (k) =>
+                `  pos ${k.position} | vol ${k.searchVolume.toLocaleString("en-GB")} | ${k.keyword}`,
+            )
+            .join("\n")
+        : c.aiTopics?.length
+          ? `  AI-inferred topics: ${c.aiTopics.join(", ")}`
+          : "  (no data)";
+    return `### ${c.domain}\n${kwData}`;
+  })
+  .join("\n\n")}`
+            : ""
+        }
 
 Generate exactly ${budget.moneyPage} money-page link(s), ${budget.outbound} outbound link(s), and ${budget.inbound} inbound link(s).`;
 
@@ -279,7 +332,7 @@ Generate exactly ${budget.moneyPage} money-page link(s), ${budget.outbound} outb
           messages: [{ role: "user", content: userPrompt }],
         });
 
-        const textBlock = aiResponse.content.find(b => b.type === "text");
+        const textBlock = aiResponse.content.find((b) => b.type === "text");
         const rawContent = textBlock && textBlock.type === "text" ? textBlock.text.trim() : "{}";
         const jsonMatch = rawContent.match(/```(?:json)?\s*([\s\S]*?)```/);
         const jsonStr = jsonMatch ? jsonMatch[1].trim() : rawContent;
@@ -288,14 +341,20 @@ Generate exactly ${budget.moneyPage} money-page link(s), ${budget.outbound} outb
         try {
           result = JSON.parse(jsonStr) as PlanResult;
         } catch {
-          result = { summary: "Analysis complete.", moneyPageLinks: [], outboundLinks: [], inboundLinks: [], warnings: ["Failed to parse AI response."] };
+          result = {
+            summary: "Analysis complete.",
+            moneyPageLinks: [],
+            outboundLinks: [],
+            inboundLinks: [],
+            warnings: ["Failed to parse AI response."],
+          };
         }
 
         const existingAnchorsSet = new Set(
-          parsedTarget.outboundAnchors.map(a => `${a.href}::${a.text.toLowerCase()}`)
+          parsedTarget.outboundAnchors.map((a) => `${a.href}::${a.text.toLowerCase()}`),
         );
         const filterSuggestions = (s: LinkSuggestion[]) =>
-          s.filter(s => !existingAnchorsSet.has(`${s.targetUrl}::${s.anchorText.toLowerCase()}`));
+          s.filter((s) => !existingAnchorsSet.has(`${s.targetUrl}::${s.anchorText.toLowerCase()}`));
         result.moneyPageLinks = filterSuggestions(result.moneyPageLinks ?? []);
         result.outboundLinks = filterSuggestions(result.outboundLinks ?? []);
 
@@ -304,7 +363,7 @@ Generate exactly ${budget.moneyPage} money-page link(s), ${budget.outbound} outb
           data: {
             targetWordCount,
             inputJson: {
-              sitemapSnapshot: blogPosts.map(b => b.url),
+              sitemapSnapshot: blogPosts.map((b) => b.url),
               parsedTargetWordCount: targetWordCount,
               budgetUsed: budget,
               quickWinCount: quickWinUrls.size,
@@ -326,7 +385,9 @@ Generate exactly ${budget.moneyPage} money-page link(s), ${budget.outbound} outb
           where: { id: record.id },
           data: {
             generationStatus: "failed",
-            inputJson: { error: planError instanceof Error ? planError.message : "Unknown error" } as object,
+            inputJson: {
+              error: planError instanceof Error ? planError.message : "Unknown error",
+            } as object,
           },
         });
       }

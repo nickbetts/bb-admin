@@ -76,9 +76,6 @@ SESSION_SECRET="your-session-secret"       # HMAC signing key (openssl rand -bas
 # ─── Vercel Blob (screenshots + logos) ────────────────────────────
 BLOB_READ_WRITE_TOKEN="vercel_blob_rw_..."
 
-# ─── SEO ──────────────────────────────────────────────────────
-SEMRUSH_API_KEY="your-seo-api-key"
-
 # ─── Google (GA4 + Search Console + YouTube — service account) ────
 GA4_CLIENT_EMAIL="service-account@project.iam.gserviceaccount.com"
 GA4_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
@@ -141,9 +138,8 @@ For CI or build environments where you don't need real API access, every variabl
 
 ### SEO
 
-1. Get your API key from [SEO API](https://www.seo.com/api-analytics/)
-2. Add `SEMRUSH_API_KEY` to `.env.local`
-3. Per client: set the **SEO Domain** (and optionally a **Project ID**) in client settings
+1. Set each client's **SEO Domain** in client settings.
+2. If your configured SEO provider requires credentials, add them in the app settings UI rather than as a global `.env.local` variable.
 
 ### Google Analytics 4 & Search Console (Service Account)
 
@@ -303,7 +299,6 @@ In your Vercel project dashboard: **Storage → Create → Blob**. Vercel auto-a
 | `SESSION_SECRET`                | `openssl rand -base64 32`                                                                              |
 | `BLOB_READ_WRITE_TOKEN`         | _(auto-set by Vercel Blob)_                                                                            |
 | `JINA_API_KEY`                  | Optional — Jina.ai Reader key for JS-challenge page fallback. Anonymous calls work up to ~200 req/day. |
-| `SEMRUSH_API_KEY`               | Your key                                                                                               |
 | `GA4_CLIENT_EMAIL`              | Service account email                                                                                  |
 | `GA4_PRIVATE_KEY`               | Service account private key                                                                            |
 | `GOOGLE_ADS_CLIENT_ID`          | OAuth client ID                                                                                        |

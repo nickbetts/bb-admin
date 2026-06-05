@@ -53,7 +53,7 @@ const SECTION_NAMES: Record<string, string> = {
   ga4: "Web Analytics (GA4)",
   googleads: "Google Ads",
   meta: "Meta Ads",
-  seo: "SEO (SemRush)",
+  seo: "SEO (SEO)",
   searchconsole: "Search Console",
   tiktok: "TikTok Ads",
   microsoftads: "Microsoft Ads (Bing)",

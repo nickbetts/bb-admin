@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("Content strategy generation error:", error);
 
-    // Handle SEMrush quota errors
+    // Handle SEO quota errors
     if (message.includes("BALANCE IS ZERO") || message.includes("ERROR 132")) {
       return NextResponse.json(
         { error: "Keyword data API quota exhausted. Please try again later." },

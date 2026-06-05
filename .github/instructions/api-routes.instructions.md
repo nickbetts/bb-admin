@@ -6,11 +6,11 @@ applyTo: "src/app/api/**/*.ts"
 
 ## Authentication — choose the right helper
 
-| Route type | Auth helper | Why |
-|---|---|---|
-| User-facing (report, client dashboard) | `getSession()` | Session cookie only |
-| Cron-callable or internal | `getSessionOrCronAuth(request)` | Also accepts `CRON_SECRET` bearer token |
-| Public share links | None | Validate share token from URL params instead |
+| Route type                             | Auth helper                     | Why                                          |
+| -------------------------------------- | ------------------------------- | -------------------------------------------- |
+| User-facing (report, client dashboard) | `getSession()`                  | Session cookie only                          |
+| Cron-callable or internal              | `getSessionOrCronAuth(request)` | Also accepts `CRON_SECRET` bearer token      |
+| Public share links                     | None                            | Validate share token from URL params instead |
 
 ```typescript
 import { getSessionOrCronAuth } from "@/lib/auth";
@@ -32,9 +32,10 @@ return NextResponse.json(await withApiCache(cacheKey, 4, () => getChannelData(..
 ```
 
 TTL guidance:
+
 - `4` hours — most real-time channels (GA4, Google Ads, Meta, TikTok, etc.)
 - `24` hours — daily-update channels (CWV, HubSpot)
-- `720` hours (30 days) — monthly-update channels (SemRush organic, Moz)
+- `720` hours (30 days) — monthly-update channels (SEO organic, Moz)
 
 ## Error handling — standard shape
 
@@ -62,6 +63,7 @@ const openai = await getOpenAiClient(); // ✅
 ```
 
 ## Response conventions
+
 - Missing required params → `{ status: 400 }` with a descriptive `error` message.
 - Unauthorized → `{ status: 401 }`.
 - Not found → `{ status: 404 }`.

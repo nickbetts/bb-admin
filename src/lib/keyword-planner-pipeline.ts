@@ -1,6 +1,6 @@
 /**
  * Keyword Planner pipeline — importable functions for programmatic keyword
- * research (suggest ad groups from a brief, then fetch SEMrush volumes).
+ * research (suggest ad groups from a brief, then fetch SEO keyword volumes).
  *
  * Extracted from the keyword-planner API route so the Grand Plan generator
  * can run keyword research automatically without HTTP round-trips.
@@ -8,7 +8,7 @@
 
 import { jsonrepair } from "jsonrepair";
 import { getAnthropicClient } from "@/lib/anthropic-client";
-import { getKeywordVolumeMetrics, type KeywordVolumeResult } from "@/lib/semrush";
+import { getKeywordVolumeMetrics, type KeywordVolumeResult } from "@/lib/seo-retired-defaults";
 import { crawlSiteForKeywordContext } from "@/lib/landing-page-analyzer";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -143,9 +143,9 @@ ${userContent}`,
   };
 }
 
-// ─── Research keywords via SEMrush (volumes, CPCs) ──────────────────────────
+// ─── Research keywords via SEO data provider (volumes, CPCs) ─────────────────
 
-const LOCATION_TO_SEMRUSH_DB: Record<string, string> = {
+const LOCATION_TO_SEO_DB: Record<string, string> = {
   "2826": "uk",
   "2840": "us",
   "2036": "au",
@@ -175,7 +175,7 @@ export async function researchKeywords(
 
   if (!allKeywords.length) return [];
 
-  const database = LOCATION_TO_SEMRUSH_DB[location] ?? "uk";
+  const database = LOCATION_TO_SEO_DB[location] ?? "uk";
   const rawIdeas = await getKeywordVolumeMetrics(allKeywords, database);
 
   const originalKeySet = new Set(allKeywords.map((k) => k.toLowerCase().trim()));
