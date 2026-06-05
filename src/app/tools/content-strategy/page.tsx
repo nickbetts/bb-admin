@@ -322,7 +322,7 @@ function ChaosOverlay({ active }: { active: boolean }) {
 
 const FUN_MESSAGES = [
   "OMG OMG OMG claude-senpai noticed the brief (⁄ ⁄•⁄ω⁄•⁄ ⁄)⁄",
-  "KYAAAAAAA~!! fetching keyword data from SEMrush-chan, sugoi desu ne!!!",
+  "KYAAAAAAA~!! fetching keyword data from the SEO provider-chan, sugoi desu ne!!!",
   "h-hewwo?? asking google search console-kun for his wittle receipts uwu",
   "r-reading the brief vewy vewy cawefuwwy (눈_눈) p-pwease be good data…",
   "*notices ur search intent* OwO what's this??",
@@ -344,7 +344,7 @@ const FUN_MESSAGES = [
   "teaching cwaudie-chan about the weader jouwney uwu she's wearning so fast (｡◕‿◕｡)",
   "pwease give me good data or i will witerawwy CWY into the search vowumes (っ˘̩╭╮˘̩)っ",
   "bwock by bwock, cwuster by cwuster, buiwding ur content woadmap with wuv ✨",
-  "checking SEMrush-chan hasn't fawwen asweep at hewr wittle desk again… (ᵕ̣̣̣̣̣̣﹏ᵕ̣̣̣̣̣̣)",
+  "checking our keyword data source-chan hasn't fawwen asweep at hewr wittle desk again… (ᵕ̣̣̣̣̣̣﹏ᵕ̣̣̣̣̣̣)",
   "ASSEMBWING THE FINAL STWATEGY DOCUMENT~ AWMOST THERE I PWOMISE~!! ✧*｡٩(ˊᗜˋ*)و*｡✧",
 ];
 
@@ -401,31 +401,31 @@ const METHODOLOGY_STEPS = [
     icon: "🔍",
     label: "Domain & Competitor Discovery",
     detail:
-      "We fetch your domain's top 500 organic keywords and monthly traffic from SEMrush, then auto-detect your top 5 competitors by keyword overlap — or you can provide a custom list. A live sitemap crawl maps every existing page on the site so we never suggest content that already exists.",
+      "We fetch your domain's top 500 organic keywords and monthly traffic from our SEO dataset, then auto-detect your top 5 competitors by keyword overlap — or you can provide a custom list. A live sitemap crawl maps every existing page on the site so we never suggest content that already exists.",
   },
   {
     icon: "📊",
     label: "Real Click & Impression Data (GSC)",
     detail:
-      "When Google Search Console is connected, we pull 90 days of actual click, impression, CTR, and average position data for up to 1,000 query–page combinations. GSC data is layered on top of SEMrush to show what's already driving real traffic — not just estimated volume.",
+      "When Google Search Console is connected, we pull 90 days of actual click, impression, CTR, and average position data for up to 1,000 query–page combinations. GSC data is layered on top of keyword dataset data to show what's already driving real traffic — not just estimated volume.",
   },
   {
     icon: "📝",
     label: "Brief Topic Research",
     detail:
-      "If you include a client brief, we extract topic seeds (e.g. \u201cqurbani\u201d, \u201cramadan campaign\u201d) and run SEMrush phrase-match queries against each seed — returning real keyword volumes and difficulty scores for terms that may not appear in current rankings. All discovered keywords are added to the verified keyword pool.",
+      "If you include a client brief, we extract topic seeds (e.g. \u201cqurbani\u201d, \u201cramadan campaign\u201d) and run phrase-match keyword queries against each seed — returning real keyword volumes and difficulty scores for terms that may not appear in current rankings. All discovered keywords are added to the verified keyword pool.",
   },
   {
     icon: "🧠",
     label: "Claude Semantic Expansion",
     detail:
-      "Claude analyses the brief and your existing organic keyword sample to find synonyms, alternate spellings, and semantically related angles that SEMrush alone would miss — for example identifying \u201cudhiyah\u201d, \u201cudhiya\u201d, and \u201canimal sacrifice donation\u201d from the seed \u201cqurbani\u201d. Each expanded seed is then sent to SEMrush for real volume data, so every term in the final pool is verified. Results are cached to avoid repeated API calls.",
+      "Claude analyses the brief and your existing organic keyword sample to find synonyms, alternate spellings, and semantically related angles that basic keyword exports alone would miss — for example identifying \u201cudhiyah\u201d, \u201cudhiya\u201d, and \u201canimal sacrifice donation\u201d from the seed \u201cqurbani\u201d. Each expanded seed is then sent for real volume data, so every term in the final pool is verified. Results are cached to avoid repeated API calls.",
   },
   {
     icon: "🏆",
     label: "Content Gap Analysis",
     detail:
-      "We compare your keyword footprint against each competitor's using SEMrush's content gap report to find high-value terms they rank for that you don't. These become the primary candidates for new landing pages and blog posts.",
+      "We compare your keyword footprint against each competitor's using keyword overlap data to find high-value terms they rank for that you don't. These become the primary candidates for new landing pages and blog posts.",
   },
   {
     icon: "🔑",
@@ -1219,7 +1219,7 @@ export default function ContentStrategyPage() {
 
     const client = clients.find((c) => c.id === clientId);
     if (!client?.website) {
-      setError("This client has no SEMrush domain configured. Set it in client settings first.");
+      setError("This client has no SEO domain configured. Set it in client settings first.");
       return;
     }
 
@@ -1394,7 +1394,7 @@ export default function ContentStrategyPage() {
             <h2 className="card-title">Generate New Strategy</h2>
             <p className="card-subtitle">
               {mode === "semrush"
-                ? "SEMrush mode has been retired"
+                ? "SEO mode has been retired"
                 : "Upload an Excel keyword research spreadsheet to create a client-ready document"}
             </p>
           </div>
@@ -1436,7 +1436,7 @@ export default function ContentStrategyPage() {
           {/* ─── SEMrush Mode ─── */}
           {mode === "semrush" && (
             <div style={{ fontSize: 13, color: "var(--text-3)", padding: "12px 0" }}>
-              SEMrush mode has been retired. Use Upload mode to generate content strategies.
+              SEO mode has been retired. Use Upload mode to generate content strategies.
             </div>
           )}
           {mode === "semrush" && (
@@ -1469,7 +1469,7 @@ export default function ContentStrategyPage() {
                       <p
                         style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", margin: 0 }}
                       >
-                        New client + SEMrush project
+                        New client + SEO domain profile
                       </p>
                       <input
                         type="text"
@@ -1572,7 +1572,7 @@ export default function ContentStrategyPage() {
                         {clients.map((c) => (
                           <option key={c.id} value={c.id}>
                             {c.name}
-                            {c.website ? "" : " (no SEMrush domain)"}
+                            {c.website ? "" : " (no SEO domain)"}
                           </option>
                         ))}
                       </select>
@@ -1580,7 +1580,7 @@ export default function ContentStrategyPage() {
                         type="button"
                         className="btn btn-secondary btn-sm"
                         style={{ flexShrink: 0, height: 42 }}
-                        title="Create a new client and SEMrush project"
+                        title="Create a new client and SEO domain profile"
                         onClick={() => setCreatingClientSemrush(true)}
                       >
                         <Plus style={{ width: 14, height: 14 }} /> New
@@ -1623,7 +1623,7 @@ export default function ContentStrategyPage() {
                           background: "var(--success-bg)",
                         }}
                       >
-                        GSC connected — fewer SEMrush units
+                        GSC connected — fewer keyword data units
                       </span>
                     )}
                   </div>
@@ -1648,7 +1648,7 @@ export default function ContentStrategyPage() {
                       <p
                         style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", margin: 0 }}
                       >
-                        Create SEMrush project for {clients.find((c) => c.id === clientId)?.name}
+                        Create SEO domain profile for {clients.find((c) => c.id === clientId)?.name}
                       </p>
                       <div style={{ display: "flex", gap: 8 }}>
                         <input
@@ -1716,14 +1716,14 @@ export default function ContentStrategyPage() {
                       }}
                     >
                       <AlertCircle style={{ width: 15, height: 15, flexShrink: 0 }} />
-                      <span style={{ flex: 1 }}>This client has no SEMrush domain configured.</span>
+                      <span style={{ flex: 1 }}>This client has no SEO domain configured.</span>
                       <button
                         type="button"
                         className="btn btn-secondary btn-sm"
                         style={{ flexShrink: 0 }}
                         onClick={() => setAddingSemrushToClient(true)}
                       >
-                        <Plus style={{ width: 13, height: 13 }} /> Set up SEMrush
+                        <Plus style={{ width: 13, height: 13 }} /> Set up SEO domain
                       </button>
                     </div>
                   )}
@@ -1828,7 +1828,7 @@ export default function ContentStrategyPage() {
                     {clientId && website
                       ? detectingCompetitors
                         ? "Detecting competitors…"
-                        : "SEMrush doesn't have enough organic data for this domain yet — competitor detection typically populates within a few weeks once the site has established rankings. The content gap analysis will be skipped for now."
+                        : "There isn't enough organic data for this domain yet — competitor detection typically populates within a few weeks once the site has established rankings. Content gap analysis will be skipped for now."
                       : "Select a client to auto-detect competitors"}
                   </p>
                 )}

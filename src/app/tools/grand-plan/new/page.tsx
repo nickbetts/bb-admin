@@ -489,7 +489,7 @@ export default function NewGrandPlanPage() {
       });
       if (detected.length === 0) {
         setCompetitorError(
-          "SEMrush returned no competitors for this domain. Add competitors manually below.",
+          "No competitor overlap data was found for this domain. Add competitors manually below.",
         );
       } else if (addedCount === 0) {
         setCompetitorError(
@@ -1026,8 +1026,8 @@ export default function NewGrandPlanPage() {
                 }}
               />
               <div style={{ fontSize: 11.5, color: "var(--mid)", marginTop: 4, lineHeight: 1.45 }}>
-                We&apos;ll scrape each page (title, H1, meta, body), pull the SEMrush keywords each
-                one currently ranks for, and bias the SEO Quick Wins and Page Optimisations toward
+                We&apos;ll scrape each page (title, H1, meta, body), pull the keyword data each one
+                currently ranks for, and bias the SEO Quick Wins and Page Optimisations toward
                 commercial / transactional intent — primary, secondary, long-tail. Up to 10 URLs.
               </div>
             </div>
@@ -1177,7 +1177,7 @@ export default function NewGrandPlanPage() {
                   title={
                     !domain && !clientId
                       ? "Set a website or pick a client first"
-                      : "Auto-detect competitors via SEMrush"
+                      : "Auto-detect competitors via keyword overlap"
                   }
                 >
                   {detectingCompetitors ? (
@@ -1248,7 +1248,7 @@ export default function NewGrandPlanPage() {
                         )}
                         {c.status === "no-overlap" && (
                           <span style={{ fontSize: 11 }}>
-                            {c.pageContext ? "scraped — no SEMrush overlap" : "no SEMrush overlap"}
+                            {c.pageContext ? "scraped — no keyword overlap" : "no keyword overlap"}
                           </span>
                         )}
                         {c.status === "invalid" && (
@@ -1301,8 +1301,8 @@ export default function NewGrandPlanPage() {
                 </button>
               </div>
               <span className="form-hint">
-                Auto-detect uses SEMrush keyword overlap. Manual entries are scraped for
-                headlines/CTAs when SEMrush has no data.
+                Auto-detect uses keyword overlap. Manual entries are scraped for headlines/CTAs when
+                overlap data is unavailable.
               </span>
             </div>
 

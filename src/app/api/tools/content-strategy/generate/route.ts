@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "This client has no SEMrush domain configured. Please set it in client settings first.",
+            "This client has no SEO domain configured. Please set it in client settings first.",
         },
         { status: 400 },
       );
@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
     // Handle SEMrush quota errors
     if (message.includes("BALANCE IS ZERO") || message.includes("ERROR 132")) {
       return NextResponse.json(
-        { error: "SEMrush API quota exhausted. Please try again later." },
+        { error: "Keyword data API quota exhausted. Please try again later." },
         { status: 402 },
       );
     }

@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "This client has no SEMrush domain configured. Please set it in client settings first.",
+            "This client has no SEO domain configured. Please set it in client settings first.",
         },
         { status: 400 },
       );
@@ -203,7 +203,7 @@ Return your response as valid JSON with the following keys:
 
         let userMessage = message;
         if (message.includes("BALANCE IS ZERO") || message.includes("ERROR 132")) {
-          userMessage = "SEMrush API quota exhausted. Please try again later.";
+          userMessage = "Keyword data API quota exhausted. Please try again later.";
         }
 
         await prisma.contentStrategy

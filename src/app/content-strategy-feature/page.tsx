@@ -36,8 +36,8 @@ function useCountUp(end: number, duration = 2000, shouldStart = false) {
 const features = [
   {
     icon: <Search size={20} />,
-    title: "SemRush domain import",
-    desc: "Enter a domain and pull the full keyword profile from SemRush. Organic rankings, traffic estimates, and keyword gaps are imported automatically.",
+    title: "SEO domain import",
+    desc: "Enter a domain and pull a full keyword profile. Organic rankings, traffic estimates, and keyword gaps are imported automatically.",
   },
   {
     icon: <Target size={20} />,
@@ -408,7 +408,7 @@ export default function ContentStrategyPage() {
                     textTransform: "uppercase",
                   }}
                 >
-                  SemRush Powered
+                  SEO Powered
                 </span>
               </div>
             </div>
@@ -445,12 +445,12 @@ export default function ContentStrategyPage() {
                 fontWeight: 400,
               }}
             >
-              Pull a SemRush keyword profile, find content gaps against competitors, cluster topics
-              into pillars, and generate a publishing calendar. All from one tool.
+              Pull a keyword profile, find content gaps against competitors, cluster topics into
+              pillars, and generate a publishing calendar. All from one tool.
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 36 }}>
               {[
-                "SemRush domain import with full keyword profile",
+                "SEO domain import with full keyword profile",
                 "Automatic competitor gap analysis",
                 "Topic clustering into content pillars",
                 "Shareable strategy documents",
@@ -669,7 +669,7 @@ export default function ContentStrategyPage() {
               {
                 val: s1,
                 suffix: " input modes",
-                label: "Import from SemRush domain analysis or upload a CSV",
+                label: "Import from domain keyword analysis or upload a CSV",
                 note: "Flexible data sources",
                 color: accent,
               },
@@ -792,7 +792,7 @@ export default function ContentStrategyPage() {
                 lineHeight: 1.7,
               }}
             >
-              Import a SemRush profile, add competitors for gap analysis, and the tool clusters your
+              Import a keyword profile, add competitors for gap analysis, and the tool clusters your
               keywords into content pillars with a publishing schedule.
             </p>
           </div>
@@ -1073,7 +1073,7 @@ export default function ContentStrategyPage() {
               marginBottom: 40,
             }}
           >
-            No more spreadsheet-driven content plans. Import from SemRush, cluster topics, generate
+            No more spreadsheet-driven content plans. Import keyword data, cluster topics, generate
             a calendar, and share with your team or client.
           </p>
           <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
@@ -1116,7 +1116,7 @@ export default function ContentStrategyPage() {
             </a>
           </div>
           <p style={{ marginTop: 24, fontSize: 12, color: "rgba(255,255,255,0.25)" }}>
-            SemRush integration included. Content Strategy is part of every StratOS plan.
+            SEO data integration included. Content Strategy is part of every StratOS plan.
           </p>
         </div>
       </section>

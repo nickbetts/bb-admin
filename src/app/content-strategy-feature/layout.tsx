@@ -3,11 +3,11 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Content Strategy — i3 Media StratOS",
   description:
-    "SemRush-powered content calendars with topic clustering, competitor analysis, keyword gaps, and shareable strategy documents.",
+    "SEO-powered content calendars with topic clustering, competitor analysis, keyword gaps, and shareable strategy documents.",
   openGraph: {
     title: "Content Strategy — i3 Media StratOS",
     description:
-      "Generate content strategies from SemRush data. Topic pillars, keyword clusters, and publishing schedules. Built into StratOS.",
+      "Generate content strategies from SEO keyword data. Topic pillars, keyword clusters, and publishing schedules. Built into StratOS.",
     type: "website",
   },
 };
