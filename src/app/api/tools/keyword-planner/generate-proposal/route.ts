@@ -580,11 +580,11 @@ function generateProposalHTML(params: {
       : ""
   }
 
-  <!-- ── Why i3media ── -->
+  <!-- ── Why Betts & Burton ── -->
   <section style="background:linear-gradient(135deg,#1e1b4b 0%,#312e81 50%,#4c1d95 100%);padding:80px 0">
     <div class="container">
       <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#a5b4fc;margin-bottom:12px;text-align:center">Why choose us</p>
-      <h2 style="color:#ffffff;text-align:center;margin-bottom:56px">Why i3media?</h2>
+      <h2 style="color:#ffffff;text-align:center;margin-bottom:56px">Why Betts & Burton?</h2>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px">
         ${whyUsCards}
       </div>
@@ -607,7 +607,7 @@ function generateProposalHTML(params: {
   <!-- ── Footer ── -->
   <div style="background:#1e1b4b;padding:32px 0">
     <div class="container" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
-      <p style="font-size:14px;color:#a5b4fc">Prepared by <strong style="color:white">i3media</strong></p>
+      <p style="font-size:14px;color:#a5b4fc">Prepared by <strong style="color:white">Betts & Burton</strong></p>
       <p style="font-size:12px;color:#6366f1">${today}</p>
     </div>
   </div>

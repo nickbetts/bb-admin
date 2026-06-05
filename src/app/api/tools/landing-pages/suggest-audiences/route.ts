@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
       messages: [
         {
           role: "user",
-          content: `You are a strategist at i3media drafting target audience options for a PPC landing page.
+          content: `You are a strategist at Betts & Burton drafting target audience options for a PPC landing page.
 
 Read the brief below for ${clientName} and propose 3-5 distinct, addressable audience options the user can choose ONE of as the page's target. PPC landing pages convert best when laser-focused on a single, narrow audience — so make each option specific and tight, not a broad persona.
 

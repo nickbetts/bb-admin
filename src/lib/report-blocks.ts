@@ -453,5 +453,4 @@ export const SECTION_BLOCKS: Record<string, BlockDef[]> = {
     { id: "device_breakdown", label: "Device Breakdown" },
     { id: "history", label: "CWV History" },
   ],
-  competitor_intelligence: [{ id: "snapshots", label: "Competitor Snapshots" }],
 };

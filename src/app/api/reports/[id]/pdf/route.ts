@@ -7,10 +7,7 @@ import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 
 export const maxDuration = 300;
 
-export async function GET(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getSession();
     if (!session) {
@@ -108,10 +105,9 @@ export async function GET(
 
       // Wait for the React tree to signal it has finished mounting.
       // ReportPrintView sets data-print-ready on document.body in a useEffect.
-      await page.waitForFunction(
-        () => document.body.getAttribute("data-print-ready") === "true",
-        { timeout: 15000 }
-      );
+      await page.waitForFunction(() => document.body.getAttribute("data-print-ready") === "true", {
+        timeout: 15000,
+      });
 
       await page.evaluate(() => {
         document.body.setAttribute("data-disable-chart-animations", "true");
@@ -127,8 +123,8 @@ export async function GET(
         page.evaluate(() => {
           const svgs = Array.from(
             document.querySelectorAll<SVGSVGElement>(
-              ".recharts-responsive-container svg.recharts-surface, .recharts-responsive-container svg"
-            )
+              ".recharts-responsive-container svg.recharts-surface, .recharts-responsive-container svg",
+            ),
           );
 
           let rewrittenIds = 0;
@@ -176,7 +172,7 @@ export async function GET(
                   const escapedId = escapeRegex(oldId);
                   rewritten = rewritten.replace(
                     new RegExp(`url\\(\\s*(['\"]?)#${escapedId}\\1\\s*\\)`, "g"),
-                    `url(#${newId})`
+                    `url(#${newId})`,
                   );
                   rewritten = rewritten.replace(new RegExp(`^#${escapedId}$`), `#${newId}`);
                 }
@@ -213,7 +209,7 @@ export async function GET(
       const chartIdIsolation = await isolateChartSvgIds();
       if (chartIdIsolation.newlyIsolated > 0 || chartIdIsolation.rewrittenIds > 0) {
         console.log(
-          `[pdf-recharts] Isolated chart SVG ids: svgs=${chartIdIsolation.svgCount} newlyIsolated=${chartIdIsolation.newlyIsolated} rewrittenIds=${chartIdIsolation.rewrittenIds}`
+          `[pdf-recharts] Isolated chart SVG ids: svgs=${chartIdIsolation.svgCount} newlyIsolated=${chartIdIsolation.newlyIsolated} rewrittenIds=${chartIdIsolation.rewrittenIds}`,
         );
       }
 
@@ -240,21 +236,21 @@ export async function GET(
           "text_ppc_update",
         ];
 
-        const sectionEls = Array.from(
-          document.querySelectorAll<HTMLElement>("[id^='section-']")
-        );
+        const sectionEls = Array.from(document.querySelectorAll<HTMLElement>("[id^='section-']"));
 
         // Diagnostic: log all section elements with their bounding rects so we
         // can spot region overlaps or unexpected heights in Vercel logs.
         const scrollH_diag = document.documentElement.scrollHeight;
         console.log(
           `[pdf-sections] scrollH=${scrollH_diag} Found ${sectionEls.length} element(s): ` +
-          sectionEls.map(el => {
-            const r = el.getBoundingClientRect();
-            const y = Math.round(r.top + window.scrollY);
-            const h = Math.round(r.height);
-            return `${el.id}(${el.getAttribute("data-section-type") ?? "?"}) y=${y} h=${h} bottom=${y+h}`;
-          }).join(" | ")
+            sectionEls
+              .map((el) => {
+                const r = el.getBoundingClientRect();
+                const y = Math.round(r.top + window.scrollY);
+                const h = Math.round(r.height);
+                return `${el.id}(${el.getAttribute("data-section-type") ?? "?"}) y=${y} h=${h} bottom=${y + h}`;
+              })
+              .join(" | "),
         );
 
         // Log first + last text in the seo section to detect phantom duplicate
@@ -265,8 +261,8 @@ export async function GET(
           const fullText = (seoEl.textContent ?? "").replace(/\s+/g, " ").trim();
           console.log(
             `[pdf-seo-text] seo h=${Math.round(seoRect.height)} ` +
-            `firstText="${fullText.slice(0, 120)}" ` +
-            `lastText="${fullText.slice(-200)}"`
+              `firstText="${fullText.slice(0, 120)}" ` +
+              `lastText="${fullText.slice(-200)}"`,
           );
         }
 
@@ -293,7 +289,7 @@ export async function GET(
         }
         if (removedDupes.length > 0) {
           console.warn(
-            `[pdf-dedup] Removed ${removedDupes.length} duplicate section element(s) from DOM: ${removedDupes.join(", ")}`
+            `[pdf-dedup] Removed ${removedDupes.length} duplicate section element(s) from DOM: ${removedDupes.join(", ")}`,
           );
         }
 
@@ -305,7 +301,7 @@ export async function GET(
         // Re-query AFTER removals so subsequent measurements reflect the
         // post-cleanup layout (heights and Y positions shift upward).
         const cleanedSectionEls = Array.from(
-          document.querySelectorAll<HTMLElement>("[id^='section-']")
+          document.querySelectorAll<HTMLElement>("[id^='section-']"),
         );
 
         const raw: { id: string; y: number; height: number; isText: boolean }[] = [];
@@ -347,7 +343,7 @@ export async function GET(
         for (const r of raw) {
           if (r.isText && rects.length > 0) {
             const last = rects[rects.length - 1];
-            last.height = (r.y + r.height) - last.y;
+            last.height = r.y + r.height - last.y;
           } else {
             rects.push({ id: r.id, y: r.y, height: r.height });
           }
@@ -392,15 +388,49 @@ export async function GET(
 
       const drawHeaderFooter = (pdfPage: ReturnType<typeof outputDoc.addPage>, pageH: number) => {
         const headerY = pageH - V_MARGIN - FONT_SIZE;
-        pdfPage.drawLine({ start: { x: H_MARGIN, y: headerY - 6 }, end: { x: PAGE_WIDTH_PT - H_MARGIN, y: headerY - 6 }, thickness: 0.5, color: LINE_COLOR });
-        pdfPage.drawText("i3media", { x: H_MARGIN, y: headerY, size: FONT_SIZE, font: helvetica, color: TEXT_COLOR });
+        pdfPage.drawLine({
+          start: { x: H_MARGIN, y: headerY - 6 },
+          end: { x: PAGE_WIDTH_PT - H_MARGIN, y: headerY - 6 },
+          thickness: 0.5,
+          color: LINE_COLOR,
+        });
+        pdfPage.drawText("Betts & Burton", {
+          x: H_MARGIN,
+          y: headerY,
+          size: FONT_SIZE,
+          font: helvetica,
+          color: TEXT_COLOR,
+        });
         const labelWidth = helvetica.widthOfTextAtSize(reportLabel, FONT_SIZE);
-        pdfPage.drawText(reportLabel, { x: PAGE_WIDTH_PT - H_MARGIN - labelWidth, y: headerY, size: FONT_SIZE, font: helvetica, color: TEXT_COLOR });
+        pdfPage.drawText(reportLabel, {
+          x: PAGE_WIDTH_PT - H_MARGIN - labelWidth,
+          y: headerY,
+          size: FONT_SIZE,
+          font: helvetica,
+          color: TEXT_COLOR,
+        });
         const footerY = V_MARGIN;
-        pdfPage.drawLine({ start: { x: H_MARGIN, y: footerY + FONT_SIZE + 5 }, end: { x: PAGE_WIDTH_PT - H_MARGIN, y: footerY + FONT_SIZE + 5 }, thickness: 0.5, color: LINE_COLOR });
-        pdfPage.drawText("i3media", { x: H_MARGIN, y: footerY, size: FONT_SIZE, font: helvetica, color: TEXT_COLOR });
+        pdfPage.drawLine({
+          start: { x: H_MARGIN, y: footerY + FONT_SIZE + 5 },
+          end: { x: PAGE_WIDTH_PT - H_MARGIN, y: footerY + FONT_SIZE + 5 },
+          thickness: 0.5,
+          color: LINE_COLOR,
+        });
+        pdfPage.drawText("Betts & Burton", {
+          x: H_MARGIN,
+          y: footerY,
+          size: FONT_SIZE,
+          font: helvetica,
+          color: TEXT_COLOR,
+        });
         const periodWidth = helvetica.widthOfTextAtSize(report.period, FONT_SIZE);
-        pdfPage.drawText(report.period, { x: PAGE_WIDTH_PT - H_MARGIN - periodWidth, y: footerY, size: FONT_SIZE, font: helvetica, color: TEXT_COLOR });
+        pdfPage.drawText(report.period, {
+          x: PAGE_WIDTH_PT - H_MARGIN - periodWidth,
+          y: footerY,
+          size: FONT_SIZE,
+          font: helvetica,
+          color: TEXT_COLOR,
+        });
       };
 
       const isJpegBuffer = (buffer: Uint8Array) =>
@@ -424,7 +454,7 @@ export async function GET(
 
         if (clipHeight <= 0) {
           console.warn(
-            `[pdf-guard] Skipping region with non-positive height: idx=${idx} id=${region.id} y=${region.y} height=${region.height}`
+            `[pdf-guard] Skipping region with non-positive height: idx=${idx} id=${region.id} y=${region.y} height=${region.height}`,
           );
           continue;
         }
@@ -435,364 +465,16 @@ export async function GET(
         const regionChartIsolation = await isolateChartSvgIds();
         if (regionChartIsolation.newlyIsolated > 0 || regionChartIsolation.rewrittenIds > 0) {
           console.log(
-            `[pdf-recharts] Region svg id isolation: idx=${idx} id=${region.id} newlyIsolated=${regionChartIsolation.newlyIsolated} rewrittenIds=${regionChartIsolation.rewrittenIds}`
+            `[pdf-recharts] Region svg id isolation: idx=${idx} id=${region.id} newlyIsolated=${regionChartIsolation.newlyIsolated} rewrittenIds=${regionChartIsolation.rewrittenIds}`,
           );
         }
 
-        const regionChartReady = await page.evaluate(async ({ regionY, regionHeight }) => {
-          const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
-          const raf = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-          const requiredStablePasses = 1;
-
-          const SERIES_GEOMETRY_SELECTOR = [
-            ".recharts-line-curve",
-            ".recharts-area-curve",
-            ".recharts-area-area",
-            ".recharts-bar-rectangle rect",
-            ".recharts-bar-rectangle path",
-            ".recharts-scatter-symbol circle",
-            ".recharts-scatter-symbol path",
-            ".recharts-pie-sector path",
-            ".recharts-radial-bar-sector path",
-            ".recharts-funnel-trapezoid path",
-            ".recharts-radar-polygon polygon",
-            ".recharts-radar path",
-            ".recharts-treemap-rectangle rect",
-          ].join(",");
-
-          const inRegion = (el: HTMLElement) => {
-            const rect = el.getBoundingClientRect();
-            const style = window.getComputedStyle(el);
-            if (style.display === "none" || style.visibility === "hidden") return false;
-            if (rect.width <= 40 || rect.height <= 40) return false;
-            const top = rect.top + window.scrollY;
-            const bottom = top + rect.height;
-            return bottom > regionY && top < regionY + regionHeight;
-          };
-
-          const chartContainers = () =>
-            Array.from(document.querySelectorAll<HTMLElement>(".recharts-responsive-container")).filter(inRegion);
-
-          const hasDrawableGeometry = (node: SVGElement) => {
-            const style = window.getComputedStyle(node);
-            if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0) {
-              return false;
-            }
-
-            const tag = node.tagName.toLowerCase();
-
-            if (tag === "path") {
-              const path = node as SVGPathElement;
-              const d = path.getAttribute("d") ?? "";
-              if (!d.trim()) return false;
-              try {
-                return path.getTotalLength() > 2;
-              } catch {
-                // Fall through to bounding-box checks below.
-              }
-            }
-
-            if (tag === "rect") {
-              const rect = node as SVGRectElement;
-              const width = Number(rect.getAttribute("width") ?? 0);
-              const height = Number(rect.getAttribute("height") ?? 0);
-              if (width > 1 && height > 1) return true;
-            }
-
-            if (tag === "circle") {
-              const circle = node as SVGCircleElement;
-              const r = Number(circle.getAttribute("r") ?? 0);
-              if (r > 1) return true;
-            }
-
-            if (tag === "polygon" || tag === "polyline") {
-              const points = node.getAttribute("points") ?? "";
-              if (points.trim().length > 3) return true;
-            }
-
-            try {
-              const box = (node as SVGGraphicsElement).getBBox();
-              return box.width > 1 || box.height > 1;
-            } catch {
-              return false;
-            }
-          };
-
-          const toNum = (value: string | null) => {
-            const n = Number(value);
-            return Number.isFinite(n) ? n.toFixed(2) : "0.00";
-          };
-
-          const nodeSignature = (node: SVGElement) => {
-            const tag = node.tagName.toLowerCase();
-            if (tag === "path") {
-              const d = node.getAttribute("d") ?? "";
-              return `p:${d.length}:${d.slice(0, 80)}:${d.slice(-60)}`;
-            }
-            if (tag === "rect") {
-              return `r:${toNum(node.getAttribute("x"))},${toNum(node.getAttribute("y"))},${toNum(node.getAttribute("width"))},${toNum(node.getAttribute("height"))}`;
-            }
-            if (tag === "circle") {
-              return `c:${toNum(node.getAttribute("cx"))},${toNum(node.getAttribute("cy"))},${toNum(node.getAttribute("r"))}`;
-            }
-            if (tag === "polygon" || tag === "polyline") {
-              const points = node.getAttribute("points") ?? "";
-              return `${tag}:${points.length}:${points.slice(0, 80)}:${points.slice(-60)}`;
-            }
-            return `${tag}:${node.getAttribute("transform") ?? ""}`;
-          };
-
-          const CLIP_PATH_REF_REGEX = /url\(\s*(['"]?)#([^)"'\s]+)\1\s*\)/;
-
-          const extractClipPathId = (node: Element, svg: SVGElement) => {
-            let current: Element | null = node;
-            while (current) {
-              const direct = current.getAttribute("clip-path");
-              if (direct) {
-                const match = direct.match(CLIP_PATH_REF_REGEX);
-                if (match?.[2]) return match[2];
-              }
-
-              const styleAttr = current.getAttribute("style");
-              if (styleAttr && styleAttr.includes("clip-path")) {
-                const match = styleAttr.match(CLIP_PATH_REF_REGEX);
-                if (match?.[2]) return match[2];
-              }
-
-              if (current === svg) break;
-              current = current.parentElement;
-            }
-            return null;
-          };
-
-          const escapeCss = (value: string) => {
-            if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
-              return CSS.escape(value);
-            }
-            return value.replace(/([ #;?%&,.+*~':"!^$[\]()=>|\/@])/g, "\\$1");
-          };
-
-          const hasVisibleReferencedClipPath = (node: SVGElement, svg: SVGElement) => {
-            const clipId = extractClipPathId(node, svg);
-            if (!clipId) return true;
-
-            const clipEl = svg.querySelector<SVGClipPathElement>(`#${escapeCss(clipId)}`);
-            if (!clipEl) return false;
-
-            const clipRects = Array.from(clipEl.querySelectorAll<SVGRectElement>("rect"));
-            if (clipRects.length === 0) return true;
-
-            return clipRects.some((clip) => {
-              const width = Number(clip.getAttribute("width") ?? 0);
-              const height = Number(clip.getAttribute("height") ?? 0);
-              return Number.isFinite(width) && Number.isFinite(height) && width > 1 && height > 1;
-            });
-          };
-
-          const getChartState = (el: HTMLElement) => {
-            const svg = el.querySelector<SVGElement>("svg.recharts-surface, svg");
-            if (!svg) {
-              return { ready: false, signature: "no-svg" };
-            }
-
-            const rect = svg.getBoundingClientRect();
-            if (rect.width <= 40 || rect.height <= 40) {
-              return { ready: false, signature: `tiny-svg:${Math.round(rect.width)}x${Math.round(rect.height)}` };
-            }
-
-            const seriesNodes = Array.from(svg.querySelectorAll<SVGElement>(SERIES_GEOMETRY_SELECTOR));
-            if (seriesNodes.length === 0) {
-              return { ready: false, signature: "no-series-nodes" };
-            }
-
-            const hasVisibleSeries = seriesNodes.some(
-              (node) => hasDrawableGeometry(node) && hasVisibleReferencedClipPath(node, svg)
-            );
-            const clipRects = Array.from(svg.querySelectorAll<SVGRectElement>("clipPath rect"));
-            const hasVisibleClipRect =
-              clipRects.length === 0 ||
-              clipRects.some((clip) => {
-                const width = Number(clip.getAttribute("width") ?? 0);
-                const height = Number(clip.getAttribute("height") ?? 0);
-                return Number.isFinite(width) && Number.isFinite(height) && width > 1 && height > 1;
-              });
-
-            const isReady = hasVisibleSeries && hasVisibleClipRect;
-            const seriesSignature = seriesNodes.map(nodeSignature).join("|");
-            const clipSignature = clipRects
-              .map((clip) => `clip:${toNum(clip.getAttribute("x"))},${toNum(clip.getAttribute("y"))},${toNum(clip.getAttribute("width"))},${toNum(clip.getAttribute("height"))}`)
-              .join("|");
-
-            return {
-              ready: isReady,
-              signature: `${seriesSignature}::${clipSignature}`,
-            };
-          };
-
-          let previousSignature = "";
-          let stablePasses = 0;
-
-          for (let attempt = 1; attempt <= 10; attempt++) {
-            window.scrollTo({ top: Math.max(0, regionY - 140), left: 0, behavior: "instant" });
-            window.dispatchEvent(new Event("resize"));
-            void document.body.offsetHeight;
-            await raf();
-            await raf();
-            await wait(120);
-
-            const charts = chartContainers();
-            if (charts.length === 0) {
-              return { ok: true, chartCount: 0, unready: 0, attempts: attempt, stablePasses: 0 };
-            }
-
-            const states = charts.map((chart) => getChartState(chart));
-            const unready = states.filter((state) => !state.ready).length;
-
-            if (unready === 0) {
-              const signature = states.map((state) => state.signature).join("||");
-              if (signature === previousSignature) {
-                stablePasses += 1;
-              } else {
-                previousSignature = signature;
-                stablePasses = 0;
-              }
-
-              if (stablePasses >= requiredStablePasses) {
-                return {
-                  ok: true,
-                  chartCount: charts.length,
-                  unready: 0,
-                  attempts: attempt,
-                  stablePasses,
-                };
-              }
-            } else {
-              previousSignature = "";
-              stablePasses = 0;
-            }
-
-            await wait(140);
-          }
-
-          const charts = chartContainers();
-          const states = charts.map((chart) => getChartState(chart));
-          const unready = states.filter((state) => !state.ready).length;
-          return { ok: unready === 0, chartCount: charts.length, unready, attempts: 10, stablePasses };
-        }, { regionY: clipY, regionHeight: clipHeight });
-
-        if (!regionChartReady.ok) {
-          console.warn(
-            `[pdf-recharts] Region chart readiness incomplete: idx=${idx} id=${region.id} charts=${regionChartReady.chartCount} unready=${regionChartReady.unready} attempts=${regionChartReady.attempts} stablePasses=${regionChartReady.stablePasses ?? 0}`
-          );
-
-          const clipRepair = await page.evaluate(({ regionY, regionHeight }) => {
-            const CLIP_PATH_REF_REGEX = /url\(\s*(['"]?)#([^)"'\s]+)\1\s*\)/;
-
-            const escapeCss = (value: string) => {
-              if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
-                return CSS.escape(value);
-              }
-              return value.replace(/([ #;?%&,.+*~':"!^$[\]()=>|\/@])/g, "\\$1");
-            };
-
-            const parseClipId = (value: string | null) => {
-              if (!value) return null;
-              const match = value.match(CLIP_PATH_REF_REGEX);
-              return match?.[2] ?? null;
-            };
-
-            const inRegion = (el: HTMLElement) => {
-              const rect = el.getBoundingClientRect();
-              const top = rect.top + window.scrollY;
-              const bottom = top + rect.height;
-              return bottom > regionY && top < regionY + regionHeight;
-            };
-
-            const chartContainers = Array.from(
-              document.querySelectorAll<HTMLElement>(".recharts-responsive-container")
-            ).filter(inRegion);
-
-            let repaired = 0;
-
-            for (const container of chartContainers) {
-              const svg = container.querySelector<SVGElement>("svg.recharts-surface, svg");
-              if (!svg) continue;
-
-              const nodes = Array.from(
-                svg.querySelectorAll<SVGElement>("[clip-path], [style*='clip-path']")
-              );
-
-              for (const node of nodes) {
-                const clipId =
-                  parseClipId(node.getAttribute("clip-path")) ??
-                  parseClipId(node.getAttribute("style"));
-                if (!clipId) continue;
-
-                const clipEl = svg.querySelector<SVGClipPathElement>(`#${escapeCss(clipId)}`);
-                const clipRects = clipEl
-                  ? Array.from(clipEl.querySelectorAll<SVGRectElement>("rect"))
-                  : [];
-
-                const clipVisible =
-                  !!clipEl &&
-                  (clipRects.length === 0 ||
-                    clipRects.some((clip) => {
-                      const width = Number(clip.getAttribute("width") ?? 0);
-                      const height = Number(clip.getAttribute("height") ?? 0);
-                      return Number.isFinite(width) && Number.isFinite(height) && width > 1 && height > 1;
-                    }));
-
-                if (clipVisible) continue;
-
-                if (node.hasAttribute("clip-path")) {
-                  node.removeAttribute("clip-path");
-                  repaired += 1;
-                }
-
-                if ((node as SVGElement).style.clipPath) {
-                  (node as SVGElement).style.removeProperty("clip-path");
-                  repaired += 1;
-                }
-              }
-            }
-
-            return { chartCount: chartContainers.length, repaired };
-          }, { regionY: clipY, regionHeight: clipHeight });
-
-          if (clipRepair.repaired > 0) {
-            console.warn(
-              `[pdf-recharts] Clip-path repair applied: idx=${idx} id=${region.id} charts=${clipRepair.chartCount} repaired=${clipRepair.repaired}`
-            );
-          }
-
-          // Last-chance repaint nudge for charts that are still settling.
-          await page.evaluate(async ({ regionY }) => {
-            window.scrollTo({ top: Math.max(0, regionY - 140), left: 0, behavior: "instant" });
-            window.dispatchEvent(new Event("resize"));
-            void document.body.offsetHeight;
-            await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-            await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-          }, { regionY: clipY });
-          await page.evaluate(() => new Promise((r) => setTimeout(r, 420)));
-
-          const postRepairChartReady = await page.evaluate(({ regionY, regionHeight }) => {
-            const inRegion = (el: HTMLElement) => {
-              const rect = el.getBoundingClientRect();
-              const style = window.getComputedStyle(el);
-              if (style.display === "none" || style.visibility === "hidden") return false;
-              if (rect.width <= 40 || rect.height <= 40) return false;
-              const top = rect.top + window.scrollY;
-              const bottom = top + rect.height;
-              return bottom > regionY && top < regionY + regionHeight;
-            };
-
-            const chartContainers = Array.from(
-              document.querySelectorAll<HTMLElement>(".recharts-responsive-container")
-            ).filter(inRegion);
-
-            if (chartContainers.length === 0) {
-              return { ok: true, chartCount: 0, unready: 0 };
-            }
+        const regionChartReady = await page.evaluate(
+          async ({ regionY, regionHeight }) => {
+            const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+            const raf = () =>
+              new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+            const requiredStablePasses = 1;
 
             const SERIES_GEOMETRY_SELECTOR = [
               ".recharts-line-curve",
@@ -810,58 +492,454 @@ export async function GET(
               ".recharts-treemap-rectangle rect",
             ].join(",");
 
+            const inRegion = (el: HTMLElement) => {
+              const rect = el.getBoundingClientRect();
+              const style = window.getComputedStyle(el);
+              if (style.display === "none" || style.visibility === "hidden") return false;
+              if (rect.width <= 40 || rect.height <= 40) return false;
+              const top = rect.top + window.scrollY;
+              const bottom = top + rect.height;
+              return bottom > regionY && top < regionY + regionHeight;
+            };
+
+            const chartContainers = () =>
+              Array.from(
+                document.querySelectorAll<HTMLElement>(".recharts-responsive-container"),
+              ).filter(inRegion);
+
             const hasDrawableGeometry = (node: SVGElement) => {
               const style = window.getComputedStyle(node);
-              if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0) {
+              if (
+                style.display === "none" ||
+                style.visibility === "hidden" ||
+                Number(style.opacity) === 0
+              ) {
                 return false;
               }
+
+              const tag = node.tagName.toLowerCase();
+
+              if (tag === "path") {
+                const path = node as SVGPathElement;
+                const d = path.getAttribute("d") ?? "";
+                if (!d.trim()) return false;
+                try {
+                  return path.getTotalLength() > 2;
+                } catch {
+                  // Fall through to bounding-box checks below.
+                }
+              }
+
+              if (tag === "rect") {
+                const rect = node as SVGRectElement;
+                const width = Number(rect.getAttribute("width") ?? 0);
+                const height = Number(rect.getAttribute("height") ?? 0);
+                if (width > 1 && height > 1) return true;
+              }
+
+              if (tag === "circle") {
+                const circle = node as SVGCircleElement;
+                const r = Number(circle.getAttribute("r") ?? 0);
+                if (r > 1) return true;
+              }
+
+              if (tag === "polygon" || tag === "polyline") {
+                const points = node.getAttribute("points") ?? "";
+                if (points.trim().length > 3) return true;
+              }
+
+              try {
+                const box = (node as SVGGraphicsElement).getBBox();
+                return box.width > 1 || box.height > 1;
+              } catch {
+                return false;
+              }
+            };
+
+            const toNum = (value: string | null) => {
+              const n = Number(value);
+              return Number.isFinite(n) ? n.toFixed(2) : "0.00";
+            };
+
+            const nodeSignature = (node: SVGElement) => {
               const tag = node.tagName.toLowerCase();
               if (tag === "path") {
                 const d = node.getAttribute("d") ?? "";
-                return d.trim().length > 0;
+                return `p:${d.length}:${d.slice(0, 80)}:${d.slice(-60)}`;
               }
               if (tag === "rect") {
-                const width = Number(node.getAttribute("width") ?? 0);
-                const height = Number(node.getAttribute("height") ?? 0);
-                return width > 1 && height > 1;
+                return `r:${toNum(node.getAttribute("x"))},${toNum(node.getAttribute("y"))},${toNum(node.getAttribute("width"))},${toNum(node.getAttribute("height"))}`;
               }
               if (tag === "circle") {
-                const r = Number(node.getAttribute("r") ?? 0);
-                return r > 1;
+                return `c:${toNum(node.getAttribute("cx"))},${toNum(node.getAttribute("cy"))},${toNum(node.getAttribute("r"))}`;
               }
               if (tag === "polygon" || tag === "polyline") {
                 const points = node.getAttribute("points") ?? "";
-                return points.trim().length > 3;
+                return `${tag}:${points.length}:${points.slice(0, 80)}:${points.slice(-60)}`;
               }
-              return true;
+              return `${tag}:${node.getAttribute("transform") ?? ""}`;
             };
 
-            const unready = chartContainers.filter((container) => {
-              const svg = container.querySelector<SVGElement>("svg.recharts-surface, svg");
-              if (!svg) return true;
+            const CLIP_PATH_REF_REGEX = /url\(\s*(['"]?)#([^)"'\s]+)\1\s*\)/;
 
-              const seriesNodes = Array.from(svg.querySelectorAll<SVGElement>(SERIES_GEOMETRY_SELECTOR));
-              if (seriesNodes.length === 0) return true;
+            const extractClipPathId = (node: Element, svg: SVGElement) => {
+              let current: Element | null = node;
+              while (current) {
+                const direct = current.getAttribute("clip-path");
+                if (direct) {
+                  const match = direct.match(CLIP_PATH_REF_REGEX);
+                  if (match?.[2]) return match[2];
+                }
 
-              const hasSeries = seriesNodes.some(hasDrawableGeometry);
+                const styleAttr = current.getAttribute("style");
+                if (styleAttr && styleAttr.includes("clip-path")) {
+                  const match = styleAttr.match(CLIP_PATH_REF_REGEX);
+                  if (match?.[2]) return match[2];
+                }
+
+                if (current === svg) break;
+                current = current.parentElement;
+              }
+              return null;
+            };
+
+            const escapeCss = (value: string) => {
+              if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
+                return CSS.escape(value);
+              }
+              return value.replace(/([ #;?%&,.+*~':"!^$[\]()=>|\/@])/g, "\\$1");
+            };
+
+            const hasVisibleReferencedClipPath = (node: SVGElement, svg: SVGElement) => {
+              const clipId = extractClipPathId(node, svg);
+              if (!clipId) return true;
+
+              const clipEl = svg.querySelector<SVGClipPathElement>(`#${escapeCss(clipId)}`);
+              if (!clipEl) return false;
+
+              const clipRects = Array.from(clipEl.querySelectorAll<SVGRectElement>("rect"));
+              if (clipRects.length === 0) return true;
+
+              return clipRects.some((clip) => {
+                const width = Number(clip.getAttribute("width") ?? 0);
+                const height = Number(clip.getAttribute("height") ?? 0);
+                return Number.isFinite(width) && Number.isFinite(height) && width > 1 && height > 1;
+              });
+            };
+
+            const getChartState = (el: HTMLElement) => {
+              const svg = el.querySelector<SVGElement>("svg.recharts-surface, svg");
+              if (!svg) {
+                return { ready: false, signature: "no-svg" };
+              }
+
+              const rect = svg.getBoundingClientRect();
+              if (rect.width <= 40 || rect.height <= 40) {
+                return {
+                  ready: false,
+                  signature: `tiny-svg:${Math.round(rect.width)}x${Math.round(rect.height)}`,
+                };
+              }
+
+              const seriesNodes = Array.from(
+                svg.querySelectorAll<SVGElement>(SERIES_GEOMETRY_SELECTOR),
+              );
+              if (seriesNodes.length === 0) {
+                return { ready: false, signature: "no-series-nodes" };
+              }
+
+              const hasVisibleSeries = seriesNodes.some(
+                (node) => hasDrawableGeometry(node) && hasVisibleReferencedClipPath(node, svg),
+              );
               const clipRects = Array.from(svg.querySelectorAll<SVGRectElement>("clipPath rect"));
-              const hasClip =
+              const hasVisibleClipRect =
                 clipRects.length === 0 ||
                 clipRects.some((clip) => {
                   const width = Number(clip.getAttribute("width") ?? 0);
                   const height = Number(clip.getAttribute("height") ?? 0);
-                  return Number.isFinite(width) && Number.isFinite(height) && width > 1 && height > 1;
+                  return (
+                    Number.isFinite(width) && Number.isFinite(height) && width > 1 && height > 1
+                  );
                 });
 
-              return !(hasSeries && hasClip);
-            }).length;
+              const isReady = hasVisibleSeries && hasVisibleClipRect;
+              const seriesSignature = seriesNodes.map(nodeSignature).join("|");
+              const clipSignature = clipRects
+                .map(
+                  (clip) =>
+                    `clip:${toNum(clip.getAttribute("x"))},${toNum(clip.getAttribute("y"))},${toNum(clip.getAttribute("width"))},${toNum(clip.getAttribute("height"))}`,
+                )
+                .join("|");
 
-            return { ok: unready === 0, chartCount: chartContainers.length, unready };
-          }, { regionY: clipY, regionHeight: clipHeight });
+              return {
+                ready: isReady,
+                signature: `${seriesSignature}::${clipSignature}`,
+              };
+            };
+
+            let previousSignature = "";
+            let stablePasses = 0;
+
+            for (let attempt = 1; attempt <= 10; attempt++) {
+              window.scrollTo({ top: Math.max(0, regionY - 140), left: 0, behavior: "instant" });
+              window.dispatchEvent(new Event("resize"));
+              void document.body.offsetHeight;
+              await raf();
+              await raf();
+              await wait(120);
+
+              const charts = chartContainers();
+              if (charts.length === 0) {
+                return { ok: true, chartCount: 0, unready: 0, attempts: attempt, stablePasses: 0 };
+              }
+
+              const states = charts.map((chart) => getChartState(chart));
+              const unready = states.filter((state) => !state.ready).length;
+
+              if (unready === 0) {
+                const signature = states.map((state) => state.signature).join("||");
+                if (signature === previousSignature) {
+                  stablePasses += 1;
+                } else {
+                  previousSignature = signature;
+                  stablePasses = 0;
+                }
+
+                if (stablePasses >= requiredStablePasses) {
+                  return {
+                    ok: true,
+                    chartCount: charts.length,
+                    unready: 0,
+                    attempts: attempt,
+                    stablePasses,
+                  };
+                }
+              } else {
+                previousSignature = "";
+                stablePasses = 0;
+              }
+
+              await wait(140);
+            }
+
+            const charts = chartContainers();
+            const states = charts.map((chart) => getChartState(chart));
+            const unready = states.filter((state) => !state.ready).length;
+            return {
+              ok: unready === 0,
+              chartCount: charts.length,
+              unready,
+              attempts: 10,
+              stablePasses,
+            };
+          },
+          { regionY: clipY, regionHeight: clipHeight },
+        );
+
+        if (!regionChartReady.ok) {
+          console.warn(
+            `[pdf-recharts] Region chart readiness incomplete: idx=${idx} id=${region.id} charts=${regionChartReady.chartCount} unready=${regionChartReady.unready} attempts=${regionChartReady.attempts} stablePasses=${regionChartReady.stablePasses ?? 0}`,
+          );
+
+          const clipRepair = await page.evaluate(
+            ({ regionY, regionHeight }) => {
+              const CLIP_PATH_REF_REGEX = /url\(\s*(['"]?)#([^)"'\s]+)\1\s*\)/;
+
+              const escapeCss = (value: string) => {
+                if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
+                  return CSS.escape(value);
+                }
+                return value.replace(/([ #;?%&,.+*~':"!^$[\]()=>|\/@])/g, "\\$1");
+              };
+
+              const parseClipId = (value: string | null) => {
+                if (!value) return null;
+                const match = value.match(CLIP_PATH_REF_REGEX);
+                return match?.[2] ?? null;
+              };
+
+              const inRegion = (el: HTMLElement) => {
+                const rect = el.getBoundingClientRect();
+                const top = rect.top + window.scrollY;
+                const bottom = top + rect.height;
+                return bottom > regionY && top < regionY + regionHeight;
+              };
+
+              const chartContainers = Array.from(
+                document.querySelectorAll<HTMLElement>(".recharts-responsive-container"),
+              ).filter(inRegion);
+
+              let repaired = 0;
+
+              for (const container of chartContainers) {
+                const svg = container.querySelector<SVGElement>("svg.recharts-surface, svg");
+                if (!svg) continue;
+
+                const nodes = Array.from(
+                  svg.querySelectorAll<SVGElement>("[clip-path], [style*='clip-path']"),
+                );
+
+                for (const node of nodes) {
+                  const clipId =
+                    parseClipId(node.getAttribute("clip-path")) ??
+                    parseClipId(node.getAttribute("style"));
+                  if (!clipId) continue;
+
+                  const clipEl = svg.querySelector<SVGClipPathElement>(`#${escapeCss(clipId)}`);
+                  const clipRects = clipEl
+                    ? Array.from(clipEl.querySelectorAll<SVGRectElement>("rect"))
+                    : [];
+
+                  const clipVisible =
+                    !!clipEl &&
+                    (clipRects.length === 0 ||
+                      clipRects.some((clip) => {
+                        const width = Number(clip.getAttribute("width") ?? 0);
+                        const height = Number(clip.getAttribute("height") ?? 0);
+                        return (
+                          Number.isFinite(width) &&
+                          Number.isFinite(height) &&
+                          width > 1 &&
+                          height > 1
+                        );
+                      }));
+
+                  if (clipVisible) continue;
+
+                  if (node.hasAttribute("clip-path")) {
+                    node.removeAttribute("clip-path");
+                    repaired += 1;
+                  }
+
+                  if ((node as SVGElement).style.clipPath) {
+                    (node as SVGElement).style.removeProperty("clip-path");
+                    repaired += 1;
+                  }
+                }
+              }
+
+              return { chartCount: chartContainers.length, repaired };
+            },
+            { regionY: clipY, regionHeight: clipHeight },
+          );
+
+          if (clipRepair.repaired > 0) {
+            console.warn(
+              `[pdf-recharts] Clip-path repair applied: idx=${idx} id=${region.id} charts=${clipRepair.chartCount} repaired=${clipRepair.repaired}`,
+            );
+          }
+
+          // Last-chance repaint nudge for charts that are still settling.
+          await page.evaluate(
+            async ({ regionY }) => {
+              window.scrollTo({ top: Math.max(0, regionY - 140), left: 0, behavior: "instant" });
+              window.dispatchEvent(new Event("resize"));
+              void document.body.offsetHeight;
+              await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+              await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+            },
+            { regionY: clipY },
+          );
+          await page.evaluate(() => new Promise((r) => setTimeout(r, 420)));
+
+          const postRepairChartReady = await page.evaluate(
+            ({ regionY, regionHeight }) => {
+              const inRegion = (el: HTMLElement) => {
+                const rect = el.getBoundingClientRect();
+                const style = window.getComputedStyle(el);
+                if (style.display === "none" || style.visibility === "hidden") return false;
+                if (rect.width <= 40 || rect.height <= 40) return false;
+                const top = rect.top + window.scrollY;
+                const bottom = top + rect.height;
+                return bottom > regionY && top < regionY + regionHeight;
+              };
+
+              const chartContainers = Array.from(
+                document.querySelectorAll<HTMLElement>(".recharts-responsive-container"),
+              ).filter(inRegion);
+
+              if (chartContainers.length === 0) {
+                return { ok: true, chartCount: 0, unready: 0 };
+              }
+
+              const SERIES_GEOMETRY_SELECTOR = [
+                ".recharts-line-curve",
+                ".recharts-area-curve",
+                ".recharts-area-area",
+                ".recharts-bar-rectangle rect",
+                ".recharts-bar-rectangle path",
+                ".recharts-scatter-symbol circle",
+                ".recharts-scatter-symbol path",
+                ".recharts-pie-sector path",
+                ".recharts-radial-bar-sector path",
+                ".recharts-funnel-trapezoid path",
+                ".recharts-radar-polygon polygon",
+                ".recharts-radar path",
+                ".recharts-treemap-rectangle rect",
+              ].join(",");
+
+              const hasDrawableGeometry = (node: SVGElement) => {
+                const style = window.getComputedStyle(node);
+                if (
+                  style.display === "none" ||
+                  style.visibility === "hidden" ||
+                  Number(style.opacity) === 0
+                ) {
+                  return false;
+                }
+                const tag = node.tagName.toLowerCase();
+                if (tag === "path") {
+                  const d = node.getAttribute("d") ?? "";
+                  return d.trim().length > 0;
+                }
+                if (tag === "rect") {
+                  const width = Number(node.getAttribute("width") ?? 0);
+                  const height = Number(node.getAttribute("height") ?? 0);
+                  return width > 1 && height > 1;
+                }
+                if (tag === "circle") {
+                  const r = Number(node.getAttribute("r") ?? 0);
+                  return r > 1;
+                }
+                if (tag === "polygon" || tag === "polyline") {
+                  const points = node.getAttribute("points") ?? "";
+                  return points.trim().length > 3;
+                }
+                return true;
+              };
+
+              const unready = chartContainers.filter((container) => {
+                const svg = container.querySelector<SVGElement>("svg.recharts-surface, svg");
+                if (!svg) return true;
+
+                const seriesNodes = Array.from(
+                  svg.querySelectorAll<SVGElement>(SERIES_GEOMETRY_SELECTOR),
+                );
+                if (seriesNodes.length === 0) return true;
+
+                const hasSeries = seriesNodes.some(hasDrawableGeometry);
+                const clipRects = Array.from(svg.querySelectorAll<SVGRectElement>("clipPath rect"));
+                const hasClip =
+                  clipRects.length === 0 ||
+                  clipRects.some((clip) => {
+                    const width = Number(clip.getAttribute("width") ?? 0);
+                    const height = Number(clip.getAttribute("height") ?? 0);
+                    return (
+                      Number.isFinite(width) && Number.isFinite(height) && width > 1 && height > 1
+                    );
+                  });
+
+                return !(hasSeries && hasClip);
+              }).length;
+
+              return { ok: unready === 0, chartCount: chartContainers.length, unready };
+            },
+            { regionY: clipY, regionHeight: clipHeight },
+          );
 
           if (!postRepairChartReady.ok) {
             console.warn(
-              `[pdf-recharts] Region still unready after repair: idx=${idx} id=${region.id} charts=${postRepairChartReady.chartCount} unready=${postRepairChartReady.unready}`
+              `[pdf-recharts] Region still unready after repair: idx=${idx} id=${region.id} charts=${postRepairChartReady.chartCount} unready=${postRepairChartReady.unready}`,
             );
           }
         }
@@ -897,7 +975,7 @@ export async function GET(
             embeddedImage = await outputDoc.embedPng(screenshotBuffer);
           } else {
             console.warn(
-              `[pdf-guard] Invalid JPEG payload for chunk, retrying as PNG: idx=${idx} id=${region.id} chunkStartY=${chunkStartY} chunkH=${chunkH}`
+              `[pdf-guard] Invalid JPEG payload for chunk, retrying as PNG: idx=${idx} id=${region.id} chunkStartY=${chunkStartY} chunkH=${chunkH}`,
             );
             const fallbackRaw = await page.screenshot({
               type: "png",
@@ -949,9 +1027,6 @@ export async function GET(
     }
   } catch (error) {
     console.error("PDF generation error:", error);
-    return NextResponse.json(
-      { error: "Failed to generate PDF" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to generate PDF" }, { status: 500 });
   }
 }

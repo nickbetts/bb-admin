@@ -2561,7 +2561,7 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
                 flexShrink: 0,
               }}
             >
-              Meridian by i3MEDIA
+              Meridian by Betts & Burton
             </span>
             {gamePlanLoading && (
               <Loader2

@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
   url.searchParams.set("response_type", "code");
   url.searchParams.set(
     "scope",
-    "https://www.googleapis.com/auth/adwords https://www.googleapis.com/auth/userinfo.email"
+    "https://www.googleapis.com/auth/adwords https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/analytics.readonly https://www.googleapis.com/auth/webmasters.readonly",
   );
   url.searchParams.set("access_type", "offline");
   url.searchParams.set("prompt", "consent");

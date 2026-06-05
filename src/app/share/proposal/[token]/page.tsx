@@ -565,7 +565,7 @@ function MetaAdCard({
             textTransform: "uppercase",
           }}
         >
-          i3media · Digital Marketing
+          Betts & Burton · Digital Marketing
         </p>
       </div>
 
@@ -1223,7 +1223,7 @@ export default function ShareProposalPage({ params }: Props) {
           }
           body::after {
             display: block !important;
-            content: 'CONFIDENTIAL — This proposal is prepared exclusively for the named recipient by i3media. Unauthorised reproduction, distribution or use is strictly prohibited.';
+            content: 'CONFIDENTIAL — This proposal is prepared exclusively for the named recipient by Betts & Burton. Unauthorised reproduction, distribution or use is strictly prohibited.';
             position: fixed;
             inset: 0;
             display: flex;
@@ -1240,7 +1240,7 @@ export default function ShareProposalPage({ params }: Props) {
         /* Invisible diagonal watermark visible on every printed page */
         @media print {
           html::before {
-            content: 'CONFIDENTIAL · i3media';
+            content: 'CONFIDENTIAL · Betts & Burton';
             position: fixed;
             top: 50%;
             left: 50%;
@@ -2683,7 +2683,7 @@ export default function ShareProposalPage({ params }: Props) {
                   tagline={trunc(ai?.hero?.tagline ?? `Grow ${meta.clientName} Online`, 40)}
                   description={trunc(
                     ai?.hero?.description ??
-                      `Looking to grow your business online? ${meta.clientName} is partnering with i3media to reach more customers through targeted digital marketing.`,
+                      `Looking to grow your business online? ${meta.clientName} is partnering with Betts & Burton to reach more customers through targeted digital marketing.`,
                     140,
                   )}
                   domain={extractDomain(meta.website || "example.com")}
@@ -3229,7 +3229,7 @@ export default function ShareProposalPage({ params }: Props) {
         </div>
       )}
 
-      {/* ── Why i3media ── */}
+      {/* ── Why Betts & Burton ── */}
       {(ai?.whyUs ?? []).length > 0 && (
         <div
           style={{
@@ -3261,7 +3261,7 @@ export default function ShareProposalPage({ params }: Props) {
                 textAlign: "center",
               }}
             >
-              Why i3media?
+              Why Betts & Burton?
             </h2>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 4 }}>
               {(ai!.whyUs ?? []).map((item, i) => (
@@ -3521,8 +3521,8 @@ export default function ShareProposalPage({ params }: Props) {
       {/* ── Footer ── */}
       <div style={{ background: "#080614", padding: "32px 24px", textAlign: "center" }}>
         <p style={{ fontSize: 13, color: "var(--text-2)", margin: "0 0 4px" }}>
-          Prepared by <strong style={{ color: "#a5b4fc" }}>i3media</strong> · Digital Marketing
-          Agency
+          Prepared by <strong style={{ color: "#a5b4fc" }}>Betts & Burton</strong> · Digital
+          Marketing Agency
         </p>
         <p style={{ fontSize: 11, color: "var(--text)", margin: "0 0 12px" }}>
           {new Date(meta.updatedAt).toLocaleDateString("en-GB", {
@@ -3558,7 +3558,7 @@ export default function ShareProposalPage({ params }: Props) {
       >
         <span style={{ fontSize: 13 }}>🔒</span>
         <span style={{ fontSize: 11, fontWeight: 600, color: "#a5b4fc", letterSpacing: "0.03em" }}>
-          Confidential · i3media
+          Confidential · Betts & Burton
         </span>
       </div>
     </div>

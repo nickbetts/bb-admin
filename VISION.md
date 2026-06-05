@@ -1,5 +1,4 @@
-
-# i3media Report — Platform Vision
+# Betts & Burton Report — Platform Vision
 
 ---
 
@@ -7,29 +6,29 @@
 
 ### What We Have (and It's Actually Impressive)
 
-i3media Report is already ahead of most agency tooling on the market. A cold audit as of April 2026 shows genuine strengths across all three build phases:
+Betts & Burton Report is already ahead of most agency tooling on the market. A cold audit as of April 2026 shows genuine strengths across all three build phases:
 
-| Capability | Current State | Rating |
-|---|---|---|
-| Data integrations | 15 channels (GA4, Google Ads, Meta, TikTok, Microsoft Ads, LinkedIn, Klaviyo, SemRush, GSC, Moz, WooCommerce, Shopify, YouTube, HubSpot, CallRail) | ⭐⭐⭐⭐⭐ |
+| Capability              | Current State                                                                                                                                                                                                                                                        | Rating     |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| Data integrations       | 15 channels (GA4, Google Ads, Meta, TikTok, Microsoft Ads, LinkedIn, Klaviyo, SemRush, GSC, Moz, WooCommerce, Shopify, YouTube, HubSpot, CallRail)                                                                                                                   | ⭐⭐⭐⭐⭐ |
 | AI insights per channel | 24 AI endpoints: anomaly detection, summaries, forecasting, budget advice, attribution, creative intelligence, root cause, strategy documents, audience suggestions, cross-platform creative, keyword suggestions, QA summary, content strategy, conversational chat | ⭐⭐⭐⭐⭐ |
-| Cross-channel context | All platform metrics fed into every AI call; cross-platform intelligence in every section | ⭐⭐⭐⭐⭐ |
-| Report builder | Drag-and-drop, AI commentary, collaboration comments, approval workflow, PDF export, share links | ⭐⭐⭐⭐⭐ |
-| Proposal generation | AI-powered PPC proposals with interactive forecaster, pipeline CRM, view tracking, enquiry capture | ⭐⭐⭐⭐⭐ |
-| Landing page analysis | CRO/SEO/Mobile/Forms scoring with AI, SuperSummary journey analysis | ⭐⭐⭐⭐ |
-| Keyword planner | SemRush-backed research with proposal output | ⭐⭐⭐⭐ |
-| Historical snapshots | Nightly automated snapshots across all channels, used for forecasting, seasonality, and anomaly context | ⭐⭐⭐⭐ |
-| Client management | Full CRUD, integration badges, contracted hours, AI instructions, portal management | ⭐⭐⭐⭐ |
-| Role-based access | 11 permissions, role editor, granular per-section control | ⭐⭐⭐⭐ |
-| LLM.txt generator | Novel, well-executed, sector-specific templates | ⭐⭐⭐⭐ |
-| Client portal | Self-serve login with magic link, goals, reports, communications view | ⭐⭐⭐⭐ |
-| Action tracking | AI recommendations → assigned actions → outcomes, full CRUD | ⭐⭐⭐⭐ |
-| Communication hub | Centralised log for emails, calls, meetings, notes with email drafting | ⭐⭐⭐⭐ |
-| Competitor intelligence | SemRush-backed competitor monitoring, share of voice, AI-generated insights | ⭐⭐⭐⭐ |
-| Media plan builder | Paid media planning with channel allocation and AI forecast outputs | ⭐⭐⭐⭐ |
-| Portfolio health | Agency-wide client health dashboard with churn risk scoring | ⭐⭐⭐⭐ |
-| Automated reporting | Monthly cron-triggered report generation, schedule configuration per client | ⭐⭐⭐⭐⭐ |
-| Notifications | Email + Slack delivery for anomalies, report events, goals at risk — fully configurable | ⭐⭐⭐⭐⭐ |
+| Cross-channel context   | All platform metrics fed into every AI call; cross-platform intelligence in every section                                                                                                                                                                            | ⭐⭐⭐⭐⭐ |
+| Report builder          | Drag-and-drop, AI commentary, collaboration comments, approval workflow, PDF export, share links                                                                                                                                                                     | ⭐⭐⭐⭐⭐ |
+| Proposal generation     | AI-powered PPC proposals with interactive forecaster, pipeline CRM, view tracking, enquiry capture                                                                                                                                                                   | ⭐⭐⭐⭐⭐ |
+| Landing page analysis   | CRO/SEO/Mobile/Forms scoring with AI, SuperSummary journey analysis                                                                                                                                                                                                  | ⭐⭐⭐⭐   |
+| Keyword planner         | SemRush-backed research with proposal output                                                                                                                                                                                                                         | ⭐⭐⭐⭐   |
+| Historical snapshots    | Nightly automated snapshots across all channels, used for forecasting, seasonality, and anomaly context                                                                                                                                                              | ⭐⭐⭐⭐   |
+| Client management       | Full CRUD, integration badges, contracted hours, AI instructions, portal management                                                                                                                                                                                  | ⭐⭐⭐⭐   |
+| Role-based access       | 11 permissions, role editor, granular per-section control                                                                                                                                                                                                            | ⭐⭐⭐⭐   |
+| LLM.txt generator       | Novel, well-executed, sector-specific templates                                                                                                                                                                                                                      | ⭐⭐⭐⭐   |
+| Client portal           | Self-serve login with magic link, goals, reports, communications view                                                                                                                                                                                                | ⭐⭐⭐⭐   |
+| Action tracking         | AI recommendations → assigned actions → outcomes, full CRUD                                                                                                                                                                                                          | ⭐⭐⭐⭐   |
+| Communication hub       | Centralised log for emails, calls, meetings, notes with email drafting                                                                                                                                                                                               | ⭐⭐⭐⭐   |
+| Competitor intelligence | SemRush-backed competitor monitoring, share of voice, AI-generated insights                                                                                                                                                                                          | ⭐⭐⭐⭐   |
+| Media plan builder      | Paid media planning with channel allocation and AI forecast outputs                                                                                                                                                                                                  | ⭐⭐⭐⭐   |
+| Portfolio health        | Agency-wide client health dashboard with churn risk scoring                                                                                                                                                                                                          | ⭐⭐⭐⭐   |
+| Automated reporting     | Monthly cron-triggered report generation, schedule configuration per client                                                                                                                                                                                          | ⭐⭐⭐⭐⭐ |
+| Notifications           | Email + Slack delivery for anomalies, report events, goals at risk — fully configurable                                                                                                                                                                              | ⭐⭐⭐⭐⭐ |
 
 ### The Original Gaps — Resolution Status
 
@@ -67,7 +66,7 @@ The portfolio health dashboard (`/portfolio`) provides a cross-client view with 
 
 ## 2. The Vision
 
-> **i3media Report should be the central nervous system of a modern digital marketing agency — not a dashboard, but an intelligence engine that thinks, advises, forecasts, automates, and communicates on behalf of the team.**
+> **Betts & Burton Report should be the central nervous system of a modern digital marketing agency — not a dashboard, but an intelligence engine that thinks, advises, forecasts, automates, and communicates on behalf of the team.**
 
 The platform should do three things that no competitor currently does in one unified product:
 
@@ -90,13 +89,15 @@ This section covers AI features that deliver genuine, measurable value — not d
 **What it is:** A natural language interface embedded in every client dashboard. Instead of navigating to the right tab and reading charts, account managers type or speak questions.
 
 **Example queries:**
-- *"Why did conversions drop last week on this account?"*
-- *"Which ad campaign is wasting the most money right now?"*
-- *"What's our best-performing keyword across all channels?"*
-- *"Write me a summary of October's performance to paste into an email."*
-- *"Compare this client's ROAS to last quarter and suggest what to do differently."*
+
+- _"Why did conversions drop last week on this account?"_
+- _"Which ad campaign is wasting the most money right now?"_
+- _"What's our best-performing keyword across all channels?"_
+- _"Write me a summary of October's performance to paste into an email."_
+- _"Compare this client's ROAS to last quarter and suggest what to do differently."_
 
 **How it works:**
+
 - A persistent chat interface on the client dashboard
 - Questions are sent to an AI model with the full cross-platform context (current metrics, historical snapshots, campaign data, anomalies)
 - The AI can query stored MetricSnapshot data for trends
@@ -106,6 +107,7 @@ This section covers AI features that deliver genuine, measurable value — not d
 **Why this matters:** This eliminates the "I need to look that up" bottleneck. An account manager in a client call can get instant answers without opening multiple platforms.
 
 **Implementation path:**
+
 - New `ClientConversation` model (messages, role, clientId, userId, context)
 - New `/api/ai/chat` endpoint with streaming responses
 - Persistent chat UI component with suggested prompts
@@ -118,6 +120,7 @@ This section covers AI features that deliver genuine, measurable value — not d
 **What it is:** An AI model that predicts next month's key metrics based on historical trends, seasonality, current trajectory, and industry benchmarks.
 
 **What it produces:**
+
 - Projected sessions, conversions, revenue for the next 30/60/90 days
 - Confidence bands (best case / expected / worst case)
 - Budget requirement to hit a target KPI
@@ -125,14 +128,16 @@ This section covers AI features that deliver genuine, measurable value — not d
 - Early warning: "At current trajectory, this client will miss their conversion target by 23%"
 
 **The models involved:**
+
 - Trend extrapolation from MetricSnapshot history (linear regression, moving averages)
 - Seasonality correction using year-over-year data where available
-- AI narrative explanation: *"We're forecasting a 12% drop in sessions next month based on the seasonal dip we saw in the same period last year, combined with the current declining trajectory in organic traffic."*
+- AI narrative explanation: _"We're forecasting a 12% drop in sessions next month based on the seasonal dip we saw in the same period last year, combined with the current declining trajectory in organic traffic."_
 - Spend-to-outcome forecasting for paid channels (extending the existing PPC forecaster into a live dashboard feature)
 
 **Why this matters:** Proactive account management. Catching a miss before it happens, rather than explaining it in the next report.
 
 **Implementation path:**
+
 - Extend MetricSnapshot to store 24+ months of data per channel
 - New `/api/ai/forecast` endpoint
 - ForecastSection component on the overview tab
@@ -142,13 +147,14 @@ This section covers AI features that deliver genuine, measurable value — not d
 
 ### 3.3 Root Cause Analysis Engine
 
-**What it is:** When an anomaly is detected (existing system), instead of just flagging it, the platform automatically investigates *why* it happened by cross-referencing all available data.
+**What it is:** When an anomaly is detected (existing system), instead of just flagging it, the platform automatically investigates _why_ it happened by cross-referencing all available data.
 
 **The current state:** "Sessions dropped 28% vs last month — HIGH severity."
 
 **The new state:** "Sessions dropped 28% vs last month. Root cause analysis: Organic sessions fell 34% from Google. Cross-referencing with Search Console data, we can see position losses across 45 non-brand keywords. The largest declines are in [keyword cluster]. In the same period, SemRush shows a competitor gained 22 positions for these terms. This appears to be a SERP displacement event, not a technical issue. Recommendation: audit content for those keyword pages and consider a content refresh sprint."
 
 **Analysis chain:**
+
 1. Detect anomaly (existing)
 2. Identify affected channel
 3. Pull deeper data for that channel (keyword-level, campaign-level, segment-level)
@@ -158,6 +164,7 @@ This section covers AI features that deliver genuine, measurable value — not d
 7. Generate specific remediation steps
 
 **Implementation path:**
+
 - New `/api/ai/root-cause` endpoint
 - Triggered automatically for HIGH severity anomalies
 - Root cause stored against the anomaly in the Signals view
@@ -170,6 +177,7 @@ This section covers AI features that deliver genuine, measurable value — not d
 **What it is:** A cross-channel budget recommendation engine that analyses spend efficiency across all paid channels and produces specific reallocation suggestions with projected impact.
 
 **What it produces:**
+
 - Current budget allocation vs optimal allocation based on ROAS/CPA performance
 - "If you shift £500/month from Meta to Google Ads based on current ROAS differentials, projected revenue impact: +£1,400/month"
 - Channel saturation signals: "Meta frequency is at 4.2, indicating audience fatigue — this budget is producing diminishing returns"
@@ -179,6 +187,7 @@ This section covers AI features that deliver genuine, measurable value — not d
 **Why this matters:** This is the most direct path to demonstrable ROI for the agency. When an account manager brings a budget recommendation backed by multi-channel data and projected outcomes, it becomes a revenue conversation, not a reporting conversation.
 
 **Implementation path:**
+
 - New `/api/ai/budget-advisor` endpoint
 - Input: all paid channel metrics, impression share data, frequency data
 - Output: structured recommendations with projected impact ranges
@@ -192,18 +201,21 @@ This section covers AI features that deliver genuine, measurable value — not d
 **What it is:** AI analysis of ad creative performance across Meta and Google, identifying patterns in what is working and why, and generating creative briefs for the next iteration.
 
 **For Meta Ads:**
+
 - Analyse performance by creative type (image vs video vs carousel)
 - Identify winning creative attributes (dark vs light, people vs product, text-heavy vs clean)
 - Frequency vs performance correlation (which creatives are fatiguing)
 - Automatic creative brief: "Your top performer for this month used a testimonial format, showed a before/after comparison, and had a CTA in the first 3 seconds. Here is a brief for your creative team based on this."
 
 **For Google Ads:**
+
 - RSA asset performance scoring (headline performance, description performance)
 - Ad copy pattern analysis: which messaging themes are converting best
 - Quality Score correlation with landing page content
 - Automatic ad copy suggestions based on top-performing patterns and keyword intent
 
 **Implementation path:**
+
 - Extend Meta data fetching to include ad-level creative attributes
 - New `/api/ai/creative-intelligence` endpoint
 - CreativeIntelligencePanel component embedded in paid channel sections
@@ -216,6 +228,7 @@ This section covers AI features that deliver genuine, measurable value — not d
 **What it is:** On demand, the AI produces a full monthly or quarterly strategy document for a client — not a report of past performance, but a forward-looking strategy.
 
 **Structure:**
+
 1. Performance summary (last period)
 2. Key wins and why they happened
 3. Key challenges and root causes
@@ -230,6 +243,7 @@ This section covers AI features that deliver genuine, measurable value — not d
 **Why this is different from the existing report:** The current report is a narrative of what happened. The strategy document is a prescription for what to do next — it's a strategic asset, not a history lesson.
 
 **Implementation path:**
+
 - New `/api/ai/strategy-document` endpoint
 - Uses full cross-platform context + historical trend data + forecast data
 - Output as a formatted, branded document (separate from the standard report)
@@ -243,12 +257,14 @@ This section covers AI features that deliver genuine, measurable value — not d
 **What it is:** Ongoing monitoring and analysis of competitor activity using available data sources, with AI-generated competitive summaries.
 
 **Data sources:**
+
 - SemRush competitor data (existing, underutilised)
 - Google Ads auction insights (impression share overlap, outranking share)
 - Google Trends integration (new)
 - AI web search (GPT-4o-search — already in use for landing page analysis, extend to competitive research)
 
 **What it produces:**
+
 - Competitor traffic trend comparisons
 - Competitor keyword gain/loss alerts: "A competitor entered the top 3 for your target keyword"
 - Competitor ad copy intelligence: what messaging themes are they running
@@ -257,6 +273,7 @@ This section covers AI features that deliver genuine, measurable value — not d
 - Opportunity gaps: high-volume keywords where competitors rank but you don't
 
 **Implementation path:**
+
 - New `CompetitorSnapshot` model (clientId, domain, metrics JSON, periodStart/End)
 - Extend `/api/semrush/` to include competitor data pull on a schedule
 - New `/api/ai/competitor-intelligence` endpoint
@@ -270,6 +287,7 @@ This section covers AI features that deliver genuine, measurable value — not d
 **What it is:** Combines demographic data from Meta, GA4, and Google Ads to build a unified audience profile and generate persona hypotheses.
 
 **What it produces:**
+
 - Cross-channel audience overlap analysis: "Your best-converting Meta audience is 25-34 female, while Google Ads converts best from 35-44 male. These audiences respond to different messaging."
 - Unified persona cards with suggested messaging angles
 - Audience expansion opportunities: "You're reaching this persona effectively. Here are three adjacent personas that should respond to similar creative."
@@ -287,6 +305,7 @@ This section covers AI features that deliver genuine, measurable value — not d
 - Technical signals (did the anomaly coincide with a new deployment or tracking change?)
 
 **Output enrichment for each anomaly:**
+
 ```
 Current: "Sessions dropped 28% — HIGH"
 Enhanced: "Sessions dropped 28% — HIGH
@@ -305,6 +324,7 @@ Enhanced: "Sessions dropped 28% — HIGH
 **What it is:** A cross-channel attribution model that goes beyond last-click to show the true contribution of each marketing touchpoint in the customer journey.
 
 **Models to support:**
+
 - **Last click** — current default across all platforms (baseline)
 - **First click** — which channel initiates journeys
 - **Linear** — equal credit to each touchpoint
@@ -313,11 +333,13 @@ Enhanced: "Sessions dropped 28% — HIGH
 - **Data-driven** (AI-powered) — trained on actual conversion path data
 
 **What this unlocks:**
+
 - "Meta Ads appears to be a poor performer on last-click, but it initiates 43% of journeys that convert via Google. Under linear attribution, Meta's true contribution is 3x higher."
 - Comparison view: see how each channel's value changes across attribution models
 - Budget recommendations that factor in true attribution contribution
 
 **Implementation path:**
+
 - Extend GA4 data fetching to pull conversion path reports
 - New `AttributionModel` computation layer in the API
 - Attribution comparison UI on the Overview tab
@@ -330,6 +352,7 @@ Enhanced: "Sessions dropped 28% — HIGH
 **What it is:** A unified view of how much of the total search/social/paid landscape the client owns, compared to their key competitors.
 
 **Components:**
+
 - **Organic share of voice** — % of total clicks for tracked keyword set (via SemRush + GSC)
 - **Paid share of voice** — impression share vs competitor domains (Google Ads auction insights + estimated meta share)
 - **Brand SOV** — share of branded searches
@@ -344,6 +367,7 @@ Enhanced: "Sessions dropped 28% — HIGH
 **What it is:** A structured analysis of how efficiently marketing spend moves prospects through each stage of the funnel — Awareness → Interest → Consideration → Intent → Conversion → Retention.
 
 **What it adds:**
+
 - Stage-by-stage conversion rates with benchmarks
 - Bottleneck identification: "The biggest drop-off in your funnel is between Sessions and Conversions (2.1% vs 3.8% industry average) — this is a landing page and CRO problem, not a traffic problem."
 - Channel contribution per funnel stage: "Meta is excellent for awareness (low CPM) but poor for bottom-of-funnel (high CPA). Google Search is the opposite."
@@ -356,6 +380,7 @@ Enhanced: "Sessions dropped 28% — HIGH
 **What it is:** Automatically detects and maps seasonal patterns from historical MetricSnapshot data, and uses these to contextualise current performance.
 
 **What it produces:**
+
 - Per-channel seasonality calendars: "This client typically sees a 35% boost in sessions during November-December and a 20% dip in January."
 - Seasonal baseline adjustments: anomaly thresholds are recalibrated based on expected seasonal variation (removing false positives during expected slow periods)
 - Forward-looking seasonality alerts: "Based on last year, you should expect a 25% increase in conversions starting in 3 weeks. Ensure budget is paced to capture this."
@@ -368,6 +393,7 @@ Enhanced: "Sessions dropped 28% — HIGH
 **What it is:** Integrates e-commerce data (WooCommerce/Shopify) with marketing channel data to track revenue all the way back to the channel that drove it.
 
 **What it produces:**
+
 - Revenue by acquisition channel
 - Customer lifetime value estimates by acquisition channel
 - Payback period analysis: "Customers acquired via Google Ads have a 3.2-month payback period vs 5.7 months for Meta"
@@ -381,11 +407,13 @@ Enhanced: "Sessions dropped 28% — HIGH
 **What it is:** Allow account managers to define custom metrics that are calculated from combinations of existing data.
 
 **Examples:**
+
 - `Blended CPA = (Google Ads spend + Meta spend) / total_conversions`
 - `True ROAS = total_revenue / (Google Ads spend + Meta spend + agency fee)`
 - `Organic efficiency = (organic_sessions × avg_conversion_rate × avg_order_value) / SEO_retainer_cost`
 
 **Implementation path:**
+
 - `CustomMetric` model (name, formula, clientId, colour, displayOn[])
 - Formula editor with metric picker
 - Metrics displayed as cards and in reports
@@ -396,37 +424,37 @@ Enhanced: "Sessions dropped 28% — HIGH
 
 ### Priority 1 — High Impact, High Demand
 
-| Platform | Data Available | Value |
-|---|---|---|
-| **TikTok Ads** | Spend, impressions, clicks, video views, CTR, CPM, conversions, ROAS | Essential — most agencies running TikTok now |
-| **LinkedIn Ads** | Spend, impressions, clicks, CTR, CPC, leads, company engagement | B2B agencies need this |
-| **Microsoft Advertising (Bing Ads)** | Spend, clicks, impressions, CTR, CPC, conversions, search terms | Underrated channel, high intent |
-| **YouTube Analytics** | Views, watch time, CTR, average view duration, revenue, audience retention | Separate from GA4, richer video-specific data |
-| **Klaviyo / Email Marketing** | Sends, opens, clicks, conversions, revenue, list growth, unsubscribes | Email is often the highest ROAS channel |
+| Platform                             | Data Available                                                             | Value                                         |
+| ------------------------------------ | -------------------------------------------------------------------------- | --------------------------------------------- |
+| **TikTok Ads**                       | Spend, impressions, clicks, video views, CTR, CPM, conversions, ROAS       | Essential — most agencies running TikTok now  |
+| **LinkedIn Ads**                     | Spend, impressions, clicks, CTR, CPC, leads, company engagement            | B2B agencies need this                        |
+| **Microsoft Advertising (Bing Ads)** | Spend, clicks, impressions, CTR, CPC, conversions, search terms            | Underrated channel, high intent               |
+| **YouTube Analytics**                | Views, watch time, CTR, average view duration, revenue, audience retention | Separate from GA4, richer video-specific data |
+| **Klaviyo / Email Marketing**        | Sends, opens, clicks, conversions, revenue, list growth, unsubscribes      | Email is often the highest ROAS channel       |
 
 ### Priority 2 — Significant Agency Value
 
-| Platform | Data Available | Value |
-|---|---|---|
-| **HubSpot CRM** | Contacts, deals, pipeline value, deal stage, revenue close data | Closes the loop between marketing and sales |
-| **Salesforce** | Same as HubSpot — enterprise clients need this | Enterprise accounts |
-| **Pipedrive** | Deals, pipeline, activity | SMB CRM integration |
-| **CallRail / Call Tracking** | Calls by source, call duration, call conversion, keyword that drove call | High-value lead gen clients |
-| **Hotjar / Microsoft Clarity** | Heatmap scores, session recordings, rage click events, form abandonment | CRO integration with landing page analysis |
-| **Core Web Vitals (CrUX API)** | LCP, CLS, INP, FID — real-user performance data | SEO ranking factor, free Google data |
-| **Google Reviews / Trustpilot** | Review rating, review count, sentiment trend | Local SEO and reputation management |
+| Platform                        | Data Available                                                           | Value                                       |
+| ------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------- |
+| **HubSpot CRM**                 | Contacts, deals, pipeline value, deal stage, revenue close data          | Closes the loop between marketing and sales |
+| **Salesforce**                  | Same as HubSpot — enterprise clients need this                           | Enterprise accounts                         |
+| **Pipedrive**                   | Deals, pipeline, activity                                                | SMB CRM integration                         |
+| **CallRail / Call Tracking**    | Calls by source, call duration, call conversion, keyword that drove call | High-value lead gen clients                 |
+| **Hotjar / Microsoft Clarity**  | Heatmap scores, session recordings, rage click events, form abandonment  | CRO integration with landing page analysis  |
+| **Core Web Vitals (CrUX API)**  | LCP, CLS, INP, FID — real-user performance data                          | SEO ranking factor, free Google data        |
+| **Google Reviews / Trustpilot** | Review rating, review count, sentiment trend                             | Local SEO and reputation management         |
 
 ### Priority 3 — Future-Proofing
 
-| Platform | Value |
-|---|---|
-| **Pinterest Ads** | E-commerce clients in lifestyle/fashion |
-| **X (Twitter) Ads** | B2B and tech clients |
-| **Reddit Ads** | Tech, gaming, finance verticals |
-| **Snapchat Ads** | Youth-targeted brands |
-| **Amazon Ads** | E-commerce clients selling on Amazon |
-| **Apple Search Ads** | Mobile app clients |
-| **Spotify Ads** | Audio/brand awareness campaigns |
+| Platform             | Value                                   |
+| -------------------- | --------------------------------------- |
+| **Pinterest Ads**    | E-commerce clients in lifestyle/fashion |
+| **X (Twitter) Ads**  | B2B and tech clients                    |
+| **Reddit Ads**       | Tech, gaming, finance verticals         |
+| **Snapchat Ads**     | Youth-targeted brands                   |
+| **Amazon Ads**       | E-commerce clients selling on Amazon    |
+| **Apple Search Ads** | Mobile app clients                      |
+| **Spotify Ads**      | Audio/brand awareness campaigns         |
 
 ### Integration Architecture Upgrade
 
@@ -444,6 +472,7 @@ Enhanced: "Sessions dropped 28% — HIGH
 **What it is:** Reports are generated and delivered automatically on a schedule — no account manager involvement required.
 
 **Features:**
+
 - Per-client report schedule (weekly, monthly, quarterly)
 - Automatic data pull + AI commentary generation + section assembly
 - Delivery via email (HTML email with PDF attachment), Slack, or client portal
@@ -460,6 +489,7 @@ Enhanced: "Sessions dropped 28% — HIGH
 **What it is:** A new report format that is a live web experience, not a static document.
 
 **Features:**
+
 - Fully interactive charts (zoom, hover, filter) — not static images
 - Date range picker within the shared report (client can explore different periods)
 - Expandable sections with drill-down data
@@ -476,6 +506,7 @@ Enhanced: "Sessions dropped 28% — HIGH
 **What it is:** A narrated video summary of the monthly report, automatically generated by AI.
 
 **How it works:**
+
 - AI generates a structured script based on report data and commentary
 - Text-to-speech narration (OpenAI TTS or similar)
 - Screen-recorded walkthrough of the key charts and metrics with highlight overlays
@@ -489,6 +520,7 @@ Enhanced: "Sessions dropped 28% — HIGH
 **What it is:** Export reports as presentation decks (Google Slides, PowerPoint, Keynote).
 
 **Features:**
+
 - One slide per report section
 - Auto-formatted with key metrics, charts (rendered as images), and commentary bullets
 - Branded template (client colours + agency logo)
@@ -502,6 +534,7 @@ Enhanced: "Sessions dropped 28% — HIGH
 **What it is:** Multiple team members can work on a report simultaneously, with version control and comment threading.
 
 **Features:**
+
 - Concurrent editing indicators ("Sarah is editing this section")
 - Comment threads on any section
 - Version history with named snapshots ("v1 — initial draft", "v2 — after client feedback")
@@ -516,6 +549,7 @@ Enhanced: "Sessions dropped 28% — HIGH
 **What it is:** Every metric in a report automatically shows how it compares to industry benchmarks.
 
 **Data sources:**
+
 - Agency's own client data (aggregate benchmarks across portfolio)
 - Industry databases (WordStream, Databox, HubSpot) via AI retrieval
 - Custom benchmarks set by account managers
@@ -529,6 +563,7 @@ Enhanced: "Sessions dropped 28% — HIGH
 **What it is:** AI that analyses completed reports across all clients to surface portfolio-level patterns.
 
 **Examples:**
+
 - "3 of your 5 e-commerce clients have seen declining ROAS this month — this may be a broader platform issue, not a client-specific one."
 - "Clients using TikTok + Google Ads together are averaging 22% higher overall ROAS than single-channel clients."
 - "The clients showing the best year-over-year growth all have landing pages scoring above 75 in your page analyser."
@@ -542,6 +577,7 @@ Enhanced: "Sessions dropped 28% — HIGH
 **What it is:** A portfolio-level overview that gives the agency a real-time view of the health of every client account.
 
 **Metrics per client:**
+
 - Overall performance score (aggregate of channel health scores)
 - Trend direction (improving / stable / declining over last 30 days)
 - Risk flag: clients with multiple HIGH anomalies or declining trends
@@ -553,6 +589,7 @@ Enhanced: "Sessions dropped 28% — HIGH
 **AI-powered churn risk scoring:** An AI model trained on performance trends, engagement signals, and communication frequency that predicts which clients are at risk of churning. Outputs a risk score (Low / Medium / High) with the primary risk factor.
 
 **Portfolio analytics:**
+
 - Total managed ad spend across all clients
 - Portfolio blended ROAS
 - Total organic traffic under management
@@ -566,6 +603,7 @@ Enhanced: "Sessions dropped 28% — HIGH
 **What it is:** Close the loop between AI recommendations and actual account work. Every AI recommendation generates an optional "action" that can be assigned to a team member.
 
 **How it works:**
+
 - AI generates a recommendation: "Increase Google Ads budget for Campaign X by £200"
 - Account manager clicks "Create Action" from the recommendation
 - Action is assigned (user, due date, priority, notes)
@@ -580,6 +618,7 @@ Enhanced: "Sessions dropped 28% — HIGH
 **What it is:** A centralised log of all client communication related to each account, linked to specific reports, anomalies, and actions.
 
 **Features:**
+
 - Send emails directly from the platform (client update templates)
 - Log phone calls and meetings with notes
 - All report shares and proposal views automatically logged
@@ -594,6 +633,7 @@ Enhanced: "Sessions dropped 28% — HIGH
 **What it is:** Create, manage, and track client Statements of Work from within the platform.
 
 **Features:**
+
 - SOW builder with service selections (linked to the existing pricing module)
 - Contracted deliverables list with monthly tracking
 - Contract renewal date alerts
@@ -608,6 +648,7 @@ Enhanced: "Sessions dropped 28% — HIGH
 **What it is:** Financial overview of the agency itself — not client performance, but business performance.
 
 **Metrics:**
+
 - Monthly recurring revenue (MRR) across all client retainers
 - MRR trend and growth rate
 - Revenue at risk (clients flagged as churn risk × retainer value)
@@ -623,6 +664,7 @@ Enhanced: "Sessions dropped 28% — HIGH
 **What it is:** Aggregate insights into how the team is using the platform and managing accounts.
 
 **Metrics:**
+
 - Reports created per team member
 - AI commentary usage rates
 - Actions created vs completed per account manager
@@ -639,6 +681,7 @@ Enhanced: "Sessions dropped 28% — HIGH
 **What it is:** A dedicated, white-labelled portal where clients can log in and see their own live performance data.
 
 **Features:**
+
 - Branded with the agency logo and client-specific colours
 - Clients see only their own data — completely isolated
 - Configurable access: agency decides which sections and metrics are visible
@@ -648,6 +691,7 @@ Enhanced: "Sessions dropped 28% — HIGH
 - All notifications about their account
 
 **Access control:**
+
 - New `ClientUser` model — separate from agency staff users
 - Client users linked to a single client record
 - Permissions configurable per client user
@@ -660,12 +704,14 @@ Enhanced: "Sessions dropped 28% — HIGH
 **What it is:** Account managers (and optionally clients) can set specific, measurable marketing goals per client. The platform tracks progress automatically.
 
 **Goal types:**
+
 - Channel-specific KPI targets (e.g., "Achieve 3.0 ROAS on Google Ads by Q4")
 - Growth targets (e.g., "Grow organic sessions by 30% in 6 months")
 - Revenue targets (e.g., "Generate £50k in e-commerce revenue this quarter")
 - Reach targets (e.g., "Achieve 100k impressions per month on Meta")
 
 **Features:**
+
 - Progress bars on client dashboard
 - On-track / at-risk / off-track status
 - AI-generated guidance when a goal is at risk
@@ -679,6 +725,7 @@ Enhanced: "Sessions dropped 28% — HIGH
 **What it is:** Before a report or proposal is sent, the client can be given a draft view with an approval mechanism.
 
 **Features:**
+
 - Client receives email: "Your October report is ready for review"
 - Client opens the report and can add comments on specific sections
 - Client clicks "Approve" or "Request changes"
@@ -693,6 +740,7 @@ Enhanced: "Sessions dropped 28% — HIGH
 **What it is:** Automated Net Promoter Score surveys sent after reports, proposals, or at regular intervals.
 
 **Features:**
+
 - Configurable survey frequency per client
 - 0-10 NPS question + optional qualitative feedback
 - NPS score tracked over time per client and across portfolio
@@ -709,6 +757,7 @@ Enhanced: "Sessions dropped 28% — HIGH
 **What it is:** Anomalies are detected but currently silently — this delivers them to the right people.
 
 **Delivery channels:**
+
 - **Email:** Digest format (immediate for HIGH, daily digest for MEDIUM/LOW)
 - **Slack:** Direct message or channel post with formatted anomaly cards
 - **Microsoft Teams:** Same as Slack via webhook
@@ -717,6 +766,7 @@ Enhanced: "Sessions dropped 28% — HIGH
 - **Webhooks:** Send alert data to any external system
 
 **Alert types:**
+
 - Anomaly alerts (existing system, now delivered)
 - Report ready for review
 - Report sent / client opened report
@@ -727,6 +777,7 @@ Enhanced: "Sessions dropped 28% — HIGH
 - API rate limit or data fetch failure
 
 **Configurable routing:**
+
 - Per-user notification preferences
 - Per-client escalation rules (critical accounts get immediate alerts)
 - Quiet hours configuration
@@ -736,6 +787,7 @@ Enhanced: "Sessions dropped 28% — HIGH
 ### 9.2 Automated Monthly Reporting Workflow
 
 **Workflow steps:**
+
 1. Trigger: 1st of each month (or custom date per client)
 2. Create report from default template
 3. Pull all channel data for previous month
@@ -754,6 +806,7 @@ Enhanced: "Sessions dropped 28% — HIGH
 **What it is:** Set rules that trigger actions when performance crosses specific thresholds.
 
 **Examples:**
+
 - ROAS drops below 2.0 for 3 consecutive days → pause Meta campaign + notify account manager
 - Google Ads impression share falls below 60% → trigger budget review action
 - Organic sessions drop 20%+ week-over-week → schedule emergency strategy review
@@ -765,9 +818,10 @@ Enhanced: "Sessions dropped 28% — HIGH
 
 ### 9.4 Zapier / Make Integration
 
-**What it is:** A public webhook API that allows i3media Report to connect with any external tool via Zapier or Make.
+**What it is:** A public webhook API that allows Betts & Burton Report to connect with any external tool via Zapier or Make.
 
 **Trigger events:**
+
 - New anomaly detected
 - Report published
 - Proposal viewed
@@ -775,6 +829,7 @@ Enhanced: "Sessions dropped 28% — HIGH
 - Performance threshold crossed
 
 **Action endpoints:**
+
 - Retrieve client metrics
 - Create a report action
 - Update goal status
@@ -798,6 +853,7 @@ Enhanced: "Sessions dropped 28% — HIGH
 **What it is:** A planning tool for building out paid media plans with budget projections, channel mix recommendations, and forecasted outcomes.
 
 **Features:**
+
 - Input: total budget, campaign objectives, duration, target audience
 - AI-recommended channel split based on objectives (brand awareness vs lead gen vs e-commerce)
 - Projected impressions, clicks, conversions per channel based on current benchmark data
@@ -812,6 +868,7 @@ Enhanced: "Sessions dropped 28% — HIGH
 **What it is:** A marketing calendar that shows upcoming campaigns, product launches, seasonal events, and planned activity across all channels.
 
 **Features:**
+
 - Per-client calendar with colour-coded campaign events
 - Sync with Google Calendar
 - Automatic annotation of reports and dashboards: "Black Friday campaign active during this period"
@@ -825,6 +882,7 @@ Enhanced: "Sessions dropped 28% — HIGH
 **What it is:** Compare actual platform ad spend (pulled directly from Google Ads, Meta, etc.) against planned budgets and client invoices.
 
 **Features:**
+
 - Monthly spend actual vs planned by channel
 - Variance alert when actual spend deviates >5% from plan
 - Auto-generate spend summary report for finance team
@@ -840,6 +898,7 @@ Enhanced: "Sessions dropped 28% — HIGH
 **Pipeline stages:** Prospect → Proposal Sent → Proposal Viewed → Negotiating → Won → Lost
 
 **Features:**
+
 - Kanban board view of all active proposals
 - Automatic stage updates (Proposal Viewed stage updates when client opens share link)
 - Won/Lost tracking with reason (for AI learning)
@@ -867,6 +926,7 @@ Enhanced: "Sessions dropped 28% — HIGH
 **What it is:** Intelligent caching of external API responses to reduce latency, API costs, and rate limit exposure.
 
 **Strategy:**
+
 - Redis or Vercel KV cache for API responses with TTLs matching data freshness (hourly for ad platform data, daily for SEO data)
 - Cache invalidation on explicit refresh
 - Cache warming: pre-fetch common client data during off-peak hours
@@ -879,10 +939,11 @@ Enhanced: "Sessions dropped 28% — HIGH
 **What it is:** Allow the entire platform to run under a custom domain and brand for white-label deployment — either for the agency's own use at scale, or as a product sold to other agencies.
 
 **Features:**
+
 - Custom domain support
 - Complete logo, colour scheme, and brand name replacement
 - Email templates with custom branding
-- Suppressed i3media branding across all client-facing surfaces
+- Suppressed Betts & Burton branding across all client-facing surfaces
 - Per-tenant configuration (the agency customises their deployment)
 - Optional: multi-tenant SaaS mode where each agency is a separate tenant
 
@@ -893,6 +954,7 @@ Enhanced: "Sessions dropped 28% — HIGH
 **What it is:** A documented, versioned public API that allows clients and third-party systems to access their own data programmatically.
 
 **Endpoints:**
+
 - `GET /api/v1/clients/{id}/metrics` — retrieve current metrics
 - `GET /api/v1/clients/{id}/reports` — list reports
 - `POST /api/v1/clients/{id}/snapshots` — push external metric data
@@ -907,6 +969,7 @@ Enhanced: "Sessions dropped 28% — HIGH
 **What it is:** Export any data from the platform into external analytics and BI tools.
 
 **Formats:**
+
 - CSV / Excel download for any table or dataset
 - Google Looker Studio connector (native data source)
 - BigQuery export (daily snapshot push for historical analysis)
@@ -920,6 +983,7 @@ Enhanced: "Sessions dropped 28% — HIGH
 **What it is:** Extend the current role-based permissions to support client-level and section-level access control.
 
 **New permission dimensions:**
+
 - Client-level: "User A can access Clients 1-5 only"
 - Section-level: "User B cannot see the paid media spend data"
 - Action-level: "User C can view reports but not publish or share them"
@@ -932,6 +996,7 @@ Enhanced: "Sessions dropped 28% — HIGH
 **What it is:** A full audit trail of all significant actions taken in the platform.
 
 **Logged events:**
+
 - User logins and logouts
 - Report created / edited / published / shared / deleted
 - Client created / modified / deleted
@@ -961,6 +1026,7 @@ Enhanced: "Sessions dropped 28% — HIGH
 **What it is:** Make the platform installable as a mobile app on iOS and Android without a native app build.
 
 **Features:**
+
 - Install prompt on mobile browsers
 - Home screen icon
 - Offline support for the most recently viewed dashboards (cached data)
@@ -974,6 +1040,7 @@ Enhanced: "Sessions dropped 28% — HIGH
 **What it is:** A specifically designed mobile experience for checking key metrics on the go.
 
 **Features:**
+
 - Simplified one-column KPI card layout
 - Swipe navigation between sections
 - Critical metrics summary at the top: "Your 3 clients with alerts today"
@@ -987,6 +1054,7 @@ Enhanced: "Sessions dropped 28% — HIGH
 **What it is:** Real-time push notifications for critical platform events.
 
 **Notification types:**
+
 - HIGH severity anomaly detected on a client account
 - Report has been opened by a client
 - Proposal viewed by a prospect
@@ -998,22 +1066,23 @@ Enhanced: "Sessions dropped 28% — HIGH
 
 ## 13. Competitive Positioning
 
-### Where i3media Report Should Win
+### Where Betts & Burton Report Should Win
 
-| Feature Category | Current Competitors | i3media Advantage |
-|---|---|---|
-| **Cross-channel intelligence** | Most tools are single-channel (e.g., SEMrush = SEO only, Supermetrics = data aggregation only) | Native cross-channel AI analysis with correlated insights |
-| **AI quality** | Most competitors use AI as a label, not a capability (generic summaries, no anomaly detection, no root cause) | Deep, context-aware AI with anomaly detection, root cause, forecasting, conversational analyst |
-| **Agency workflow** | ReportGarden, AgencyAnalytics — decent reporting, limited AI, no strategic tools | Full agency OS: reporting + strategy + proposals + client management + operations |
-| **Proposal generation** | Separate tools (Proposify, PandaDoc) with no data integration | AI proposals backed by live channel data and keyword research |
-| **Client experience** | Most tools show the client a PDF | Interactive portal with real-time data, goal tracking, and annotations |
-| **Automation** | Minimal in most tools — manual report creation is universal | Fully automated monthly report workflow, smart alerts, action tracking |
+| Feature Category               | Current Competitors                                                                                           | Betts & Burton Advantage                                                                       |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| **Cross-channel intelligence** | Most tools are single-channel (e.g., SEMrush = SEO only, Supermetrics = data aggregation only)                | Native cross-channel AI analysis with correlated insights                                      |
+| **AI quality**                 | Most competitors use AI as a label, not a capability (generic summaries, no anomaly detection, no root cause) | Deep, context-aware AI with anomaly detection, root cause, forecasting, conversational analyst |
+| **Agency workflow**            | ReportGarden, AgencyAnalytics — decent reporting, limited AI, no strategic tools                              | Full agency OS: reporting + strategy + proposals + client management + operations              |
+| **Proposal generation**        | Separate tools (Proposify, PandaDoc) with no data integration                                                 | AI proposals backed by live channel data and keyword research                                  |
+| **Client experience**          | Most tools show the client a PDF                                                                              | Interactive portal with real-time data, goal tracking, and annotations                         |
+| **Automation**                 | Minimal in most tools — manual report creation is universal                                                   | Fully automated monthly report workflow, smart alerts, action tracking                         |
 
 ### The Category to Own: "AI-Native Agency Intelligence Platform"
 
-The market position: i3media Report is not a reporting tool, not a dashboard tool, not an analytics tool. It is the **AI-native operating system for modern digital marketing agencies** — the single platform where account managers manage, analyse, strategise, report, automate, and grow their client portfolio.
+The market position: Betts & Burton Report is not a reporting tool, not a dashboard tool, not an analytics tool. It is the **AI-native operating system for modern digital marketing agencies** — the single platform where account managers manage, analyse, strategise, report, automate, and grow their client portfolio.
 
 This category does not currently have a clear winner. Klipfolio, AgencyAnalytics, and Supermetrics all play in adjacent spaces but none combine:
+
 - Live multi-channel data
 - Deep AI analysis with root cause
 - Agency workflow tools
@@ -1064,7 +1133,7 @@ This category does not currently have a clear winner. Klipfolio, AgencyAnalytics
 - [x] **New integrations: HubSpot CRM, YouTube Analytics, CallRail**
 - [x] **Competitor intelligence feed** — ongoing competitive monitoring with `CompetitorSnapshot`
 - [x] **Media plan builder** — paid media planning with channel allocation and AI forecast outputs
-- [ ] **Interactive web reports** — fully live interactive report experience beyond the current read-only share view *(in progress — share view exists; full interactivity deferred to Phase 4)*
+- [ ] **Interactive web reports** — fully live interactive report experience beyond the current read-only share view _(in progress — share view exists; full interactivity deferred to Phase 4)_
 
 ---
 
@@ -1086,48 +1155,48 @@ This category does not currently have a clear winner. Klipfolio, AgencyAnalytics
 
 ### High Impact / Low Effort — Do First
 
-| Feature | Impact | Effort | Why |
-|---|---|---|---|
-| Notification system (email + Slack) | ★★★★★ | Low | Existing anomaly detection just needs delivery layer |
-| Nightly snapshot automation | ★★★★★ | Low | Unlocks all historical/forecasting features |
-| Root cause analysis for anomalies | ★★★★ | Low | Extends existing AI prompt, minimal new code |
-| Goal setting & tracking | ★★★★ | Low | New model + simple UI, high client retention value |
-| Microsoft Advertising integration | ★★★★ | Low | Similar pattern to Google Ads, high-demand |
-| Core Web Vitals (CrUX API) | ★★★★ | Low | Free Google API, no auth complexity |
-| Report scheduling (monthly auto-send) | ★★★★★ | Medium | Saves hours per month per client |
-| Conversational AI chat | ★★★★★ | Medium | Reuses existing AI infrastructure, massive UX upgrade |
+| Feature                               | Impact | Effort | Why                                                   |
+| ------------------------------------- | ------ | ------ | ----------------------------------------------------- |
+| Notification system (email + Slack)   | ★★★★★  | Low    | Existing anomaly detection just needs delivery layer  |
+| Nightly snapshot automation           | ★★★★★  | Low    | Unlocks all historical/forecasting features           |
+| Root cause analysis for anomalies     | ★★★★   | Low    | Extends existing AI prompt, minimal new code          |
+| Goal setting & tracking               | ★★★★   | Low    | New model + simple UI, high client retention value    |
+| Microsoft Advertising integration     | ★★★★   | Low    | Similar pattern to Google Ads, high-demand            |
+| Core Web Vitals (CrUX API)            | ★★★★   | Low    | Free Google API, no auth complexity                   |
+| Report scheduling (monthly auto-send) | ★★★★★  | Medium | Saves hours per month per client                      |
+| Conversational AI chat                | ★★★★★  | Medium | Reuses existing AI infrastructure, massive UX upgrade |
 
 ### High Impact / High Effort — Plan Carefully
 
-| Feature | Impact | Effort | Why |
-|---|---|---|---|
-| Client portal | ★★★★★ | High | New auth system, new UI, significant scope |
-| Attribution modelling | ★★★★★ | High | Complex data model, requires historical data |
-| TikTok Ads integration | ★★★★ | Medium | New API pattern, docs are good |
-| Predictive forecasting | ★★★★★ | High | Statistical model + AI, needs history first |
-| Interactive web reports | ★★★★ | High | Major report system redesign |
-| AI video reports | ★★★★ | Very High | New technology stack (TTS, video) |
-| White-label mode | ★★★★ | High | Affects every front-end surface |
+| Feature                 | Impact | Effort    | Why                                          |
+| ----------------------- | ------ | --------- | -------------------------------------------- |
+| Client portal           | ★★★★★  | High      | New auth system, new UI, significant scope   |
+| Attribution modelling   | ★★★★★  | High      | Complex data model, requires historical data |
+| TikTok Ads integration  | ★★★★   | Medium    | New API pattern, docs are good               |
+| Predictive forecasting  | ★★★★★  | High      | Statistical model + AI, needs history first  |
+| Interactive web reports | ★★★★   | High      | Major report system redesign                 |
+| AI video reports        | ★★★★   | Very High | New technology stack (TTS, video)            |
+| White-label mode        | ★★★★   | High      | Affects every front-end surface              |
 
 ### Medium Impact / Low Effort — Fill the Backlog
 
-| Feature | Impact | Effort | Why |
-|---|---|---|---|
-| Slide deck export | ★★★ | Medium | PDF → PPTX format conversion |
-| Campaign planning calendar | ★★★ | Low | Simple model + UI |
-| Spend reconciliation | ★★★ | Low | Data already exists, new view |
-| Competitor keyword alerts | ★★★ | Low | Extend existing SemRush calls |
-| NPS surveys | ★★★ | Low | Email template + simple model |
-| Custom KPI builder | ★★★ | Medium | Formula engine, new model |
+| Feature                    | Impact | Effort | Why                           |
+| -------------------------- | ------ | ------ | ----------------------------- |
+| Slide deck export          | ★★★    | Medium | PDF → PPTX format conversion  |
+| Campaign planning calendar | ★★★    | Low    | Simple model + UI             |
+| Spend reconciliation       | ★★★    | Low    | Data already exists, new view |
+| Competitor keyword alerts  | ★★★    | Low    | Extend existing SemRush calls |
+| NPS surveys                | ★★★    | Low    | Email template + simple model |
+| Custom KPI builder         | ★★★    | Medium | Formula engine, new model     |
 
 ### Low Impact / High Effort — Defer
 
-| Feature | Impact | Effort | Why |
-|---|---|---|---|
-| Native mobile app | ★★ | Very High | PWA achieves most of the same goals |
-| Salesforce integration | ★★ | High | Complex OAuth, limited agency use |
-| Amazon Ads integration | ★★★ | High | Narrow client base justifies it for e-commerce only |
-| Real-time WebSocket streaming | ★★ | High | Current polling is fast enough for most use cases |
+| Feature                       | Impact | Effort    | Why                                                 |
+| ----------------------------- | ------ | --------- | --------------------------------------------------- |
+| Native mobile app             | ★★     | Very High | PWA achieves most of the same goals                 |
+| Salesforce integration        | ★★     | High      | Complex OAuth, limited agency use                   |
+| Amazon Ads integration        | ★★★    | High      | Narrow client base justifies it for e-commerce only |
+| Real-time WebSocket streaming | ★★     | High      | Current polling is fast enough for most use cases   |
 
 ---
 
@@ -1135,7 +1204,7 @@ This category does not currently have a clear winner. Klipfolio, AgencyAnalytics
 
 The marketing industry is on the edge of a transformation. AI will not replace account managers — but account managers with AI-native platforms will replace those without. The agency that can demonstrate they have the most sophisticated view of a client's marketing performance, the most proactive approach to spotting problems before they cost money, and the most data-backed strategy recommendations will win business and keep it.
 
-i3media Report has the foundations to be that platform. The integrations are in place. The AI is working. The report builder is solid. What it needs now is the transformation from **a tool account managers use** into **a platform that works for them** — actively monitoring, alerting, recommending, automating, and communicating on behalf of the team.
+Betts & Burton Report has the foundations to be that platform. The integrations are in place. The AI is working. The report builder is solid. What it needs now is the transformation from **a tool account managers use** into **a platform that works for them** — actively monitoring, alerting, recommending, automating, and communicating on behalf of the team.
 
 The roadmap above is not a wish list. It is a sequence of decisions about what to build, in what order, to get to a platform that:
 
@@ -1149,5 +1218,5 @@ Build this, and the question stops being "why would we use this?" and starts bei
 
 ---
 
-*Document version: 1.3 — April 2026 (Phase 3 substantially complete — 9/10 items done)*  
-*Next review: After Phase 4 planning session*
+_Document version: 1.3 — April 2026 (Phase 3 substantially complete — 9/10 items done)_  
+_Next review: After Phase 4 planning session_

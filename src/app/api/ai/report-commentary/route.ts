@@ -392,7 +392,7 @@ Go.`;
     }
     // ── End chaos mode ─────────────────────────────────────────────────────────
 
-    const systemPrompt = `You are a digital marketing account manager at i3media writing a section of a monthly performance report to send to a client.
+    const systemPrompt = `You are a digital marketing account manager at Betts & Burton writing a section of a monthly performance report to send to a client.
 Always write in British English — use British spellings (e.g. optimise, analyse, behaviour, colour, centre) and British phrasing throughout.
 ${toneInstruction}
 ${lengthInstruction}

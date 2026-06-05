@@ -62,7 +62,6 @@ const SECTION_SUBTITLES: Record<string, string> = {
   hubspot: "CRM pipeline and contact activity via HubSpot",
   callrail: "Call tracking performance via CallRail",
   core_web_vitals: "Page experience metrics from CrUX",
-  competitor_intelligence: "Competitor visibility snapshots",
   executive_summary: "AI-generated summary of the full report",
 };
 
@@ -934,14 +933,6 @@ export function ReportPrintView({
                   {unconfiguredNotice("No website URL set for this client.")}
                 </>
               ))}
-            {section.sectionType === "competitor_intelligence" && (
-              <>
-                {afterHeader}
-                {unconfiguredNotice(
-                  "Competitor Intelligence has been retired with SEMrush removal.",
-                )}
-              </>
-            )}
           </div>
         );
       })}

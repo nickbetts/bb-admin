@@ -1,6 +1,6 @@
-# Architecture — i3media Report Platform
+# Architecture — Betts & Burton Report Platform
 
-This document covers the system architecture, database schema, project structure, data flows, and AI architecture of the i3media Report platform. For setup instructions, environment variables, and deployment guides, see [deployment.md](deployment.md). For the full feature walkthrough, see [features.md](features.md). For the product roadmap and vision, see [ROADMAP.md](../ROADMAP.md) and [VISION.md](../VISION.md).
+This document covers the system architecture, database schema, project structure, data flows, and AI architecture of the Betts & Burton Report platform. For setup instructions, environment variables, and deployment guides, see [deployment.md](deployment.md). For the full feature walkthrough, see [features.md](features.md). For the product roadmap and vision, see [ROADMAP.md](../ROADMAP.md) and [VISION.md](../VISION.md).
 
 ---
 
@@ -293,13 +293,13 @@ QaChecklist         (standalone — pre-launch and campaign QA checklists)
 ## Project Structure
 
 ```
-i3media-report/
+bettsandburton-report/
 ├── prisma/
 │   ├── schema.prisma              # 65 database models
 │   ├── migrations/                # SQL migration files
 │   └── seed.ts                    # Default users and demo client
 ├── public/
-│   └── primary-logo.svg           # i3media branding
+│   └── primary-logo.svg           # Betts & Burton branding
 ├── scripts/
 │   ├── get-gads-refresh-token.mjs # Google Ads OAuth token generator
 │   ├── get-meta-long-lived-token.mjs # Meta token exchange script

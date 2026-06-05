@@ -53,10 +53,7 @@ export async function POST(request: NextRequest) {
     const { urls, clientName, source } = body;
 
     if (!Array.isArray(urls) || urls.length === 0) {
-      return NextResponse.json(
-        { error: "urls must be a non-empty array" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "urls must be a non-empty array" }, { status: 400 });
     }
 
     // Limit to 10 URLs per call to avoid excessive cost/time
@@ -68,9 +65,17 @@ export async function POST(request: NextRequest) {
     const signals = await Promise.all(targetUrls.map((u) => fetchPageSignals(u)));
 
     // Fetch Core Web Vitals for unique origins (cached 24h to avoid CrUX quota)
-    const origins = [...new Set(
-      targetUrls.flatMap((u) => { try { return [new URL(u).origin]; } catch { return []; } })
-    )];
+    const origins = [
+      ...new Set(
+        targetUrls.flatMap((u) => {
+          try {
+            return [new URL(u).origin];
+          } catch {
+            return [];
+          }
+        }),
+      ),
+    ];
     const cwvMap = new Map<string, string>();
     await Promise.allSettled(
       origins.map(async (origin) => {
@@ -83,8 +88,10 @@ export async function POST(request: NextRequest) {
             `Overall: ${cwv.overallCategory}`,
           ].filter(Boolean);
           cwvMap.set(origin, parts.join(", "));
-        } catch { /* no CrUX data for this origin */ }
-      })
+        } catch {
+          /* no CrUX data for this origin */
+        }
+      }),
     );
 
     // Build the AI analysis for all pages in one request (batched)
@@ -93,8 +100,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ analyses });
   } catch (error) {
     console.error("Landing page analysis error:", error);
-    const message =
-      error instanceof Error ? error.message : "Failed to analyse landing pages";
+    const message = error instanceof Error ? error.message : "Failed to analyse landing pages";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -106,7 +112,7 @@ async function analysePages(
   pages: PageSignals[],
   clientName?: string,
   source?: string,
-  cwvMap?: Map<string, string>
+  cwvMap?: Map<string, string>,
 ): Promise<LandingPageAnalysisResult[]> {
   // Split pages into those with HTML data and those that need web search
   const successPages = pages.filter((p) => !p.fetchError);
@@ -137,11 +143,11 @@ async function analysePagesWithSignals(
   pages: PageSignals[],
   clientName?: string,
   source?: string,
-  cwvMap?: Map<string, string>
+  cwvMap?: Map<string, string>,
 ): Promise<LandingPageAnalysisResult[]> {
   const pageDescriptions = pages.map((p) => buildSignalSummary(p, cwvMap));
 
-  const systemPrompt = `You are a senior CRO (Conversion Rate Optimisation) and SEO expert at i3media, a UK performance marketing agency.
+  const systemPrompt = `You are a senior CRO (Conversion Rate Optimisation) and SEO expert at Betts & Burton, a UK performance marketing agency.
 You review ${source === "meta" ? "Meta Ads" : "Google Ads"} landing pages for ${clientName ?? "a client"} and provide frank, actionable analysis.
 For each landing page you evaluate:
 - CRO: headline clarity, value proposition, trust signals, CTA prominence and copy, above-the-fold content, social proof
@@ -180,13 +186,13 @@ async function analysePagesWithWebSearch(
   openai: OpenAI,
   pages: PageSignals[],
   clientName?: string,
-  source?: string
+  source?: string,
 ): Promise<LandingPageAnalysisResult[]> {
   // Process failed pages individually so the AI can web-search each one
   const results = await Promise.all(
     pages.slice(0, 5).map(async (p) => {
       try {
-        const prompt = `You are a senior CRO and SEO expert at i3media, a UK performance marketing agency.
+        const prompt = `You are a senior CRO and SEO expert at Betts & Burton, a UK performance marketing agency.
 
 The page at ${p.url} could not be fetched automatically (${p.fetchError ?? "unknown error"}).
 Use web search to visit and inspect this page directly, then analyse it for ${clientName ?? "a client"}'s ${source === "meta" ? "Meta Ads" : "Google Ads"} landing page.
@@ -206,11 +212,7 @@ Return ONLY a JSON object with this exact shape:
         // Extract text from the Responses API format
         let text = "";
         for (const item of response.output) {
-          if (
-            item.type === "message" &&
-            "content" in item &&
-            Array.isArray(item.content)
-          ) {
+          if (item.type === "message" && "content" in item && Array.isArray(item.content)) {
             for (const block of item.content) {
               if (
                 typeof block === "object" &&
@@ -234,7 +236,7 @@ Return ONLY a JSON object with this exact shape:
       } catch {
         return [emptyResult(p.url, p.fetchError ?? "Web search analysis failed")];
       }
-    })
+    }),
   );
 
   // Also add empty results for any pages beyond the first 5
@@ -270,7 +272,10 @@ const RESULT_SCHEMA_EXAMPLE = `{
 
 function parseAnalysisResponse(raw: string, pages: PageSignals[]): LandingPageAnalysisResult[] {
   // Strip markdown fences if the model added them
-  const cleaned = raw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "");
+  const cleaned = raw
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/```\s*$/i, "");
 
   let parsed: { analyses?: LandingPageAnalysisResult[] } = {};
   try {
@@ -302,7 +307,9 @@ function buildSignalSummary(p: PageSignals, cwvMap?: Map<string, string>): strin
     const origin = new URL(p.url).origin;
     const cwv = cwvMap?.get(origin);
     if (cwv) lines.push(`Core Web Vitals (real-user CrUX data): ${cwv}`);
-  } catch { /* ignore invalid URL */ }
+  } catch {
+    /* ignore invalid URL */
+  }
 
   if (p.fetchError) {
     lines.push(`FETCH ERROR: ${p.fetchError} — analyse based on URL alone`);
@@ -310,23 +317,21 @@ function buildSignalSummary(p: PageSignals, cwvMap?: Map<string, string>): strin
   }
 
   if (p.title) lines.push(`Title: ${p.title}`);
-  if (p.metaDescription)
-    lines.push(`Meta description: ${p.metaDescription}`);
-  else
-    lines.push(`Meta description: MISSING`);
+  if (p.metaDescription) lines.push(`Meta description: ${p.metaDescription}`);
+  else lines.push(`Meta description: MISSING`);
 
-  if (p.h1Tags.length > 0)
-    lines.push(`H1: ${p.h1Tags.join(" | ")}`);
-  else
-    lines.push(`H1: MISSING`);
+  if (p.h1Tags.length > 0) lines.push(`H1: ${p.h1Tags.join(" | ")}`);
+  else lines.push(`H1: MISSING`);
 
   lines.push(`Headings: ${p.h2Count} H2s, ${p.h3Count} H3s`);
   lines.push(
-    `Viewport meta: ${p.hasViewportMeta ? (p.isResponsiveViewport ? "yes (responsive)" : "yes (non-responsive)") : "MISSING"}`
+    `Viewport meta: ${p.hasViewportMeta ? (p.isResponsiveViewport ? "yes (responsive)" : "yes (non-responsive)") : "MISSING"}`,
   );
-  lines.push(`CTAs found: ${p.ctaTexts.length > 0 ? p.ctaTexts.slice(0, 6).join(", ") : "none detected"}`);
   lines.push(
-    `Forms: ${p.formCount} form(s), ${p.formFieldCount} visible field(s)${p.formFieldTypes.length ? ` (types: ${p.formFieldTypes.join(", ")})` : ""}`
+    `CTAs found: ${p.ctaTexts.length > 0 ? p.ctaTexts.slice(0, 6).join(", ") : "none detected"}`,
+  );
+  lines.push(
+    `Forms: ${p.formCount} form(s), ${p.formFieldCount} visible field(s)${p.formFieldTypes.length ? ` (types: ${p.formFieldTypes.join(", ")})` : ""}`,
   );
   lines.push(`Phone number present: ${p.hasPhoneNumber ? "yes" : "no"}`);
   lines.push(`Trust signals: ${p.hasTrustSignals ? "yes" : "no"}`);

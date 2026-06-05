@@ -73,7 +73,7 @@ function buildGoogleAdsInstructions(agency: AgencySettings): string {
   const managerLine = agency.googleAdsManagerId
     ? `\nManager Account ID to enter: ${formatGadsId(agency.googleAdsManagerId)}`
     : "";
-  return `Google Ads Access – ${agency.agencyName || "i3media"}
+  return `Google Ads Access – ${agency.agencyName || "Betts & Burton"}
 
 To grant us access to your Google Ads account, please follow these steps:
 
@@ -116,7 +116,7 @@ function buildMetaInstructions(agency: AgencySettings): string {
   const bizIdLine = agency.metaBusinessId
     ? `\nOur Business Manager ID: ${agency.metaBusinessId}`
     : "";
-  return `Meta Business Manager Access – ${agency.agencyName || "i3media"}
+  return `Meta Business Manager Access – ${agency.agencyName || "Betts & Burton"}
 
 To give us access to your Meta ad account, please follow these steps:
 
@@ -141,7 +141,7 @@ If you manage multiple ad accounts, please repeat steps 4–8 for each one.`;
 }
 
 function buildLinkedInInstructions(agency: AgencySettings): string {
-  return `LinkedIn Campaign Manager Access – ${agency.agencyName || "i3media"}
+  return `LinkedIn Campaign Manager Access – ${agency.agencyName || "Betts & Burton"}
 
 To add us as a user in LinkedIn Campaign Manager:
 
@@ -166,10 +166,10 @@ We'll accept the invitation straight away.
 Note: LinkedIn only allows access via email. Please use a company email address if possible, rather than a personal one.`;
 }
 
-const SERVICE_ACCOUNT_EMAIL = "i3media@i3-reports.iam.gserviceaccount.com";
+const SERVICE_ACCOUNT_EMAIL = "Betts & Burton@bettsandburton-reports.iam.gserviceaccount.com";
 
 function buildGoogleAnalyticsInstructions(agency: AgencySettings): string {
-  return `Google Analytics (GA4) Access – ${agency.agencyName || "i3media"}
+  return `Google Analytics (GA4) Access – ${agency.agencyName || "Betts & Burton"}
 
 We need two email addresses added as users — one for your account manager and one for our reporting system.
 
@@ -205,7 +205,7 @@ Access is granted immediately — no invitation confirmation needed on our end.`
 }
 
 function buildSearchConsoleInstructions(agency: AgencySettings): string {
-  return `Google Search Console Access – ${agency.agencyName || "i3media"}
+  return `Google Search Console Access – ${agency.agencyName || "Betts & Burton"}
 
 We need two email addresses added as users — one for your account manager and one for our reporting system.
 
@@ -567,7 +567,7 @@ export default function AccessRequesterPage() {
     new Set(["googleAds", "meta", "linkedin", "googleAnalytics", "searchConsole"]),
   );
   const [agency, setAgency] = useState<AgencySettings>({
-    agencyName: "i3media",
+    agencyName: "Betts & Burton",
     agencyEmail: "ithreemedia3@gmail.com",
     googleAdsManagerId: "786-083-3014",
     metaBusinessId: "226933892717054",
@@ -784,7 +784,7 @@ export default function AccessRequesterPage() {
                   value={agency.agencyName}
                   onChange={(e) => setAgency((p) => ({ ...p, agencyName: e.target.value }))}
                   onBlur={() => saveSettings(agency)}
-                  placeholder="i3media"
+                  placeholder="Betts & Burton"
                 />
               </label>
               <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>

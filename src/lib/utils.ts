@@ -6,8 +6,12 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatNumber(num: number): string {
-  if (num >= 1_000_000) return new Intl.NumberFormat("en-GB", { maximumFractionDigits: 1 }).format(num / 1_000_000) + "M";
-  if (num >= 1_000) return new Intl.NumberFormat("en-GB", { maximumFractionDigits: 1 }).format(num / 1_000) + "K";
+  if (num >= 1_000_000)
+    return (
+      new Intl.NumberFormat("en-GB", { maximumFractionDigits: 1 }).format(num / 1_000_000) + "M"
+    );
+  if (num >= 1_000)
+    return new Intl.NumberFormat("en-GB", { maximumFractionDigits: 1 }).format(num / 1_000) + "K";
   return new Intl.NumberFormat("en-GB", { maximumFractionDigits: 0 }).format(Math.round(num));
 }
 
@@ -68,13 +72,19 @@ export function formatDateDisplay(dateStr: string): string {
   return date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
 
-export function getPositionChange(current: number, previous: number): { value: number; type: "up" | "down" | "same" } {
+export function getPositionChange(
+  current: number,
+  previous: number,
+): { value: number; type: "up" | "down" | "same" } {
   if (current === previous) return { value: 0, type: "same" };
   if (current < previous) return { value: previous - current, type: "up" };
   return { value: current - previous, type: "down" };
 }
 
-export function getPreviousPeriod(startDate: string, endDate: string): { startDate: string; endDate: string } {
+export function getPreviousPeriod(
+  startDate: string,
+  endDate: string,
+): { startDate: string; endDate: string } {
   const start = new Date(startDate);
   const end = new Date(endDate);
   const diffMs = end.getTime() - start.getTime();
@@ -103,7 +113,20 @@ export function computeHealthScore(alerts: { severity: "high" | "medium" | "low"
 
 /** Parse a named reporting period (e.g. "March 2025", "Q1 2025") into ISO date strings. */
 export function parsePeriodToDateRange(period: string): { startDate: string; endDate: string } {
-  const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const MONTH_NAMES = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
 
   // Quarterly: "Q1 2025", "Q2 2025", etc.
   const quarterMatch = period.match(/^Q([1-4])\s+(\d{4})$/);
@@ -151,18 +174,19 @@ export interface PlatformSummary {
 
 export function buildCrossContextString(
   summaries: PlatformSummary[],
-  currentPlatform: string
+  currentPlatform: string,
 ): string {
-  const others = summaries.filter(s => s.platform !== currentPlatform);
+  const others = summaries.filter((s) => s.platform !== currentPlatform);
   if (others.length === 0) return "";
-  return others.map(s => {
-    const metricsStr = Object.entries(s.metrics)
-      .map(([k, v]) => `${k}: ${typeof v === "number" ? v.toLocaleString() : v}`)
-      .join(", ");
-    return `• ${s.platform}: ${metricsStr}`;
-  }).join("\n");
+  return others
+    .map((s) => {
+      const metricsStr = Object.entries(s.metrics)
+        .map(([k, v]) => `${k}: ${typeof v === "number" ? v.toLocaleString() : v}`)
+        .join(", ");
+      return `• ${s.platform}: ${metricsStr}`;
+    })
+    .join("\n");
 }
-
 
 /**
  * Returns the application base URL for use in dynamically-generated snippets.
@@ -198,5 +222,5 @@ export function getAppUrl(): string {
 export function buildClickProtectionSnippet(appUrl: string, token: string): string {
   // Only accept hex tokens to prevent injection via the token value
   if (!/^[0-9a-f]+$/i.test(token)) return "";
-  return `<!-- i3media Click Protection -->\n<script>(function(){var s=Math.random().toString(36).slice(2)+Date.now().toString(36),u=navigator.userAgent||'',b=/bot|crawler|spider|headless|phantom|selenium|puppeteer|playwright/i,x=b.test(u)||!window.history||typeof document.hidden==='undefined',p=new URLSearchParams(location.search);fetch('${appUrl}/api/click-protection/${token}',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sid:s,ua:u,ref:document.referrer||'',utmSource:p.get('utm_source')||'',utmMedium:p.get('utm_medium')||'',utmCampaign:p.get('utm_campaign')||'',suspicious:x?'1':'0',reason:x?(b.test(u)?'bot_ua':'headless'):''})}).catch(function(){});})();\n</script>`;
+  return `<!-- Betts & Burton Click Protection -->\n<script>(function(){var s=Math.random().toString(36).slice(2)+Date.now().toString(36),u=navigator.userAgent||'',b=/bot|crawler|spider|headless|phantom|selenium|puppeteer|playwright/i,x=b.test(u)||!window.history||typeof document.hidden==='undefined',p=new URLSearchParams(location.search);fetch('${appUrl}/api/click-protection/${token}',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sid:s,ua:u,ref:document.referrer||'',utmSource:p.get('utm_source')||'',utmMedium:p.get('utm_medium')||'',utmCampaign:p.get('utm_campaign')||'',suspicious:x?'1':'0',reason:x?(b.test(u)?'bot_ua':'headless'):''})}).catch(function(){});})();\n</script>`;
 }

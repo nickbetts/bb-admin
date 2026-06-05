@@ -122,8 +122,8 @@ export default function GrandPlanSharePage({ params }: { params: Promise<{ token
         <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
           <p className="font-medium text-red-600">{error}</p>
           <p className="mt-2 text-sm text-slate-500">
-            If you believe this is a mistake, please contact the i3media account manager who shared
-            this link with you.
+            If you believe this is a mistake, please contact the Betts & Burton account manager who
+            shared this link with you.
           </p>
         </div>
       </div>
@@ -147,8 +147,8 @@ export default function GrandPlanSharePage({ params }: { params: Promise<{ token
               <p className="mt-1.5 text-sm text-slate-500">Prepared for {clientName}</p>
             )}
             <p className="mt-4 text-sm text-slate-600">
-              This plan is password protected. Enter the password your i3media contact shared with
-              you.
+              This plan is password protected. Enter the password your Betts & Burton contact shared
+              with you.
             </p>
           </div>
           <form onSubmit={handlePasswordSubmit} className="space-y-3">
@@ -175,7 +175,7 @@ export default function GrandPlanSharePage({ params }: { params: Promise<{ token
             </button>
           </form>
           <p className="mt-6 text-center text-xs text-slate-400">
-            Powered by <span className="font-semibold text-slate-500">i3media</span>
+            Powered by <span className="font-semibold text-slate-500">Betts & Burton</span>
           </p>
         </div>
       </div>
@@ -357,7 +357,7 @@ function EnquiryModal({
         {done ? (
           <div className="px-6 pt-2 pb-6 text-center">
             <p className="text-sm leading-relaxed text-slate-700">
-              Thanks — your message is on its way to the i3media team. We&apos;ll be in touch
+              Thanks — your message is on its way to the Betts & Burton team. We&apos;ll be in touch
               shortly.
             </p>
             <button

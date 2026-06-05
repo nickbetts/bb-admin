@@ -28,12 +28,14 @@ function sanitiseCrossSectionStories(value: unknown): CrossSectionStory[] {
     const narrative = rawNarrative.trim();
     if (!narrative) continue;
 
-    const sections = Array.from(new Set(
-      rawSections
-        .filter((s): s is string => typeof s === "string")
-        .map((s) => s.trim().toLowerCase())
-        .filter((s) => s && s !== "overview")
-    ));
+    const sections = Array.from(
+      new Set(
+        rawSections
+          .filter((s): s is string => typeof s === "string")
+          .map((s) => s.trim().toLowerCase())
+          .filter((s) => s && s !== "overview"),
+      ),
+    );
 
     if (sections.length < 2) continue;
 
@@ -52,7 +54,8 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const rl = enforceAiRateLimit(session.user.id); if (!rl.ok) return rl.response!;
+    const rl = enforceAiRateLimit(session.user.id);
+    if (!rl.ok) return rl.response!;
 
     const body = await request.json();
     const {
@@ -71,7 +74,12 @@ export async function POST(request: NextRequest) {
       stream?: boolean;
     };
 
-    if (!reportId || !clientId || !sectionCommentaries || Object.keys(sectionCommentaries).length === 0) {
+    if (
+      !reportId ||
+      !clientId ||
+      !sectionCommentaries ||
+      Object.keys(sectionCommentaries).length === 0
+    ) {
       return NextResponse.json(
         { error: "reportId, clientId, and sectionCommentaries are required" },
         { status: 400 },
@@ -119,10 +127,11 @@ export async function POST(request: NextRequest) {
 
     // Narrative stitching uses only substantial non-overview sections.
     const narrativeSections = Object.entries(sectionCommentaries)
-      .filter(([section, text]) =>
-        section !== "overview" &&
-        typeof text === "string" &&
-        text.trim().length >= MIN_SECTION_COMMENTARY_LENGTH
+      .filter(
+        ([section, text]) =>
+          section !== "overview" &&
+          typeof text === "string" &&
+          text.trim().length >= MIN_SECTION_COMMENTARY_LENGTH,
       )
       .map(([section, text]) => [section, text.trim()] as const);
 
@@ -140,7 +149,7 @@ export async function POST(request: NextRequest) {
       .map(([section, text]) => `### ${section}\n${text}`)
       .join("\n\n");
 
-    const systemPrompt = `You are a senior digital marketing strategist at i3media producing a narrative that stitches together an entire monthly performance report for ${client.name}.
+    const systemPrompt = `You are a senior digital marketing strategist at Betts & Burton producing a narrative that stitches together an entire monthly performance report for ${client.name}.
 Always write in British English — use British spellings (e.g. optimise, analyse, behaviour, colour, centre) and British phrasing throughout.
 Write from the agency's perspective addressing the client. Use "the" for campaigns and channels (e.g. "The SEO campaign...", "The audience..."). Use "your" for the client's own assets (e.g. "your website", "your brand"). Do NOT use first person ("we", "our").
 This narrative is CLIENT-FACING: be upbeat, clear, and strategic. Never use words like "unfortunately", "missed opportunity", or anything implying failure.

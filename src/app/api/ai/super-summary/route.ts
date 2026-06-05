@@ -69,67 +69,135 @@ const SECTION_NAMES: Record<string, string> = {
 
 const METRIC_LABELS: Record<string, Record<string, string>> = {
   googleads: {
-    clicks: "Clicks", impressions: "Impressions", ctr: "CTR", cpc: "CPC",
-    conversions: "Conversions", conversionValue: "Conversion Value", roas: "ROAS",
-    cpa: "CPA", cost: "Total Spend", searchImpressionShare: "Search IS",
-    searchBudgetLostIS: "IS Lost (Budget)", searchRankLostIS: "IS Lost (Rank)",
+    clicks: "Clicks",
+    impressions: "Impressions",
+    ctr: "CTR",
+    cpc: "CPC",
+    conversions: "Conversions",
+    conversionValue: "Conversion Value",
+    roas: "ROAS",
+    cpa: "CPA",
+    cost: "Total Spend",
+    searchImpressionShare: "Search IS",
+    searchBudgetLostIS: "IS Lost (Budget)",
+    searchRankLostIS: "IS Lost (Rank)",
     qualityScore: "Avg Quality Score",
   },
   meta: {
-    totalSpend: "Total Spend", totalImpressions: "Impressions", totalClicks: "Clicks",
-    avgCtr: "CTR", avgCpc: "CPC", avgCpm: "CPM", totalConversions: "Conversions",
-    avgRoas: "ROAS", avgFrequency: "Avg Frequency", totalConversionValue: "Conv. Value",
-    reach: "Reach", outboundClicks: "Outbound Clicks", landingPageViews: "Landing Page Views",
+    totalSpend: "Total Spend",
+    totalImpressions: "Impressions",
+    totalClicks: "Clicks",
+    avgCtr: "CTR",
+    avgCpc: "CPC",
+    avgCpm: "CPM",
+    totalConversions: "Conversions",
+    avgRoas: "ROAS",
+    avgFrequency: "Avg Frequency",
+    totalConversionValue: "Conv. Value",
+    reach: "Reach",
+    outboundClicks: "Outbound Clicks",
+    landingPageViews: "Landing Page Views",
   },
   ga4: {
-    sessions: "Sessions", users: "Active Users", newUsers: "New Users",
-    pageviews: "Pageviews", bounceRate: "Bounce Rate",
-    avgSessionDuration: "Avg Session Duration", conversionRate: "Conversion Rate",
-    engagedSessions: "Engaged Sessions", engagementRate: "Engagement Rate",
+    sessions: "Sessions",
+    users: "Active Users",
+    newUsers: "New Users",
+    pageviews: "Pageviews",
+    bounceRate: "Bounce Rate",
+    avgSessionDuration: "Avg Session Duration",
+    conversionRate: "Conversion Rate",
+    engagedSessions: "Engaged Sessions",
+    engagementRate: "Engagement Rate",
   },
   seo: {
-    organicTraffic: "Organic Traffic", organicKeywords: "Organic Keywords",
-    organicCost: "Traffic Value", paidTraffic: "Paid Traffic", paidKeywords: "Paid Keywords",
+    organicTraffic: "Organic Traffic",
+    organicKeywords: "Organic Keywords",
+    organicCost: "Traffic Value",
+    paidTraffic: "Paid Traffic",
+    paidKeywords: "Paid Keywords",
   },
   searchconsole: {
-    clicks: "Clicks", impressions: "Impressions", ctr: "CTR", position: "Avg Position",
+    clicks: "Clicks",
+    impressions: "Impressions",
+    ctr: "CTR",
+    position: "Avg Position",
   },
   tiktok: {
-    spend: "Total Spend", impressions: "Impressions", clicks: "Clicks", ctr: "CTR",
-    cpc: "CPC", cpm: "CPM", conversions: "Conversions", costPerConversion: "Cost/Conv",
-    videoViews: "Video Views", reach: "Reach", frequency: "Frequency",
+    spend: "Total Spend",
+    impressions: "Impressions",
+    clicks: "Clicks",
+    ctr: "CTR",
+    cpc: "CPC",
+    cpm: "CPM",
+    conversions: "Conversions",
+    costPerConversion: "Cost/Conv",
+    videoViews: "Video Views",
+    reach: "Reach",
+    frequency: "Frequency",
   },
   microsoftads: {
-    spend: "Total Spend", impressions: "Impressions", clicks: "Clicks", ctr: "CTR",
-    cpc: "CPC", conversions: "Conversions", revenue: "Revenue", roas: "ROAS",
-    costPerConversion: "Cost/Conv", impressionSharePercent: "Impression Share",
+    spend: "Total Spend",
+    impressions: "Impressions",
+    clicks: "Clicks",
+    ctr: "CTR",
+    cpc: "CPC",
+    conversions: "Conversions",
+    revenue: "Revenue",
+    roas: "ROAS",
+    costPerConversion: "Cost/Conv",
+    impressionSharePercent: "Impression Share",
   },
   linkedin: {
-    impressions: "Impressions", clicks: "Clicks", spend: "Total Spend",
-    conversions: "Conversions", reach: "Reach", ctr: "CTR", cpc: "CPC", cpl: "CPL",
+    impressions: "Impressions",
+    clicks: "Clicks",
+    spend: "Total Spend",
+    conversions: "Conversions",
+    reach: "Reach",
+    ctr: "CTR",
+    cpc: "CPC",
+    cpl: "CPL",
   },
   klaviyo: {
-    sends: "Emails Sent", opens: "Opens", clicks: "Clicks", revenue: "Revenue",
-    openRate: "Open Rate", clickRate: "Click Rate", campaignCount: "Campaigns",
+    sends: "Emails Sent",
+    opens: "Opens",
+    clicks: "Clicks",
+    revenue: "Revenue",
+    openRate: "Open Rate",
+    clickRate: "Click Rate",
+    campaignCount: "Campaigns",
   },
   youtube: {
-    views: "Views", watchTimeHours: "Watch Time (hrs)", subscribers: "Subscribers", ctr: "CTR",
+    views: "Views",
+    watchTimeHours: "Watch Time (hrs)",
+    subscribers: "Subscribers",
+    ctr: "CTR",
   },
   hubspot: {
-    totalContacts: "Total Contacts", openDeals: "Open Deals",
-    pipelineValue: "Pipeline Value", closedWonValue: "Closed Won",
+    totalContacts: "Total Contacts",
+    openDeals: "Open Deals",
+    pipelineValue: "Pipeline Value",
+    closedWonValue: "Closed Won",
   },
   callrail: {
-    totalCalls: "Total Calls", answeredCalls: "Answered", missedCalls: "Missed", answeredRate: "Answer Rate",
+    totalCalls: "Total Calls",
+    answeredCalls: "Answered",
+    missedCalls: "Missed",
+    answeredRate: "Answer Rate",
   },
   ecommerce: {
-    totalRevenue: "Revenue", totalOrders: "Orders", averageOrderValue: "AOV",
+    totalRevenue: "Revenue",
+    totalOrders: "Orders",
+    averageOrderValue: "AOV",
   },
   shopify: {
-    totalRevenue: "Revenue", totalOrders: "Orders", averageOrderValue: "AOV",
+    totalRevenue: "Revenue",
+    totalOrders: "Orders",
+    averageOrderValue: "AOV",
   },
   woocommerce: {
-    totalRevenue: "Revenue", totalOrders: "Orders", averageOrderValue: "AOV",
+    totalRevenue: "Revenue",
+    totalOrders: "Orders",
+    averageOrderValue: "AOV",
   },
 };
 
@@ -167,22 +235,38 @@ export async function POST(request: NextRequest) {
     let goalsContext = "";
     if (clientId) {
       const [client, goals] = await Promise.all([
-        prisma.client.findUnique({ where: { id: clientId }, select: { aiReportInstructions: true } }),
+        prisma.client.findUnique({
+          where: { id: clientId },
+          select: { aiReportInstructions: true },
+        }),
         prisma.clientGoal.findMany({
           where: { clientId, status: { in: ["active", "at_risk"] } },
-          select: { title: true, metric: true, targetValue: true, currentValue: true, unit: true, targetDate: true, status: true },
+          select: {
+            title: true,
+            metric: true,
+            targetValue: true,
+            currentValue: true,
+            unit: true,
+            targetDate: true,
+            status: true,
+          },
         }),
       ]);
       if (client?.aiReportInstructions) {
         clientAiInstructions = client.aiReportInstructions;
       }
       if (goals.length > 0) {
-        goalsContext = "\n\nACTIVE CLIENT GOALS:\n" + goals.map((g) => {
-          const progress = g.currentValue && g.targetValue && g.targetValue !== 0
-            ? Math.round((g.currentValue / g.targetValue) * 100)
-            : null;
-          return `• ${g.title}: target ${g.targetValue}${g.unit ? ` ${g.unit}` : ""} by ${g.targetDate} (current: ${g.currentValue ?? "not measured"}${progress ? ` — ${progress}% to target` : ""}, ${g.status.toUpperCase()})`;
-        }).join("\n");
+        goalsContext =
+          "\n\nACTIVE CLIENT GOALS:\n" +
+          goals
+            .map((g) => {
+              const progress =
+                g.currentValue && g.targetValue && g.targetValue !== 0
+                  ? Math.round((g.currentValue / g.targetValue) * 100)
+                  : null;
+              return `• ${g.title}: target ${g.targetValue}${g.unit ? ` ${g.unit}` : ""} by ${g.targetDate} (current: ${g.currentValue ?? "not measured"}${progress ? ` — ${progress}% to target` : ""}, ${g.status.toUpperCase()})`;
+            })
+            .join("\n");
       }
     }
 
@@ -223,9 +307,7 @@ export async function POST(request: NextRequest) {
     const pageScores: SuperSummaryResponse["pageScores"] = [];
 
     if (landingPages?.length) {
-      const topPages = landingPages
-        .sort((a, b) => b.clicks - a.clicks)
-        .slice(0, 5);
+      const topPages = landingPages.sort((a, b) => b.clicks - a.clicks).slice(0, 5);
 
       const signals = await Promise.all(topPages.map((p) => fetchPageSignals(p.url)));
 
@@ -233,9 +315,10 @@ export async function POST(request: NextRequest) {
       for (let i = 0; i < topPages.length; i++) {
         const lp = topPages[i];
         const sig = signals[i];
-        const cvr = lp.conversions && lp.clicks > 0
-          ? ((lp.conversions / lp.clicks) * 100).toFixed(1) + "%"
-          : "0%";
+        const cvr =
+          lp.conversions && lp.clicks > 0
+            ? ((lp.conversions / lp.clicks) * 100).toFixed(1) + "%"
+            : "0%";
 
         const parts = [`URL: ${lp.url} — ${lp.clicks} clicks, ${cvr} CVR`];
         if (sig.fetchError) {
@@ -244,7 +327,9 @@ export async function POST(request: NextRequest) {
           parts.push(`  Title: ${sig.title ?? "MISSING"}`);
           parts.push(`  Meta desc: ${sig.metaDescription ? "present" : "MISSING"}`);
           parts.push(`  H1: ${sig.h1Tags.length > 0 ? sig.h1Tags[0] : "MISSING"}`);
-          parts.push(`  CTAs: ${sig.ctaTexts.length > 0 ? sig.ctaTexts.slice(0, 4).join(", ") : "none detected"}`);
+          parts.push(
+            `  CTAs: ${sig.ctaTexts.length > 0 ? sig.ctaTexts.slice(0, 4).join(", ") : "none detected"}`,
+          );
           parts.push(`  Forms: ${sig.formCount} form(s), ${sig.formFieldCount} field(s)`);
           parts.push(`  Mobile-ready: ${sig.isResponsiveViewport ? "yes" : "NO"}`);
           parts.push(`  Trust signals: ${sig.hasTrustSignals ? "yes" : "no"}`);
@@ -258,7 +343,7 @@ export async function POST(request: NextRequest) {
 
     // ── AI call ──────────────────────────────────────────────────────────────
 
-    const systemPrompt = `You are a senior performance marketing strategist at i3media, a UK digital marketing agency.
+    const systemPrompt = `You are a senior performance marketing strategist at Betts & Burton, a UK digital marketing agency.
 You produce executive-level "full journey" summaries that tell the COMPLETE story of a marketing channel's performance — from ad/campaign level, through user click, to landing page experience
 and conversion outcome.
 
@@ -331,7 +416,11 @@ Be frank and specific. Reference actual campaign names, URLs, and figures.`;
             controller.enqueue(encoder.encode("data: [DONE]\n\n"));
             controller.close();
           } catch (err) {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: err instanceof Error ? err.message : "Stream error" })}\n\n`));
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({ error: err instanceof Error ? err.message : "Stream error" })}\n\n`,
+              ),
+            );
             controller.close();
           }
         },

@@ -2249,12 +2249,6 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
         subtitle:
           "Displays Core Web Vitals scores including LCP, CLS and INP from real user data, showing how the website performs against Google's thresholds.",
       },
-      competitor_intelligence: {
-        icon: <TrendingUp size={14} />,
-        badge: "badge-slate",
-        subtitle:
-          "Compares your client's organic performance against key competitors, tracking changes in traffic, keyword rankings and domain authority.",
-      },
     };
 
   const isPublished = report.status === "published";
@@ -4454,14 +4448,6 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                             )}
                           </>
                         ))}
-                      {section.sectionType === "competitor_intelligence" && (
-                        <>
-                          {commentaryCard}
-                          {unconfiguredNotice(
-                            "Competitor Intelligence has been retired with SEMrush removal.",
-                          )}
-                        </>
-                      )}
                     </div>
                   </SortableMainSectionWrapper>
                 );

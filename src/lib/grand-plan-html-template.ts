@@ -10,7 +10,7 @@
  * - Password gate
  * - Confidential watermark
  * - Responsive layout
- * - i3media branding
+ * - Betts & Burton branding
  */
 
 import type { GrandPlanData, AudienceItem, StrategyBrain } from "./grand-plan-generator";
@@ -311,13 +311,13 @@ export function renderGrandPlanHtml(plan: GrandPlanData, isPublicView = false): 
   <div class="hero-orb"></div>
   <div class="hero-inner">
     ${I3_LOGO_SVG.replace('viewBox="0 0 161 53"', 'viewBox="0 0 161 53" style="width:140px;height:auto;margin-bottom:2.5rem;display:block;color:#fff"')}
-    <div class="hero-label">${plan.purpose === "pitch" ? "Pitch Deck" : plan.purpose === "onboarding" ? "Onboarding Plan" : "Strategy Overview"} &nbsp;&middot;&nbsp; ${new Date(plan.generatedAt).toLocaleDateString("en-GB", { month: "long", year: "numeric" })} &nbsp;&middot;&nbsp; i3media</div>
+    <div class="hero-label">${plan.purpose === "pitch" ? "Pitch Deck" : plan.purpose === "onboarding" ? "Onboarding Plan" : "Strategy Overview"} &nbsp;&middot;&nbsp; ${new Date(plan.generatedAt).toLocaleDateString("en-GB", { month: "long", year: "numeric" })} &nbsp;&middot;&nbsp; Betts & Burton</div>
     ${ed(plan.title, "title", { tag: "h1", placeholder: "Plan title" })}
     <div class="hero-divider"></div>
     ${ed(plan.heroTagline ?? (s.executiveSummary ? heroSubtext(s.executiveSummary) : `A comprehensive digital marketing strategy for ${plan.clientName}.`), "heroTagline", { tag: "p", cls: "hero-sub", placeholder: "Add a one-line proposition…", multiline: true })}
     <div class="hero-meta">
       <div class="hero-meta-item"><strong>Client</strong><span>${esc(plan.clientName)}</span></div>
-      <div class="hero-meta-item"><strong>Agency</strong><span>i3media</span></div>
+      <div class="hero-meta-item"><strong>Agency</strong><span>Betts & Burton</span></div>
       <div class="hero-meta-item"><strong>Date</strong><span>${new Date(plan.generatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</span></div>
       <div class="hero-meta-item"><strong>Scope</strong><span>${navItems
         .filter((n) => n.isChapter)
@@ -552,7 +552,7 @@ function renderCtaClose(clientName: string): string {
       </a>
       <a href="https://bettsandburton.com" class="cta-link-card" target="_blank" rel="noopener">
         <span class="cta-link-icon">🌐</span>
-        <div><div class="cta-link-label">Website</div><div class="cta-link-val">i3media.co.uk</div></div>
+        <div><div class="cta-link-label">Website</div><div class="cta-link-val">bettsandburton.com</div></div>
       </a>
     </div>
   </div>
@@ -2603,7 +2603,7 @@ function renderServicesInvestment(data: any): string {
   const whyUsHtml =
     whyUs.length > 0
       ? `
-    <h3 style="margin:2rem 0 1rem">Why i3media</h3>
+    <h3 style="margin:2rem 0 1rem">Why Betts & Burton</h3>
     <div class="deliv-grid">
       ${whyUs
         .map(
@@ -5116,7 +5116,7 @@ document.querySelectorAll('.lp-iframe[data-lp-html]').forEach(function(iframe){
 })();
 `;
 
-// ─── i3media logo SVG ───────────────────────────────────────────────────────
+// ─── Betts & Burton logo SVG ───────────────────────────────────────────────────────
 // Source: /public/primary-logo.svg with all fills converted to currentColor so
 // the same markup renders in white on dark surfaces (sticky nav, hero) and in
 // ink on light surfaces (CTA card, password gate). Original viewBox preserved.

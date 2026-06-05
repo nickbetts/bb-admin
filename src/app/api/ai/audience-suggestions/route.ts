@@ -13,7 +13,8 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const rl = enforceAiRateLimit(session.user.id); if (!rl.ok) return rl.response!;
+    const rl = enforceAiRateLimit(session.user.id);
+    if (!rl.ok) return rl.response!;
 
     const {
       clientId,
@@ -31,7 +32,7 @@ export async function POST(request: NextRequest) {
       tiktokAdGroups,
       // Overall performance context
       performanceContext,
-    } = await request.json() as {
+    } = (await request.json()) as {
       clientId: string;
       clientName?: string;
       metaAdSetAudiences?: Array<{
@@ -45,12 +46,35 @@ export async function POST(request: NextRequest) {
         customAudiences?: Array<{ name: string }>;
         excludedAudiences?: Array<{ name: string }>;
       }>;
-      metaCampaigns?: Array<{ name: string; spend: number; roas: number; conversions: number; reach?: number }>;
-      googleAudienceCriteria?: Array<{ displayName: string; criterionType: string; campaignName: string; bidModifier: number | null; negative: boolean }>;
-      googleAdsCampaigns?: Array<{ name: string; clicks: number; conversions: number; costMicros: number }>;
+      metaCampaigns?: Array<{
+        name: string;
+        spend: number;
+        roas: number;
+        conversions: number;
+        reach?: number;
+      }>;
+      googleAudienceCriteria?: Array<{
+        displayName: string;
+        criterionType: string;
+        campaignName: string;
+        bidModifier: number | null;
+        negative: boolean;
+      }>;
+      googleAdsCampaigns?: Array<{
+        name: string;
+        clicks: number;
+        conversions: number;
+        costMicros: number;
+      }>;
       linkedinDemographics?: Record<string, unknown>;
       linkedinCampaigns?: Array<{ name: string; spend: number; conversions: number; cpl: number }>;
-      tiktokAdGroups?: Array<{ adGroupName: string; status: string; spend?: number; clicks?: number; conversions?: number }>;
+      tiktokAdGroups?: Array<{
+        adGroupName: string;
+        status: string;
+        spend?: number;
+        clicks?: number;
+        conversions?: number;
+      }>;
       performanceContext?: string;
     };
 
@@ -70,49 +94,88 @@ export async function POST(request: NextRequest) {
     if (metaAdSetAudiences?.length) {
       contextBlocks.push(
         `META ADS CURRENT AUDIENCES (active ad sets and their targeting):\n` +
-        metaAdSetAudiences.slice(0, 10).map(a => {
-          const age = a.ageMin != null && a.ageMax != null ? `${a.ageMin}–${a.ageMax}` : "all ages";
-          const gender = a.genders?.length === 1 ? (a.genders[0] === 1 ? "male" : "female") : "all genders";
-          const interests = a.interests?.slice(0, 4).join(", ") ?? "none";
-          const custom = a.customAudiences?.slice(0, 3).map(c => c.name).join(", ") ?? "none";
-          const excl = a.excludedAudiences?.slice(0, 2).map(c => c.name).join(", ") ?? "none";
-          return `  • "${a.adSetName}" [${a.status}]: age ${age}, ${gender}, geo: ${a.geoSummary ?? "all"}, interests: ${interests}, custom: ${custom}, excluded: ${excl}`;
-        }).join("\n")
+          metaAdSetAudiences
+            .slice(0, 10)
+            .map((a) => {
+              const age =
+                a.ageMin != null && a.ageMax != null ? `${a.ageMin}–${a.ageMax}` : "all ages";
+              const gender =
+                a.genders?.length === 1 ? (a.genders[0] === 1 ? "male" : "female") : "all genders";
+              const interests = a.interests?.slice(0, 4).join(", ") ?? "none";
+              const custom =
+                a.customAudiences
+                  ?.slice(0, 3)
+                  .map((c) => c.name)
+                  .join(", ") ?? "none";
+              const excl =
+                a.excludedAudiences
+                  ?.slice(0, 2)
+                  .map((c) => c.name)
+                  .join(", ") ?? "none";
+              return `  • "${a.adSetName}" [${a.status}]: age ${age}, ${gender}, geo: ${a.geoSummary ?? "all"}, interests: ${interests}, custom: ${custom}, excluded: ${excl}`;
+            })
+            .join("\n"),
       );
     }
 
     if (metaCampaigns?.length) {
       contextBlocks.push(
         `META CAMPAIGN PERFORMANCE:\n` +
-        metaCampaigns.slice(0, 10).map(c => `  • "${c.name}": spend £${c.spend.toFixed(2)}, ROAS ${c.roas.toFixed(2)}x, ${c.conversions} conv${c.reach ? `, reach ${c.reach.toLocaleString()}` : ""}`).join("\n")
+          metaCampaigns
+            .slice(0, 10)
+            .map(
+              (c) =>
+                `  • "${c.name}": spend £${c.spend.toFixed(2)}, ROAS ${c.roas.toFixed(2)}x, ${c.conversions} conv${c.reach ? `, reach ${c.reach.toLocaleString()}` : ""}`,
+            )
+            .join("\n"),
       );
     }
 
     if (googleAudienceCriteria?.length) {
-      const active = googleAudienceCriteria.filter(a => !a.negative);
+      const active = googleAudienceCriteria.filter((a) => !a.negative);
       if (active.length) {
         contextBlocks.push(
           `GOOGLE ADS CURRENT AUDIENCE TARGETING:\n` +
-          active.slice(0, 10).map(a => `  • ${a.displayName} [${a.criterionType}] in "${a.campaignName}" — ${a.bidModifier != null ? `bid modifier: ${((a.bidModifier - 1) * 100).toFixed(0)}%` : "observation mode"}`).join("\n")
+            active
+              .slice(0, 10)
+              .map(
+                (a) =>
+                  `  • ${a.displayName} [${a.criterionType}] in "${a.campaignName}" — ${a.bidModifier != null ? `bid modifier: ${((a.bidModifier - 1) * 100).toFixed(0)}%` : "observation mode"}`,
+              )
+              .join("\n"),
         );
       }
     }
 
     if (linkedinDemographics && Object.keys(linkedinDemographics).length > 0) {
-      contextBlocks.push(`LINKEDIN DEMOGRAPHIC DATA:\n${JSON.stringify(linkedinDemographics, null, 2).slice(0, 1000)}`);
+      contextBlocks.push(
+        `LINKEDIN DEMOGRAPHIC DATA:\n${JSON.stringify(linkedinDemographics, null, 2).slice(0, 1000)}`,
+      );
     }
 
     if (linkedinCampaigns?.length) {
       contextBlocks.push(
         `LINKEDIN CAMPAIGN PERFORMANCE:\n` +
-        linkedinCampaigns.slice(0, 8).map(c => `  • "${c.name}": spend £${c.spend.toFixed(2)}, CPL £${c.cpl.toFixed(2)}, ${c.conversions} conv`).join("\n")
+          linkedinCampaigns
+            .slice(0, 8)
+            .map(
+              (c) =>
+                `  • "${c.name}": spend £${c.spend.toFixed(2)}, CPL £${c.cpl.toFixed(2)}, ${c.conversions} conv`,
+            )
+            .join("\n"),
       );
     }
 
     if (tiktokAdGroups?.length) {
       contextBlocks.push(
         `TIKTOK AD GROUPS:\n` +
-        tiktokAdGroups.slice(0, 10).map(g => `  • "${g.adGroupName}" [${g.status}]: spend £${(g.spend ?? 0).toFixed(2)}, ${g.clicks ?? 0} clicks, ${g.conversions ?? 0} conv`).join("\n")
+          tiktokAdGroups
+            .slice(0, 10)
+            .map(
+              (g) =>
+                `  • "${g.adGroupName}" [${g.status}]: spend £${(g.spend ?? 0).toFixed(2)}, ${g.clicks ?? 0} clicks, ${g.conversions ?? 0} conv`,
+            )
+            .join("\n"),
       );
     }
 
@@ -122,7 +185,7 @@ export async function POST(request: NextRequest) {
 
     contextBlocks.push(seasonality.promptText);
 
-    const systemPrompt = `You are a senior audience strategy specialist at i3media, a UK digital marketing agency.
+    const systemPrompt = `You are a senior audience strategy specialist at Betts & Burton, a UK digital marketing agency.
 You analyse audience data across Meta, Google Ads, LinkedIn, and TikTok to identify new audience segments to test, segments to exclude, and targeting refinements that will improve conversion rates and ROAS.
 Your recommendations are specific, data-driven, and actionable — with exact audience names, platform-specific settings, and expected impact.
 Use British English.${client.aiReportInstructions ? `\n\nClient instructions: ${client.aiReportInstructions}` : ""}`;
@@ -175,13 +238,17 @@ Produce audience recommendations as JSON:
 
     const raw = completion.choices[0]?.message?.content ?? "{}";
     const validated = validateAiJson(AudienceSuggestionsSchema, raw);
-    const parsed: Record<string, unknown> = validated.ok ? (validated.data as Record<string, unknown>) : {};
-    if (!validated.ok) console.warn("[ai/audience-suggestions] schema validation failed:", validated.error);
+    const parsed: Record<string, unknown> = validated.ok
+      ? (validated.data as Record<string, unknown>)
+      : {};
+    if (!validated.ok)
+      console.warn("[ai/audience-suggestions] schema validation failed:", validated.error);
 
     return NextResponse.json(parsed);
   } catch (error) {
     console.error("Audience suggestions error:", error);
-    const message = error instanceof Error ? error.message : "Failed to generate audience suggestions";
+    const message =
+      error instanceof Error ? error.message : "Failed to generate audience suggestions";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

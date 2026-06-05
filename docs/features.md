@@ -1,4 +1,4 @@
-# Feature Reference — i3media Report Platform
+# Feature Reference — Betts & Burton Report Platform
 
 Comprehensive feature documentation including data flow architecture, AI system design, and per-feature walkthrough. For system architecture and database schema, see [architecture.md](architecture.md). For setup and deployment, see [deployment.md](deployment.md).
 

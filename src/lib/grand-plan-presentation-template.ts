@@ -27,26 +27,28 @@ function renderBody(text: string | undefined | null): string {
 
 function renderBullets(bullets: string[] | undefined): string {
   if (!bullets || bullets.length === 0) return "";
-  return `<ul class="bullets-list">${bullets
-    .map((b) => `<li>${esc(b)}</li>`)
-    .join("")}</ul>`;
+  return `<ul class="bullets-list">${bullets.map((b) => `<li>${esc(b)}</li>`).join("")}</ul>`;
 }
 
 function renderImageMedia(slide: PresentationSlide): string {
   // Prefer the multi-image gallery when present, otherwise fall back to the
   // legacy single image field.
-  const gallery = slide.images && slide.images.length > 0
-    ? slide.images
-    : slide.image
-      ? [{ url: slide.image.url, alt: slide.image.alt }]
-      : [];
+  const gallery =
+    slide.images && slide.images.length > 0
+      ? slide.images
+      : slide.image
+        ? [{ url: slide.image.url, alt: slide.image.alt }]
+        : [];
   if (gallery.length === 0) return "";
   if (gallery.length === 1) {
     const img = gallery[0];
     return `<div class="slide-image"><img src="${esc(img.url)}" alt="${esc(img.alt ?? "")}" loading="lazy" /></div>`;
   }
   const tiles = gallery
-    .map((img) => `<div class="gallery-tile"><img src="${esc(img.url)}" alt="${esc(img.alt ?? "")}" loading="lazy" /></div>`)
+    .map(
+      (img) =>
+        `<div class="gallery-tile"><img src="${esc(img.url)}" alt="${esc(img.alt ?? "")}" loading="lazy" /></div>`,
+    )
     .join("");
   return `<div class="slide-gallery gallery-${gallery.length}">${tiles}</div>`;
 }
@@ -71,7 +73,7 @@ function slideHasBodyContent(slide: PresentationSlide): boolean {
     (slide.phases && slide.phases.length > 0) ||
     slide.metric?.value ||
     slide.investment?.headlineFigure ||
-    (slide.investment?.breakdown && slide.investment.breakdown.length > 0)
+    (slide.investment?.breakdown && slide.investment.breakdown.length > 0),
   );
 }
 
@@ -112,7 +114,7 @@ function renderSlide(slide: PresentationSlide, index: number, total: number): st
             <div class="pillar-card">
               <div class="pillar-title">${esc(p.title)}</div>
               <p class="pillar-body">${renderBody(p.body)}</p>
-            </div>`
+            </div>`,
         )
         .join("");
       body = `<div class="pillars-grid pillars-${slide.pillars?.length ?? 0}">${cards}</div>`;
@@ -125,7 +127,7 @@ function renderSlide(slide: PresentationSlide, index: number, total: number): st
             <div class="audience-card">
               <div class="audience-name">${esc(a.name)}</div>
               <p class="audience-insight">${renderBody(a.insight)}</p>
-            </div>`
+            </div>`,
         )
         .join("");
       body = `<div class="audience-grid audience-${slide.audiences?.length ?? 0}">${cards}</div>`;
@@ -138,7 +140,7 @@ function renderSlide(slide: PresentationSlide, index: number, total: number): st
             <div class="channel-chip">
               <div class="channel-name">${esc(c.name)}</div>
               <div class="channel-role">${renderBody(c.role)}</div>
-            </div>`
+            </div>`,
         )
         .join("");
       body = `<div class="channels-grid">${chips}</div>`;
@@ -154,7 +156,7 @@ function renderSlide(slide: PresentationSlide, index: number, total: number): st
               <ul class="phase-items">
                 ${p.items.map((it) => `<li>${esc(it)}</li>`).join("")}
               </ul>
-            </div>`
+            </div>`,
         )
         .join("");
       body = `<div class="timeline-strip">${phases}</div>`;
@@ -177,7 +179,7 @@ function renderSlide(slide: PresentationSlide, index: number, total: number): st
                     </div>
                     <div class="invest-bar"><div class="invest-fill" style="width:${Math.min(100, Math.max(0, b.percentage))}%"></div></div>
                     <div class="invest-pct">${b.percentage}%</div>
-                  </div>`
+                  </div>`,
               )
               .join("")}
           </div>`
@@ -195,7 +197,7 @@ function renderSlide(slide: PresentationSlide, index: number, total: number): st
                 <div class="step-title">${esc(s.title)}</div>
                 <p class="step-detail">${renderBody(s.detail)}</p>
               </div>
-            </li>`
+            </li>`,
         )
         .join("");
       body = `<ol class="steps-list">${items}</ol>`;
@@ -221,7 +223,12 @@ function renderSlide(slide: PresentationSlide, index: number, total: number): st
   }
 
   // Append supplementary bullets to other kinds when present (excluding content/bullets where they are primary)
-  if (slide.bullets && slide.bullets.length > 0 && slide.kind !== "content" && slide.kind !== "bullets") {
+  if (
+    slide.bullets &&
+    slide.bullets.length > 0 &&
+    slide.kind !== "content" &&
+    slide.kind !== "bullets"
+  ) {
     body = `${body}<div class="extra-bullets">${renderBullets(slide.bullets)}</div>`;
   }
 
@@ -261,7 +268,7 @@ function renderSlide(slide: PresentationSlide, index: number, total: number): st
         ${title}
         <div class="slide-body">${bodyWithMedia}</div>
         <div class="slide-foot">
-          <div class="brand-mark">i3media</div>
+          <div class="brand-mark">Betts & Burton</div>
         </div>
       </div>
     </section>`;
@@ -276,7 +283,7 @@ function renderCover(data: PresentationData, total: number): string {
       <div class="cover-orb cover-orb-3"></div>
       <div class="slide-inner">
         <div class="slide-head">
-          <div class="eyebrow eyebrow-light">i3media · Strategy Deck${c.period ? ` · ${esc(c.period)}` : ""}</div>
+          <div class="eyebrow eyebrow-light">Betts & Burton · Strategy Deck${c.period ? ` · ${esc(c.period)}` : ""}</div>
           <div class="counter">1 / ${total}</div>
         </div>
         <div class="cover-body">
@@ -285,7 +292,7 @@ function renderCover(data: PresentationData, total: number): string {
           ${c.sprintWindow ? `<div class="cover-sprint">${esc(c.sprintWindow)}</div>` : ""}
           <div class="cover-meta">
             <div><strong>Prepared for</strong><span>${esc(c.clientName)}</span></div>
-            <div><strong>Prepared by</strong><span>i3media</span></div>
+            <div><strong>Prepared by</strong><span>Betts & Burton</span></div>
             <div><strong>Date</strong><span>${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</span></div>
           </div>
         </div>
@@ -651,7 +658,7 @@ const DECK_JS = `
  */
 export function renderPresentationHtml(
   data: PresentationData,
-  options: { isPublicView?: boolean; print?: boolean } | boolean = false
+  options: { isPublicView?: boolean; print?: boolean } | boolean = false,
 ): string {
   // Backwards-compat: callers used to pass a single boolean for isPublicView.
   const opts = typeof options === "boolean" ? { isPublicView: options } : options;
@@ -662,9 +669,7 @@ export function renderPresentationHtml(
   const total = slides.length + 1; // +1 for cover
 
   const cover = renderCover(data, total);
-  const slideHtml = slides
-    .map((s, i) => renderSlide(s, i + 1, total))
-    .join("\n");
+  const slideHtml = slides.map((s, i) => renderSlide(s, i + 1, total)).join("\n");
 
   const bodyClass = isPrint ? "print-mode" : "";
   const navHtml = isPrint

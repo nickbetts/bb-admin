@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
       messages: [
         {
           role: "user",
-          content: `You are a strategist at i3media drafting target audiences for a marketing plan.
+          content: `You are a strategist at Betts & Burton drafting target audiences for a marketing plan.
 
 Read the brief below for ${clientName} and propose 3-6 distinct target audiences. Each audience should be a real, addressable segment that a media buyer or content team could plan against — not a vague persona.
 

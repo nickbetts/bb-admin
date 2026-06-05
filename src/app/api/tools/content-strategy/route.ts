@@ -125,7 +125,7 @@ function extractTextFromSpreadsheet(buffer: ArrayBuffer): string {
     const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "" });
     for (const row of rows) {
       if (!Array.isArray(row)) continue;
-      const cells = row.map(c => String(c ?? "").trim()).filter(Boolean);
+      const cells = row.map((c) => String(c ?? "").trim()).filter(Boolean);
       if (cells.length > 0) lines.push(cells.join("\t"));
     }
     lines.push("");
@@ -205,7 +205,7 @@ async function extractWithClaude(fileText: string, clientName: string): Promise<
     ],
   });
 
-  const textBlock = response.content.find(b => b.type === "text");
+  const textBlock = response.content.find((b) => b.type === "text");
   if (!textBlock || textBlock.type !== "text") {
     throw new Error("No text response from extraction model");
   }
@@ -232,17 +232,23 @@ function validateExtractedData(raw: Record<string, unknown>): SpreadsheetData {
     if (!keyword || keyword.length < 2) return null;
     const volume = Math.max(0, Math.round(Number(obj.volume) || 0));
     const validTypes = ["primary", "secondary", "long-tail"];
-    const type = validTypes.includes(String(obj.type ?? "")) ? (obj.type as ParsedKeyword["type"]) : undefined;
+    const type = validTypes.includes(String(obj.type ?? ""))
+      ? (obj.type as ParsedKeyword["type"])
+      : undefined;
     return { keyword, volume, type };
   }
 
   function validatePageOpt(p: unknown): PageOptimisation | null {
     if (!p || typeof p !== "object") return null;
     const obj = p as Record<string, unknown>;
-    const url = String(obj.url || "").trim().replace(/^https?:\/\//, "").replace(/^www\./, "");
+    const url = String(obj.url || "")
+      .trim()
+      .replace(/^https?:\/\//, "")
+      .replace(/^www\./, "");
     if (!url || url.length < 3) return null;
     const keywords = (Array.isArray(obj.keywords) ? obj.keywords : [])
-      .map(validateKeyword).filter((k): k is ParsedKeyword => k !== null);
+      .map(validateKeyword)
+      .filter((k): k is ParsedKeyword => k !== null);
     if (keywords.length === 0) return null;
     return {
       url,
@@ -262,7 +268,8 @@ function validateExtractedData(raw: Record<string, unknown>): SpreadsheetData {
     const title = String(obj.title || "").trim();
     if (!title || title.length < 2) return null;
     const keywords = (Array.isArray(obj.keywords) ? obj.keywords : [])
-      .map(validateKeyword).filter((k): k is ParsedKeyword => k !== null);
+      .map(validateKeyword)
+      .filter((k): k is ParsedKeyword => k !== null);
     if (keywords.length === 0) return null;
     return {
       title,
@@ -277,12 +284,16 @@ function validateExtractedData(raw: Record<string, unknown>): SpreadsheetData {
   function validateLinkTarget(t: unknown): LinkTarget | null {
     if (!t || typeof t !== "object") return null;
     const obj = t as Record<string, unknown>;
-    const url = String(obj.url || "").trim().replace(/^https?:\/\//, "").replace(/^www\./, "");
+    const url = String(obj.url || "")
+      .trim()
+      .replace(/^https?:\/\//, "")
+      .replace(/^www\./, "");
     const anchorKeyword = String(obj.anchorKeyword || "").trim();
     if (!url || !anchorKeyword) return null;
     const validTypes = ["exact", "broad", "brand"];
     const anchorType = validTypes.includes(String(obj.anchorType || "").toLowerCase())
-      ? String(obj.anchorType) : "Broad";
+      ? String(obj.anchorType)
+      : "Broad";
     return {
       url,
       anchorKeyword,
@@ -293,11 +304,14 @@ function validateExtractedData(raw: Record<string, unknown>): SpreadsheetData {
   }
 
   const pageOptimisations = (Array.isArray(raw.pageOptimisations) ? raw.pageOptimisations : [])
-    .map(validatePageOpt).filter((p): p is PageOptimisation => p !== null);
+    .map(validatePageOpt)
+    .filter((p): p is PageOptimisation => p !== null);
   const landingPages = (Array.isArray(raw.landingPages) ? raw.landingPages : [])
-    .map(validateProposedPage).filter((p): p is ProposedPage => p !== null);
+    .map(validateProposedPage)
+    .filter((p): p is ProposedPage => p !== null);
   const categoryPages = (Array.isArray(raw.categoryPages) ? raw.categoryPages : [])
-    .map(validateProposedPage).filter((p): p is ProposedPage => p !== null);
+    .map(validateProposedPage)
+    .filter((p): p is ProposedPage => p !== null);
   const blogPosts: BlogPost[] = (Array.isArray(raw.blogPosts) ? raw.blogPosts : [])
     .map((p: unknown): BlogPost | null => {
       const validated = validateProposedPage(p);
@@ -305,15 +319,20 @@ function validateExtractedData(raw: Record<string, unknown>): SpreadsheetData {
       const obj = p as Record<string, unknown>;
       return {
         ...validated,
-        cluster: typeof obj.cluster === "string" && obj.cluster.trim() ? obj.cluster.trim() : undefined,
+        cluster:
+          typeof obj.cluster === "string" && obj.cluster.trim() ? obj.cluster.trim() : undefined,
       };
-    }).filter((p): p is BlogPost => p !== null);
+    })
+    .filter((p): p is BlogPost => p !== null);
   const linkTargets = (Array.isArray(raw.linkTargets) ? raw.linkTargets : [])
-    .map(validateLinkTarget).filter((t): t is LinkTarget => t !== null);
+    .map(validateLinkTarget)
+    .filter((t): t is LinkTarget => t !== null);
 
   // Pass through quickWins and roadmap from SEMrush-generated data
   const quickWins = Array.isArray(raw.quickWins)
-    ? (raw.quickWins as unknown[]).map(validatePageOpt).filter((p): p is PageOptimisation => p !== null)
+    ? (raw.quickWins as unknown[])
+        .map(validatePageOpt)
+        .filter((p): p is PageOptimisation => p !== null)
     : undefined;
 
   const rawRoadmap = raw.roadmap as Record<string, unknown> | undefined;
@@ -321,13 +340,22 @@ function validateExtractedData(raw: Record<string, unknown>): SpreadsheetData {
     ? {
         month1: Array.isArray(rawRoadmap.month1) ? rawRoadmap.month1.map(String) : [],
         months2to3: Array.isArray(rawRoadmap.months2to3) ? rawRoadmap.months2to3.map(String) : [],
-        months4plus: Array.isArray(rawRoadmap.months4plus) ? rawRoadmap.months4plus.map(String) : [],
+        months4plus: Array.isArray(rawRoadmap.months4plus)
+          ? rawRoadmap.months4plus.map(String)
+          : [],
       }
     : undefined;
 
-  const totalItems = pageOptimisations.length + landingPages.length + categoryPages.length + blogPosts.length + linkTargets.length;
+  const totalItems =
+    pageOptimisations.length +
+    landingPages.length +
+    categoryPages.length +
+    blogPosts.length +
+    linkTargets.length;
   if (totalItems === 0) {
-    throw new Error("Could not extract any content strategy data from the document. Please check the file contains keyword data grouped by page URL or title.");
+    throw new Error(
+      "Could not extract any content strategy data from the document. Please check the file contains keyword data grouped by page URL or title.",
+    );
   }
 
   return {
@@ -344,7 +372,7 @@ function validateExtractedData(raw: Record<string, unknown>): SpreadsheetData {
       totalPageOptimisations: pageOptimisations.length,
       totalLandingPages: landingPages.length + categoryPages.length,
       totalBlogPosts: blogPosts.length,
-      totalLinkTargets: new Set(linkTargets.map(t => t.url)).size,
+      totalLinkTargets: new Set(linkTargets.map((t) => t.url)).size,
     },
   };
 }
@@ -363,15 +391,35 @@ function parseSpreadsheet(buffer: ArrayBuffer): SpreadsheetData {
     let currentNotes = "";
     let currentKws: ParsedKeyword[] = [];
     // Common header strings to skip (case-insensitive)
-    const headerStrings = new Set(["link", "keyword", "keywords", "url", "page", "page title", "title", "search volume", "monthly searches", "volume", "notes", "anchor", "anchor text", "anchor type", "type"]);
-    function isHeader(s: string): boolean { return headerStrings.has(s.toLowerCase()); }
+    const headerStrings = new Set([
+      "link",
+      "keyword",
+      "keywords",
+      "url",
+      "page",
+      "page title",
+      "title",
+      "search volume",
+      "monthly searches",
+      "volume",
+      "notes",
+      "anchor",
+      "anchor text",
+      "anchor type",
+      "type",
+    ]);
+    function isHeader(s: string): boolean {
+      return headerStrings.has(s.toLowerCase());
+    }
 
     // Skip header rows (rows 0-5), data starts at row 6 (index 6)
     for (let i = 6; i < rows.length; i++) {
       const row = rows[i];
       if (!row || row.length < 4) continue;
       const link = String(row[1] || "").trim();
-      const keyword = String(row[2] || "").replace(/\u200b/g, "").trim();
+      const keyword = String(row[2] || "")
+        .replace(/\u200b/g, "")
+        .trim();
       const volume = Number(row[3]) || 0;
       const notes = String(row[4] || "").trim();
 
@@ -383,7 +431,12 @@ function parseSpreadsheet(buffer: ArrayBuffer): SpreadsheetData {
       if (link && keyword) {
         // New URL group
         if (currentUrl && currentKws.length > 0) {
-          pageOpts.push({ url: currentUrl, keywords: currentKws, notes: currentNotes, priority: false });
+          pageOpts.push({
+            url: currentUrl,
+            keywords: currentKws,
+            notes: currentNotes,
+            priority: false,
+          });
         }
         currentUrl = link.replace(/^https?:\/\//, "").replace(/^www\./, "");
         currentKws = [{ keyword, volume }];
@@ -395,7 +448,12 @@ function parseSpreadsheet(buffer: ArrayBuffer): SpreadsheetData {
       }
     }
     if (currentUrl && currentKws.length > 0) {
-      pageOpts.push({ url: currentUrl, keywords: currentKws, notes: currentNotes, priority: false });
+      pageOpts.push({
+        url: currentUrl,
+        keywords: currentKws,
+        notes: currentNotes,
+        priority: false,
+      });
     }
   }
 
@@ -409,14 +467,34 @@ function parseSpreadsheet(buffer: ArrayBuffer): SpreadsheetData {
     let currentNotes = "";
     let currentKws: ParsedKeyword[] = [];
 
-    const headerStringsP = new Set(["link", "keyword", "keywords", "url", "page", "page title", "title", "search volume", "monthly searches", "volume", "notes", "anchor", "anchor text", "anchor type", "type"]);
-    function isHeaderP(s: string): boolean { return headerStringsP.has(s.toLowerCase()); }
+    const headerStringsP = new Set([
+      "link",
+      "keyword",
+      "keywords",
+      "url",
+      "page",
+      "page title",
+      "title",
+      "search volume",
+      "monthly searches",
+      "volume",
+      "notes",
+      "anchor",
+      "anchor text",
+      "anchor type",
+      "type",
+    ]);
+    function isHeaderP(s: string): boolean {
+      return headerStringsP.has(s.toLowerCase());
+    }
 
     for (let i = 6; i < rows.length; i++) {
       const row = rows[i];
       if (!row || row.length < 4) continue;
       const link = String(row[1] || "").trim();
-      const keyword = String(row[2] || "").replace(/\u200b/g, "").trim();
+      const keyword = String(row[2] || "")
+        .replace(/\u200b/g, "")
+        .trim();
       const volume = Number(row[3]) || 0;
       const notes = String(row[4] || "").trim();
 
@@ -425,7 +503,12 @@ function parseSpreadsheet(buffer: ArrayBuffer): SpreadsheetData {
 
       if (link && keyword && keyword.length >= 2) {
         if (currentTitle && currentKws.length > 0) {
-          pages.push({ title: currentTitle, keywords: currentKws, notes: currentNotes, priority: false });
+          pages.push({
+            title: currentTitle,
+            keywords: currentKws,
+            notes: currentNotes,
+            priority: false,
+          });
         }
         currentTitle = link;
         currentKws = [{ keyword, volume }];
@@ -436,7 +519,12 @@ function parseSpreadsheet(buffer: ArrayBuffer): SpreadsheetData {
       } else if (link && !isHeaderP(link) && !keyword && notes) {
         // Title-only row with notes (description row)
         if (currentTitle && currentKws.length > 0) {
-          pages.push({ title: currentTitle, keywords: currentKws, notes: currentNotes, priority: false });
+          pages.push({
+            title: currentTitle,
+            keywords: currentKws,
+            notes: currentNotes,
+            priority: false,
+          });
         }
         currentTitle = link;
         currentKws = [];
@@ -444,7 +532,12 @@ function parseSpreadsheet(buffer: ArrayBuffer): SpreadsheetData {
       }
     }
     if (currentTitle && currentKws.length > 0) {
-      pages.push({ title: currentTitle, keywords: currentKws, notes: currentNotes, priority: false });
+      pages.push({
+        title: currentTitle,
+        keywords: currentKws,
+        notes: currentNotes,
+        priority: false,
+      });
     }
     return pages;
   }
@@ -453,7 +546,7 @@ function parseSpreadsheet(buffer: ArrayBuffer): SpreadsheetData {
   const categoryPages = parseProposedPages("Proposed Category Pages");
 
   // Parse blog posts (same format as proposed pages)
-  const blogPosts: BlogPost[] = parseProposedPages("Proposed Blog Pages").map(p => ({
+  const blogPosts: BlogPost[] = parseProposedPages("Proposed Blog Pages").map((p) => ({
     title: p.title,
     keywords: p.keywords,
     notes: p.notes,
@@ -465,8 +558,27 @@ function parseSpreadsheet(buffer: ArrayBuffer): SpreadsheetData {
   const linkSheet = wb.Sheets["Link Targets"];
   if (linkSheet) {
     const rows = XLSX.utils.sheet_to_json<unknown[]>(linkSheet, { header: 1, defval: "" });
-    const headerStringsL = new Set(["link", "keyword", "keywords", "url", "page", "page title", "title", "search volume", "monthly searches", "volume", "notes", "anchor", "anchor text", "anchor type", "type", "target page"]);
-    function isHeaderL(s: string): boolean { return headerStringsL.has(s.toLowerCase()); }
+    const headerStringsL = new Set([
+      "link",
+      "keyword",
+      "keywords",
+      "url",
+      "page",
+      "page title",
+      "title",
+      "search volume",
+      "monthly searches",
+      "volume",
+      "notes",
+      "anchor",
+      "anchor text",
+      "anchor type",
+      "type",
+      "target page",
+    ]);
+    function isHeaderL(s: string): boolean {
+      return headerStringsL.has(s.toLowerCase());
+    }
 
     for (let i = 6; i < rows.length; i++) {
       const row = rows[i];
@@ -491,7 +603,7 @@ function parseSpreadsheet(buffer: ArrayBuffer): SpreadsheetData {
   const uniqueLandingPages = landingPages.length;
   const uniqueBlogPosts = blogPosts.length;
   // Count unique link target URLs
-  const uniqueLinkTargets = new Set(linkTargets.map(t => t.url)).size;
+  const uniqueLinkTargets = new Set(linkTargets.map((t) => t.url)).size;
 
   return {
     clientName: "",
@@ -513,15 +625,32 @@ function parseSpreadsheet(buffer: ArrayBuffer): SpreadsheetData {
 // ─── HTML template generation ───────────────────────────────────────────────
 
 export function generateHtml(data: SpreadsheetData, aiContent: Record<string, string>): string {
-  const { clientName, period, pageOptimisations, landingPages, categoryPages, blogPosts, linkTargets, quickWins, roadmap, stats } = data;
+  const {
+    clientName,
+    period,
+    pageOptimisations,
+    landingPages,
+    categoryPages,
+    blogPosts,
+    linkTargets,
+    quickWins,
+    roadmap,
+    stats,
+  } = data;
 
   let cardIdx = 0;
 
   function esc(s: string): string {
-    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    return s
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
   }
 
-  function escJson(obj: unknown): string { return esc(JSON.stringify(obj)); }
+  function escJson(obj: unknown): string {
+    return esc(JSON.stringify(obj));
+  }
 
   function formatNum(n: number): string {
     return n.toLocaleString("en-GB");
@@ -529,7 +658,12 @@ export function generateHtml(data: SpreadsheetData, aiContent: Record<string, st
 
   function intentBadge(intent?: string): string {
     if (!intent) return "";
-    const labels: Record<string, string> = { informational: "Informational", commercial: "Commercial", transactional: "Transactional", navigational: "Navigational" };
+    const labels: Record<string, string> = {
+      informational: "Informational",
+      commercial: "Commercial",
+      transactional: "Transactional",
+      navigational: "Navigational",
+    };
     const label = labels[intent];
     if (!label) return "";
     return `<span class="intent-badge intent-${esc(intent)}">${label}</span>`;
@@ -542,19 +676,30 @@ export function generateHtml(data: SpreadsheetData, aiContent: Record<string, st
     return `<span class="${cls}">${prefix}${esc(schemaType)}</span>`;
   }
 
-  function internalLinksHtml(links: { url: string; anchorText: string }[] | undefined, labelText: string): string {
+  function internalLinksHtml(
+    links: { url: string; anchorText: string }[] | undefined,
+    labelText: string,
+  ): string {
     if (!links || links.length === 0) return "";
-    const items = links.map(l =>
-      `<div class="internal-link-item"><span class="internal-link-anchor">"${esc(l.anchorText)}"</span><span class="internal-link-url">\u2192 ${esc(l.url)}</span></div>`
-    ).join("\n          ");
+    const items = links
+      .map(
+        (l) =>
+          `<div class="internal-link-item"><span class="internal-link-anchor">"${esc(l.anchorText)}"</span><span class="internal-link-url">\u2192 ${esc(l.url)}</span></div>`,
+      )
+      .join("\n          ");
     return `<div class="internal-links"><div class="internal-links-label">${labelText}</div><div class="internal-link-list">${items}</div></div>`;
   }
 
   // Sort by impact desc
-  function sortByImpact<T extends { keywords: ParsedKeyword[]; impact?: number }>(arr: T[], volThreshold: number): T[] {
+  function sortByImpact<T extends { keywords: ParsedKeyword[]; impact?: number }>(
+    arr: T[],
+    volThreshold: number,
+  ): T[] {
     return [...arr].sort((a, b) => {
-      const bImp = (b.impact ?? 0) * 10 + (b.keywords.some(k => k.volume >= volThreshold) ? 1 : 0);
-      const aImp = (a.impact ?? 0) * 10 + (a.keywords.some(k => k.volume >= volThreshold) ? 1 : 0);
+      const bImp =
+        (b.impact ?? 0) * 10 + (b.keywords.some((k) => k.volume >= volThreshold) ? 1 : 0);
+      const aImp =
+        (a.impact ?? 0) * 10 + (a.keywords.some((k) => k.volume >= volThreshold) ? 1 : 0);
       return bImp - aImp;
     });
   }
@@ -564,7 +709,12 @@ export function generateHtml(data: SpreadsheetData, aiContent: Record<string, st
   let quickWinsHtml = "";
   if (hasQuickWins) {
     for (const opt of quickWins!) {
-      const _qwJson = escJson({ type: 'quick-win', url: opt.url, keywords: opt.keywords.slice(0,5).map(k => k.keyword), notes: opt.notes });
+      const _qwJson = escJson({
+        type: "quick-win",
+        url: opt.url,
+        keywords: opt.keywords.slice(0, 5).map((k) => k.keyword),
+        notes: opt.notes,
+      });
       quickWinsHtml += `
           <div class="opt-block qw-block cs-editable" data-cs-idx="${cardIdx++}" data-cs-json="${_qwJson}">
             <div class="cs-edit-bar">
@@ -578,15 +728,43 @@ export function generateHtml(data: SpreadsheetData, aiContent: Record<string, st
             <table class="kw-table">
               <thead><tr><th>Keyword</th><th>Type</th><th>Monthly searches</th></tr></thead>
               <tbody>
-                ${opt.keywords.map((k, i) => { const typeLabel = k.type === 'primary' ? '<span class="kw-type kw-type-primary">Primary</span>' : k.type === 'secondary' ? '<span class="kw-type kw-type-secondary">Secondary</span>' : k.type === 'long-tail' ? '<span class="kw-type kw-type-longtail">Long-tail</span>' : ''; return `<tr${i === 0 ? ' class="kw-top"' : ""}><td>${esc(k.keyword)}</td><td>${typeLabel}</td><td>${formatNum(k.volume)}</td></tr>`; }).join("\n                ")}
+                ${opt.keywords
+                  .map((k, i) => {
+                    const typeLabel =
+                      k.type === "primary"
+                        ? '<span class="kw-type kw-type-primary">Primary</span>'
+                        : k.type === "secondary"
+                          ? '<span class="kw-type kw-type-secondary">Secondary</span>'
+                          : k.type === "long-tail"
+                            ? '<span class="kw-type kw-type-longtail">Long-tail</span>'
+                            : "";
+                    return `<tr${i === 0 ? ' class="kw-top"' : ""}><td>${esc(k.keyword)}</td><td>${typeLabel}</td><td>${formatNum(k.volume)}</td></tr>`;
+                  })
+                  .join("\n                ")}
               </tbody>
             </table>
-            ${opt.audit ? (() => {
-              const a = opt.audit!;
-              const titleColour = (!a.titlePresent) ? '#ef4444' : (a.titleLength < 30 || a.titleLength > 60) ? '#f59e0b' : !a.titleContainsKeyword ? '#f59e0b' : '#22c55e';
-              const titleText2 = !a.titlePresent ? 'Missing' : (a.titleLength < 30 || a.titleLength > 60) ? 'Suboptimal length' : !a.titleContainsKeyword ? 'Keyword absent' : 'Good';
-              return `<div class="audit-panel"><span class="audit-label">Meta title</span><span class="audit-badge" style="background:${titleColour}20;color:${titleColour};border:1px solid ${titleColour}40">${titleText2}</span>${a.titlePresent ? `<span class="audit-title-text">${esc(a.titleText)}</span><span class="audit-length">${a.titleLength} chars</span>` : ''}</div>`;
-            })() : ''}
+            ${
+              opt.audit
+                ? (() => {
+                    const a = opt.audit!;
+                    const titleColour = !a.titlePresent
+                      ? "#ef4444"
+                      : a.titleLength < 30 || a.titleLength > 60
+                        ? "#f59e0b"
+                        : !a.titleContainsKeyword
+                          ? "#f59e0b"
+                          : "#22c55e";
+                    const titleText2 = !a.titlePresent
+                      ? "Missing"
+                      : a.titleLength < 30 || a.titleLength > 60
+                        ? "Suboptimal length"
+                        : !a.titleContainsKeyword
+                          ? "Keyword absent"
+                          : "Good";
+                    return `<div class="audit-panel"><span class="audit-label">Meta title</span><span class="audit-badge" style="background:${titleColour}20;color:${titleColour};border:1px solid ${titleColour}40">${titleText2}</span>${a.titlePresent ? `<span class="audit-title-text">${esc(a.titleText)}</span><span class="audit-length">${a.titleLength} chars</span>` : ""}</div>`;
+                  })()
+                : ""
+            }
             ${internalLinksHtml(opt.contextLinks, "Pages that should link here")}
           </div>`;
     }
@@ -596,7 +774,12 @@ export function generateHtml(data: SpreadsheetData, aiContent: Record<string, st
   const sortedPageOpts = sortByImpact(pageOptimisations, 1000);
   let pageOptsHtml = "";
   for (const opt of sortedPageOpts) {
-    const _optJson = escJson({ type: 'page-opt', url: opt.url, keywords: opt.keywords.slice(0,5).map(k => k.keyword), notes: opt.notes });
+    const _optJson = escJson({
+      type: "page-opt",
+      url: opt.url,
+      keywords: opt.keywords.slice(0, 5).map((k) => k.keyword),
+      notes: opt.notes,
+    });
     pageOptsHtml += `
           <div class="opt-block cs-editable" data-cs-idx="${cardIdx++}" data-cs-json="${_optJson}">
             <div class="cs-edit-bar">
@@ -610,46 +793,101 @@ export function generateHtml(data: SpreadsheetData, aiContent: Record<string, st
             <table class="kw-table">
               <thead><tr><th>Keyword</th><th>Type</th><th>Monthly searches</th></tr></thead>
               <tbody>
-                ${opt.keywords.map((k, i) => { const typeLabel = k.type === 'primary' ? '<span class="kw-type kw-type-primary">Primary</span>' : k.type === 'secondary' ? '<span class="kw-type kw-type-secondary">Secondary</span>' : k.type === 'long-tail' ? '<span class="kw-type kw-type-longtail">Long-tail</span>' : ''; return `<tr${i === 0 ? ' class="kw-top"' : ""}><td>${esc(k.keyword)}</td><td>${typeLabel}</td><td>${formatNum(k.volume)}</td></tr>`; }).join("\n                ")}
+                ${opt.keywords
+                  .map((k, i) => {
+                    const typeLabel =
+                      k.type === "primary"
+                        ? '<span class="kw-type kw-type-primary">Primary</span>'
+                        : k.type === "secondary"
+                          ? '<span class="kw-type kw-type-secondary">Secondary</span>'
+                          : k.type === "long-tail"
+                            ? '<span class="kw-type kw-type-longtail">Long-tail</span>'
+                            : "";
+                    return `<tr${i === 0 ? ' class="kw-top"' : ""}><td>${esc(k.keyword)}</td><td>${typeLabel}</td><td>${formatNum(k.volume)}</td></tr>`;
+                  })
+                  .join("\n                ")}
               </tbody>
             </table>
-            ${opt.audit ? (() => {
-              const a = opt.audit!;
-              // Title
-              const titleColour = (!a.titlePresent) ? '#ef4444' : (a.titleLength < 30 || a.titleLength > 60) ? '#f59e0b' : !a.titleContainsKeyword ? '#f59e0b' : '#22c55e';
-              const titleText2 = !a.titlePresent ? 'Missing' : (a.titleLength < 30 || a.titleLength > 60) ? 'Suboptimal length' : !a.titleContainsKeyword ? 'Keyword absent' : 'Good';
-              // Meta description
-              const descColour = (!a.descriptionPresent) ? '#ef4444' : (a.descriptionLength < 120 || a.descriptionLength > 160) ? '#f59e0b' : !a.descriptionContainsKeyword ? '#f59e0b' : '#22c55e';
-              const descStatusText = !a.descriptionPresent ? 'Missing' : (a.descriptionLength < 120 || a.descriptionLength > 160) ? 'Suboptimal length' : !a.descriptionContainsKeyword ? 'Keyword absent' : 'Good';
-              // H1
-              const h1Colour = (!a.h1Present) ? '#ef4444' : !a.h1ContainsKeyword ? '#f59e0b' : '#22c55e';
-              const h1StatusText = !a.h1Present ? 'Missing' : !a.h1ContainsKeyword ? 'Keyword absent' : 'Good';
-              // Schema
-              const foundSchemaStr = a.schemaTypes.length > 0 ? a.schemaTypes.join(', ') : null;
-              const schemaGap = opt.suggestedSchema && !a.schemaTypes.some(t => t.toLowerCase() === opt.suggestedSchema!.toLowerCase());
-              return `<div class="audit-panel" style="flex-direction:column;align-items:stretch;gap:.5rem;">
+            ${
+              opt.audit
+                ? (() => {
+                    const a = opt.audit!;
+                    // Title
+                    const titleColour = !a.titlePresent
+                      ? "#ef4444"
+                      : a.titleLength < 30 || a.titleLength > 60
+                        ? "#f59e0b"
+                        : !a.titleContainsKeyword
+                          ? "#f59e0b"
+                          : "#22c55e";
+                    const titleText2 = !a.titlePresent
+                      ? "Missing"
+                      : a.titleLength < 30 || a.titleLength > 60
+                        ? "Suboptimal length"
+                        : !a.titleContainsKeyword
+                          ? "Keyword absent"
+                          : "Good";
+                    // Meta description
+                    const descColour = !a.descriptionPresent
+                      ? "#ef4444"
+                      : a.descriptionLength < 120 || a.descriptionLength > 160
+                        ? "#f59e0b"
+                        : !a.descriptionContainsKeyword
+                          ? "#f59e0b"
+                          : "#22c55e";
+                    const descStatusText = !a.descriptionPresent
+                      ? "Missing"
+                      : a.descriptionLength < 120 || a.descriptionLength > 160
+                        ? "Suboptimal length"
+                        : !a.descriptionContainsKeyword
+                          ? "Keyword absent"
+                          : "Good";
+                    // H1
+                    const h1Colour = !a.h1Present
+                      ? "#ef4444"
+                      : !a.h1ContainsKeyword
+                        ? "#f59e0b"
+                        : "#22c55e";
+                    const h1StatusText = !a.h1Present
+                      ? "Missing"
+                      : !a.h1ContainsKeyword
+                        ? "Keyword absent"
+                        : "Good";
+                    // Schema
+                    const foundSchemaStr =
+                      a.schemaTypes.length > 0 ? a.schemaTypes.join(", ") : null;
+                    const schemaGap =
+                      opt.suggestedSchema &&
+                      !a.schemaTypes.some(
+                        (t) => t.toLowerCase() === opt.suggestedSchema!.toLowerCase(),
+                      );
+                    return `<div class="audit-panel" style="flex-direction:column;align-items:stretch;gap:.5rem;">
                 <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
                   <span class="audit-label">Meta title</span>
                   <span class="audit-badge" style="background:${titleColour}20;color:${titleColour};border:1px solid ${titleColour}40">${titleText2}</span>
-                  ${a.titlePresent ? `<span class="audit-title-text">${esc(a.titleText)}</span><span class="audit-length">${a.titleLength} chars</span>` : ''}
+                  ${a.titlePresent ? `<span class="audit-title-text">${esc(a.titleText)}</span><span class="audit-length">${a.titleLength} chars</span>` : ""}
                 </div>
                 <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
                   <span class="audit-label">Meta desc</span>
                   <span class="audit-badge" style="background:${descColour}20;color:${descColour};border:1px solid ${descColour}40">${descStatusText}</span>
-                  ${a.descriptionPresent ? `<span class="audit-title-text">${esc(a.descriptionText.slice(0, 120))}${a.descriptionLength > 120 ? '…' : ''}</span><span class="audit-length">${a.descriptionLength} chars</span>` : ''}
+                  ${a.descriptionPresent ? `<span class="audit-title-text">${esc(a.descriptionText.slice(0, 120))}${a.descriptionLength > 120 ? "…" : ""}</span><span class="audit-length">${a.descriptionLength} chars</span>` : ""}
                 </div>
                 <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
                   <span class="audit-label">H1</span>
                   <span class="audit-badge" style="background:${h1Colour}20;color:${h1Colour};border:1px solid ${h1Colour}40">${h1StatusText}</span>
-                  ${a.h1Present ? `<span class="audit-title-text">${esc(a.h1Text)}</span>` : ''}
+                  ${a.h1Present ? `<span class="audit-title-text">${esc(a.h1Text)}</span>` : ""}
                 </div>
                 <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
                   <span class="audit-label">Schema</span>
                   ${foundSchemaStr ? `<span class="audit-badge" style="background:#d1fae520;color:#065f46;border:1px solid #6ee7b740">${esc(foundSchemaStr)}</span>` : `<span class="audit-badge" style="background:#ef444420;color:#ef4444;border:1px solid #ef444440">None found</span>`}
-                  ${schemaGap ? `<span class="audit-badge" style="background:#fff7ed;color:#92400e;border:1px solid #fed7aa">&#9888; Add ${esc(opt.suggestedSchema!)}</span>` : (opt.suggestedSchema && !schemaGap ? `<span class="audit-badge" style="background:#d1fae520;color:#065f46;border:1px solid #6ee7b740">&#10003; ${esc(opt.suggestedSchema)} present</span>` : '')}
+                  ${schemaGap ? `<span class="audit-badge" style="background:#fff7ed;color:#92400e;border:1px solid #fed7aa">&#9888; Add ${esc(opt.suggestedSchema!)}</span>` : opt.suggestedSchema && !schemaGap ? `<span class="audit-badge" style="background:#d1fae520;color:#065f46;border:1px solid #6ee7b740">&#10003; ${esc(opt.suggestedSchema)} present</span>` : ""}
                 </div>
               </div>`;
-            })() : (opt.suggestedSchema ? `<div class="audit-panel">${schemaBadge(opt.suggestedSchema)}</div>` : '')}
+                  })()
+                : opt.suggestedSchema
+                  ? `<div class="audit-panel">${schemaBadge(opt.suggestedSchema)}</div>`
+                  : ""
+            }
             ${internalLinksHtml(opt.contextLinks, "Pages that should link here")}
           </div>`;
   }
@@ -659,7 +897,12 @@ export function generateHtml(data: SpreadsheetData, aiContent: Record<string, st
   let landingPagesHtml = "";
   for (const page of allLandingPages) {
     const desc = aiContent[`landing_${page.title}`] || page.notes || "";
-    const _lpJson = escJson({ type: 'landing', title: page.title, keywords: page.keywords.slice(0,5).map(k => k.keyword), notes: desc });
+    const _lpJson = escJson({
+      type: "landing",
+      title: page.title,
+      keywords: page.keywords.slice(0, 5).map((k) => k.keyword),
+      notes: desc,
+    });
     landingPagesHtml += `
           <div class="new-page-card cs-editable" data-cs-idx="${cardIdx++}" data-cs-json="${_lpJson}">
             <div class="cs-edit-bar">
@@ -671,9 +914,21 @@ export function generateHtml(data: SpreadsheetData, aiContent: Record<string, st
             </div>
             <p class="new-page-desc">${esc(desc)}</p>
             <div class="new-page-kws">
-              ${page.keywords.map(k => { const typeLabel = k.type === 'primary' ? '<span class="kw-pill-type primary">P</span>' : k.type === 'secondary' ? '<span class="kw-pill-type secondary">S</span>' : k.type === 'long-tail' ? '<span class="kw-pill-type longtail">LT</span>' : ''; return `<div class="kw-pill${k.volume >= 200 ? " kw-pill-high" : ""}">${typeLabel}${esc(k.keyword)} <span>${formatNum(k.volume)}</span></div>`; }).join("\n              ")}
+              ${page.keywords
+                .map((k) => {
+                  const typeLabel =
+                    k.type === "primary"
+                      ? '<span class="kw-pill-type primary">P</span>'
+                      : k.type === "secondary"
+                        ? '<span class="kw-pill-type secondary">S</span>'
+                        : k.type === "long-tail"
+                          ? '<span class="kw-pill-type longtail">LT</span>'
+                          : "";
+                  return `<div class="kw-pill${k.volume >= 200 ? " kw-pill-high" : ""}">${typeLabel}${esc(k.keyword)} <span>${formatNum(k.volume)}</span></div>`;
+                })
+                .join("\n              ")}
             </div>
-            ${page.suggestedSchema ? `<div style="margin-top:.65rem;">${schemaBadge(page.suggestedSchema)}</div>` : ''}
+            ${page.suggestedSchema ? `<div style="margin-top:.65rem;">${schemaBadge(page.suggestedSchema)}</div>` : ""}
             ${internalLinksHtml(page.internalLinks, "Internal links to include")}
           </div>`;
   }
@@ -689,7 +944,7 @@ export function generateHtml(data: SpreadsheetData, aiContent: Record<string, st
     clusterMap.set(clusterKey, group);
   }
   // Move __ungrouped__ to end if there are real clusters
-  const hasRealClusters = [...clusterMap.keys()].some(k => k !== "__ungrouped__");
+  const hasRealClusters = [...clusterMap.keys()].some((k) => k !== "__ungrouped__");
   const clusterOrder = [...clusterMap.keys()].sort((a, b) => {
     if (a === "__ungrouped__") return 1;
     if (b === "__ungrouped__") return -1;
@@ -706,7 +961,13 @@ export function generateHtml(data: SpreadsheetData, aiContent: Record<string, st
     for (const post of clusterPosts) {
       globalPostIdx++;
       const desc = aiContent[`blog_${post.title}`] || post.notes || "";
-      const _blogJson = escJson({ type: 'blog', title: post.title, cluster: post.cluster || '', keywords: post.keywords.slice(0,5).map(k => k.keyword), notes: desc });
+      const _blogJson = escJson({
+        type: "blog",
+        title: post.title,
+        cluster: post.cluster || "",
+        keywords: post.keywords.slice(0, 5).map((k) => k.keyword),
+        notes: desc,
+      });
       blogPostsHtml += `
           <div class="blog-item cs-editable" data-cs-idx="${cardIdx++}" data-cs-json="${_blogJson}">
             <div class="cs-edit-bar">
@@ -722,12 +983,24 @@ export function generateHtml(data: SpreadsheetData, aiContent: Record<string, st
               </div>
               <p class="blog-desc">${esc(desc)}</p>
               <div class="blog-kw-row">
-                ${post.keywords.map((k, j) => { const typeLabel = k.type === 'primary' ? '<span class="kw-pill-type primary">P</span>' : k.type === 'secondary' ? '<span class="kw-pill-type secondary">S</span>' : k.type === 'long-tail' ? '<span class="kw-pill-type longtail">LT</span>' : ''; return `<div class="blog-kw-item${j < 2 ? " top" : ""}">
+                ${post.keywords
+                  .map((k, j) => {
+                    const typeLabel =
+                      k.type === "primary"
+                        ? '<span class="kw-pill-type primary">P</span>'
+                        : k.type === "secondary"
+                          ? '<span class="kw-pill-type secondary">S</span>'
+                          : k.type === "long-tail"
+                            ? '<span class="kw-pill-type longtail">LT</span>'
+                            : "";
+                    return `<div class="blog-kw-item${j < 2 ? " top" : ""}">
                   ${typeLabel}<span class="bk-word">${esc(k.keyword)}</span>
                   <span class="bk-vol">${formatNum(k.volume)}</span>
-                </div>`; }).join("\n                ")}
+                </div>`;
+                  })
+                  .join("\n                ")}
               </div>
-              ${post.suggestedSchema ? `<div style="margin-top:.65rem;">${schemaBadge(post.suggestedSchema)}</div>` : ''}
+              ${post.suggestedSchema ? `<div style="margin-top:.65rem;">${schemaBadge(post.suggestedSchema)}</div>` : ""}
               ${internalLinksHtml(post.internalLinks, "Internal links to include")}
             </div>
           </div>`;
@@ -747,7 +1020,12 @@ export function generateHtml(data: SpreadsheetData, aiContent: Record<string, st
   for (const [url, targets] of linkGroups) {
     for (let i = 0; i < targets.length; i++) {
       const t = targets[i];
-      const badgeClass = t.anchorType.toLowerCase() === "exact" ? "anchor-exact" : t.anchorType.toLowerCase() === "brand" ? "anchor-brand" : "anchor-broad";
+      const badgeClass =
+        t.anchorType.toLowerCase() === "exact"
+          ? "anchor-exact"
+          : t.anchorType.toLowerCase() === "brand"
+            ? "anchor-brand"
+            : "anchor-broad";
       linkTargetsHtml += `
               <tr${!isFirst && i === 0 ? ' class="lt-sep"' : ""}>
                 ${i === 0 ? `<td class="lt-url"${targets.length > 1 ? ` rowspan="${targets.length}"` : ""}><a href="https://${esc(url)}" target="_blank" rel="noopener">${esc(url)}</a></td>` : ""}
@@ -760,9 +1038,9 @@ export function generateHtml(data: SpreadsheetData, aiContent: Record<string, st
 
   // Find the top 4 unique keywords across all sections (for the summary bar)
   const allKeywords = [
-    ...pageOptimisations.flatMap(p => p.keywords),
-    ...allLandingPages.flatMap(p => p.keywords),
-    ...blogPosts.flatMap(p => p.keywords),
+    ...pageOptimisations.flatMap((p) => p.keywords),
+    ...allLandingPages.flatMap((p) => p.keywords),
+    ...blogPosts.flatMap((p) => p.keywords),
   ];
   const bestByKeyword = new Map<string, { keyword: string; volume: number }>();
   for (const k of allKeywords) {
@@ -773,18 +1051,36 @@ export function generateHtml(data: SpreadsheetData, aiContent: Record<string, st
     }
   }
   let totalDeduplicatedVol = 0;
-  bestByKeyword.forEach(k => { totalDeduplicatedVol += k.volume; });
+  bestByKeyword.forEach((k) => {
+    totalDeduplicatedVol += k.volume;
+  });
   const totalAnchorLinks = linkTargets.length;
 
   // Overview descriptions from AI
-  const overviewOpportunity = aiContent.overviewOpportunity || "A comprehensive content strategy targeting high-value keyword opportunities.";
-  const overviewPlan = aiContent.overviewPlan || "The strategy covers page optimisations, new landing pages, blog content, and link building, all delivered by i3media on your behalf.";
-  const overviewPriority = aiContent.overviewPriority || "We'll focus on the highest-impact quick wins first, then build out the new content over the following months.";
-  const overviewScope = aiContent.overviewScope || `We're targeting ${bestByKeyword.size} unique keywords across all content types.`;
-  const sectionDescOpts = aiContent.sectionDescOpts || "These are existing pages on your site that we'll refresh and expand. Improving them strengthens rankings for terms they already appear for and opens up new keyword opportunities within the same topic cluster.";
-  const sectionDescLanding = aiContent.sectionDescLanding || "New pages we will write and publish on your behalf. Each targets a keyword cluster not currently served by your existing content, turning search demand into enquiries.";
-  const sectionDescBlog = aiContent.sectionDescBlog || "New informational articles we will research and write. These drive organic traffic at the top of the funnel, build topical authority, and internally link to your key commercial pages.";
-  const sectionDescLinks = aiContent.sectionDescLinks || "These are the pages our outreach campaign will build backlinks towards. Earning links to these specific URLs strengthens their individual authority and improves the site's ability to rank competitively across the board.";
+  const overviewOpportunity =
+    aiContent.overviewOpportunity ||
+    "A comprehensive content strategy targeting high-value keyword opportunities.";
+  const overviewPlan =
+    aiContent.overviewPlan ||
+    "The strategy covers page optimisations, new landing pages, blog content, and link building, all delivered by Betts & Burton on your behalf.";
+  const overviewPriority =
+    aiContent.overviewPriority ||
+    "We'll focus on the highest-impact quick wins first, then build out the new content over the following months.";
+  const overviewScope =
+    aiContent.overviewScope ||
+    `We're targeting ${bestByKeyword.size} unique keywords across all content types.`;
+  const sectionDescOpts =
+    aiContent.sectionDescOpts ||
+    "These are existing pages on your site that we'll refresh and expand. Improving them strengthens rankings for terms they already appear for and opens up new keyword opportunities within the same topic cluster.";
+  const sectionDescLanding =
+    aiContent.sectionDescLanding ||
+    "New pages we will write and publish on your behalf. Each targets a keyword cluster not currently served by your existing content, turning search demand into enquiries.";
+  const sectionDescBlog =
+    aiContent.sectionDescBlog ||
+    "New informational articles we will research and write. These drive organic traffic at the top of the funnel, build topical authority, and internally link to your key commercial pages.";
+  const sectionDescLinks =
+    aiContent.sectionDescLinks ||
+    "These are the pages our outreach campaign will build backlinks towards. Earning links to these specific URLs strengthens their individual authority and improves the site's ability to rank competitively across the board.";
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -1064,14 +1360,14 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 2rem; }
     <p class="hero-sub">A data-led content plan designed to grow organic visibility, capture high-intent search traffic, and support wider marketing goals.</p>
     <div class="hero-meta">
       <div class="meta-item"><strong>Client</strong> ${esc(clientName)}</div>
-      <div class="meta-item"><strong>Prepared&nbsp;by</strong> i3MEDIA</div>
+      <div class="meta-item"><strong>Prepared&nbsp;by</strong> Betts & Burton</div>
       <div class="meta-item"><strong>Period</strong> ${esc(period)}</div>
     </div>
     <div class="stat-row">
-      ${stats.totalPageOptimisations > 0 ? `<div class="stat-card"><div class="stat-num">${stats.totalPageOptimisations}</div><div class="stat-label">Page optimisations</div></div>` : ''}
-      ${stats.totalLandingPages > 0 ? `<div class="stat-card"><div class="stat-num">${stats.totalLandingPages}</div><div class="stat-label">New landing pages</div></div>` : ''}
-      ${stats.totalBlogPosts > 0 ? `<div class="stat-card"><div class="stat-num">${stats.totalBlogPosts}</div><div class="stat-label">Blog posts</div></div>` : ''}
-      ${totalAnchorLinks > 0 ? `<div class="stat-card"><div class="stat-num">${totalAnchorLinks}</div><div class="stat-label">Link building targets</div></div>` : ''}
+      ${stats.totalPageOptimisations > 0 ? `<div class="stat-card"><div class="stat-num">${stats.totalPageOptimisations}</div><div class="stat-label">Page optimisations</div></div>` : ""}
+      ${stats.totalLandingPages > 0 ? `<div class="stat-card"><div class="stat-num">${stats.totalLandingPages}</div><div class="stat-label">New landing pages</div></div>` : ""}
+      ${stats.totalBlogPosts > 0 ? `<div class="stat-card"><div class="stat-num">${stats.totalBlogPosts}</div><div class="stat-label">Blog posts</div></div>` : ""}
+      ${totalAnchorLinks > 0 ? `<div class="stat-card"><div class="stat-num">${totalAnchorLinks}</div><div class="stat-label">Link building targets</div></div>` : ""}
     </div>
   </div>
 </div>
@@ -1106,16 +1402,22 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 2rem; }
           <div class="intro-card"><h4>Priority period</h4><p>${esc(overviewPriority)}</p></div>
           <div class="intro-card"><h4>Keyword scope</h4><p>${esc(overviewScope)}</p></div>
         </div>
-        ${totalDeduplicatedVol > 0 ? `<div class="kw-summary" style="grid-template-columns:1fr">
+        ${
+          totalDeduplicatedVol > 0
+            ? `<div class="kw-summary" style="grid-template-columns:1fr">
           <div class="kw-summary-item">
             <div class="kw-summary-num"><span id="cs-total-vol">${formatNum(totalDeduplicatedVol)}</span></div>
             <div class="kw-summary-lbl">Total monthly searches across all keywords</div>
           </div>
-        </div>` : ''}
+        </div>`
+            : ""
+        }
       </div>
     </div>
 
-    ${hasQuickWins ? `
+    ${
+      hasQuickWins
+        ? `
     <!-- QUICK WINS -->
     <div class="section" id="quick-wins">
       <div class="section-hdr">
@@ -1129,9 +1431,13 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 2rem; }
         </div>
         <div class="cs-add-wrap"><button class="cs-add-btn" data-cs-section="quick-win" onclick="addToSection(this)">+ Add another</button></div>
       </div>
-    </div>` : ""}
+    </div>`
+        : ""
+    }
 
-    ${stats.totalPageOptimisations > 0 ? `
+    ${
+      stats.totalPageOptimisations > 0
+        ? `
     <!-- PAGE OPTIMISATIONS -->
     <div class="section" id="page-optimisations">
       <div class="section-hdr">
@@ -1145,9 +1451,13 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 2rem; }
         </div>
         <div class="cs-add-wrap"><button class="cs-add-btn" data-cs-section="page-opt" onclick="addToSection(this)">+ Add another</button></div>
       </div>
-    </div>` : ""}
+    </div>`
+        : ""
+    }
 
-    ${stats.totalLandingPages > 0 ? `
+    ${
+      stats.totalLandingPages > 0
+        ? `
     <!-- NEW LANDING PAGES -->
     <div class="section" id="landing-pages">
       <div class="section-hdr">
@@ -1161,9 +1471,13 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 2rem; }
         </div>
         <div class="cs-add-wrap"><button class="cs-add-btn" data-cs-section="landing" onclick="addToSection(this)">+ Add another</button></div>
       </div>
-    </div>` : ""}
+    </div>`
+        : ""
+    }
 
-    ${stats.totalBlogPosts > 0 ? `
+    ${
+      stats.totalBlogPosts > 0
+        ? `
     <!-- BLOG POSTS -->
     <div class="section" id="blog-pages">
       <div class="section-hdr">
@@ -1177,9 +1491,13 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 2rem; }
         </div>
         <div class="cs-add-wrap"><button class="cs-add-btn" data-cs-section="blog" onclick="addToSection(this)">+ Add another</button></div>
       </div>
-    </div>` : ""}
+    </div>`
+        : ""
+    }
 
-    ${linkTargets.length > 0 ? `
+    ${
+      linkTargets.length > 0
+        ? `
     <!-- LINK TARGETS -->
     <div class="section" id="link-targets">
       <div class="section-hdr">
@@ -1202,11 +1520,21 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 2rem; }
             </tbody>
           </table>
         </div>
-        ${(() => { const types = new Set(linkTargets.map(t => t.anchorType.toLowerCase())); return types.size > 1 || !types.has('exact') ? `<div class="link-note"><div class="link-note-icon">&#9432;</div><p>We will vary anchor text across placements. Not every link will use an exact match anchor. In practice we aim for roughly 30% exact, 50% broad/natural, and 20% brand anchors across the total backlink profile for each page.</p></div>` : ''; })()}
+        ${(() => {
+          const types = new Set(linkTargets.map((t) => t.anchorType.toLowerCase()));
+          return types.size > 1 || !types.has("exact")
+            ? `<div class="link-note"><div class="link-note-icon">&#9432;</div><p>We will vary anchor text across placements. Not every link will use an exact match anchor. In practice we aim for roughly 30% exact, 50% broad/natural, and 20% brand anchors across the total backlink profile for each page.</p></div>`
+            : "";
+        })()}
       </div>
-    </div>` : ""}
+    </div>`
+        : ""
+    }
 
-    ${roadmap && (roadmap.month1.length > 0 || roadmap.months2to3.length > 0 || roadmap.months4plus.length > 0) ? `
+    ${
+      roadmap &&
+      (roadmap.month1.length > 0 || roadmap.months2to3.length > 0 || roadmap.months4plus.length > 0)
+        ? `
     <!-- DELIVERY ROADMAP -->
     <div class="section" id="roadmap">
       <div class="section-hdr">
@@ -1219,30 +1547,34 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 2rem; }
           <div class="roadmap-col col-green">
             <div class="roadmap-col-hdr hdr-green">Phase 1: Quick Wins</div>
             <div class="roadmap-items">
-              ${(roadmap.month1).map(item => `<div class="roadmap-item">${esc(item)}</div>`).join("\n              ")}
+              ${roadmap.month1.map((item) => `<div class="roadmap-item">${esc(item)}</div>`).join("\n              ")}
               ${roadmap.month1.length === 0 ? '<div class="roadmap-item" style="color:var(--muted)">To be confirmed</div>' : ""}
             </div>
           </div>
           <div class="roadmap-col col-blue">
             <div class="roadmap-col-hdr hdr-blue">Phase 2: Core Build</div>
             <div class="roadmap-items">
-              ${(roadmap.months2to3).map(item => `<div class="roadmap-item">${esc(item)}</div>`).join("\n              ")}
+              ${roadmap.months2to3.map((item) => `<div class="roadmap-item">${esc(item)}</div>`).join("\n              ")}
               ${roadmap.months2to3.length === 0 ? '<div class="roadmap-item" style="color:var(--muted)">To be confirmed</div>' : ""}
             </div>
           </div>
           <div class="roadmap-col col-purple">
             <div class="roadmap-col-hdr hdr-purple">Phase 3: Authority</div>
             <div class="roadmap-items">
-              ${(roadmap.months4plus).map(item => `<div class="roadmap-item">${esc(item)}</div>`).join("\n              ")}
+              ${roadmap.months4plus.map((item) => `<div class="roadmap-item">${esc(item)}</div>`).join("\n              ")}
               ${roadmap.months4plus.length === 0 ? '<div class="roadmap-item" style="color:var(--muted)">To be confirmed</div>' : ""}
             </div>
           </div>
         </div>
       </div>
-    </div>` : ""}
+    </div>`
+        : ""
+    }
 
     <!-- KEYWORD MASTER LIST -->
-    ${bestByKeyword.size > 0 ? `
+    ${
+      bestByKeyword.size > 0
+        ? `
     <div class="section" id="keyword-master">
       <div class="section-hdr">
         <span class="section-tag tag-blue">Keyword index</span>
@@ -1257,13 +1589,19 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 2rem; }
         <table class="kw-master-table">
           <thead><tr><th>#</th><th>Keyword</th><th>Monthly searches</th></tr></thead>
           <tbody>
-            ${[...bestByKeyword.values()].sort((a, b) => b.volume - a.volume).map((k, i) =>
-              `<tr><td class="kw-master-num">${i + 1}</td><td>${esc(k.keyword)}</td><td class="kw-master-vol">${formatNum(k.volume)}</td></tr>`
-            ).join("\n            ")}
+            ${[...bestByKeyword.values()]
+              .sort((a, b) => b.volume - a.volume)
+              .map(
+                (k, i) =>
+                  `<tr><td class="kw-master-num">${i + 1}</td><td>${esc(k.keyword)}</td><td class="kw-master-vol">${formatNum(k.volume)}</td></tr>`,
+              )
+              .join("\n            ")}
           </tbody>
         </table>
       </div>
-    </div>` : ""}
+    </div>`
+        : ""
+    }
 
     <!-- FOOTER CTA -->
     <div id="cs-action-bar">
@@ -1288,7 +1626,7 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 2rem; }
           </svg>
         </div>
       </div>
-      <div class="footer-small">Prepared by i3MEDIA &nbsp;&middot;&nbsp; ${esc(period)} &nbsp;&middot;&nbsp; Confidential, for ${esc(clientName)} internal use only</div>
+      <div class="footer-small">Prepared by Betts & Burton &nbsp;&middot;&nbsp; ${esc(period)} &nbsp;&middot;&nbsp; Confidential, for ${esc(clientName)} internal use only</div>
     </div>
   </main>
 </div>
@@ -1553,7 +1891,8 @@ export async function POST(request: NextRequest) {
       }
       spreadsheetData = validateExtractedData(body.spreadsheetData);
       clientName = body.clientName || "Client";
-      period = body.period || new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+      period =
+        body.period || new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" });
       clientId = body.clientId || null;
       generationMs = typeof body.generationMs === "number" ? body.generationMs : null;
       pendingId = typeof body.pendingId === "string" ? body.pendingId : null;
@@ -1562,7 +1901,9 @@ export async function POST(request: NextRequest) {
       const formData = await request.formData();
       const file = formData.get("file") as File | null;
       clientName = (formData.get("clientName") as string) || "Client";
-      period = (formData.get("period") as string) || new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+      period =
+        (formData.get("period") as string) ||
+        new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" });
       clientId = formData.get("clientId") as string | null;
 
       if (!file) {
@@ -1574,8 +1915,10 @@ export async function POST(request: NextRequest) {
       const fileExt = "." + (file.name.toLowerCase().split(".").pop() || "");
       if (!supportedExtensions.includes(fileExt)) {
         return NextResponse.json(
-          { error: `Unsupported file format. Please upload one of: ${supportedExtensions.join(", ")}` },
-          { status: 400 }
+          {
+            error: `Unsupported file format. Please upload one of: ${supportedExtensions.join(", ")}`,
+          },
+          { status: 400 },
         );
       }
 
@@ -1591,8 +1934,12 @@ export async function POST(request: NextRequest) {
 
       if (isSpreadsheet) {
         const legacyData = parseSpreadsheet(buffer);
-        const legacyTotal = legacyData.pageOptimisations.length + legacyData.landingPages.length +
-          legacyData.categoryPages.length + legacyData.blogPosts.length + legacyData.linkTargets.length;
+        const legacyTotal =
+          legacyData.pageOptimisations.length +
+          legacyData.landingPages.length +
+          legacyData.categoryPages.length +
+          legacyData.blogPosts.length +
+          legacyData.linkTargets.length;
 
         if (legacyTotal >= 3) {
           spreadsheetData = legacyData;
@@ -1647,7 +1994,7 @@ Return your response as valid JSON with the following keys:
 
       await logAnthropicUsage("content-strategy", response);
 
-      const textBlock = response.content.find(b => b.type === "text");
+      const textBlock = response.content.find((b) => b.type === "text");
       if (textBlock && textBlock.type === "text") {
         let jsonStr = textBlock.text;
         const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
@@ -1700,7 +2047,10 @@ Return your response as valid JSON with the following keys:
 
     // Inject the real record ID so client-side edit/save works
     const finalHtml = html.replace("'__CS_ID__'", `'${record.id}'`);
-    await prisma.contentStrategy.update({ where: { id: record.id }, data: { generatedHtml: finalHtml } });
+    await prisma.contentStrategy.update({
+      where: { id: record.id },
+      data: { generatedHtml: finalHtml },
+    });
 
     return NextResponse.json({
       id: record.id,
@@ -1721,23 +2071,30 @@ export function buildDataSummary(data: SpreadsheetData): string {
   lines.push(`\nPage Optimisations (${data.stats.totalPageOptimisations} pages):`);
   for (const opt of data.pageOptimisations.slice(0, 10)) {
     const topKw = opt.keywords[0];
-    lines.push(`- ${opt.url}: top keyword "${topKw?.keyword}" (${topKw?.volume} searches/mo), ${opt.keywords.length} total keywords`);
+    lines.push(
+      `- ${opt.url}: top keyword "${topKw?.keyword}" (${topKw?.volume} searches/mo), ${opt.keywords.length} total keywords`,
+    );
   }
-  if (data.pageOptimisations.length > 10) lines.push(`  ... and ${data.pageOptimisations.length - 10} more`);
+  if (data.pageOptimisations.length > 10)
+    lines.push(`  ... and ${data.pageOptimisations.length - 10} more`);
 
   lines.push(`\nProposed Landing Pages (${data.landingPages.length + data.categoryPages.length}):`);
   for (const page of [...data.landingPages, ...data.categoryPages]) {
     const topKw = page.keywords[0];
-    lines.push(`- "${page.title}": top keyword "${topKw?.keyword}" (${topKw?.volume} searches/mo), ${page.keywords.length} total keywords`);
+    lines.push(
+      `- "${page.title}": top keyword "${topKw?.keyword}" (${topKw?.volume} searches/mo), ${page.keywords.length} total keywords`,
+    );
   }
 
   lines.push(`\nProposed Blog Posts (${data.blogPosts.length}):`);
   for (const post of data.blogPosts) {
     const topKw = post.keywords[0];
-    lines.push(`- "${post.title}": top keyword "${topKw?.keyword}" (${topKw?.volume} searches/mo), ${post.keywords.length} total keywords`);
+    lines.push(
+      `- "${post.title}": top keyword "${topKw?.keyword}" (${topKw?.volume} searches/mo), ${post.keywords.length} total keywords`,
+    );
   }
 
-  lines.push(`\nLink Targets (${new Set(data.linkTargets.map(t => t.url)).size} unique pages):`);
+  lines.push(`\nLink Targets (${new Set(data.linkTargets.map((t) => t.url)).size} unique pages):`);
   const grouped = new Map<string, string[]>();
   for (const t of data.linkTargets) {
     const existing = grouped.get(t.url) || [];

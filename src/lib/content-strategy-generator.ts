@@ -18,10 +18,7 @@ import {
   type SemrushAnchorText,
   type BriefKeywordResult,
 } from "@/lib/semrush";
-import {
-  getGSCQueryPageCombos,
-  type GSCQueryPageCombo,
-} from "@/lib/search-console";
+import { getGSCQueryPageCombos, type GSCQueryPageCombo } from "@/lib/search-console";
 import { withApiCache } from "@/lib/api-cache";
 import { getOpenAiClient } from "@/lib/openai-client";
 import { fetchSitemapUrls } from "@/lib/sitemap";
@@ -49,7 +46,7 @@ interface ParsedKeyword {
 
 interface OnPageAudit {
   // Title
-  titleText: string;       // raw <title> content
+  titleText: string; // raw <title> content
   titlePresent: boolean;
   titleLength: number;
   titleContainsKeyword: boolean;
@@ -224,16 +221,113 @@ interface PageGroup {
  */
 function extractBriefTopics(brief: string, max = 10): string[] {
   const STOPWORDS = new Set([
-    "about","across","add","after","again","against","all","also","although","always",
-    "among","and","any","are","around","also","been","before","being","blog","both",
-    "build","but","can","client","content","could","cover","create","currently","develop",
-    "during","each","either","every","existing","even","focus","for","from","further",
-    "have","help","here","how","ideally","if","include","into","just","like","looking",
-    "make","may","more","most","much","need","neither","new","nor","not","once","only",
-    "our","out","over","page","pages","please","post","posts","really","since","site",
-    "some","such","than","that","the","their","them","then","these","they","this",
-    "those","through","under","unless","until","want","wants","were","what","when",
-    "where","which","while","who","will","with","within","would","write","you","your",
+    "about",
+    "across",
+    "add",
+    "after",
+    "again",
+    "against",
+    "all",
+    "also",
+    "although",
+    "always",
+    "among",
+    "and",
+    "any",
+    "are",
+    "around",
+    "also",
+    "been",
+    "before",
+    "being",
+    "blog",
+    "both",
+    "build",
+    "but",
+    "can",
+    "client",
+    "content",
+    "could",
+    "cover",
+    "create",
+    "currently",
+    "develop",
+    "during",
+    "each",
+    "either",
+    "every",
+    "existing",
+    "even",
+    "focus",
+    "for",
+    "from",
+    "further",
+    "have",
+    "help",
+    "here",
+    "how",
+    "ideally",
+    "if",
+    "include",
+    "into",
+    "just",
+    "like",
+    "looking",
+    "make",
+    "may",
+    "more",
+    "most",
+    "much",
+    "need",
+    "neither",
+    "new",
+    "nor",
+    "not",
+    "once",
+    "only",
+    "our",
+    "out",
+    "over",
+    "page",
+    "pages",
+    "please",
+    "post",
+    "posts",
+    "really",
+    "since",
+    "site",
+    "some",
+    "such",
+    "than",
+    "that",
+    "the",
+    "their",
+    "them",
+    "then",
+    "these",
+    "they",
+    "this",
+    "those",
+    "through",
+    "under",
+    "unless",
+    "until",
+    "want",
+    "wants",
+    "were",
+    "what",
+    "when",
+    "where",
+    "which",
+    "while",
+    "who",
+    "will",
+    "with",
+    "within",
+    "would",
+    "write",
+    "you",
+    "your",
   ]);
 
   // Tokenise: normalise, remove punctuation except hyphens inside words
@@ -355,38 +449,35 @@ export async function collectSemrushData(
   const briefTopicSeeds = brief ? extractBriefTopics(brief, 10) : [];
   const briefCacheKey = `cs:brief:${domain}:${database}:${briefTopicSeeds.join(",")}`;
 
-  const [organicKeywords, gscQueryPages, detectedCompetitors, overview, sitemapUrls, briefTopics] = await Promise.all([
-    withApiCache(`cs:organic:${domain}:${database}`, 168, () =>
-      getTopOrganicKeywords(domain, database, 500)
-    ),
-    hasGsc
-      ? withApiCache(`cs:gsc:${searchConsoleSiteUrl}`, 24, () =>
-          getGSCQueryPageCombos(searchConsoleSiteUrl!, startDate, endDate, 1000)
-        )
-      : Promise.resolve([] as GSCQueryPageCombo[]),
-    competitors.length > 0
-      ? Promise.resolve([] as SemrushCompetitor[])
-      : withApiCache(`cs:competitors:${domain}:${database}`, 168, () =>
-          getCompetitors(domain, database, 5)
-        ),
-    withApiCache(`cs:overview:${domain}:${database}`, 168, () =>
-      getDomainOverview(domain, database)
-    ),
-    withApiCache(`cs:sitemap:${domain}`, 168, () =>
-      fetchSitemapUrls(domain)
-    ),
-    briefTopicSeeds.length > 0
-      ? withApiCache(briefCacheKey, 168, () =>
-          getBriefKeywordResearch(briefTopicSeeds, database, 30)
-        )
-      : Promise.resolve([] as BriefKeywordResult[]),
-  ]);
+  const [organicKeywords, gscQueryPages, detectedCompetitors, overview, sitemapUrls, briefTopics] =
+    await Promise.all([
+      withApiCache(`cs:organic:${domain}:${database}`, 168, () =>
+        getTopOrganicKeywords(domain, database, 500),
+      ),
+      hasGsc
+        ? withApiCache(`cs:gsc:${searchConsoleSiteUrl}`, 24, () =>
+            getGSCQueryPageCombos(searchConsoleSiteUrl!, startDate, endDate, 1000),
+          )
+        : Promise.resolve([] as GSCQueryPageCombo[]),
+      competitors.length > 0
+        ? Promise.resolve([] as SemrushCompetitor[])
+        : withApiCache(`cs:competitors:${domain}:${database}`, 168, () =>
+            getCompetitors(domain, database, 5),
+          ),
+      withApiCache(`cs:overview:${domain}:${database}`, 168, () =>
+        getDomainOverview(domain, database),
+      ),
+      withApiCache(`cs:sitemap:${domain}`, 168, () => fetchSitemapUrls(domain)),
+      briefTopicSeeds.length > 0
+        ? withApiCache(briefCacheKey, 168, () =>
+            getBriefKeywordResearch(briefTopicSeeds, database, 30),
+          )
+        : Promise.resolve([] as BriefKeywordResult[]),
+    ]);
 
   // Use provided competitors or auto-detected ones
   const finalCompetitors =
-    competitors.length > 0
-      ? competitors
-      : detectedCompetitors.slice(0, 3).map((c) => c.domain);
+    competitors.length > 0 ? competitors : detectedCompetitors.slice(0, 3).map((c) => c.domain);
 
   // Build keyword list for difficulty check — combine GSC + SEMrush unique keywords
   const allKeywords = new Set<string>();
@@ -399,34 +490,27 @@ export async function collectSemrushData(
   // Phase 2: Content gap (needs competitors), difficulty (needs keyword list),
   // backlinks + anchors (independent), Claude semantic expansion (needs organic sample)
   const organicSample = organicKeywords.slice(0, 50).map((k) => k.keyword);
-  const [contentGap, keywordDifficulty, backlinks, anchorTexts, expandedTopics] =
-    await Promise.all([
+  const [contentGap, keywordDifficulty, backlinks, anchorTexts, expandedTopics] = await Promise.all(
+    [
       finalCompetitors.length > 0
-        ? withApiCache(
-            `cs:gap:${domain}:${finalCompetitors.join(",")}:${database}`,
-            168,
-            () => getContentGap(domain, finalCompetitors, database),
+        ? withApiCache(`cs:gap:${domain}:${finalCompetitors.join(",")}:${database}`, 168, () =>
+            getContentGap(domain, finalCompetitors, database),
           )
         : Promise.resolve([]),
       topKeywordPhrases.length > 0
-        ? withApiCache(
-            `cs:difficulty:${domain}:${database}`,
-            168,
-            () => getKeywordDifficultyAndIntent(topKeywordPhrases, database),
+        ? withApiCache(`cs:difficulty:${domain}:${database}`, 168, () =>
+            getKeywordDifficultyAndIntent(topKeywordPhrases, database),
           )
         : Promise.resolve([]),
-      withApiCache(`cs:backlinks:${domain}`, 168, () =>
-        getBacklinks(domain, 30)
-      ),
-      withApiCache(`cs:anchors:${domain}`, 168, () =>
-        getAnchorTextDistribution(domain)
-      ),
+      withApiCache(`cs:backlinks:${domain}`, 168, () => getBacklinks(domain, 30)),
+      withApiCache(`cs:anchors:${domain}`, 168, () => getAnchorTextDistribution(domain)),
       withApiCache(
         `cs:expand:${domain}:${database}:${(brief ?? "").slice(0, 100).replace(/\s+/g, "_")}`,
         168,
         () => expandKeywordsWithClaude(brief ?? "", domain, organicSample, database),
       ),
-    ]);
+    ],
+  );
 
   return {
     overview,
@@ -479,15 +563,21 @@ function groupKeywordsByPage(keywords: SemrushKeywordData[]): PageGroup[] {
   for (const group of map.values()) {
     group.keywords.sort((a, b) => b.volume - a.volume);
   }
-  return Array.from(map.values()).sort(
-    (a, b) => b.totalTraffic - a.totalTraffic,
-  );
+  return Array.from(map.values()).sort((a, b) => b.totalTraffic - a.totalTraffic);
 }
 
 // GSC variant — uses real clicks as the traffic signal, impressions as volume proxy
 interface GscPageGroup {
   url: string;
-  keywords: { keyword: string; position: number; volume: number; trafficPercent: number; clicks: number; impressions: number; ctr: number }[];
+  keywords: {
+    keyword: string;
+    position: number;
+    volume: number;
+    trafficPercent: number;
+    clicks: number;
+    impressions: number;
+    ctr: number;
+  }[];
   totalClicks: number;
   totalImpressions: number;
 }
@@ -522,7 +612,10 @@ function groupGscByPage(combos: GSCQueryPageCombo[]): GscPageGroup[] {
 
 // ─── Estimate SEMrush API units ─────────────────────────────────────────────
 
-export function estimateApiUnits(hasCompetitors: boolean, hasGsc: boolean = false): {
+export function estimateApiUnits(
+  hasCompetitors: boolean,
+  hasGsc: boolean = false,
+): {
   estimated: number;
   breakdown: { call: string; units: number }[];
 } {
@@ -559,9 +652,7 @@ function buildAnalysisPrompt(
   const pages = groupKeywordsByPage(data.organicKeywords);
 
   // Build difficulty lookup
-  const difficultyMap = new Map(
-    data.keywordDifficulty.map((kd) => [kd.keyword, kd]),
-  );
+  const difficultyMap = new Map(data.keywordDifficulty.map((kd) => [kd.keyword, kd]));
 
   // ── Keyword pool: every keyword in the data with its exact volume ──────
   // Used by the AI to assign secondary/long-tail keywords without inventing volumes.
@@ -570,7 +661,8 @@ function buildAnalysisPrompt(
     if (kw.keyword && kw.searchVolume > 0) kwPool.set(kw.keyword.toLowerCase(), kw.searchVolume);
   }
   for (const gap of data.contentGap) {
-    if (gap.keyword && gap.searchVolume > 0) kwPool.set(gap.keyword.toLowerCase(), gap.searchVolume);
+    if (gap.keyword && gap.searchVolume > 0)
+      kwPool.set(gap.keyword.toLowerCase(), gap.searchVolume);
   }
   // Include GSC impressions as a volume proxy for queries not in SEMrush
   if (useGsc) {
@@ -615,7 +707,7 @@ function buildAnalysisPrompt(
   }
   const kwPoolText = [
     "── PHRASE KEYWORDS (2+ words — valid as primary, secondary, or long-tail) ──",
-    "── Format: \"keyword\": volume [intent] KD:difficulty — KD is 0–100, higher = harder to rank. Missing KD means no data. ──",
+    '── Format: "keyword": volume [intent] KD:difficulty — KD is 0–100, higher = harder to rank. Missing KD means no data. ──',
     ...phrasePool.slice(0, 500).map(([kw, vol]) => {
       const diff = difficultyMap.get(kw);
       const intentStr = diff?.intent && diff.intent !== "unknown" ? ` [${diff.intent}]` : "";
@@ -629,37 +721,41 @@ function buildAnalysisPrompt(
 
   // ── Struggling pages (always from SEMrush for search volume accuracy) ──
   const strugglingPages = pages.filter((p) =>
-    p.keywords.some(
-      (kw) => kw.position >= 4 && kw.position <= 30 && kw.volume >= 30,
-    ),
+    p.keywords.some((kw) => kw.position >= 4 && kw.position <= 30 && kw.volume >= 30),
   );
 
-  const strugglingPagesText = strugglingPages
-    .slice(0, 50)
-    .map((p) => {
-      const kws = p.keywords
-        .filter((k) => k.position >= 4 && k.volume >= 30)
-        .slice(0, 10)
-        .map((k) => {
-          const diff = difficultyMap.get(k.keyword);
-          return `    - "${k.keyword}" pos:${k.position} vol:${k.volume}${diff ? ` KD:${diff.difficulty} intent:${diff.intent}` : ""}`;
-        })
-        .join("\n");
-      return `  ${p.url}\n${kws}`;
-    })
-    .join("\n") || "  (none found)";
+  const strugglingPagesText =
+    strugglingPages
+      .slice(0, 50)
+      .map((p) => {
+        const kws = p.keywords
+          .filter((k) => k.position >= 4 && k.volume >= 30)
+          .slice(0, 10)
+          .map((k) => {
+            const diff = difficultyMap.get(k.keyword);
+            return `    - "${k.keyword}" pos:${k.position} vol:${k.volume}${diff ? ` KD:${diff.difficulty} intent:${diff.intent}` : ""}`;
+          })
+          .join("\n");
+        return `  ${p.url}\n${kws}`;
+      })
+      .join("\n") || "  (none found)";
 
   // ── GSC enrichment: real click/CTR data for top pages ──
   let gscEnrichmentText = "";
   if (useGsc) {
     const gscPages = groupGscByPage(data.gscQueryPages);
-    gscEnrichmentText = `\n═══ REAL GOOGLE PERFORMANCE (Search Console, last 3 months) ═══\nThis shows actual clicks and CTR from Google — use to prioritise which pages matter most.\n` +
+    gscEnrichmentText =
+      `\n═══ REAL GOOGLE PERFORMANCE (Search Console, last 3 months) ═══\nThis shows actual clicks and CTR from Google — use to prioritise which pages matter most.\n` +
       gscPages
         .slice(0, 30)
         .map((p) => {
-          const topKws = p.keywords.slice(0, 5).map((k) =>
-            `    - "${k.keyword}" pos:${k.position} clicks:${k.clicks} impressions:${k.impressions} CTR:${(k.ctr * 100).toFixed(1)}%`
-          ).join("\n");
+          const topKws = p.keywords
+            .slice(0, 5)
+            .map(
+              (k) =>
+                `    - "${k.keyword}" pos:${k.position} clicks:${k.clicks} impressions:${k.impressions} CTR:${(k.ctr * 100).toFixed(1)}%`,
+            )
+            .join("\n");
           return `  ${p.url} (${p.totalClicks} clicks, ${p.totalImpressions.toLocaleString()} impressions)\n${topKws}`;
         })
         .join("\n");
@@ -694,9 +790,23 @@ function buildAnalysisPrompt(
     const otherUrls: string[] = [];
     for (const url of data.sitemapUrls) {
       const path = url.replace(/^https?:\/\/[^/]+/, "").toLowerCase();
-      if (path.includes("/blog") || path.includes("/news") || path.includes("/article") || path.includes("/post") || path.includes("/journal") || path.includes("/resource")) {
+      if (
+        path.includes("/blog") ||
+        path.includes("/news") ||
+        path.includes("/article") ||
+        path.includes("/post") ||
+        path.includes("/journal") ||
+        path.includes("/resource")
+      ) {
         blogUrls.push(url);
-      } else if (path.includes("/service") || path.includes("/product") || path.includes("/solution") || path.includes("/work") || path.includes("/case-stud") || path.includes("/portfolio")) {
+      } else if (
+        path.includes("/service") ||
+        path.includes("/product") ||
+        path.includes("/solution") ||
+        path.includes("/work") ||
+        path.includes("/case-stud") ||
+        path.includes("/portfolio")
+      ) {
         serviceUrls.push(url);
       } else {
         otherUrls.push(url);
@@ -714,20 +824,28 @@ function buildAnalysisPrompt(
     }
     // Sort each entry by volume descending
     for (const [key, arr] of urlKwMap) {
-      urlKwMap.set(key, arr.sort((a, b) => b.volume - a.volume));
+      urlKwMap.set(
+        key,
+        arr.sort((a, b) => b.volume - a.volume),
+      );
     }
 
     function formatSitemapLine(u: string): string {
       const path = u.replace(/^https?:\/\/[^/]+/, "") || "/";
       const kwData = urlKwMap.get(path);
       if (!kwData || kwData.length === 0) return `  ${path}`;
-      const top = kwData.slice(0, 3).map((k) => `"${k.keyword}" (vol:${k.volume}, pos:${k.position})`).join(", ");
+      const top = kwData
+        .slice(0, 3)
+        .map((k) => `"${k.keyword}" (vol:${k.volume}, pos:${k.position})`)
+        .join(", ");
       return `  ${path} — ranks for: ${top}`;
     }
 
     const lines: string[] = [];
     lines.push(`\n═══ EXISTING SITE PAGES (from sitemap, ${data.sitemapUrls.length} total) ═══`);
-    lines.push("Use this to understand what pages ALREADY EXIST and what they already rank for. Do NOT suggest landing pages or blog posts that duplicate existing content. Instead, identify GAPS — topics the site doesn't cover yet.");
+    lines.push(
+      "Use this to understand what pages ALREADY EXIST and what they already rank for. Do NOT suggest landing pages or blog posts that duplicate existing content. Instead, identify GAPS — topics the site doesn't cover yet.",
+    );
     if (blogUrls.length > 0) {
       lines.push(`\nBlog/resource pages (${blogUrls.length}):`);
       for (const u of blogUrls.slice(0, 30)) {
@@ -790,23 +908,43 @@ ${anchorText || "  (no anchor data)"}
 ═══ KEYWORD POOL — USE THESE VOLUMES ONLY ═══
 CRITICAL: Every keyword you include in your output MUST appear in this list. Copy the keyword spelling and volume exactly. Do NOT invent keywords. Do NOT estimate or round volumes. If a keyword is not in this list, do not use it.
 ${kwPoolText || "  (no keyword data available)"}
-${data.briefTopics.length > 0 ? `
+${
+  data.briefTopics.length > 0
+    ? `
 ═══ BRIEF-REQUESTED TOPIC RESEARCH ═══
 The team brief specifically requests focus on the following topics. These are MANDATORY — regardless of current rankings, you MUST include at least one landing page or blog post for every topic seed listed below. Use the keywords from the KEYWORD POOL above (they include these brief-researched keywords) to populate these suggestions. If multiple keywords exist for the same topic, group them into a single page.
 
-${data.briefTopics.map((r) => {
-  const topKws = r.keywords.slice(0, 10).map((k) => `    "${k.keyword}" — vol:${k.volume} KD:${k.difficulty}`).join("\n");
-  return `Topic seed: "${r.topic}"\nTop phrase-match keywords:\n${topKws || "    (no data found — suggest based on the brief context)"}`;
-}).join("\n\n")}` : ""}
-${data.expandedTopics.length > 0 ? `
+${data.briefTopics
+  .map((r) => {
+    const topKws = r.keywords
+      .slice(0, 10)
+      .map((k) => `    "${k.keyword}" — vol:${k.volume} KD:${k.difficulty}`)
+      .join("\n");
+    return `Topic seed: "${r.topic}"\nTop phrase-match keywords:\n${topKws || "    (no data found — suggest based on the brief context)"}`;
+  })
+  .join("\n\n")}`
+    : ""
+}
+${
+  data.expandedTopics.length > 0
+    ? `
 ═══ CLAUDE SEMANTIC EXPANSION — ADDITIONAL KEYWORDS DISCOVERED ═══
 These keywords were found by analysing synonyms, alternate spellings, and related topic angles not well represented in the main keyword pool. They are already included in the KEYWORD POOL above — this section highlights them so you know to draw on them when assigning keywords to content items.
 
-${data.expandedTopics.map((r) => {
-  const topKws = r.keywords.slice(0, 8).map((k) => `    "${k.keyword}" — vol:${k.volume} KD:${k.difficulty}`).join("\n");
-  return `Expanded seed: "${r.topic}"\nKeywords found:\n${topKws || "    (no volume data — consider targeting as contextual terms)"}`;
-}).join("\n\n")}` : ""}
-${limits ? `
+${data.expandedTopics
+  .map((r) => {
+    const topKws = r.keywords
+      .slice(0, 8)
+      .map((k) => `    "${k.keyword}" — vol:${k.volume} KD:${k.difficulty}`)
+      .join("\n");
+    return `Expanded seed: "${r.topic}"\nKeywords found:\n${topKws || "    (no volume data — consider targeting as contextual terms)"}`;
+  })
+  .join("\n\n")}`
+    : ""
+}
+${
+  limits
+    ? `
 ═══ OUTPUT QUANTITY TARGETS ═══
 The client has set specific quantity limits. Produce EXACTLY these numbers (not more, not fewer):
 ${limits.pageOptimisations ? `- Page optimisations: ${limits.pageOptimisations}` : ""}
@@ -814,19 +952,29 @@ ${limits.landingPages ? `- Landing pages: ${limits.landingPages}` : ""}
 ${limits.blogPosts ? `- Blog posts: ${limits.blogPosts}` : ""}
 ${limits.linkTargets ? `- Link targets: ${limits.linkTargets}` : ""}
 ${limits.pillarPages === 0 ? `- Pillar pages: NONE — do NOT produce any pillar/mega-guide pages. Landing pages cover dedicated campaign topics.` : limits.pillarPages ? `- Pillar pages: ${limits.pillarPages}` : ""}
-` : ""}
-${competitorContexts && competitorContexts.length > 0 ? `
+`
+    : ""
+}
+${
+  competitorContexts && competitorContexts.length > 0
+    ? `
 ═══ MANUALLY-ADDED COMPETITOR INTELLIGENCE (site-scraped, no SEMrush data) ═══
 These competitors have no measurable keyword overlap in SEMrush — they may be small, new, or niche players. Their sites were scraped to provide qualitative context about what they offer and how they position themselves. Use this to identify positioning gaps, service areas they cover that the client doesn't yet rank for, and angles the client could differentiate on.
 
-${competitorContexts.map(({ domain: cd, pageContext: ctx }) => {
-  const lines: string[] = [`Competitor: ${cd}`];
-  if (ctx.description) lines.push(`  Meta description: ${ctx.description}`);
-  if (ctx.h1) lines.push(`  Main heading (H1): ${ctx.h1}`);
-  if (ctx.headings.length > 0) lines.push(`  Page headings: ${ctx.headings.slice(0, 10).join("; ")}`);
-  if (ctx.ctaTexts && ctx.ctaTexts.length > 0) lines.push(`  Call-to-action texts: ${ctx.ctaTexts.join(", ")}`);
-  return lines.join("\n");
-}).join("\n\n")}` : ""}`;
+${competitorContexts
+  .map(({ domain: cd, pageContext: ctx }) => {
+    const lines: string[] = [`Competitor: ${cd}`];
+    if (ctx.description) lines.push(`  Meta description: ${ctx.description}`);
+    if (ctx.h1) lines.push(`  Main heading (H1): ${ctx.h1}`);
+    if (ctx.headings.length > 0)
+      lines.push(`  Page headings: ${ctx.headings.slice(0, 10).join("; ")}`);
+    if (ctx.ctaTexts && ctx.ctaTexts.length > 0)
+      lines.push(`  Call-to-action texts: ${ctx.ctaTexts.join(", ")}`);
+    return lines.join("\n");
+  })
+  .join("\n\n")}`
+    : ""
+}`;
 }
 
 const STRATEGY_SYSTEM_PROMPT = `You are a senior SEO strategist at a UK digital marketing agency producing a content strategy your team will execute on behalf of a client. This document will be presented as a professional deliverable.
@@ -1052,10 +1200,18 @@ REMINDER: Keyword volumes in your output must match the KEYWORD POOL exactly. No
 // ─── On-page auditor ────────────────────────────────────────────────────────
 
 const EMPTY_AUDIT: OnPageAudit = {
-  titleText: "", titlePresent: false, titleLength: 0, titleContainsKeyword: false,
-  descriptionText: "", descriptionPresent: false, descriptionLength: 0, descriptionContainsKeyword: false,
+  titleText: "",
+  titlePresent: false,
+  titleLength: 0,
+  titleContainsKeyword: false,
+  descriptionText: "",
+  descriptionPresent: false,
+  descriptionLength: 0,
+  descriptionContainsKeyword: false,
   schemaTypes: [],
-  h1Text: "", h1Present: false, h1ContainsKeyword: false,
+  h1Text: "",
+  h1Present: false,
+  h1ContainsKeyword: false,
 };
 
 async function auditOnPage(
@@ -1071,7 +1227,7 @@ async function auditOnPage(
   try {
     const res = await fetch(url, {
       signal: AbortSignal.timeout(8000),
-      headers: { "User-Agent": "i3media-report/1.0 (SEO audit)" },
+      headers: { "User-Agent": "bettsandburton-report/1.0 (SEO audit)" },
     });
     if (!res.ok) return { ...EMPTY_AUDIT };
     const html = await res.text();
@@ -1089,7 +1245,9 @@ async function auditOnPage(
 
     // Schema types from all JSON-LD blocks
     const schemaTypes: string[] = [];
-    const ldBlocks = html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
+    const ldBlocks = html.matchAll(
+      /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi,
+    );
     for (const block of ldBlocks) {
       try {
         const parsed = JSON.parse(block[1]) as Record<string, unknown> | Record<string, unknown>[];
@@ -1108,14 +1266,21 @@ async function auditOnPage(
             }
           }
         }
-      } catch { /* malformed JSON-LD — skip */ }
+      } catch {
+        /* malformed JSON-LD — skip */
+      }
     }
     const uniqueSchemaTypes = [...new Set(schemaTypes)];
     const hasFaqSchema = uniqueSchemaTypes.some((t) => /^FAQPage$/i.test(t));
 
     // H1
     const h1Match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
-    const h1TextRaw = h1Match ? h1Match[1].replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim() : "";
+    const h1TextRaw = h1Match
+      ? h1Match[1]
+          .replace(/<[^>]+>/g, "")
+          .replace(/\s+/g, " ")
+          .trim()
+      : "";
 
     // ── FAQ heuristic ──────────────────────────────────────────────────────
     // Pull headings (h2/h3/h4) + <summary> + <strong>/<dt> question-style
@@ -1123,7 +1288,10 @@ async function auditOnPage(
     const questionTexts: string[] = [];
     const headingRe = /<(h[2-4]|summary|strong|dt)[^>]*>([\s\S]*?)<\/\1>/gi;
     for (const m of html.matchAll(headingRe)) {
-      const text = m[2].replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
+      const text = m[2]
+        .replace(/<[^>]+>/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
       if (!text || text.length > 200) continue;
       if (text.endsWith("?")) questionTexts.push(text);
     }
@@ -1287,7 +1455,8 @@ async function callAnthropicJson(
     const block = response.content[0];
     const rawText = block.type === "text" ? block.text.trim() : "";
     if (!rawText) return null;
-    const jsonMatch = rawText.match(/```(?:json)?\s*([\s\S]+?)```/) ?? rawText.match(/(\{[\s\S]+\})/);
+    const jsonMatch =
+      rawText.match(/```(?:json)?\s*([\s\S]+?)```/) ?? rawText.match(/(\{[\s\S]+\})/);
     const jsonText = jsonMatch ? jsonMatch[1].trim() : rawText;
     try {
       return JSON.parse(jsonText) as Record<string, unknown>;
@@ -1369,18 +1538,22 @@ function parseKeywordsOutput(raw: Record<string, unknown>): EnrichmentOutput {
       .filter((k) => typeof k.keyword === "string" && k.keyword.trim())
       .slice(0, 8)
       .map((k) => {
-        const band = typeof k.potentialBand === "string" && (POTENTIAL_BANDS as readonly string[]).includes(k.potentialBand)
-          ? (k.potentialBand as PotentialBand)
-          : "Top 50";
+        const band =
+          typeof k.potentialBand === "string" &&
+          (POTENTIAL_BANDS as readonly string[]).includes(k.potentialBand)
+            ? (k.potentialBand as PotentialBand)
+            : "Top 50";
         return {
           keyword: (k.keyword as string).trim(),
           volume: typeof k.volume === "number" && k.volume >= 0 ? Math.round(k.volume) : undefined,
-          difficulty: typeof k.difficulty === "number" && k.difficulty >= 0 && k.difficulty <= 100
-            ? Math.round(k.difficulty)
-            : undefined,
-          currentPosition: typeof k.currentPosition === "number" && k.currentPosition > 0
-            ? Math.round(k.currentPosition)
-            : undefined,
+          difficulty:
+            typeof k.difficulty === "number" && k.difficulty >= 0 && k.difficulty <= 100
+              ? Math.round(k.difficulty)
+              : undefined,
+          currentPosition:
+            typeof k.currentPosition === "number" && k.currentPosition > 0
+              ? Math.round(k.currentPosition)
+              : undefined,
           potentialBand: band,
           rationale: typeof k.rationale === "string" ? k.rationale.trim().slice(0, 240) : "",
         };
@@ -1420,7 +1593,13 @@ function parseCopyOutput(raw: Record<string, unknown>): EnrichmentOutput {
       : "ok";
     const items = Array.isArray(rawFaq.items)
       ? (rawFaq.items as Record<string, unknown>[])
-          .filter((it) => typeof it.question === "string" && typeof it.answer === "string" && it.question.trim() && it.answer.trim())
+          .filter(
+            (it) =>
+              typeof it.question === "string" &&
+              typeof it.answer === "string" &&
+              it.question.trim() &&
+              it.answer.trim(),
+          )
           .slice(0, 6)
           .map((it) => ({
             question: (it.question as string).trim().slice(0, 240),
@@ -1469,10 +1648,8 @@ export async function enrichPageOptimisationsDeep(
     // Pull current rankings (cached 7 days at the api-cache layer).
     let rankings: { keyword: string; position: number; volume: number }[] = [];
     try {
-      const kws = await withApiCache(
-        `cs-enrich-rankings:${url}:${semDatabase}`,
-        7 * 24,
-        () => getUrlOrganicKeywords(url, semDatabase, 100),
+      const kws = await withApiCache(`cs-enrich-rankings:${url}:${semDatabase}`, 7 * 24, () =>
+        getUrlOrganicKeywords(url, semDatabase, 100),
       );
       rankings = (kws ?? []).map((k) => ({
         keyword: k.keyword,
@@ -1480,7 +1657,9 @@ export async function enrichPageOptimisationsDeep(
         volume: k.searchVolume,
       }));
     } catch (err) {
-      console.warn(`[enrich:${url}] semrush rankings failed: ${err instanceof Error ? err.message : String(err)}`);
+      console.warn(
+        `[enrich:${url}] semrush rankings failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
 
     const audit = opt.audit;
@@ -1507,7 +1686,10 @@ export async function enrichPageOptimisationsDeep(
 
     // Skip the AI call if the audit clearly failed (no title, no h1, no schema)
     // — there's nothing meaningful to ground the rewrite against.
-    if (!audit || (!audit.titleText && !audit.h1Text && !audit.schemaTypes.length && rankings.length === 0)) {
+    if (
+      !audit ||
+      (!audit.titleText && !audit.h1Text && !audit.schemaTypes.length && rankings.length === 0)
+    ) {
       console.log(`[enrich:${url}] skipped AI (no audit data) in ${Date.now() - tStart}ms`);
       return;
     }
@@ -1534,7 +1716,8 @@ export async function enrichPageOptimisationsDeep(
     if (kwResult?.schemaGaps) opt.schemaGaps = kwResult.schemaGaps;
 
     if (copyResult?.suggestedTitle) opt.suggestedTitle = copyResult.suggestedTitle;
-    if (copyResult?.suggestedMetaDescription) opt.suggestedMetaDescription = copyResult.suggestedMetaDescription;
+    if (copyResult?.suggestedMetaDescription)
+      opt.suggestedMetaDescription = copyResult.suggestedMetaDescription;
     if (copyResult?.faq) opt.faq = copyResult.faq;
 
     console.log(
@@ -1564,7 +1747,13 @@ export async function generateContentStrategy(
   skipAudit?: boolean,
 ): Promise<{ data: ContentStrategyData; collectedData: CollectedData; autoCompetitors: string[] }> {
   // Step 1: Collect data (uses GSC when available, falls back to SEMrush-only)
-  const collectedData = await collectSemrushData(domain, competitors, database, searchConsoleSiteUrl, brief);
+  const collectedData = await collectSemrushData(
+    domain,
+    competitors,
+    database,
+    searchConsoleSiteUrl,
+    brief,
+  );
 
   // Guard: if we have no keyword data at all, the AI cannot produce a useful strategy
   const hasAnyKeywords =
@@ -1577,8 +1766,8 @@ export async function generateContentStrategy(
   if (!hasAnyKeywords && !brief) {
     throw new Error(
       `No keyword data found for ${domain} and no brief provided. ` +
-      `The domain may be too new, have no organic rankings, or SEMrush may not have data for it. ` +
-      `Provide a detailed brief so the AI can generate topic suggestions from scratch.`
+        `The domain may be too new, have no organic rankings, or SEMrush may not have data for it. ` +
+        `Provide a detailed brief so the AI can generate topic suggestions from scratch.`,
     );
   }
 
@@ -1616,7 +1805,8 @@ export async function generateContentStrategy(
     const block = claudeResponse.content[0];
     const rawText = block.type === "text" ? block.text.trim() : "";
     // Extract JSON — Claude wraps in ```json ... ``` fences sometimes
-    const jsonMatch = rawText.match(/```(?:json)?\s*([\s\S]+?)```/) ?? rawText.match(/(\{[\s\S]+\})/);
+    const jsonMatch =
+      rawText.match(/```(?:json)?\s*([\s\S]+?)```/) ?? rawText.match(/(\{[\s\S]+\})/);
     content = jsonMatch ? jsonMatch[1].trim() : rawText;
   } else {
     const openai = await getOpenAiClient();
@@ -1646,7 +1836,10 @@ export async function generateContentStrategy(
       raw = JSON.parse(jsonrepair(content)) as Record<string, unknown>;
     } catch (repairError) {
       // Last resort: retry with a shorter, stricter prompt asking for valid JSON
-      console.warn("Truncation repair failed — retrying AI call with strict JSON nudge", repairError);
+      console.warn(
+        "Truncation repair failed — retrying AI call with strict JSON nudge",
+        repairError,
+      );
       const retryPrompt = `Your previous response was not valid JSON. Return ONLY a valid JSON object matching the schema. No markdown, no commentary. Be concise — limit to the top 10 items per section if needed.\n\n${analysisPrompt}`;
       if (model === "claude-opus-4-6") {
         const anthropic = await getAnthropicClient();
@@ -1659,7 +1852,8 @@ export async function generateContentStrategy(
         const retryResponse = await retryStream.finalMessage();
         const retryBlock = retryResponse.content[0];
         const retryText = retryBlock.type === "text" ? retryBlock.text.trim() : "";
-        const retryJsonMatch = retryText.match(/```(?:json)?\s*([\s\S]+?)```/) ?? retryText.match(/(\{[\s\S]+\})/);
+        const retryJsonMatch =
+          retryText.match(/```(?:json)?\s*([\s\S]+?)```/) ?? retryText.match(/(\{[\s\S]+\})/);
         const retryContent = retryJsonMatch ? retryJsonMatch[1].trim() : retryText;
         raw = JSON.parse(retryContent) as Record<string, unknown>;
       } else {
@@ -1674,7 +1868,10 @@ export async function generateContentStrategy(
           max_completion_tokens: 16000,
           response_format: { type: "json_object" },
         });
-        raw = JSON.parse(retryResponse.choices[0]?.message?.content?.trim() ?? "{}") as Record<string, unknown>;
+        raw = JSON.parse(retryResponse.choices[0]?.message?.content?.trim() ?? "{}") as Record<
+          string,
+          unknown
+        >;
       }
     }
   }
@@ -1703,10 +1900,7 @@ export async function generateContentStrategy(
   )
     .filter(
       (p: Record<string, unknown>) =>
-        p &&
-        typeof p.url === "string" &&
-        Array.isArray(p.keywords) &&
-        p.keywords.length > 0,
+        p && typeof p.url === "string" && Array.isArray(p.keywords) && p.keywords.length > 0,
     )
     .map((p: Record<string, unknown>) => ({
       url: (p.url as string).replace(/^https?:\/\//, "").replace(/^www\./, ""),
@@ -1715,26 +1909,30 @@ export async function generateContentStrategy(
         .map((k) => ({
           keyword: k.keyword,
           volume: Math.max(0, Math.round(Number(k.volume) || 0)),
-          type: (["primary", "secondary", "long-tail"].includes(k.type ?? "") ? k.type : undefined) as ParsedKeyword["type"],
+          type: (["primary", "secondary", "long-tail"].includes(k.type ?? "")
+            ? k.type
+            : undefined) as ParsedKeyword["type"],
         })),
       notes: String(p.notes || ""),
       priority: false,
       impact: parseScore(p.impact),
       effort: parseScore(p.effort),
-      intent: typeof p.intent === "string" && ["informational", "commercial", "transactional", "navigational"].includes(p.intent) ? p.intent : undefined,
-      suggestedSchema: typeof p.suggestedSchema === "string" && p.suggestedSchema.trim() ? p.suggestedSchema.trim() : undefined,
+      intent:
+        typeof p.intent === "string" &&
+        ["informational", "commercial", "transactional", "navigational"].includes(p.intent)
+          ? p.intent
+          : undefined,
+      suggestedSchema:
+        typeof p.suggestedSchema === "string" && p.suggestedSchema.trim()
+          ? p.suggestedSchema.trim()
+          : undefined,
       contextLinks: parseLinks(p.contextLinks),
     }));
 
-  const landingPages: ProposedPage[] = (
-    Array.isArray(raw.landingPages) ? raw.landingPages : []
-  )
+  const landingPages: ProposedPage[] = (Array.isArray(raw.landingPages) ? raw.landingPages : [])
     .filter(
       (p: Record<string, unknown>) =>
-        p &&
-        typeof p.title === "string" &&
-        Array.isArray(p.keywords) &&
-        p.keywords.length > 0,
+        p && typeof p.title === "string" && Array.isArray(p.keywords) && p.keywords.length > 0,
     )
     .map((p: Record<string, unknown>) => ({
       title: String(p.title),
@@ -1743,26 +1941,30 @@ export async function generateContentStrategy(
         .map((k) => ({
           keyword: k.keyword,
           volume: Math.max(0, Math.round(Number(k.volume) || 0)),
-          type: (["primary", "secondary", "long-tail"].includes(k.type ?? "") ? k.type : undefined) as ParsedKeyword["type"],
+          type: (["primary", "secondary", "long-tail"].includes(k.type ?? "")
+            ? k.type
+            : undefined) as ParsedKeyword["type"],
         })),
       notes: String(p.notes || ""),
       priority: false,
       impact: parseScore(p.impact),
       effort: parseScore(p.effort),
-      intent: typeof p.intent === "string" && ["informational", "commercial", "transactional", "navigational"].includes(p.intent) ? p.intent : undefined,
-      suggestedSchema: typeof p.suggestedSchema === "string" && p.suggestedSchema.trim() ? p.suggestedSchema.trim() : undefined,
+      intent:
+        typeof p.intent === "string" &&
+        ["informational", "commercial", "transactional", "navigational"].includes(p.intent)
+          ? p.intent
+          : undefined,
+      suggestedSchema:
+        typeof p.suggestedSchema === "string" && p.suggestedSchema.trim()
+          ? p.suggestedSchema.trim()
+          : undefined,
       internalLinks: parseLinks(p.internalLinks),
     }));
 
-  const blogPosts: BlogPost[] = (
-    Array.isArray(raw.blogPosts) ? raw.blogPosts : []
-  )
+  const blogPosts: BlogPost[] = (Array.isArray(raw.blogPosts) ? raw.blogPosts : [])
     .filter(
       (p: Record<string, unknown>) =>
-        p &&
-        typeof p.title === "string" &&
-        Array.isArray(p.keywords) &&
-        p.keywords.length > 0,
+        p && typeof p.title === "string" && Array.isArray(p.keywords) && p.keywords.length > 0,
     )
     .map((p: Record<string, unknown>) => ({
       title: String(p.title),
@@ -1771,21 +1973,28 @@ export async function generateContentStrategy(
         .map((k) => ({
           keyword: k.keyword,
           volume: Math.max(0, Math.round(Number(k.volume) || 0)),
-          type: (["primary", "secondary", "long-tail"].includes(k.type ?? "") ? k.type : undefined) as ParsedKeyword["type"],
+          type: (["primary", "secondary", "long-tail"].includes(k.type ?? "")
+            ? k.type
+            : undefined) as ParsedKeyword["type"],
         })),
       notes: String(p.notes || ""),
       priority: false,
       impact: parseScore(p.impact),
       effort: parseScore(p.effort),
       cluster: typeof p.cluster === "string" && p.cluster.trim() ? p.cluster.trim() : undefined,
-      intent: typeof p.intent === "string" && ["informational", "commercial", "transactional", "navigational"].includes(p.intent) ? p.intent : undefined,
-      suggestedSchema: typeof p.suggestedSchema === "string" && p.suggestedSchema.trim() ? p.suggestedSchema.trim() : undefined,
+      intent:
+        typeof p.intent === "string" &&
+        ["informational", "commercial", "transactional", "navigational"].includes(p.intent)
+          ? p.intent
+          : undefined,
+      suggestedSchema:
+        typeof p.suggestedSchema === "string" && p.suggestedSchema.trim()
+          ? p.suggestedSchema.trim()
+          : undefined,
       internalLinks: parseLinks(p.internalLinks),
     }));
 
-  const linkTargets: LinkTarget[] = (
-    Array.isArray(raw.linkTargets) ? raw.linkTargets : []
-  )
+  const linkTargets: LinkTarget[] = (Array.isArray(raw.linkTargets) ? raw.linkTargets : [])
     .filter(
       (t: Record<string, unknown>) =>
         t && typeof t.url === "string" && typeof t.anchorKeyword === "string",
@@ -1823,10 +2032,12 @@ export async function generateContentStrategy(
   // Build the same keyword pool that was provided to the AI, then correct any hallucinated volumes
   const volumePool = new Map<string, number>();
   for (const kw of collectedData.organicKeywords) {
-    if (kw.keyword && kw.searchVolume > 0) volumePool.set(kw.keyword.toLowerCase(), kw.searchVolume);
+    if (kw.keyword && kw.searchVolume > 0)
+      volumePool.set(kw.keyword.toLowerCase(), kw.searchVolume);
   }
   for (const gap of collectedData.contentGap) {
-    if (gap.keyword && gap.searchVolume > 0) volumePool.set(gap.keyword.toLowerCase(), gap.searchVolume);
+    if (gap.keyword && gap.searchVolume > 0)
+      volumePool.set(gap.keyword.toLowerCase(), gap.searchVolume);
   }
   if (collectedData.gscQueryPages.length > 0) {
     const gscAgg = new Map<string, number>();
@@ -1874,14 +2085,18 @@ export async function generateContentStrategy(
   // If two items share the same primary keyword, demote the lower-impact one to secondary
   const seenPrimaries = new Map<string, string>(); // keyword → first item identifier
   let primaryDedups = 0;
-  function deduplicatePrimaries<T extends { keywords: ParsedKeyword[]; url?: string; title?: string }>(items: T[], sectionLabel: string): void {
+  function deduplicatePrimaries<
+    T extends { keywords: ParsedKeyword[]; url?: string; title?: string },
+  >(items: T[], sectionLabel: string): void {
     for (const item of items) {
       const primary = item.keywords.find((k) => k.type === "primary");
       if (!primary) continue;
       const key = primary.keyword.toLowerCase();
       const itemLabel = `${sectionLabel}: ${item.title ?? item.url ?? "unknown"}`;
       if (seenPrimaries.has(key)) {
-        console.warn(`Content strategy: duplicate primary "${primary.keyword}" in ${itemLabel} (first seen in ${seenPrimaries.get(key)}). Demoting to secondary.`);
+        console.warn(
+          `Content strategy: duplicate primary "${primary.keyword}" in ${itemLabel} (first seen in ${seenPrimaries.get(key)}). Demoting to secondary.`,
+        );
         primary.type = "secondary";
         primaryDedups++;
       } else {
@@ -1989,22 +2204,30 @@ function buildManualPagePriorityBlock(
   const list = (intel ?? []).filter((p) => p && p.url);
   if (!list.length) return "";
 
-  const lines = list.map((p, i) => {
-    const meta: string[] = [];
-    if (p.title) meta.push(`Title tag: "${p.title}"`);
-    if (p.h1) meta.push(`H1: "${p.h1}"`);
-    if (p.metaDescription) meta.push(`Meta description: "${p.metaDescription}"`);
-    if (p.bodySnippet) meta.push(`Body snippet: ${p.bodySnippet.slice(0, 240)}`);
-    if (p.organicKeywords?.length) {
-      const kws = p.organicKeywords.slice(0, 12).map((k) => `"${k.keyword}" (pos ${k.position}, vol ${k.volume.toLocaleString()}, CPC £${k.cpc.toFixed(2)})`).join("; ");
-      meta.push(`Currently ranks for: ${kws}`);
-    } else if (p.fetchError) {
-      meta.push(`(scrape error: ${p.fetchError})`);
-    } else {
-      meta.push(`(no organic keyword data found)`);
-    }
-    return `Page ${i + 1}:\n  URL: ${p.url}\n  ${meta.join("\n  ")}`;
-  }).join("\n\n");
+  const lines = list
+    .map((p, i) => {
+      const meta: string[] = [];
+      if (p.title) meta.push(`Title tag: "${p.title}"`);
+      if (p.h1) meta.push(`H1: "${p.h1}"`);
+      if (p.metaDescription) meta.push(`Meta description: "${p.metaDescription}"`);
+      if (p.bodySnippet) meta.push(`Body snippet: ${p.bodySnippet.slice(0, 240)}`);
+      if (p.organicKeywords?.length) {
+        const kws = p.organicKeywords
+          .slice(0, 12)
+          .map(
+            (k) =>
+              `"${k.keyword}" (pos ${k.position}, vol ${k.volume.toLocaleString()}, CPC £${k.cpc.toFixed(2)})`,
+          )
+          .join("; ");
+        meta.push(`Currently ranks for: ${kws}`);
+      } else if (p.fetchError) {
+        meta.push(`(scrape error: ${p.fetchError})`);
+      } else {
+        meta.push(`(no organic keyword data found)`);
+      }
+      return `Page ${i + 1}:\n  URL: ${p.url}\n  ${meta.join("\n  ")}`;
+    })
+    .join("\n\n");
 
   return `\n\nPRIORITY PAGES — the client explicitly asked for these URLs to be optimised. They MUST appear FIRST in the pageOptimisations array, in the same order, before any other suggestions. For each priority page:
 - Use the scraped title / H1 / meta / body snippet shown below as the rewrite anchor — do NOT invent page content.
@@ -2045,16 +2268,29 @@ export async function generateContentStrategySection(
   const t0 = Date.now();
   console.log(`[content-strategy:${section}] start — domain=${domain}`);
 
-  const collectedData = await collectSemrushData(domain, competitors, database, searchConsoleSiteUrl, brief);
+  const collectedData = await collectSemrushData(
+    domain,
+    competitors,
+    database,
+    searchConsoleSiteUrl,
+    brief,
+  );
   console.log(
     `[content-strategy:${section}] data collected in ${Date.now() - t0}ms — ` +
-    `organicKw=${collectedData.organicKeywords.length} ` +
-    `gap=${collectedData.contentGap.length} ` +
-    `gsc=${collectedData.gscQueryPages.length} ` +
-    `sitemap=${collectedData.sitemapUrls.length}`,
+      `organicKw=${collectedData.organicKeywords.length} ` +
+      `gap=${collectedData.contentGap.length} ` +
+      `gsc=${collectedData.gscQueryPages.length} ` +
+      `sitemap=${collectedData.sitemapUrls.length}`,
   );
 
-  const basePrompt = buildAnalysisPrompt(domain, clientName, brief, collectedData, competitorContexts, limits);
+  const basePrompt = buildAnalysisPrompt(
+    domain,
+    clientName,
+    brief,
+    collectedData,
+    competitorContexts,
+    limits,
+  );
   console.log(`[content-strategy:${section}] prompt built — length=${basePrompt.length} chars`);
 
   const SECTION_SCHEMAS: Record<ContentStrategySection, string> = {
@@ -2126,7 +2362,9 @@ export async function generateContentStrategySection(
     blogPosts: 14000,
   };
   const maxTokens = MAX_TOKENS_BY_SECTION[section];
-  console.log(`[content-strategy:${section}] basePrompt length=${basePrompt.length} chars — calling Claude Opus (max_tokens=${maxTokens})...`);
+  console.log(
+    `[content-strategy:${section}] basePrompt length=${basePrompt.length} chars — calling Claude Opus (max_tokens=${maxTokens})...`,
+  );
 
   // Build a section-specific tail (audiences + manual intel + schema). The
   // large stable head (basePrompt: collected SEMrush/GSC data + brief +
@@ -2169,11 +2407,11 @@ ${audienceNames && audienceNames.length ? `\nTARGET AUDIENCES (assign each item 
   };
   console.log(
     `[content-strategy:${section}] Claude done in ${Date.now() - tClaude}ms — ` +
-    `stop_reason=${response.stop_reason} ` +
-    `input_tokens=${response.usage.input_tokens} ` +
-    `output_tokens=${response.usage.output_tokens} ` +
-    `cache_write=${cacheUsage.cache_creation_input_tokens ?? 0} ` +
-    `cache_read=${cacheUsage.cache_read_input_tokens ?? 0}`,
+      `stop_reason=${response.stop_reason} ` +
+      `input_tokens=${response.usage.input_tokens} ` +
+      `output_tokens=${response.usage.output_tokens} ` +
+      `cache_write=${cacheUsage.cache_creation_input_tokens ?? 0} ` +
+      `cache_read=${cacheUsage.cache_read_input_tokens ?? 0}`,
   );
 
   const block = response.content[0];
@@ -2182,7 +2420,7 @@ ${audienceNames && audienceNames.length ? `\nTARGET AUDIENCES (assign each item 
   if (response.stop_reason === "max_tokens") {
     console.warn(
       `[content-strategy:${section}] ⚠️  Claude hit max_tokens (${maxTokens}) — output is TRUNCATED. ` +
-      `Raw text length=${rawText.length}. Attempting JSON repair...`,
+        `Raw text length=${rawText.length}. Attempting JSON repair...`,
     );
   }
 
@@ -2192,15 +2430,21 @@ ${audienceNames && audienceNames.length ? `\nTARGET AUDIENCES (assign each item 
   let raw: Record<string, unknown>;
   try {
     raw = JSON.parse(jsonText) as Record<string, unknown>;
-    console.log(`[content-strategy:${section}] JSON parsed OK — raw keys: ${Object.keys(raw).join(", ")}`);
+    console.log(
+      `[content-strategy:${section}] JSON parsed OK — raw keys: ${Object.keys(raw).join(", ")}`,
+    );
   } catch (parseErr) {
     // jsonrepair handles all LLM JSON failures in one pass:
     // unescaped quotes inside strings, truncated output, trailing commas, etc.
-    console.warn(`[content-strategy:${section}] JSON parse failed — running jsonrepair. Error: ${parseErr}`);
+    console.warn(
+      `[content-strategy:${section}] JSON parse failed — running jsonrepair. Error: ${parseErr}`,
+    );
     try {
       const repaired = jsonrepair(jsonText);
       raw = JSON.parse(repaired) as Record<string, unknown>;
-      console.log(`[content-strategy:${section}] jsonrepair OK — raw keys: ${Object.keys(raw).join(", ")}`);
+      console.log(
+        `[content-strategy:${section}] jsonrepair OK — raw keys: ${Object.keys(raw).join(", ")}`,
+      );
     } catch (repairErr) {
       console.error(
         `[content-strategy:${section}] jsonrepair FAILED — raw=${rawText.length}. Error: ${repairErr}`,
@@ -2231,7 +2475,9 @@ ${audienceNames && audienceNames.length ? `\nTARGET AUDIENCES (assign each item 
       .map((k) => ({
         keyword: k.keyword as string,
         volume: Math.max(0, Math.round(Number(k.volume) || 0)),
-        type: (["primary", "secondary", "long-tail"].includes(k.type as string) ? k.type : undefined) as ParsedKeyword["type"],
+        type: (["primary", "secondary", "long-tail"].includes(k.type as string)
+          ? k.type
+          : undefined) as ParsedKeyword["type"],
       }));
   }
 
@@ -2239,7 +2485,10 @@ ${audienceNames && audienceNames.length ? `\nTARGET AUDIENCES (assign each item 
 
   if (section === "pageOptimisations") {
     result.pageOptimisations = (Array.isArray(raw.pageOptimisations) ? raw.pageOptimisations : [])
-      .filter((p: Record<string, unknown>) => p && typeof p.url === "string" && Array.isArray(p.keywords) && p.keywords.length > 0)
+      .filter(
+        (p: Record<string, unknown>) =>
+          p && typeof p.url === "string" && Array.isArray(p.keywords) && p.keywords.length > 0,
+      )
       .map((p: Record<string, unknown>) => ({
         url: (p.url as string).replace(/^https?:\/\//, "").replace(/^www\./, ""),
         keywords: parseKeywords(p.keywords as unknown[]),
@@ -2251,14 +2500,19 @@ ${audienceNames && audienceNames.length ? `\nTARGET AUDIENCES (assign each item 
         suggestedSchema: typeof p.suggestedSchema === "string" ? p.suggestedSchema : undefined,
         contextLinks: parseLinks(p.contextLinks),
         targetAudiences: Array.isArray(p.targetAudiences)
-          ? (p.targetAudiences as unknown[]).filter((s): s is string => typeof s === "string" && !!s.trim()).slice(0, 3)
+          ? (p.targetAudiences as unknown[])
+              .filter((s): s is string => typeof s === "string" && !!s.trim())
+              .slice(0, 3)
           : undefined,
       }));
   }
 
   if (section === "landingPages") {
     result.landingPages = (Array.isArray(raw.landingPages) ? raw.landingPages : [])
-      .filter((p: Record<string, unknown>) => p && typeof p.title === "string" && Array.isArray(p.keywords) && p.keywords.length > 0)
+      .filter(
+        (p: Record<string, unknown>) =>
+          p && typeof p.title === "string" && Array.isArray(p.keywords) && p.keywords.length > 0,
+      )
       .map((p: Record<string, unknown>) => ({
         title: String(p.title),
         keywords: parseKeywords(p.keywords as unknown[]),
@@ -2271,11 +2525,16 @@ ${audienceNames && audienceNames.length ? `\nTARGET AUDIENCES (assign each item 
         internalLinks: parseLinks(p.internalLinks),
       }));
     result.linkTargets = (Array.isArray(raw.linkTargets) ? raw.linkTargets : [])
-      .filter((t: Record<string, unknown>) => t && typeof t.url === "string" && typeof t.anchorKeyword === "string")
+      .filter(
+        (t: Record<string, unknown>) =>
+          t && typeof t.url === "string" && typeof t.anchorKeyword === "string",
+      )
       .map((t: Record<string, unknown>) => ({
         url: (t.url as string).replace(/^https?:\/\//, "").replace(/^www\./, ""),
         anchorKeyword: String(t.anchorKeyword),
-        anchorType: ["Exact", "Broad", "Brand"].includes(String(t.anchorType)) ? String(t.anchorType) : "Broad",
+        anchorType: ["Exact", "Broad", "Brand"].includes(String(t.anchorType))
+          ? String(t.anchorType)
+          : "Broad",
         impact: parseScore(t.impact),
         effort: parseScore(t.effort),
       }));
@@ -2283,7 +2542,10 @@ ${audienceNames && audienceNames.length ? `\nTARGET AUDIENCES (assign each item 
 
   if (section === "blogPosts") {
     result.blogPosts = (Array.isArray(raw.blogPosts) ? raw.blogPosts : [])
-      .filter((p: Record<string, unknown>) => p && typeof p.title === "string" && Array.isArray(p.keywords) && p.keywords.length > 0)
+      .filter(
+        (p: Record<string, unknown>) =>
+          p && typeof p.title === "string" && Array.isArray(p.keywords) && p.keywords.length > 0,
+      )
       .map((p: Record<string, unknown>) => ({
         title: String(p.title),
         keywords: parseKeywords(p.keywords as unknown[]),
@@ -2300,36 +2562,58 @@ ${audienceNames && audienceNames.length ? `\nTARGET AUDIENCES (assign each item 
     result.roadmap = {
       month1: Array.isArray(rawRoadmap?.month1) ? rawRoadmap!.month1.map(String) : [],
       months2to3: Array.isArray(rawRoadmap?.months2to3) ? rawRoadmap!.months2to3.map(String) : [],
-      months4plus: Array.isArray(rawRoadmap?.months4plus) ? rawRoadmap!.months4plus.map(String) : [],
+      months4plus: Array.isArray(rawRoadmap?.months4plus)
+        ? rawRoadmap!.months4plus.map(String)
+        : [],
     };
   }
 
   console.log(
     `[content-strategy:${section}] complete in ${Date.now() - t0}ms — ` +
-    `pageOpts=${result.pageOptimisations?.length ?? "-"} ` +
-    `landingPages=${result.landingPages?.length ?? "-"} ` +
-    `blogPosts=${result.blogPosts?.length ?? "-"} ` +
-    `linkTargets=${result.linkTargets?.length ?? "-"}`,
+      `pageOpts=${result.pageOptimisations?.length ?? "-"} ` +
+      `landingPages=${result.landingPages?.length ?? "-"} ` +
+      `blogPosts=${result.blogPosts?.length ?? "-"} ` +
+      `linkTargets=${result.linkTargets?.length ?? "-"}`,
   );
 
   // Hard-enforce quantity limits after parsing — the AI may drift over the
   // target even with an explicit instruction. Clipping here guarantees the
   // output matches the capacity allocator numbers set on the form.
   if (limits) {
-    if (limits.pageOptimisations && result.pageOptimisations && result.pageOptimisations.length > limits.pageOptimisations) {
-      console.log(`[content-strategy:${section}] clipping pageOptimisations ${result.pageOptimisations.length} → ${limits.pageOptimisations}`);
+    if (
+      limits.pageOptimisations &&
+      result.pageOptimisations &&
+      result.pageOptimisations.length > limits.pageOptimisations
+    ) {
+      console.log(
+        `[content-strategy:${section}] clipping pageOptimisations ${result.pageOptimisations.length} → ${limits.pageOptimisations}`,
+      );
       result.pageOptimisations = result.pageOptimisations.slice(0, limits.pageOptimisations);
     }
-    if (limits.landingPages && result.landingPages && result.landingPages.length > limits.landingPages) {
-      console.log(`[content-strategy:${section}] clipping landingPages ${result.landingPages.length} → ${limits.landingPages}`);
+    if (
+      limits.landingPages &&
+      result.landingPages &&
+      result.landingPages.length > limits.landingPages
+    ) {
+      console.log(
+        `[content-strategy:${section}] clipping landingPages ${result.landingPages.length} → ${limits.landingPages}`,
+      );
       result.landingPages = result.landingPages.slice(0, limits.landingPages);
     }
     if (limits.blogPosts && result.blogPosts && result.blogPosts.length > limits.blogPosts) {
-      console.log(`[content-strategy:${section}] clipping blogPosts ${result.blogPosts.length} → ${limits.blogPosts}`);
+      console.log(
+        `[content-strategy:${section}] clipping blogPosts ${result.blogPosts.length} → ${limits.blogPosts}`,
+      );
       result.blogPosts = result.blogPosts.slice(0, limits.blogPosts);
     }
-    if (limits.linkTargets && result.linkTargets && result.linkTargets.length > limits.linkTargets) {
-      console.log(`[content-strategy:${section}] clipping linkTargets ${result.linkTargets.length} → ${limits.linkTargets}`);
+    if (
+      limits.linkTargets &&
+      result.linkTargets &&
+      result.linkTargets.length > limits.linkTargets
+    ) {
+      console.log(
+        `[content-strategy:${section}] clipping linkTargets ${result.linkTargets.length} → ${limits.linkTargets}`,
+      );
       result.linkTargets = result.linkTargets.slice(0, limits.linkTargets);
     }
   }

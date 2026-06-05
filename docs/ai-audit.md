@@ -1,4 +1,4 @@
-# AI Audit — i3media Report Platform
+# AI Audit — Betts & Burton Report Platform
 
 **Document version:** 3.3  
 **Audit date:** April 2026  

@@ -1922,7 +1922,7 @@ async function generateExecutiveSummary(
         messages: [
           {
             role: "user",
-            content: `You are a senior digital marketing strategist at i3media, a specialist UK digital marketing agency. You are writing a strategic memo DIRECTLY TO the client's decision-maker — not a report about them. Write in second person throughout ("your business", "you are", "your customers").
+            content: `You are a senior digital marketing strategist at Betts & Burton, a specialist UK digital marketing agency. You are writing a strategic memo DIRECTLY TO the client's decision-maker — not a report about them. Write in second person throughout ("your business", "you are", "your customers").
 
 Structure the memo using a situation → complication → resolution framework:
 1. SITUATION: What is true about their market and position right now (specific facts, no generics)
@@ -2002,7 +2002,7 @@ async function generateServicesInvestment(
         messages: [
           {
             role: "user",
-            content: `You are a senior account director at i3media, a UK digital marketing agency. Build a Services & Investment block for the client below.
+            content: `You are a senior account director at Betts & Burton, a UK digital marketing agency. Build a Services & Investment block for the client below.
 
 Inputs:
 - Sector: ${sources.sector ?? "(not specified)"}
@@ -2100,7 +2100,7 @@ async function generateStrategyPlan(
       messages: [
         {
           role: "user",
-          content: `You are a senior digital marketing strategist at i3media. Write a phased strategy plan with three phases: Month 1 (Foundation), Months 2-3 (Growth), Months 4+ (Scale).
+          content: `You are a senior digital marketing strategist at Betts & Burton. Write a phased strategy plan with three phases: Month 1 (Foundation), Months 2-3 (Growth), Months 4+ (Scale).
 
 Rules:
 - British English, no em dashes, no semicolons, no AI jargon
@@ -2153,7 +2153,7 @@ async function generateMetaCampaigns(
         messages: [
           {
             role: "user",
-            content: `You are a Meta Ads specialist at i3media. Generate Meta (Facebook/Instagram) campaign structures.
+            content: `You are a Meta Ads specialist at Betts & Burton. Generate Meta (Facebook/Instagram) campaign structures.
 
 Return a JSON object with key "campaigns" containing an array of campaign objects. Each campaign should have:
 - campaignName: string
@@ -2444,7 +2444,7 @@ async function generateContentCalendar(
               role: "user",
               content: `${STYLE_RULES}
 
-You are a content strategist at i3media. Generate the ${label} of a ${sprint ? "12-week sprint calendar (3 months)" : `${monthCount}-month content calendar`}.
+You are a content strategist at Betts & Burton. Generate the ${label} of a ${sprint ? "12-week sprint calendar (3 months)" : `${monthCount}-month content calendar`}.
 
 Months you must cover (use these EXACT labels, in order): ${months.map((m) => `"${m}"`).join(", ")}
 
@@ -2582,7 +2582,7 @@ async function generateGoogleAdsAdCopy(
 
   const buildPrompt = (
     feedback?: string,
-  ) => `You are a Google Ads specialist at i3media. Write Responsive Search Ad copy for each ad group below.
+  ) => `You are a Google Ads specialist at Betts & Burton. Write Responsive Search Ad copy for each ad group below.
 
 Return a JSON object with key "adGroups" containing an array. Each item:
 - name: string (must match the ad group name exactly)
@@ -2938,7 +2938,7 @@ ${allowedChannelNames.map((c) => `- ${c}`).join("\n")}`;
       messages: [
         {
           role: "user",
-          content: `You are a senior media planner at i3media. Generate a channel allocation for a digital marketing media plan.
+          content: `You are a senior media planner at Betts & Burton. Generate a channel allocation for a digital marketing media plan.
 
 Total monthly budget: £${totalBudget.toLocaleString()}
 Objective: ${objective.replace(/_/g, " ")}
@@ -3385,7 +3385,7 @@ async function generateGoogleAdsTargeting(
   const brainGeos = (sources.strategyBrain?.targetGeographies ?? []).join(", ");
   const briefGeo = detectLocations(sources.clientBrief);
 
-  const prompt = `You are a Google Ads strategist at i3media. Reason carefully before answering.
+  const prompt = `You are a Google Ads strategist at Betts & Burton. Reason carefully before answering.
 
 Client: ${sources.clientName}
 Sector: ${sources.sector ?? "general"}
@@ -3468,7 +3468,7 @@ async function generateGoogleAdsSeedSuggestions(
     detectLocations(sources.clientBrief) ||
     "United Kingdom";
 
-  const prompt = `You are a senior PPC strategist at i3media. Generate seed-phrase research suggestions for the team to plug into Google Keyword Planner and Search Term reports.
+  const prompt = `You are a senior PPC strategist at Betts & Burton. Generate seed-phrase research suggestions for the team to plug into Google Keyword Planner and Search Term reports.
 
 Client: ${sources.clientName}
 Sector: ${sources.sector ?? "general"}
@@ -3556,7 +3556,7 @@ async function generateNegativeKeywords(
       messages: [
         {
           role: "user",
-          content: `You are a Google Ads PPC specialist at i3media. Suggest negative keywords for this client's Search campaign so we don't burn budget on irrelevant clicks.
+          content: `You are a Google Ads PPC specialist at Betts & Burton. Suggest negative keywords for this client's Search campaign so we don't burn budget on irrelevant clicks.
 
 Client: ${sources.clientName}
 Sector: ${sources.sector ?? "general"}
@@ -3797,7 +3797,7 @@ async function generateContentClusters(
 
   const prompt = `${STYLE_RULES}
 
-You are the SEO content lead at i3media. Build a complete topic-cluster content strategy for ${sources.clientName} from the strategic foundation below.
+You are the SEO content lead at Betts & Burton. Build a complete topic-cluster content strategy for ${sources.clientName} from the strategic foundation below.
 
 Return ONLY valid JSON (no markdown fences) matching this schema:
 {
@@ -3902,7 +3902,7 @@ async function generateSeoFoundations(
 
   const prompt = `${STYLE_RULES}
 
-You are the SEO lead at i3media. Build a tight, actionable SEO foundations brief for ${sources.clientName} covering THREE things only:
+You are the SEO lead at Betts & Burton. Build a tight, actionable SEO foundations brief for ${sources.clientName} covering THREE things only:
   1. Quick wins on existing pages (rewrite title tags + meta descriptions + add cross-links).
   2. Internal linking structure (hub-and-spoke map showing which existing pages should pass authority to which).
   3. Outbound link-building plan (target pages on the client site, recommended anchor mix, outreach angles).
@@ -4122,7 +4122,7 @@ async function generateQuickWinForUrl(
 
   const prompt = `${STYLE_RULES}
 
-You are an SEO lead at i3media. Produce ONE detailed SEO quick win for the page below. Return ONLY a single valid JSON object (no markdown fences) matching this schema:
+You are an SEO lead at Betts & Burton. Produce ONE detailed SEO quick win for the page below. Return ONLY a single valid JSON object (no markdown fences) matching this schema:
 
 {
   "url": string,
@@ -4464,7 +4464,7 @@ async function generateEmailMarketing(
         messages: [
           {
             role: "user",
-            content: `You are an email marketing strategist at i3media. Create an email marketing plan for this client.
+            content: `You are an email marketing strategist at Betts & Burton. Create an email marketing plan for this client.
 
 Return a JSON object:
 - flows: array of { name: string, trigger: string, emails: [{ subject: string, purpose: string, delay: string }] } — 3-5 automated flows
@@ -4541,7 +4541,7 @@ async function generateLinkedInAds(
         messages: [
           {
             role: "user",
-            content: `You are a LinkedIn Ads specialist at i3media. Create LinkedIn advertising campaign structures.
+            content: `You are a LinkedIn Ads specialist at Betts & Burton. Create LinkedIn advertising campaign structures.
 
 Return a JSON object with key "campaigns" containing an array of 2-3 campaign objects:
 - campaignName: string
@@ -4743,7 +4743,7 @@ async function generateCompetitorIntel(
           messages: [
             {
               role: "user",
-              content: `You are a competitive intelligence analyst at i3media. The competitor list below is a mix of (a) competitors named on the brief by ${sources.clientName} (source: manual), (b) competitors auto-detected from SEMrush keyword overlap (source: auto), and (c) where no SEMrush data was available, scraped homepage signals (h1, headings, CTAs). Your job is ONLY to add the strengths, weaknesses, and opportunities commentary plus topKeywords (where missing). Do NOT change the numeric fields.
+              content: `You are a competitive intelligence analyst at Betts & Burton. The competitor list below is a mix of (a) competitors named on the brief by ${sources.clientName} (source: manual), (b) competitors auto-detected from SEMrush keyword overlap (source: auto), and (c) where no SEMrush data was available, scraped homepage signals (h1, headings, CTAs). Your job is ONLY to add the strengths, weaknesses, and opportunities commentary plus topKeywords (where missing). Do NOT change the numeric fields.
 
 Return a JSON object with key "competitors" containing one entry per competitor below, in the same order. Each entry:
 - domain: string (must match exactly)
@@ -4874,7 +4874,7 @@ Rules: British English, no AI jargon, no fluff, no em dashes, no semicolons. Eac
         messages: [
           {
             role: "user",
-            content: `You are a competitive intelligence analyst at i3media. Identify and analyse the top competitors for this client.
+            content: `You are a competitive intelligence analyst at Betts & Burton. Identify and analyse the top competitors for this client.
 
 Return a JSON object with key "competitors" containing an array of 4-6 competitor objects:
 - domain: string (competitor website URL)
@@ -5068,7 +5068,7 @@ async function generateAudiences(
       messages: [
         {
           role: "user",
-          content: `You are a senior digital strategist at i3media. Define the target audiences for this client's digital marketing plan.
+          content: `You are a senior digital strategist at Betts & Burton. Define the target audiences for this client's digital marketing plan.
 
 Rules:
 - British English only
@@ -5305,7 +5305,7 @@ async function generateQuickWins(
       messages: [
         {
           role: "user",
-          content: `You are a senior strategist at i3media. Distil the plan below into a prioritised action list — what should be done first, then second, then ongoing.
+          content: `You are a senior strategist at Betts & Burton. Distil the plan below into a prioritised action list — what should be done first, then second, then ongoing.
 
 Return ONLY a JSON array (no markdown fences, no commentary) of ${sprint ? "8" : "8-10"} objects:
 { "title": string, "description": string, "priority": ${sprint ? '"high" | "medium-high" | "medium"' : '"high" | "medium-high" | "medium" | "ongoing" | "long-term"'} }
@@ -5488,7 +5488,7 @@ async function generateGoogleAdsForecastIntelligence(
     })
     .join("\n");
 
-  const prompt = `You are a senior PPC strategist at i3media.
+  const prompt = `You are a senior PPC strategist at Betts & Burton.
 
 Interpret this Google Ads forecast and return ONLY valid JSON (no markdown fences) with this schema:
 {

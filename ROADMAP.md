@@ -1,6 +1,6 @@
-# Roadmap — i3media Report Platform
+# Roadmap — Betts & Burton Report Platform
 
-i3media Report is the central nervous system of a modern digital marketing agency — an intelligence engine that aggregates data from 15 marketing channels, generates AI-powered insights, automates reporting workflows, and manages the full client lifecycle. The platform already covers data integration, AI analysis, report automation, proposals, client portal, and agency operations. This document outlines what comes next.
+Betts & Burton Report is the central nervous system of a modern digital marketing agency — an intelligence engine that aggregates data from 15 marketing channels, generates AI-powered insights, automates reporting workflows, and manages the full client lifecycle. The platform already covers data integration, AI analysis, report automation, proposals, client portal, and agency operations. This document outlines what comes next.
 
 Current-state coverage lives in [README.md](README.md), [VISION.md](VISION.md), and [docs/features.md](docs/features.md). This document is intentionally forward-looking to avoid duplicating status snapshots.
 
@@ -27,7 +27,7 @@ Full rebrandability for agency self-deployment or resale to other agencies:
 - Complete logo, colour scheme, and brand name replacement
 - Branded email templates
 - Per-tenant configuration
-- Suppressed i3media branding on all client-facing surfaces
+- Suppressed Betts & Burton branding on all client-facing surfaces
 
 ### External API
 
@@ -98,20 +98,20 @@ Platform as a product sold to other agencies — each agency runs as a separate 
 
 Items not in the Phase 4 core but high value relative to effort. These can be slotted in opportunistically.
 
-| Feature | Impact | Effort | Notes |
-|---|---|---|---|
-| Slide deck export (PPTX/Google Slides) | ★★★ | Medium | One slide per report section, branded template, editable after export |
-| Campaign planning calendar | ★★★ | Low | Per-client marketing calendar with event annotations on dashboards |
-| Spend reconciliation | ★★★ | Low | Actual platform spend vs planned budgets, variance alerts |
-| NPS & client satisfaction tracking | ★★★ | Low | Automated surveys, NPS trend per client and portfolio-wide |
-| Custom KPI builder | ★★★ | Medium | Define blended metrics from cross-channel data (e.g., blended CPA, true ROAS) |
-| Competitor keyword alerts | ★★★ | Low | Extend SemRush calls to alert on competitor position gains |
-| Report intelligence layer | ★★★★ | Medium | AI surfaces portfolio-level patterns across all client reports |
-| Benchmark library in reports | ★★★ | Medium | Every metric auto-compared to industry benchmarks |
-| Team performance analytics | ★★★ | Low | Reports created, actions completed, proposal win rates per team member |
-| Performance threshold automations | ★★★★ | Medium | Rules that trigger actions when metrics cross thresholds (e.g., ROAS < 2.0 for 3 days) |
-| Zapier / Make integration | ★★★ | Medium | Public webhook API for connecting to external tools |
-| Audit log | ★★★★ | Medium | Full trail of logins, edits, publishes, shares, and setting changes |
+| Feature                                | Impact | Effort | Notes                                                                                  |
+| -------------------------------------- | ------ | ------ | -------------------------------------------------------------------------------------- |
+| Slide deck export (PPTX/Google Slides) | ★★★    | Medium | One slide per report section, branded template, editable after export                  |
+| Campaign planning calendar             | ★★★    | Low    | Per-client marketing calendar with event annotations on dashboards                     |
+| Spend reconciliation                   | ★★★    | Low    | Actual platform spend vs planned budgets, variance alerts                              |
+| NPS & client satisfaction tracking     | ★★★    | Low    | Automated surveys, NPS trend per client and portfolio-wide                             |
+| Custom KPI builder                     | ★★★    | Medium | Define blended metrics from cross-channel data (e.g., blended CPA, true ROAS)          |
+| Competitor keyword alerts              | ★★★    | Low    | Extend SemRush calls to alert on competitor position gains                             |
+| Report intelligence layer              | ★★★★   | Medium | AI surfaces portfolio-level patterns across all client reports                         |
+| Benchmark library in reports           | ★★★    | Medium | Every metric auto-compared to industry benchmarks                                      |
+| Team performance analytics             | ★★★    | Low    | Reports created, actions completed, proposal win rates per team member                 |
+| Performance threshold automations      | ★★★★   | Medium | Rules that trigger actions when metrics cross thresholds (e.g., ROAS < 2.0 for 3 days) |
+| Zapier / Make integration              | ★★★    | Medium | Public webhook API for connecting to external tools                                    |
+| Audit log                              | ★★★★   | Medium | Full trail of logins, edits, publishes, shares, and setting changes                    |
 
 ---
 
@@ -119,24 +119,24 @@ Items not in the Phase 4 core but high value relative to effort. These can be sl
 
 ### Priority 2 — Significant Agency Value
 
-| Platform | Value |
-|---|---|
-| Salesforce | Enterprise CRM — closes the marketing-to-sales loop |
-| Pipedrive | SMB CRM integration |
-| Hotjar / Microsoft Clarity | Heatmaps, session recordings, rage clicks — CRO integration |
-| Google Reviews / Trustpilot | Review ratings and sentiment for local SEO and reputation |
+| Platform                    | Value                                                       |
+| --------------------------- | ----------------------------------------------------------- |
+| Salesforce                  | Enterprise CRM — closes the marketing-to-sales loop         |
+| Pipedrive                   | SMB CRM integration                                         |
+| Hotjar / Microsoft Clarity  | Heatmaps, session recordings, rage clicks — CRO integration |
+| Google Reviews / Trustpilot | Review ratings and sentiment for local SEO and reputation   |
 
 ### Priority 3 — Future-Proofing
 
-| Platform | Value |
-|---|---|
-| Pinterest Ads | E-commerce clients in lifestyle/fashion |
-| X (Twitter) Ads | B2B and tech clients |
-| Reddit Ads | Tech, gaming, finance verticals |
-| Snapchat Ads | Youth-targeted brands |
-| Amazon Ads | E-commerce clients selling on Amazon |
-| Apple Search Ads | Mobile app clients |
-| Spotify Ads | Audio/brand awareness campaigns |
+| Platform         | Value                                   |
+| ---------------- | --------------------------------------- |
+| Pinterest Ads    | E-commerce clients in lifestyle/fashion |
+| X (Twitter) Ads  | B2B and tech clients                    |
+| Reddit Ads       | Tech, gaming, finance verticals         |
+| Snapchat Ads     | Youth-targeted brands                   |
+| Amazon Ads       | E-commerce clients selling on Amazon    |
+| Apple Search Ads | Mobile app clients                      |
+| Spotify Ads      | Audio/brand awareness campaigns         |
 
 ### Integration Architecture Goals
 
@@ -183,14 +183,14 @@ Integrate e-commerce data with marketing channel data for end-to-end revenue tra
 
 ## Architecture Improvements
 
-| Area | Goal |
-|---|---|
-| **Real-time streaming** | WebSocket/SSE for live dashboard updates and instant anomaly alerts |
-| **Background jobs** | Move long-running AI calls to Vercel Queues to avoid serverless timeouts |
-| **Database indexing** | Add indexes for common query patterns (client + date range on MetricSnapshot) |
-| **Progressive loading** | Load critical KPIs first, then charts, then tables |
-| **API pagination** | All list endpoints support pagination for large datasets |
-| **Image optimisation** | Next.js Image component across all screenshot and logo usages |
+| Area                    | Goal                                                                          |
+| ----------------------- | ----------------------------------------------------------------------------- |
+| **Real-time streaming** | WebSocket/SSE for live dashboard updates and instant anomaly alerts           |
+| **Background jobs**     | Move long-running AI calls to Vercel Queues to avoid serverless timeouts      |
+| **Database indexing**   | Add indexes for common query patterns (client + date range on MetricSnapshot) |
+| **Progressive loading** | Load critical KPIs first, then charts, then tables                            |
+| **API pagination**      | All list endpoints support pagination for large datasets                      |
+| **Image optimisation**  | Next.js Image component across all screenshot and logo usages                 |
 
 ---
 

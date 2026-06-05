@@ -11,7 +11,7 @@
  * Returns a deduped list of page URLs (max 500).
  */
 export async function fetchSitemapUrls(domain: string): Promise<string[]> {
-  const HEADERS = { "User-Agent": "i3media-report/1.0" };
+  const HEADERS = { "User-Agent": "bettsandburton-report/1.0" };
 
   // ── Helper: extract page URLs from a single sitemap XML string ───────────
   function extractFromXml(xml: string): { pages: string[]; subSitemaps: string[] } {
@@ -75,7 +75,7 @@ export async function fetchSitemapUrls(domain: string): Promise<string[]> {
       });
       if (!res.ok) continue;
       const text = await res.text();
-      const declared = [...text.matchAll(/^Sitemap:\s*(\S+)/gim)].map(m => m[1].trim());
+      const declared = [...text.matchAll(/^Sitemap:\s*(\S+)/gim)].map((m) => m[1].trim());
       for (const sitemapUrl of declared) {
         try {
           const pages = await fetchOneSitemap(sitemapUrl);

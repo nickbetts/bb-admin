@@ -1463,7 +1463,7 @@ Output the result as clean HTML only — no markdown, no code fences, no preambl
     const toneInstruction = tone ? TONE_INSTRUCTIONS[tone] : null;
     const lengthInstruction = length ? LENGTH_INSTRUCTIONS[length] : null;
 
-    const systemPrompt = `You are a senior digital marketing analyst at i3media, a UK performance marketing agency.
+    const systemPrompt = `You are a senior digital marketing analyst at Betts & Burton, a UK performance marketing agency.
 ${toneInstruction ? toneInstruction + "\n" : ""}${lengthInstruction ? lengthInstruction + "\n" : ""}You write incisive, data-driven performance summaries for both internal analysis and client reports. Your audience is experienced marketers and clients who want frank, actionable analysis — not vague reassurances.
 Be specific with numbers. Use British English. Prioritise insights that drive decisions.
 Where anomalies exist, explain likely causes and concrete remediation steps.

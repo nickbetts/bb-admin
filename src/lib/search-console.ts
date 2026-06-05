@@ -1,5 +1,6 @@
 // Google Search Console integration using Search Console API (service account)
 import { GoogleAuth } from "google-auth-library";
+import { getGoogleUserAccessToken, hasGoogleServiceAccountCredentials } from "@/lib/google-auth";
 
 let _gscAuth: GoogleAuth | null = null;
 
@@ -18,6 +19,12 @@ function getGscAuth(): GoogleAuth {
   return _gscAuth;
 }
 
+type GscAuthCandidate = {
+  source: "service-account" | "user-oauth";
+  token: string;
+  email?: string;
+};
+
 async function getGscAccessToken(): Promise<string> {
   const client = await getGscAuth().getClient();
   const tokenResponse = await client.getAccessToken();
@@ -27,21 +34,60 @@ async function getGscAccessToken(): Promise<string> {
   return tokenResponse.token;
 }
 
-async function gscPost(siteUrl: string, body: object): Promise<Response> {
-  const token = await getGscAccessToken();
-  const encodedSite = encodeURIComponent(siteUrl);
-  return fetch(
-    `https://www.googleapis.com/webmasters/v3/sites/${encodedSite}/searchAnalytics/query`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-      cache: "no-store",
+async function getGscAuthCandidates(): Promise<GscAuthCandidate[]> {
+  const candidates: GscAuthCandidate[] = [];
+
+  if (hasGoogleServiceAccountCredentials()) {
+    try {
+      const token = await getGscAccessToken();
+      candidates.push({ source: "service-account", token });
+    } catch {
+      // fall back to user OAuth below
     }
-  );
+  }
+
+  try {
+    const user = await getGoogleUserAccessToken();
+    candidates.push({ source: "user-oauth", token: user.token, email: user.email });
+  } catch {
+    // optional fallback; ignore
+  }
+
+  if (candidates.length === 0) {
+    throw new Error(
+      "Search Console not configured. Add GA4 service-account credentials or connect Google OAuth in Settings.",
+    );
+  }
+
+  return candidates;
+}
+
+async function gscPost(siteUrl: string, body: object): Promise<Response> {
+  const authCandidates = await getGscAuthCandidates();
+  const encodedSite = encodeURIComponent(siteUrl);
+
+  let lastResponse: Response | null = null;
+  for (const candidate of authCandidates) {
+    const response = await fetch(
+      `https://www.googleapis.com/webmasters/v3/sites/${encodedSite}/searchAnalytics/query`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${candidate.token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+        cache: "no-store",
+      },
+    );
+    if (response.ok) return response;
+    lastResponse = response;
+    if (response.status !== 401 && response.status !== 403) {
+      return response;
+    }
+  }
+
+  return lastResponse ?? new Response("Search Console auth failed", { status: 503 });
 }
 
 export interface GSCOverview {
@@ -79,23 +125,31 @@ export interface GSCSite {
 }
 
 export async function getGSCSites(): Promise<GSCSite[]> {
-  const token = await getGscAccessToken();
-  const res = await fetch("https://www.googleapis.com/webmasters/v3/sites", {
-    headers: { Authorization: `Bearer ${token}` },
-    cache: "no-store",
-  });
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Search Console sites error: ${err}`);
+  const authCandidates = await getGscAuthCandidates();
+  let lastErr = "Search Console auth failed";
+
+  for (const candidate of authCandidates) {
+    const res = await fetch("https://www.googleapis.com/webmasters/v3/sites", {
+      headers: { Authorization: `Bearer ${candidate.token}` },
+      cache: "no-store",
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return (data.siteEntry ?? []) as GSCSite[];
+    }
+    lastErr = await res.text();
+    if (res.status !== 401 && res.status !== 403) {
+      throw new Error(`Search Console sites error: ${lastErr}`);
+    }
   }
-  const data = await res.json();
-  return (data.siteEntry ?? []) as GSCSite[];
+
+  throw new Error(`Search Console sites error: ${lastErr}`);
 }
 
 export async function getGSCOverview(
   siteUrl: string,
   startDate: string,
-  endDate: string
+  endDate: string,
 ): Promise<GSCOverview> {
   const res = await gscPost(siteUrl, {
     startDate,
@@ -120,7 +174,7 @@ export async function getGSCTopQueries(
   siteUrl: string,
   startDate: string,
   endDate: string,
-  rowLimit: number = 20
+  rowLimit: number = 20,
 ): Promise<GSCQuery[]> {
   const res = await gscPost(siteUrl, {
     startDate,
@@ -134,19 +188,27 @@ export async function getGSCTopQueries(
     throw new Error(`Search Console API error: ${err}`);
   }
   const data = await res.json();
-  return (data.rows ?? []).map((row: { keys: string[]; clicks: number; impressions: number; ctr: number; position: number }) => ({
-    query: row.keys[0],
-    clicks: row.clicks,
-    impressions: row.impressions,
-    ctr: row.ctr,
-    position: row.position,
-  }));
+  return (data.rows ?? []).map(
+    (row: {
+      keys: string[];
+      clicks: number;
+      impressions: number;
+      ctr: number;
+      position: number;
+    }) => ({
+      query: row.keys[0],
+      clicks: row.clicks,
+      impressions: row.impressions,
+      ctr: row.ctr,
+      position: row.position,
+    }),
+  );
 }
 
 export async function getGSCTopPages(
   siteUrl: string,
   startDate: string,
-  endDate: string
+  endDate: string,
 ): Promise<GSCPage[]> {
   const res = await gscPost(siteUrl, {
     startDate,
@@ -160,19 +222,27 @@ export async function getGSCTopPages(
     throw new Error(`Search Console API error: ${err}`);
   }
   const data = await res.json();
-  return (data.rows ?? []).map((row: { keys: string[]; clicks: number; impressions: number; ctr: number; position: number }) => ({
-    page: row.keys[0],
-    clicks: row.clicks,
-    impressions: row.impressions,
-    ctr: row.ctr,
-    position: row.position,
-  }));
+  return (data.rows ?? []).map(
+    (row: {
+      keys: string[];
+      clicks: number;
+      impressions: number;
+      ctr: number;
+      position: number;
+    }) => ({
+      page: row.keys[0],
+      clicks: row.clicks,
+      impressions: row.impressions,
+      ctr: row.ctr,
+      position: row.position,
+    }),
+  );
 }
 
 export async function getGSCDailyData(
   siteUrl: string,
   startDate: string,
-  endDate: string
+  endDate: string,
 ): Promise<GSCDailyData[]> {
   const res = await gscPost(siteUrl, {
     startDate,
@@ -212,7 +282,7 @@ export interface GSCCountry {
 export async function getGSCDevices(
   siteUrl: string,
   startDate: string,
-  endDate: string
+  endDate: string,
 ): Promise<GSCDevice[]> {
   const res = await gscPost(siteUrl, {
     startDate,
@@ -226,19 +296,27 @@ export async function getGSCDevices(
     throw new Error(`Search Console API error: ${err}`);
   }
   const data = await res.json();
-  return (data.rows ?? []).map((row: { keys: string[]; clicks: number; impressions: number; ctr: number; position: number }) => ({
-    device: row.keys[0],
-    clicks: row.clicks,
-    impressions: row.impressions,
-    ctr: row.ctr,
-    position: row.position,
-  }));
+  return (data.rows ?? []).map(
+    (row: {
+      keys: string[];
+      clicks: number;
+      impressions: number;
+      ctr: number;
+      position: number;
+    }) => ({
+      device: row.keys[0],
+      clicks: row.clicks,
+      impressions: row.impressions,
+      ctr: row.ctr,
+      position: row.position,
+    }),
+  );
 }
 
 export async function getGSCCountries(
   siteUrl: string,
   startDate: string,
-  endDate: string
+  endDate: string,
 ): Promise<GSCCountry[]> {
   const res = await gscPost(siteUrl, {
     startDate,
@@ -252,13 +330,21 @@ export async function getGSCCountries(
     throw new Error(`Search Console API error: ${err}`);
   }
   const data = await res.json();
-  return (data.rows ?? []).map((row: { keys: string[]; clicks: number; impressions: number; ctr: number; position: number }) => ({
-    country: row.keys[0],
-    clicks: row.clicks,
-    impressions: row.impressions,
-    ctr: row.ctr,
-    position: row.position,
-  }));
+  return (data.rows ?? []).map(
+    (row: {
+      keys: string[];
+      clicks: number;
+      impressions: number;
+      ctr: number;
+      position: number;
+    }) => ({
+      country: row.keys[0],
+      clicks: row.clicks,
+      impressions: row.impressions,
+      ctr: row.ctr,
+      position: row.position,
+    }),
+  );
 }
 
 // --- Branded vs Non-Branded Split ---
@@ -274,7 +360,7 @@ export async function getGSCBrandedSplit(
   siteUrl: string,
   startDate: string,
   endDate: string,
-  brandTerms: string[] = []
+  brandTerms: string[] = [],
 ): Promise<GSCBrandedSplit> {
   const emptyMetrics = { clicks: 0, impressions: 0, ctr: 0, position: 0 };
 
@@ -287,18 +373,29 @@ export async function getGSCBrandedSplit(
   });
 
   if (!res.ok) {
-    return { branded: emptyMetrics, nonBranded: emptyMetrics, topBrandedQueries: [], topNonBrandedQueries: [] };
+    return {
+      branded: emptyMetrics,
+      nonBranded: emptyMetrics,
+      topBrandedQueries: [],
+      topNonBrandedQueries: [],
+    };
   }
 
   const data = await res.json();
   const allQueries: GSCQuery[] = (data.rows ?? []).map(
-    (row: { keys: string[]; clicks: number; impressions: number; ctr: number; position: number }) => ({
+    (row: {
+      keys: string[];
+      clicks: number;
+      impressions: number;
+      ctr: number;
+      position: number;
+    }) => ({
       query: row.keys[0],
       clicks: row.clicks,
       impressions: row.impressions,
       ctr: row.ctr,
       position: row.position,
-    })
+    }),
   );
 
   const lowerBrands = brandTerms.map((t) => t.toLowerCase());
@@ -314,7 +411,8 @@ export async function getGSCBrandedSplit(
       clicks: totalClicks,
       impressions: totalImpressions,
       ctr: totalImpressions > 0 ? totalClicks / totalImpressions : 0,
-      position: queries.length > 0 ? queries.reduce((s, q) => s + q.position, 0) / queries.length : 0,
+      position:
+        queries.length > 0 ? queries.reduce((s, q) => s + q.position, 0) / queries.length : 0,
     };
   };
 
@@ -341,7 +439,7 @@ export async function getGSCQueryPageCombos(
   siteUrl: string,
   startDate: string,
   endDate: string,
-  rowLimit: number = 100
+  rowLimit: number = 100,
 ): Promise<GSCQueryPageCombo[]> {
   const res = await gscPost(siteUrl, {
     startDate,
@@ -355,14 +453,22 @@ export async function getGSCQueryPageCombos(
     throw new Error(`Search Console API error: ${err}`);
   }
   const data = await res.json();
-  return (data.rows ?? []).map((row: { keys: string[]; clicks: number; impressions: number; ctr: number; position: number }) => ({
-    query: row.keys[0],
-    page: row.keys[1],
-    clicks: row.clicks,
-    impressions: row.impressions,
-    ctr: row.ctr,
-    position: row.position,
-  }));
+  return (data.rows ?? []).map(
+    (row: {
+      keys: string[];
+      clicks: number;
+      impressions: number;
+      ctr: number;
+      position: number;
+    }) => ({
+      query: row.keys[0],
+      page: row.keys[1],
+      clicks: row.clicks,
+      impressions: row.impressions,
+      ctr: row.ctr,
+      position: row.position,
+    }),
+  );
 }
 
 // --- Search Appearances (SERP features: FAQ, video, AMP, etc.) ---
@@ -378,7 +484,7 @@ export interface GSCSearchAppearance {
 export async function getGSCSearchAppearances(
   siteUrl: string,
   startDate: string,
-  endDate: string
+  endDate: string,
 ): Promise<GSCSearchAppearance[]> {
   const res = await gscPost(siteUrl, {
     startDate,
@@ -392,13 +498,21 @@ export async function getGSCSearchAppearances(
     throw new Error(`Search Console API error: ${err}`);
   }
   const data = await res.json();
-  return (data.rows ?? []).map((row: { keys: string[]; clicks: number; impressions: number; ctr: number; position: number }) => ({
-    searchAppearance: row.keys[0],
-    clicks: row.clicks,
-    impressions: row.impressions,
-    ctr: row.ctr,
-    position: row.position,
-  }));
+  return (data.rows ?? []).map(
+    (row: {
+      keys: string[];
+      clicks: number;
+      impressions: number;
+      ctr: number;
+      position: number;
+    }) => ({
+      searchAppearance: row.keys[0],
+      clicks: row.clicks,
+      impressions: row.impressions,
+      ctr: row.ctr,
+      position: row.position,
+    }),
+  );
 }
 
 // --- Expanded Top Queries (long-tail discovery, up to 5000 rows) ---
@@ -407,7 +521,7 @@ export async function getGSCTopQueriesExpanded(
   siteUrl: string,
   startDate: string,
   endDate: string,
-  rowLimit: number = 1000
+  rowLimit: number = 1000,
 ): Promise<GSCQuery[]> {
   const clampedLimit = Math.min(rowLimit, 5000);
   const res = await gscPost(siteUrl, {
@@ -422,13 +536,21 @@ export async function getGSCTopQueriesExpanded(
     throw new Error(`Search Console API error: ${err}`);
   }
   const data = await res.json();
-  return (data.rows ?? []).map((row: { keys: string[]; clicks: number; impressions: number; ctr: number; position: number }) => ({
-    query: row.keys[0],
-    clicks: row.clicks,
-    impressions: row.impressions,
-    ctr: row.ctr,
-    position: row.position,
-  }));
+  return (data.rows ?? []).map(
+    (row: {
+      keys: string[];
+      clicks: number;
+      impressions: number;
+      ctr: number;
+      position: number;
+    }) => ({
+      query: row.keys[0],
+      clicks: row.clicks,
+      impressions: row.impressions,
+      ctr: row.ctr,
+      position: row.position,
+    }),
+  );
 }
 
 // --- URL Inspection API ---
@@ -446,7 +568,7 @@ export interface GSCUrlInspection {
 
 export async function getGSCUrlInspection(
   siteUrl: string,
-  urls: string[]
+  urls: string[],
 ): Promise<GSCUrlInspection[]> {
   const token = await getGscAccessToken();
   const results: GSCUrlInspection[] = [];
@@ -463,7 +585,7 @@ export async function getGSCUrlInspection(
           },
           body: JSON.stringify({ inspectionUrl, siteUrl }),
           cache: "no-store",
-        }
+        },
       );
 
       if (!res.ok) continue;
@@ -503,7 +625,7 @@ export async function getGSCPageCountry(
   siteUrl: string,
   startDate: string,
   endDate: string,
-  rowLimit: number = 100
+  rowLimit: number = 100,
 ): Promise<GSCPageCountry[]> {
   const res = await gscPost(siteUrl, {
     startDate,
@@ -516,14 +638,22 @@ export async function getGSCPageCountry(
   if (!res.ok) return [];
   const data = await res.json();
 
-  return (data.rows ?? []).map((row: { keys: string[]; clicks: number; impressions: number; ctr: number; position: number }) => ({
-    page: row.keys[0] ?? "",
-    country: row.keys[1] ?? "",
-    clicks: row.clicks,
-    impressions: row.impressions,
-    ctr: row.ctr,
-    position: row.position,
-  }));
+  return (data.rows ?? []).map(
+    (row: {
+      keys: string[];
+      clicks: number;
+      impressions: number;
+      ctr: number;
+      position: number;
+    }) => ({
+      page: row.keys[0] ?? "",
+      country: row.keys[1] ?? "",
+      clicks: row.clicks,
+      impressions: row.impressions,
+      ctr: row.ctr,
+      position: row.position,
+    }),
+  );
 }
 
 // --- Wave 7: Discover & News data (#82) ---
@@ -539,7 +669,7 @@ export interface GSCDiscoverData {
 export async function getGSCDiscoverData(
   siteUrl: string,
   startDate: string,
-  endDate: string
+  endDate: string,
 ): Promise<GSCDiscoverData[]> {
   const results: GSCDiscoverData[] = [];
 
@@ -561,7 +691,12 @@ export async function getGSCDiscoverData(
       let totalImpressions = 0;
       const pages: { page: string; clicks: number; impressions: number }[] = [];
 
-      for (const row of rows as { keys: string[]; clicks: number; impressions: number; ctr: number }[]) {
+      for (const row of rows as {
+        keys: string[];
+        clicks: number;
+        impressions: number;
+        ctr: number;
+      }[]) {
         totalClicks += row.clicks;
         totalImpressions += row.impressions;
         pages.push({
@@ -599,9 +734,7 @@ export interface GSCSitemap {
   contents: { type: string; submitted: number; indexed: number }[];
 }
 
-export async function getGSCSitemaps(
-  siteUrl: string
-): Promise<GSCSitemap[]> {
+export async function getGSCSitemaps(siteUrl: string): Promise<GSCSitemap[]> {
   const token = await getGscAccessToken();
   const encodedSite = encodeURIComponent(siteUrl);
 
@@ -613,7 +746,7 @@ export async function getGSCSitemaps(
           Authorization: `Bearer ${token}`,
         },
         cache: "no-store",
-      }
+      },
     );
 
     if (!res.ok) return [];
@@ -642,7 +775,7 @@ export async function getGSCSitemaps(
           submitted: parseInt(c.submitted ?? "0"),
           indexed: parseInt(c.indexed ?? "0"),
         })),
-      })
+      }),
     );
   } catch {
     return [];
@@ -664,7 +797,7 @@ export async function getGSCQueryDevice(
   siteUrl: string,
   startDate: string,
   endDate: string,
-  rowLimit: number = 100
+  rowLimit: number = 100,
 ): Promise<GSCQueryDevice[]> {
   try {
     const res = await gscPost(siteUrl, {
@@ -676,14 +809,20 @@ export async function getGSCQueryDevice(
     if (!res.ok) return [];
     const data = await res.json();
     return (data.rows ?? []).map(
-      (row: { keys: string[]; clicks: number; impressions: number; ctr: number; position: number }) => ({
+      (row: {
+        keys: string[];
+        clicks: number;
+        impressions: number;
+        ctr: number;
+        position: number;
+      }) => ({
         query: row.keys[0] ?? "",
         device: row.keys[1] ?? "",
         clicks: row.clicks ?? 0,
         impressions: row.impressions ?? 0,
         ctr: row.ctr ?? 0,
         position: row.position ?? 0,
-      })
+      }),
     );
   } catch {
     return [];
@@ -705,7 +844,7 @@ export async function getGSCQueryCountry(
   siteUrl: string,
   startDate: string,
   endDate: string,
-  rowLimit: number = 100
+  rowLimit: number = 100,
 ): Promise<GSCQueryCountry[]> {
   try {
     const res = await gscPost(siteUrl, {
@@ -717,14 +856,20 @@ export async function getGSCQueryCountry(
     if (!res.ok) return [];
     const data = await res.json();
     return (data.rows ?? []).map(
-      (row: { keys: string[]; clicks: number; impressions: number; ctr: number; position: number }) => ({
+      (row: {
+        keys: string[];
+        clicks: number;
+        impressions: number;
+        ctr: number;
+        position: number;
+      }) => ({
         query: row.keys[0] ?? "",
         country: row.keys[1] ?? "",
         clicks: row.clicks ?? 0,
         impressions: row.impressions ?? 0,
         ctr: row.ctr ?? 0,
         position: row.position ?? 0,
-      })
+      }),
     );
   } catch {
     return [];

@@ -13,7 +13,7 @@ const PORTAL_SECRET = process.env.SESSION_SECRET ?? "bettsandburton-session-secr
 // of the portal users list so they never appear in the UI.
 export const PREVIEW_PORTAL_EMAIL_PREFIX = "__preview__+";
 function previewPortalEmail(clientId: string) {
-  return `${PREVIEW_PORTAL_EMAIL_PREFIX}${clientId}@i3media.internal`;
+  return `${PREVIEW_PORTAL_EMAIL_PREFIX}${clientId}@Betts & Burton.internal`;
 }
 
 function createPortalToken(userId: string, ttlMs: number): string {

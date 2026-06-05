@@ -334,7 +334,7 @@ function buildPresentationPrompt(
   const windowLabel =
     planMode === "sprint90" ? "the next 90-day sprint" : "the period covered by this plan";
 
-  return `You are a senior strategist at i3media. You have just produced a detailed Grand Plan for a client. Your job now is to distil it into a TOP-LEVEL CLIENT-FACING PRESENTATION DECK that the account team can present in a 20-minute meeting.
+  return `You are a senior strategist at Betts & Burton. You have just produced a detailed Grand Plan for a client. Your job now is to distil it into a TOP-LEVEL CLIENT-FACING PRESENTATION DECK that the account team can present in a 20-minute meeting.
 
 This deck is NOT a dump of the full plan. It is a confident, concise overview of what we are going to do for the client across ${windowLabel}, why it will work, and what it costs.
 

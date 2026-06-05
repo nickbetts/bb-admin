@@ -1,4 +1,4 @@
-# i3media Report Platform
+# Betts & Burton Report Platform
 
 A full-stack digital marketing performance reporting platform built for agencies. Aggregates data from **15 marketing channels** into unified client dashboards with **AI-powered insights**, **automated report generation**, and a full **agency operations suite**.
 
@@ -39,7 +39,7 @@ Built with **Next.js 16**, **React 19**, **Prisma v7**, **Tailwind CSS v4**, and
 
 ```bash
 git clone <repo-url>
-cd i3media-report
+cd bettsandburton-report
 npm install
 cp .env.local.example .env.local   # then fill in your API keys
 npx prisma migrate dev

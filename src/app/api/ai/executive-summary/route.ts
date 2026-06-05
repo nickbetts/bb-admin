@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     const rl = enforceAiRateLimit(session.user.id);
     if (!rl.ok) return rl.response!;
 
-    const { sections, clientName, clientId, reportId, period } = await req.json() as {
+    const { sections, clientName, clientId, reportId, period } = (await req.json()) as {
       sections: { sectionType: string; title: string; commentary: string }[];
       clientName?: string;
       clientId?: string;
@@ -57,10 +57,15 @@ export async function POST(req: NextRequest) {
         select: { metric: true, targetValue: true, currentValue: true, unit: true, status: true },
       });
       if (goals.length > 0) {
-        goalsContext = `\n\nACTIVE CLIENT GOALS (reference goal progress in the executive summary where relevant):\n${goals.map(g => {
-          const pct = g.targetValue > 0 && g.currentValue != null ? Math.round((g.currentValue / g.targetValue) * 100) : 0;
-          return `• ${g.metric}: ${pct}% to target (${g.currentValue}${g.unit ? " " + g.unit : ""} of ${g.targetValue}${g.unit ? " " + g.unit : ""} — ${g.status.toUpperCase()})`;
-        }).join("\n")}`;
+        goalsContext = `\n\nACTIVE CLIENT GOALS (reference goal progress in the executive summary where relevant):\n${goals
+          .map((g) => {
+            const pct =
+              g.targetValue > 0 && g.currentValue != null
+                ? Math.round((g.currentValue / g.targetValue) * 100)
+                : 0;
+            return `• ${g.metric}: ${pct}% to target (${g.currentValue}${g.unit ? " " + g.unit : ""} of ${g.targetValue}${g.unit ? " " + g.unit : ""} — ${g.status.toUpperCase()})`;
+          })
+          .join("\n")}`;
       }
     }
 
@@ -73,7 +78,10 @@ export async function POST(req: NextRequest) {
       .join("\n\n");
 
     if (!sectionSummaries) {
-      return NextResponse.json({ error: "No section commentary available to summarise" }, { status: 400 });
+      return NextResponse.json(
+        { error: "No section commentary available to summarise" },
+        { status: 400 },
+      );
     }
 
     const response = await openai.chat.completions.create({
@@ -81,7 +89,7 @@ export async function POST(req: NextRequest) {
       messages: [
         {
           role: "system",
-          content: `You are a digital marketing account manager at i3media writing an executive summary for a monthly performance report.
+          content: `You are a digital marketing account manager at Betts & Burton writing an executive summary for a monthly performance report.
 Always write in British English — use British spellings throughout.
 Use formal, professional language suitable for senior stakeholders.
 Write in the first person as the agency — use "we" and "our".

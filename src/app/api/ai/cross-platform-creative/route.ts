@@ -25,9 +25,10 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const rl = enforceAiRateLimit(session.user.id); if (!rl.ok) return rl.response!;
+    const rl = enforceAiRateLimit(session.user.id);
+    if (!rl.ok) return rl.response!;
 
-    const { clientId, meta, tiktok, google } = await request.json() as {
+    const { clientId, meta, tiktok, google } = (await request.json()) as {
       clientId: string;
       meta?: CreativeItem[];
       tiktok?: CreativeItem[];
@@ -37,13 +38,16 @@ export async function POST(request: NextRequest) {
     if (!clientId) return NextResponse.json({ error: "clientId is required" }, { status: 400 });
 
     const allCreatives = [
-      ...(meta ?? []).map(c => ({ ...c, platform: "meta" as const })),
-      ...(tiktok ?? []).map(c => ({ ...c, platform: "tiktok" as const })),
-      ...(google ?? []).map(c => ({ ...c, platform: "google" as const })),
+      ...(meta ?? []).map((c) => ({ ...c, platform: "meta" as const })),
+      ...(tiktok ?? []).map((c) => ({ ...c, platform: "tiktok" as const })),
+      ...(google ?? []).map((c) => ({ ...c, platform: "google" as const })),
     ];
 
     if (allCreatives.length === 0) {
-      return NextResponse.json({ error: "No creative data provided across any platform" }, { status: 400 });
+      return NextResponse.json(
+        { error: "No creative data provided across any platform" },
+        { status: 400 },
+      );
     }
 
     const client = await prisma.client.findUnique({
@@ -56,7 +60,7 @@ export async function POST(request: NextRequest) {
 
     const platformSummary = (items: CreativeItem[], label: string) => {
       if (!items.length) return "";
-      const rows = items.slice(0, 15).map(c => {
+      const rows = items.slice(0, 15).map((c) => {
         const parts: string[] = [`"${c.name ?? "Unknown"}"`];
         if (c.format) parts.push(`format: ${c.format}`);
         if (c.spend != null) parts.push(`spend: £${c.spend.toFixed(2)}`);
@@ -71,12 +75,29 @@ export async function POST(request: NextRequest) {
     };
 
     const dataBlocks = [
-      meta?.length ? platformSummary(meta.map(c => ({ ...c, platform: "meta" as const })), "Meta Ads") : "",
-      tiktok?.length ? platformSummary(tiktok.map(c => ({ ...c, platform: "tiktok" as const })), "TikTok Ads") : "",
-      google?.length ? platformSummary(google.map(c => ({ ...c, platform: "google" as const })), "Google Ads") : "",
-    ].filter(Boolean).join("\n\n");
+      meta?.length
+        ? platformSummary(
+            meta.map((c) => ({ ...c, platform: "meta" as const })),
+            "Meta Ads",
+          )
+        : "",
+      tiktok?.length
+        ? platformSummary(
+            tiktok.map((c) => ({ ...c, platform: "tiktok" as const })),
+            "TikTok Ads",
+          )
+        : "",
+      google?.length
+        ? platformSummary(
+            google.map((c) => ({ ...c, platform: "google" as const })),
+            "Google Ads",
+          )
+        : "",
+    ]
+      .filter(Boolean)
+      .join("\n\n");
 
-    const systemPrompt = `You are a senior cross-platform creative strategist at i3media, a UK digital marketing agency.
+    const systemPrompt = `You are a senior cross-platform creative strategist at Betts & Burton, a UK digital marketing agency.
 You specialise in identifying performance patterns across Meta, TikTok, and Google Ads simultaneously — comparing how creative formats, messaging, and audiences differ in their effectiveness across channels.
 Your analysis helps creative teams and media buyers understand which creative principles transfer across platforms and where platform-specific adaptation is needed.
 Use British English.${client.aiReportInstructions ? `\n\nClient instructions: ${client.aiReportInstructions}` : ""}`;
@@ -124,7 +145,11 @@ Return JSON:
 
     const raw = completion.choices[0]?.message?.content ?? "{}";
     let parsed: Record<string, unknown> = {};
-    try { parsed = JSON.parse(raw); } catch { parsed = {}; }
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      parsed = {};
+    }
 
     return NextResponse.json(parsed);
   } catch (error) {
