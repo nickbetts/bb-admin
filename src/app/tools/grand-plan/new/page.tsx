@@ -20,7 +20,6 @@ interface Client {
   id: string;
   name: string;
   website?: string;
-  semrushDomain?: string;
   /** JSON string. Stratos persists per-client production rates under
    *  `grandPlan.hoursPerItem` so future plans pre-fill the capacity form. */
   contractedHours?: string | null;

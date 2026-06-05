@@ -165,7 +165,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           website: true,
           searchConsoleSiteUrl: true,
           ga4PropertyId: true,
-          semrushDomain: true,
         },
       },
       proposal: {
@@ -818,8 +817,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         // Skip only if there is nothing to ground against AND no manual page URLs to process.
         if (
           !hasManualPageUrls &&
-          (!cli ||
-            (!cli.ga4PropertyId && !cli.searchConsoleSiteUrl && !cli.semrushDomain && !website))
+          (!cli || (!cli.ga4PropertyId && !cli.searchConsoleSiteUrl && !cli.website && !website))
         ) {
           await updateStepQuality(id, step, {
             status: "skipped",
@@ -835,7 +833,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         const propertyId = cli?.ga4PropertyId ?? null;
         const gscSite = cli?.searchConsoleSiteUrl ?? null;
         const semDomain =
-          cli?.semrushDomain ??
+          cli?.website ??
           (website
             ? website
                 .replace(/^https?:\/\//, "")
@@ -1550,7 +1548,6 @@ Return ONLY valid JSON, no markdown fences.`,
                 website: true,
                 searchConsoleSiteUrl: true,
                 ga4PropertyId: true,
-                semrushDomain: true,
               },
             },
             proposal: {
@@ -1698,7 +1695,6 @@ Return ONLY valid JSON, no markdown fences.`,
                 website: true,
                 searchConsoleSiteUrl: true,
                 ga4PropertyId: true,
-                semrushDomain: true,
               },
             },
             proposal: {
@@ -2006,7 +2002,6 @@ Return ONLY valid JSON, no markdown fences.`,
                   website: true,
                   searchConsoleSiteUrl: true,
                   ga4PropertyId: true,
-                  semrushDomain: true,
                 },
               },
               proposal: {

@@ -30,11 +30,36 @@ interface PendingAlert {
 // ── Metric direction metadata (mirrors cron/snapshots) ───────────────────────
 
 const HIGHER_IS_BETTER: Record<string, string[]> = {
-  ga4: ["sessions", "users", "newUsers", "pageviews", "conversionRate", "engagedSessions", "engagementRate", "avgSessionDuration"],
-  googleads: ["clicks", "impressions", "conversions", "conversionsValue", "ctr", "roas", "avgQualityScore"],
+  ga4: [
+    "sessions",
+    "users",
+    "newUsers",
+    "pageviews",
+    "conversionRate",
+    "engagedSessions",
+    "engagementRate",
+    "avgSessionDuration",
+  ],
+  googleads: [
+    "clicks",
+    "impressions",
+    "conversions",
+    "conversionsValue",
+    "ctr",
+    "roas",
+    "avgQualityScore",
+  ],
   meta: ["totalClicks", "totalImpressions", "totalConversions", "avgRoas", "avgCtr", "reach"],
   tiktok: ["clicks", "impressions", "conversions", "ctr", "videoViews", "reach"],
-  microsoftads: ["clicks", "impressions", "conversions", "revenue", "roas", "ctr", "impressionSharePercent"],
+  microsoftads: [
+    "clicks",
+    "impressions",
+    "conversions",
+    "revenue",
+    "roas",
+    "ctr",
+    "impressionSharePercent",
+  ],
   linkedin: ["clicks", "impressions", "conversions", "reach"],
   klaviyo: ["sends", "opens", "clicks", "revenue", "openRate", "clickRate", "totalProfiles"],
   youtube: ["subscriberCount", "viewCount", "videoCount"],
@@ -75,8 +100,13 @@ function parseMetrics(raw: string | null): Record<string, number> | null {
 /** Retrieve the two most recent snapshots for a given client + platform. */
 async function getLatestTwoSnapshots(
   clientId: string,
-  platform: string
-): Promise<{ current: Record<string, number>; previous: Record<string, number>; periodStart: string; periodEnd: string } | null> {
+  platform: string,
+): Promise<{
+  current: Record<string, number>;
+  previous: Record<string, number>;
+  periodStart: string;
+  periodEnd: string;
+} | null> {
   const snaps = await prisma.metricSnapshot.findMany({
     where: { clientId, sectionType: platform },
     orderBy: { createdAt: "desc" },
@@ -102,7 +132,7 @@ async function getLatestTwoSnapshots(
 async function isDuplicateAlert(
   clientId: string,
   platform: string,
-  metric: string
+  metric: string,
 ): Promise<boolean> {
   const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const existing = await prisma.detectedAnomaly.findFirst({
@@ -126,7 +156,7 @@ async function isDuplicateAlert(
 function detectPerformanceDrops(
   platform: string,
   current: Record<string, number>,
-  previous: Record<string, number>
+  previous: Record<string, number>,
 ): PendingAlert[] {
   const alerts: PendingAlert[] = [];
   const higherBetter = HIGHER_IS_BETTER[platform] ?? [];
@@ -144,9 +174,7 @@ function detectPerformanceDrops(
     if (!higherBetter.includes(key) && !lowerBetter.includes(key)) continue;
 
     const isUp = changePct > 0;
-    const isGood =
-      (higherBetter.includes(key) && isUp) ||
-      (lowerBetter.includes(key) && !isUp);
+    const isGood = (higherBetter.includes(key) && isUp) || (lowerBetter.includes(key) && !isUp);
 
     if (!isGood) {
       alerts.push({
@@ -169,7 +197,7 @@ function detectPerformanceDrops(
  */
 function detectConversionRateDrop(
   current: Record<string, number>,
-  previous: Record<string, number>
+  previous: Record<string, number>,
 ): PendingAlert[] {
   const currentCr = current.conversionRate ?? 0;
   const previousCr = previous.conversionRate ?? 0;
@@ -199,7 +227,7 @@ function detectConversionRateDrop(
 function detectCreativeFatigue(
   platform: string,
   current: Record<string, number>,
-  previous: Record<string, number>
+  previous: Record<string, number>,
 ): PendingAlert[] {
   const alerts: PendingAlert[] = [];
 
@@ -277,10 +305,7 @@ function detectCreativeFatigue(
  * Budget pacing: compare current-period spend vs projected budget.
  * Requires spend and costMicros in snapshot metrics.
  */
-function detectBudgetPacing(
-  platform: string,
-  current: Record<string, number>
-): PendingAlert[] {
+function detectBudgetPacing(platform: string, current: Record<string, number>): PendingAlert[] {
   // Determine spend metric based on platform
   let spend = 0;
   if (platform === "googleads") {
@@ -339,7 +364,7 @@ function detectBudgetPacing(
  */
 function detectQualityScoreDrop(
   current: Record<string, number>,
-  previous: Record<string, number>
+  previous: Record<string, number>,
 ): PendingAlert[] {
   const currentImps = current.impressions ?? 0;
   const previousImps = previous.impressions ?? 0;
@@ -372,10 +397,7 @@ function detectQualityScoreDrop(
 
 // ── AI root-cause analysis (batched per client) ─────────────────────────────
 
-async function generateRootCause(
-  clientName: string,
-  alerts: PendingAlert[]
-): Promise<string> {
+async function generateRootCause(clientName: string, alerts: PendingAlert[]): Promise<string> {
   try {
     const openai = await getOpenAiClient();
     const alertList = alerts.map((a) => `- [${a.platform}] ${a.detail}`).join("\n");
@@ -412,8 +434,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const triggeredBy =
-    new URL(request.url).searchParams.get("triggeredBy") ?? "cron";
+  const triggeredBy = new URL(request.url).searchParams.get("triggeredBy") ?? "cron";
 
   // CronLog tracking — uses `as any` because TS cache may lag behind prisma generate
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -438,7 +459,7 @@ export async function POST(request: NextRequest) {
           { hubspotAccessToken: { not: null } },
           { callrailAccountId: { not: null } },
           { searchConsoleSiteUrl: { not: null } },
-          { semrushDomain: { not: null } },
+          { website: { not: null } },
           { woocommerceUrl: { not: null } },
           { shopifyStoreDomain: { not: null } },
           { cwvUrl: { not: null } },
@@ -462,7 +483,7 @@ export async function POST(request: NextRequest) {
         callrailAccountId: true,
         callrailApiKey: true,
         searchConsoleSiteUrl: true,
-        semrushDomain: true,
+        website: true,
         woocommerceUrl: true,
         shopifyStoreDomain: true,
         cwvUrl: true,
@@ -495,8 +516,7 @@ export async function POST(request: NextRequest) {
       if (client.ga4PropertyId) platforms.push("ga4");
       if (client.googleAdsCustomerId) platforms.push("googleads");
       if (client.metaAccountId) platforms.push("meta");
-      if (client.tiktokAdvertiserId && client.tiktokAccessToken)
-        platforms.push("tiktok");
+      if (client.tiktokAdvertiserId && client.tiktokAccessToken) platforms.push("tiktok");
       if (client.microsoftAdsAccountId) platforms.push("microsoftads");
       if (client.linkedinAccountId && client.linkedinAccessToken) platforms.push("linkedin");
       if (client.klaviyoApiKey) platforms.push("klaviyo");
@@ -504,7 +524,7 @@ export async function POST(request: NextRequest) {
       if (client.hubspotAccessToken) platforms.push("hubspot");
       if (client.callrailAccountId && client.callrailApiKey) platforms.push("callrail");
       if (client.searchConsoleSiteUrl) platforms.push("searchconsole");
-      if (client.semrushDomain) platforms.push("seo");
+      if (client.website) platforms.push("seo");
       if (client.woocommerceUrl) platforms.push("woocommerce");
       if (client.shopifyStoreDomain) platforms.push("shopify");
       if (client.cwvUrl) platforms.push("cwv");
@@ -519,22 +539,16 @@ export async function POST(request: NextRequest) {
           const { current, previous } = data;
 
           // 1. Performance drops (>25% change on any metric)
-          allPending.push(
-            ...detectPerformanceDrops(platform, current, previous)
-          );
+          allPending.push(...detectPerformanceDrops(platform, current, previous));
 
           // 2. Conversion rate (GA4 only, >20% drop)
           if (platform === "ga4") {
-            allPending.push(
-              ...detectConversionRateDrop(current, previous)
-            );
+            allPending.push(...detectConversionRateDrop(current, previous));
           }
 
           // 3. Creative fatigue (Meta / TikTok / LinkedIn)
           if (platform === "meta" || platform === "tiktok" || platform === "linkedin") {
-            allPending.push(
-              ...detectCreativeFatigue(platform, current, previous)
-            );
+            allPending.push(...detectCreativeFatigue(platform, current, previous));
           }
 
           // 4. Budget pacing (paid platforms)
@@ -542,13 +556,10 @@ export async function POST(request: NextRequest) {
 
           // 5. Quality Score proxy (Google Ads)
           if (platform === "googleads") {
-            allPending.push(
-              ...detectQualityScoreDrop(current, previous)
-            );
+            allPending.push(...detectQualityScoreDrop(current, previous));
           }
         } catch (err) {
-          const msg =
-            err instanceof Error ? err.message.slice(0, 120) : "Unknown error";
+          const msg = err instanceof Error ? err.message.slice(0, 120) : "Unknown error";
           row.errors.push(`${platform}: ${msg}`);
           totalErrors++;
         }
@@ -559,20 +570,14 @@ export async function POST(request: NextRequest) {
 
       // We need the current snapshot period for the records
       const now = new Date();
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-        .toISOString()
-        .split("T")[0];
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
       const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
         .toISOString()
         .split("T")[0];
 
       for (const alert of allPending) {
         try {
-          const isDupe = await isDuplicateAlert(
-            client.id,
-            alert.platform,
-            alert.metric
-          );
+          const isDupe = await isDuplicateAlert(client.id, alert.platform, alert.metric);
           if (isDupe) {
             row.skipped++;
             totalSkipped++;
@@ -604,8 +609,7 @@ export async function POST(request: NextRequest) {
           row.alertsCreated++;
           totalCreated++;
         } catch (err) {
-          const msg =
-            err instanceof Error ? err.message.slice(0, 120) : "Unknown error";
+          const msg = err instanceof Error ? err.message.slice(0, 120) : "Unknown error";
           row.errors.push(`persist(${alert.metric}): ${msg}`);
           totalErrors++;
         }
@@ -614,9 +618,7 @@ export async function POST(request: NextRequest) {
       // Notify admins for high-severity alerts (batched per client)
       if (highAlerts.length > 0) {
         try {
-          const summaryLines = highAlerts
-            .map((a) => `• [${a.platform}] ${a.detail}`)
-            .join("\n");
+          const summaryLines = highAlerts.map((a) => `• [${a.platform}] ${a.detail}`).join("\n");
 
           await notifyAdmins({
             clientId: client.id,
@@ -630,10 +632,7 @@ export async function POST(request: NextRequest) {
             },
           });
         } catch (err) {
-          console.error(
-            `[cron/alerts] Failed to notify admins for ${client.name}:`,
-            err
-          );
+          console.error(`[cron/alerts] Failed to notify admins for ${client.name}:`, err);
         }
       }
 
@@ -641,15 +640,14 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(
-      `[cron/alerts] Done: ${totalCreated} created, ${totalSkipped} skipped (dupes), ${totalErrors} errors across ${clients.length} clients`
+      `[cron/alerts] Done: ${totalCreated} created, ${totalSkipped} skipped (dupes), ${totalErrors} errors across ${clients.length} clients`,
     );
 
     // Update CronLog
     await (db.cronLog.update({
       where: { id: log.id },
       data: {
-        status:
-          totalErrors > 0 && totalCreated === 0 ? "error" : "success",
+        status: totalErrors > 0 && totalCreated === 0 ? "error" : "success",
         completedAt: new Date(),
         clientsTotal: clients.length,
         snapshotsNew: totalCreated,
@@ -669,24 +667,22 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("[cron/alerts] Fatal error:", error);
-    await (db.cronLog.update({
-      where: { id: log.id },
-      data: {
-        status: "error",
-        completedAt: new Date(),
-        errors: 1,
-        details: JSON.stringify([
-          {
-            error:
-              error instanceof Error ? error.message : "Fatal error",
-          },
-        ]),
-      },
-    }) as Promise<unknown>).catch(() => {});
-    return NextResponse.json(
-      { error: "Alert automation failed" },
-      { status: 500 }
-    );
+    await (
+      db.cronLog.update({
+        where: { id: log.id },
+        data: {
+          status: "error",
+          completedAt: new Date(),
+          errors: 1,
+          details: JSON.stringify([
+            {
+              error: error instanceof Error ? error.message : "Fatal error",
+            },
+          ]),
+        },
+      }) as Promise<unknown>
+    ).catch(() => {});
+    return NextResponse.json({ error: "Alert automation failed" }, { status: 500 });
   }
 }
 

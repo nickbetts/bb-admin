@@ -391,7 +391,7 @@ export function assertShareClientAccess(
 
 /**
  * For routes that look up data by an identifier other than clientId
- * (e.g. ga4PropertyId, googleAdsCustomerId, semrushDomain).
+ * (e.g. ga4PropertyId, googleAdsCustomerId, website).
  * Verifies that the resolved record belongs to the share session's client.
  *
  * Field must be a Client column that uniquely identifies the resource.
@@ -402,7 +402,7 @@ export async function assertShareResourceAccess(
   field:
     | "ga4PropertyId"
     | "googleAdsCustomerId"
-    | "semrushDomain"
+    | "website"
     | "searchConsoleSiteUrl"
     | "metaAccountId"
     | "website",

@@ -12,10 +12,10 @@ async function main() {
   const hashedPassword = await bcrypt.hash("admin123", 12);
 
   const admin = await prisma.user.upsert({
-    where: { email: "admin@i3media.net" },
+    where: { email: "admin@bettsandburton.com" },
     update: {},
     create: {
-      email: "admin@i3media.net",
+      email: "admin@bettsandburton.com",
       name: "Admin",
       password: hashedPassword,
       role: "admin",
@@ -27,10 +27,10 @@ async function main() {
   // Primary admin account — update role only if already exists (don't reset password)
   const nickHashedPassword = await bcrypt.hash("Guneti250!", 12);
   const nick = await prisma.user.upsert({
-    where: { email: "nick@i3media.net" },
+    where: { email: "nick@bettsandburton.com" },
     update: { role: "admin" },
     create: {
-      email: "nick@i3media.net",
+      email: "nick@bettsandburton.com",
       name: "Nick Betts",
       password: nickHashedPassword,
       role: "admin",
@@ -48,7 +48,6 @@ async function main() {
       name: "Demo Client",
       slug: "demo-client",
       website: "https://example.com",
-      semrushDomain: "example.com",
     },
   });
 
@@ -130,7 +129,7 @@ async function main() {
 
   console.log("\n🎉 Database seeded successfully!");
   console.log("\nLogin credentials:");
-  console.log("  Email:    admin@i3media.net");
+  console.log("  Email:    admin@bettsandburton.com");
   console.log("  Password: admin123");
 }
 

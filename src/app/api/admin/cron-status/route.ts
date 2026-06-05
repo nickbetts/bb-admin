@@ -33,7 +33,6 @@ type ClientRow = {
   googleAdsCustomerId: string | null;
   metaAccountId: string | null;
   searchConsoleSiteUrl: string | null;
-  semrushDomain: string | null;
   tiktokAdvertiserId: string | null;
   microsoftAdsAccountId: string | null;
   woocommerceUrl: string | null;
@@ -84,7 +83,6 @@ export async function GET() {
         googleAdsCustomerId: true,
         metaAccountId: true,
         searchConsoleSiteUrl: true,
-        semrushDomain: true,
         tiktokAdvertiserId: true,
         microsoftAdsAccountId: true,
         woocommerceUrl: true,
@@ -101,7 +99,6 @@ export async function GET() {
     googleads: "Google Ads",
     meta: "Meta",
     searchconsole: "Search Console",
-    seo: "SEMrush",
     tiktok: "TikTok",
     microsoftads: "MS Ads",
     woocommerce: "WooCommerce",
@@ -130,7 +127,6 @@ export async function GET() {
       { key: "googleads", configured: Boolean(client.googleAdsCustomerId) },
       { key: "meta", configured: Boolean(client.metaAccountId) },
       { key: "searchconsole", configured: Boolean(client.searchConsoleSiteUrl) },
-      { key: "seo", configured: Boolean(client.semrushDomain) },
       { key: "tiktok", configured: Boolean(client.tiktokAdvertiserId) },
       { key: "microsoftads", configured: Boolean(client.microsoftAdsAccountId) },
       { key: "woocommerce", configured: Boolean(client.woocommerceUrl) },

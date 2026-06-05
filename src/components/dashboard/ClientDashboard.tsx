@@ -38,10 +38,7 @@ interface Client {
   id: string;
   name: string;
   slug: string;
-  website?: string | null;
-  semrushDomain: string | null;
-  semrushProjectId?: number | null;
-  semrushCampaignIds?: string | null;
+  website: string | null;
   ga4PropertyId: string | null;
   metaAccountId: string | null;
   googleAdsCustomerId: string | null;
@@ -404,7 +401,7 @@ export function ClientDashboard({
   ]
     .map((tab) => ({
       ...tab,
-      // Lead funnel: Hub + SEMrush + Competitors. Closed: Hub only. Active: all.
+      // Lead funnel: Hub + competitor views. Closed: Hub only. Active: all.
       available:
         tab.available &&
         (!hasTabRestrictions || tabPermissions.includes(tab.id)) &&

@@ -5,7 +5,7 @@ let cachedKey: Buffer | null = null;
 function getKey(): Buffer {
   if (cachedKey) return cachedKey;
   const secret = process.env.SESSION_SECRET ?? "bettsandburton-session-secret";
-  cachedKey = scryptSync(secret, "i3media-secret-salt", 32);
+  cachedKey = scryptSync(secret, "bettsandburton-secret-salt", 32);
   return cachedKey;
 }
 

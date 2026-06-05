@@ -158,7 +158,7 @@ The workhorse per-channel AI panel. Appears on every data tab. Performs two jobs
 - ❌ Competitor benchmarking data (CompetitorSnapshot metrics)
 
 **Channel personas for alert recommendations:**
-A sophisticated feature — **13 distinct system prompts** exist: search_console/gsc, meta, google_ads, ga4, semrush, tiktok, microsoftads, linkedin, klaviyo, youtube, hubspot, callrail, woocommerce, shopify, ecommerce. YouTube, HubSpot, CallRail, WooCommerce, Shopify, and E-Commerce personas added in v3.0.
+A sophisticated feature — **13 distinct system prompts** exist: search_console/gsc, meta, google_ads, ga4, seo, tiktok, microsoftads, linkedin, klaviyo, youtube, hubspot, callrail, woocommerce, shopify, ecommerce. YouTube, HubSpot, CallRail, WooCommerce, Shopify, and E-Commerce personas added in v3.0.
 
 ---
 
@@ -422,7 +422,7 @@ Conversational interface preloaded with the client's `MetricSnapshot` history (l
 ### 2.14 Competitor Intelligence (`/api/competitor-intelligence`)
 
 **What it does:**  
-Pulls SemRush domain overview metrics, saves to `CompetitorSnapshot`, and generates 2-3 sentences of AI insight.
+Pulls SEO domain overview metrics, saves to `CompetitorSnapshot`, and generates 2-3 sentences of AI insight.
 
 **Weaknesses:**
 
@@ -506,7 +506,7 @@ This string is passed to each section's AiInsightsPanel / SuperSummary
 | GA4 AI referrals (ChatGPT etc)   | ✅ GA4 API            | ✅ overview-narrative, chat                                 | Read from ApiCache (`ga4:ai-referrals:*`)                                                                                                       |
 | Search Console queries           | ✅ GSC API            | ✅ via extraContext                                         |                                                                                                                                                 |
 | Search Console page rankings     | ✅ GSC API            | ✅                                                          |                                                                                                                                                 |
-| SemRush keywords + positions     | ✅ SemRush API        | ✅ via extraContext                                         |                                                                                                                                                 |
+| SEO keywords + positions         | ✅ SEO API            | ✅ via extraContext                                         |                                                                                                                                                 |
 | Competitor domains + metrics     | ✅ CompetitorSnapshot | ✅ overview-narrative                                       | Latest snapshot per competitor injected                                                                                                         |
 | Google Ads campaign ROAS/CPA     | ✅ Google Ads API     | ✅                                                          |                                                                                                                                                 |
 | Google Ads RSA asset performance | ✅ Google Ads API     | ✅ overview-narrative                                       | `getGoogleAdsRSAAssets()` added; top RSAs by clicks (headlines + descriptions + performance) read from ApiCache                                 |
@@ -618,7 +618,7 @@ Every button press fires a fresh API call. Identical requests (same client, same
 | P2.2 | Feed e-commerce revenue into AI                                                | ✅ `ecommerce` object in `PlatformMetrics`; injected into overview-narrative and budget-advisor                                     |
 | P2.3 | Streaming for strategy-document, super-summary, root-cause, overview-narrative | ✅ All four support `stream: true` SSE                                                                                              |
 | P2.4 | Improve forecast with pre-computed trends                                      | ✅ `computeTrendAnalysis()` pre-processes MoM/YoY/volatility before prompt                                                          |
-| P2.5 | Competitor context in SEO/SemRush `AiInsightsPanel`                            | ✅ `summary` route fetches `CompetitorSnapshot` for SEO section type and appends competitor landscape                               |
+| P2.5 | Competitor context in SEO/SEO `AiInsightsPanel`                                | ✅ `summary` route fetches `CompetitorSnapshot` for SEO section type and appends competitor landscape                               |
 
 ### Priority 3 — All Done ✅
 

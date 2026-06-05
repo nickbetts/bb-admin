@@ -119,7 +119,7 @@ API Route Handler
         │         │   (service account JWT for GA4/GSC,
         │         │    OAuth2 refresh token for Google Ads,
         │         │    access token for Meta,
-        │         │    API key for SemRush)
+        │         │    API key for SEO)
         │         │
         │         ├── Call external API
         │         │
@@ -740,7 +740,7 @@ Each marketing channel has a dedicated dashboard tab with KPI cards, trend chart
 
 | Tab                     | Key Metrics                                          | Notable Features                                                                        |
 | ----------------------- | ---------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| **SEO / SemRush**       | Organic traffic, keywords, domain authority          | Position distribution, rank movers, competitor landscape, AI visibility analysis        |
+| **SEO / SEO**           | Organic traffic, keywords, domain authority          | Position distribution, rank movers, competitor landscape, AI visibility analysis        |
 | **Web Analytics (GA4)** | Sessions, users, pageviews, bounce rate, conversions | Traffic sources, demographics, AI referrals, conversion events                          |
 | **Search Console**      | Clicks, impressions, CTR, avg position               | Position movers, organic vs paid keyword overlap analysis                               |
 | **Meta Ads**            | Spend, ROAS, CPM, CTR, conversions                   | Campaign → Ad Set → Creative drill-down, creative media lightbox, audience demographics |
@@ -776,11 +776,11 @@ Several AI-powered panels appear on the Overview and channel tabs:
 | **Budget Optimisation Advisor** | Overview tab                               | Cross-channel budget reallocation recommendations with projected revenue impact                     |
 | **Multi-Touch Attribution**     | Overview tab                               | Compare 5 attribution models (Last Click, First Click, Linear, Time Decay, Position-Based)          |
 | **Seasonality Intelligence**    | Overview tab                               | Automatic seasonal pattern detection from snapshot history with forward-looking alerts              |
-| **Share of Voice**              | SEO tab                                    | Organic + paid competitive position tracking using SemRush data                                     |
+| **Share of Voice**              | SEO tab                                    | Organic + paid competitive position tracking using SEO data                                         |
 | **Creative Intelligence**       | Meta / Google Ads tabs                     | Ad creative performance analysis with actionable creative briefs                                    |
 | **AI Strategy Documents**       | On demand                                  | Quarterly forward-looking strategy documents per client, shareable                                  |
 | **Conversational AI Chat**      | All tabs (floating)                        | "Ask the Data" — GPT-4o-mini powered chat with full metric history context                          |
-| **Competitor Intelligence**     | SEO tab + `/tools/competitor-intelligence` | SemRush-backed competitor monitoring with AI-generated competitive summaries                        |
+| **Competitor Intelligence**     | SEO tab + `/tools/competitor-intelligence` | SEO-backed competitor monitoring with AI-generated competitive summaries                            |
 
 ### Client Portal
 
@@ -879,14 +879,14 @@ Multi-user workflow for reviewing and approving reports before sharing with clie
 
 | Tool                        | Route                            | Description                                                                                                                                 |
 | --------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Page Analyser**           | `/tools/page-analyser`           | AI-powered CRO/SEO/mobile/forms scoring for any URL, plus SemRush competitive data                                                          |
-| **Keyword Planner**         | `/tools/keyword-planner`         | Brief → AI keyword suggestions → SemRush research → proposal generation                                                                     |
+| **Page Analyser**           | `/tools/page-analyser`           | AI-powered CRO/SEO/mobile/forms scoring for any URL, plus SEO competitive data                                                              |
+| **Keyword Planner**         | `/tools/keyword-planner`         | Brief → AI keyword suggestions → SEO research → proposal generation                                                                         |
 | **Proposals**               | `/tools/proposals`               | Pipeline CRM (Prospect → Sent → Viewed → Negotiating → Won/Lost), share links, view tracking, enquiry capture                               |
 | **Pricing Strategy**        | `/tools/pricing`                 | Agency pricing configuration editor (service tiers, add-ons, retainer packages)                                                             |
 | **LLM.txt Generator**       | `/tools/llm-generator`           | AI-search-optimised `llm.txt` files with site crawling, authority verification, saved client-linked generations, and shareable client links |
 | **Action Tracking**         | `/tools/actions`                 | Agency-wide action dashboard — create, assign, track, and measure outcomes                                                                  |
 | **Communications Hub**      | `/tools/communications`          | Agency-wide communication log — emails, calls, meetings, notes across all clients                                                           |
-| **Competitor Intelligence** | `/tools/competitor-intelligence` | SemRush-backed competitor monitoring with AI-generated competitive summaries                                                                |
+| **Competitor Intelligence** | `/tools/competitor-intelligence` | SEO-backed competitor monitoring with AI-generated competitive summaries                                                                    |
 | **Media Plan Builder**      | `/tools/media-plan`              | Paid media planning with channel allocation, AI forecast, and status management                                                             |
 
 ### Admin Panel

@@ -32,15 +32,6 @@ import {
   getGSCBrandedSplit,
 } from "@/lib/search-console";
 import {
-  getDomainOverview,
-  getTopOrganicKeywords,
-  getKeywordPositionDistribution,
-  getCompetitors,
-  getSemrushTrackedKeywords,
-  getSemrushAIVisibility,
-  getSemrushTrackedKeywordsWithTags,
-} from "@/lib/semrush";
-import {
   getTikTokAdsOverview,
   getTikTokCampaigns,
   getTikTokCreatives,
@@ -61,16 +52,11 @@ import { getDomainAuthority } from "@/lib/domain-authority";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-const SEMRUSH_SNAPSHOT_INTERVAL_DAYS = 21;
-const SEMRUSH_SNAPSHOT_ANCHOR_ISO = "2026-06-12";
-const SEMRUSH_TAGGED_LIMIT_SNAPSHOT = 150;
-
 type PlatformKey =
   | "ga4"
   | "googleads"
   | "meta"
   | "searchconsole"
-  | "seo"
   | "tiktok"
   | "microsoftads"
   | "woocommerce"
@@ -96,9 +82,7 @@ type ClientRow = {
   metaAccountId: string | null;
   metaAccessToken: string | null;
   searchConsoleSiteUrl: string | null;
-  semrushDomain: string | null;
-  semrushProjectId: number | null;
-  semrushCampaignIds: string | null;
+  website: string | null;
   tiktokAdvertiserId: string | null;
   tiktokAccessToken: string | null;
   microsoftAdsAccountId: string | null;
@@ -115,7 +99,6 @@ type ClientRow = {
   hubspotAccessToken: string | null;
   callrailAccountId: string | null;
   callrailApiKey: string | null;
-  website: string | null;
 };
 
 function currentMonthRange(): { start: string; end: string } {
@@ -125,17 +108,6 @@ function currentMonthRange(): { start: string; end: string } {
   const last = new Date(d.getFullYear(), d.getMonth() + 1, 0);
   const end = last.toISOString().split("T")[0];
   return { start, end };
-}
-
-function isSemrushSnapshotDay(now: Date): boolean {
-  const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-  const anchor = new Date(`${SEMRUSH_SNAPSHOT_ANCHOR_ISO}T00:00:00.000Z`);
-  const anchorUtc = Date.UTC(anchor.getUTCFullYear(), anchor.getUTCMonth(), anchor.getUTCDate());
-
-  if (todayUtc < anchorUtc) return false;
-
-  const daysSinceAnchor = Math.floor((todayUtc - anchorUtc) / (24 * 60 * 60 * 1000));
-  return daysSinceAnchor % SEMRUSH_SNAPSHOT_INTERVAL_DAYS === 0;
 }
 
 async function fetchPlatformMetrics(
@@ -253,59 +225,6 @@ async function fetchPlatformMetrics(
       if (dailyR.status === "fulfilled") campaignData.daily = dailyR.value;
       if (devicesR.status === "fulfilled") campaignData.devices = devicesR.value;
       if (brandedR.status === "fulfilled") campaignData.brandedSplit = brandedR.value;
-      return { metrics, campaignData };
-    }
-    case "seo": {
-      const d = await getDomainOverview(client.semrushDomain!);
-      const metrics: Record<string, number> = {
-        organicTraffic: d.organicTraffic,
-        organicKeywords: d.organicKeywords,
-        organicCost: d.organicCost,
-        paidTraffic: d.paidTraffic,
-      };
-      const enrichCalls: Promise<unknown>[] = [
-        getTopOrganicKeywords(client.semrushDomain!, "uk", 10),
-        getKeywordPositionDistribution(client.semrushDomain!, "uk"),
-        getCompetitors(client.semrushDomain!, "uk", 10),
-      ];
-      // Tracked keywords and AI visibility require campaign IDs
-      const campaignIds: string[] = client.semrushCampaignIds
-        ? JSON.parse(client.semrushCampaignIds)
-        : [];
-      const firstCampaignId = campaignIds[0] ?? null;
-      const tagDateBegin = start.replace(/-/g, "");
-      const tagDateEnd = end.replace(/-/g, "");
-      if (firstCampaignId) {
-        enrichCalls.push(
-          getSemrushTrackedKeywords(firstCampaignId, undefined, client.semrushDomain ?? undefined),
-        );
-        enrichCalls.push(getSemrushAIVisibility(firstCampaignId));
-        enrichCalls.push(
-          getSemrushTrackedKeywordsWithTags(
-            firstCampaignId,
-            tagDateBegin,
-            tagDateEnd,
-            undefined,
-            client.semrushDomain ?? undefined,
-            SEMRUSH_TAGGED_LIMIT_SNAPSHOT,
-          ),
-        );
-      }
-      const settled = await Promise.allSettled(enrichCalls);
-      const campaignData: Record<string, unknown> = {};
-      if (settled[0].status === "fulfilled") campaignData.topKeywords = settled[0].value;
-      if (settled[1].status === "fulfilled") campaignData.positionDistribution = settled[1].value;
-      if (settled[2].status === "fulfilled") campaignData.competitors = settled[2].value;
-      if (firstCampaignId) {
-        if (settled[3]?.status === "fulfilled") campaignData.trackedKeywords = settled[3].value;
-        if (settled[4]?.status === "fulfilled") {
-          const aiVis = settled[4].value as { aiVisibilityScore?: number };
-          campaignData.aiVisibility = aiVis;
-          if (typeof aiVis?.aiVisibilityScore === "number")
-            metrics.aiVisibilityScore = aiVis.aiVisibilityScore;
-        }
-        if (settled[5]?.status === "fulfilled") campaignData.taggedKeywords = settled[5].value;
-      }
       return { metrics, campaignData };
     }
     case "tiktok": {
@@ -456,7 +375,7 @@ async function fetchPlatformMetrics(
     case "callrail":
       return fetchCallRailOverview(client.callrailAccountId!, client.callrailApiKey!, start, end);
     case "moz": {
-      const domain = client.semrushDomain ?? client.cwvUrl ?? client.website;
+      const domain = client.website ?? client.cwvUrl ?? client.website;
       if (!domain) return null;
       const d = await getDomainAuthority(domain);
       return {
@@ -791,7 +710,6 @@ const HIGHER_IS_BETTER: Record<string, string[]> = {
     "impressionSharePercent",
   ],
   searchconsole: ["clicks", "impressions", "ctr"],
-  seo: ["organicTraffic", "organicKeywords", "organicCost", "aiVisibilityScore"],
   linkedin: ["clicks", "impressions", "conversions", "reach"],
   klaviyo: ["sends", "opens", "clicks", "revenue", "openRate", "clickRate", "totalProfiles"],
   youtube: ["subscriberCount", "viewCount", "videoCount"],
@@ -907,7 +825,6 @@ async function detectAndNotifyAnomalies(
 // Triggered by Vercel cron (vercel.json "0 2 * * *") or admin "Run Now" button.
 // Only fetches the current calendar month; skips any platform already fetched
 // in the last 23 hours to conserve API quota.
-// SEO (SEMrush) snapshots are additionally throttled to a 21-day cadence.
 
 export async function POST(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
@@ -917,9 +834,6 @@ export async function POST(request: NextRequest) {
   }
 
   const triggeredBy = new URL(request.url).searchParams.get("triggeredBy") ?? "cron";
-  const forceSemrush = new URL(request.url).searchParams.get("forceSemrush") === "1";
-  const shouldRunSemrush = forceSemrush || isSemrushSnapshotDay(new Date());
-
   // CronLog — uses `as any` because VS Code TS cache may lag behind prisma generate
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = prisma as any;
@@ -938,9 +852,7 @@ export async function POST(request: NextRequest) {
         metaAccountId: true,
         metaAccessToken: true,
         searchConsoleSiteUrl: true,
-        semrushDomain: true,
-        semrushProjectId: true,
-        semrushCampaignIds: true,
+        website: true,
         tiktokAdvertiserId: true,
         tiktokAccessToken: true,
         microsoftAdsAccountId: true,
@@ -957,17 +869,10 @@ export async function POST(request: NextRequest) {
         hubspotAccessToken: true,
         callrailAccountId: true,
         callrailApiKey: true,
-        website: true,
       },
     });
 
     const { start, end } = currentMonthRange();
-
-    if (!shouldRunSemrush) {
-      console.log(
-        `[cron/snapshots] SEO snapshot cadence skip: next run is every ${SEMRUSH_SNAPSHOT_INTERVAL_DAYS} days from ${SEMRUSH_SNAPSHOT_ANCHOR_ISO}`,
-      );
-    }
 
     // Build set of client+platform combos already fetched today to skip them
     const twentyThreeHoursAgo = new Date(Date.now() - 23 * 60 * 60 * 1000);
@@ -1005,7 +910,6 @@ export async function POST(request: NextRequest) {
         { key: "googleads", check: client.googleAdsCustomerId },
         { key: "meta", check: client.metaAccountId },
         { key: "searchconsole", check: client.searchConsoleSiteUrl },
-        { key: "seo", check: client.semrushDomain },
         {
           key: "tiktok",
           check:
@@ -1032,17 +936,11 @@ export async function POST(request: NextRequest) {
           check:
             client.callrailAccountId && client.callrailApiKey ? client.callrailAccountId : null,
         },
-        { key: "moz", check: client.semrushDomain ?? client.cwvUrl ?? client.website },
+        { key: "moz", check: client.website ?? client.cwvUrl ?? client.website },
       ];
 
       for (const { key, check } of allPlatforms) {
         if (!check) continue;
-
-        if (key === "seo" && !shouldRunSemrush) {
-          row.skipped.push("seo_cadence");
-          snapshotsSkipped++;
-          continue;
-        }
 
         if (recentSnaps.has(`${client.id}|${key}`)) {
           row.skipped.push(key);

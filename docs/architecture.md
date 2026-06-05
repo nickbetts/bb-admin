@@ -53,7 +53,7 @@ This document covers the system architecture, database schema, project structure
 |  /api/google-ads/*    Google Ads data + account discovery                          |
 |  /api/meta/*          Meta Ads data + account/video proxy                          |
 |  /api/search-console/* GSC data + site discovery                                   |
-|  /api/semrush/*       SemRush data + project discovery                             |
+|  /api/seo/*       SEO data + project discovery                             |
 |  /api/seo/*           Moz domain authority                                         |
 |  /api/shopify/*       Shopify e-commerce data                                      |
 |  /api/woocommerce/*   WooCommerce e-commerce data                                  |
@@ -89,7 +89,7 @@ This document covers the system architecture, database schema, project structure
 +--------+----------+----------+----------+----------+------+-----------+-----------+
          |          |          |          |          |      |           |
     +----v---+ +----v---+ +---v----+ +---v----+ +--v---+ +-v------+ +-v---------+
-    |  GA4   | | Google | |  Meta  | |SemRush | | GSC  | |  Moz   | |WooCommerce|
+    |  GA4   | | Google | |  Meta  | |SEO | | GSC  | |  Moz   | |WooCommerce|
     |  Data  | |  Ads   | |  Ads   | |  API   | | API  | |  API   | | / Shopify |
     |  API   | |  API   | | Graph  | |        | |      | |        | |   APIs    |
     +--------+ +--------+ +--------+ +--------+ +------+ +--------+ +-----------+
@@ -137,7 +137,7 @@ This document covers the system architecture, database schema, project structure
 | **AI**           | OpenAI (gpt-4o-mini, gpt-4o, gpt-4o-search-preview) | Insights, commentary, proposals, analysis                         |
 | **File Storage** | Vercel Blob                                         | Screenshots and client logos                                      |
 | **PDF**          | Puppeteer-core + @sparticuz/chromium-min            | Server-side headless Chrome PDF rendering on Vercel               |
-| **HTTP Client**  | Axios                                               | External API requests (SemRush, Meta, etc.)                       |
+| **HTTP Client**  | Axios                                               | External API requests (SEO, Meta, etc.)                           |
 | **Google Auth**  | google-auth-library                                 | Service account (GA4/GSC) + OAuth2 (Google Ads)                   |
 | **Dates**        | date-fns                                            | Date formatting and manipulation                                  |
 | **Class Utils**  | clsx + tailwind-merge                               | Conditional className composition                                 |
@@ -380,7 +380,7 @@ bettsandburton-report/
 │   │       ├── google-ads/        # Google Ads data + accounts + MCC
 │   │       ├── meta/              # Meta Ads data + accounts + video proxy
 │   │       ├── search-console/    # GSC data + site discovery
-│   │       ├── semrush/           # SemRush data + project discovery
+│   │       ├── seo/           # SEO data + project discovery
 │   │       ├── seo/               # Moz domain authority
 │   │       ├── shopify/           # Shopify e-commerce data
 │   │       ├── woocommerce/       # WooCommerce e-commerce data
@@ -424,7 +424,7 @@ bettsandburton-report/
 │   │   │   ├── SignalsSection.tsx     # Cross-channel anomaly hub
 │   │   │   ├── OverviewSection.tsx    # Cross-channel overview + funnel
 │   │   │   ├── GA4Section.tsx         # Google Analytics dashboard
-│   │   │   ├── SemrushSection.tsx     # SEO/SemRush dashboard
+│   │   │   ├── SemrushSection.tsx     # SEO/SEO dashboard
 │   │   │   ├── MetaSection.tsx        # Meta/Facebook Ads dashboard
 │   │   │   ├── GoogleAdsSection.tsx   # Google Ads dashboard
 │   │   │   ├── SearchConsoleSection.tsx # Search Console dashboard
@@ -479,7 +479,7 @@ bettsandburton-report/
 │       ├── google-ads.ts          # Google Ads API client (GAQL)
 │       ├── meta.ts                # Meta Graph API client
 │       ├── search-console.ts      # GSC API client
-│       ├── semrush.ts             # SemRush API client
+│       ├── seo.ts             # SEO API client
 │       ├── domain-authority.ts    # Moz Link API client
 │       ├── shopify.ts             # Shopify Admin API client
 │       ├── woocommerce.ts         # WooCommerce REST API client
@@ -571,7 +571,7 @@ API Route Handler
         │         │   (service account JWT for GA4/GSC,
         │         │    OAuth2 refresh token for Google Ads,
         │         │    access token for Meta,
-        │         │    API key for SemRush)
+        │         │    API key for SEO)
         │         │
         │         ├── Call external API
         │         │

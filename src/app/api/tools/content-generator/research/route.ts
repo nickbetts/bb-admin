@@ -27,11 +27,12 @@ export async function POST(request: NextRequest) {
 
     const record = await prisma.contentGenerator.findUnique({
       where: { id: body.id },
-      include: { client: { select: { name: true, website: true, semrushDomain: true, aiReportInstructions: true } } },
+      include: { client: { select: { name: true, website: true, aiReportInstructions: true } } },
     });
 
     if (!record) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    if (record.userId !== session.user.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (record.userId !== session.user.id)
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     // Mark as researching
     await prisma.contentGenerator.update({
@@ -40,7 +41,7 @@ export async function POST(request: NextRequest) {
     });
 
     const db = body.database ?? "uk";
-    const rawDomain = (record.client.semrushDomain || record.client.website || record.websiteUrl || "")
+    const rawDomain = (record.client.website || record.client.website || record.websiteUrl || "")
       .trim()
       .toLowerCase()
       .replace(/^https?:\/\//, "")
@@ -50,10 +51,14 @@ export async function POST(request: NextRequest) {
     // ── SemRush research ────────────────────────────────────────────────────
     const [domainOverview, topKeywords] = await Promise.all([
       rawDomain
-        ? withApiCache(`cg:domain-overview:${rawDomain}:${db}`, 48, () => getDomainOverview(rawDomain, db)).catch(() => null)
+        ? withApiCache(`cg:domain-overview:${rawDomain}:${db}`, 48, () =>
+            getDomainOverview(rawDomain, db),
+          ).catch(() => null)
         : Promise.resolve(null),
       rawDomain
-        ? withApiCache(`cg:top-keywords:${rawDomain}:${db}`, 48, () => getTopOrganicKeywords(rawDomain, db, 30)).catch(() => [])
+        ? withApiCache(`cg:top-keywords:${rawDomain}:${db}`, 48, () =>
+            getTopOrganicKeywords(rawDomain, db, 30),
+          ).catch(() => [])
         : Promise.resolve([]),
     ]);
 
@@ -61,7 +66,9 @@ export async function POST(request: NextRequest) {
       domain: rawDomain || undefined,
       organicKeywords: domainOverview?.organicKeywords,
       organicTraffic: domainOverview?.organicTraffic,
-      topKeywords: (topKeywords as { keyword: string; searchVolume: number; position: number }[]).map((k) => ({
+      topKeywords: (
+        topKeywords as { keyword: string; searchVolume: number; position: number }[]
+      ).map((k) => ({
         keyword: k.keyword,
         searchVolume: k.searchVolume,
         position: k.position,
@@ -90,12 +97,21 @@ export async function POST(request: NextRequest) {
     if (body.competitors?.length) {
       const validated = await Promise.all(
         body.competitors.map(async (comp) => {
-          const clean = comp.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/$/, "");
+          const clean = comp
+            .trim()
+            .toLowerCase()
+            .replace(/^https?:\/\//, "")
+            .replace(/^www\./, "")
+            .replace(/\/$/, "");
           if (!clean) return null;
           if (competitorData.some((c) => c.domain === clean)) return null; // already present
           const result = await validateCompetitor(rawDomain, clean, db).catch(() => null);
           return result
-            ? { domain: clean, commonKeywords: result.commonKeywords, pageContext: result.pageContext }
+            ? {
+                domain: clean,
+                commonKeywords: result.commonKeywords,
+                pageContext: result.pageContext,
+              }
             : null;
         }),
       );
@@ -107,7 +123,11 @@ export async function POST(request: NextRequest) {
     // ── Generate ideas ──────────────────────────────────────────────────────
     await prisma.contentGenerator.update({
       where: { id: body.id },
-      data: { statusMessage: "Generating content ideas…", competitorsJson, keywordResearchJson: JSON.stringify(semrushContext) },
+      data: {
+        statusMessage: "Generating content ideas…",
+        competitorsJson,
+        keywordResearchJson: JSON.stringify(semrushContext),
+      },
     });
 
     const contentTypes = JSON.parse(record.contentTypes) as ContentType[];
@@ -144,7 +164,9 @@ export async function POST(request: NextRequest) {
           data: { status: "failed", generationError: message, statusMessage: null },
         });
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

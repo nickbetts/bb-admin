@@ -10,7 +10,7 @@ Built with **Next.js 16**, **React 19**, **Prisma v7**, **Tailwind CSS v4**, and
 
 | Metric             | Value                                                                                                                                                            |
 | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Marketing channels | 15 (GA4, Google Ads, Meta, TikTok, Microsoft Ads, LinkedIn, Klaviyo, YouTube, HubSpot, CallRail, SemRush, Search Console, Moz, WooCommerce, Shopify)             |
+| Marketing channels | 15 (GA4, Google Ads, Meta, TikTok, Microsoft Ads, LinkedIn, Klaviyo, YouTube, HubSpot, CallRail, SEO, Search Console, Moz, WooCommerce, Shopify)                 |
 | AI endpoints       | 24 (anomaly detection, forecasting, budget advice, creative intelligence, audience suggestions, content strategy, cross-platform creative, QA summary, and more) |
 | Prisma models      | 65                                                                                                                                                               |
 | API route handlers | ~270                                                                                                                                                             |
@@ -77,7 +77,7 @@ Note: legacy one-off build-plan docs are removed once implemented to avoid drift
 ```
 src/
   app/                  # Next.js App Router pages and API routes
-    api/                # ~270 API route handlers (ai/, auth/, clients/, reports/, tools/, cron/, portal/, financials/, tasks/, users/, clickr/, click-protection/, etc.)
+    api/                # ~270 API route handlers (ai/, auth/, clients/, reports/, tools/, cron/, portal/, financials/, tasks/, users/ click-protection/, etc.)
     clients/            # Client dashboard pages
     reports/            # Report builder and viewer pages
     tools/              # Agency tools (keyword planner, proposals, media plans, landing page builder, grand plan, content strategy, email verifier, ad image generator)

@@ -7,24 +7,15 @@ import { logActivity } from "@/lib/activity-logger";
 const APP_PASSWORD = process.env.APP_PASSWORD ?? "admin123";
 const SESSION_SECRET = process.env.SESSION_SECRET ?? "bettsandburton-session-secret";
 const SESSION_DAYS = 7;
-const ADMIN_EMAIL_ALIASES: Record<string, string[]> = {
-  "admin@bettsandburton.com": ["admin@i3media.net", "admin@i3media.co.uk"],
-  "admin@i3media.net": ["admin@bettsandburton.com", "admin@i3media.co.uk"],
-  "admin@i3media.co.uk": ["admin@bettsandburton.com", "admin@i3media.net"],
-};
+const ADMIN_EMAIL = "admin@bettsandburton.com";
 
 function isAdminEmail(email: string): boolean {
   const normalised = email.toLowerCase().trim();
-  return (
-    normalised === "admin@bettsandburton.com" ||
-    normalised === "admin@i3media.net" ||
-    normalised === "admin@i3media.co.uk"
-  );
+  return normalised === ADMIN_EMAIL;
 }
 
 function getEmailCandidates(email: string): string[] {
-  const normalised = email.toLowerCase().trim();
-  return [normalised, ...(ADMIN_EMAIL_ALIASES[normalised] ?? [])];
+  return [email.toLowerCase().trim()];
 }
 
 /** New format: `expiresAt|userId|nonce|signature` */

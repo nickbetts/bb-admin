@@ -76,8 +76,8 @@ SESSION_SECRET="your-session-secret"       # HMAC signing key (openssl rand -bas
 # ─── Vercel Blob (screenshots + logos) ────────────────────────────
 BLOB_READ_WRITE_TOKEN="vercel_blob_rw_..."
 
-# ─── SemRush ──────────────────────────────────────────────────────
-SEMRUSH_API_KEY="your-semrush-api-key"
+# ─── SEO ──────────────────────────────────────────────────────
+SEMRUSH_API_KEY="your-seo-api-key"
 
 # ─── Google (GA4 + Search Console + YouTube — service account) ────
 GA4_CLIENT_EMAIL="service-account@project.iam.gserviceaccount.com"
@@ -139,11 +139,11 @@ For CI or build environments where you don't need real API access, every variabl
 
 ## Configuring API Integrations
 
-### SemRush
+### SEO
 
-1. Get your API key from [SemRush API](https://www.semrush.com/api-analytics/)
+1. Get your API key from [SEO API](https://www.seo.com/api-analytics/)
 2. Add `SEMRUSH_API_KEY` to `.env.local`
-3. Per client: set the **SemRush Domain** (and optionally a **Project ID**) in client settings
+3. Per client: set the **SEO Domain** (and optionally a **Project ID**) in client settings
 
 ### Google Analytics 4 & Search Console (Service Account)
 

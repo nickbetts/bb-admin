@@ -13,8 +13,7 @@ import {
 
 export async function POST(request: NextRequest) {
   const session = await getSession();
-  if (!session)
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
     const body = await request.json();
@@ -29,10 +28,7 @@ export async function POST(request: NextRequest) {
     };
 
     if (!clientId) {
-      return NextResponse.json(
-        { error: "Client is required" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Client is required" }, { status: 400 });
     }
 
     // Look up client to get domain
@@ -41,7 +37,7 @@ export async function POST(request: NextRequest) {
       select: {
         id: true,
         name: true,
-        semrushDomain: true,
+        website: true,
         searchConsoleSiteUrl: true,
         contentStrategyLimits: true,
       },
@@ -51,7 +47,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Client not found" }, { status: 404 });
     }
 
-    if (!client.semrushDomain) {
+    if (!client.website) {
       return NextResponse.json(
         {
           error:
@@ -61,7 +57,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const domain = client.semrushDomain;
+    const domain = client.website;
     const db = database || "uk";
 
     // ── Action: detect competitors ────────────────────────────────────────
@@ -72,8 +68,12 @@ export async function POST(request: NextRequest) {
 
     // ── Action: validate a manually-added competitor ──────────────────────
     if (action === "validate-competitor") {
-      const competitor = (body.competitor as string | undefined)?.trim().toLowerCase()
-        .replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/$/, "");
+      const competitor = (body.competitor as string | undefined)
+        ?.trim()
+        .toLowerCase()
+        .replace(/^https?:\/\//, "")
+        .replace(/^www\./, "")
+        .replace(/\/$/, "");
       if (!competitor) {
         return NextResponse.json({ error: "competitor is required" }, { status: 400 });
       }
@@ -93,7 +93,10 @@ export async function POST(request: NextRequest) {
 
     // ── Default action: generate strategy ─────────────────────────────────
     const competitors = (body.competitors as string[] | undefined) || [];
-    const competitorContexts = (body.competitorContexts as { domain: string; pageContext: CompetitorPageContext }[] | undefined) || [];
+    const competitorContexts =
+      (body.competitorContexts as
+        | { domain: string; pageContext: CompetitorPageContext }[]
+        | undefined) || [];
     const finalPeriod =
       period ||
       new Date().toLocaleDateString("en-GB", {

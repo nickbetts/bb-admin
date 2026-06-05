@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
         googleAdsCustomerId: true,
         metaAccountId: true,
         searchConsoleSiteUrl: true,
-        semrushDomain: true,
+        website: true,
         tiktokAdvertiserId: true,
         tiktokAccessToken: true,
         microsoftAdsAccountId: true,
@@ -57,14 +57,24 @@ export async function POST(request: NextRequest) {
     const currentDay = today.getDate();
     const currentDayOfWeek = today.getDay(); // 0 = Sunday
 
-    const results: { clientId: string; clientName: string; reportId?: string; error?: string; skipped?: boolean }[] = [];
+    const results: {
+      clientId: string;
+      clientName: string;
+      reportId?: string;
+      error?: string;
+      skipped?: boolean;
+    }[] = [];
 
     for (const client of clients) {
       let schedule: ReportSchedule;
       try {
         schedule = JSON.parse(client.reportSchedule!);
       } catch {
-        results.push({ clientId: client.id, clientName: client.name, error: "Invalid schedule JSON" });
+        results.push({
+          clientId: client.id,
+          clientName: client.name,
+          error: "Invalid schedule JSON",
+        });
         continue;
       }
 
@@ -114,7 +124,9 @@ export async function POST(request: NextRequest) {
           if (template) {
             try {
               sections = JSON.parse(template.sections);
-            } catch { /* use defaults */ }
+            } catch {
+              /* use defaults */
+            }
           }
         }
 
@@ -122,20 +134,48 @@ export async function POST(request: NextRequest) {
         if (sections.length === 0) {
           const availableSections: { type: string; title: string; check: boolean }[] = [
             { type: "overview", title: "Cross-Channel Overview", check: true },
-            { type: "seo", title: "SEO / SemRush", check: !!client.semrushDomain },
+            { type: "seo", title: "SEO / SemRush", check: !!client.website },
             { type: "ga4", title: "Web Analytics (GA4)", check: !!client.ga4PropertyId },
-            { type: "searchconsole", title: "Search Console", check: !!client.searchConsoleSiteUrl },
+            {
+              type: "searchconsole",
+              title: "Search Console",
+              check: !!client.searchConsoleSiteUrl,
+            },
             { type: "meta", title: "Paid Social (Meta)", check: !!client.metaAccountId },
-            { type: "googleads", title: "Paid Search (Google Ads)", check: !!client.googleAdsCustomerId },
-            { type: "tiktok", title: "TikTok Ads", check: !!(client.tiktokAdvertiserId && client.tiktokAccessToken) },
-            { type: "microsoft_ads", title: "Microsoft Ads", check: !!client.microsoftAdsAccountId },
-            { type: "linkedin", title: "LinkedIn Ads", check: !!(client.linkedinAccountId && client.linkedinAccessToken) },
+            {
+              type: "googleads",
+              title: "Paid Search (Google Ads)",
+              check: !!client.googleAdsCustomerId,
+            },
+            {
+              type: "tiktok",
+              title: "TikTok Ads",
+              check: !!(client.tiktokAdvertiserId && client.tiktokAccessToken),
+            },
+            {
+              type: "microsoft_ads",
+              title: "Microsoft Ads",
+              check: !!client.microsoftAdsAccountId,
+            },
+            {
+              type: "linkedin",
+              title: "LinkedIn Ads",
+              check: !!(client.linkedinAccountId && client.linkedinAccessToken),
+            },
             { type: "klaviyo", title: "Email Marketing (Klaviyo)", check: !!client.klaviyoApiKey },
             { type: "youtube", title: "YouTube", check: !!client.youtubeChannelId },
             { type: "hubspot", title: "HubSpot CRM", check: !!client.hubspotAccessToken },
-            { type: "callrail", title: "Call Tracking (CallRail)", check: !!(client.callrailAccountId && client.callrailApiKey) },
+            {
+              type: "callrail",
+              title: "Call Tracking (CallRail)",
+              check: !!(client.callrailAccountId && client.callrailApiKey),
+            },
             { type: "core_web_vitals", title: "Core Web Vitals", check: !!client.cwvUrl },
-            { type: "ecommerce", title: "E-commerce", check: !!(client.woocommerceUrl || client.shopifyStoreDomain) },
+            {
+              type: "ecommerce",
+              title: "E-commerce",
+              check: !!(client.woocommerceUrl || client.shopifyStoreDomain),
+            },
           ];
 
           sections = availableSections
@@ -174,7 +214,9 @@ export async function POST(request: NextRequest) {
         });
 
         // Generate AI commentary for each section
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+        const baseUrl =
+          process.env.NEXT_PUBLIC_APP_URL ||
+          (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
 
         const reportSections = await prisma.reportSection.findMany({
           where: { reportId: report.id },
@@ -204,7 +246,10 @@ export async function POST(request: NextRequest) {
               }
             }
           } catch (err) {
-            console.error(`[cron/reports] Failed to generate commentary for ${section.sectionType}:`, err);
+            console.error(
+              `[cron/reports] Failed to generate commentary for ${section.sectionType}:`,
+              err,
+            );
           }
         }
 

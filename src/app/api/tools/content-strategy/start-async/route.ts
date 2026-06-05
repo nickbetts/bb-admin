@@ -19,58 +19,49 @@ export const maxDuration = 300;
 
 export async function POST(request: NextRequest) {
   const session = await getSession();
-  if (!session)
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
     const body = await request.json();
-    const {
-      clientId,
-      brief,
-      period,
-      database,
-      model,
-      limits,
-      competitors,
-      competitorContexts,
-    } = body as {
-      clientId: string;
-      brief?: string;
-      period?: string;
-      database?: string;
-      model?: StrategyModel;
-      limits?: ContentStrategyLimits;
-      competitors?: string[];
-      competitorContexts?: { domain: string; pageContext: CompetitorPageContext }[];
-    };
+    const { clientId, brief, period, database, model, limits, competitors, competitorContexts } =
+      body as {
+        clientId: string;
+        brief?: string;
+        period?: string;
+        database?: string;
+        model?: StrategyModel;
+        limits?: ContentStrategyLimits;
+        competitors?: string[];
+        competitorContexts?: { domain: string; pageContext: CompetitorPageContext }[];
+      };
 
-    if (!clientId)
-      return NextResponse.json({ error: "Client is required" }, { status: 400 });
+    if (!clientId) return NextResponse.json({ error: "Client is required" }, { status: 400 });
 
     const client = await prisma.client.findUnique({
       where: { id: clientId },
       select: {
         id: true,
         name: true,
-        semrushDomain: true,
+        website: true,
         searchConsoleSiteUrl: true,
         contentStrategyLimits: true,
       },
     });
 
-    if (!client)
-      return NextResponse.json({ error: "Client not found" }, { status: 404 });
+    if (!client) return NextResponse.json({ error: "Client not found" }, { status: 404 });
 
-    if (!client.semrushDomain)
+    if (!client.website)
       return NextResponse.json(
-        { error: "This client has no SEMrush domain configured. Please set it in client settings first." },
+        {
+          error:
+            "This client has no SEMrush domain configured. Please set it in client settings first.",
+        },
         { status: 400 },
       );
 
     const db = database || "uk";
     const finalPeriod =
-      period ||
-      new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+      period || new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" });
     const title = `${client.name} Content Strategy (${finalPeriod})`;
 
     // Merge and persist output limits
@@ -115,7 +106,7 @@ export async function POST(request: NextRequest) {
         // parallel with the narrative AI call below to keep the lambda
         // well under the 300 s Vercel limit without sacrificing quality.
         const { data } = await generateContentStrategy(
-          client.semrushDomain!,
+          client.website!,
           clientName,
           brief || "",
           competitors || [],
@@ -133,12 +124,11 @@ export async function POST(request: NextRequest) {
         // Kick off audit and narrative AI in parallel. The narrative call
         // does not need the audit data — it summarises the structured
         // strategy, so both can run concurrently.
-        const auditPromise = runOnPageAudit(
-          client.semrushDomain!,
-          data.pageOptimisations,
-        ).catch((err) => {
-          console.warn("On-page audit failed (continuing without audit data):", err);
-        });
+        const auditPromise = runOnPageAudit(client.website!, data.pageOptimisations).catch(
+          (err) => {
+            console.warn("On-page audit failed (continuing without audit data):", err);
+          },
+        );
 
         const narrativePromise = (async (): Promise<Record<string, string>> => {
           try {

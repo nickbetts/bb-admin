@@ -38,7 +38,7 @@ export default async function DashboardPage() {
     metaCount,
     gadsCount,
     ga4Count,
-    semrushCount,
+    seoCount,
     scCount,
   ] = await Promise.all([
     prisma.client.findMany({
@@ -63,7 +63,7 @@ export default async function DashboardPage() {
     prisma.client.count({ where: { metaAccountId: { not: null } } }),
     prisma.client.count({ where: { googleAdsCustomerId: { not: null } } }),
     prisma.client.count({ where: { ga4PropertyId: { not: null } } }),
-    prisma.client.count({ where: { semrushDomain: { not: null } } }),
+    prisma.client.count({ where: { website: { not: null } } }),
     prisma.client.count({ where: { searchConsoleSiteUrl: { not: null } } }),
   ]);
 
@@ -71,7 +71,7 @@ export default async function DashboardPage() {
     metaCount > 0 ? `Meta (${metaCount})` : null,
     gadsCount > 0 ? `Google Ads (${gadsCount})` : null,
     ga4Count > 0 ? `GA4 (${ga4Count})` : null,
-    semrushCount > 0 ? `SemRush (${semrushCount})` : null,
+    seoCount > 0 ? `SEO (${seoCount})` : null,
     scCount > 0 ? `Search Console (${scCount})` : null,
   ].filter(Boolean) as string[];
   const activeIntegrationCount = activeIntegrationLabels.length;

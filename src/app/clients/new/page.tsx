@@ -17,12 +17,6 @@ interface MetaAccount {
   name: string;
 }
 
-interface SemrushProject {
-  projectId: number;
-  projectName: string;
-  domain: string;
-}
-
 interface GoogleAdsAccount {
   id: string;
   name: string;
@@ -44,17 +38,14 @@ export default function NewClientPage() {
 
   const [ga4Properties, setGa4Properties] = useState<GA4Property[]>([]);
   const [metaAccounts, setMetaAccounts] = useState<MetaAccount[]>([]);
-  const [semrushProjects, setSemrushProjects] = useState<SemrushProject[]>([]);
   const [googleAdsAccounts, setGoogleAdsAccounts] = useState<GoogleAdsAccount[]>([]);
   const [gscSites, setGscSites] = useState<GSCSite[]>([]);
   const [ga4Loading, setGa4Loading] = useState(true);
   const [metaLoading, setMetaLoading] = useState(true);
-  const [semrushLoading, setSemrushLoading] = useState(true);
   const [googleAdsLoading, setGoogleAdsLoading] = useState(true);
   const [gscLoading, setGscLoading] = useState(true);
   const [ga4FetchError, setGa4FetchError] = useState("");
   const [metaFetchError, setMetaFetchError] = useState("");
-  const [semrushFetchError, setSemrushFetchError] = useState("");
   const [googleAdsFetchError, setGoogleAdsFetchError] = useState("");
   const [gscFetchError, setGscFetchError] = useState("");
   const [ga4ServiceAccountEmail, setGa4ServiceAccountEmail] = useState<string | null>(null);
@@ -66,8 +57,6 @@ export default function NewClientPage() {
     name: "",
     website: "",
     status: "lead" as string,
-    semrushDomain: "",
-    semrushProjectId: null as number | null,
     ga4PropertyId: "",
     ga4PropertyName: "",
     metaAccountId: "",
@@ -96,10 +85,6 @@ export default function NewClientPage() {
       })
       .catch(() => setMetaFetchError("Failed to load Meta accounts"))
       .finally(() => setMetaLoading(false));
-
-    setSemrushProjects([]);
-    setSemrushFetchError("SEMrush has been retired. Use Search Console and GA4 for SEO analysis.");
-    setSemrushLoading(false);
 
     fetch("/api/google-ads/accounts")
       .then((r) => r.json())
@@ -287,8 +272,7 @@ export default function NewClientPage() {
           </div>
           <div className="card-body">
             <p style={{ fontSize: 13, color: "var(--text-3)" }}>
-              SEMrush has been retired. Configure Search Console and GA4 below to power SEO
-              reporting.
+              Configure Search Console and GA4 below to power SEO reporting.
             </p>
           </div>
         </div>

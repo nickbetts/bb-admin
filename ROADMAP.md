@@ -105,7 +105,7 @@ Items not in the Phase 4 core but high value relative to effort. These can be sl
 | Spend reconciliation                   | ★★★    | Low    | Actual platform spend vs planned budgets, variance alerts                              |
 | NPS & client satisfaction tracking     | ★★★    | Low    | Automated surveys, NPS trend per client and portfolio-wide                             |
 | Custom KPI builder                     | ★★★    | Medium | Define blended metrics from cross-channel data (e.g., blended CPA, true ROAS)          |
-| Competitor keyword alerts              | ★★★    | Low    | Extend SemRush calls to alert on competitor position gains                             |
+| Competitor keyword alerts              | ★★★    | Low    | Extend SEO calls to alert on competitor position gains                                 |
 | Report intelligence layer              | ★★★★   | Medium | AI surfaces portfolio-level patterns across all client reports                         |
 | Benchmark library in reports           | ★★★    | Medium | Every metric auto-compared to industry benchmarks                                      |
 | Team performance analytics             | ★★★    | Low    | Reports created, actions completed, proposal win rates per team member                 |

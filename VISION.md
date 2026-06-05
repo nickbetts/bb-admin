@@ -10,13 +10,13 @@ Betts & Burton Report is already ahead of most agency tooling on the market. A c
 
 | Capability              | Current State                                                                                                                                                                                                                                                        | Rating     |
 | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
-| Data integrations       | 15 channels (GA4, Google Ads, Meta, TikTok, Microsoft Ads, LinkedIn, Klaviyo, SemRush, GSC, Moz, WooCommerce, Shopify, YouTube, HubSpot, CallRail)                                                                                                                   | ⭐⭐⭐⭐⭐ |
+| Data integrations       | 15 channels (GA4, Google Ads, Meta, TikTok, Microsoft Ads, LinkedIn, Klaviyo, SEO, GSC, Moz, WooCommerce, Shopify, YouTube, HubSpot, CallRail)                                                                                                                       | ⭐⭐⭐⭐⭐ |
 | AI insights per channel | 24 AI endpoints: anomaly detection, summaries, forecasting, budget advice, attribution, creative intelligence, root cause, strategy documents, audience suggestions, cross-platform creative, keyword suggestions, QA summary, content strategy, conversational chat | ⭐⭐⭐⭐⭐ |
 | Cross-channel context   | All platform metrics fed into every AI call; cross-platform intelligence in every section                                                                                                                                                                            | ⭐⭐⭐⭐⭐ |
 | Report builder          | Drag-and-drop, AI commentary, collaboration comments, approval workflow, PDF export, share links                                                                                                                                                                     | ⭐⭐⭐⭐⭐ |
 | Proposal generation     | AI-powered PPC proposals with interactive forecaster, pipeline CRM, view tracking, enquiry capture                                                                                                                                                                   | ⭐⭐⭐⭐⭐ |
 | Landing page analysis   | CRO/SEO/Mobile/Forms scoring with AI, SuperSummary journey analysis                                                                                                                                                                                                  | ⭐⭐⭐⭐   |
-| Keyword planner         | SemRush-backed research with proposal output                                                                                                                                                                                                                         | ⭐⭐⭐⭐   |
+| Keyword planner         | SEO-backed research with proposal output                                                                                                                                                                                                                             | ⭐⭐⭐⭐   |
 | Historical snapshots    | Nightly automated snapshots across all channels, used for forecasting, seasonality, and anomaly context                                                                                                                                                              | ⭐⭐⭐⭐   |
 | Client management       | Full CRUD, integration badges, contracted hours, AI instructions, portal management                                                                                                                                                                                  | ⭐⭐⭐⭐   |
 | Role-based access       | 11 permissions, role editor, granular per-section control                                                                                                                                                                                                            | ⭐⭐⭐⭐   |
@@ -24,7 +24,7 @@ Betts & Burton Report is already ahead of most agency tooling on the market. A c
 | Client portal           | Self-serve login with magic link, goals, reports, communications view                                                                                                                                                                                                | ⭐⭐⭐⭐   |
 | Action tracking         | AI recommendations → assigned actions → outcomes, full CRUD                                                                                                                                                                                                          | ⭐⭐⭐⭐   |
 | Communication hub       | Centralised log for emails, calls, meetings, notes with email drafting                                                                                                                                                                                               | ⭐⭐⭐⭐   |
-| Competitor intelligence | SemRush-backed competitor monitoring, share of voice, AI-generated insights                                                                                                                                                                                          | ⭐⭐⭐⭐   |
+| Competitor intelligence | SEO-backed competitor monitoring, share of voice, AI-generated insights                                                                                                                                                                                              | ⭐⭐⭐⭐   |
 | Media plan builder      | Paid media planning with channel allocation and AI forecast outputs                                                                                                                                                                                                  | ⭐⭐⭐⭐   |
 | Portfolio health        | Agency-wide client health dashboard with churn risk scoring                                                                                                                                                                                                          | ⭐⭐⭐⭐   |
 | Automated reporting     | Monthly cron-triggered report generation, schedule configuration per client                                                                                                                                                                                          | ⭐⭐⭐⭐⭐ |
@@ -151,7 +151,7 @@ This section covers AI features that deliver genuine, measurable value — not d
 
 **The current state:** "Sessions dropped 28% vs last month — HIGH severity."
 
-**The new state:** "Sessions dropped 28% vs last month. Root cause analysis: Organic sessions fell 34% from Google. Cross-referencing with Search Console data, we can see position losses across 45 non-brand keywords. The largest declines are in [keyword cluster]. In the same period, SemRush shows a competitor gained 22 positions for these terms. This appears to be a SERP displacement event, not a technical issue. Recommendation: audit content for those keyword pages and consider a content refresh sprint."
+**The new state:** "Sessions dropped 28% vs last month. Root cause analysis: Organic sessions fell 34% from Google. Cross-referencing with Search Console data, we can see position losses across 45 non-brand keywords. The largest declines are in [keyword cluster]. In the same period, SEO shows a competitor gained 22 positions for these terms. This appears to be a SERP displacement event, not a technical issue. Recommendation: audit content for those keyword pages and consider a content refresh sprint."
 
 **Analysis chain:**
 
@@ -258,7 +258,7 @@ This section covers AI features that deliver genuine, measurable value — not d
 
 **Data sources:**
 
-- SemRush competitor data (existing, underutilised)
+- SEO competitor data (existing, underutilised)
 - Google Ads auction insights (impression share overlap, outranking share)
 - Google Trends integration (new)
 - AI web search (GPT-4o-search — already in use for landing page analysis, extend to competitive research)
@@ -275,7 +275,7 @@ This section covers AI features that deliver genuine, measurable value — not d
 **Implementation path:**
 
 - New `CompetitorSnapshot` model (clientId, domain, metrics JSON, periodStart/End)
-- Extend `/api/semrush/` to include competitor data pull on a schedule
+- Extend `/api/seo/` to include competitor data pull on a schedule
 - New `/api/ai/competitor-intelligence` endpoint
 - CompetitorIntelligencePanel on the SEO tab
 - Alerts integration: competitor activity triggers Signals
@@ -353,7 +353,7 @@ Enhanced: "Sessions dropped 28% — HIGH
 
 **Components:**
 
-- **Organic share of voice** — % of total clicks for tracked keyword set (via SemRush + GSC)
+- **Organic share of voice** — % of total clicks for tracked keyword set (via SEO + GSC)
 - **Paid share of voice** — impression share vs competitor domains (Google Ads auction insights + estimated meta share)
 - **Brand SOV** — share of branded searches
 - **Topic SOV** — share across specific keyword topic clusters
@@ -1070,7 +1070,7 @@ Enhanced: "Sessions dropped 28% — HIGH
 
 | Feature Category               | Current Competitors                                                                                           | Betts & Burton Advantage                                                                       |
 | ------------------------------ | ------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| **Cross-channel intelligence** | Most tools are single-channel (e.g., SEMrush = SEO only, Supermetrics = data aggregation only)                | Native cross-channel AI analysis with correlated insights                                      |
+| **Cross-channel intelligence** | Most tools are single-channel (e.g., SEO = SEO only, Supermetrics = data aggregation only)                    | Native cross-channel AI analysis with correlated insights                                      |
 | **AI quality**                 | Most competitors use AI as a label, not a capability (generic summaries, no anomaly detection, no root cause) | Deep, context-aware AI with anomaly detection, root cause, forecasting, conversational analyst |
 | **Agency workflow**            | ReportGarden, AgencyAnalytics — decent reporting, limited AI, no strategic tools                              | Full agency OS: reporting + strategy + proposals + client management + operations              |
 | **Proposal generation**        | Separate tools (Proposify, PandaDoc) with no data integration                                                 | AI proposals backed by live channel data and keyword research                                  |
@@ -1185,7 +1185,7 @@ This category does not currently have a clear winner. Klipfolio, AgencyAnalytics
 | Slide deck export          | ★★★    | Medium | PDF → PPTX format conversion  |
 | Campaign planning calendar | ★★★    | Low    | Simple model + UI             |
 | Spend reconciliation       | ★★★    | Low    | Data already exists, new view |
-| Competitor keyword alerts  | ★★★    | Low    | Extend existing SemRush calls |
+| Competitor keyword alerts  | ★★★    | Low    | Extend existing SEO calls     |
 | NPS surveys                | ★★★    | Low    | Email template + simple model |
 | Custom KPI builder         | ★★★    | Medium | Formula engine, new model     |
 

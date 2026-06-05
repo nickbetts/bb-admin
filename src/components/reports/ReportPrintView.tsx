@@ -90,9 +90,6 @@ interface Client {
   slug: string;
   website: string | null;
   logoUrl: string | null;
-  semrushDomain: string | null;
-  semrushProjectId?: number | null;
-  semrushCampaignIds?: string | null;
   ga4PropertyId: string | null;
   metaAccountId: string | null;
   googleAdsCustomerId: string | null;

@@ -12,24 +12,34 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const rl = enforceAiRateLimit(session.user.id); if (!rl.ok) return rl.response!;
+    const rl = enforceAiRateLimit(session.user.id);
+    if (!rl.ok) return rl.response!;
 
-    const body = await request.json() as {
+    const body = (await request.json()) as {
       clientId: string;
       currentAiReferrals: { source: string; sessions: number; users: number }[];
       previousAiReferrals?: { source: string; sessions: number; users: number }[];
       totalSessions?: number;
       previousTotalSessions?: number;
     };
-    const { clientId, currentAiReferrals, previousAiReferrals, totalSessions, previousTotalSessions } = body;
+    const {
+      clientId,
+      currentAiReferrals,
+      previousAiReferrals,
+      totalSessions,
+      previousTotalSessions,
+    } = body;
 
     if (!clientId || !currentAiReferrals) {
-      return NextResponse.json({ error: "clientId and currentAiReferrals are required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "clientId and currentAiReferrals are required" },
+        { status: 400 },
+      );
     }
 
     const client = await prisma.client.findUnique({
       where: { id: clientId },
-      select: { id: true, name: true, website: true, semrushDomain: true, aiReportInstructions: true },
+      select: { id: true, name: true, website: true, aiReportInstructions: true },
     });
     if (!client) return NextResponse.json({ error: "Client not found" }, { status: 404 });
 
@@ -62,19 +72,20 @@ export async function POST(request: NextRequest) {
     const previousAiSessions = previousAiReferrals
       ? previousAiReferrals.reduce((sum, r) => sum + r.sessions, 0)
       : 0;
-    const momGrowth = previousAiSessions > 0
-      ? ((totalAiSessions - previousAiSessions) / previousAiSessions) * 100
-      : null;
-    const aiTrafficShare = totalSessions && totalSessions > 0
-      ? (totalAiSessions / totalSessions) * 100
-      : null;
+    const momGrowth =
+      previousAiSessions > 0
+        ? ((totalAiSessions - previousAiSessions) / previousAiSessions) * 100
+        : null;
+    const aiTrafficShare =
+      totalSessions && totalSessions > 0 ? (totalAiSessions / totalSessions) * 100 : null;
 
     // Per-source comparison
     const sourceComparisons = currentAiReferrals.map((current) => {
       const prev = previousAiReferrals?.find((p) => p.source === current.source);
-      const change = prev && prev.sessions > 0
-        ? ((current.sessions - prev.sessions) / prev.sessions) * 100
-        : null;
+      const change =
+        prev && prev.sessions > 0
+          ? ((current.sessions - prev.sessions) / prev.sessions) * 100
+          : null;
       return {
         source: current.source,
         currentSessions: current.sessions,
@@ -84,19 +95,23 @@ export async function POST(request: NextRequest) {
     });
 
     // Format snapshot context
-    const snapshotContext = metricSnapshots.map((s) => {
-      const metrics = JSON.parse(s.metrics);
-      return `[${s.sectionType}] ${s.periodStart} to ${s.periodEnd}: ${JSON.stringify(metrics)}`;
-    }).join("\n");
+    const snapshotContext = metricSnapshots
+      .map((s) => {
+        const metrics = JSON.parse(s.metrics);
+        return `[${s.sectionType}] ${s.periodStart} to ${s.periodEnd}: ${JSON.stringify(metrics)}`;
+      })
+      .join("\n");
 
-    const competitorContext = competitorSnapshots.map((s) => {
-      const metrics = JSON.parse(s.metrics);
-      return `[${s.domain}] ${s.periodStart} to ${s.periodEnd}: ${JSON.stringify(metrics)}${s.insights ? ` — ${s.insights}` : ""}`;
-    }).join("\n");
+    const competitorContext = competitorSnapshots
+      .map((s) => {
+        const metrics = JSON.parse(s.metrics);
+        return `[${s.domain}] ${s.periodStart} to ${s.periodEnd}: ${JSON.stringify(metrics)}${s.insights ? ` — ${s.insights}` : ""}`;
+      })
+      .join("\n");
 
     const openai = await getOpenAiClient();
 
-    const systemPrompt = `You are an expert in AI search visibility and Generative Engine Optimisation (GEO) analysing data for ${client.name}.${client.website ? ` Website: ${client.website}` : ""}${client.semrushDomain ? ` Domain: ${client.semrushDomain}` : ""}${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}
+    const systemPrompt = `You are an expert in AI search visibility and Generative Engine Optimisation (GEO) analysing data for ${client.name}.${client.website ? ` Website: ${client.website}` : ""}${client.website ? ` Domain: ${client.website}` : ""}${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}
 
 You must respond with valid JSON matching the exact schema described in the user prompt.`;
 

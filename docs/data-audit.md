@@ -16,7 +16,7 @@
    - 2.2 [Google Ads](#22-google-ads)
    - 2.3 [Meta Ads (Facebook & Instagram)](#23-meta-ads-facebook--instagram)
    - 2.4 [Google Search Console](#24-google-search-console)
-   - 2.5 [SEMrush](#25-semrush)
+   - 2.5 [SEO](#25-seo)
    - 2.6 [TikTok Ads](#26-tiktok-ads)
    - 2.7 [Microsoft Ads (Bing)](#27-microsoft-ads-bing)
    - 2.8 [LinkedIn Ads](#28-linkedin-ads)
@@ -318,9 +318,9 @@ For each platform, we document:
 
 ---
 
-### 2.5 SEMrush
+### 2.5 SEO
 
-**API:** SEMrush API (`api.semrush.com`) + Position Tracking API
+**API:** SEO API (`api.seo.com`) + Position Tracking API
 **Current Functions:** 20 (`getDomainOverview`, `getTopOrganicKeywords`, `getRankMovers`, `getDomainRankHistory`, `getKeywordPositionDistribution`, `getCompetitors`, `getBacklinks`, `getSemrushTrackedKeywords`, `getSemrushAIVisibility`, `getKeywordVolumeMetrics`, `getKeywordDifficultyAndIntent`, `getContentGap`, `getSerpFeatures`, `getBacklinkChanges`, `getCompetitorAdKeywords`, `getTopicResearch`, `getSiteAudit`, `getAdCopyDatabase`, `getDisplayAdvertisingCompetitors`, `getShoppingCompetitors`)
 
 #### ✅ What We Pull Today
@@ -340,7 +340,7 @@ For each platform, we document:
 
 #### ❌ What the API Offers But We Don't Pull
 
-| Available Data                     | SEMrush API Type                                                                  | Agency Benefit                                                                         | Status                                               |
+| Available Data                     | SEO API Type                                                                      | Agency Benefit                                                                         | Status                                               |
 | ---------------------------------- | --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- | ---------------------------------------------------- |
 | **Keyword difficulty**             | `phrase_this` → `Kd` column                                                       | How hard is it to rank for each keyword? Essential for prioritisation                  | ✅ Wave 6 #56 — `getKeywordDifficultyAndIntent()`    |
 | **Keyword intent**                 | `phrase_this` → `In` column (Informational/Commercial/Navigational/Transactional) | Align content strategy with search intent                                              | ✅ Wave 6 #56 — intent included in same function     |
@@ -846,7 +846,7 @@ A codebase audit was conducted against every ❌ table in sections 2.1–2.16 to
 
 **❌ Status:** 11/11 implemented (100%). All tier-1 Search Console data gaps closed.
 
-#### SEMrush — 25 functions (was 10 → 15 after Wave 6 → 20 after Wave 7 → 25 after Wave 8)
+#### SEO — 25 functions (was 10 → 15 after Wave 6 → 20 after Wave 7 → 25 after Wave 8)
 
 **Implemented (Waves 1–6):** `getKeywordDifficultyAndIntent()`, `getContentGap()`, `getSerpFeatures()`, `getBacklinkChanges()`, `getCompetitorAdKeywords()`.
 
@@ -854,7 +854,7 @@ A codebase audit was conducted against every ❌ table in sections 2.1–2.16 to
 
 **Implemented (Wave 8):** `getKeywordTrends()` (trending up/down/stable via phrase_related), `getReferringDomains()` (unique referring domains with backlink counts), `getAnchorTextDistribution()` (anchor text with domain and backlink counts), `getBacklinkComparison()` (side-by-side backlink profiles across domains), `getOrganicPositionChanges()` (daily rank movements with previous vs current positions).
 
-**Remaining Gaps:** Traffic Analytics (separate paid API product — not included in standard SEMrush plan).
+**Remaining Gaps:** Traffic Analytics (separate paid API product — not included in standard SEO plan).
 
 **❌ Status:** 16/17 implemented (94%). Only Traffic Analytics remains (separate paid product).
 
@@ -967,7 +967,7 @@ Every channel tab in a client's dashboard has an `AiInsightsPanel` that generate
 | `getGSCQueryDevice()`  | Device-specific ranking insights — AI can identify mobile-first opportunities | _"Query 'emergency plumber near me': Mobile position 3, CTR 14.2% (892 clicks). Desktop position 11, CTR 1.1% (23 clicks). This is a mobile-dominant local intent query. 97% of its value comes from mobile. Ensure the landing page is mobile-optimised with click-to-call."_ |
 | `getGSCQueryCountry()` | Geographic keyword performance — AI can identify international opportunities  | _"Query 'business insurance uk' performs in GB (position 4, 3,200 clicks) but also ranks in IE (position 8, 180 clicks) and AU (position 14, 45 clicks). If you serve Irish clients, targeted content for 'business insurance ireland' could capture this secondary market."_  |
 
-##### SEO Tab (SEMrush)
+##### SEO Tab (SEO)
 
 | New Data Function             | AI Insight Enhancement                                                           | Example Output                                                                                                                                                                                                                                                                                                                                                        |
 | ----------------------------- | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1055,7 +1055,7 @@ Every report section generates AI commentary via `/api/ai/report-commentary`. Th
 | **Google Ads**          | Budget utilisation/pacing                                                             | Commentary can flag underspending/overspending campaigns and recommend budget redistributions with projected impact                                              |
 | **Meta/Paid Social**    | Action breakdowns, hourly data, spending limits, audiences, reach estimates           | Commentary can distinguish true link clicks from engagement clicks, recommend dayparting schedules, flag budget caps approaching, and suggest untested audiences |
 | **Search Console**      | Query × device, query × country                                                       | Commentary can highlight mobile-dominant queries, flag desktop ranking opportunities, and identify international market potential                                |
-| **SEO (SEMrush)**       | Keyword trends, referring domains, anchor text, backlink comparison, position changes | Commentary can include weekly rank movement summaries, trending keywords to target, backlink health assessments, and competitive gap analysis                    |
+| **SEO (SEO)**           | Keyword trends, referring domains, anchor text, backlink comparison, position changes | Commentary can include weekly rank movement summaries, trending keywords to target, backlink health assessments, and competitive gap analysis                    |
 
 #### 2.18.5 Cross-Endpoint AI Enhancement
 
@@ -1102,15 +1102,15 @@ The biggest value isn't in any single platform — it's in **connecting data acr
 
 ### 3.1 Keyword Intelligence Cross-Reference
 
-| Data Source A              | Data Source B               | Intelligence Created                                                                                                                                                                                                  |
-| -------------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Google Ads Search Terms    | Search Console Queries      | **Paid/Organic Cannibalisation**: "You're paying £4.50/click for 'insurance quotes' where you already rank #2 organically. Potential saving: £2,400/month"                                                            |
-| Google Ads Keywords        | SEMrush Organic Keywords    | **Coverage Gap**: "You bid on 340 keywords. You rank organically for 1,200. Only 89 overlap. 251 paid keywords have no organic presence — these need content"                                                         |
-| SEMrush Keyword Difficulty | Search Console Position     | **Quick Win Finder**: "38 keywords where you rank position 4-10 with difficulty < 30. Small content improvements could move these to page 1 for +12,000 monthly clicks"                                               |
-| Google Ads Search Terms    | CallRail Call Keywords      | **True PPC Value**: "Keyword 'emergency plumber' shows 0 online conversions in Google Ads but 18 phone calls tracked by CallRail. True ROAS including calls: 8.4× (vs reported 0×)"                                   |
-| SEMrush Competitors        | Meta Audience Interests     | **Competitive Audience**: "SEMrush shows competitor focuses on 'eco insurance'. Meta audience interests show strong engagement from 'Sustainability' interest group. Recommend: test eco-messaging in Meta campaigns" |
-| Klaviyo Segments           | Meta Custom Audiences       | **Audience Sync**: "Klaviyo 'VIP Customers' segment (342 users, avg CLV £580) synced to Meta as Custom Audience → Lookalike 1% for high-value prospecting"                                                            |
-| HubSpot Deal Sources       | Google Ads/Meta Attribution | **Revenue Attribution**: "HubSpot shows £120K closed revenue this quarter. Google Ads drove 42% of initial leads, Meta drove 28%, Organic 18%. But Organic leads have 3× higher close rate"                           |
+| Data Source A           | Data Source B               | Intelligence Created                                                                                                                                                                                              |
+| ----------------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Google Ads Search Terms | Search Console Queries      | **Paid/Organic Cannibalisation**: "You're paying £4.50/click for 'insurance quotes' where you already rank #2 organically. Potential saving: £2,400/month"                                                        |
+| Google Ads Keywords     | SEO Organic Keywords        | **Coverage Gap**: "You bid on 340 keywords. You rank organically for 1,200. Only 89 overlap. 251 paid keywords have no organic presence — these need content"                                                     |
+| SEO Keyword Difficulty  | Search Console Position     | **Quick Win Finder**: "38 keywords where you rank position 4-10 with difficulty < 30. Small content improvements could move these to page 1 for +12,000 monthly clicks"                                           |
+| Google Ads Search Terms | CallRail Call Keywords      | **True PPC Value**: "Keyword 'emergency plumber' shows 0 online conversions in Google Ads but 18 phone calls tracked by CallRail. True ROAS including calls: 8.4× (vs reported 0×)"                               |
+| SEO Competitors         | Meta Audience Interests     | **Competitive Audience**: "SEO shows competitor focuses on 'eco insurance'. Meta audience interests show strong engagement from 'Sustainability' interest group. Recommend: test eco-messaging in Meta campaigns" |
+| Klaviyo Segments        | Meta Custom Audiences       | **Audience Sync**: "Klaviyo 'VIP Customers' segment (342 users, avg CLV £580) synced to Meta as Custom Audience → Lookalike 1% for high-value prospecting"                                                        |
+| HubSpot Deal Sources    | Google Ads/Meta Attribution | **Revenue Attribution**: "HubSpot shows £120K closed revenue this quarter. Google Ads drove 42% of initial leads, Meta drove 28%, Organic 18%. But Organic leads have 3× higher close rate"                       |
 
 ### 3.2 Audience Intelligence Cross-Reference
 
@@ -1118,7 +1118,7 @@ The biggest value isn't in any single platform — it's in **connecting data acr
 | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | GA4 Demographics + Meta Demographics + LinkedIn Demographics | **Unified Audience Profile**: "Your converting audience across all platforms: Female, 25-44, interested in home improvement, based in London/Manchester. LinkedIn adds: works in Marketing/Finance, companies 50-200 employees" |
 | GA4 New vs Returning + Shopify Repeat Purchase               | **Customer Journey Map**: "First-time visitors from PPC → 12% purchase. Return visitors from email → 34% purchase. Average time from first visit to first purchase: 14 days across 3.2 sessions"                                |
-| Meta Audience Interests + SEMrush Keywords                   | **Content-Audience Alignment**: "Meta audiences interested in 'Home Renovation' + SEMrush trending keywords 'kitchen renovation cost 2026' = content opportunity that serves both organic SEO and paid social"                  |
+| Meta Audience Interests + SEO Keywords                       | **Content-Audience Alignment**: "Meta audiences interested in 'Home Renovation' + SEO trending keywords 'kitchen renovation cost 2026' = content opportunity that serves both organic SEO and paid social"                      |
 | HubSpot Lifecycle + CallRail Calls                           | **Sales-Marketing Alignment**: "Leads that received 3+ marketing emails AND made an inbound call close 2.4× faster than leads from cold PPC alone"                                                                              |
 
 ### 3.3 Campaign Performance Cross-Reference
@@ -1138,18 +1138,18 @@ Currently, AI generates **summaries and insights**. The next evolution is AI gen
 
 ### 4.1 Recommendation Types
 
-| Type                        | Example                                                                                                          | Data Sources                          |
-| --------------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
-| **Budget Reallocation**     | "Move £2K from LinkedIn (CPA £180) to Google Ads (CPA £45). Projected: +24 conversions at same total spend"      | All paid platforms                    |
-| **Keyword Suggestions**     | "Add these 15 keywords to Google Ads based on Search Console data showing organic traffic + SEMrush volume data" | GSC + SEMrush + Google Ads            |
-| **Negative Keyword Mining** | "Block these 23 search terms that spent £1,200 with 0 conversions this month"                                    | Google Ads Search Terms               |
-| **Audience Expansion**      | "Test these 5 Meta interest audiences based on demographic overlap with your best-converting audience"           | Meta Audiences + Demographics         |
-| **Creative Refresh Alerts** | "3 ads have frequency > 5× and declining CTR — creative fatigue detected. Generate new briefs"                   | Meta + TikTok creative data           |
-| **Landing Page Fixes**      | "Your top PPC landing page has LCP 4.2s. Fixing this is projected to increase conversion rate by 15%"            | CWV + GA4 + Google Ads                |
-| **Content Calendar**        | "Based on trending keywords and seasonality, recommend publishing these 8 pieces in the next 30 days"            | SEMrush trends + GSC + seasonality    |
-| **Email Timing**            | "Your best email send time is Tuesday 10am (32% higher open rate). Shift all campaigns"                          | Klaviyo campaign data                 |
-| **Bid Adjustments**         | "Increase Manchester geo bid +25%, reduce London -15%. Increase weekday AM +20%, reduce weekend PM -40%"         | Google Ads geographic + schedule data |
-| **Product Prioritisation**  | "Product 'Widget Pro' has 12× ROAS in Shopping but only 3% of budget. Recommend: increase bid 50%"               | Google Ads Shopping + Shopify         |
+| Type                        | Example                                                                                                      | Data Sources                          |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------- |
+| **Budget Reallocation**     | "Move £2K from LinkedIn (CPA £180) to Google Ads (CPA £45). Projected: +24 conversions at same total spend"  | All paid platforms                    |
+| **Keyword Suggestions**     | "Add these 15 keywords to Google Ads based on Search Console data showing organic traffic + SEO volume data" | GSC + SEO + Google Ads                |
+| **Negative Keyword Mining** | "Block these 23 search terms that spent £1,200 with 0 conversions this month"                                | Google Ads Search Terms               |
+| **Audience Expansion**      | "Test these 5 Meta interest audiences based on demographic overlap with your best-converting audience"       | Meta Audiences + Demographics         |
+| **Creative Refresh Alerts** | "3 ads have frequency > 5× and declining CTR — creative fatigue detected. Generate new briefs"               | Meta + TikTok creative data           |
+| **Landing Page Fixes**      | "Your top PPC landing page has LCP 4.2s. Fixing this is projected to increase conversion rate by 15%"        | CWV + GA4 + Google Ads                |
+| **Content Calendar**        | "Based on trending keywords and seasonality, recommend publishing these 8 pieces in the next 30 days"        | SEO trends + GSC + seasonality        |
+| **Email Timing**            | "Your best email send time is Tuesday 10am (32% higher open rate). Shift all campaigns"                      | Klaviyo campaign data                 |
+| **Bid Adjustments**         | "Increase Manchester geo bid +25%, reduce London -15%. Increase weekday AM +20%, reduce weekend PM -40%"     | Google Ads geographic + schedule data |
+| **Product Prioritisation**  | "Product 'Widget Pro' has 12× ROAS in Shopping but only 3% of budget. Recommend: increase bid 50%"           | Google Ads Shopping + Shopify         |
 
 ### 4.2 Proactive Alert System
 
@@ -1162,7 +1162,7 @@ Instead of waiting for users to check dashboards, the platform should **push ale
 | **Keyword Opportunity**  | New keyword detected in Search Console with > 500 impressions and position 4-10 | Recommend adding to Google Ads and/or creating SEO content |
 | **Conversion Drop**      | Conversion rate drops > 25% vs previous period                                  | Root-cause analysis (landing page? CWV? audience?)         |
 | **Quality Score Drop**   | Keyword QS drops by 2+ points                                                   | Diagnose: ad relevance, CTR, or landing page issue         |
-| **Competitor Movement**  | SEMrush shows competitor gained > 20 ranking positions on key terms             | Alert + defensive strategy recommendation                  |
+| **Competitor Movement**  | SEO shows competitor gained > 20 ranking positions on key terms                 | Alert + defensive strategy recommendation                  |
 | **Goal At Risk**         | Current trajectory will miss goal by > 20%                                      | Recommend specific actions to recover                      |
 | **Email Deliverability** | Bounce rate > 5% or unsubscribe rate > 2% on campaign                           | Recommend list cleaning or content review                  |
 | **Inventory Alert**      | Top-selling product < 20 units remaining                                        | Recommend urgency campaign or restock                      |
@@ -1181,9 +1181,9 @@ Merge keyword data from:
 - **Google Ads Keywords** — what you bid on, QS, CPC, conversions
 - **Google Ads Search Terms** — what people actually search
 - **Search Console Queries** — organic impressions, clicks, position
-- **SEMrush Organic Keywords** — your organic rankings + volume + difficulty + intent
-- **SEMrush Competitor Keywords** — what competitors rank for
-- **SEMrush Tracked Keywords** — monitored keyword positions
+- **SEO Organic Keywords** — your organic rankings + volume + difficulty + intent
+- **SEO Competitor Keywords** — what competitors rank for
+- **SEO Tracked Keywords** — monitored keyword positions
 - **CallRail Keywords** — which keywords drive phone calls
 - **Google Ads Keyword Planner** — volume estimates and forecasts
 
@@ -1192,13 +1192,13 @@ Merge keyword data from:
 | View                       | Sources                                                          | Benefit                                                                               |
 | -------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
 | **Keyword Universe**       | All sources merged                                               | Single view of every keyword associated with the client — paid + organic + competitor |
-| **Opportunity Keywords**   | SEMrush competitors - (GSC + Google Ads)                         | Keywords competitors rank for that you don't — instant roadmap                        |
+| **Opportunity Keywords**   | SEO competitors - (GSC + Google Ads)                             | Keywords competitors rank for that you don't — instant roadmap                        |
 | **Cannibalisation Matrix** | GSC queries × pages + Google Ads keywords                        | Multiple pages/ads competing for same keyword                                         |
-| **Quick Wins**             | GSC position 4-10 + SEMrush difficulty < 40                      | Keywords close to page 1 that are achievable with small effort                        |
+| **Quick Wins**             | GSC position 4-10 + SEO difficulty < 40                          | Keywords close to page 1 that are achievable with small effort                        |
 | **Budget Wasters**         | Google Ads search terms with spend > threshold and 0 conversions | Negative keyword candidates — sorted by wasted spend                                  |
 | **Call-Driving Keywords**  | CallRail keyword attribution + Google Ads keywords               | Keywords that drive phone calls (often invisible in standard PPC reporting)           |
-| **Trending Keywords**      | SEMrush trend data + Google Ads Keyword Planner forecasts        | Rising search demand — get ahead of trends                                            |
-| **Keyword-Content Map**    | GSC queries → GSC pages + SEMrush keyword → URL                  | Which content serves which keywords? Where are gaps?                                  |
+| **Trending Keywords**      | SEO trend data + Google Ads Keyword Planner forecasts            | Rising search demand — get ahead of trends                                            |
+| **Keyword-Content Map**    | GSC queries → GSC pages + SEO keyword → URL                      | Which content serves which keywords? Where are gaps?                                  |
 
 ### 5.3 AI Keyword Recommendations
 
@@ -1318,7 +1318,7 @@ When creative fatigue is detected or new campaigns are planned, AI should genera
 
 ### 9.2 Client Value Communication
 
-> **v2.2 Status:** ✅ Revenue Attribution Report — implemented (`/api/cross/revenue-attribution`). ✅ Competitive Benchmarking — implemented via SEMrush competitors + `/api/ai/snapshots`. ✅ Goal Progress Visualisation — implemented in GoalsSection. ✅ AI Client Portal Summaries — implemented (`/api/portal/summary`). ❌ Opportunity Cost Calculator — not yet built (→ Wave 9 #127).
+> **v2.2 Status:** ✅ Revenue Attribution Report — implemented (`/api/cross/revenue-attribution`). ✅ Competitive Benchmarking — implemented via SEO competitors + `/api/ai/snapshots`. ✅ Goal Progress Visualisation — implemented in GoalsSection. ✅ AI Client Portal Summaries — implemented (`/api/portal/summary`). ❌ Opportunity Cost Calculator — not yet built (→ Wave 9 #127).
 
 | Feature                         | Benefit                                                                                                      |
 | ------------------------------- | ------------------------------------------------------------------------------------------------------------ |
@@ -1353,18 +1353,18 @@ These require small code changes to pull more data from APIs we already connect 
 
 Enhance AI prompts with data we already have but don't use:
 
-| #   | Action                                                                                                                              | Effort | Impact                                               | Status  |
-| --- | ----------------------------------------------------------------------------------------------------------------------------------- | ------ | ---------------------------------------------------- | ------- |
-| 11  | **Pass audiences/demographics to all AI prompts** — Meta demographics, Google Ads audiences, LinkedIn demographics                  | M      | 🟠 High — AI can make audience-aware recommendations | ✅ Done |
-| 12  | **Pass Search Terms to AI for negative keyword mining** — auto-generate negative keyword suggestions                                | S      | 🟠 High — immediate cost savings for clients         | ✅ Done |
-| 13  | **Pass QS components to AI** — AI explains WHY quality score is low and what to fix                                                 | S      | 🟠 High — actionable QS improvement plan             | ✅ Done |
-| 14  | **Inject seasonality context** into all AI prompts (current month, upcoming events, industry seasons)                               | S      | 🟠 High — every AI endpoint benefits                 | ✅ Done |
-| 15  | **Pass ClientGoal context** to all AI prompts — AI says "you need ROAS 4× to hit your target" not just "ROAS is 3.2×"               | S      | 🟠 High — goal-oriented AI insights                  | ✅ Done |
-| 16  | **Add AiInsightsPanel to EcommerceSection** — persona already exists                                                                | S      | 🟡 Medium — quick win                                | ✅ Done |
-| 17  | **Add SuperSummary** to TikTok, Microsoft Ads, LinkedIn, Klaviyo, YouTube, HubSpot, CallRail                                        | M      | 🟠 High — 7 channels missing this feature            | ✅ Done |
-| 18  | **Cross-platform creative comparison** — Meta + TikTok + Google Ads creative data to one AI prompt                                  | M      | 🟡 Medium — unique cross-platform insight            | ✅ Done |
-| 19  | **Implement keyword suggestion AI** — combine GSC + SEMrush + Google Ads data → suggest new keywords to bid on / create content for | L      | 🔴 Critical — core agency value                      | ✅ Done |
-| 20  | **Implement audience suggestion AI** — combine demographics + interests + performance → suggest new audiences to test               | L      | 🔴 Critical — core agency value                      | ✅ Done |
+| #   | Action                                                                                                                          | Effort | Impact                                               | Status  |
+| --- | ------------------------------------------------------------------------------------------------------------------------------- | ------ | ---------------------------------------------------- | ------- |
+| 11  | **Pass audiences/demographics to all AI prompts** — Meta demographics, Google Ads audiences, LinkedIn demographics              | M      | 🟠 High — AI can make audience-aware recommendations | ✅ Done |
+| 12  | **Pass Search Terms to AI for negative keyword mining** — auto-generate negative keyword suggestions                            | S      | 🟠 High — immediate cost savings for clients         | ✅ Done |
+| 13  | **Pass QS components to AI** — AI explains WHY quality score is low and what to fix                                             | S      | 🟠 High — actionable QS improvement plan             | ✅ Done |
+| 14  | **Inject seasonality context** into all AI prompts (current month, upcoming events, industry seasons)                           | S      | 🟠 High — every AI endpoint benefits                 | ✅ Done |
+| 15  | **Pass ClientGoal context** to all AI prompts — AI says "you need ROAS 4× to hit your target" not just "ROAS is 3.2×"           | S      | 🟠 High — goal-oriented AI insights                  | ✅ Done |
+| 16  | **Add AiInsightsPanel to EcommerceSection** — persona already exists                                                            | S      | 🟡 Medium — quick win                                | ✅ Done |
+| 17  | **Add SuperSummary** to TikTok, Microsoft Ads, LinkedIn, Klaviyo, YouTube, HubSpot, CallRail                                    | M      | 🟠 High — 7 channels missing this feature            | ✅ Done |
+| 18  | **Cross-platform creative comparison** — Meta + TikTok + Google Ads creative data to one AI prompt                              | M      | 🟡 Medium — unique cross-platform insight            | ✅ Done |
+| 19  | **Implement keyword suggestion AI** — combine GSC + SEO + Google Ads data → suggest new keywords to bid on / create content for | L      | 🔴 Critical — core agency value                      | ✅ Done |
+| 20  | **Implement audience suggestion AI** — combine demographics + interests + performance → suggest new audiences to test           | L      | 🔴 Critical — core agency value                      | ✅ Done |
 
 ### Wave 3 — Missing Report Sections (2-4 weeks)
 
@@ -1403,7 +1403,7 @@ Build the systems that connect data across platforms:
 
 | #   | Action                                                                                                              | Effort | Impact                            | Status  |
 | --- | ------------------------------------------------------------------------------------------------------------------- | ------ | --------------------------------- | ------- |
-| 38  | **Unified Keyword Intelligence Database** — merge keywords from GSC + SEMrush + Google Ads + Microsoft Ads          | XL     | 🔴 Critical — core differentiator | ✅ Done |
+| 38  | **Unified Keyword Intelligence Database** — merge keywords from GSC + SEO + Google Ads + Microsoft Ads              | XL     | 🔴 Critical — core differentiator | ✅ Done |
 | 39  | **Unified Audience Profile** — AI composite audience from GA4 + Meta + TikTok + LinkedIn + YouTube demographics     | L      | 🟠 High                           | ✅ Done |
 | 40  | **Cross-engine ad comparison** — Google Ads vs Microsoft Ads keyword-level CPC/CTR/conversion benchmarks            | M      | 🟡 Medium                         | ✅ Done |
 | 41  | **Revenue attribution engine** — connect HubSpot deals to marketing channels via `hs_analytics_source`              | L      | 🟠 High                           | ✅ Done |
@@ -1428,17 +1428,17 @@ Implement API endpoints not yet connected:
 | 53  | **Meta ad relevance diagnostics** — quality/engagement/conversion rankings              | S      | 🟡 Medium | ✅ Done |
 | 54  | **Search Console branded vs non-branded split**                                         | S      | 🟡 Medium | ✅ Done |
 | 55  | **Search Console URL Inspection API** — indexation status per page                      | M      | 🟡 Medium | ✅ Done |
-| 56  | **SEMrush keyword difficulty + intent**                                                 | S      | 🟠 High   | ✅ Done |
-| 57  | **SEMrush content gap analysis**                                                        | M      | 🟠 High   | ✅ Done |
-| 58  | **SEMrush SERP features**                                                               | S      | 🟡 Medium | ✅ Done |
-| 59  | **SEMrush backlink new/lost tracking**                                                  | S      | 🟡 Medium | ✅ Done |
+| 56  | **SEO keyword difficulty + intent**                                                     | S      | 🟠 High   | ✅ Done |
+| 57  | **SEO content gap analysis**                                                            | M      | 🟠 High   | ✅ Done |
+| 58  | **SEO SERP features**                                                                   | S      | 🟡 Medium | ✅ Done |
+| 59  | **SEO backlink new/lost tracking**                                                      | S      | 🟡 Medium | ✅ Done |
 | 60  | **CrUX page-level + mobile/desktop + history**                                          | M      | 🟡 Medium | ✅ Done |
 | 61  | **Shopify/WooCommerce customer data** — CLV, repeat rate, cart abandonment              | M      | 🟠 High   | ✅ Done |
 | 62  | **Moz link intersect** — competitor link building targets                               | M      | 🟡 Medium | ✅ Done |
 
 ### Wave 7 — Tier-1 Channel Remaining Data Gaps (2-4 weeks each)
 
-Remaining data points from APIs we already connect to for our most mature channels (GA4, Google Ads, Meta, Search Console, SEMrush):
+Remaining data points from APIs we already connect to for our most mature channels (GA4, Google Ads, Meta, Search Console, SEO):
 
 | #   | Action                                                                                                                               | Effort | Impact    | Status  |
 | --- | ------------------------------------------------------------------------------------------------------------------------------------ | ------ | --------- | ------- |
@@ -1463,11 +1463,11 @@ Remaining data points from APIs we already connect to for our most mature channe
 | 81  | **Search Console page × country** — multi-dimension `[page, country]` report for international content performance                   | S      | 🟡 Medium | ✅ Done |
 | 82  | **Search Console Discover & News data** — `type` filter for `discover`/`googleNews` traffic                                          | S      | 🟡 Medium | ✅ Done |
 | 83  | **Search Console Sitemaps API** — submission status, errors, indexed vs submitted URL counts                                         | M      | 🟡 Medium | ✅ Done |
-| 84  | **SEMrush topic research API** — related topics, questions, content ideas per keyword cluster                                        | M      | 🟡 Medium | ✅ Done |
-| 85  | **SEMrush site audit data** — crawl errors, broken links, redirect chains, duplicate content (requires project setup)                | L      | 🟠 High   | ✅ Done |
-| 86  | **SEMrush ad copy database** — `domain_adwords_unique` for competitor PPC ad copy intelligence                                       | M      | 🟡 Medium | ✅ Done |
-| 87  | **SEMrush display advertising competitors** — `domain_adwords_display` placements                                                    | S      | 🟢 Low    | ✅ Done |
-| 88  | **SEMrush PLA/Shopping competitors** — `domain_shopping` product listing ads competition analysis                                    | S      | 🟡 Medium | ✅ Done |
+| 84  | **SEO topic research API** — related topics, questions, content ideas per keyword cluster                                            | M      | 🟡 Medium | ✅ Done |
+| 85  | **SEO site audit data** — crawl errors, broken links, redirect chains, duplicate content (requires project setup)                    | L      | 🟠 High   | ✅ Done |
+| 86  | **SEO ad copy database** — `domain_adwords_unique` for competitor PPC ad copy intelligence                                           | M      | 🟡 Medium | ✅ Done |
+| 87  | **SEO display advertising competitors** — `domain_adwords_display` placements                                                        | S      | 🟢 Low    | ✅ Done |
+| 88  | **SEO PLA/Shopping competitors** — `domain_shopping` product listing ads competition analysis                                        | S      | 🟡 Medium | ✅ Done |
 
 ### Wave 8 — Tier-2 Channel Depth (4-8 weeks each)
 
@@ -1547,7 +1547,7 @@ Higher-level features and cross-platform intelligence that depend on wave 7-8 da
 | Action items in plan (waves 1-8)     | 106 — **all complete** ✅                                                                                                                                                 |
 | Action items in plan (waves 9-10)    | 29 remaining — tier-2 depth, workflow features                                                                                                                            |
 | Total action items                   | 135 across 10 waves                                                                                                                                                       |
-| **Tier-1 channel ❌ table coverage** | **76/77 items implemented (99%)** — GA4: 100%, Google Ads: 100%, Meta: 100%, GSC: 100%, SEMrush: 94% (only Traffic Analytics — separate paid API)                         |
+| **Tier-1 channel ❌ table coverage** | **76/77 items implemented (99%)** — GA4: 100%, Google Ads: 100%, Meta: 100%, GSC: 100%, SEO: 94% (only Traffic Analytics — separate paid API)                             |
 | **Tier-1 channel ⚠️ table coverage** | **15/16 items addressed (94%)** — all under-used data now passed to AI                                                                                                    |
 | **💡 Agency benefit suggestions**    | **All 24/24 tier-1 suggestions now have data available** (previously 20/24)                                                                                               |
 
@@ -1555,7 +1555,7 @@ Higher-level features and cross-platform intelligence that depend on wave 7-8 da
 
 > **The fundamental insight of this plan remains: We are connected to 15 marketing platforms and now pulling ~92-95% of what their APIs provide.** Waves 1-6 transformed the platform from ~35% data utilisation to ~65-70%. Wave 7 added 26 new functions across tier-1 channels. **Wave 8 (now complete) closed virtually every remaining tier-1 data gap** — adding 18 new data-pulling functions: e-commerce revenue attribution, user acquisition sources, budget pacing, action breakdowns, saved audiences, reach estimates, spending limits, hourly performance, keyword trends, referring domains, anchor text distribution, competitor backlink comparison, and organic position changes.
 >
-> **All ⚠️ "fetch but under-use" items across tier-1 channels are now addressed** (15/16, 94%). Data that was previously fetched but only shown in dashboards is now passed to AI prompts for audience-aware, goal-oriented recommendations. **The ❌ tables across tier-1 channels are 99% implemented** (76/77 items). The only remaining item is SEMrush Traffic Analytics, which is a separate paid API product.
+> **All ⚠️ "fetch but under-use" items across tier-1 channels are now addressed** (15/16, 94%). Data that was previously fetched but only shown in dashboards is now passed to AI prompts for audience-aware, goal-oriented recommendations. **The ❌ tables across tier-1 channels are 99% implemented** (76/77 items). The only remaining item is SEO Traffic Analytics, which is a separate paid API product.
 >
 > **All 24 💡 agency benefit suggestions across tier-1 channels now have the underlying data available.** Revenue Attribution, Audience Architect, Mobile SEO Prioritiser, and Trend Spotter — previously blocked — were unblocked by Wave 8.
 >

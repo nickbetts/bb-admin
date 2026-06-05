@@ -54,7 +54,7 @@ interface ContentStrategyItem {
 interface Client {
   id: string;
   name: string;
-  semrushDomain?: string | null;
+  website?: string | null;
   searchConsoleSiteUrl?: string | null;
   contentStrategyLimits?: string | null;
 }
@@ -649,7 +649,7 @@ export default function ContentStrategyPage() {
   const [detectingCompetitors, setDetectingCompetitors] = useState(false);
   const [customCompetitorInput, setCustomCompetitorInput] = useState("");
   const [semrushProgress, setSemrushProgress] = useState("");
-  const [semrushDomain, setSemrushDomain] = useState("");
+  const [website, setSemrushDomain] = useState("");
   const [funMode, setFunMode] = useState<boolean>(() => {
     if (typeof window === "undefined") return true;
     const stored = localStorage.getItem("cs-fun-mode");
@@ -1041,25 +1041,12 @@ export default function ContentStrategyPage() {
     setAddSemrushSaving(true);
     setError("");
     try {
-      // 1. Create SEMrush project
-      const projRes = await fetch("/api/semrush/projects", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectName: currentClient.name, domain }),
-      });
-      const projData = await projRes.json();
-      if (projData.error) {
-        setError(`SEMrush project error: ${projData.error}`);
-        return;
-      }
-
-      // 2. Update existing client
+      // Update existing client website so SEO data can be derived from connected sources.
       const patchRes = await fetch(`/api/clients/${clientId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          semrushDomain: projData.domain ?? domain,
-          semrushProjectId: projData.projectId ?? null,
+          website: `https://${domain}`,
         }),
       });
       const patchData = await patchRes.json();
@@ -1068,20 +1055,20 @@ export default function ContentStrategyPage() {
         return;
       }
 
-      // 3. Update local clients list
-      const updatedDomain = projData.domain ?? domain;
+      // Update local clients list
+      const updatedDomain = domain;
       setClients((prev) =>
-        prev.map((c) => (c.id === clientId ? { ...c, semrushDomain: updatedDomain } : c)),
+        prev.map((c) => (c.id === clientId ? { ...c, website: updatedDomain } : c)),
       );
       setSemrushDomain(updatedDomain);
       setAddingSemrushToClient(false);
       setAddSemrushDomain("");
-      setSuccess(`SEMrush project created and linked to "${currentClient.name}"`);
+      setSuccess(`Website updated for "${currentClient.name}"`);
 
-      // 4. Kick off competitor detection
+      // Kick off competitor detection
       await handleDetectCompetitors(clientId, updatedDomain);
     } catch {
-      setError("Failed to create SEMrush project");
+      setError("Failed to update client website");
     } finally {
       setAddSemrushSaving(false);
     }
@@ -1099,27 +1086,13 @@ export default function ContentStrategyPage() {
     setNewClientCreating(true);
     setError("");
     try {
-      // 1. Create SEMrush project
-      const projRes = await fetch("/api/semrush/projects", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectName: name, domain }),
-      });
-      const projData = await projRes.json();
-      if (projData.error) {
-        setError(`SEMrush project error: ${projData.error}`);
-        return;
-      }
-
-      // 2. Create client with the domain + project ID
+      // Create client with website configured for SEO sources.
       const clientRes = await fetch("/api/clients", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name,
           website: `https://${domain}`,
-          semrushDomain: projData.domain ?? domain,
-          semrushProjectId: projData.projectId ?? null,
         }),
       });
       const newClient = await clientRes.json();
@@ -1128,33 +1101,33 @@ export default function ContentStrategyPage() {
         return;
       }
 
-      // 3. Update state and auto-select
+      // Update state and auto-select
       const clientForState: Client = {
         id: newClient.id,
         name: newClient.name,
-        semrushDomain: newClient.semrushDomain,
+        website: newClient.website,
         searchConsoleSiteUrl: newClient.searchConsoleSiteUrl,
       };
       setClients((prev) => [...prev, clientForState].sort((a, b) => a.name.localeCompare(b.name)));
       setClientId(newClient.id);
       setClientName(newClient.name);
-      setSemrushDomain(projData.domain ?? domain);
+      setSemrushDomain(domain);
       setCreatingClientSemrush(false);
       setNewClientName("");
       setNewClientDomain("");
-      setSuccess(`Client "${newClient.name}" created with SEMrush project`);
+      setSuccess(`Client "${newClient.name}" created`);
 
-      // 4. Kick off competitor detection
-      await handleDetectCompetitors(newClient.id, projData.domain ?? domain);
+      // Kick off competitor detection
+      await handleDetectCompetitors(newClient.id, domain);
     } catch {
-      setError("Failed to create client and SEMrush project");
+      setError("Failed to create client");
     } finally {
       setNewClientCreating(false);
     }
   }
 
   async function handleDetectCompetitors(selectedClientId: string, domainOverride?: string) {
-    const domain = domainOverride ?? clients.find((c) => c.id === selectedClientId)?.semrushDomain;
+    const domain = domainOverride ?? clients.find((c) => c.id === selectedClientId)?.website;
     if (!domain) {
       setDetectedCompetitors([]);
       return;
@@ -1245,7 +1218,7 @@ export default function ContentStrategyPage() {
     }
 
     const client = clients.find((c) => c.id === clientId);
-    if (!client?.semrushDomain) {
+    if (!client?.website) {
       setError("This client has no SEMrush domain configured. Set it in client settings first.");
       return;
     }
@@ -1582,7 +1555,7 @@ export default function ContentStrategyPage() {
                             } catch {
                               /* ignore parse errors */
                             }
-                            if (selectedClient.semrushDomain) {
+                            if (selectedClient.website) {
                               handleDetectCompetitors(e.target.value);
                             } else {
                               setDetectedCompetitors([]);
@@ -1599,7 +1572,7 @@ export default function ContentStrategyPage() {
                         {clients.map((c) => (
                           <option key={c.id} value={c.id}>
                             {c.name}
-                            {c.semrushDomain ? "" : " (no SEMrush domain)"}
+                            {c.website ? "" : " (no SEMrush domain)"}
                           </option>
                         ))}
                       </select>
@@ -1627,14 +1600,14 @@ export default function ContentStrategyPage() {
                       border: "1px solid var(--border)",
                       background: "var(--bg)",
                       fontSize: 13,
-                      color: semrushDomain ? "var(--text)" : "var(--text-4)",
+                      color: website ? "var(--text)" : "var(--text-4)",
                       minHeight: 42,
                     }}
                   >
                     <Globe
                       style={{ width: 14, height: 14, color: "var(--text-4)", flexShrink: 0 }}
                     />
-                    {semrushDomain || "Auto-filled from client settings"}
+                    {website || "Auto-filled from client settings"}
                     {clientId && clients.find((c) => c.id === clientId)?.searchConsoleSiteUrl && (
                       <span
                         style={{
@@ -1658,7 +1631,7 @@ export default function ContentStrategyPage() {
               </div>
 
               {/* No domain warning — with inline setup option */}
-              {clientId && !semrushDomain && !creatingClientSemrush && (
+              {clientId && !website && !creatingClientSemrush && (
                 <div style={{ marginBottom: 16 }}>
                   {addingSemrushToClient ? (
                     <div
@@ -1852,7 +1825,7 @@ export default function ContentStrategyPage() {
                 )}
                 {!detectedCompetitors.length && (
                   <p style={{ fontSize: 12, color: "var(--text-4)", margin: "0 0 10px" }}>
-                    {clientId && semrushDomain
+                    {clientId && website
                       ? detectingCompetitors
                         ? "Detecting competitors…"
                         : "SEMrush doesn't have enough organic data for this domain yet — competitor detection typically populates within a few weeks once the site has established rankings. The content gap analysis will be skipped for now."
@@ -2045,7 +2018,7 @@ export default function ContentStrategyPage() {
                     disabled={
                       generating ||
                       !clientId ||
-                      !semrushDomain ||
+                      !website ||
                       creatingClientSemrush ||
                       addingSemrushToClient
                     }

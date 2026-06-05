@@ -35,8 +35,6 @@ export async function POST(request: NextRequest) {
     const {
       name,
       website,
-      semrushDomain,
-      semrushProjectId,
       ga4PropertyId,
       ga4PropertyName,
       metaAccountId,
@@ -62,8 +60,6 @@ export async function POST(request: NextRequest) {
         name,
         slug,
         website: website || null,
-        semrushDomain: semrushDomain || null,
-        semrushProjectId: semrushProjectId ?? null,
         ga4PropertyId: ga4PropertyId || null,
         ga4PropertyName: ga4PropertyName || null,
         metaAccountId: metaAccountId || null,
@@ -72,7 +68,19 @@ export async function POST(request: NextRequest) {
         googleAdsAccountName: googleAdsAccountName || null,
         searchConsoleSiteUrl: searchConsoleSiteUrl || null,
         aiReportInstructions: aiReportInstructions || null,
-        status: (["active", "lead", "qualifying", "proposal_sent", "negotiating", "churned", "lost"] as const).includes(status) ? status : "lead",
+        status: (
+          [
+            "active",
+            "lead",
+            "qualifying",
+            "proposal_sent",
+            "negotiating",
+            "churned",
+            "lost",
+          ] as const
+        ).includes(status)
+          ? status
+          : "lead",
       },
     });
 

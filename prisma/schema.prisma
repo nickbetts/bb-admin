@@ -70,9 +70,6 @@ model Client {
   logoUrl                   String?
   ga4PropertyId             String?
   ga4PropertyName           String?
-  semrushDomain             String?
-  semrushProjectId          Int?
-  semrushCampaignIds        String?
   metaAccountId             String?
   metaAccountName           String?
   metaAccessToken           String?

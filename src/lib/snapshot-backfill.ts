@@ -23,7 +23,7 @@ export const PLATFORM_KEYS = [
   "cwv",
 ] as const;
 
-export type PlatformKey = typeof PLATFORM_KEYS[number];
+export type PlatformKey = (typeof PLATFORM_KEYS)[number];
 
 type ClientRow = {
   id: string;
@@ -33,7 +33,7 @@ type ClientRow = {
   metaAccountId: string | null;
   metaAccessToken: string | null;
   searchConsoleSiteUrl: string | null;
-  semrushDomain: string | null;
+  website: string | null;
   cwvUrl: string | null;
   tiktokAdvertiserId: string | null;
   tiktokAccessToken: string | null;
@@ -58,7 +58,13 @@ export type SnapshotBackfillResult = {
   totalSnapshots: number;
   totalSkipped: number;
   totalErrors: number;
-  results: { clientName: string; period: string; sections: string[]; skipped: string[]; errors: string[] }[];
+  results: {
+    clientName: string;
+    period: string;
+    sections: string[];
+    skipped: string[];
+    errors: string[];
+  }[];
 };
 
 function monthRange(offset: number): { start: string; end: string } {
@@ -75,7 +81,7 @@ async function fetchPlatformMetrics(
   platform: PlatformKey,
   client: ClientRow,
   start: string,
-  end: string
+  end: string,
 ): Promise<Record<string, number>> {
   switch (platform) {
     case "ga4": {
@@ -117,7 +123,7 @@ async function fetchPlatformMetrics(
       return { clicks: d.clicks, impressions: d.impressions, ctr: d.ctr, position: d.position };
     }
     case "seo": {
-      const d = await getDomainOverview(client.semrushDomain!);
+      const d = await getDomainOverview(client.website!);
       return {
         organicTraffic: d.organicTraffic,
         organicKeywords: d.organicKeywords,
@@ -126,7 +132,12 @@ async function fetchPlatformMetrics(
       };
     }
     case "tiktok": {
-      const d = await getTikTokAdsOverview(client.tiktokAdvertiserId!, client.tiktokAccessToken ?? "", start, end);
+      const d = await getTikTokAdsOverview(
+        client.tiktokAdvertiserId!,
+        client.tiktokAccessToken ?? "",
+        start,
+        end,
+      );
       return {
         spend: d.spend,
         impressions: d.impressions,
@@ -156,7 +167,7 @@ async function fetchPlatformMetrics(
         client.woocommerceKey ?? "",
         client.woocommerceSecret ?? "",
         start,
-        end
+        end,
       );
       return {
         totalRevenue: d.totalRevenue,
@@ -165,7 +176,12 @@ async function fetchPlatformMetrics(
       };
     }
     case "shopify": {
-      const d = await getShopifyStats(client.shopifyStoreDomain!, client.shopifyAccessToken ?? "", start, end);
+      const d = await getShopifyStats(
+        client.shopifyStoreDomain!,
+        client.shopifyAccessToken ?? "",
+        start,
+        end,
+      );
       return {
         totalRevenue: d.totalRevenue,
         totalOrders: d.totalOrders,
@@ -192,7 +208,9 @@ export function normalisePlatforms(platforms?: string[] | null): PlatformKey[] |
   return valid.length > 0 ? Array.from(new Set(valid)) : undefined;
 }
 
-export async function runSnapshotBackfill(options: SnapshotBackfillOptions): Promise<SnapshotBackfillResult> {
+export async function runSnapshotBackfill(
+  options: SnapshotBackfillOptions,
+): Promise<SnapshotBackfillResult> {
   const months = Math.min(Math.max(1, options.months), 60);
   const skipExisting = options.skipExisting;
   const selectedPlatforms = options.platforms;
@@ -207,7 +225,7 @@ export async function runSnapshotBackfill(options: SnapshotBackfillOptions): Pro
       metaAccountId: true,
       metaAccessToken: true,
       searchConsoleSiteUrl: true,
-      semrushDomain: true,
+      website: true,
       cwvUrl: true,
       tiktokAdvertiserId: true,
       tiktokAccessToken: true,
@@ -224,15 +242,21 @@ export async function runSnapshotBackfill(options: SnapshotBackfillOptions): Pro
 
   const existing = skipExisting
     ? new Set(
-      (
-        await prisma.metricSnapshot.findMany({
-          select: { clientId: true, sectionType: true, periodStart: true },
-        })
-      ).map((s) => `${s.clientId}|${s.sectionType}|${s.periodStart}`)
-    )
+        (
+          await prisma.metricSnapshot.findMany({
+            select: { clientId: true, sectionType: true, periodStart: true },
+          })
+        ).map((s) => `${s.clientId}|${s.sectionType}|${s.periodStart}`),
+      )
     : new Set<string>();
 
-  const results: { clientName: string; period: string; sections: string[]; skipped: string[]; errors: string[] }[] = [];
+  const results: {
+    clientName: string;
+    period: string;
+    sections: string[];
+    skipped: string[];
+    errors: string[];
+  }[] = [];
   let totalSnapshots = 0;
   let totalSkipped = 0;
   let totalErrors = 0;
@@ -254,12 +278,15 @@ export async function runSnapshotBackfill(options: SnapshotBackfillOptions): Pro
         { key: "searchconsole", check: client.searchConsoleSiteUrl },
         {
           key: "tiktok",
-          check: client.tiktokAdvertiserId && client.tiktokAccessToken ? client.tiktokAdvertiserId : null,
+          check:
+            client.tiktokAdvertiserId && client.tiktokAccessToken
+              ? client.tiktokAdvertiserId
+              : null,
         },
         { key: "microsoftads", check: client.microsoftAdsAccountId },
         { key: "woocommerce", check: client.woocommerceUrl },
         { key: "shopify", check: client.shopifyStoreDomain },
-        { key: "seo", check: start === periods[0].start ? client.semrushDomain : null },
+        { key: "seo", check: start === periods[0].start ? client.website : null },
         { key: "cwv", check: start === periods[0].start ? client.cwvUrl : null },
       ];
 

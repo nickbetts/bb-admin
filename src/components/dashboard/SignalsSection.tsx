@@ -9,7 +9,7 @@ interface Client {
   id: string;
   name: string;
   slug: string;
-  semrushDomain: string | null;
+  website: string | null;
   ga4PropertyId: string | null;
   metaAccountId: string | null;
   googleAdsCustomerId: string | null;
