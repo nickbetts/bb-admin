@@ -10,12 +10,20 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const origin = process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin;
-  const redirectUri = `${origin}/api/auth/google-ads/callback`;
+  const clientId = process.env.GOOGLE_ADS_CLIENT_ID;
+  if (!clientId) {
+    return NextResponse.json({ error: "GOOGLE_ADS_CLIENT_ID must be configured" }, { status: 500 });
+  }
+
+  const requestOrigin = new URL(request.url).origin;
+  const configuredBase =
+    process.env.GOOGLE_OAUTH_REDIRECT_BASE_URL ?? process.env.NEXT_PUBLIC_APP_URL;
+  const canonicalOrigin = (configuredBase ?? requestOrigin).replace(/\/$/, "");
+  const redirectUri = `${canonicalOrigin}/api/auth/google-ads/callback`;
   const state = crypto.randomBytes(16).toString("hex");
 
   const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
-  url.searchParams.set("client_id", process.env.GOOGLE_ADS_CLIENT_ID!);
+  url.searchParams.set("client_id", clientId);
   url.searchParams.set("redirect_uri", redirectUri);
   url.searchParams.set("response_type", "code");
   url.searchParams.set(
@@ -31,6 +39,13 @@ export async function GET(request: NextRequest) {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     maxAge: 600, // 10 minutes
+    path: "/",
+    sameSite: "lax",
+  });
+  response.cookies.set("gads_oauth_redirect_uri", redirectUri, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 600,
     path: "/",
     sameSite: "lax",
   });

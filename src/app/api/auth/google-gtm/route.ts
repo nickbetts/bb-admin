@@ -21,8 +21,11 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const origin = process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin;
-  const redirectUri = `${origin}/api/auth/google-gtm/callback`;
+  const requestOrigin = new URL(request.url).origin;
+  const configuredBase =
+    process.env.GOOGLE_OAUTH_REDIRECT_BASE_URL ?? process.env.NEXT_PUBLIC_APP_URL;
+  const canonicalOrigin = (configuredBase ?? requestOrigin).replace(/\/$/, "");
+  const redirectUri = `${canonicalOrigin}/api/auth/google-gtm/callback`;
   const state = crypto.randomBytes(16).toString("hex");
   const returnTo = request.nextUrl.searchParams.get("returnTo") ?? "/tools/tracking-guru";
 
@@ -51,6 +54,13 @@ export async function GET(request: NextRequest) {
     sameSite: "lax",
   });
   response.cookies.set("gtm_oauth_return_to", returnTo, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 600,
+    path: "/",
+    sameSite: "lax",
+  });
+  response.cookies.set("gtm_oauth_redirect_uri", redirectUri, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     maxAge: 600,

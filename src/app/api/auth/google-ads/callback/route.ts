@@ -21,8 +21,22 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/settings?error=oauth_state_mismatch", request.url));
   }
 
-  const canonicalOrigin = process.env.NEXT_PUBLIC_APP_URL ?? origin;
-  const redirectUri = `${canonicalOrigin}/api/auth/google-ads/callback`;
+  const clientId = process.env.GOOGLE_ADS_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_ADS_CLIENT_SECRET;
+  if (!clientId || !clientSecret) {
+    return NextResponse.redirect(
+      new URL("/settings?error=google_oauth_not_configured", request.url),
+    );
+  }
+
+  const cookieRedirectUri = request.cookies.get("gads_oauth_redirect_uri")?.value;
+  const configuredBase =
+    process.env.GOOGLE_OAUTH_REDIRECT_BASE_URL ?? process.env.NEXT_PUBLIC_APP_URL;
+  const fallbackOrigin = (configuredBase ?? origin).replace(/\/$/, "");
+  const redirectUri =
+    cookieRedirectUri && /^https?:\/\//.test(cookieRedirectUri)
+      ? cookieRedirectUri
+      : `${fallbackOrigin}/api/auth/google-ads/callback`;
 
   // Exchange authorisation code for tokens
   const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
@@ -30,15 +44,18 @@ export async function GET(request: NextRequest) {
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       code,
-      client_id: process.env.GOOGLE_ADS_CLIENT_ID!,
-      client_secret: process.env.GOOGLE_ADS_CLIENT_SECRET!,
+      client_id: clientId,
+      client_secret: clientSecret,
       redirect_uri: redirectUri,
       grant_type: "authorization_code",
     }),
   });
 
   if (!tokenRes.ok) {
-    console.error("Google Ads OAuth token exchange failed:", await tokenRes.text());
+    console.error("Google Ads OAuth token exchange failed:", {
+      redirectUri,
+      error: await tokenRes.text(),
+    });
     return NextResponse.redirect(new URL("/settings?error=token_exchange_failed", request.url));
   }
 
@@ -89,5 +106,6 @@ export async function GET(request: NextRequest) {
 
   const response = NextResponse.redirect(new URL("/settings?connected=1", request.url));
   response.cookies.delete("gads_oauth_state");
+  response.cookies.delete("gads_oauth_redirect_uri");
   return response;
 }
