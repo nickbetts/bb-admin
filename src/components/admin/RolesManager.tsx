@@ -27,13 +27,7 @@ const PERMISSION_GROUPS = [
   {
     label: "Tools",
     items: [
-      { key: "page_analyser", label: "Page Analyser" },
       { key: "proposal_generator", label: "Proposal Generator" },
-      { key: "proposals", label: "Proposals" },
-      { key: "competitor_intelligence", label: "Competitor Intel" },
-      { key: "keyword_tracker", label: "Keyword Tracker" },
-      { key: "media_plan", label: "Media Planner" },
-      { key: "pricing", label: "Pricing" },
       { key: "llm_generator", label: "LLM.txt Generator" },
       { key: "content_strategy", label: "Content Strategy" },
       { key: "access_requester", label: "Access Requester" },
@@ -41,18 +35,8 @@ const PERMISSION_GROUPS = [
       { key: "grand_plan", label: "Grand Plan" },
       { key: "content_generator", label: "Content Generator" },
       { key: "internal_linking", label: "Internal Linking Generator" },
-      { key: "qa_checklist", label: "Client QA" },
-      { key: "subscriptions", label: "Subscriptions" },
-      { key: "email_verifier", label: "Email Verifier" },
-      { key: "ad_image_generator", label: "Ad Image Generator" },
       { key: "meta_audience_scraper", label: "Meta Assassin" },
-      { key: "sales_handoff", label: "Sales Handoff" },
-      { key: "time_checker", label: "Time Checker" },
     ],
-  },
-  {
-    label: "Meridian",
-    items: [{ key: "meridian_architecture", label: "Architecture & Roadmap" }],
   },
   {
     label: "Admin",

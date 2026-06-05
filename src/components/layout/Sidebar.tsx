@@ -681,9 +681,7 @@ export function Sidebar({
               </p>
             )}
             {(() => {
-              const isActive =
-                pathname === "/admin" ||
-                (pathname.startsWith("/admin/") && !pathname.startsWith("/admin/clickr"));
+              const isActive = pathname === "/admin" || pathname.startsWith("/admin/");
               return (
                 <Link
                   href="/admin"

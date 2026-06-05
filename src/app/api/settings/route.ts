@@ -46,16 +46,6 @@ function normaliseNumericIdList(raw: string): string | null {
   return Array.from(new Set(parsed)).join(",");
 }
 
-function normaliseClickUpListId(raw: string): string | null {
-  const value = raw.trim();
-  if (!value) return "";
-  return /^\d+$/.test(value) ? value : null;
-}
-
-function normaliseClickUpListReference(raw: string): string {
-  return raw.trim();
-}
-
 function normaliseSettingEntry(key: string, value: unknown): NormalisedSetting | InvalidSetting {
   const raw = toPersistableString(value);
   if (raw === null) {
@@ -63,34 +53,6 @@ function normaliseSettingEntry(key: string, value: unknown): NormalisedSetting |
   }
 
   switch (key) {
-    case "clickupSalesHandoffServices":
-    case "clickupSalesHandoffChecklist":
-    case "clickupSalesHandoffAssignees":
-      return { key, value: normaliseMultilineList(raw) };
-    case "clickupSalesHandoffEnforce48HourNotice":
-    case "clickupSalesHandoffAllowUrgentOverride": {
-      const normalisedBoolean = normaliseBoolean(raw);
-      if (!normalisedBoolean) {
-        return { error: `${key} must be a boolean value` };
-      }
-      return { key, value: normalisedBoolean };
-    }
-    case "clickupSalesHandoffAssigneeIds": {
-      const normalisedIds = normaliseNumericIdList(raw);
-      if (normalisedIds === null) {
-        return { error: "clickupSalesHandoffAssigneeIds must contain only positive numeric IDs" };
-      }
-      return { key, value: normalisedIds };
-    }
-    case "clickupSalesHandoffListId": {
-      const normalisedListId = normaliseClickUpListId(raw);
-      if (normalisedListId === null) {
-        return { error: "clickupSalesHandoffListId must contain only digits" };
-      }
-      return { key, value: normalisedListId };
-    }
-    case "clickupTimeCheckerAllocationList":
-      return { key, value: normaliseClickUpListReference(raw) };
     default:
       return { key, value: raw };
   }
@@ -102,7 +64,6 @@ function normaliseSettingEntry(key: string, value: unknown): NormalisedSetting |
 const SENSITIVE_SETTING_KEYS = new Set<string>([
   "openaiApiKey",
   "anthropicApiKey",
-  "clickupApiToken",
   "resendApiKey",
   "turnstileSecretKey",
 ]);

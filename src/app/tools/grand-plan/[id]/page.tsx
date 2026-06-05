@@ -1918,13 +1918,6 @@ export default function GrandPlanViewPage({ params }: Props) {
             Linked sources
           </p>
           <div className="flex flex-wrap" style={{ gap: 6 }}>
-            {plan.proposal && (
-              <LinkedSource
-                href={`/tools/proposals/${plan.proposal.id}`}
-                label="Proposal"
-                title={plan.proposal.title}
-              />
-            )}
             {plan.keywordResearch && (
               <LinkedSource
                 href={`/tools/keyword-planner${plan.clientId ? `?clientId=${plan.clientId}` : ""}`}

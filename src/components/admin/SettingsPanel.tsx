@@ -18,13 +18,6 @@ interface Connection {
   createdAt: string;
 }
 
-interface ClickUpMember {
-  id: number;
-  username: string;
-  email: string;
-  profilePicture: string | null;
-}
-
 const OAUTH_ERRORS: Record<string, string> = {
   oauth_state_mismatch: "OAuth state mismatch. Please try again.",
   token_exchange_failed: "Failed to exchange authorisation code. Check your OAuth credentials.",
@@ -44,70 +37,6 @@ const META_TOKEN_EXPIRED_PATTERN =
 
 function isExpiredMetaTokenError(message: string | null): boolean {
   return Boolean(message && META_TOKEN_EXPIRED_PATTERN.test(message));
-}
-
-const DEFAULT_SALES_HANDOFF_SERVICES = [
-  "Google PPC",
-  "Paid Meta",
-  "Organic Social",
-  "Website Design",
-  "SEO",
-  "Custom Landing Pages",
-  "Email marketing",
-];
-
-const DEFAULT_SALES_HANDOFF_ASSIGNEES = ["Nick Betts", "Connor James"];
-
-const DEFAULT_SALES_HANDOFF_CHECKLIST = [
-  "Plan generated",
-  "Internal sign-off",
-  "Ready for client meeting",
-];
-
-function normaliseMultilineList(value: string, fallback: string[]): string {
-  const values = value
-    .split(/[\n,]+/)
-    .map((item) => item.trim())
-    .filter((item) => item.length > 0);
-
-  const finalValues = values.length > 0 ? Array.from(new Set(values)) : fallback;
-  return finalValues.join("\n");
-}
-
-function parseMultilineList(value: string | undefined, fallback: string[]): string[] {
-  if (!value) return fallback;
-
-  const values = value
-    .split(/[\n,]+/)
-    .map((item) => item.trim())
-    .filter((item) => item.length > 0);
-
-  return values.length > 0 ? Array.from(new Set(values)) : fallback;
-}
-
-function parseNumberList(value: string | undefined): number[] {
-  if (!value) return [];
-
-  return Array.from(
-    new Set(
-      value
-        .split(/[\n,]+/)
-        .map((item) => Number.parseInt(item.trim(), 10))
-        .filter((item) => Number.isFinite(item) && item > 0),
-    ),
-  );
-}
-
-function parseBooleanSetting(value: string | undefined, fallback: boolean): boolean {
-  if (!value) return fallback;
-  const normalised = value.trim().toLowerCase();
-  if (["1", "true", "yes", "on"].includes(normalised)) return true;
-  if (["0", "false", "no", "off"].includes(normalised)) return false;
-  return fallback;
-}
-
-function normaliseForMatch(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
 function GoogleIcon() {
@@ -168,27 +97,6 @@ function SettingsPanelInner() {
   const [anthropicKeySaving, setAnthropicKeySaving] = useState(false);
   const [anthropicKeySaved, setAnthropicKeySaved] = useState(false);
   const [anthropicKeyError, setAnthropicKeyError] = useState<string | null>(null);
-
-  const [clickupApiToken, setClickupApiToken] = useState("");
-  const [clickupApiTokenInput, setClickupApiTokenInput] = useState("");
-  const [clickupSalesHandoffListIdInput, setClickupSalesHandoffListIdInput] = useState("");
-  const [clickupTimeCheckerAllocationListInput, setClickupTimeCheckerAllocationListInput] =
-    useState("");
-  const [clickupSalesHandoffServicesInput, setClickupSalesHandoffServicesInput] = useState("");
-  const [clickupSalesHandoffChecklistInput, setClickupSalesHandoffChecklistInput] = useState("");
-  const [clickupSalesHandoffEnforce48HourNotice, setClickupSalesHandoffEnforce48HourNotice] =
-    useState(true);
-  const [clickupSalesHandoffAllowUrgentOverride, setClickupSalesHandoffAllowUrgentOverride] =
-    useState(true);
-  const [clickupSalesHandoffAssigneeNamesFallback, setClickupSalesHandoffAssigneeNamesFallback] =
-    useState<string[]>(DEFAULT_SALES_HANDOFF_ASSIGNEES);
-  const [clickupMembers, setClickupMembers] = useState<ClickUpMember[]>([]);
-  const [clickupMembersLoading, setClickupMembersLoading] = useState(false);
-  const [selectedClickupSalesHandoffAssigneeIds, setSelectedClickupSalesHandoffAssigneeIds] =
-    useState<number[]>([]);
-  const [clickupTokenSaving, setClickupTokenSaving] = useState(false);
-  const [clickupTokenSaved, setClickupTokenSaved] = useState(false);
-  const [clickupTokenError, setClickupTokenError] = useState<string | null>(null);
 
   // Resend email settings
   const [resendApiKey, setResendApiKey] = useState("");
@@ -319,29 +227,6 @@ function SettingsPanelInner() {
       const storedAnthropicKey = settings.anthropicApiKey ?? "";
       setAnthropicKey(storedAnthropicKey);
       setAnthropicKeyInput(storedAnthropicKey ? "sk-ant-…redacted" : "");
-      const storedClickupToken = settings.clickupApiToken ?? "";
-      setClickupApiToken(storedClickupToken);
-      setClickupApiTokenInput(storedClickupToken ? "pk_…redacted" : "");
-      setClickupSalesHandoffListIdInput(settings.clickupSalesHandoffListId ?? "");
-      setClickupTimeCheckerAllocationListInput(settings.clickupTimeCheckerAllocationList ?? "");
-      setClickupSalesHandoffServicesInput(
-        settings.clickupSalesHandoffServices ?? DEFAULT_SALES_HANDOFF_SERVICES.join("\n"),
-      );
-      setClickupSalesHandoffChecklistInput(
-        settings.clickupSalesHandoffChecklist ?? DEFAULT_SALES_HANDOFF_CHECKLIST.join("\n"),
-      );
-      setClickupSalesHandoffEnforce48HourNotice(
-        parseBooleanSetting(settings.clickupSalesHandoffEnforce48HourNotice, true),
-      );
-      setClickupSalesHandoffAllowUrgentOverride(
-        parseBooleanSetting(settings.clickupSalesHandoffAllowUrgentOverride, true),
-      );
-      setSelectedClickupSalesHandoffAssigneeIds(
-        parseNumberList(settings.clickupSalesHandoffAssigneeIds),
-      );
-      setClickupSalesHandoffAssigneeNamesFallback(
-        parseMultilineList(settings.clickupSalesHandoffAssignees, DEFAULT_SALES_HANDOFF_ASSIGNEES),
-      );
       if (settings.taskBenchmarks) {
         try {
           const stored = JSON.parse(settings.taskBenchmarks) as Array<{
@@ -365,58 +250,11 @@ function SettingsPanelInner() {
     }
   }, []);
 
-  const loadClickupMembers = useCallback(async () => {
-    setClickupMembersLoading(true);
-    try {
-      const res = await fetch("/api/clickup/members");
-      const data = (await res.json()) as { members?: ClickUpMember[]; error?: string };
-      if (!res.ok || !Array.isArray(data.members)) {
-        setClickupMembers([]);
-        return;
-      }
-
-      const members = data.members;
-      setClickupMembers(members);
-
-      setSelectedClickupSalesHandoffAssigneeIds((prev) => {
-        if (prev.length > 0) return prev;
-
-        const fallbackIds = clickupSalesHandoffAssigneeNamesFallback
-          .map((name) => {
-            const terms = name
-              .split(/\s+/)
-              .map((term) => normaliseForMatch(term))
-              .filter((term) => term.length > 0);
-
-            if (terms.length === 0) return null;
-
-            const matched = members.find((member) => {
-              const haystack = normaliseForMatch(`${member.username} ${member.email}`);
-              return terms.every((term) => haystack.includes(term));
-            });
-
-            return matched?.id ?? null;
-          })
-          .filter((id): id is number => typeof id === "number");
-
-        return Array.from(new Set(fallbackIds));
-      });
-    } catch {
-      setClickupMembers([]);
-    } finally {
-      setClickupMembersLoading(false);
-    }
-  }, [clickupSalesHandoffAssigneeNamesFallback]);
-
   useEffect(() => {
     loadConnections();
     loadMcc();
     loadMs365Connections();
   }, [loadConnections, loadMcc, loadMs365Connections]);
-
-  useEffect(() => {
-    loadClickupMembers();
-  }, [loadClickupMembers]);
 
   const loadMetaToken = useCallback(async () => {
     try {
@@ -495,70 +333,6 @@ function SettingsPanelInner() {
       setMccError(err instanceof Error ? err.message : "Failed to save");
     } finally {
       setMccSaving(false);
-    }
-  }
-
-  async function handleClickupTokenSave() {
-    setClickupTokenSaving(true);
-    setClickupTokenSaved(false);
-    setClickupTokenError(null);
-    try {
-      const tokenToSave = clickupApiTokenInput.startsWith("pk_…")
-        ? clickupApiToken
-        : clickupApiTokenInput;
-      const selectedMembers = clickupMembers.filter((member) =>
-        selectedClickupSalesHandoffAssigneeIds.includes(member.id),
-      );
-      const selectedNames = selectedMembers.map((member) => member.username || member.email);
-      const listIdToSave = clickupSalesHandoffListIdInput.trim();
-      const timeCheckerAllocationListToSave = clickupTimeCheckerAllocationListInput.trim();
-
-      const res = await fetch("/api/settings", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          clickupApiToken: tokenToSave,
-          clickupSalesHandoffListId: listIdToSave,
-          clickupTimeCheckerAllocationList: timeCheckerAllocationListToSave,
-          clickupSalesHandoffServices: normaliseMultilineList(
-            clickupSalesHandoffServicesInput,
-            DEFAULT_SALES_HANDOFF_SERVICES,
-          ),
-          clickupSalesHandoffChecklist: normaliseMultilineList(
-            clickupSalesHandoffChecklistInput,
-            DEFAULT_SALES_HANDOFF_CHECKLIST,
-          ),
-          clickupSalesHandoffEnforce48HourNotice: clickupSalesHandoffEnforce48HourNotice
-            ? "true"
-            : "false",
-          clickupSalesHandoffAllowUrgentOverride: clickupSalesHandoffAllowUrgentOverride
-            ? "true"
-            : "false",
-          clickupSalesHandoffAssigneeIds: selectedClickupSalesHandoffAssigneeIds.join(","),
-          clickupSalesHandoffAssignees: normaliseMultilineList(
-            selectedNames.join("\n"),
-            DEFAULT_SALES_HANDOFF_ASSIGNEES,
-          ),
-        }),
-      });
-      if (!res.ok) throw new Error("Failed to save");
-      setClickupApiToken(tokenToSave);
-      setClickupApiTokenInput(tokenToSave ? "pk_…redacted" : "");
-      setClickupSalesHandoffListIdInput(listIdToSave);
-      setClickupTimeCheckerAllocationListInput(timeCheckerAllocationListToSave);
-      setClickupSalesHandoffServicesInput((prev) =>
-        normaliseMultilineList(prev, DEFAULT_SALES_HANDOFF_SERVICES),
-      );
-      setClickupSalesHandoffChecklistInput((prev) =>
-        normaliseMultilineList(prev, DEFAULT_SALES_HANDOFF_CHECKLIST),
-      );
-      await loadClickupMembers();
-      setClickupTokenSaved(true);
-      setTimeout(() => setClickupTokenSaved(false), 3000);
-    } catch (err) {
-      setClickupTokenError(err instanceof Error ? err.message : "Failed to save");
-    } finally {
-      setClickupTokenSaving(false);
     }
   }
 
@@ -1682,246 +1456,6 @@ function SettingsPanelInner() {
           {anthropicKey && (
             <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 8 }}>
               ✓ Anthropic API key configured. Content Strategy Creator is ready to use.
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* ClickUp Integration */}
-      <div className="card" style={{ marginBottom: 24 }}>
-        <div className="card-header">
-          <div>
-            <h2 className="card-title">ClickUp Integration</h2>
-            <p className="card-subtitle">
-              Used to automatically create go-live checklists, sales request tasks, and set the
-              default allocation list for Time Checker. Get your personal API token from{" "}
-              <a
-                href="https://app.clickup.com/settings/apps"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: "var(--accent)" }}
-              >
-                ClickUp Settings → Apps
-              </a>
-              .
-            </p>
-          </div>
-        </div>
-        <div className="card-body">
-          {clickupTokenError && (
-            <p style={{ fontSize: 13, color: "var(--danger)", marginBottom: 12 }}>
-              {clickupTokenError}
-            </p>
-          )}
-          <div style={{ marginBottom: 12 }}>
-            <label
-              style={{
-                display: "block",
-                fontSize: 12,
-                fontWeight: 600,
-                color: "var(--text-2)",
-                marginBottom: 4,
-              }}
-            >
-              Sales request ClickUp list ID
-            </label>
-            <Input
-              className="font-mono text-[13px]"
-              value={clickupSalesHandoffListIdInput}
-              onChange={(e) => setClickupSalesHandoffListIdInput(e.target.value)}
-              placeholder="901218556745"
-            />
-            <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 4 }}>
-              Sales request tasks are created in this list.
-            </p>
-          </div>
-          <div style={{ marginBottom: 12 }}>
-            <label
-              style={{
-                display: "block",
-                fontSize: 12,
-                fontWeight: 600,
-                color: "var(--text-2)",
-                marginBottom: 4,
-              }}
-            >
-              Time checker allocation list (URL or ID)
-            </label>
-            <Input
-              className="font-mono text-[13px]"
-              value={clickupTimeCheckerAllocationListInput}
-              onChange={(e) => setClickupTimeCheckerAllocationListInput(e.target.value)}
-              placeholder="https://app.clickup.com/.../v/l/... or 9012..."
-            />
-            <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 4 }}>
-              This is the default prescribed-hours list used by the Time Checker tool for everyone.
-            </p>
-          </div>
-          <div style={{ marginBottom: 12, display: "grid", gap: 8 }}>
-            <label
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                fontSize: 13,
-                color: "var(--text-2)",
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={clickupSalesHandoffEnforce48HourNotice}
-                onChange={(e) => setClickupSalesHandoffEnforce48HourNotice(e.target.checked)}
-              />
-              Enforce 48-hour notice rule
-            </label>
-            <label
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                fontSize: 13,
-                color: "var(--text-2)",
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={clickupSalesHandoffAllowUrgentOverride}
-                onChange={(e) => setClickupSalesHandoffAllowUrgentOverride(e.target.checked)}
-                disabled={!clickupSalesHandoffEnforce48HourNotice}
-              />
-              Allow urgent override when under 48 hours
-            </label>
-          </div>
-          <div style={{ marginBottom: 12 }}>
-            <label
-              style={{
-                display: "block",
-                fontSize: 12,
-                fontWeight: 600,
-                color: "var(--text-2)",
-                marginBottom: 4,
-              }}
-            >
-              Sales request service options (one per line)
-            </label>
-            <Textarea
-              rows={6}
-              value={clickupSalesHandoffServicesInput}
-              onChange={(e) => setClickupSalesHandoffServicesInput(e.target.value)}
-              placeholder="Google PPC"
-              className="text-[13px]"
-            />
-          </div>
-          <div style={{ marginBottom: 12 }}>
-            <label
-              style={{
-                display: "block",
-                fontSize: 12,
-                fontWeight: 600,
-                color: "var(--text-2)",
-                marginBottom: 4,
-              }}
-            >
-              Sales request progress checklist (one per line)
-            </label>
-            <Textarea
-              rows={4}
-              value={clickupSalesHandoffChecklistInput}
-              onChange={(e) => setClickupSalesHandoffChecklistInput(e.target.value)}
-              placeholder="Plan generated"
-              className="text-[13px]"
-            />
-            <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 4 }}>
-              Order is preserved top to bottom when the checklist is created in ClickUp.
-            </p>
-          </div>
-          <div style={{ marginBottom: 12 }}>
-            <label
-              style={{
-                display: "block",
-                fontSize: 12,
-                fontWeight: 600,
-                color: "var(--text-2)",
-                marginBottom: 4,
-              }}
-            >
-              Sales request auto-assignees
-            </label>
-            <div
-              style={{
-                border: "1px solid var(--border)",
-                borderRadius: "var(--r-sm)",
-                padding: "10px 12px",
-                maxHeight: 210,
-                overflowY: "auto",
-                background: "var(--surface)",
-                display: "grid",
-                gap: 8,
-              }}
-            >
-              {clickupMembersLoading ? (
-                <p style={{ fontSize: 12, color: "var(--text-3)" }}>Loading ClickUp users…</p>
-              ) : clickupMembers.length === 0 ? (
-                <p style={{ fontSize: 12, color: "var(--text-3)" }}>
-                  No ClickUp users found. Confirm the token has access to your workspace.
-                </p>
-              ) : (
-                clickupMembers.map((member) => {
-                  const checked = selectedClickupSalesHandoffAssigneeIds.includes(member.id);
-                  return (
-                    <label
-                      key={member.id}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 8,
-                        fontSize: 13,
-                        color: "var(--text-2)",
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => {
-                          setSelectedClickupSalesHandoffAssigneeIds((prev) =>
-                            prev.includes(member.id)
-                              ? prev.filter((id) => id !== member.id)
-                              : [...prev, member.id],
-                          );
-                        }}
-                      />
-                      <span>{member.username || member.email}</span>
-                      {member.email && member.email !== member.username && (
-                        <span style={{ color: "var(--text-4)" }}>({member.email})</span>
-                      )}
-                    </label>
-                  );
-                })
-              )}
-            </div>
-            <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 4 }}>
-              Tick which ClickUp users should be auto-assigned to sales request tasks.
-            </p>
-          </div>
-          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <Input
-              type="password"
-              className="flex-1 font-mono text-[13px]"
-              placeholder="pk_…"
-              value={clickupApiTokenInput}
-              onChange={(e) => setClickupApiTokenInput(e.target.value)}
-              onFocus={() => {
-                if (clickupApiTokenInput === "pk_…redacted") setClickupApiTokenInput("");
-              }}
-            />
-            <Button type="button" onClick={handleClickupTokenSave} disabled={clickupTokenSaving}>
-              {clickupTokenSaving ? "Saving…" : clickupTokenSaved ? "Saved ✓" : "Save"}
-            </Button>
-          </div>
-          {clickupApiToken && (
-            <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 8 }}>
-              ✓ ClickUp token configured. Go-live checklists and sales request tasks can be created
-              automatically.
             </p>
           )}
         </div>
