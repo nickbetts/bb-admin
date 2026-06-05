@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { createHmac, timingSafeEqual } from "crypto";
 import { prisma } from "@/lib/prisma";
 
-const SESSION_SECRET = process.env.SESSION_SECRET ?? "i3media-session-secret";
+const SESSION_SECRET = process.env.SESSION_SECRET ?? "bettsandburton-session-secret";
 
 export const ALL_PERMISSIONS = [
   "dashboard",
@@ -109,8 +109,8 @@ export interface SessionUser {
 // Used as fallback for legacy (3-part) session tokens
 const LEGACY_ADMIN_USER: SessionUser = {
   id: "admin",
-  email: "admin@i3media.net",
-  name: "i3media Admin",
+  email: "admin@bettsandburton.com",
+  name: "Betts & Burton Admin",
   role: "admin",
   permissions: [...ALL_PERMISSIONS],
   mustChangePassword: false,

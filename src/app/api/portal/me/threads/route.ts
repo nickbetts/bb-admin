@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-const PORTAL_SECRET = process.env.SESSION_SECRET ?? "i3media-session-secret";
+const PORTAL_SECRET = process.env.SESSION_SECRET ?? "bettsandburton-session-secret";
 
 /**
  * Bet B — portal-user side of the two-way thread API. Mirrors the agency
@@ -20,7 +20,8 @@ function verifyPortalToken(token: string): { valid: boolean; userId?: string } {
   const payload = `${expiresAt}|${userId}|${nonce}`;
   const expected = createHmac("sha256", PORTAL_SECRET).update(payload).digest("hex");
   try {
-    if (!timingSafeEqual(Buffer.from(signature, "hex"), Buffer.from(expected, "hex"))) return { valid: false };
+    if (!timingSafeEqual(Buffer.from(signature, "hex"), Buffer.from(expected, "hex")))
+      return { valid: false };
   } catch {
     return { valid: false };
   }
@@ -66,7 +67,7 @@ export async function POST(request: NextRequest) {
     const user = await getPortalUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const body = await request.json() as { threadId?: string; subject?: string; body?: string };
+    const body = (await request.json()) as { threadId?: string; subject?: string; body?: string };
     if (!body.body) {
       return NextResponse.json({ error: "body is required" }, { status: 400 });
     }
@@ -74,7 +75,10 @@ export async function POST(request: NextRequest) {
     let threadId = body.threadId;
     if (!threadId) {
       if (!body.subject) {
-        return NextResponse.json({ error: "subject is required for a new thread" }, { status: 400 });
+        return NextResponse.json(
+          { error: "subject is required for a new thread" },
+          { status: 400 },
+        );
       }
       const thread = await prisma.portalThread.create({
         data: { clientId: user.clientId, subject: body.subject },

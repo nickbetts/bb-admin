@@ -4,7 +4,7 @@ import { createHmac } from "crypto";
 
 export const dynamic = "force-dynamic";
 
-const PORTAL_SECRET = process.env.SESSION_SECRET ?? "i3media-session-secret";
+const PORTAL_SECRET = process.env.SESSION_SECRET ?? "bettsandburton-session-secret";
 
 function createPortalToken(userId: string): string {
   const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -16,7 +16,7 @@ function createPortalToken(userId: string): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const data = await request.json() as { token: string };
+    const data = (await request.json()) as { token: string };
     if (!data.token) {
       return NextResponse.json({ error: "token is required" }, { status: 400 });
     }

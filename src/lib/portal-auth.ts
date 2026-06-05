@@ -5,7 +5,7 @@ import { createHmac, timingSafeEqual } from "crypto";
 
 export const dynamic = "force-dynamic";
 
-const PORTAL_SECRET = process.env.SESSION_SECRET ?? "i3media-session-secret";
+const PORTAL_SECRET = process.env.SESSION_SECRET ?? "bettsandburton-session-secret";
 
 function verifyPortalToken(token: string): { valid: boolean; userId?: string } {
   const parts = token.split("|");

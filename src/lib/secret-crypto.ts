@@ -4,7 +4,7 @@ import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from "crypt
 let cachedKey: Buffer | null = null;
 function getKey(): Buffer {
   if (cachedKey) return cachedKey;
-  const secret = process.env.SESSION_SECRET ?? "i3media-session-secret";
+  const secret = process.env.SESSION_SECRET ?? "bettsandburton-session-secret";
   cachedKey = scryptSync(secret, "i3media-secret-salt", 32);
   return cachedKey;
 }

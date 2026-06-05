@@ -15,10 +15,40 @@ import { NextRequest, NextResponse } from "next/server";
  */
 
 const LP_DOMAIN = (process.env.LP_DOMAIN?.trim() || "lp.bettsandburton.com").toLowerCase();
+const LEGACY_PUBLIC_PATH_PREFIXES = [
+  "/ad-traffic-protection",
+  "/ai-analyst",
+  "/budget-intelligence",
+  "/client-dashboard",
+  "/client-portal",
+  "/content-strategy-feature",
+  "/forecasting",
+  "/keyword-planner-feature",
+  "/llm-generator",
+  "/meridian",
+  "/meridian-architecture",
+  "/page-analyser",
+  "/proposals",
+  "/reports-feature",
+  "/signals",
+  "/clickr",
+];
 
 export default function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const host = (request.headers.get("host") || "").toLowerCase().split(":")[0];
+
+  // Keep only login as the public entrypoint for legacy marketing pages.
+  if (
+    LEGACY_PUBLIC_PATH_PREFIXES.some(
+      (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+    )
+  ) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
 
   // ── 2) LP domain routing ───────────────────────────────────────────────────
   // Skip Next internals + API + static so they always resolve normally.

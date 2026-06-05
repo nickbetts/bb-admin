@@ -5,16 +5,21 @@ import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/activity-logger";
 
 const APP_PASSWORD = process.env.APP_PASSWORD ?? "admin123";
-const SESSION_SECRET = process.env.SESSION_SECRET ?? "i3media-session-secret";
+const SESSION_SECRET = process.env.SESSION_SECRET ?? "bettsandburton-session-secret";
 const SESSION_DAYS = 7;
 const ADMIN_EMAIL_ALIASES: Record<string, string[]> = {
-  "admin@i3media.net": ["admin@i3media.co.uk"],
-  "admin@i3media.co.uk": ["admin@i3media.net"],
+  "admin@bettsandburton.com": ["admin@i3media.net", "admin@i3media.co.uk"],
+  "admin@i3media.net": ["admin@bettsandburton.com", "admin@i3media.co.uk"],
+  "admin@i3media.co.uk": ["admin@bettsandburton.com", "admin@i3media.net"],
 };
 
 function isAdminEmail(email: string): boolean {
   const normalised = email.toLowerCase().trim();
-  return normalised === "admin@i3media.net" || normalised === "admin@i3media.co.uk";
+  return (
+    normalised === "admin@bettsandburton.com" ||
+    normalised === "admin@i3media.net" ||
+    normalised === "admin@i3media.co.uk"
+  );
 }
 
 function getEmailCandidates(email: string): string[] {

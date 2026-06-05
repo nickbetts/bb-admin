@@ -10,7 +10,7 @@ import { cookies } from "next/headers";
 import { createHmac, randomBytes, timingSafeEqual } from "crypto";
 import { prisma } from "@/lib/prisma";
 
-const SESSION_SECRET = process.env.SESSION_SECRET ?? "i3media-session-secret";
+const SESSION_SECRET = process.env.SESSION_SECRET ?? "bettsandburton-session-secret";
 const COOKIE_NAME = "clickr_session";
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
@@ -18,7 +18,7 @@ export interface ClickrSessionUser {
   id: string;
   email: string;
   name: string | null;
-  planTier: string;   // "free" | "starter" | "pro"
+  planTier: string; // "free" | "starter" | "pro"
   planStatus: string; // "active" | "past_due" | "cancelled" | "disabled"
   lpsThisMonth: number;
 }
@@ -96,7 +96,9 @@ export async function getClickrSession(): Promise<ClickrSession | null> {
  */
 export async function setClickrSessionCookie(
   userId: string,
-  response: { cookies: { set: (name: string, value: string, opts: Record<string, unknown>) => void } },
+  response: {
+    cookies: { set: (name: string, value: string, opts: Record<string, unknown>) => void };
+  },
 ): Promise<void> {
   const expiresAt = Date.now() + SESSION_TTL_MS;
   const token = signToken(userId, expiresAt);
@@ -124,7 +126,9 @@ export async function setClickrSessionCookie(
  */
 export async function clearClickrSessionCookie(
   token: string,
-  response: { cookies: { set: (name: string, value: string, opts: Record<string, unknown>) => void } },
+  response: {
+    cookies: { set: (name: string, value: string, opts: Record<string, unknown>) => void };
+  },
 ): Promise<void> {
   try {
     await prisma.clickrSession.delete({ where: { token } });

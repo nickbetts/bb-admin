@@ -5,7 +5,7 @@ import { getSession } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-const PORTAL_SECRET = process.env.SESSION_SECRET ?? "i3media-session-secret";
+const PORTAL_SECRET = process.env.SESSION_SECRET ?? "bettsandburton-session-secret";
 
 // Email pattern reserved for synthetic preview-only portal users.
 // These are auto-created so internal staff can preview a client's portal
@@ -42,7 +42,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   }
 
   let portalUser = portalUserId
-    ? await prisma.clientPortalUser.findFirst({ where: { id: portalUserId, clientId, isActive: true } })
+    ? await prisma.clientPortalUser.findFirst({
+        where: { id: portalUserId, clientId, isActive: true },
+      })
     : await prisma.clientPortalUser.findFirst({
         where: {
           clientId,

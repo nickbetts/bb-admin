@@ -7,7 +7,7 @@ import { withApiCache } from "@/lib/api-cache";
 
 export const dynamic = "force-dynamic";
 
-const PORTAL_SECRET = process.env.SESSION_SECRET ?? "i3media-session-secret";
+const PORTAL_SECRET = process.env.SESSION_SECRET ?? "bettsandburton-session-secret";
 
 function verifyPortalToken(token: string): {
   valid: boolean;
@@ -18,17 +18,10 @@ function verifyPortalToken(token: string): {
 
   const [expiresAt, userId, nonce, signature] = parts;
   const payload = `${expiresAt}|${userId}|${nonce}`;
-  const expected = createHmac("sha256", PORTAL_SECRET)
-    .update(payload)
-    .digest("hex");
+  const expected = createHmac("sha256", PORTAL_SECRET).update(payload).digest("hex");
 
   try {
-    if (
-      !timingSafeEqual(
-        Buffer.from(signature, "hex"),
-        Buffer.from(expected, "hex")
-      )
-    ) {
+    if (!timingSafeEqual(Buffer.from(signature, "hex"), Buffer.from(expected, "hex"))) {
       return { valid: false };
     }
   } catch {
@@ -45,8 +38,7 @@ export async function GET() {
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get("portal_session")?.value;
-    if (!token)
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const result = verifyPortalToken(token);
     if (!result.valid || !result.userId) {
@@ -91,7 +83,7 @@ export async function GET() {
       ]);
 
       // Take only the latest snapshot per platform
-      const latestByPlatform: Record<string, typeof snapshots[number]> = {};
+      const latestByPlatform: Record<string, (typeof snapshots)[number]> = {};
       for (const snap of snapshots) {
         if (
           !latestByPlatform[snap.sectionType] ||
@@ -111,7 +103,7 @@ export async function GET() {
         ? goals
             .map(
               (g) =>
-                `- ${g.title}: target ${g.targetValue}${g.unit ?? ""} by ${g.targetDate}, current ${g.currentValue ?? "not yet measured"}`
+                `- ${g.title}: target ${g.targetValue}${g.unit ?? ""} by ${g.targetDate}, current ${g.currentValue ?? "not yet measured"}`,
             )
             .join("\n")
         : "No active goals set.";
@@ -121,7 +113,7 @@ export async function GET() {
             .slice(0, 10)
             .map(
               (a) =>
-                `- [${a.severity}] ${a.platform}: ${a.metric} went ${a.direction} ${a.changePercent.toFixed(1)}% — ${a.detail}`
+                `- [${a.severity}] ${a.platform}: ${a.metric} went ${a.direction} ${a.changePercent.toFixed(1)}% — ${a.detail}`,
             )
             .join("\n")
         : "No anomalies detected in the last 30 days.";
