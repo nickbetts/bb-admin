@@ -38,7 +38,6 @@ import {
   AlertCircle,
   ClipboardCheck,
 } from "lucide-react";
-import { ClickUpTaskModal } from "@/components/landing-pages/ClickUpTaskModal";
 import {
   DndContext,
   closestCenter,
@@ -972,7 +971,6 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
 
   // Leads viewer modal
   const [showLeadsModal, setShowLeadsModal] = useState(false);
-  const [showClickUpModal, setShowClickUpModal] = useState(false);
 
   // Page settings modal state
   const [showPageSettings, setShowPageSettings] = useState(false);
@@ -2998,15 +2996,6 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
           <button onClick={handleDownload} style={toolbarBtn} title="Download HTML">
             <Download style={{ width: 14, height: 14 }} />
             Download
-          </button>
-
-          <button
-            onClick={() => setShowClickUpModal(true)}
-            style={{ ...toolbarBtn, color: "var(--accent)" }}
-            title="Create ClickUp go-live task"
-          >
-            <ClipboardCheck style={{ width: 14, height: 14 }} />
-            ClickUp
           </button>
 
           <button
@@ -5932,16 +5921,6 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
           );
         }}
       />
-
-      {/* ClickUp go-live task modal */}
-      {showClickUpModal && (
-        <ClickUpTaskModal
-          lpTitle={lp.title}
-          lpId={id}
-          clientName={lp.client?.name}
-          onClose={() => setShowClickUpModal(false)}
-        />
-      )}
     </div>
   );
 }

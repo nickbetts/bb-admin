@@ -6,10 +6,7 @@ import {
   FileText,
   Globe,
   BookOpen,
-  FileSignature,
-  BarChart3,
   Search,
-  CheckSquare,
   Map,
   Plus,
   ArrowRight,
@@ -52,35 +49,11 @@ interface ContentStrategyItem {
   createdAt: string;
 }
 
-interface ProposalItem {
-  id: string;
-  clientName: string;
-  title: string;
-  pipelineStage: string;
-  shareToken: string | null;
-  createdAt: string;
-}
-
-interface MediaPlanItem {
-  id: string;
-  title: string;
-  status: string;
-  updatedAt: string;
-}
-
 interface KeywordResearchItem {
   id: string;
   title: string;
   website: string;
   createdAt: string;
-}
-
-interface QaChecklistItem {
-  id: string;
-  checklistType: string;
-  label: string | null;
-  status: string;
-  updatedAt: string;
 }
 
 interface GrandPlanItem {
@@ -96,10 +69,7 @@ interface AssetsData {
   reports: AssetGroup<ReportItem>;
   landingPages: AssetGroup<LandingPageItem>;
   contentStrategies: AssetGroup<ContentStrategyItem>;
-  proposals: AssetGroup<ProposalItem>;
-  mediaPlans: AssetGroup<MediaPlanItem>;
   keywordResearch: AssetGroup<KeywordResearchItem>;
-  qaChecklists: AssetGroup<QaChecklistItem>;
   grandPlans: AssetGroup<GrandPlanItem>;
 }
 
@@ -114,23 +84,35 @@ interface HubSectionProps {
 const TOOL_CONFIG = [
   { key: "reports" as const, label: "Reports", icon: FileText, color: "var(--accent)" },
   { key: "landingPages" as const, label: "Landing Pages", icon: Globe, color: "#3b82f6" },
-  { key: "contentStrategies" as const, label: "Content Strategies", icon: BookOpen, color: "#8b5cf6" },
-  { key: "proposals" as const, label: "Proposals", icon: FileSignature, color: "#f59e0b" },
-  { key: "mediaPlans" as const, label: "Media Plans", icon: BarChart3, color: "#10b981" },
+  {
+    key: "contentStrategies" as const,
+    label: "Content Strategies",
+    icon: BookOpen,
+    color: "#8b5cf6",
+  },
   { key: "keywordResearch" as const, label: "Keyword Research", icon: Search, color: "#ec4899" },
-  { key: "qaChecklists" as const, label: "QA Checklists", icon: CheckSquare, color: "#06b6d4" },
   { key: "grandPlans" as const, label: "Grand Plans", icon: Map, color: "#0f172a" },
 ] as const;
 
 function statusBadgeVariant(status: string): "default" | "success" | "warning" | "danger" | "info" {
   switch (status) {
-    case "published": case "complete": case "won": case "completed": case "active":
+    case "published":
+    case "complete":
+    case "won":
+    case "completed":
+    case "active":
       return "success";
-    case "draft": case "prospect": case "in_progress":
+    case "draft":
+    case "prospect":
+    case "in_progress":
       return "default";
-    case "review": case "sent": case "viewed": case "negotiating":
+    case "review":
+    case "sent":
+    case "viewed":
+    case "negotiating":
       return "info";
-    case "lost": case "archived":
+    case "lost":
+    case "archived":
       return "danger";
     default:
       return "default";
@@ -138,20 +120,15 @@ function statusBadgeVariant(status: string): "default" | "success" | "warning" |
 }
 
 function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  return new Date(dateStr).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 function formatStatus(status: string) {
-  return status.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
-}
-
-function qaTypeLabel(type: string) {
-  switch (type) {
-    case "website": return "Website";
-    case "google_ads": return "Google Ads";
-    case "meta_ads": return "Meta Ads";
-    default: return type;
-  }
+  return status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 // ─── Component ──────────────────────────────────────────────────────────────
@@ -167,7 +144,7 @@ export function HubSection({ clientId, clientSlug, clientName }: HubSectionProps
     let cancelled = false;
 
     fetch(`/api/clients/${clientId}/assets`)
-      .then(r => {
+      .then((r) => {
         if (!r.ok) throw new Error("Failed to load assets");
         return r.json();
       })
@@ -177,38 +154,48 @@ export function HubSection({ clientId, clientSlug, clientName }: HubSectionProps
           setLoading(false);
         }
       })
-      .catch(e => {
+      .catch((e) => {
         if (!cancelled) {
           setError(e instanceof Error ? e.message : "Unknown error");
           setLoading(false);
         }
       });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [clientId]);
 
   const handleStatCardClick = useCallback((key: string) => {
-    setExpandedSection(prev => prev === key ? null : key);
+    setExpandedSection((prev) => (prev === key ? null : key));
     // Scroll to the section after a brief delay for the animation
     setTimeout(() => {
       sectionRefs.current[key]?.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }, 100);
   }, []);
 
-  const setSectionRef = useCallback((key: string) => (el: HTMLDivElement | null) => {
-    sectionRefs.current[key] = el;
-  }, []);
+  const setSectionRef = useCallback(
+    (key: string) => (el: HTMLDivElement | null) => {
+      sectionRefs.current[key] = el;
+    },
+    [],
+  );
 
   const enc = encodeURIComponent;
 
   // Quick-create links
   const createLinks = [
-    // PR5: New Content Strategy + New Proposal removed — use Grand Plan instead.
-    { label: "New Grand Plan", href: `/tools/grand-plan/new?clientId=${clientId}&clientName=${enc(clientName)}`, icon: Map },
+    {
+      label: "New Grand Plan",
+      href: `/tools/grand-plan/new?clientId=${clientId}&clientName=${enc(clientName)}`,
+      icon: Map,
+    },
     { label: "New Report", href: `/clients/${clientSlug}/report/new`, icon: FileText },
-    { label: "New Landing Page", href: `/tools/landing-pages/new?clientId=${clientId}&clientName=${enc(clientName)}`, icon: Globe },
-    { label: "New Media Plan", href: `/tools/media-plan?clientId=${clientId}&clientName=${enc(clientName)}&action=new`, icon: BarChart3 },
-    { label: "New QA Checklist", href: `/tools/qa-checklist?clientId=${clientId}&clientName=${enc(clientName)}&action=new`, icon: CheckSquare },
+    {
+      label: "New Landing Page",
+      href: `/tools/landing-pages/new?clientId=${clientId}&clientName=${enc(clientName)}`,
+      icon: Globe,
+    },
   ];
 
   // ─── Loading state ──────────────────────────────────────────────────────
@@ -216,11 +203,20 @@ export function HubSection({ clientId, clientSlug, clientName }: HubSectionProps
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
         <SectionHeader title="Client Hub" icon={LayoutDashboard} iconColor="var(--accent)" />
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 16 }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
+            gap: 16,
+          }}
+        >
           {Array.from({ length: 7 }).map((_, i) => (
             <div key={i} className="card" style={{ padding: 20, height: 100 }}>
               <div className="skeleton" style={{ width: 40, height: 40, borderRadius: 8 }} />
-              <div className="skeleton" style={{ width: "60%", height: 14, marginTop: 12, borderRadius: 4 }} />
+              <div
+                className="skeleton"
+                style={{ width: "60%", height: 14, marginTop: 12, borderRadius: 4 }}
+              />
             </div>
           ))}
         </div>
@@ -258,7 +254,13 @@ export function HubSection({ clientId, clientSlug, clientName }: HubSectionProps
       />
 
       {/* ── Row 1: Stat cards ────────────────────────────────────────────── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 16 }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
+          gap: 16,
+        }}
+      >
         {TOOL_CONFIG.map(({ key, label, icon: Icon, color }) => {
           const count = data[key].count;
           const isExpanded = expandedSection === key;
@@ -280,21 +282,29 @@ export function HubSection({ clientId, clientSlug, clientName }: HubSectionProps
                 width: "100%",
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <div style={{
-                  width: 40, height: 40, borderRadius: 10,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  background: `color-mix(in srgb, ${color} 12%, transparent)`,
-                }}>
+              <div
+                style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
+              >
+                <div
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 10,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: `color-mix(in srgb, ${color} 12%, transparent)`,
+                  }}
+                >
                   <Icon style={{ width: 20, height: 20, color }} />
                 </div>
-                <span style={{ fontSize: 28, fontWeight: 700, color: "var(--text)", lineHeight: 1 }}>
+                <span
+                  style={{ fontSize: 28, fontWeight: 700, color: "var(--text)", lineHeight: 1 }}
+                >
                   {count}
                 </span>
               </div>
-              <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)" }}>
-                {label}
-              </span>
+              <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)" }}>{label}</span>
             </button>
           );
         })}
@@ -302,10 +312,14 @@ export function HubSection({ clientId, clientSlug, clientName }: HubSectionProps
 
       {/* ── Row 2: Quick-create action bar ────────────────────────────────── */}
       <div className="card" style={{ padding: "12px 16px" }}>
-        <div style={{
-          display: "flex", flexWrap: "wrap", gap: 8,
-          alignItems: "center",
-        }}>
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 8,
+            alignItems: "center",
+          }}
+        >
           <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-2)", marginRight: 4 }}>
             Quick create
           </span>
@@ -345,8 +359,20 @@ export function HubSection({ clientId, clientSlug, clientName }: HubSectionProps
                     title={`No ${label.toLowerCase()} yet`}
                     description={`Create your first ${label.toLowerCase().replace(/s$/, "")} for ${clientName}.`}
                     actions={
-                      createLinks.find(l => l.label.includes(label.replace(/s$/, "").replace("QA Checklist", "QA Checklist")))
-                        ? [{ label: `Create ${label.replace(/s$/, "").replace("Keyword Research", "Research")}`, href: createLinks.find(l => l.label.includes(label.replace(/s$/, "").replace("ies", "y")))?.href ?? "#" }]
+                      createLinks.find((l) =>
+                        l.label.includes(
+                          label.replace(/s$/, "").replace("QA Checklist", "QA Checklist"),
+                        ),
+                      )
+                        ? [
+                            {
+                              label: `Create ${label.replace(/s$/, "").replace("Keyword Research", "Research")}`,
+                              href:
+                                createLinks.find((l) =>
+                                  l.label.includes(label.replace(/s$/, "").replace("ies", "y")),
+                                )?.href ?? "#",
+                            },
+                          ]
                         : undefined
                     }
                   />
@@ -354,91 +380,65 @@ export function HubSection({ clientId, clientSlug, clientName }: HubSectionProps
               ) : (
                 <div>
                   {/* Render recent items */}
-                  {key === "reports" && (group.recent as ReportItem[]).map(item => (
-                    <ItemRow
-                      key={item.id}
-                      href={`/reports/${item.id}`}
-                      title={item.title}
-                      subtitle={item.period}
-                      status={item.status}
-                      date={item.createdAt}
-                    />
-                  ))}
-                  {key === "landingPages" && (group.recent as LandingPageItem[]).map(item => (
-                    <ItemRow
-                      key={item.id}
-                      href={`/tools/landing-pages/${item.id}`}
-                      title={item.title}
-                      subtitle={item.status}
-                      status={item.status}
-                      date={item.updatedAt}
-                      shareToken={item.shareToken}
-                      sharePrefix="/share/landing-page/"
-                    />
-                  ))}
-                  {key === "contentStrategies" && (group.recent as ContentStrategyItem[]).map(item => (
-                    <ItemRow
-                      key={item.id}
-                      href={`/tools/content-strategy?id=${item.id}`}
-                      title={item.title}
-                      subtitle={item.period}
-                      date={item.createdAt}
-                      shareToken={item.shareToken}
-                      sharePrefix="/share/content-strategy/"
-                    />
-                  ))}
-                  {key === "proposals" && (group.recent as ProposalItem[]).map(item => (
-                    <ItemRow
-                      key={item.id}
-                      href={`/tools/proposals/${item.id}`}
-                      title={item.title}
-                      subtitle={formatStatus(item.pipelineStage)}
-                      status={item.pipelineStage}
-                      date={item.createdAt}
-                      shareToken={item.shareToken}
-                      sharePrefix="/share/proposal/"
-                    />
-                  ))}
-                  {key === "mediaPlans" && (group.recent as MediaPlanItem[]).map(item => (
-                    <ItemRow
-                      key={item.id}
-                      href={`/tools/media-plan/${item.id}`}
-                      title={item.title}
-                      status={item.status}
-                      date={item.updatedAt}
-                    />
-                  ))}
-                  {key === "keywordResearch" && (group.recent as KeywordResearchItem[]).map(item => (
-                    <ItemRow
-                      key={item.id}
-                      href={`/tools/keyword-planner?research=${item.id}`}
-                      title={item.title}
-                      subtitle={item.website}
-                      date={item.createdAt}
-                    />
-                  ))}
-                  {key === "qaChecklists" && (group.recent as QaChecklistItem[]).map(item => (
-                    <ItemRow
-                      key={item.id}
-                      href={`/tools/qa-checklist?id=${item.id}`}
-                      title={item.label || qaTypeLabel(item.checklistType)}
-                      subtitle={qaTypeLabel(item.checklistType)}
-                      status={item.status}
-                      date={item.updatedAt}
-                    />
-                  ))}
-                  {key === "grandPlans" && (group.recent as GrandPlanItem[]).map(item => (
-                    <ItemRow
-                      key={item.id}
-                      href={`/tools/grand-plan/${item.id}`}
-                      title={item.title}
-                      subtitle={formatStatus(item.purpose)}
-                      status={item.status}
-                      date={item.updatedAt}
-                      shareToken={item.shareToken}
-                      sharePrefix="/share/grand-plan/"
-                    />
-                  ))}
+                  {key === "reports" &&
+                    (group.recent as ReportItem[]).map((item) => (
+                      <ItemRow
+                        key={item.id}
+                        href={`/reports/${item.id}`}
+                        title={item.title}
+                        subtitle={item.period}
+                        status={item.status}
+                        date={item.createdAt}
+                      />
+                    ))}
+                  {key === "landingPages" &&
+                    (group.recent as LandingPageItem[]).map((item) => (
+                      <ItemRow
+                        key={item.id}
+                        href={`/tools/landing-pages/${item.id}`}
+                        title={item.title}
+                        subtitle={item.status}
+                        status={item.status}
+                        date={item.updatedAt}
+                        shareToken={item.shareToken}
+                        sharePrefix="/share/landing-page/"
+                      />
+                    ))}
+                  {key === "contentStrategies" &&
+                    (group.recent as ContentStrategyItem[]).map((item) => (
+                      <ItemRow
+                        key={item.id}
+                        href={`/tools/content-strategy?id=${item.id}`}
+                        title={item.title}
+                        subtitle={item.period}
+                        date={item.createdAt}
+                        shareToken={item.shareToken}
+                        sharePrefix="/share/content-strategy/"
+                      />
+                    ))}
+                  {key === "keywordResearch" &&
+                    (group.recent as KeywordResearchItem[]).map((item) => (
+                      <ItemRow
+                        key={item.id}
+                        href={`/tools/keyword-planner?research=${item.id}`}
+                        title={item.title}
+                        subtitle={item.website}
+                        date={item.createdAt}
+                      />
+                    ))}
+                  {key === "grandPlans" &&
+                    (group.recent as GrandPlanItem[]).map((item) => (
+                      <ItemRow
+                        key={item.id}
+                        href={`/tools/grand-plan/${item.id}`}
+                        title={item.title}
+                        subtitle={formatStatus(item.purpose)}
+                        status={item.status}
+                        date={item.updatedAt}
+                        shareToken={item.shareToken}
+                        sharePrefix="/share/grand-plan/"
+                      />
+                    ))}
 
                   {/* View all footer */}
                   <ViewAllFooter
@@ -480,32 +480,40 @@ function ItemRow({
     <Link
       href={href}
       style={{
-        display: "flex", alignItems: "center", justifyContent: "space-between",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
         padding: "14px 24px",
         borderBottom: "1px solid var(--border-subtle)",
-        textDecoration: "none", transition: "background 0.15s",
+        textDecoration: "none",
+        transition: "background 0.15s",
       }}
       className="hover:bg-[var(--border-subtle)]"
     >
       <div style={{ minWidth: 0, flex: 1 }}>
-        <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <p
+          style={{
+            fontSize: 14,
+            fontWeight: 600,
+            color: "var(--text)",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
           {title}
         </p>
         {subtitle && (
-          <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>
-            {subtitle}
-          </p>
+          <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>{subtitle}</p>
         )}
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0, marginLeft: 12 }}>
+      <div
+        style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0, marginLeft: 12 }}
+      >
         <span style={{ fontSize: 11, color: "var(--text-4)", whiteSpace: "nowrap" }}>
           {formatDate(date)}
         </span>
-        {status && (
-          <Badge variant={statusBadgeVariant(status)}>
-            {formatStatus(status)}
-          </Badge>
-        )}
+        {status && <Badge variant={statusBadgeVariant(status)}>{formatStatus(status)}</Badge>}
         {shareToken && sharePrefix && (
           <ExternalLink style={{ width: 14, height: 14, color: "var(--text-4)" }} />
         )}
@@ -530,21 +538,20 @@ function ViewAllFooter({
     reports: `/clients/${clientSlug}?tab=hub&filter=reports`,
     landingPages: `/tools/landing-pages?clientId=${clientId}`,
     contentStrategies: `/tools/content-strategy?clientId=${clientId}&action=list`,
-    proposals: `/tools/proposals?clientId=${clientId}`,
-    mediaPlans: `/tools/media-plan?clientId=${clientId}`,
     keywordResearch: `/tools/keyword-planner?clientId=${clientId}`,
-    qaChecklists: `/tools/qa-checklist?clientId=${clientId}`,
     grandPlans: `/tools/grand-plan?clientId=${clientId}`,
   };
 
   if (count <= 5) return null;
 
   return (
-    <div style={{
-      padding: "12px 24px",
-      borderTop: "1px solid var(--border-subtle)",
-      background: "var(--card-hover)",
-    }}>
+    <div
+      style={{
+        padding: "12px 24px",
+        borderTop: "1px solid var(--border-subtle)",
+        background: "var(--card-hover)",
+      }}
+    >
       <Link
         href={hrefMap[toolKey] ?? "#"}
         style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)", textDecoration: "none" }}

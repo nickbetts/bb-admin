@@ -25,13 +25,8 @@ const LEGACY_PUBLIC_PATH_PREFIXES = [
   "/forecasting",
   "/keyword-planner-feature",
   "/llm-generator",
-  "/meridian",
-  "/meridian-architecture",
-  "/page-analyser",
-  "/proposals",
   "/reports-feature",
   "/signals",
-  "/clickr",
 ];
 
 export default function middleware(request: NextRequest) {

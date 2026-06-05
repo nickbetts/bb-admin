@@ -12,42 +12,27 @@ import {
   LogOut,
   ChevronLeft,
   Menu,
-  ScanSearch,
   ShieldCheck,
   LayoutTemplate,
   Sparkles,
-  Tag,
   Bot,
   X,
   Activity,
   CheckSquare,
   MessageSquare,
   LayoutGrid,
-  TrendingUp,
-  PieChart,
   Search,
-  FileSpreadsheet,
   Eye,
   KeyRound,
   EyeOff,
   Sun,
   Moon,
   Globe,
-  ClipboardCheck,
-  Brain,
   Link2,
   Map,
-  CreditCard,
-  MailCheck,
   PencilLine,
-  Zap,
   Crosshair,
-  Clock3,
-  ChevronDown,
-  ChevronUp,
-  ClipboardList,
 } from "lucide-react";
-import { SidebarClickUpPanel } from "@/components/layout/SidebarClickUpPanel";
 import { CommandPalette } from "@/components/ui/CommandPalette";
 import { KeyboardShortcutsHelp } from "@/components/ui/KeyboardShortcutsHelp";
 import { BackToTop } from "@/components/ui/BackToTop";
@@ -116,18 +101,11 @@ const opsNavItems: NavItem[] = [
 ];
 
 const toolsNavItems: NavItem[] = [
-  // PR5: Grand Plan is now the primary pitch/strategy tool — moved to top
   {
     href: "/tools/grand-plan",
     label: "Grand Plan",
     icon: <Map className="h-4 w-4" />,
     permission: "grand_plan",
-  },
-  {
-    href: "/tools/grand-plan/pipeline",
-    label: "Pipeline CRM",
-    icon: <LayoutGrid className="h-4 w-4" />,
-    permission: "proposals",
   },
   {
     href: "/tools/content-generator",
@@ -136,47 +114,10 @@ const toolsNavItems: NavItem[] = [
     permission: "content_generator",
   },
   {
-    href: "/tools/page-analyser",
-    label: "Page Analyser",
-    icon: <ScanSearch className="h-4 w-4" />,
-    permission: "page_analyser",
-  },
-  {
     href: "/tools/keyword-planner",
-    label: "Proposal Generator",
+    label: "Keyword Planner",
     icon: <Sparkles className="h-4 w-4" />,
     permission: "proposal_generator",
-  },
-  // PR5: /tools/proposals and /tools/content-strategy retired from sidebar
-  {
-    href: "/tools/competitor-intelligence",
-    label: "Competitor Intel",
-    icon: <TrendingUp className="h-4 w-4" />,
-    permission: "competitor_intelligence",
-  },
-  {
-    href: "/tools/keyword-tracker",
-    label: "Keyword Tracker",
-    icon: <FileSpreadsheet className="h-4 w-4" />,
-    permission: "keyword_tracker",
-  },
-  {
-    href: "/tools/time-checker",
-    label: "Time Checker",
-    icon: <Clock3 className="h-4 w-4" />,
-    permission: "time_checker",
-  },
-  {
-    href: "/tools/media-plan",
-    label: "Media Planner",
-    icon: <PieChart className="h-4 w-4" />,
-    permission: "media_plan",
-  },
-  {
-    href: "/tools/pricing",
-    label: "Pricing",
-    icon: <Tag className="h-4 w-4" />,
-    permission: "pricing",
   },
   {
     href: "/tools/llm-generator",
@@ -197,30 +138,6 @@ const toolsNavItems: NavItem[] = [
     permission: "landing_page_generator",
   },
   {
-    href: "/tools/qa-checklist",
-    label: "Client QA",
-    icon: <ClipboardCheck className="h-4 w-4" />,
-    permission: "qa_checklist",
-  },
-  {
-    href: "/tools/subscriptions",
-    label: "Subscriptions",
-    icon: <CreditCard className="h-4 w-4" />,
-    permission: "subscriptions",
-  },
-  {
-    href: "/tools/email-verifier",
-    label: "Email Verifier",
-    icon: <MailCheck className="h-4 w-4" />,
-    permission: "email_verifier",
-  },
-  {
-    href: "/tools/ad-image-generator",
-    label: "AI Assistant",
-    icon: <Brain className="h-4 w-4" />,
-    permission: "ad_image_generator",
-  },
-  {
     href: "/tools/internal-linking",
     label: "Internal Linking",
     icon: <Link2 className="h-4 w-4" />,
@@ -231,12 +148,6 @@ const toolsNavItems: NavItem[] = [
     label: "Meta Assassin",
     icon: <Crosshair className="h-4 w-4" />,
     permission: "meta_audience_scraper",
-  },
-  {
-    href: "/tools/sales-handoff",
-    label: "Sales Requests",
-    icon: <ClipboardList className="h-4 w-4" />,
-    permission: "sales_handoff",
   },
   {
     href: "/tools/tracking-guru",
@@ -434,147 +345,6 @@ function RolePreviewSection({
   );
 }
 
-function DaChecker() {
-  const [url, setUrl] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ da: number; pa: number } | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  async function check(e: React.FormEvent) {
-    e.preventDefault();
-    if (!url.trim()) return;
-    setLoading(true);
-    setResult(null);
-    setError(null);
-    try {
-      const domain = url
-        .trim()
-        .replace(/^https?:\/\//i, "")
-        .replace(/\/.*$/, "");
-      const res = await fetch(`/api/seo/domain-authority?domain=${encodeURIComponent(domain)}`);
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? "Failed");
-      setResult({ da: json.domainAuthority, pa: json.pageAuthority });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <div style={{ padding: "12px 12px 0" }}>
-      <p
-        style={{
-          fontSize: 10,
-          fontWeight: 700,
-          letterSpacing: "0.06em",
-          textTransform: "uppercase",
-          color: "var(--text-3)",
-          marginBottom: 8,
-        }}
-      >
-        DA Checker
-      </p>
-      <form onSubmit={check} style={{ display: "flex", gap: 6 }}>
-        <input
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          placeholder="example.com"
-          style={{
-            flex: 1,
-            fontSize: 12,
-            padding: "5px 8px",
-            borderRadius: 6,
-            border: "1px solid var(--border)",
-            background: "var(--bg)",
-            color: "var(--text)",
-            outline: "none",
-            minWidth: 0,
-          }}
-          disabled={loading}
-        />
-        <button
-          type="submit"
-          disabled={loading || !url.trim()}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: 28,
-            height: 28,
-            borderRadius: 6,
-            border: "none",
-            background: "var(--accent)",
-            color: "white",
-            cursor: loading || !url.trim() ? "not-allowed" : "pointer",
-            opacity: loading || !url.trim() ? 0.5 : 1,
-            flexShrink: 0,
-          }}
-          aria-label="Check DA"
-        >
-          <Search style={{ width: 12, height: 12 }} />
-        </button>
-      </form>
-      {result && (
-        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-          <div
-            style={{
-              flex: 1,
-              background: "var(--accent-bg)",
-              borderRadius: 6,
-              padding: "6px 8px",
-              textAlign: "center",
-            }}
-          >
-            <p style={{ fontSize: 18, fontWeight: 700, color: "var(--accent)", lineHeight: 1 }}>
-              {result.da}
-            </p>
-            <p
-              style={{
-                fontSize: 9,
-                fontWeight: 600,
-                textTransform: "uppercase",
-                letterSpacing: "0.05em",
-                color: "var(--text-3)",
-                marginTop: 2,
-              }}
-            >
-              DA
-            </p>
-          </div>
-          <div
-            style={{
-              flex: 1,
-              background: "var(--accent-bg)",
-              borderRadius: 6,
-              padding: "6px 8px",
-              textAlign: "center",
-            }}
-          >
-            <p style={{ fontSize: 18, fontWeight: 700, color: "var(--text-2)", lineHeight: 1 }}>
-              {result.pa}
-            </p>
-            <p
-              style={{
-                fontSize: 9,
-                fontWeight: 600,
-                textTransform: "uppercase",
-                letterSpacing: "0.05em",
-                color: "var(--text-3)",
-                marginTop: 2,
-              }}
-            >
-              PA
-            </p>
-          </div>
-        </div>
-      )}
-      {error && <p style={{ fontSize: 11, color: "var(--danger)", marginTop: 6 }}>{error}</p>}
-    </div>
-  );
-}
-
 export function Sidebar({
   user,
   permissions,
@@ -587,7 +357,6 @@ export function Sidebar({
   const [isMobile, setIsMobile] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
-  const [clickupPanelOpen, setClickupPanelOpen] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     if (typeof window === "undefined") return 260;
     const stored = localStorage.getItem("sidebar-width");
@@ -904,43 +673,6 @@ export function Sidebar({
               })}
           </>
         )}
-        {permissions.includes("meridian_architecture") && (
-          <>
-            {!collapsed && (
-              <p className="sidebar-nav-label" style={{ marginTop: 12 }}>
-                Meridian
-              </p>
-            )}
-            {(() => {
-              const isActive =
-                pathname === "/meridian-architecture" ||
-                pathname.startsWith("/meridian-architecture/");
-              return (
-                <Link
-                  href="/meridian-architecture"
-                  aria-current={isActive ? "page" : undefined}
-                  title={collapsed ? "Architecture & Roadmap" : undefined}
-                  className={cn("nav-item", isActive && "active", collapsed && "justify-center")}
-                  style={collapsed ? { justifyContent: "center" } : undefined}
-                >
-                  <span
-                    className="nav-item-icon"
-                    style={{
-                      display: "flex",
-                      width: 20,
-                      height: 20,
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Brain className="h-4 w-4" />
-                  </span>
-                  {!collapsed && <span>Architecture & Roadmap</span>}
-                </Link>
-              );
-            })()}
-          </>
-        )}
         {permissions.includes("users") && (
           <>
             {!collapsed && (
@@ -973,33 +705,6 @@ export function Sidebar({
                     <ShieldCheck className="h-4 w-4" />
                   </span>
                   {!collapsed && <span>Admin</span>}
-                </Link>
-              );
-            })()}
-            {(() => {
-              const isActive =
-                pathname === "/admin/clickr" || pathname.startsWith("/admin/clickr/");
-              return (
-                <Link
-                  href="/admin/clickr"
-                  aria-current={isActive ? "page" : undefined}
-                  title={collapsed ? "Clickr" : undefined}
-                  className={cn("nav-item", isActive && "active", collapsed && "justify-center")}
-                  style={collapsed ? { justifyContent: "center" } : undefined}
-                >
-                  <span
-                    className="nav-item-icon"
-                    style={{
-                      display: "flex",
-                      width: 20,
-                      height: 20,
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Zap className="h-4 w-4" />
-                  </span>
-                  {!collapsed && <span>Clickr</span>}
                 </Link>
               );
             })()}
@@ -1065,8 +770,6 @@ export function Sidebar({
           )}
 
           {renderNavLinks()}
-
-          <DaChecker />
 
           <div className="sidebar-footer">
             <div className="sidebar-user">
@@ -1218,61 +921,6 @@ export function Sidebar({
       )}
 
       {renderNavLinks()}
-
-      {!collapsed && <DaChecker />}
-
-      {/* ClickUp Panel */}
-      <div style={{ flexShrink: 0, borderTop: "1px solid var(--border-subtle)", marginTop: 4 }}>
-        <button
-          onClick={() => {
-            if (collapsed) {
-              setCollapsed(false);
-              setClickupPanelOpen(true);
-            } else setClickupPanelOpen((o) => !o);
-          }}
-          title={collapsed ? "ClickUp Tasks" : undefined}
-          className="nav-item"
-          style={{
-            width: "100%",
-            justifyContent: collapsed ? "center" : "space-between",
-            padding: collapsed ? undefined : "8px 16px",
-          }}
-          aria-expanded={clickupPanelOpen}
-        >
-          <span style={{ display: "flex", alignItems: "center", gap: collapsed ? 0 : 8 }}>
-            <span
-              className="nav-item-icon"
-              style={{
-                display: "flex",
-                width: 20,
-                height: 20,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <ClipboardCheck style={{ width: 16, height: 16 }} />
-            </span>
-            {!collapsed && <span style={{ fontSize: 13, fontWeight: 500 }}>ClickUp Tasks</span>}
-          </span>
-          {!collapsed &&
-            (clickupPanelOpen ? (
-              <ChevronUp style={{ width: 14, height: 14, color: "var(--text-3)" }} />
-            ) : (
-              <ChevronDown style={{ width: 14, height: 14, color: "var(--text-3)" }} />
-            ))}
-        </button>
-        {!collapsed && clickupPanelOpen && (
-          <div
-            style={{
-              borderTop: "1px solid var(--border-subtle)",
-              overflowY: "auto",
-              maxHeight: 480,
-            }}
-          >
-            <SidebarClickUpPanel />
-          </div>
-        )}
-      </div>
 
       <div className="sidebar-footer">
         {!collapsed && (

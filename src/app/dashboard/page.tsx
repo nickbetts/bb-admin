@@ -1,16 +1,28 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { Users, FileText, TrendingUp, ArrowRight, Plus, Search, BarChart2, AlertTriangle, Clock, Settings, AlertCircle } from "lucide-react";
+import {
+  Users,
+  FileText,
+  TrendingUp,
+  ArrowRight,
+  Plus,
+  Search,
+  BarChart2,
+  AlertTriangle,
+  Clock,
+  Settings,
+  AlertCircle,
+} from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DashboardGreeting } from "@/components/dashboard/DashboardGreeting";
 import { DashboardStatValue } from "@/components/dashboard/DashboardStatValue";
 import { FavouriteToggle } from "@/components/ui/FavouriteToggle";
 
 const SEVERITY_COLOUR: Record<string, string> = {
-  high:   "#ef4444",
+  high: "#ef4444",
   medium: "#f59e0b",
-  low:    "#10b981",
+  low: "#10b981",
 };
 
 export default async function DashboardPage() {
@@ -23,7 +35,11 @@ export default async function DashboardPage() {
     recentReports,
     inProgressCount,
     latestSignals,
-    metaCount, gadsCount, ga4Count, semrushCount, scCount,
+    metaCount,
+    gadsCount,
+    ga4Count,
+    semrushCount,
+    scCount,
   ] = await Promise.all([
     prisma.client.findMany({
       orderBy: { updatedAt: "desc" },
@@ -70,23 +86,59 @@ export default async function DashboardPage() {
 
       {/* Reports needing attention banner */}
       {inProgressCount > 0 && (
-        <div style={{
-          display: "flex", alignItems: "center", gap: 14, padding: "14px 20px",
-          background: "var(--warning-bg)", border: "1px solid var(--warning-border)",
-          borderRadius: "var(--r)", marginBottom: 28, flexWrap: "wrap",
-        }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 14,
+            padding: "14px 20px",
+            background: "var(--warning-bg)",
+            border: "1px solid var(--warning-border)",
+            borderRadius: "var(--r)",
+            marginBottom: 28,
+            flexWrap: "wrap",
+          }}
+        >
           <AlertCircle style={{ width: 16, height: 16, color: "var(--warning)", flexShrink: 0 }} />
           <span style={{ fontSize: 13, color: "var(--warning-text)", flex: 1 }}>
-            <strong>{inProgressCount} report{inProgressCount !== 1 ? "s" : ""}</strong> {inProgressCount === 1 ? "needs" : "need"} attention — currently draft or in review.
+            <strong>
+              {inProgressCount} report{inProgressCount !== 1 ? "s" : ""}
+            </strong>{" "}
+            {inProgressCount === 1 ? "needs" : "need"} attention — currently draft or in review.
           </span>
-          <Link href="/reports" style={{ fontSize: 13, fontWeight: 600, color: "var(--warning)", textDecoration: "none" }}>View reports →</Link>
+          <Link
+            href="/reports"
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: "var(--warning)",
+              textDecoration: "none",
+            }}
+          >
+            View reports →
+          </Link>
         </div>
       )}
 
       {/* Stats row */}
-      <div className="stat-card-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20, marginBottom: 36 }}>
+      <div
+        className="stat-card-grid"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(4, 1fr)",
+          gap: 20,
+          marginBottom: 36,
+        }}
+      >
         <div className="stat-card">
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: 16,
+            }}
+          >
             <p className="stat-card-label">Total Clients</p>
             <div className="stat-card-icon" style={{ background: "var(--accent-bg)" }}>
               <Users style={{ width: 20, height: 20, color: "var(--accent)" }} />
@@ -95,7 +147,14 @@ export default async function DashboardPage() {
           <DashboardStatValue value={totalClients} />
         </div>
         <div className="stat-card">
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: 16,
+            }}
+          >
             <p className="stat-card-label">Total Reports</p>
             <div className="stat-card-icon" style={{ background: "var(--info-bg)" }}>
               <FileText style={{ width: 20, height: 20, color: "var(--info)" }} />
@@ -104,16 +163,33 @@ export default async function DashboardPage() {
           <DashboardStatValue value={totalReports} />
         </div>
         <div className="stat-card">
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: 16,
+            }}
+          >
             <p className="stat-card-label">Active Integrations</p>
             <div className="stat-card-icon" style={{ background: "var(--success-bg)" }}>
               <TrendingUp style={{ width: 20, height: 20, color: "var(--success)" }} />
             </div>
           </div>
-          <DashboardStatValue value={activeIntegrationCount} subtitle={activeIntegrationLabels.join(" · ") || "None configured"} />
+          <DashboardStatValue
+            value={activeIntegrationCount}
+            subtitle={activeIntegrationLabels.join(" · ") || "None configured"}
+          />
         </div>
         <div className="stat-card">
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: 16,
+            }}
+          >
             <p className="stat-card-label">In Progress</p>
             <div className="stat-card-icon" style={{ background: "var(--warning-bg)" }}>
               <Clock style={{ width: 20, height: 20, color: "var(--warning)" }} />
@@ -146,15 +222,43 @@ export default async function DashboardPage() {
                 <Link
                   key={client.id}
                   href={`/clients/${client.slug}`}
-                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 32px", borderBottom: "1px solid var(--border-subtle)", textDecoration: "none", transition: "background 0.15s" }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "16px 32px",
+                    borderBottom: "1px solid var(--border-subtle)",
+                    textDecoration: "none",
+                    transition: "background 0.15s",
+                  }}
                   className="hover:bg-[var(--border-subtle)]"
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                    <div style={{ width: 40, height: 40, borderRadius: 10, background: "var(--gradient-accent)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 16, fontWeight: 700, flexShrink: 0, boxShadow: "0 2px 8px rgb(99 102 241 / 0.25)" }}>
+                    <div
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 10,
+                        background: "var(--gradient-accent)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "white",
+                        fontSize: 16,
+                        fontWeight: 700,
+                        flexShrink: 0,
+                        boxShadow: "0 2px 8px rgb(99 102 241 / 0.25)",
+                      }}
+                    >
                       {client.name.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }} title={client.name}>{client.name}</p>
+                      <p
+                        style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}
+                        title={client.name}
+                      >
+                        {client.name}
+                      </p>
                       <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>
                         {client._count.reports} report{client._count.reports !== 1 ? "s" : ""}
                       </p>
@@ -162,15 +266,31 @@ export default async function DashboardPage() {
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
                     <FavouriteToggle id={client.slug} size={14} />
-                    <ArrowRight style={{ width: 16, height: 16, color: "var(--text-4)", flexShrink: 0 }} />
+                    <ArrowRight
+                      style={{ width: 16, height: 16, color: "var(--text-4)", flexShrink: 0 }}
+                    />
                   </div>
                 </Link>
               ))
             )}
           </div>
           {clients.length > 0 && (
-            <div style={{ padding: "14px 32px", borderTop: "1px solid var(--border-subtle)", background: "var(--border-subtle)" }}>
-              <Link href="/clients" style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)", textDecoration: "none" }}>
+            <div
+              style={{
+                padding: "14px 32px",
+                borderTop: "1px solid var(--border-subtle)",
+                background: "var(--border-subtle)",
+              }}
+            >
+              <Link
+                href="/clients"
+                style={{
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: "var(--text-2)",
+                  textDecoration: "none",
+                }}
+              >
                 View all clients →
               </Link>
             </div>
@@ -181,7 +301,9 @@ export default async function DashboardPage() {
         <div className="card">
           <div className="card-header">
             <h2 className="card-title">Recent Reports</h2>
-            <Link href="/reports" className="btn btn-ghost btn-sm">All reports</Link>
+            <Link href="/reports" className="btn btn-ghost btn-sm">
+              All reports
+            </Link>
           </div>
           <div>
             {recentReports.length === 0 ? (
@@ -196,17 +318,35 @@ export default async function DashboardPage() {
                 <Link
                   key={report.id}
                   href={`/reports/${report.id}`}
-                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 32px", borderBottom: "1px solid var(--border-subtle)", textDecoration: "none", transition: "background 0.15s" }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "16px 32px",
+                    borderBottom: "1px solid var(--border-subtle)",
+                    textDecoration: "none",
+                    transition: "background 0.15s",
+                  }}
                   className="hover:bg-[var(--border-subtle)]"
                 >
                   <div>
-                    <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>{report.title}</p>
+                    <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>
+                      {report.title}
+                    </p>
                     <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>
                       {report.client.name} · {report.period}
                     </p>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span className={report.status === "published" ? "badge badge-green" : report.status === "review" ? "badge badge-blue" : "badge badge-slate"}>
+                    <span
+                      className={
+                        report.status === "published"
+                          ? "badge badge-green"
+                          : report.status === "review"
+                            ? "badge badge-blue"
+                            : "badge badge-slate"
+                      }
+                    >
                       {report.status}
                     </span>
                     <ArrowRight style={{ width: 16, height: 16, color: "var(--text-4)" }} />
@@ -216,8 +356,22 @@ export default async function DashboardPage() {
             )}
           </div>
           {recentReports.length > 0 && (
-            <div style={{ padding: "14px 32px", borderTop: "1px solid var(--border-subtle)", background: "var(--border-subtle)" }}>
-              <Link href="/reports" style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)", textDecoration: "none" }}>
+            <div
+              style={{
+                padding: "14px 32px",
+                borderTop: "1px solid var(--border-subtle)",
+                background: "var(--border-subtle)",
+              }}
+            >
+              <Link
+                href="/reports"
+                style={{
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: "var(--text-2)",
+                  textDecoration: "none",
+                }}
+              >
                 View all reports →
               </Link>
             </div>
@@ -229,7 +383,9 @@ export default async function DashboardPage() {
       <div className="card" style={{ marginTop: 24 }}>
         <div className="card-header">
           <h2 className="card-title">Latest Signals</h2>
-          <span style={{ fontSize: 12, color: "var(--text-3)" }}>Unresolved anomalies across all clients</span>
+          <span style={{ fontSize: 12, color: "var(--text-3)" }}>
+            Unresolved anomalies across all clients
+          </span>
         </div>
         {latestSignals.length === 0 ? (
           <EmptyState
@@ -243,22 +399,60 @@ export default async function DashboardPage() {
               <Link
                 key={signal.id}
                 href={`/clients/${signal.client.slug}`}
-                style={{ display: "flex", alignItems: "flex-start", gap: 16, padding: "16px 32px", borderBottom: "1px solid var(--border-subtle)", textDecoration: "none", transition: "background 0.15s" }}
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: 16,
+                  padding: "16px 32px",
+                  borderBottom: "1px solid var(--border-subtle)",
+                  textDecoration: "none",
+                  transition: "background 0.15s",
+                }}
                 className="hover:bg-[var(--border-subtle)]"
               >
                 <AlertTriangle
-                  style={{ width: 15, height: 15, color: SEVERITY_COLOUR[signal.severity] ?? "var(--warning)", flexShrink: 0, marginTop: 1 }}
+                  style={{
+                    width: 15,
+                    height: 15,
+                    color: SEVERITY_COLOUR[signal.severity] ?? "var(--warning)",
+                    flexShrink: 0,
+                    marginTop: 1,
+                  }}
                 />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 2 }}>
+                  <p
+                    style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 2 }}
+                  >
                     {signal.client.name}
-                    <span style={{ fontSize: 11, fontWeight: 500, color: "var(--text-3)", marginLeft: 8 }}>{signal.platform} · {signal.metric}</span>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 500,
+                        color: "var(--text-3)",
+                        marginLeft: 8,
+                      }}
+                    >
+                      {signal.platform} · {signal.metric}
+                    </span>
                   </p>
-                  <p style={{ fontSize: 12, color: "var(--text-2)", lineHeight: 1.5, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
+                  <p
+                    style={{
+                      fontSize: 12,
+                      color: "var(--text-2)",
+                      lineHeight: 1.5,
+                      overflow: "hidden",
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical",
+                    }}
+                  >
                     {signal.detail}
                   </p>
                 </div>
-                <span className={`badge badge-${signal.severity === "high" ? "red" : signal.severity === "medium" ? "orange" : "green"}`} style={{ flexShrink: 0, marginTop: 1 }}>
+                <span
+                  className={`badge badge-${signal.severity === "high" ? "red" : signal.severity === "medium" ? "orange" : "green"}`}
+                  style={{ flexShrink: 0, marginTop: 1 }}
+                >
                   {signal.severity}
                 </span>
               </Link>
@@ -273,42 +467,172 @@ export default async function DashboardPage() {
           <h2 className="card-title">Quick Actions</h2>
         </div>
         <div className="card-body">
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 12 }}>
-            <Link href="/clients/new" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "20px 16px", borderRadius: 14, border: "1px solid var(--border)", textDecoration: "none", transition: "all 0.2s" }} className="hover:border-[var(--accent)] hover:bg-[var(--accent-bg)]">
-              <div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--accent-bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))",
+              gap: 12,
+            }}
+          >
+            <Link
+              href="/clients/new"
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 10,
+                padding: "20px 16px",
+                borderRadius: 14,
+                border: "1px solid var(--border)",
+                textDecoration: "none",
+                transition: "all 0.2s",
+              }}
+              className="hover:border-[var(--accent)] hover:bg-[var(--accent-bg)]"
+            >
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  background: "var(--accent-bg)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
                 <Users style={{ width: 18, height: 18, color: "var(--accent)" }} />
               </div>
-              <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)" }}>Add Client</span>
+              <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)" }}>
+                Add Client
+              </span>
             </Link>
-            <Link href="/tools/keyword-planner" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "20px 16px", borderRadius: 14, border: "1px solid var(--border)", textDecoration: "none", transition: "all 0.2s" }} className="hover:border-[var(--info)] hover:bg-[var(--info-bg)]">
-              <div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--info-bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Link
+              href="/tools/keyword-planner"
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 10,
+                padding: "20px 16px",
+                borderRadius: 14,
+                border: "1px solid var(--border)",
+                textDecoration: "none",
+                transition: "all 0.2s",
+              }}
+              className="hover:border-[var(--info)] hover:bg-[var(--info-bg)]"
+            >
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  background: "var(--info-bg)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
                 <Search style={{ width: 18, height: 18, color: "var(--info)" }} />
               </div>
-              <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)" }}>Keyword Planner</span>
+              <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)" }}>
+                Keyword Planner
+              </span>
             </Link>
-            <Link href="/tools/proposals" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "20px 16px", borderRadius: 14, border: "1px solid var(--border)", textDecoration: "none", transition: "all 0.2s" }} className="hover:border-[var(--success)] hover:bg-[var(--success-bg)]">
-              <div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--success-bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <FileText style={{ width: 18, height: 18, color: "var(--success)" }} />
-              </div>
-              <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)" }}>Proposals</span>
-            </Link>
-            <Link href="/reports" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "20px 16px", borderRadius: 14, border: "1px solid var(--border)", textDecoration: "none", transition: "all 0.2s" }} className="hover:border-[var(--accent)] hover:bg-[var(--accent-bg)]">
-              <div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--accent-bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Link
+              href="/reports"
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 10,
+                padding: "20px 16px",
+                borderRadius: 14,
+                border: "1px solid var(--border)",
+                textDecoration: "none",
+                transition: "all 0.2s",
+              }}
+              className="hover:border-[var(--accent)] hover:bg-[var(--accent-bg)]"
+            >
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  background: "var(--accent-bg)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
                 <BarChart2 style={{ width: 18, height: 18, color: "var(--accent)" }} />
               </div>
-              <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)" }}>All Reports</span>
+              <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)" }}>
+                All Reports
+              </span>
             </Link>
-            <Link href="/portfolio" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "20px 16px", borderRadius: 14, border: "1px solid var(--border)", textDecoration: "none", transition: "all 0.2s" }} className="hover:border-[var(--warning)] hover:bg-[var(--warning-bg)]">
-              <div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--warning-bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Link
+              href="/portfolio"
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 10,
+                padding: "20px 16px",
+                borderRadius: 14,
+                border: "1px solid var(--border)",
+                textDecoration: "none",
+                transition: "all 0.2s",
+              }}
+              className="hover:border-[var(--warning)] hover:bg-[var(--warning-bg)]"
+            >
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  background: "var(--warning-bg)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
                 <TrendingUp style={{ width: 18, height: 18, color: "var(--warning)" }} />
               </div>
-              <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)" }}>Portfolio</span>
+              <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)" }}>
+                Portfolio
+              </span>
             </Link>
-            <Link href="/settings" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "20px 16px", borderRadius: 14, border: "1px solid var(--border)", textDecoration: "none", transition: "all 0.2s" }} className="hover:border-[var(--text-3)] hover:bg-[var(--border-subtle)]">
-              <div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--border-subtle)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Link
+              href="/settings"
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 10,
+                padding: "20px 16px",
+                borderRadius: 14,
+                border: "1px solid var(--border)",
+                textDecoration: "none",
+                transition: "all 0.2s",
+              }}
+              className="hover:border-[var(--text-3)] hover:bg-[var(--border-subtle)]"
+            >
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  background: "var(--border-subtle)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
                 <Settings style={{ width: 18, height: 18, color: "var(--text-3)" }} />
               </div>
-              <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)" }}>Settings</span>
+              <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)" }}>
+                Settings
+              </span>
             </Link>
           </div>
         </div>

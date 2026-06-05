@@ -12,22 +12,14 @@ import {
   CheckSquare,
   MessageSquare,
   LayoutGrid,
-  TrendingUp,
-  PieChart,
-  Tag,
   Bot,
-  ScanSearch,
   Sparkles,
   ArrowRight,
   LayoutTemplate,
   KeyRound,
   Globe,
   Map,
-  CreditCard,
-  MailCheck,
   Link2,
-  ClipboardList,
-  Clock3,
 } from "lucide-react";
 
 // ── Static nav items ────────────────────────────────────────────────────────
@@ -79,31 +71,11 @@ const STATIC_ITEMS = [
     group: "Agency Tools",
   },
   {
-    label: "Page Analyser",
-    href: "/tools/page-analyser",
-    icon: <ScanSearch size={14} />,
-    group: "Agency Tools",
-  },
-  {
     label: "Keyword Planner",
     href: "/tools/keyword-planner",
     icon: <Sparkles size={14} />,
     group: "Agency Tools",
   },
-  // PR5: Proposals and Content Strategy retired — entries removed from palette
-  {
-    label: "Competitor Intel",
-    href: "/tools/competitor-intelligence",
-    icon: <TrendingUp size={14} />,
-    group: "Agency Tools",
-  },
-  {
-    label: "Media Planner",
-    href: "/tools/media-plan",
-    icon: <PieChart size={14} />,
-    group: "Agency Tools",
-  },
-  { label: "Pricing", href: "/tools/pricing", icon: <Tag size={14} />, group: "Agency Tools" },
   {
     label: "LLM.txt Generator",
     href: "/tools/llm-generator",
@@ -123,33 +95,9 @@ const STATIC_ITEMS = [
     group: "Agency Tools",
   },
   {
-    label: "Subscriptions",
-    href: "/tools/subscriptions",
-    icon: <CreditCard size={14} />,
-    group: "Agency Tools",
-  },
-  {
-    label: "Email Verifier",
-    href: "/tools/email-verifier",
-    icon: <MailCheck size={14} />,
-    group: "Agency Tools",
-  },
-  {
     label: "Internal Linking",
     href: "/tools/internal-linking",
     icon: <Link2 size={14} />,
-    group: "Agency Tools",
-  },
-  {
-    label: "Sales Requests",
-    href: "/tools/sales-handoff",
-    icon: <ClipboardList size={14} />,
-    group: "Agency Tools",
-  },
-  {
-    label: "Time Checker",
-    href: "/tools/time-checker",
-    icon: <Clock3 size={14} />,
     group: "Agency Tools",
   },
 ];
