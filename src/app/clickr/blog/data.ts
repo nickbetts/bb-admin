@@ -80,7 +80,7 @@ export const blogArticles: BlogArticle[] = [
           "Click generate — Meridian scrapes the site and builds the page",
           "Review the three-pass AI audit (CRO, design, copy)",
           "Use the chat editor to refine any section",
-          "Publish to clickr.marketing or your custom subdomain",
+          "Publish to lp.bettsandburton.com or your custom subdomain",
         ],
       },
       {
@@ -135,8 +135,7 @@ export const blogArticles: BlogArticle[] = [
       },
       {
         type: "p",
-        content:
-          "Most teams who run this test don't go back to the old workflow.",
+        content: "Most teams who run this test don't go back to the old workflow.",
       },
     ],
   },
@@ -346,8 +345,7 @@ export const blogArticles: BlogArticle[] = [
       },
       {
         type: "p",
-        content:
-          "The hierarchy of social proof effectiveness for B2B and B2C landing pages:",
+        content: "The hierarchy of social proof effectiveness for B2B and B2C landing pages:",
       },
       {
         type: "ol",
@@ -1189,7 +1187,8 @@ export const blogArticles: BlogArticle[] = [
   // ────────────────────────────────────────────────────────────────────────────
   {
     slug: "multilingual-landing-pages-scale-new-markets",
-    title: "Multilingual Landing Pages: How to Scale Paid Campaigns Into New Markets Without a Translation Agency",
+    title:
+      "Multilingual Landing Pages: How to Scale Paid Campaigns Into New Markets Without a Translation Agency",
     description:
       "Most agencies avoid international campaigns because the landing page problem is too hard. clickr's multilingual generation changes the economics entirely.",
     excerpt:

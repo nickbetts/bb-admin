@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
 
   let body: { tier?: string };
   try {
-    body = await request.json() as typeof body;
+    body = (await request.json()) as typeof body;
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Price not configured for this tier" }, { status: 500 });
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://clickr.marketing";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://lp.bettsandburton.com";
 
   try {
     const stripe = await getStripeClient();

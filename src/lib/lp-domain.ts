@@ -1,9 +1,9 @@
-// URL helpers for clickr.marketing landing-page hosting.
+// URL helpers for LP.bettsandburton.com landing-page hosting.
 //
 // Server: reads LP_DOMAIN (no NEXT_PUBLIC_ prefix needed when only used in
-// server components / route handlers). Falls back to clickr.marketing.
+// server components / route handlers). Falls back to LP.bettsandburton.com.
 
-const DEFAULT_LP_DOMAIN = "clickr.marketing";
+const DEFAULT_LP_DOMAIN = "lp.bettsandburton.com";
 const FALLBACK_SUBDOMAIN = "demo";
 
 export function getLpDomain(): string {
@@ -39,10 +39,9 @@ export interface LpUrlOpts {
 
 /**
  * Build the canonical public URL for a landing page, preferring (in order):
- *   1. https://<client-sub>.<LP_DOMAIN>/<lp-slug>   — when both slugs exist
- *   2. https://demo.<LP_DOMAIN>/<lp-slug>           — LP slug, no client
- *   3. /lp/<publicSlug>                             — legacy pretty URL
- *   4. /api/share/landing-page/<shareToken>         — internal magic link
+ *   1. https://<LP_DOMAIN>/client/<client>/<lp-slug>  — when LP slug exists
+ *   2. /lp/<publicSlug>                                — legacy pretty URL
+ *   3. /api/share/landing-page/<shareToken>            — internal magic link
  */
 export function getLandingPageUrl(opts: LpUrlOpts): string | null {
   const domain = getLpDomain();
@@ -50,7 +49,7 @@ export function getLandingPageUrl(opts: LpUrlOpts): string | null {
   const qs = opts.testMode ? "?test=1" : "";
 
   if (opts.lpSlug) {
-    return `https://${sub}.${domain}/${opts.lpSlug}${qs}`;
+    return `https://${domain}/client/${sub}/${opts.lpSlug}${qs}`;
   }
   const base = (opts.appUrl || process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/$/, "");
   if (opts.publicSlug && base) return `${base}/lp/${opts.publicSlug}${qs}`;

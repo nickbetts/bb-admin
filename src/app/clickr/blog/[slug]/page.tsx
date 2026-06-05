@@ -22,12 +22,12 @@ export async function generateMetadata({
   return {
     title: article.title,
     description: article.description,
-    alternates: { canonical: `https://clickr.marketing/blog/${slug}` },
+    alternates: { canonical: `https://lp.bettsandburton.com/blog/${slug}` },
     openGraph: {
       title: article.title,
       description: article.description,
       type: "article",
-      url: `https://clickr.marketing/blog/${slug}`,
+      url: `https://lp.bettsandburton.com/blog/${slug}`,
       publishedTime: article.publishedAt,
     },
     twitter: {
@@ -50,7 +50,10 @@ function formatDate(iso: string) {
 }
 
 function slugify(text: string) {
-  return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 }
 
 function RenderSection({ section }: { section: BlogSection }) {
@@ -101,7 +104,14 @@ function RenderSection({ section }: { section: BlogSection }) {
           {section.items?.map((item, i) => (
             <li
               key={i}
-              style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 15, color: "rgba(255,255,255,0.58)", lineHeight: 1.7 }}
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 10,
+                fontSize: 15,
+                color: "rgba(255,255,255,0.58)",
+                lineHeight: 1.7,
+              }}
             >
               <span style={{ color: accentLight, flexShrink: 0, marginTop: 2 }}>→</span>
               {item}
@@ -111,11 +121,27 @@ function RenderSection({ section }: { section: BlogSection }) {
       );
     case "ol":
       return (
-        <ol style={{ paddingLeft: 0, listStyle: "none", marginBottom: 22, display: "flex", flexDirection: "column", gap: 10 }}>
+        <ol
+          style={{
+            paddingLeft: 0,
+            listStyle: "none",
+            marginBottom: 22,
+            display: "flex",
+            flexDirection: "column",
+            gap: 10,
+          }}
+        >
           {section.items?.map((item, i) => (
             <li
               key={i}
-              style={{ display: "flex", alignItems: "flex-start", gap: 12, fontSize: 15, color: "rgba(255,255,255,0.58)", lineHeight: 1.7 }}
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 12,
+                fontSize: 15,
+                color: "rgba(255,255,255,0.58)",
+                lineHeight: 1.7,
+              }}
             >
               <span
                 style={{
@@ -163,11 +189,7 @@ function RenderSection({ section }: { section: BlogSection }) {
   }
 }
 
-export default async function BlogArticlePage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
+export default async function BlogArticlePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const article = blogArticles.find((a) => a.slug === slug);
   if (!article) notFound();
@@ -200,16 +222,18 @@ export default async function BlogArticlePage({
     publisher: {
       "@type": "Organization",
       name: "clickr",
-      url: "https://clickr.marketing",
+      url: "https://lp.bettsandburton.com",
     },
     mainEntityOfPage: {
       "@type": "WebPage",
-      "@id": `https://clickr.marketing/blog/${slug}`,
+      "@id": `https://lp.bettsandburton.com/blog/${slug}`,
     },
   };
 
   return (
-    <div style={{ background: "#09090f", color: "white", fontFamily: "inherit", minHeight: "100vh" }}>
+    <div
+      style={{ background: "#09090f", color: "white", fontFamily: "inherit", minHeight: "100vh" }}
+    >
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
@@ -230,7 +254,17 @@ export default async function BlogArticlePage({
       >
         {/* Breadcrumb */}
         <nav style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 28 }}>
-          <Link href="/blog" style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", textDecoration: "none", display: "flex", alignItems: "center", gap: 5 }}>
+          <Link
+            href="/blog"
+            style={{
+              fontSize: 13,
+              color: "rgba(255,255,255,0.35)",
+              textDecoration: "none",
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+            }}
+          >
             <ArrowLeft size={12} /> Blog
           </Link>
           <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 13 }}>/</span>
@@ -251,7 +285,15 @@ export default async function BlogArticlePage({
           }}
         >
           <Tag size={10} color={accentLight} />
-          <span style={{ fontSize: 11, fontWeight: 700, color: accentLight, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+          <span
+            style={{
+              fontSize: 11,
+              fontWeight: 700,
+              color: accentLight,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+            }}
+          >
             {article.category}
           </span>
         </div>
@@ -270,15 +312,21 @@ export default async function BlogArticlePage({
         </h1>
 
         <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.3)", display: "flex", alignItems: "center", gap: 5 }}>
+          <span
+            style={{
+              fontSize: 13,
+              color: "rgba(255,255,255,0.3)",
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+            }}
+          >
             <Clock size={12} /> {article.readingTimeMinutes} min read
           </span>
           <span style={{ fontSize: 13, color: "rgba(255,255,255,0.3)" }}>
             {formatDate(article.publishedAt)}
           </span>
-          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.25)" }}>
-            By i3 Media
-          </span>
+          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.25)" }}>By i3 Media</span>
         </div>
       </header>
 
@@ -401,7 +449,10 @@ export default async function BlogArticlePage({
             >
               More from the blog
             </h2>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }} className="related-grid">
+            <div
+              style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}
+              className="related-grid"
+            >
               {relatedArticles.map((a) => (
                 <Link
                   key={a.slug}
@@ -416,13 +467,41 @@ export default async function BlogArticlePage({
                     flexDirection: "column",
                   }}
                 >
-                  <span style={{ fontSize: 10, fontWeight: 700, color: accentLight, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 10 }}>
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      color: accentLight,
+                      letterSpacing: "0.06em",
+                      textTransform: "uppercase",
+                      marginBottom: 10,
+                    }}
+                  >
                     {a.category}
                   </span>
-                  <h3 style={{ fontSize: 16, fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1.35, color: "white", marginBottom: 10, flex: 1 }}>
+                  <h3
+                    style={{
+                      fontSize: 16,
+                      fontWeight: 700,
+                      letterSpacing: "-0.02em",
+                      lineHeight: 1.35,
+                      color: "white",
+                      marginBottom: 10,
+                      flex: 1,
+                    }}
+                  >
                     {a.title}
                   </h3>
-                  <span style={{ fontSize: 12, color: accentLight, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      color: accentLight,
+                      fontWeight: 600,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
+                  >
                     Read <ArrowRight size={11} />
                   </span>
                 </Link>

@@ -43,11 +43,11 @@ function deriveSubdomainFromBriefJson(raw: string | null): string | null {
 
 // GET /lp/[slug]/[lpSlug]
 //
-// Internal route hit by the middleware rewrite for {client}.clickr.marketing/{slug}.
+// Internal route hit by the middleware rewrite for {client}.lp.bettsandburton.com/{slug}.
 // Also directly addressable for testing. The first segment is the client slug.
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ slug: string; lpSlug: string }> }
+  { params }: { params: Promise<{ slug: string; lpSlug: string }> },
 ) {
   const { slug: clientSlug, lpSlug } = await params;
 
@@ -88,7 +88,15 @@ export async function GET(
     defaultAnalyticsConfig = client.defaultAnalyticsConfig;
     const row = await prisma.landingPage.findFirst({
       where: { clientId: client.id, slug: lpSlug, status: "published" },
-      select: { id: true, slug: true, publicSlug: true, currentHtml: true, shareToken: true, analyticsConfig: true, formConfig: true },
+      select: {
+        id: true,
+        slug: true,
+        publicSlug: true,
+        currentHtml: true,
+        shareToken: true,
+        analyticsConfig: true,
+        formConfig: true,
+      },
     });
     landingPage = row;
   } else {
@@ -137,7 +145,9 @@ export async function GET(
         take: 50,
       });
 
-      const matchedLegacy = legacyRows.find((r) => deriveSubdomainFromBriefJson(r.briefJson) === clientSlug);
+      const matchedLegacy = legacyRows.find(
+        (r) => deriveSubdomainFromBriefJson(r.briefJson) === clientSlug,
+      );
       if (matchedLegacy) {
         const { client: rowClient, ...rest } = matchedLegacy;
         landingPage = rest;
@@ -178,7 +188,9 @@ export async function GET(
         where: { id: landingPage.id },
         data: {
           shareToken: newToken,
-          ...(landingPage.publicSlug ? {} : { publicSlug: landingPage.slug + "-" + newToken.slice(0, 8) }),
+          ...(landingPage.publicSlug
+            ? {}
+            : { publicSlug: landingPage.slug + "-" + newToken.slice(0, 8) }),
         },
       })
       .catch(() => {});

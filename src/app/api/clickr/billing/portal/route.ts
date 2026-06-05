@@ -16,7 +16,7 @@ export async function GET() {
     return NextResponse.json({ error: "No billing account found" }, { status: 404 });
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://clickr.marketing";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://lp.bettsandburton.com";
 
   try {
     const stripe = await getStripeClient();

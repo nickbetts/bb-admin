@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://clickr.marketing"),
+  metadataBase: new URL("https://lp.bettsandburton.com"),
   title: {
     default: "clickr — Landing pages that actually convert",
     template: "%s | clickr",
@@ -23,20 +23,20 @@ export const metadata: Metadata = {
     description:
       "Generate fully branded landing pages from any URL in under 60 seconds. CRM integrations, conversion tracking, and Meridian AI built in. Part of StratOS.",
     type: "website",
-    url: "https://clickr.marketing",
+    url: "https://lp.bettsandburton.com",
     siteName: "clickr",
   },
   twitter: {
     card: "summary_large_image",
     title: "clickr — Landing pages that actually convert",
     description:
-      "AI-powered landing page builder. Scrape any site, generate a post-click page, publish to clickr.marketing in under 60 seconds.",
+      "AI-powered landing page builder. Scrape any site, generate a post-click page, publish to lp.bettsandburton.com in under 60 seconds.",
     site: "@i3media",
   },
   alternates: {
-    canonical: "https://clickr.marketing",
+    canonical: "https://lp.bettsandburton.com",
     types: {
-      "application/rss+xml": "https://clickr.marketing/blog/rss.xml",
+      "application/rss+xml": "https://lp.bettsandburton.com/blog/rss.xml",
     },
   },
   robots: {
@@ -56,14 +56,14 @@ export default function ClickrLayout({ children }: { children: React.ReactNode }
           __html: JSON.stringify({
             "@context": "https://schema.org",
             "@type": "WebSite",
-            "name": "clickr",
-            "url": "https://clickr.marketing",
-            "description": "AI-powered landing page builder by i3MEDIA",
-            "potentialAction": {
+            name: "clickr",
+            url: "https://lp.bettsandburton.com",
+            description: "AI-powered landing page builder by i3MEDIA",
+            potentialAction: {
               "@type": "SearchAction",
-              "target": {
+              target: {
                 "@type": "EntryPoint",
-                "urlTemplate": "https://clickr.marketing/blog?q={search_term_string}",
+                urlTemplate: "https://lp.bettsandburton.com/blog?q={search_term_string}",
               },
               "query-input": "required name=search_term_string",
             },
@@ -73,4 +73,3 @@ export default function ClickrLayout({ children }: { children: React.ReactNode }
     </>
   );
 }
-

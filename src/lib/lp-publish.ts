@@ -2,7 +2,7 @@
 // Used by:
 //   • /api/share/landing-page/[token]      — magic-link previews
 //   • /lp/[slug]                           — public pretty URL (publicSlug)
-//   • /lp/[slug]/[lpSlug]                  — clickr.marketing subdomain serve
+//   • /lp/[slug]/[lpSlug]                  — lp.bettsandburton.com subdomain serve
 //
 // Centralising this guarantees analytics, conversion firing, test mode
 // (?test=1) and Lucide icon rendering all behave identically regardless of
@@ -63,7 +63,8 @@ export function assemblePublicHtml(rawHtml: string, opts: AssembleOpts): string 
   }
   // Detect built-in forms: prefer data-lp-form="true" (new), fall back to any
   // <form> tag for LPs generated before the attribute was required.
-  const hasBuiltInForm = !embedCode && (html.includes('data-lp-form="true"') || /<form[\s>]/i.test(html));
+  const hasBuiltInForm =
+    !embedCode && (html.includes('data-lp-form="true"') || /<form[\s>]/i.test(html));
   const turnstileSiteKey = opts.turnstileSiteKey || null;
   if (hasBuiltInForm) {
     // Inject Turnstile loader when a site key is configured
@@ -121,4 +122,3 @@ export function assemblePublicHtml(rawHtml: string, opts: AssembleOpts): string 
 
   return html;
 }
-

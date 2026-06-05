@@ -7,11 +7,12 @@ export const metadata: Metadata = {
   title: "About",
   description:
     "clickr is an AI landing page builder built by i3MEDIA, a UK performance marketing agency. Learn the story behind Meridian AI and why we built clickr.",
-  alternates: { canonical: "https://clickr.marketing/about" },
+  alternates: { canonical: "https://lp.bettsandburton.com/about" },
   openGraph: {
     title: "About | clickr",
-    description: "Built by a performance marketing agency to solve a problem every campaign manager knows.",
-    url: "https://clickr.marketing/about",
+    description:
+      "Built by a performance marketing agency to solve a problem every campaign manager knows.",
+    url: "https://lp.bettsandburton.com/about",
   },
 };
 
@@ -40,7 +41,9 @@ const pillars = [
 
 export default function AboutPage() {
   return (
-    <div style={{ background: "#09090f", color: "white", fontFamily: "inherit", minHeight: "100vh" }}>
+    <div
+      style={{ background: "#09090f", color: "white", fontFamily: "inherit", minHeight: "100vh" }}
+    >
       <ClickrNav />
 
       {/* ── Hero ────────────────────────────────────────────────────────── */}
@@ -88,7 +91,8 @@ export default function AboutPage() {
               color: "white",
             }}
           >
-            We build tools for<br />
+            We build tools for
+            <br />
             <span
               style={{
                 background: `linear-gradient(90deg, ${accentLight}, ${accent}, #ef4444)`,
@@ -156,7 +160,9 @@ export default function AboutPage() {
                 marginBottom: 22,
               }}
             >
-              i3MEDIA has been running paid media campaigns for clients across the UK for years. Google Ads, Meta, TikTok, Microsoft — all of it. And for years, we kept hitting the same problem: great ad creative driving traffic to weak, irrelevant landing pages.
+              i3MEDIA has been running paid media campaigns for clients across the UK for years.
+              Google Ads, Meta, TikTok, Microsoft — all of it. And for years, we kept hitting the
+              same problem: great ad creative driving traffic to weak, irrelevant landing pages.
             </p>
             <p
               style={{
@@ -166,7 +172,9 @@ export default function AboutPage() {
                 marginBottom: 22,
               }}
             >
-              The brief-to-page process took days. Designers, developers, revisions, approval loops. Meanwhile the ad was live, spending budget, and sending people to a homepage that had nothing to do with the campaign.
+              The brief-to-page process took days. Designers, developers, revisions, approval loops.
+              Meanwhile the ad was live, spending budget, and sending people to a homepage that had
+              nothing to do with the campaign.
             </p>
             <p
               style={{
@@ -175,7 +183,10 @@ export default function AboutPage() {
                 lineHeight: 1.85,
               }}
             >
-              So we built clickr internally. Paste the client&apos;s URL, write a campaign brief, and Meridian generates a fully branded, conversion-optimised page in under a minute. It started as a tool for our own campaigns. It&apos;s now part of StratOS — our full marketing intelligence platform.
+              So we built clickr internally. Paste the client&apos;s URL, write a campaign brief,
+              and Meridian generates a fully branded, conversion-optimised page in under a minute.
+              It started as a tool for our own campaigns. It&apos;s now part of StratOS — our full
+              marketing intelligence platform.
             </p>
           </div>
         </div>
@@ -197,9 +208,16 @@ export default function AboutPage() {
               Built on three principles.
             </h2>
             <p
-              style={{ fontSize: 16, color: "rgba(255,255,255,0.4)", maxWidth: 480, margin: "0 auto", lineHeight: 1.7 }}
+              style={{
+                fontSize: 16,
+                color: "rgba(255,255,255,0.4)",
+                maxWidth: 480,
+                margin: "0 auto",
+                lineHeight: 1.7,
+              }}
             >
-              Every decision in clickr is driven by the same question: does this make campaigns convert better, faster?
+              Every decision in clickr is driven by the same question: does this make campaigns
+              convert better, faster?
             </p>
           </div>
 
@@ -232,11 +250,19 @@ export default function AboutPage() {
                   {p.icon}
                 </div>
                 <h3
-                  style={{ fontSize: 20, fontWeight: 700, letterSpacing: "-0.02em", marginBottom: 12, color: "white" }}
+                  style={{
+                    fontSize: 20,
+                    fontWeight: 700,
+                    letterSpacing: "-0.02em",
+                    marginBottom: 12,
+                    color: "white",
+                  }}
                 >
                   {p.title}
                 </h3>
-                <p style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", lineHeight: 1.75 }}>{p.body}</p>
+                <p style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", lineHeight: 1.75 }}>
+                  {p.body}
+                </p>
               </div>
             ))}
           </div>
@@ -272,20 +298,46 @@ export default function AboutPage() {
             }}
           >
             <Brain size={14} color={accentLight} />
-            <span style={{ fontSize: 12, fontWeight: 700, color: accentLight, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                color: accentLight,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+              }}
+            >
               Meridian AI
             </span>
           </div>
           <h2
-            style={{ fontSize: 38, fontWeight: 800, letterSpacing: "-0.04em", marginBottom: 22, color: "white" }}
+            style={{
+              fontSize: 38,
+              fontWeight: 800,
+              letterSpacing: "-0.04em",
+              marginBottom: 22,
+              color: "white",
+            }}
           >
             The intelligence behind every page.
           </h2>
-          <p style={{ fontSize: 16, color: "rgba(255,255,255,0.52)", lineHeight: 1.85, marginBottom: 22 }}>
-            Meridian is i3MEDIA&apos;s proprietary marketing intelligence layer. It powers every generation, audit, and chat refinement in clickr. Meridian doesn&apos;t just generate landing pages — it extracts real brand context, applies conversion-rate best practices, and builds pages that match the campaign goal.
+          <p
+            style={{
+              fontSize: 16,
+              color: "rgba(255,255,255,0.52)",
+              lineHeight: 1.85,
+              marginBottom: 22,
+            }}
+          >
+            Meridian is i3MEDIA&apos;s proprietary marketing intelligence layer. It powers every
+            generation, audit, and chat refinement in clickr. Meridian doesn&apos;t just generate
+            landing pages — it extracts real brand context, applies conversion-rate best practices,
+            and builds pages that match the campaign goal.
           </p>
           <p style={{ fontSize: 16, color: "rgba(255,255,255,0.52)", lineHeight: 1.85 }}>
-            Every generated page goes through three audit passes: CRO (conversion rate optimisation), design quality, and copy quality. Meridian identifies gaps and rewrites until the page is genuinely ready to run traffic.
+            Every generated page goes through three audit passes: CRO (conversion rate
+            optimisation), design quality, and copy quality. Meridian identifies gaps and rewrites
+            until the page is genuinely ready to run traffic.
           </p>
         </div>
       </section>
@@ -327,10 +379,26 @@ export default function AboutPage() {
               >
                 i3MEDIA
               </h2>
-              <p style={{ fontSize: 15, color: "rgba(255,255,255,0.52)", lineHeight: 1.75, marginBottom: 20 }}>
-                A performance marketing agency based in the UK. We manage paid media across Google, Meta, TikTok, Microsoft, and LinkedIn for clients across retail, professional services, healthcare, and education.
+              <p
+                style={{
+                  fontSize: 15,
+                  color: "rgba(255,255,255,0.52)",
+                  lineHeight: 1.75,
+                  marginBottom: 20,
+                }}
+              >
+                A performance marketing agency based in the UK. We manage paid media across Google,
+                Meta, TikTok, Microsoft, and LinkedIn for clients across retail, professional
+                services, healthcare, and education.
               </p>
-              <p style={{ fontSize: 15, color: "rgba(255,255,255,0.52)", lineHeight: 1.75, marginBottom: 24 }}>
+              <p
+                style={{
+                  fontSize: 15,
+                  color: "rgba(255,255,255,0.52)",
+                  lineHeight: 1.75,
+                  marginBottom: 24,
+                }}
+              >
                 We built the tools we wish existed. clickr is one of them. StratOS is the rest.
               </p>
               <a
@@ -377,9 +445,16 @@ export default function AboutPage() {
                 "Marketing automation and attribution",
                 "AI-powered campaign tools (StratOS)",
               ].map((item) => (
-                <div key={item} style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 12 }}>
-                  <span style={{ color: accentLight, fontSize: 14, flexShrink: 0, marginTop: 1 }}>→</span>
-                  <span style={{ fontSize: 14, color: "rgba(255,255,255,0.55)", lineHeight: 1.5 }}>{item}</span>
+                <div
+                  key={item}
+                  style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 12 }}
+                >
+                  <span style={{ color: accentLight, fontSize: 14, flexShrink: 0, marginTop: 1 }}>
+                    →
+                  </span>
+                  <span style={{ fontSize: 14, color: "rgba(255,255,255,0.55)", lineHeight: 1.5 }}>
+                    {item}
+                  </span>
                 </div>
               ))}
             </div>
@@ -397,12 +472,26 @@ export default function AboutPage() {
       >
         <div style={{ maxWidth: 560, margin: "0 auto" }}>
           <h2
-            style={{ fontSize: 38, fontWeight: 800, letterSpacing: "-0.04em", marginBottom: 16, color: "white" }}
+            style={{
+              fontSize: 38,
+              fontWeight: 800,
+              letterSpacing: "-0.04em",
+              marginBottom: 16,
+              color: "white",
+            }}
           >
             clickr is included in every StratOS plan.
           </h2>
-          <p style={{ fontSize: 16, color: "rgba(255,255,255,0.42)", lineHeight: 1.7, marginBottom: 36 }}>
-            No additional subscription. No per-page fees. Every StratOS plan includes full access to clickr and all its integrations.
+          <p
+            style={{
+              fontSize: 16,
+              color: "rgba(255,255,255,0.42)",
+              lineHeight: 1.7,
+              marginBottom: 36,
+            }}
+          >
+            No additional subscription. No per-page fees. Every StratOS plan includes full access to
+            clickr and all its integrations.
           </p>
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
             <a

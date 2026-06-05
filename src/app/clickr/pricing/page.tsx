@@ -23,7 +23,7 @@ const plans = [
     featured: false,
     features: [
       "1 landing page, forever",
-      "clickr.marketing subdomain",
+      "lp.bettsandburton.com subdomain",
       "Meridian AI generation",
       "CRO audit pass",
       "Lead capture form",
@@ -31,7 +31,7 @@ const plans = [
     ],
     limits: {
       pages: "1 forever",
-      domain: "*.clickr.marketing",
+      domain: "lp.bettsandburton.com/client/*",
       audits: "CRO only",
       chatEditor: false,
       abVariants: false,
@@ -128,20 +128,20 @@ const plans = [
 ];
 
 const comparisonRows: { label: string; key: keyof (typeof plans)[0]["limits"] }[] = [
-  { label: "Landing pages",           key: "pages" },
-  { label: "Subdomain",               key: "domain" },
-  { label: "AI audit passes",         key: "audits" },
-  { label: "Chat editor",             key: "chatEditor" },
-  { label: "A/B variant generation",  key: "abVariants" },
-  { label: "No clickr watermark",     key: "noWatermark" },
-  { label: "Lead storage",            key: "leadStorage" },
-  { label: "Conversion tracking",     key: "conversionTracking" },
-  { label: "Version history",         key: "versionHistory" },
-  { label: "CRM integrations",        key: "crmIntegrations" },
-  { label: "Slack / Teams alerts",    key: "notifications" },
-  { label: "Custom webhooks",         key: "webhooks" },
-  { label: "Template library",        key: "templates" },
-  { label: "Support",                 key: "support" },
+  { label: "Landing pages", key: "pages" },
+  { label: "Subdomain", key: "domain" },
+  { label: "AI audit passes", key: "audits" },
+  { label: "Chat editor", key: "chatEditor" },
+  { label: "A/B variant generation", key: "abVariants" },
+  { label: "No clickr watermark", key: "noWatermark" },
+  { label: "Lead storage", key: "leadStorage" },
+  { label: "Conversion tracking", key: "conversionTracking" },
+  { label: "Version history", key: "versionHistory" },
+  { label: "CRM integrations", key: "crmIntegrations" },
+  { label: "Slack / Teams alerts", key: "notifications" },
+  { label: "Custom webhooks", key: "webhooks" },
+  { label: "Template library", key: "templates" },
+  { label: "Support", key: "support" },
 ];
 
 const faqs = [
@@ -159,7 +159,7 @@ const faqs = [
   },
   {
     q: "Can I use a custom domain?",
-    a: "Starter and Pro plans get a custom subdomain at *.clickr.marketing. Full custom domains (e.g. landing.youragency.com) are on the Pro roadmap.",
+    a: "Starter and Pro plans publish under lp.bettsandburton.com/client/<your-slug>. Full custom domains (e.g. landing.youragency.com) are on the Pro roadmap.",
   },
   {
     q: "How does the AI generation work?",
@@ -183,9 +183,15 @@ const faqs = [
 
 function CellValue({ val }: { val: boolean | string }) {
   if (typeof val === "boolean") {
-    return val
-      ? <CheckCircle2 size={18} color="#22c55e" style={{ display: "block", margin: "0 auto" }} />
-      : <XCircle size={18} color="rgba(255,255,255,0.15)" style={{ display: "block", margin: "0 auto" }} />;
+    return val ? (
+      <CheckCircle2 size={18} color="#22c55e" style={{ display: "block", margin: "0 auto" }} />
+    ) : (
+      <XCircle
+        size={18}
+        color="rgba(255,255,255,0.15)"
+        style={{ display: "block", margin: "0 auto" }}
+      />
+    );
   }
   return <span style={{ fontSize: 13, color: "rgba(255,255,255,0.55)" }}>{val}</span>;
 }
@@ -218,10 +224,20 @@ function FaqItem({ q, a }: { q: string; a: string }) {
         }}
       >
         {q}
-        <span style={{ color: accentLight, flexShrink: 0, fontSize: 20, lineHeight: 1 }}>{open ? "−" : "+"}</span>
+        <span style={{ color: accentLight, flexShrink: 0, fontSize: 20, lineHeight: 1 }}>
+          {open ? "−" : "+"}
+        </span>
       </button>
       {open && (
-        <p style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", lineHeight: 1.75, marginBottom: 18, marginTop: 0 }}>
+        <p
+          style={{
+            fontSize: 14,
+            color: "rgba(255,255,255,0.5)",
+            lineHeight: 1.75,
+            marginBottom: 18,
+            marginTop: 0,
+          }}
+        >
           {a}
         </p>
       )}
@@ -235,7 +251,9 @@ export default function PricingPage() {
   const [annual, setAnnual] = useState(false);
 
   return (
-    <div style={{ background: "#09090f", color: "white", fontFamily: "inherit", minHeight: "100vh" }}>
+    <div
+      style={{ background: "#09090f", color: "white", fontFamily: "inherit", minHeight: "100vh" }}
+    >
       <ClickrNav />
 
       {/* ── Hero ────────────────────────────────────────────────────────── */}
@@ -285,8 +303,16 @@ export default function PricingPage() {
         >
           Simple, transparent pricing.
         </h1>
-        <p style={{ fontSize: 18, color: "rgba(255,255,255,0.48)", maxWidth: 500, margin: "0 auto 36px" }}>
-          One tool. Every campaign. No per-integration fees, no hidden limits on features you actually use.
+        <p
+          style={{
+            fontSize: 18,
+            color: "rgba(255,255,255,0.48)",
+            maxWidth: 500,
+            margin: "0 auto 36px",
+          }}
+        >
+          One tool. Every campaign. No per-integration fees, no hidden limits on features you
+          actually use.
         </p>
 
         {/* Billing toggle */}
@@ -350,14 +376,31 @@ export default function PricingPage() {
         </div>
 
         {/* Trust badges */}
-        <div style={{ display: "flex", gap: 20, justifyContent: "center", flexWrap: "wrap", marginTop: 24 }}>
+        <div
+          style={{
+            display: "flex",
+            gap: 20,
+            justifyContent: "center",
+            flexWrap: "wrap",
+            marginTop: 24,
+          }}
+        >
           {[
             "No credit card required",
             "Cancel anytime",
             "14-day free trial on Starter",
             "7-day free trial on Pro",
           ].map((badge) => (
-            <span key={badge} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "rgba(255,255,255,0.35)" }}>
+            <span
+              key={badge}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                fontSize: 12,
+                color: "rgba(255,255,255,0.35)",
+              }}
+            >
               <CheckCircle2 size={12} color={accent} /> {badge}
             </span>
           ))}
@@ -367,7 +410,13 @@ export default function PricingPage() {
       {/* ── Pricing cards ────────────────────────────────────────────────── */}
       <section style={{ padding: "0 40px 100px" }}>
         <div
-          style={{ maxWidth: 1080, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 24 }}
+          style={{
+            maxWidth: 1080,
+            margin: "0 auto",
+            display: "grid",
+            gridTemplateColumns: "repeat(3,1fr)",
+            gap: 24,
+          }}
           className="pricing-cards-grid"
         >
           {plans.map((plan) => (
@@ -375,7 +424,9 @@ export default function PricingPage() {
               key={plan.name}
               style={{
                 background: plan.featured ? "rgba(20,184,166,0.07)" : "rgba(255,255,255,0.03)",
-                border: plan.featured ? `1px solid rgba(20,184,166,0.35)` : "1px solid rgba(255,255,255,0.08)",
+                border: plan.featured
+                  ? `1px solid rgba(20,184,166,0.35)`
+                  : "1px solid rgba(255,255,255,0.08)",
                 borderRadius: 20,
                 padding: "32px 28px",
                 position: "relative",
@@ -407,15 +458,37 @@ export default function PricingPage() {
               )}
 
               <div style={{ marginBottom: 24 }}>
-                <p style={{ fontSize: 13, fontWeight: 700, color: accentLight, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 8 }}>
+                <p
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 700,
+                    color: accentLight,
+                    letterSpacing: "0.06em",
+                    textTransform: "uppercase",
+                    marginBottom: 8,
+                  }}
+                >
                   {plan.name}
                 </p>
                 <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 10 }}>
-                  <span style={{ fontSize: 48, fontWeight: 900, letterSpacing: "-0.04em", color: "white" }}>
-                    {plan.monthlyPrice === 0 ? "£0" : `£${annual ? plan.annualPrice : plan.monthlyPrice}`}
+                  <span
+                    style={{
+                      fontSize: 48,
+                      fontWeight: 900,
+                      letterSpacing: "-0.04em",
+                      color: "white",
+                    }}
+                  >
+                    {plan.monthlyPrice === 0
+                      ? "£0"
+                      : `£${annual ? plan.annualPrice : plan.monthlyPrice}`}
                   </span>
                   {plan.monthlyPrice > 0 && (
-                    <span style={{ fontSize: 14, color: "rgba(255,255,255,0.35)", fontWeight: 500 }}>/ mo</span>
+                    <span
+                      style={{ fontSize: 14, color: "rgba(255,255,255,0.35)", fontWeight: 500 }}
+                    >
+                      / mo
+                    </span>
                   )}
                 </div>
                 {plan.monthlyPrice > 0 && annual && (
@@ -423,14 +496,32 @@ export default function PricingPage() {
                     Billed annually — save £{(plan.monthlyPrice - plan.annualPrice) * 12}/yr
                   </p>
                 )}
-                <p style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", lineHeight: 1.6 }}>{plan.description}</p>
+                <p style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", lineHeight: 1.6 }}>
+                  {plan.description}
+                </p>
               </div>
 
-              <ul style={{ listStyle: "none", padding: 0, margin: "0 0 28px", display: "flex", flexDirection: "column", gap: 9, flex: 1 }}>
+              <ul
+                style={{
+                  listStyle: "none",
+                  padding: 0,
+                  margin: "0 0 28px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 9,
+                  flex: 1,
+                }}
+              >
                 {plan.features.map((f, i) => (
                   <li key={i} style={{ display: "flex", alignItems: "flex-start", gap: 9 }}>
-                    <CheckCircle2 size={14} color={accentLight} style={{ flexShrink: 0, marginTop: 2 }} />
-                    <span style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", lineHeight: 1.5 }}>{f}</span>
+                    <CheckCircle2
+                      size={14}
+                      color={accentLight}
+                      style={{ flexShrink: 0, marginTop: 2 }}
+                    />
+                    <span style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", lineHeight: 1.5 }}>
+                      {f}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -488,7 +579,15 @@ export default function PricingPage() {
             >
               <thead>
                 <tr>
-                  <th style={{ textAlign: "left", padding: "12px 0", color: "rgba(255,255,255,0.35)", fontWeight: 600, borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+                  <th
+                    style={{
+                      textAlign: "left",
+                      padding: "12px 0",
+                      color: "rgba(255,255,255,0.35)",
+                      fontWeight: 600,
+                      borderBottom: "1px solid rgba(255,255,255,0.08)",
+                    }}
+                  >
                     Feature
                   </th>
                   {plans.map((p) => (
@@ -574,11 +673,27 @@ export default function PricingPage() {
             <Zap size={16} color={accentLight} />
             <span style={{ fontSize: 13, color: accentLight, fontWeight: 600 }}>Still unsure?</span>
           </div>
-          <h2 style={{ fontSize: 36, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 16, color: "white" }}>
+          <h2
+            style={{
+              fontSize: 36,
+              fontWeight: 800,
+              letterSpacing: "-0.03em",
+              marginBottom: 16,
+              color: "white",
+            }}
+          >
             Talk to the team.
           </h2>
-          <p style={{ fontSize: 15, color: "rgba(255,255,255,0.45)", marginBottom: 32, lineHeight: 1.7 }}>
-            We run paid campaigns for a living. Tell us about your setup and we&apos;ll recommend the right plan — or just show you the tool.
+          <p
+            style={{
+              fontSize: 15,
+              color: "rgba(255,255,255,0.45)",
+              marginBottom: 32,
+              lineHeight: 1.7,
+            }}
+          >
+            We run paid campaigns for a living. Tell us about your setup and we&apos;ll recommend
+            the right plan — or just show you the tool.
           </p>
           <a
             href="mailto:hello@i3media.co.uk"

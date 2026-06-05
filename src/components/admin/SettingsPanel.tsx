@@ -1994,7 +1994,7 @@ function SettingsPanelInner() {
               </label>
               <Input
                 type="text"
-                placeholder="Stratos Leads <noreply@clickr.marketing>"
+                placeholder="Stratos Leads <noreply@bettsandburton.com>"
                 value={resendFrom}
                 onChange={(e) => setResendFrom(e.target.value)}
               />

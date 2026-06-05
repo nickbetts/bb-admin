@@ -9,11 +9,11 @@ export const metadata: Metadata = {
   title: "Blog",
   description:
     "Landing page strategy, conversion rate optimisation guides, Google Ads tips, and AI marketing insights from the clickr team at i3MEDIA.",
-  alternates: { canonical: "https://clickr.marketing/blog" },
+  alternates: { canonical: "https://lp.bettsandburton.com/blog" },
   openGraph: {
     title: "Blog | clickr",
     description: "Landing page strategy, CRO guides, and AI marketing insights.",
-    url: "https://clickr.marketing/blog",
+    url: "https://lp.bettsandburton.com/blog",
   },
 };
 
@@ -21,14 +21,20 @@ const accent = "#14b8a6";
 const accentLight = "#5eead4";
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+  return new Date(iso).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 }
 
 export default function BlogIndexPage() {
   const [featured, ...rest] = blogArticles;
 
   return (
-    <div style={{ background: "#09090f", color: "white", fontFamily: "inherit", minHeight: "100vh" }}>
+    <div
+      style={{ background: "#09090f", color: "white", fontFamily: "inherit", minHeight: "100vh" }}
+    >
       <ClickrNav />
 
       {/* ── Hero ────────────────────────────────────────────────────────── */}
@@ -63,7 +69,8 @@ export default function BlogIndexPage() {
             color: "white",
           }}
         >
-          Landing page strategy and<br />
+          Landing page strategy and
+          <br />
           <span
             style={{
               background: `linear-gradient(90deg, ${accentLight}, ${accent})`,
@@ -74,7 +81,9 @@ export default function BlogIndexPage() {
             performance marketing insights.
           </span>
         </h1>
-        <p style={{ fontSize: 17, color: "rgba(255,255,255,0.45)", maxWidth: 480, margin: "0 auto" }}>
+        <p
+          style={{ fontSize: 17, color: "rgba(255,255,255,0.45)", maxWidth: 480, margin: "0 auto" }}
+        >
           CRO guides, Google Ads deep-dives, and AI-powered campaign tactics from i3MEDIA.
         </p>
       </section>
@@ -99,7 +108,8 @@ export default function BlogIndexPage() {
               style={{
                 position: "absolute",
                 inset: 0,
-                background: "radial-gradient(ellipse at 80% 20%, rgba(20,184,166,0.05) 0%, transparent 60%)",
+                background:
+                  "radial-gradient(ellipse at 80% 20%, rgba(20,184,166,0.05) 0%, transparent 60%)",
                 pointerEvents: "none",
               }}
             />
@@ -116,7 +126,15 @@ export default function BlogIndexPage() {
               }}
             >
               <Tag size={10} color={accentLight} />
-              <span style={{ fontSize: 11, fontWeight: 700, color: accentLight, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: accentLight,
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                }}
+              >
                 {featured.category}
               </span>
             </div>
@@ -133,11 +151,27 @@ export default function BlogIndexPage() {
             >
               {featured.title}
             </h2>
-            <p style={{ fontSize: 16, color: "rgba(255,255,255,0.5)", lineHeight: 1.7, maxWidth: 640, marginBottom: 24 }}>
+            <p
+              style={{
+                fontSize: 16,
+                color: "rgba(255,255,255,0.5)",
+                lineHeight: 1.7,
+                maxWidth: 640,
+                marginBottom: 24,
+              }}
+            >
               {featured.excerpt}
             </p>
             <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-              <span style={{ fontSize: 13, color: "rgba(255,255,255,0.3)", display: "flex", alignItems: "center", gap: 5 }}>
+              <span
+                style={{
+                  fontSize: 13,
+                  color: "rgba(255,255,255,0.3)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 5,
+                }}
+              >
                 <Clock size={12} /> {featured.readingTimeMinutes} min read
               </span>
               <span style={{ fontSize: 13, color: "rgba(255,255,255,0.3)" }}>
@@ -195,7 +229,15 @@ export default function BlogIndexPage() {
                     alignSelf: "flex-start",
                   }}
                 >
-                  <span style={{ fontSize: 10, fontWeight: 700, color: accentLight, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      color: accentLight,
+                      letterSpacing: "0.06em",
+                      textTransform: "uppercase",
+                    }}
+                  >
                     {article.category}
                   </span>
                 </div>
@@ -212,14 +254,40 @@ export default function BlogIndexPage() {
                 >
                   {article.title}
                 </h3>
-                <p style={{ fontSize: 13, color: "rgba(255,255,255,0.42)", lineHeight: 1.65, marginBottom: 20 }}>
+                <p
+                  style={{
+                    fontSize: 13,
+                    color: "rgba(255,255,255,0.42)",
+                    lineHeight: 1.65,
+                    marginBottom: 20,
+                  }}
+                >
                   {article.excerpt.slice(0, 120)}…
                 </p>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <span style={{ fontSize: 12, color: "rgba(255,255,255,0.25)", display: "flex", alignItems: "center", gap: 4 }}>
+                <div
+                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
+                >
+                  <span
+                    style={{
+                      fontSize: 12,
+                      color: "rgba(255,255,255,0.25)",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
+                  >
                     <Clock size={11} /> {article.readingTimeMinutes} min
                   </span>
-                  <span style={{ fontSize: 12, color: accentLight, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      color: accentLight,
+                      fontWeight: 600,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
+                  >
                     Read <ArrowRight size={11} />
                   </span>
                 </div>
