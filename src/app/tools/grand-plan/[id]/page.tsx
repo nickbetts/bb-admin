@@ -295,6 +295,7 @@ interface SecondPassQaResult {
   findings: string[];
   hardFailures: string[];
   unresolvedRisks: string[];
+  error?: string;
 }
 
 interface SecondPassQaSummary {
@@ -303,6 +304,7 @@ interface SecondPassQaSummary {
   model: string;
   changedSections: number;
   reviewedSections: number;
+  hardFailureCount?: number;
   results: SecondPassQaResult[];
 }
 
@@ -1229,6 +1231,20 @@ export default function GrandPlanViewPage({ params }: Props) {
     actionLabel: string,
     confirmLabel: string,
   ): Promise<boolean> {
+    if (secondPassHardFailures.length > 0) {
+      const hardPreview = secondPassHardFailures
+        .slice(0, 4)
+        .map((line) => `• ${line}`)
+        .join("\n");
+      const proceed = await confirm({
+        title: `Critical QA failures detected before ${actionLabel}`,
+        description: `Second-pass QA flagged hard failures. Resolve these before publishing.\n\n${hardPreview}${secondPassHardFailures.length > 4 ? `\n…plus ${secondPassHardFailures.length - 4} more.` : ""}`,
+        confirmLabel: "Proceed anyway",
+        danger: true,
+      });
+      if (!proceed) return false;
+    }
+
     if (!publishQualitySummary.hasIssues) return true;
 
     const detailPreview = publishQualitySummary.lines
@@ -1891,6 +1907,20 @@ export default function GrandPlanViewPage({ params }: Props) {
       return null;
     }
   }, [plan?.planDataJson]);
+
+  const secondPassHardFailures = useMemo(() => {
+    if (!secondPassQa) return [] as string[];
+    const lines = new Set<string>();
+    for (const result of secondPassQa.results) {
+      for (const failure of result.hardFailures) {
+        lines.add(`${labelFor(result.sectionKey)}: ${failure}`);
+      }
+      if (result.error) {
+        lines.add(`${labelFor(result.sectionKey)}: ${result.error}`);
+      }
+    }
+    return Array.from(lines);
+  }, [secondPassQa]);
 
   const removableSections = useMemo(() => {
     return ALL_SECTIONS.reduce(
@@ -3086,6 +3116,14 @@ export default function GrandPlanViewPage({ params }: Props) {
             {secondPassQa.reviewedSections} sections reviewed • {secondPassQa.changedSections}{" "}
             updated
           </p>
+          {secondPassHardFailures.length > 0 && (
+            <p
+              style={{ margin: "4px 0 0", fontSize: 11.5, color: "var(--danger)", fontWeight: 600 }}
+            >
+              {secondPassHardFailures.length} hard failure
+              {secondPassHardFailures.length === 1 ? "" : "s"} detected
+            </p>
+          )}
           <div style={{ display: "grid", gap: 6, marginTop: 8 }}>
             {secondPassQa.results.slice(0, 6).map((result) => {
               const average =

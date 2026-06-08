@@ -29,10 +29,14 @@ interface SectionQaResult {
   findings: string[];
   hardFailures: string[];
   unresolvedRisks: string[];
+  error?: string;
 }
 
 const MAX_TARGET_SECTIONS = 14;
 const LOW_SCORE_THRESHOLD = 4;
+const MAX_INSTRUCTIONS_LENGTH = 2500;
+const MAX_SECTION_CHARS = 32000;
+const MAX_SECTION_PREVIEW_CHARS = 12000;
 
 function avgScore(scores: SectionQaResult["scores"]): number {
   const values = Object.values(scores);
@@ -99,6 +103,7 @@ function sanitizeResult(input: unknown, sectionKey: string): SectionQaResult {
     findings: [],
     hardFailures: [],
     unresolvedRisks: [],
+    error: undefined,
   };
 
   if (!input || typeof input !== "object") return fallback;
@@ -127,7 +132,40 @@ function sanitizeResult(input: unknown, sectionKey: string): SectionQaResult {
     unresolvedRisks: Array.isArray(raw.unresolvedRisks)
       ? raw.unresolvedRisks.filter((x): x is string => typeof x === "string" && x.trim().length > 0)
       : [],
+    error: typeof raw.error === "string" ? raw.error : undefined,
   };
+}
+
+function sectionShapeCompatible(original: unknown, replacement: unknown): boolean {
+  if (original == null || replacement == null) return original === replacement;
+  if (Array.isArray(original)) return Array.isArray(replacement);
+  if (typeof original === "string") return typeof replacement === "string";
+  if (typeof original === "number") return typeof replacement === "number";
+  if (typeof original === "boolean") return typeof replacement === "boolean";
+  if (typeof original === "object")
+    return typeof replacement === "object" && !Array.isArray(replacement);
+  return typeof original === typeof replacement;
+}
+
+function compactForModel(value: unknown): string {
+  const raw = JSON.stringify(value);
+  if (raw.length <= MAX_SECTION_CHARS) return raw;
+  return `${raw.slice(0, MAX_SECTION_PREVIEW_CHARS)}\n...[truncated for safety]`;
+}
+
+function isTransientAnthropicError(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const candidate = err as { status?: number; message?: string };
+  if (candidate.status && [408, 425, 429, 500, 502, 503, 504, 529].includes(candidate.status)) {
+    return true;
+  }
+  const msg = (candidate.message ?? "").toLowerCase();
+  return (
+    msg.includes("rate limit") ||
+    msg.includes("timeout") ||
+    msg.includes("overloaded") ||
+    msg.includes("econnreset")
+  );
 }
 
 function parseLooseJson<T>(raw: string): T {
@@ -147,7 +185,7 @@ async function critiqueAndMaybeRewrite(args: {
   planContext: string;
 }): Promise<{ qa: SectionQaResult; improvedSection?: unknown }> {
   const { anthropic, mode, sectionKey, sectionValue, briefContext, planContext } = args;
-  const sectionJson = JSON.stringify(sectionValue);
+  const sectionJson = compactForModel(sectionValue);
 
   const prompt = `You are a principal marketing strategy reviewer doing a second-pass QA on one section of a grand plan.
 
@@ -204,12 +242,28 @@ ${planContext}
 Section input JSON:
 ${sectionJson}`;
 
-  const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 3500,
-    temperature: 0.3,
-    messages: [{ role: "user", content: prompt }],
-  });
+  let response: Awaited<ReturnType<typeof anthropic.messages.create>> | null = null;
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      response = await anthropic.messages.create({
+        model: "claude-sonnet-4-6",
+        max_tokens: 3500,
+        temperature: 0.3,
+        messages: [{ role: "user", content: prompt }],
+      });
+      break;
+    } catch (error) {
+      lastError = error;
+      if (attempt === 1 || !isTransientAnthropicError(error)) {
+        throw error;
+      }
+    }
+  }
+
+  if (!response) {
+    throw new Error(lastError instanceof Error ? lastError.message : "Second-pass call failed");
+  }
 
   await logAnthropicUsage("grand_plan_second_pass", response);
 
@@ -275,6 +329,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       instructions?: string;
     };
 
+    if (body.instructions && body.instructions.length > MAX_INSTRUCTIONS_LENGTH) {
+      return NextResponse.json(
+        {
+          error: `instructions is too long (max ${MAX_INSTRUCTIONS_LENGTH} characters)`,
+        },
+        { status: 400 },
+      );
+    }
+
     const mode: SecondPassMode = body.mode === "review" ? "review" : "rewrite";
     const planData = JSON.parse(plan.planDataJson) as GrandPlanData;
 
@@ -284,7 +347,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     const requestedSections =
       body.sections && body.sections.length > 0
-        ? body.sections.filter((key): key is SectionKey =>
+        ? Array.from(new Set(body.sections)).filter((key): key is SectionKey =>
             availableSections.includes(key as SectionKey),
           )
         : availableSections;
@@ -331,21 +394,51 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       const sectionValue = planData.sections[sectionKey];
       if (sectionValue == null) continue;
 
-      const { qa, improvedSection } = await critiqueAndMaybeRewrite({
-        anthropic,
-        mode,
-        sectionKey,
-        sectionValue,
-        briefContext,
-        planContext,
-      });
+      try {
+        const { qa, improvedSection } = await critiqueAndMaybeRewrite({
+          anthropic,
+          mode,
+          sectionKey,
+          sectionValue,
+          briefContext,
+          planContext,
+        });
 
-      qaResults.push(qa);
+        if (mode === "rewrite" && qa.changed && improvedSection !== undefined) {
+          if (!sectionShapeCompatible(sectionValue, improvedSection)) {
+            qa.hardFailures = [
+              ...qa.hardFailures,
+              "Model rewrite changed the section data shape and was ignored for safety.",
+            ];
+            qa.changed = false;
+          } else {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (planData.sections as any)[sectionKey] = improvedSection;
+            changedCount += 1;
+          }
+        }
 
-      if (mode === "rewrite" && qa.changed && improvedSection !== undefined) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (planData.sections as any)[sectionKey] = improvedSection;
-        changedCount += 1;
+        qaResults.push(qa);
+      } catch (error) {
+        qaResults.push({
+          sectionKey,
+          changed: false,
+          confidence: 0,
+          scores: {
+            briefAlignment: 0,
+            factualGrounding: 0,
+            consistency: 0,
+            strategicDepth: 0,
+            clientSpecificity: 0,
+            readability: 0,
+          },
+          findings: [],
+          hardFailures: ["Second-pass model call failed for this section."],
+          unresolvedRisks: [
+            "Section could not be validated automatically. Review manually before sharing.",
+          ],
+          error: error instanceof Error ? error.message : "Unknown section-level error",
+        });
       }
     }
 
@@ -381,21 +474,26 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const latestVersion = plan.versions[0];
     const nextVersion = (latestVersion?.versionNumber ?? 0) + 1;
 
+    const hardFailureCount = qaResults.reduce((sum, result) => sum + result.hardFailures.length, 0);
+
     const qualityState = {
       version: 1,
       checkedAt: new Date().toISOString(),
       planId: id,
       title: plan.title,
       strictMode: true,
-      status: qaWarnings.length > 0 ? "warning" : "ok",
+      status: hardFailureCount > 0 ? "failed" : qaWarnings.length > 0 ? "warning" : "ok",
       summary:
-        qaWarnings.length > 0
-          ? `Second pass found ${qaWarnings.length} issue${qaWarnings.length === 1 ? "" : "s"}.`
-          : "Second pass completed with no critical issues.",
+        hardFailureCount > 0
+          ? `Second pass found ${hardFailureCount} hard failure${hardFailureCount === 1 ? "" : "s"}.`
+          : qaWarnings.length > 0
+            ? `Second pass found ${qaWarnings.length} issue${qaWarnings.length === 1 ? "" : "s"}.`
+            : "Second pass completed with no critical issues.",
       secondPass: {
         mode,
         changedSections: changedCount,
         reviewedSections: qaResults.length,
+        hardFailureCount,
       },
     };
 
@@ -438,6 +536,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       mode,
       reviewedSections: qaResults.length,
       changedSections: changedCount,
+      hardFailureCount,
       warnings: qaWarnings,
       qa: qaResults,
       html,
