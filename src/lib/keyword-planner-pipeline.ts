@@ -8,7 +8,7 @@
 
 import { jsonrepair } from "jsonrepair";
 import { getAnthropicClient } from "@/lib/anthropic-client";
-import { generateKeywordIdeas } from "@/lib/google-ads";
+import { generateKeywordIdeas, listAccessibleCustomers } from "@/lib/google-ads";
 import { getKeywordVolumeMetrics, type KeywordVolumeResult } from "@/lib/seo-retired-defaults";
 import { crawlSiteForKeywordContext } from "@/lib/landing-page-analyzer";
 
@@ -36,6 +36,16 @@ export interface KeywordResearchOptions {
   language?: string;
   customerId?: string;
   strict?: boolean;
+}
+
+async function resolveGoogleAdsCustomerId(inputCustomerId?: string): Promise<string | null> {
+  if (inputCustomerId?.trim()) return inputCustomerId.trim();
+
+  const accounts = await listAccessibleCustomers();
+  if (!accounts.length) return null;
+
+  // Prefer a non-manager account when available.
+  return (accounts.find((a) => !a.isManager)?.id ?? accounts[0]?.id ?? null)?.replace(/-/g, "");
 }
 
 // ─── Suggest ad groups from website + brief (Claude) ────────────────────────
@@ -189,13 +199,9 @@ export async function researchKeywords(
 
   if (!allKeywords.length) return [];
 
-  if (strict && !customerId) {
-    throw new Error(
-      "Google Ads customer ID is required for strict keyword metrics. Connect Google Ads and try again.",
-    );
-  }
+  const resolvedCustomerId = await resolveGoogleAdsCustomerId(customerId);
 
-  if (customerId) {
+  if (resolvedCustomerId) {
     const uniqueKeywords = Array.from(new Set(allKeywords.map((k) => k.trim()).filter(Boolean)));
     const batches: string[][] = [];
     const batchSize = 20;
@@ -207,7 +213,7 @@ export async function researchKeywords(
       await Promise.all(
         batches.map((batch) =>
           generateKeywordIdeas(
-            customerId,
+            resolvedCustomerId,
             batch,
             "",
             [location],
@@ -229,7 +235,7 @@ export async function researchKeywords(
 
   if (strict) {
     throw new Error(
-      "Strict mode requires Google Ads keyword metrics, but no Google Ads account was provided.",
+      "Strict mode requires live Google Ads keyword metrics. No accessible Google Ads customer account was found.",
     );
   }
 

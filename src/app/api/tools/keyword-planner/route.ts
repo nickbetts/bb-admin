@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { crawlSiteForKeywordContext } from "@/lib/landing-page-analyzer";
 import { getOpenAiClient, logOpenAiUsage } from "@/lib/openai-client";
-import { prisma } from "@/lib/prisma";
 import { researchKeywords } from "@/lib/keyword-planner-pipeline";
 
 export const dynamic = "force-dynamic";
@@ -170,17 +169,6 @@ Return ONLY this JSON (no markdown, no explanation):
       const resBody = body as ResearchBody;
       const { location, language, customerId } = resBody;
       const strict = resBody.strict ?? true;
-
-      if (strict && !customerId) {
-        return NextResponse.json(
-          {
-            error:
-              "Strict keyword metrics require a Google Ads customer ID. Connect a Google Ads account and try again.",
-            code: "GOOGLE_ADS_CUSTOMER_REQUIRED",
-          },
-          { status: 400 },
-        );
-      }
 
       // Build flat keyword list + group map from adGroups (or legacy keywords)
       const normalizedAdGroups: AdGroupSeed[] = [];

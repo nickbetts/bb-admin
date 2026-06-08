@@ -148,12 +148,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       let keywordResearchData = plan.keywordResearch;
       const kwBriefText = config.kwBrief?.brief || brief;
       if (!keywordResearchData && website && kwBriefText) {
-        if (!plan.client?.googleAdsCustomerId) {
-          throw new Error(
-            "Strict keyword metrics require a connected Google Ads account (missing googleAdsCustomerId on client).",
-          );
-        }
-
         await setProgress("Crawling website and suggesting ad groups...");
         const suggestResult = await suggestAdGroups(website, kwBriefText);
 
