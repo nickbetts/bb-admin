@@ -200,6 +200,7 @@ interface GrandPlanFull {
   prospectWebsite: string | null;
   generatedHtml: string | null;
   planDataJson: string | null;
+  qualityStateJson: string | null;
   presentationGeneratedAt: string | null;
   presentationDataJson: string | null;
   clientBrief: string | null;
@@ -352,9 +353,6 @@ export default function GrandPlanViewPage({ params }: Props) {
 
   // Per-section regeneration
   const [regeneratingSection, setRegeneratingSection] = useState<string | null>(null);
-
-  // Restore
-  const [restoringVersion, setRestoringVersion] = useState<string | null>(null);
 
   // AbortController so the user can cancel a hung generation step. We also
   // attach a per-step hard timeout so the UI never gets stuck if the underlying
@@ -1573,61 +1571,6 @@ export default function GrandPlanViewPage({ params }: Props) {
     URL.revokeObjectURL(url);
   }
 
-  function handlePrint() {
-    iframeRef.current?.contentWindow?.postMessage({ type: "gp:print" }, "*");
-  }
-
-  async function handleClone() {
-    if (!plan) return;
-    try {
-      const res = await fetch("/api/tools/grand-plan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          clientId: plan.clientId,
-          title: `${plan.title} (Copy)`,
-          purpose: plan.purpose,
-          cloneFromId: plan.id,
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        toast("Cloned", "success");
-        router.push(`/tools/grand-plan/${data.grandPlan.id}`);
-      }
-    } catch {
-      /* ignore */
-    }
-  }
-
-  async function handleRestoreVersion(version: { id: string; versionNumber: number }) {
-    const ok = await confirm({
-      title: `Restore version v${version.versionNumber}?`,
-      description:
-        "The current document will be archived as a new version, so you can always undo.",
-      confirmLabel: "Restore",
-    });
-    if (!ok) return;
-    setRestoringVersion(version.id);
-    try {
-      const res = await fetch(`/api/tools/grand-plan/${id}/restore-version`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ versionId: version.id }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        updateBlobUrl(data.html);
-        await loadPlan();
-        toast(`Restored v${version.versionNumber}`, "success");
-      } else {
-        toast("Failed to restore version", "error");
-      }
-    } finally {
-      setRestoringVersion(null);
-    }
-  }
-
   function scrollToSection(sectionId: string) {
     iframeRef.current?.contentWindow?.postMessage({ type: "gp:scroll", id: sectionId }, "*");
     setActiveSectionId(sectionId);
@@ -1811,6 +1754,21 @@ export default function GrandPlanViewPage({ params }: Props) {
     }
   }, [plan?.planDataJson]);
 
+  const qualityState = useMemo(() => {
+    if (!plan?.qualityStateJson) return null;
+    try {
+      return JSON.parse(plan.qualityStateJson) as {
+        status?: string;
+        strictMode?: boolean;
+        summary?: string;
+        checkedAt?: string;
+        googleAdsCustomerId?: string | null;
+      };
+    } catch {
+      return null;
+    }
+  }, [plan?.qualityStateJson]);
+
   const removableSections = useMemo(() => {
     return ALL_SECTIONS.reduce(
       (acc, section) => {
@@ -1991,6 +1949,26 @@ export default function GrandPlanViewPage({ params }: Props) {
                 <span style={{ fontSize: 12, color: "var(--text-3)" }}>{plan.client.name}</span>
               )}
               <StatusBadge status={plan.status} />
+              {qualityState?.strictMode && (
+                <span
+                  className="inline-flex items-center"
+                  style={{
+                    gap: 4,
+                    fontSize: 11,
+                    color:
+                      qualityState.status === "failed"
+                        ? "var(--danger)"
+                        : qualityState.status === "warning"
+                          ? "var(--warning)"
+                          : "var(--success)",
+                    fontWeight: 600,
+                  }}
+                  title={qualityState.summary ?? "Strict live-data quality state"}
+                >
+                  <CircleCheck style={{ width: 11, height: 11 }} aria-hidden />
+                  Strict live data
+                </span>
+              )}
               <PurposeBadge purpose={plan.purpose} />
               {plan.generationMs != null && (
                 <span style={{ fontSize: 11, color: "var(--text-4)" }}>
@@ -3518,86 +3496,34 @@ function LinkedSource({ href, label, title }: { href: string; label: string; tit
   );
 }
 
-function OverflowItem({
-  icon,
-  label,
-  onClick,
-  destructive,
-  disabled,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  onClick: () => void;
-  destructive?: boolean;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      role="menuitem"
-      onClick={onClick}
-      disabled={disabled}
-      className="flex items-center"
-      style={{
-        gap: 8,
-        width: "100%",
-        padding: "7px 10px",
-        background: "transparent",
-        border: "none",
-        borderRadius: 6,
-        cursor: disabled ? "not-allowed" : "pointer",
-        fontSize: 12.5,
-        color: destructive ? "var(--danger)" : "var(--text)",
-        textAlign: "left",
-        opacity: disabled ? 0.5 : 1,
-      }}
-      onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-2)")}
-      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-    >
-      {icon}
-      {label}
-    </button>
-  );
-}
-
 function PipelineStepper({
   steps,
   sectionKeys,
   statusMap,
   activeSection,
 }: {
-  steps: { key: string; label: string; estSeconds: number }[];
+  steps: Array<{ key?: string; label: string; sectionKey?: string; statusKey?: string }>;
   sectionKeys: string[];
   statusMap: Record<string, "pending" | "running" | "done" | "skipped" | "failed">;
-  activeSection: { key: string; index: number; total: number } | null;
+  activeSection: { index: number; total: number } | null;
 }) {
-  const allRows: {
-    key: string;
-    statusKey: string;
-    label: string;
-    group: "prep" | "section" | "assemble";
-  }[] = [];
-  for (const s of steps)
-    allRows.push({ key: s.key, statusKey: s.key, label: s.label, group: "prep" });
-  for (const k of sectionKeys)
-    allRows.push({ key: k, statusKey: `section:${k}`, label: labelFor(k), group: "section" });
-  allRows.push({
-    key: "assemble",
-    statusKey: "assemble",
-    label: "Assembling final document",
-    group: "assemble",
-  });
-
-  const completed = allRows.filter((r) => {
-    const st = statusMap[r.statusKey];
-    return st === "done" || st === "skipped";
+  const completed = steps.filter((step) => {
+    const statusKey = step.statusKey ?? step.sectionKey ?? step.key ?? step.label;
+    return statusMap[statusKey] === "done";
   }).length;
 
   return (
-    <div>
+    <div
+      style={{
+        padding: 12,
+        borderRadius: 12,
+        border: "1px solid var(--border)",
+        background: "var(--bg-1)",
+      }}
+    >
       <div
         className="flex items-center"
         style={{
-          gap: 8,
           marginBottom: 10,
           fontSize: 11.5,
           color: "var(--text-3)",
@@ -3605,7 +3531,7 @@ function PipelineStepper({
         }}
       >
         <span>
-          Step {Math.min(completed + 1, allRows.length)} of {allRows.length}
+          Step {Math.min(completed + 1, steps.length)} of {steps.length}
         </span>
         <span aria-hidden>·</span>
         <span>{completed} complete</span>
@@ -3625,9 +3551,12 @@ function PipelineStepper({
           gap: 4,
         }}
       >
-        {allRows.map((row) => {
-          const st = statusMap[row.statusKey] ?? "pending";
-          return <StepperRow key={row.statusKey} label={row.label} status={st} />;
+        {steps.map((step) => {
+          const statusKey = step.statusKey ?? step.sectionKey ?? step.key ?? step.label;
+          const status = sectionKeys.includes(step.sectionKey ?? step.key ?? "")
+            ? (statusMap[statusKey] ?? "pending")
+            : "skipped";
+          return <StepperRow key={statusKey} label={step.label} status={status} />;
         })}
       </div>
     </div>

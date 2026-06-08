@@ -1058,6 +1058,7 @@ model GrandPlan {
   presentationHtml         String?
   presentationDataJson     String?
   presentationGeneratedAt  DateTime?
+  qualityStateJson         String?
   client                   Client?                 @relation(fields: [clientId], references: [id])
   contentStrategy          ContentStrategy?        @relation(fields: [contentStrategyId], references: [id])
   keywordResearch          KeywordPlannerResearch? @relation(fields: [keywordResearchId], references: [id])

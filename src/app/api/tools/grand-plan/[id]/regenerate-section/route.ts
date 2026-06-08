@@ -38,7 +38,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const plan = await prisma.grandPlan.findUnique({
     where: { id },
     include: {
-      client: { select: { id: true, name: true, slug: true, website: true } },
+      client: {
+        select: { id: true, name: true, slug: true, website: true, googleAdsCustomerId: true },
+      },
       proposal: {
         select: {
           id: true,
@@ -192,6 +194,17 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     const html = renderGrandPlanHtml(existingPlanData);
+    const qualityState = {
+      version: 1,
+      checkedAt: new Date().toISOString(),
+      planId: id,
+      title: plan.title,
+      strictMode: true,
+      status: "ok" as const,
+      summary: "Section regenerated successfully.",
+      googleAdsCustomerId: plan.client?.googleAdsCustomerId ?? null,
+      generationReport: existingPlanData.generationReport,
+    };
 
     // Save version
     const latestVersion = plan.versions[0];
@@ -204,6 +217,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           versionNumber: nextVersion,
           generatedHtml: html,
           planDataJson: JSON.stringify(existingPlanData),
+          qualityStateJson: JSON.stringify(qualityState),
           prompt: `Regenerated section: ${sectionKey}`,
         },
       }),
@@ -212,6 +226,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         data: {
           generatedHtml: html,
           planDataJson: JSON.stringify(existingPlanData),
+          qualityStateJson: JSON.stringify(qualityState),
         },
       }),
     ]);

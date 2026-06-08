@@ -10,8 +10,6 @@ import {
 } from "@/lib/grand-plan-generator";
 import { renderGrandPlanHtml } from "@/lib/grand-plan-html-template";
 import { suggestAdGroups, researchKeywords } from "@/lib/keyword-planner-pipeline";
-import { generateContentStrategy } from "@/lib/content-strategy-generator";
-import { extractBrandContext } from "@/lib/brand-extractor";
 
 export const maxDuration = 800;
 export const dynamic = "force-dynamic";
@@ -307,6 +305,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
       const html = renderGrandPlanHtml(planData);
       const generationMs = Date.now() - start;
+      const qualityState = buildQualityState({
+        planId,
+        title: plan.title,
+        strictMode: true,
+        googleAdsCustomerId: plan.client?.googleAdsCustomerId ?? null,
+        generationReport: planData.generationReport,
+        pipelineWarnings,
+        status: "ok",
+      });
 
       // Get next version number
       const lastVersion = await prisma.grandPlanVersion.findFirst({
@@ -325,6 +332,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             statusMessage: null,
             generatedHtml: html,
             planDataJson: JSON.stringify(planData),
+            qualityStateJson: JSON.stringify(qualityState),
             generationMs,
           },
         }),
@@ -352,6 +360,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     } catch (genError) {
       const message = genError instanceof Error ? genError.message : "Unknown error";
       console.error("Grand plan generation error:", genError);
+      const qualityState = buildQualityState({
+        planId,
+        title: plan.title,
+        strictMode: true,
+        googleAdsCustomerId: plan.client?.googleAdsCustomerId ?? null,
+        blockers: [message],
+        status: "failed",
+      });
 
       await prisma.grandPlan.update({
         where: { id: planId },
@@ -360,6 +376,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           statusMessage: null,
           generationError: message,
           planDataJson: JSON.stringify({ error: message }),
+          qualityStateJson: JSON.stringify(qualityState),
         },
       });
     }
@@ -379,4 +396,48 @@ function safeJsonParse<T>(s: string | null | undefined, fallback: T): T {
   } catch {
     return fallback;
   }
+}
+
+type GrandPlanQualityState = {
+  version: 1;
+  checkedAt: string;
+  planId: string;
+  title: string;
+  strictMode: boolean;
+  status: "ok" | "warning" | "failed";
+  summary: string;
+  googleAdsCustomerId: string | null;
+  generationReport?: Record<string, { status: string; error?: string }>;
+  pipelineWarnings?: string[];
+  blockers?: string[];
+};
+
+function buildQualityState(input: {
+  planId: string;
+  title: string;
+  strictMode: boolean;
+  googleAdsCustomerId: string | null;
+  generationReport?: Record<string, { status: string; error?: string }>;
+  pipelineWarnings?: string[];
+  blockers?: string[];
+  status: GrandPlanQualityState["status"];
+}): GrandPlanQualityState {
+  const summary =
+    input.status === "failed"
+      ? (input.blockers?.[0] ?? "Generation failed before completion.")
+      : (input.pipelineWarnings?.[0] ?? "Plan generated successfully with live data checks.");
+
+  return {
+    version: 1,
+    checkedAt: new Date().toISOString(),
+    planId: input.planId,
+    title: input.title,
+    strictMode: input.strictMode,
+    status: input.status,
+    summary,
+    googleAdsCustomerId: input.googleAdsCustomerId,
+    generationReport: input.generationReport,
+    pipelineWarnings: input.pipelineWarnings,
+    blockers: input.blockers,
+  };
 }
