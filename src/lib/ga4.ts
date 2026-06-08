@@ -1,5 +1,9 @@
 // GA4 integration using Google Analytics Data API (service account — non-expiring)
-import { getGoogleAccessToken } from "@/lib/google-auth";
+import {
+  getGoogleAccessToken,
+  getGoogleUserAccessToken,
+  hasGoogleServiceAccountCredentials,
+} from "@/lib/google-auth";
 
 async function buildGa4Headers(): Promise<Record<string, string>> {
   const token = await getGoogleAccessToken();
@@ -7,6 +11,76 @@ async function buildGa4Headers(): Promise<Record<string, string>> {
     Authorization: `Bearer ${token}`,
     "Content-Type": "application/json",
   };
+}
+
+async function runGa4ReportWithFallback(
+  url: string,
+  body: unknown,
+  preferredEmail?: string,
+): Promise<Response> {
+  const candidates: Array<{ source: string; token: string }> = [];
+
+  if (hasGoogleServiceAccountCredentials()) {
+    try {
+      candidates.push({ source: "service-account", token: await getGoogleAccessToken() });
+    } catch {
+      // Fall through to OAuth attempt below.
+    }
+  }
+
+  if (preferredEmail) {
+    try {
+      const user = await getGoogleUserAccessToken(preferredEmail);
+      if (!candidates.some((candidate) => candidate.token === user.token)) {
+        candidates.push({ source: `user-oauth:${user.email}`, token: user.token });
+      }
+    } catch {
+      // If user OAuth isn't available, keep existing service-account behaviour.
+    }
+  }
+
+  // Preserve historical behaviour if no fallback candidate was added.
+  if (candidates.length === 0) {
+    const headers = await buildGa4Headers();
+    return fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+      cache: "no-store",
+    });
+  }
+
+  let lastResponse: Response | null = null;
+  let lastBody = "";
+
+  for (const [index, candidate] of candidates.entries()) {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${candidate.token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      cache: "no-store",
+    });
+
+    if (response.ok) return response;
+
+    lastBody = await response.text();
+    lastResponse = new Response(lastBody, {
+      status: response.status,
+      statusText: response.statusText,
+    });
+
+    const canRetry = response.status === 401 || response.status === 403;
+    const hasNext = index < candidates.length - 1;
+    if (!canRetry || !hasNext) {
+      throw new Error(`GA4 API error (${candidate.source}): ${lastBody}`);
+    }
+  }
+
+  if (lastResponse) return lastResponse;
+  throw new Error("GA4 API error: no auth candidates available");
 }
 
 export interface GA4MetricsData {
@@ -48,9 +122,9 @@ export interface GA4TopPage {
 export async function getGA4Overview(
   propertyId: string,
   startDate: string = "30daysAgo",
-  endDate: string = "today"
+  endDate: string = "today",
+  preferredEmail?: string,
 ): Promise<GA4MetricsData> {
-  const headers = await buildGa4Headers();
   const url = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`;
 
   const body = {
@@ -68,12 +142,7 @@ export async function getGA4Overview(
     ],
   };
 
-  const response = await fetch(url, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-    cache: "no-store",
-  });
+  const response = await runGa4ReportWithFallback(url, body, preferredEmail);
 
   if (!response.ok) {
     const err = await response.text();
@@ -103,28 +172,19 @@ export async function getGA4Overview(
 export async function getGA4DailyData(
   propertyId: string,
   startDate: string = "30daysAgo",
-  endDate: string = "today"
+  endDate: string = "today",
+  preferredEmail?: string,
 ): Promise<GA4DailyData[]> {
-  const headers = await buildGa4Headers();
   const url = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`;
 
   const body = {
     dateRanges: [{ startDate, endDate }],
     dimensions: [{ name: "date" }],
-    metrics: [
-      { name: "sessions" },
-      { name: "activeUsers" },
-      { name: "screenPageViews" },
-    ],
+    metrics: [{ name: "sessions" }, { name: "activeUsers" }, { name: "screenPageViews" }],
     orderBys: [{ dimension: { dimensionName: "date" } }],
   };
 
-  const response = await fetch(url, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-    cache: "no-store",
-  });
+  const response = await runGa4ReportWithFallback(url, body, preferredEmail);
 
   if (!response.ok) {
     const err = await response.text();
@@ -143,32 +203,32 @@ export async function getGA4DailyData(
         users: parseInt(row.metricValues[1]?.value ?? "0"),
         pageviews: parseInt(row.metricValues[2]?.value ?? "0"),
       };
-    }
+    },
   );
 }
 
 export async function getGA4TrafficSources(
   propertyId: string,
   startDate: string = "30daysAgo",
-  endDate: string = "today"
+  endDate: string = "today",
+  preferredEmail?: string,
 ): Promise<GA4TrafficSource[]> {
-  const headers = await buildGa4Headers();
   const url = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`;
 
   const body = {
     dateRanges: [{ startDate, endDate }],
     dimensions: [{ name: "sessionSource" }, { name: "sessionMedium" }],
-    metrics: [{ name: "sessions" }, { name: "activeUsers" }, { name: "bounceRate" }, { name: "conversions" }],
+    metrics: [
+      { name: "sessions" },
+      { name: "activeUsers" },
+      { name: "bounceRate" },
+      { name: "conversions" },
+    ],
     orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
     limit: 10,
   };
 
-  const response = await fetch(url, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-    cache: "no-store",
-  });
+  const response = await runGa4ReportWithFallback(url, body, preferredEmail);
 
   if (!response.ok) {
     const err = await response.text();
@@ -185,36 +245,27 @@ export async function getGA4TrafficSources(
       users: parseInt(row.metricValues[1]?.value ?? "0"),
       bounceRate: parseFloat(row.metricValues[2]?.value ?? "0"),
       conversions: parseInt(row.metricValues[3]?.value ?? "0"),
-    })
+    }),
   );
 }
 
 export async function getGA4TopPages(
   propertyId: string,
   startDate: string = "30daysAgo",
-  endDate: string = "today"
+  endDate: string = "today",
+  preferredEmail?: string,
 ): Promise<GA4TopPage[]> {
-  const headers = await buildGa4Headers();
   const url = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`;
 
   const body = {
     dateRanges: [{ startDate, endDate }],
     dimensions: [{ name: "pagePath" }, { name: "pageTitle" }],
-    metrics: [
-      { name: "sessions" },
-      { name: "screenPageViews" },
-      { name: "bounceRate" },
-    ],
+    metrics: [{ name: "sessions" }, { name: "screenPageViews" }, { name: "bounceRate" }],
     orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
     limit: 10,
   };
 
-  const response = await fetch(url, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-    cache: "no-store",
-  });
+  const response = await runGa4ReportWithFallback(url, body, preferredEmail);
 
   if (!response.ok) {
     const err = await response.text();
@@ -230,7 +281,7 @@ export async function getGA4TopPages(
       sessions: parseInt(row.metricValues[0]?.value ?? "0"),
       pageviews: parseInt(row.metricValues[1]?.value ?? "0"),
       bounceRate: parseFloat(row.metricValues[2]?.value ?? "0") * 100,
-    })
+    }),
   );
 }
 
@@ -249,7 +300,7 @@ export interface GA4Device {
 export async function getGA4Geography(
   propertyId: string,
   startDate: string = "30daysAgo",
-  endDate: string = "today"
+  endDate: string = "today",
 ): Promise<GA4Country[]> {
   const headers = await buildGa4Headers();
   const url = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`;
@@ -280,14 +331,14 @@ export async function getGA4Geography(
       country: row.dimensionValues[0]?.value ?? "",
       sessions: parseInt(row.metricValues[0]?.value ?? "0"),
       users: parseInt(row.metricValues[1]?.value ?? "0"),
-    })
+    }),
   );
 }
 
 export async function getGA4Devices(
   propertyId: string,
   startDate: string = "30daysAgo",
-  endDate: string = "today"
+  endDate: string = "today",
 ): Promise<GA4Device[]> {
   const headers = await buildGa4Headers();
   const url = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`;
@@ -317,7 +368,7 @@ export async function getGA4Devices(
       device: row.dimensionValues[0]?.value ?? "",
       sessions: parseInt(row.metricValues[0]?.value ?? "0"),
       users: parseInt(row.metricValues[1]?.value ?? "0"),
-    })
+    }),
   );
 }
 
@@ -325,7 +376,7 @@ export async function getGA4Devices(
 export async function getGA4OrganicOverview(
   propertyId: string,
   startDate: string = "30daysAgo",
-  endDate: string = "today"
+  endDate: string = "today",
 ): Promise<GA4MetricsData> {
   const headers = await buildGa4Headers();
   const url = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`;
@@ -392,7 +443,7 @@ export interface GA4NewVsReturning {
 export async function getGA4NewVsReturning(
   propertyId: string,
   startDate: string = "30daysAgo",
-  endDate: string = "today"
+  endDate: string = "today",
 ): Promise<GA4NewVsReturning> {
   const headers = await buildGa4Headers();
   const url = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`;
@@ -436,7 +487,7 @@ export interface GA4Demographics {
 export async function getGA4Demographics(
   propertyId: string,
   startDate: string = "30daysAgo",
-  endDate: string = "today"
+  endDate: string = "today",
 ): Promise<GA4Demographics> {
   const headers = await buildGa4Headers();
   const url = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`;
@@ -500,7 +551,7 @@ export interface GA4ConversionEvent {
 export async function getGA4ConversionEvents(
   propertyId: string,
   startDate: string = "30daysAgo",
-  endDate: string = "today"
+  endDate: string = "today",
 ): Promise<GA4ConversionEvent[]> {
   const headers = await buildGa4Headers();
   const url = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`;
@@ -547,7 +598,7 @@ export interface GA4ConversionByChannel {
 export async function getGA4ConversionsByChannel(
   propertyId: string,
   startDate: string = "30daysAgo",
-  endDate: string = "today"
+  endDate: string = "today",
 ): Promise<GA4ConversionByChannel[]> {
   const headers = await buildGa4Headers();
   const url = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`;
@@ -592,7 +643,7 @@ const AI_SOURCE_REGEXP =
 export async function getGA4AIReferrals(
   propertyId: string,
   startDate: string = "30daysAgo",
-  endDate: string = "today"
+  endDate: string = "today",
 ): Promise<GA4AIReferral[]> {
   const headers = await buildGa4Headers();
   const url = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`;
@@ -630,7 +681,7 @@ export async function getGA4AIReferrals(
       source: row.dimensionValues[0]?.value ?? "",
       sessions: parseInt(row.metricValues[0]?.value ?? "0"),
       users: parseInt(row.metricValues[1]?.value ?? "0"),
-    })
+    }),
   );
 }
 
@@ -649,7 +700,7 @@ export interface GA4LandingPage {
 export async function getGA4LandingPagePerformance(
   propertyId: string,
   startDate: string = "30daysAgo",
-  endDate: string = "today"
+  endDate: string = "today",
 ): Promise<GA4LandingPage[]> {
   const headers = await buildGa4Headers();
   const url = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`;
@@ -693,7 +744,7 @@ export async function getGA4LandingPagePerformance(
         conversionRate: sessions > 0 ? (conversions / sessions) * 100 : 0,
         revenue: parseFloat(row.metricValues[5]?.value ?? "0"),
       };
-    }
+    },
   );
 }
 
@@ -716,7 +767,7 @@ export interface GA4UserJourneyResult {
 export async function getGA4UserJourneys(
   propertyId: string,
   startDate: string = "30daysAgo",
-  endDate: string = "today"
+  endDate: string = "today",
 ): Promise<GA4UserJourneyResult> {
   const headers = await buildGa4Headers();
   const url = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`;
@@ -754,7 +805,7 @@ export async function getGA4UserJourneys(
       exits: parseInt(row.metricValues[1]?.value ?? "0"),
       avgTimeOnPage: parseFloat(row.metricValues[2]?.value ?? "0"),
       pageviews: parseInt(row.metricValues[3]?.value ?? "0"),
-    })
+    }),
   );
 
   const topEntryPages = [...pages]
@@ -779,7 +830,7 @@ export interface GA4CohortRetention {
 export async function getGA4CohortRetention(
   propertyId: string,
   startDate: string = "30daysAgo",
-  endDate: string = "today"
+  endDate: string = "today",
 ): Promise<GA4CohortRetention> {
   const headers = await buildGa4Headers();
   const url = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`;
@@ -820,7 +871,10 @@ export async function getGA4CohortRetention(
   let totalCohortUsers = 0;
   const weekMap = new Map<number, { active: number; total: number }>();
 
-  for (const row of rows as { dimensionValues: { value: string }[]; metricValues: { value: string }[] }[]) {
+  for (const row of rows as {
+    dimensionValues: { value: string }[];
+    metricValues: { value: string }[];
+  }[]) {
     const week = parseInt(row.dimensionValues[1]?.value ?? "0");
     const active = parseInt(row.metricValues[0]?.value ?? "0");
     const total = parseInt(row.metricValues[1]?.value ?? "0");
@@ -853,7 +907,7 @@ export interface GA4SessionDurationBucket {
 export async function getGA4SessionDurationDistribution(
   propertyId: string,
   startDate: string = "30daysAgo",
-  endDate: string = "today"
+  endDate: string = "today",
 ): Promise<GA4SessionDurationBucket[]> {
   const headers = await buildGa4Headers();
   const url = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`;
@@ -889,7 +943,10 @@ export async function getGA4SessionDurationDistribution(
     "10m+": 0,
   };
 
-  for (const row of rows as { dimensionValues: { value: string }[]; metricValues: { value: string }[] }[]) {
+  for (const row of rows as {
+    dimensionValues: { value: string }[];
+    metricValues: { value: string }[];
+  }[]) {
     const durationSec = parseInt(row.dimensionValues[0]?.value ?? "0");
     const sessions = parseInt(row.metricValues[0]?.value ?? "0");
 
@@ -914,7 +971,7 @@ export interface GA4EventParameter {
 export async function getGA4EventParameters(
   propertyId: string,
   startDate: string = "30daysAgo",
-  endDate: string = "today"
+  endDate: string = "today",
 ): Promise<GA4EventParameter[]> {
   const headers = await buildGa4Headers();
   const url = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`;
@@ -942,7 +999,7 @@ export async function getGA4EventParameters(
       eventName: row.dimensionValues[0]?.value ?? "",
       eventCount: parseInt(row.metricValues[0]?.value ?? "0"),
       eventValue: parseFloat(row.metricValues[1]?.value ?? "0"),
-    })
+    }),
   );
 }
 
@@ -958,7 +1015,7 @@ export interface GA4ContentGroup {
 export async function getGA4ContentGrouping(
   propertyId: string,
   startDate: string = "30daysAgo",
-  endDate: string = "today"
+  endDate: string = "today",
 ): Promise<GA4ContentGroup[]> {
   const headers = await buildGa4Headers();
   const url = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`;
@@ -993,7 +1050,7 @@ export async function getGA4ContentGrouping(
       pageviews: parseInt(row.metricValues[1]?.value ?? "0"),
       bounceRate: parseFloat(row.metricValues[2]?.value ?? "0"),
       avgSessionDuration: parseFloat(row.metricValues[3]?.value ?? "0"),
-    })
+    }),
   );
 }
 
@@ -1004,9 +1061,7 @@ export interface GA4RealTimeData {
   byPage: { pagePath: string; activeUsers: number }[];
 }
 
-export async function getGA4RealTimeData(
-  propertyId: string
-): Promise<GA4RealTimeData> {
+export async function getGA4RealTimeData(propertyId: string): Promise<GA4RealTimeData> {
   const headers = await buildGa4Headers();
   const baseUrl = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runRealtimeReport`;
 
@@ -1085,7 +1140,7 @@ export interface GA4ScrollDepth {
 export async function getGA4ScrollDepth(
   propertyId: string,
   startDate: string = "30daysAgo",
-  endDate: string = "today"
+  endDate: string = "today",
 ): Promise<GA4ScrollDepth[]> {
   const headers = await buildGa4Headers();
   const url = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`;
@@ -1118,7 +1173,7 @@ export async function getGA4ScrollDepth(
       percentScrolled: row.dimensionValues[0]?.value ?? "",
       eventCount: parseInt(row.metricValues[0]?.value ?? "0"),
       users: parseInt(row.metricValues[1]?.value ?? "0"),
-    })
+    }),
   );
 }
 
@@ -1133,7 +1188,7 @@ export interface GA4BrowserOS {
 export async function getGA4BrowserOS(
   propertyId: string,
   startDate: string = "30daysAgo",
-  endDate: string = "today"
+  endDate: string = "today",
 ): Promise<GA4BrowserOS[]> {
   const headers = await buildGa4Headers();
   const url = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`;
@@ -1162,7 +1217,7 @@ export async function getGA4BrowserOS(
       operatingSystem: row.dimensionValues[1]?.value ?? "",
       sessions: parseInt(row.metricValues[0]?.value ?? "0"),
       users: parseInt(row.metricValues[1]?.value ?? "0"),
-    })
+    }),
   );
 }
 
@@ -1179,7 +1234,7 @@ export interface GA4EcommerceRevenue {
 export async function getGA4EcommerceRevenue(
   propertyId: string,
   startDate: string = "30daysAgo",
-  endDate: string = "today"
+  endDate: string = "today",
 ): Promise<GA4EcommerceRevenue[]> {
   const headers = await buildGa4Headers();
   const url = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`;
@@ -1214,7 +1269,7 @@ export async function getGA4EcommerceRevenue(
       transactions: parseInt(row.metricValues[0]?.value ?? "0"),
       purchaseRevenue: parseFloat(row.metricValues[1]?.value ?? "0"),
       totalRevenue: parseFloat(row.metricValues[2]?.value ?? "0"),
-    })
+    }),
   );
 }
 
@@ -1231,7 +1286,7 @@ export interface GA4UserAcquisition {
 export async function getGA4UserAcquisition(
   propertyId: string,
   startDate: string = "30daysAgo",
-  endDate: string = "today"
+  endDate: string = "today",
 ): Promise<GA4UserAcquisition[]> {
   const headers = await buildGa4Headers();
   const url = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`;
@@ -1267,7 +1322,7 @@ export async function getGA4UserAcquisition(
       sessions: parseInt(row.metricValues[1]?.value ?? "0"),
       engagedSessions: parseInt(row.metricValues[2]?.value ?? "0"),
       conversions: parseInt(row.metricValues[3]?.value ?? "0"),
-    })
+    }),
   );
 }
 
@@ -1283,7 +1338,7 @@ export interface GA4RevenuePerSession {
 export async function getGA4RevenuePerSession(
   propertyId: string,
   startDate: string = "30daysAgo",
-  endDate: string = "today"
+  endDate: string = "today",
 ): Promise<GA4RevenuePerSession[]> {
   const headers = await buildGa4Headers();
   const url = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`;
@@ -1317,6 +1372,6 @@ export async function getGA4RevenuePerSession(
         totalRevenue,
         revenuePerSession: sessions > 0 ? totalRevenue / sessions : 0,
       };
-    }
+    },
   );
 }

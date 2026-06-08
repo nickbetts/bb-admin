@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionCronOrShareAuth, assertShareResourceAccess } from "@/lib/auth";
+import { getSessionCronOrShareAuth, assertShareResourceAccess, isShareSession } from "@/lib/auth";
 import {
   getGA4Overview,
   getGA4DailyData,
@@ -36,92 +36,195 @@ const GA4_CACHE_TTL_HOURS = 4;
 
 export async function GET(request: NextRequest) {
   return withCacheBypass(request, async () => {
-  try {
-    const session = await getSessionCronOrShareAuth(request);
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    try {
+      const session = await getSessionCronOrShareAuth(request);
+      if (!session) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+
+      const { searchParams } = new URL(request.url);
+      const propertyId = searchParams.get("propertyId");
+
+      // Share-token sessions may only access the GA4 property of their bound client.
+      if (!(await assertShareResourceAccess(session, "ga4PropertyId", propertyId))) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+      const type = searchParams.get("type") ?? "overview";
+      const startDate = searchParams.get("startDate") ?? "30daysAgo";
+      const endDate = searchParams.get("endDate") ?? "today";
+      const preferredEmail =
+        !isShareSession(session) && session.user.email !== "admin@bettsandburton.com"
+          ? session.user.email
+          : undefined;
+
+      if (!propertyId) {
+        return NextResponse.json({ error: "propertyId is required" }, { status: 400 });
+      }
+
+      if (!process.env.GA4_CLIENT_EMAIL) {
+        return NextResponse.json(
+          {
+            error:
+              "GA4 not configured. Please add GA4_CLIENT_EMAIL and GA4_PRIVATE_KEY to environment.",
+          },
+          { status: 503 },
+        );
+      }
+
+      const cacheKey = `ga4:${type}:${propertyId}:${startDate}:${endDate}`;
+
+      switch (type) {
+        case "overview":
+          return NextResponse.json(
+            await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () =>
+              getGA4Overview(propertyId, startDate, endDate, preferredEmail),
+            ),
+          );
+        case "organic-overview":
+          return NextResponse.json(
+            await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () =>
+              getGA4OrganicOverview(propertyId, startDate, endDate),
+            ),
+          );
+        case "daily":
+          return NextResponse.json(
+            await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () =>
+              getGA4DailyData(propertyId, startDate, endDate, preferredEmail),
+            ),
+          );
+        case "sources":
+          return NextResponse.json(
+            await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () =>
+              getGA4TrafficSources(propertyId, startDate, endDate, preferredEmail),
+            ),
+          );
+        case "pages":
+          return NextResponse.json(
+            await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () =>
+              getGA4TopPages(propertyId, startDate, endDate, preferredEmail),
+            ),
+          );
+        case "geography":
+          return NextResponse.json(
+            await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () =>
+              getGA4Geography(propertyId, startDate, endDate),
+            ),
+          );
+        case "devices":
+          return NextResponse.json(
+            await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () =>
+              getGA4Devices(propertyId, startDate, endDate),
+            ),
+          );
+        case "new-vs-returning":
+          return NextResponse.json(
+            await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () =>
+              getGA4NewVsReturning(propertyId, startDate, endDate),
+            ),
+          );
+        case "demographics":
+          return NextResponse.json(
+            await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () =>
+              getGA4Demographics(propertyId, startDate, endDate),
+            ),
+          );
+        case "conversion-events":
+          return NextResponse.json(
+            await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () =>
+              getGA4ConversionEvents(propertyId, startDate, endDate),
+            ),
+          );
+        case "conversions-by-channel":
+          return NextResponse.json(
+            await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () =>
+              getGA4ConversionsByChannel(propertyId, startDate, endDate),
+            ),
+          );
+        case "ai-referrals":
+          return NextResponse.json(
+            await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () =>
+              getGA4AIReferrals(propertyId, startDate, endDate),
+            ),
+          );
+        case "landing-pages":
+          return NextResponse.json(
+            await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () =>
+              getGA4LandingPagePerformance(propertyId, startDate, endDate),
+            ),
+          );
+        case "user-journeys":
+          return NextResponse.json(
+            await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () =>
+              getGA4UserJourneys(propertyId, startDate, endDate),
+            ),
+          );
+        case "cohort-retention":
+          return NextResponse.json(
+            await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () =>
+              getGA4CohortRetention(propertyId, startDate, endDate),
+            ),
+          );
+        case "session-duration":
+          return NextResponse.json(
+            await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () =>
+              getGA4SessionDurationDistribution(propertyId, startDate, endDate),
+            ),
+          );
+        case "event-parameters":
+          return NextResponse.json(
+            await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () =>
+              getGA4EventParameters(propertyId, startDate, endDate),
+            ),
+          );
+        case "content-grouping":
+          return NextResponse.json(
+            await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () =>
+              getGA4ContentGrouping(propertyId, startDate, endDate),
+            ),
+          );
+        case "realtime":
+          return NextResponse.json(
+            await withApiCache(`ga4:realtime:${propertyId}`, 0.05, () =>
+              getGA4RealTimeData(propertyId),
+            ),
+          );
+        case "scroll-depth":
+          return NextResponse.json(
+            await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () =>
+              getGA4ScrollDepth(propertyId, startDate, endDate),
+            ),
+          );
+        case "browser-os":
+          return NextResponse.json(
+            await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () =>
+              getGA4BrowserOS(propertyId, startDate, endDate),
+            ),
+          );
+        case "ecommerce-revenue":
+          return NextResponse.json(
+            await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () =>
+              getGA4EcommerceRevenue(propertyId, startDate, endDate),
+            ),
+          );
+        case "user-acquisition":
+          return NextResponse.json(
+            await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () =>
+              getGA4UserAcquisition(propertyId, startDate, endDate),
+            ),
+          );
+        case "revenue-per-session":
+          return NextResponse.json(
+            await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () =>
+              getGA4RevenuePerSession(propertyId, startDate, endDate),
+            ),
+          );
+        default:
+          return NextResponse.json({ error: "Invalid type" }, { status: 400 });
+      }
+    } catch (error) {
+      console.error("GA4 API error:", error);
+      const message = error instanceof Error ? error.message : "Failed to fetch GA4 data";
+      return NextResponse.json({ error: message }, { status: 500 });
     }
-
-    const { searchParams } = new URL(request.url);
-    const propertyId = searchParams.get("propertyId");
-
-    // Share-token sessions may only access the GA4 property of their bound client.
-    if (!(await assertShareResourceAccess(session, "ga4PropertyId", propertyId))) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-    const type = searchParams.get("type") ?? "overview";
-    const startDate = searchParams.get("startDate") ?? "30daysAgo";
-    const endDate = searchParams.get("endDate") ?? "today";
-
-    if (!propertyId) {
-      return NextResponse.json({ error: "propertyId is required" }, { status: 400 });
-    }
-
-    if (!process.env.GA4_CLIENT_EMAIL) {
-      return NextResponse.json(
-        { error: "GA4 not configured. Please add GA4_CLIENT_EMAIL and GA4_PRIVATE_KEY to environment." },
-        { status: 503 }
-      );
-    }
-
-    const cacheKey = `ga4:${type}:${propertyId}:${startDate}:${endDate}`;
-
-    switch (type) {
-      case "overview":
-        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4Overview(propertyId, startDate, endDate)));
-      case "organic-overview":
-        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4OrganicOverview(propertyId, startDate, endDate)));
-      case "daily":
-        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4DailyData(propertyId, startDate, endDate)));
-      case "sources":
-        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4TrafficSources(propertyId, startDate, endDate)));
-      case "pages":
-        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4TopPages(propertyId, startDate, endDate)));
-      case "geography":
-        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4Geography(propertyId, startDate, endDate)));
-      case "devices":
-        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4Devices(propertyId, startDate, endDate)));
-      case "new-vs-returning":
-        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4NewVsReturning(propertyId, startDate, endDate)));
-      case "demographics":
-        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4Demographics(propertyId, startDate, endDate)));
-      case "conversion-events":
-        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4ConversionEvents(propertyId, startDate, endDate)));
-      case "conversions-by-channel":
-        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4ConversionsByChannel(propertyId, startDate, endDate)));
-      case "ai-referrals":
-        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4AIReferrals(propertyId, startDate, endDate)));
-      case "landing-pages":
-        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4LandingPagePerformance(propertyId, startDate, endDate)));
-      case "user-journeys":
-        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4UserJourneys(propertyId, startDate, endDate)));
-      case "cohort-retention":
-        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4CohortRetention(propertyId, startDate, endDate)));
-      case "session-duration":
-        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4SessionDurationDistribution(propertyId, startDate, endDate)));
-      case "event-parameters":
-        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4EventParameters(propertyId, startDate, endDate)));
-      case "content-grouping":
-        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4ContentGrouping(propertyId, startDate, endDate)));
-      case "realtime":
-        return NextResponse.json(await withApiCache(`ga4:realtime:${propertyId}`, 0.05, () => getGA4RealTimeData(propertyId)));
-      case "scroll-depth":
-        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4ScrollDepth(propertyId, startDate, endDate)));
-      case "browser-os":
-        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4BrowserOS(propertyId, startDate, endDate)));
-      case "ecommerce-revenue":
-        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4EcommerceRevenue(propertyId, startDate, endDate)));
-      case "user-acquisition":
-        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4UserAcquisition(propertyId, startDate, endDate)));
-      case "revenue-per-session":
-        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4RevenuePerSession(propertyId, startDate, endDate)));
-      default:
-        return NextResponse.json({ error: "Invalid type" }, { status: 400 });
-    }
-  } catch (error) {
-    console.error("GA4 API error:", error);
-    const message = error instanceof Error ? error.message : "Failed to fetch GA4 data";
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
   });
 }
