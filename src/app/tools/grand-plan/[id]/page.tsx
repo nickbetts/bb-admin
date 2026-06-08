@@ -233,6 +233,17 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
+function formatSnapshot(value: unknown): string {
+  if (value === undefined) return "No snapshot available";
+  if (value === null) return "null";
+  if (typeof value === "string") return value;
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+}
+
 type QualityStepStatus = "ok" | "skipped" | "failed" | "degraded";
 
 interface QualityStepRecord {
@@ -295,6 +306,8 @@ interface SecondPassQaResult {
   findings: string[];
   hardFailures: string[];
   unresolvedRisks: string[];
+  beforeSection?: unknown;
+  afterSection?: unknown;
   error?: string;
 }
 
@@ -396,6 +409,14 @@ export default function GrandPlanViewPage({ params }: Props) {
   const [refinePrompt, setRefinePrompt] = useState("");
   const [refining, setRefining] = useState(false);
   const [secondPassBusy, setSecondPassBusy] = useState(false);
+  const [secondPassConfigOpen, setSecondPassConfigOpen] = useState(false);
+  const [qaResultsOpen, setQaResultsOpen] = useState(false);
+  const [blockersOpen, setBlockersOpen] = useState(false);
+  const [selectedQaResultKey, setSelectedQaResultKey] = useState<string | null>(null);
+  const [secondPassInstructions, setSecondPassInstructions] = useState("");
+  const [secondPassSectionKeys, setSecondPassSectionKeys] = useState<Set<string>>(
+    new Set(ALL_SECTIONS.map((section) => section.key)),
+  );
 
   // Per-section regeneration
   const [regeneratingSection, setRegeneratingSection] = useState<string | null>(null);
@@ -947,14 +968,21 @@ export default function GrandPlanViewPage({ params }: Props) {
     }
   }
 
-  async function handleSecondPass(mode: "review" | "rewrite") {
+  async function handleSecondPass(
+    mode: "review" | "rewrite",
+    options?: { sections?: string[]; instructions?: string },
+  ) {
     if (!plan) return;
     setSecondPassBusy(true);
     try {
       const res = await fetch(`/api/tools/grand-plan/${id}/second-pass`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode }),
+        body: JSON.stringify({
+          mode,
+          sections: options?.sections,
+          instructions: options?.instructions,
+        }),
       });
       const data = (await res.json().catch(() => ({}))) as {
         error?: string;
@@ -967,6 +995,9 @@ export default function GrandPlanViewPage({ params }: Props) {
       }
       if (data.html) updateBlobUrl(data.html);
       await loadPlan();
+      setSecondPassConfigOpen(false);
+      setQaResultsOpen(true);
+      setBlockersOpen(false);
       toast(
         `${mode === "rewrite" ? "Strategist polish" : "Second-pass review"} complete (${data.changedSections ?? 0}/${data.reviewedSections ?? 0} sections updated)`,
         "success",
@@ -976,6 +1007,35 @@ export default function GrandPlanViewPage({ params }: Props) {
     } finally {
       setSecondPassBusy(false);
     }
+  }
+
+  function handleRunTargetedSecondPass(mode: "review" | "rewrite") {
+    const sections = Array.from(secondPassSectionKeys);
+    void handleSecondPass(mode, {
+      sections,
+      instructions: secondPassInstructions.trim() || undefined,
+    });
+  }
+
+  function handleFixFromBlockers() {
+    if (!secondPassHardFailures.length) return;
+    const blockedSectionKeys = secondPassQa
+      ? Array.from(
+          new Set(
+            secondPassQa.results
+              .filter((result) => result.hardFailures.length > 0 || result.error)
+              .map((result) => result.sectionKey),
+          ),
+        )
+      : [];
+    if (blockedSectionKeys.length > 0) {
+      setSecondPassSectionKeys(new Set(blockedSectionKeys));
+    }
+    setSecondPassInstructions(
+      "Resolve the hard failures and keep any sections that are already strong unchanged.",
+    );
+    setBlockersOpen(false);
+    setSecondPassConfigOpen(true);
   }
 
   async function handleRegenerateSection(sectionKey: string, options?: { silent?: boolean }) {
@@ -1922,6 +1982,42 @@ export default function GrandPlanViewPage({ params }: Props) {
     return Array.from(lines);
   }, [secondPassQa]);
 
+  const selectedSecondPassResult = useMemo(() => {
+    if (!secondPassQa || !selectedQaResultKey) return null;
+    return secondPassQa.results.find((result) => result.sectionKey === selectedQaResultKey) ?? null;
+  }, [secondPassQa, selectedQaResultKey]);
+
+  const activeSecondPassResult = useMemo(() => {
+    if (!secondPassQa) return null;
+    return selectedSecondPassResult ?? secondPassQa.results[0] ?? null;
+  }, [secondPassQa, selectedSecondPassResult]);
+
+  const selectedSecondPassDiff = useMemo(() => {
+    if (!activeSecondPassResult) return null;
+    return {
+      before: activeSecondPassResult.beforeSection,
+      after: activeSecondPassResult.afterSection,
+    };
+  }, [activeSecondPassResult]);
+
+  const secondPassSummaryChips = useMemo(() => {
+    if (!secondPassQa) return [] as Array<{ label: string; tone: "ok" | "warn" | "bad" }>;
+    return [
+      {
+        label: `${secondPassQa.reviewedSections} reviewed`,
+        tone: "ok" as const,
+      },
+      {
+        label: `${secondPassQa.changedSections} updated`,
+        tone: secondPassQa.changedSections > 0 ? ("warn" as const) : ("ok" as const),
+      },
+      {
+        label: `${secondPassHardFailures.length} hard failures`,
+        tone: secondPassHardFailures.length > 0 ? ("bad" as const) : ("ok" as const),
+      },
+    ];
+  }, [secondPassHardFailures.length, secondPassQa]);
+
   const removableSections = useMemo(() => {
     return ALL_SECTIONS.reduce(
       (acc, section) => {
@@ -2143,6 +2239,78 @@ export default function GrandPlanViewPage({ params }: Props) {
                 </span>
               )}
             </div>
+            {(qualityState || secondPassQa) && (
+              <div className="flex flex-wrap items-center" style={{ gap: 6, marginTop: 8 }}>
+                {qualityState && (
+                  <span
+                    style={{
+                      fontSize: 10.5,
+                      fontWeight: 700,
+                      padding: "3px 8px",
+                      borderRadius: 999,
+                      background:
+                        qualityState.status === "failed"
+                          ? "rgba(220,38,38,.12)"
+                          : qualityState.status === "warning"
+                            ? "rgba(245,158,11,.14)"
+                            : "rgba(34,197,94,.12)",
+                      color:
+                        qualityState.status === "failed"
+                          ? "var(--danger)"
+                          : qualityState.status === "warning"
+                            ? "var(--warning)"
+                            : "var(--success)",
+                    }}
+                    title={qualityState.summary ?? "Strict live-data quality state"}
+                  >
+                    {qualityState.strictMode ? "Strict" : "Quality"} {qualityState.status ?? "ok"}
+                  </span>
+                )}
+                {secondPassQa && (
+                  <span
+                    style={{
+                      fontSize: 10.5,
+                      fontWeight: 700,
+                      padding: "3px 8px",
+                      borderRadius: 999,
+                      background:
+                        secondPassHardFailures.length > 0
+                          ? "rgba(220,38,38,.12)"
+                          : "rgba(59,130,246,.12)",
+                      color: secondPassHardFailures.length > 0 ? "var(--danger)" : "var(--accent)",
+                    }}
+                    title={`Second-pass ${secondPassQa.mode} — ${secondPassQa.reviewedSections} sections`}
+                  >
+                    QA {secondPassQa.mode} • {secondPassQa.reviewedSections}
+                  </span>
+                )}
+                {secondPassSummaryChips.map((chip) => (
+                  <span
+                    key={`header-chip-${chip.label}`}
+                    style={{
+                      fontSize: 10.5,
+                      fontWeight: 700,
+                      padding: "3px 8px",
+                      borderRadius: 999,
+                      background:
+                        chip.tone === "bad"
+                          ? "rgba(220,38,38,.12)"
+                          : chip.tone === "warn"
+                            ? "rgba(245,158,11,.14)"
+                            : "rgba(34,197,94,.12)",
+                      color:
+                        chip.tone === "bad"
+                          ? "var(--danger)"
+                          : chip.tone === "warn"
+                            ? "var(--warning)"
+                            : "var(--success)",
+                    }}
+                  >
+                    {chip.label}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -3081,6 +3249,16 @@ export default function GrandPlanViewPage({ params }: Props) {
               QA review
             </button>
             <button
+              className="btn btn-ghost btn-sm"
+              onClick={() => setSecondPassConfigOpen(true)}
+              disabled={refining || secondPassBusy}
+              style={{ gap: 5 }}
+              title="Choose sections and add instructions for a targeted second pass"
+            >
+              <Settings style={{ width: 13, height: 13 }} aria-hidden />
+              Targeted QA
+            </button>
+            <button
               className="btn btn-primary btn-sm"
               onClick={() => {
                 void handleSecondPass("rewrite");
@@ -3123,6 +3301,71 @@ export default function GrandPlanViewPage({ params }: Props) {
             {secondPassQa.reviewedSections} sections reviewed • {secondPassQa.changedSections}{" "}
             updated
           </p>
+          <div className="flex flex-wrap items-center" style={{ gap: 6, marginTop: 8 }}>
+            {secondPassSummaryChips.map((chip) => (
+              <span
+                key={chip.label}
+                style={{
+                  fontSize: 10.5,
+                  fontWeight: 700,
+                  padding: "3px 8px",
+                  borderRadius: 999,
+                  background:
+                    chip.tone === "bad"
+                      ? "rgba(220,38,38,.12)"
+                      : chip.tone === "warn"
+                        ? "rgba(245,158,11,.14)"
+                        : "rgba(34,197,94,.12)",
+                  color:
+                    chip.tone === "bad"
+                      ? "var(--danger)"
+                      : chip.tone === "warn"
+                        ? "var(--warning)"
+                        : "var(--success)",
+                }}
+              >
+                {chip.label}
+              </span>
+            ))}
+            <div style={{ flex: 1 }} />
+            <button
+              className="btn btn-ghost btn-sm"
+              style={{ gap: 4, fontSize: 11 }}
+              onClick={() => setQaResultsOpen(true)}
+            >
+              <Eye style={{ width: 11, height: 11 }} aria-hidden />
+              View all results
+            </button>
+            {secondPassHardFailures.length > 0 && (
+              <button
+                className="btn btn-primary btn-sm"
+                style={{ gap: 4, fontSize: 11 }}
+                onClick={() => {
+                  const firstBlockedSection = secondPassQa?.results.find(
+                    (result) => result.hardFailures.length > 0 || result.error,
+                  )?.sectionKey;
+                  setSelectedQaResultKey(firstBlockedSection ?? null);
+                  setBlockersOpen(true);
+                  setQaResultsOpen(true);
+                }}
+              >
+                <AlertTriangle style={{ width: 11, height: 11 }} aria-hidden />
+                View blockers
+              </button>
+            )}
+            {secondPassHardFailures.length > 0 && (
+              <button
+                className="btn btn-ghost btn-sm"
+                style={{ gap: 4, fontSize: 11 }}
+                onClick={handleFixFromBlockers}
+                disabled={secondPassBusy}
+                title="Target the failed sections and rerun the strategist pass"
+              >
+                <RefreshCw style={{ width: 11, height: 11 }} aria-hidden />
+                Fix from blockers
+              </button>
+            )}
+          </div>
           {secondPassHardFailures.length > 0 && (
             <p
               style={{ margin: "4px 0 0", fontSize: 11.5, color: "var(--danger)", fontWeight: 600 }}
@@ -3164,6 +3407,17 @@ export default function GrandPlanViewPage({ params }: Props) {
                       {result.findings[0]}
                     </p>
                   )}
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    style={{ marginTop: 6, gap: 4, fontSize: 10.5 }}
+                    onClick={() => {
+                      setSelectedQaResultKey(result.sectionKey);
+                      setQaResultsOpen(true);
+                    }}
+                  >
+                    <Eye style={{ width: 11, height: 11 }} aria-hidden />
+                    Inspect section
+                  </button>
                 </div>
               );
             })}
@@ -3710,6 +3964,479 @@ export default function GrandPlanViewPage({ params }: Props) {
 
       {/* Chaos overlay (only when fun mode + generating) */}
       <GrandPlanChaosOverlay active={funMode && generating} message={funMessage} />
+
+      {/* ── Targeted second-pass modal ─────────────────────────────────── */}
+      <Modal
+        open={secondPassConfigOpen}
+        onClose={() => setSecondPassConfigOpen(false)}
+        title="Targeted second pass"
+        description="Choose the sections to review or rewrite, then add an instruction override for this run."
+        size="lg"
+        footer={
+          <>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => setSecondPassConfigOpen(false)}
+              disabled={secondPassBusy}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => handleRunTargetedSecondPass("review")}
+              disabled={secondPassBusy || secondPassSectionKeys.size === 0}
+              style={{ gap: 5 }}
+            >
+              {secondPassBusy ? (
+                <Loader2 style={{ width: 13, height: 13 }} className="animate-spin" />
+              ) : (
+                <CircleCheck style={{ width: 13, height: 13 }} aria-hidden />
+              )}
+              Review selected
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={() => handleRunTargetedSecondPass("rewrite")}
+              disabled={secondPassBusy || secondPassSectionKeys.size === 0}
+              style={{ gap: 5 }}
+            >
+              {secondPassBusy ? (
+                <Loader2 style={{ width: 13, height: 13 }} className="animate-spin" />
+              ) : (
+                <Sparkles style={{ width: 13, height: 13 }} aria-hidden />
+              )}
+              Rewrite selected
+            </button>
+          </>
+        }
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div className="flex flex-wrap items-center" style={{ gap: 6 }}>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() =>
+                setSecondPassSectionKeys(new Set(ALL_SECTIONS.map((section) => section.key)))
+              }
+            >
+              Enable all
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => setSecondPassSectionKeys(new Set())}
+            >
+              Disable all
+            </button>
+            <div style={{ flex: 1 }} />
+            <span style={{ fontSize: 11, color: "var(--text-4)" }}>
+              {secondPassSectionKeys.size} section{secondPassSectionKeys.size === 1 ? "" : "s"}{" "}
+              selected
+            </span>
+          </div>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
+              gap: 6,
+            }}
+          >
+            {ALL_SECTIONS.map((section) => {
+              const checked = secondPassSectionKeys.has(section.key);
+              return (
+                <label
+                  key={section.key}
+                  className="flex items-start"
+                  style={{
+                    gap: 8,
+                    padding: "8px 10px",
+                    borderRadius: 8,
+                    cursor: "pointer",
+                    background: checked ? "var(--accent-bg)" : "var(--bg-2)",
+                    border: `1px solid ${checked ? "var(--accent)" : "var(--border)"}`,
+                    opacity: checked ? 1 : 0.72,
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => {
+                      setSecondPassSectionKeys((current) => {
+                        const next = new Set(current);
+                        if (next.has(section.key)) next.delete(section.key);
+                        else next.add(section.key);
+                        return next;
+                      });
+                    }}
+                    aria-label={section.label}
+                    style={{ marginTop: 2, accentColor: "var(--accent)" }}
+                  />
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div className="flex items-center" style={{ gap: 6 }}>
+                      <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text)" }}>
+                        {section.label}
+                      </span>
+                      {section.aiPowered && (
+                        <span
+                          style={{
+                            fontSize: 9,
+                            padding: "1px 5px",
+                            borderRadius: 4,
+                            background: "var(--info-bg)",
+                            color: "var(--info)",
+                            fontWeight: 600,
+                          }}
+                        >
+                          AI
+                        </span>
+                      )}
+                    </div>
+                    <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>
+                      {section.description}
+                    </p>
+                  </div>
+                </label>
+              );
+            })}
+          </div>
+          <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>
+              Instruction override
+            </span>
+            <textarea
+              value={secondPassInstructions}
+              onChange={(e) => setSecondPassInstructions(e.target.value)}
+              placeholder="Example: tighten the recommendations around the hero campaign, remove any invented figures, and keep the tone more executive-level."
+              rows={5}
+              style={{
+                width: "100%",
+                resize: "vertical",
+                padding: "10px 12px",
+                border: "1px solid var(--border)",
+                borderRadius: 8,
+                fontSize: 13,
+                lineHeight: 1.45,
+              }}
+            />
+          </label>
+        </div>
+      </Modal>
+
+      {/* ── Second-pass report modal ───────────────────────────────────── */}
+      <Modal
+        open={qaResultsOpen}
+        onClose={() => {
+          setQaResultsOpen(false);
+          setBlockersOpen(false);
+        }}
+        title={blockersOpen ? "Second-pass blockers" : "Second-pass QA report"}
+        description={
+          blockersOpen
+            ? "These sections need attention before sharing or presentation generation is safe."
+            : "Review the full QA output, inspect the diff snapshot, and drill into each section."
+        }
+        size="xl"
+      >
+        {secondPassQa ? (
+          <div style={{ display: "grid", gridTemplateColumns: "320px minmax(0, 1fr)", gap: 12 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, minHeight: 0 }}>
+              {blockersOpen && secondPassHardFailures.length > 0 && (
+                <div
+                  style={{
+                    padding: "8px 10px",
+                    borderRadius: 8,
+                    border: "1px solid var(--danger)",
+                    background: "var(--danger-bg)",
+                  }}
+                >
+                  <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "var(--danger)" }}>
+                    Blocker list
+                  </p>
+                  <p style={{ margin: "4px 0 0", fontSize: 11.5, color: "var(--danger)" }}>
+                    Fix these before sharing or generating a presentation.
+                  </p>
+                </div>
+              )}
+              <div style={{ display: "grid", gap: 6, overflowY: "auto", maxHeight: "60vh" }}>
+                {secondPassQa.results.map((result) => {
+                  const average =
+                    (result.scores.briefAlignment +
+                      result.scores.factualGrounding +
+                      result.scores.consistency +
+                      result.scores.strategicDepth +
+                      result.scores.clientSpecificity +
+                      result.scores.readability) /
+                    6;
+                  const selected =
+                    (selectedQaResultKey ?? secondPassQa.results[0]?.sectionKey ?? null) ===
+                    result.sectionKey;
+                  return (
+                    <button
+                      key={`report-${result.sectionKey}`}
+                      type="button"
+                      onClick={() => setSelectedQaResultKey(result.sectionKey)}
+                      className="card"
+                      style={{
+                        textAlign: "left",
+                        padding: "10px 12px",
+                        borderRadius: 10,
+                        border: `1px solid ${selected ? "var(--accent)" : "var(--border)"}`,
+                        background: selected ? "var(--accent-bg)" : "var(--bg-1)",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <div className="flex items-center" style={{ gap: 6, marginBottom: 4 }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text)" }}>
+                          {labelFor(result.sectionKey)}
+                        </span>
+                        <span
+                          style={{
+                            marginLeft: "auto",
+                            fontSize: 10.5,
+                            fontWeight: 700,
+                            color:
+                              result.hardFailures.length > 0
+                                ? "var(--danger)"
+                                : average < 4
+                                  ? "var(--warning)"
+                                  : "var(--success)",
+                          }}
+                        >
+                          {average.toFixed(1)}/5
+                        </span>
+                      </div>
+                      <p style={{ margin: 0, fontSize: 11.5, color: "var(--text-3)" }}>
+                        {result.changed ? "Changed" : "Unchanged"} • confidence {result.confidence}%
+                      </p>
+                      {result.hardFailures.length > 0 && (
+                        <p style={{ margin: "4px 0 0", fontSize: 11, color: "var(--danger)" }}>
+                          {result.hardFailures[0]}
+                        </p>
+                      )}
+                      {!result.hardFailures.length && result.findings.length > 0 && (
+                        <p style={{ margin: "4px 0 0", fontSize: 11, color: "var(--text-3)" }}>
+                          {result.findings[0]}
+                        </p>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 10 }}>
+              {activeSecondPassResult && (
+                <>
+                  <div className="card" style={{ padding: "10px 12px", background: "var(--bg-1)" }}>
+                    <div className="flex items-center" style={{ gap: 8, marginBottom: 6 }}>
+                      <h3
+                        style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "var(--text)" }}
+                      >
+                        {labelFor(activeSecondPassResult.sectionKey)}
+                      </h3>
+                      <span
+                        style={{
+                          fontSize: 10.5,
+                          fontWeight: 700,
+                          padding: "3px 8px",
+                          borderRadius: 999,
+                          background:
+                            activeSecondPassResult.hardFailures.length > 0
+                              ? "rgba(220,38,38,.12)"
+                              : "rgba(34,197,94,.12)",
+                          color:
+                            activeSecondPassResult.hardFailures.length > 0
+                              ? "var(--danger)"
+                              : "var(--success)",
+                        }}
+                      >
+                        {activeSecondPassResult.changed ? "Changed" : "Unchanged"}
+                      </span>
+                      <span style={{ fontSize: 11, color: "var(--text-4)", marginLeft: "auto" }}>
+                        confidence {activeSecondPassResult.confidence}%
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center" style={{ gap: 6 }}>
+                      {Object.entries(activeSecondPassResult.scores).map(([key, value]) => (
+                        <span
+                          key={key}
+                          style={{
+                            fontSize: 10.5,
+                            padding: "3px 8px",
+                            borderRadius: 999,
+                            background: "rgba(148,163,184,.12)",
+                            color: "var(--text-3)",
+                          }}
+                        >
+                          {key}: {value.toFixed(1)}
+                        </span>
+                      ))}
+                    </div>
+                    {activeSecondPassResult.findings.length > 0 && (
+                      <div style={{ marginTop: 10 }}>
+                        <p
+                          style={{
+                            margin: 0,
+                            fontSize: 11,
+                            fontWeight: 700,
+                            color: "var(--text-2)",
+                          }}
+                        >
+                          Findings
+                        </p>
+                        <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>
+                          {activeSecondPassResult.findings.map((finding, index) => (
+                            <li
+                              key={`${activeSecondPassResult.sectionKey}-finding-${index}`}
+                              style={{ fontSize: 11.5, color: "var(--text-3)" }}
+                            >
+                              {finding}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {activeSecondPassResult.unresolvedRisks.length > 0 && (
+                      <div style={{ marginTop: 10 }}>
+                        <p
+                          style={{
+                            margin: 0,
+                            fontSize: 11,
+                            fontWeight: 700,
+                            color: "var(--text-2)",
+                          }}
+                        >
+                          Unresolved risks
+                        </p>
+                        <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>
+                          {activeSecondPassResult.unresolvedRisks.map((risk, index) => (
+                            <li
+                              key={`${activeSecondPassResult.sectionKey}-risk-${index}`}
+                              style={{ fontSize: 11.5, color: "var(--text-3)" }}
+                            >
+                              {risk}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {activeSecondPassResult.hardFailures.length > 0 && (
+                      <div style={{ marginTop: 10 }}>
+                        <p
+                          style={{
+                            margin: 0,
+                            fontSize: 11,
+                            fontWeight: 700,
+                            color: "var(--danger)",
+                          }}
+                        >
+                          Hard failures
+                        </p>
+                        <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>
+                          {activeSecondPassResult.hardFailures.map((failure, index) => (
+                            <li
+                              key={`${activeSecondPassResult.sectionKey}-hard-${index}`}
+                              style={{ fontSize: 11.5, color: "var(--danger)" }}
+                            >
+                              {failure}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="card" style={{ padding: "10px 12px", background: "var(--bg-1)" }}>
+                    <div className="flex items-center" style={{ gap: 8, marginBottom: 8 }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-2)" }}>
+                        Section diff
+                      </span>
+                      <span style={{ fontSize: 11, color: "var(--text-4)" }}>
+                        before and after snapshots from the last second pass
+                      </span>
+                    </div>
+                    {selectedSecondPassDiff &&
+                    selectedSecondPassDiff.before !== undefined &&
+                    selectedSecondPassDiff.after !== undefined ? (
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                        <div>
+                          <p
+                            style={{
+                              margin: "0 0 4px",
+                              fontSize: 11,
+                              fontWeight: 700,
+                              color: "var(--text-3)",
+                            }}
+                          >
+                            Before
+                          </p>
+                          <pre
+                            style={{
+                              margin: 0,
+                              padding: 12,
+                              borderRadius: 8,
+                              border: "1px solid var(--border)",
+                              background: "var(--bg-2)",
+                              fontSize: 11,
+                              lineHeight: 1.5,
+                              overflow: "auto",
+                              maxHeight: 320,
+                              whiteSpace: "pre-wrap",
+                              wordBreak: "break-word",
+                            }}
+                          >
+                            {formatSnapshot(selectedSecondPassDiff.before)}
+                          </pre>
+                        </div>
+                        <div>
+                          <p
+                            style={{
+                              margin: "0 0 4px",
+                              fontSize: 11,
+                              fontWeight: 700,
+                              color: "var(--text-3)",
+                            }}
+                          >
+                            After
+                          </p>
+                          <pre
+                            style={{
+                              margin: 0,
+                              padding: 12,
+                              borderRadius: 8,
+                              border: "1px solid var(--border)",
+                              background: "var(--bg-2)",
+                              fontSize: 11,
+                              lineHeight: 1.5,
+                              overflow: "auto",
+                              maxHeight: 320,
+                              whiteSpace: "pre-wrap",
+                              wordBreak: "break-word",
+                            }}
+                          >
+                            {formatSnapshot(selectedSecondPassDiff.after)}
+                          </pre>
+                        </div>
+                      </div>
+                    ) : (
+                      <p style={{ margin: 0, fontSize: 11.5, color: "var(--text-3)" }}>
+                        This run did not include diff snapshots for the selected section.
+                      </p>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        ) : (
+          <p style={{ margin: 0, fontSize: 12, color: "var(--text-3)" }}>
+            No second-pass QA data is available yet.
+          </p>
+        )}
+      </Modal>
 
       {/* ── Share modal ──────────────────────────────────────────────────── */}
       <Modal

@@ -29,6 +29,8 @@ interface SectionQaResult {
   findings: string[];
   hardFailures: string[];
   unresolvedRisks: string[];
+  beforeSection?: unknown;
+  afterSection?: unknown;
   error?: string;
 }
 
@@ -103,6 +105,8 @@ function sanitizeResult(input: unknown, sectionKey: string): SectionQaResult {
     findings: [],
     hardFailures: [],
     unresolvedRisks: [],
+    beforeSection: undefined,
+    afterSection: undefined,
     error: undefined,
   };
 
@@ -132,6 +136,8 @@ function sanitizeResult(input: unknown, sectionKey: string): SectionQaResult {
     unresolvedRisks: Array.isArray(raw.unresolvedRisks)
       ? raw.unresolvedRisks.filter((x): x is string => typeof x === "string" && x.trim().length > 0)
       : [],
+    beforeSection: raw.beforeSection,
+    afterSection: raw.afterSection,
     error: typeof raw.error === "string" ? raw.error : undefined,
   };
 }
@@ -403,6 +409,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           briefContext,
           planContext,
         });
+        qa.beforeSection = sectionValue;
 
         if (mode === "rewrite" && qa.changed && improvedSection !== undefined) {
           if (!sectionShapeCompatible(sectionValue, improvedSection)) {
@@ -415,7 +422,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (planData.sections as any)[sectionKey] = improvedSection;
             changedCount += 1;
+            qa.afterSection = improvedSection;
           }
+        }
+
+        if (mode === "review") {
+          qa.afterSection = sectionValue;
+        } else if (qa.changed && qa.afterSection === undefined) {
+          qa.afterSection = improvedSection;
         }
 
         qaResults.push(qa);
@@ -437,6 +451,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           unresolvedRisks: [
             "Section could not be validated automatically. Review manually before sharing.",
           ],
+          beforeSection: sectionValue,
           error: error instanceof Error ? error.message : "Unknown section-level error",
         });
       }
