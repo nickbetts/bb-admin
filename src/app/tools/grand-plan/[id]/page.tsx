@@ -280,6 +280,32 @@ interface BudgetSimulationResult {
   };
 }
 
+interface SecondPassQaResult {
+  sectionKey: string;
+  changed: boolean;
+  confidence: number;
+  scores: {
+    briefAlignment: number;
+    factualGrounding: number;
+    consistency: number;
+    strategicDepth: number;
+    clientSpecificity: number;
+    readability: number;
+  };
+  findings: string[];
+  hardFailures: string[];
+  unresolvedRisks: string[];
+}
+
+interface SecondPassQaSummary {
+  generatedAt: string;
+  mode: "review" | "rewrite";
+  model: string;
+  changedSections: number;
+  reviewedSections: number;
+  results: SecondPassQaResult[];
+}
+
 // ─── Page ───────────────────────────────────────────────────────────────────
 
 export default function GrandPlanViewPage({ params }: Props) {
@@ -367,6 +393,7 @@ export default function GrandPlanViewPage({ params }: Props) {
   // Refinement
   const [refinePrompt, setRefinePrompt] = useState("");
   const [refining, setRefining] = useState(false);
+  const [secondPassBusy, setSecondPassBusy] = useState(false);
 
   // Per-section regeneration
   const [regeneratingSection, setRegeneratingSection] = useState<string | null>(null);
@@ -915,6 +942,37 @@ export default function GrandPlanViewPage({ params }: Props) {
       }
     } finally {
       setRefining(false);
+    }
+  }
+
+  async function handleSecondPass(mode: "review" | "rewrite") {
+    if (!plan) return;
+    setSecondPassBusy(true);
+    try {
+      const res = await fetch(`/api/tools/grand-plan/${id}/second-pass`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        html?: string;
+        reviewedSections?: number;
+        changedSections?: number;
+      };
+      if (!res.ok) {
+        throw new Error(data.error ?? "Second pass failed");
+      }
+      if (data.html) updateBlobUrl(data.html);
+      await loadPlan();
+      toast(
+        `${mode === "rewrite" ? "Strategist polish" : "Second-pass review"} complete (${data.changedSections ?? 0}/${data.reviewedSections ?? 0} sections updated)`,
+        "success",
+      );
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "Second pass failed", "error");
+    } finally {
+      setSecondPassBusy(false);
     }
   }
 
@@ -1823,6 +1881,16 @@ export default function GrandPlanViewPage({ params }: Props) {
       return null;
     }
   }, [plan?.qualityStateJson]);
+
+  const secondPassQa = useMemo(() => {
+    if (!plan?.planDataJson) return null;
+    try {
+      const data = JSON.parse(plan.planDataJson || "{}") as { secondPassQa?: SecondPassQaSummary };
+      return data.secondPassQa ?? null;
+    } catch {
+      return null;
+    }
+  }, [plan?.planDataJson]);
 
   const removableSections = useMemo(() => {
     return ALL_SECTIONS.reduce(
@@ -2959,11 +3027,102 @@ export default function GrandPlanViewPage({ params }: Props) {
               )}
               Refine
             </button>
+            <button
+              className="btn btn-ghost btn-sm"
+              onClick={() => {
+                void handleSecondPass("review");
+              }}
+              disabled={refining || secondPassBusy}
+              style={{ gap: 5 }}
+              title="Run Anthropic QA across all generated sections"
+            >
+              {secondPassBusy ? (
+                <Loader2 style={{ width: 13, height: 13 }} className="animate-spin" />
+              ) : (
+                <CircleCheck style={{ width: 13, height: 13 }} aria-hidden />
+              )}
+              QA review
+            </button>
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={() => {
+                void handleSecondPass("rewrite");
+              }}
+              disabled={refining || secondPassBusy}
+              style={{ gap: 5 }}
+              title="Critique and auto-rewrite weak sections against the brief"
+            >
+              {secondPassBusy ? (
+                <Loader2 style={{ width: 13, height: 13 }} className="animate-spin" />
+              ) : (
+                <Sparkles style={{ width: 13, height: 13 }} aria-hidden />
+              )}
+              Strategist polish
+            </button>
           </div>
           <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 6 }}>
             Tip: be specific about which section and the change you want. Each refinement creates a
             new version you can roll back to.
           </p>
+        </div>
+      )}
+
+      {isComplete && secondPassQa && (
+        <div className="card" style={{ padding: "12px 16px", marginBottom: 14 }}>
+          <p
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              color: "var(--text-3)",
+              textTransform: "uppercase",
+              letterSpacing: 0.6,
+              marginBottom: 6,
+            }}
+          >
+            Second-pass QA
+          </p>
+          <p style={{ margin: 0, fontSize: 12, color: "var(--text-3)" }}>
+            {secondPassQa.mode === "rewrite" ? "Rewrite" : "Review"} mode •{" "}
+            {secondPassQa.reviewedSections} sections reviewed • {secondPassQa.changedSections}{" "}
+            updated
+          </p>
+          <div style={{ display: "grid", gap: 6, marginTop: 8 }}>
+            {secondPassQa.results.slice(0, 6).map((result) => {
+              const average =
+                (result.scores.briefAlignment +
+                  result.scores.factualGrounding +
+                  result.scores.consistency +
+                  result.scores.strategicDepth +
+                  result.scores.clientSpecificity +
+                  result.scores.readability) /
+                6;
+              return (
+                <div
+                  key={`qa-${result.sectionKey}`}
+                  style={{
+                    padding: "8px 10px",
+                    borderRadius: 8,
+                    border: "1px solid var(--border)",
+                    background: "var(--bg-1)",
+                  }}
+                >
+                  <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "var(--text)" }}>
+                    {labelFor(result.sectionKey)} • {average.toFixed(1)}/5
+                  </p>
+                  {result.hardFailures.length > 0 && (
+                    <p style={{ margin: "2px 0 0", fontSize: 11, color: "var(--danger)" }}>
+                      Hard fail: {result.hardFailures[0]}
+                    </p>
+                  )}
+                  {result.findings.length > 0 && (
+                    <p style={{ margin: "2px 0 0", fontSize: 11, color: "var(--text-3)" }}>
+                      {result.findings[0]}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
