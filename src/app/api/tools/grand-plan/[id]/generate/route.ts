@@ -155,7 +155,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           );
           const ideas = await researchKeywords(suggestResult.adGroups, {
             location: "2826",
-            customerId: plan.client.googleAdsCustomerId ?? undefined,
+            customerId: plan.client?.googleAdsCustomerId ?? undefined,
             strict: true,
           });
 
