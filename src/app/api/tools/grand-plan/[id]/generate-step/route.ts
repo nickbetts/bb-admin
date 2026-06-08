@@ -356,16 +356,79 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           });
         }
 
+        const suggestedKeywordCount = suggestResult.adGroups.reduce(
+          (sum, group) => sum + group.keywords.length,
+          0,
+        );
+
+        if (suggestedKeywordCount === 0) {
+          await updateStepQuality(id, step, {
+            status: "degraded",
+            critical: false,
+            reason: "Ad groups were suggested but contained no keywords",
+            warnings: ["Keyword preparation produced empty ad group keyword sets."],
+            signals: { adGroups: suggestResult.adGroups.length, keywords: 0, ideas: 0 },
+          });
+          return NextResponse.json({
+            ok: true,
+            step,
+            skipped: true,
+            reason: "Ad groups contained no keywords",
+          });
+        }
+
         await setStatus(
           id,
-          `Researching ${suggestResult.adGroups.reduce((s, g) => s + g.keywords.length, 0)} keywords via SEO data...`,
+          `Researching ${suggestedKeywordCount} keywords via Google Ads Keyword Planner...`,
         );
-        const ideas = await researchKeywords(suggestResult.adGroups, {
-          location: "2826",
-          // strict: false — fall back to SEO volume data if Google Ads
-          // Keyword Planner is unavailable (no account, API outage, etc.)
-          strict: false,
-        });
+        let ideas;
+        try {
+          ideas = await researchKeywords(suggestResult.adGroups, {
+            location: "2826",
+            customerId: plan.client?.googleAdsCustomerId ?? undefined,
+            // Grand Plan keyword outputs require real volume/CPC metrics.
+            // Do not silently degrade to empty fallback data.
+            strict: true,
+            expandWithAI: true,
+            brief: kwBriefText,
+          });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Unknown keyword research error";
+          await updateStepQuality(id, step, {
+            status: "degraded",
+            critical: false,
+            reason: "Keyword research failed to return live Google Ads metrics",
+            warnings: [message],
+            signals: {
+              adGroups: suggestResult.adGroups.length,
+              keywords: suggestedKeywordCount,
+              ideas: 0,
+            },
+          });
+          return NextResponse.json({ ok: true, step, skipped: true, reason: message });
+        }
+
+        if (!ideas.length) {
+          await updateStepQuality(id, step, {
+            status: "degraded",
+            critical: false,
+            reason: "Keyword Planner returned zero ideas",
+            warnings: [
+              "No keyword ideas were returned for the generated ad groups. Check Google Ads account access and retry.",
+            ],
+            signals: {
+              adGroups: suggestResult.adGroups.length,
+              keywords: suggestedKeywordCount,
+              ideas: 0,
+            },
+          });
+          return NextResponse.json({
+            ok: true,
+            step,
+            skipped: true,
+            reason: "Keyword Planner returned zero ideas",
+          });
+        }
 
         const adGroupsWithVolumes = suggestResult.adGroups.map((g) => ({
           name: g.name,
@@ -380,6 +443,33 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             };
           }),
         }));
+
+        const matchedVolumeCount = adGroupsWithVolumes
+          .flatMap((group) => group.keywords)
+          .filter((entry) => typeof entry.volume === "number" && entry.volume > 0).length;
+
+        if (matchedVolumeCount === 0) {
+          await updateStepQuality(id, step, {
+            status: "degraded",
+            critical: false,
+            reason: "Keyword ideas were generated but no ad group keywords matched volume data",
+            warnings: [
+              "Keyword volumes were not matched to generated ad group terms. Retry keyword preparation to regenerate aligned seeds.",
+            ],
+            signals: {
+              adGroups: suggestResult.adGroups.length,
+              keywords: suggestedKeywordCount,
+              ideas: ideas.length,
+              matchedVolumes: 0,
+            },
+          });
+          return NextResponse.json({
+            ok: true,
+            step,
+            skipped: true,
+            reason: "No matched keyword volumes for generated ad groups",
+          });
+        }
 
         const savedResearch = await prisma.keywordPlannerResearch.create({
           data: {
@@ -415,6 +505,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             adGroups: suggestResult.adGroups.length,
             keywords: keywordCount,
             ideas: ideas.length,
+            matchedVolumes: matchedVolumeCount,
           },
         });
 

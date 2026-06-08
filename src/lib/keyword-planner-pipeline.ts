@@ -168,8 +168,11 @@ ${userContent}`,
     ],
   });
 
-  const textBlock = response.content.find((b) => b.type === "text");
-  const raw = textBlock && textBlock.type === "text" ? textBlock.text.trim() : "{}";
+  const textBlocks = response.content.filter(
+    (block): block is Extract<(typeof response.content)[number], { type: "text" }> =>
+      block.type === "text",
+  );
+  const raw = textBlocks.at(-1)?.text.trim() ?? "{}";
 
   let parsed: {
     adGroups?: AdGroupSeed[];
