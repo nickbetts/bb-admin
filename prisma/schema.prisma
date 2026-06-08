@@ -1095,6 +1095,7 @@ model GrandPlanVersion {
   versionNumber Int
   generatedHtml String
   planDataJson  String?
+  qualityStateJson String?
   prompt        String
   createdAt     DateTime  @default(now())
   grandPlan     GrandPlan @relation(fields: [grandPlanId], references: [id], onDelete: Cascade)

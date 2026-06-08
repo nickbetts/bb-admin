@@ -1608,11 +1608,11 @@ function buildStrategyIntelligence(
     .slice(0, 12);
   const expansionIdeas = seedPhrases.map((kw) => ({
     keyword: kw,
-    marginPotential: /premium|enterprise|consultancy|urgent/.test(kw.toLowerCase())
+    marginPotential: (/premium|enterprise|consultancy|urgent/.test(kw.toLowerCase())
       ? "high"
       : /service|agency|management/.test(kw.toLowerCase())
         ? "medium"
-        : "low",
+        : "low") as "high" | "medium" | "low",
   }));
 
   const negatives = googleAdsCampaigns?.aiNegativesWithReason ?? [];

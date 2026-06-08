@@ -417,6 +417,7 @@ export default function GrandPlanViewPage({ params }: Props) {
   const [secondPassSectionKeys, setSecondPassSectionKeys] = useState<Set<string>>(
     new Set(ALL_SECTIONS.map((section) => section.key)),
   );
+  const [restoringVersion, setRestoringVersion] = useState<string | null>(null);
 
   // Per-section regeneration
   const [regeneratingSection, setRegeneratingSection] = useState<string | null>(null);
@@ -1467,6 +1468,10 @@ export default function GrandPlanViewPage({ params }: Props) {
     }
   }
 
+  function handlePrint() {
+    window.print();
+  }
+
   async function handleDelete() {
     if (
       !(await confirm({
@@ -1758,6 +1763,59 @@ export default function GrandPlanViewPage({ params }: Props) {
     a.download = `${plan.title || "grand-plan"}.html`;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  async function handleClone() {
+    if (!plan) return;
+    const title = window.prompt("Clone as", `${plan.title} Copy`);
+    if (!title?.trim()) return;
+
+    try {
+      const res = await fetch("/api/tools/grand-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: title.trim(),
+          cloneFromId: plan.id,
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        grandPlan?: { id?: string };
+      };
+      if (!res.ok) {
+        throw new Error(data.error ?? "Clone failed");
+      }
+      toast("Plan cloned", "success");
+      if (data.grandPlan?.id) {
+        router.push(`/tools/grand-plan/${data.grandPlan.id}`);
+      }
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "Clone failed", "error");
+    }
+  }
+
+  async function handleRestoreVersion(version: { id: string; versionNumber: number }) {
+    if (!plan) return;
+    setRestoringVersion(version.id);
+    try {
+      const res = await fetch(`/api/tools/grand-plan/${id}/restore-version`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ versionId: version.id }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string; html?: string };
+      if (!res.ok) {
+        throw new Error(data.error ?? "Restore failed");
+      }
+      if (data.html) updateBlobUrl(data.html);
+      await loadPlan();
+      toast(`Restored version v${version.versionNumber}`, "success");
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "Restore failed", "error");
+    } finally {
+      setRestoringVersion(null);
+    }
   }
 
   function scrollToSection(sectionId: string) {
@@ -5356,6 +5414,7 @@ function PresentationEditorModal(props: PresentationEditorModalProps) {
   );
 
   const fieldInput = (
+    label: string,
     value: string | undefined,
     onSave: (v: string) => void,
     rows = 2,

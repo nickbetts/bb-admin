@@ -15,6 +15,8 @@
 
 import type { GrandPlanData, AudienceItem, StrategyBrain } from "./grand-plan-generator";
 
+type GrandPlanSectionKey = keyof GrandPlanData["sections"];
+
 // ─── Data grounding badges ──────────────────────────────────────────────────
 // Each grounded section returns a { grounding, sourceLabels } record on
 // plan.grounding[key]. We inject a small badge into the section's first <h2>
@@ -149,7 +151,7 @@ export function renderGrandPlanHtml(plan: GrandPlanData, isPublicView = false): 
   gpEditMode = !isPublicView;
   const s = plan.sections;
   const sectionVisibility = plan.sectionVisibility ?? {};
-  const isVisible = (key: string) => !isPublicView || sectionVisibility[key] !== false;
+  const isVisible = (key: GrandPlanSectionKey) => !isPublicView || sectionVisibility[key] !== false;
 
   // ── Build chapter-grouped nav ──────────────────────────────────────────────
   type NavItem = { id: string; label: string; isChapter?: boolean };
@@ -427,7 +429,7 @@ function buildChapteredSections(
   sectionIntros?: GrandPlanData["sectionIntros"],
   audienceRationales?: GrandPlanData["audienceRationales"],
   isPublicView = false,
-  sectionVisibility: Record<string, boolean> = {},
+  sectionVisibility: Partial<Record<keyof GrandPlanData["sections"], boolean>> = {},
 ): string {
   let chapterNum = 0;
   const ch = (title: string, sub: string) => {
@@ -438,7 +440,8 @@ function buildChapteredSections(
   const hasContext = brief || s.audiences?.length || campaignPeriods?.length;
   void hasContext; // Context chapter removed — brief lives in the brain panel; audiences appear inline per channel.
   // Strategy chapter (Strategy Plan + Quick Wins) removed — channel chapters open the plan directly.
-  const isVisible = (key: string) => !isPublicView || sectionVisibility[key] !== false;
+  const isVisible = (key: keyof GrandPlanData["sections"]) =>
+    !isPublicView || sectionVisibility[key] !== false;
   const hasPaidSearch = isVisible("googleAdsCampaigns") && !!s.googleAdsCampaigns;
   const hasPaidSocial =
     (isVisible("metaCampaigns") && !!s.metaCampaigns?.length) ||

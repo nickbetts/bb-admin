@@ -217,7 +217,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           versionNumber: nextVersion,
           generatedHtml: html,
           planDataJson: JSON.stringify(existingPlanData),
-          qualityStateJson: JSON.stringify(qualityState),
           prompt: `Regenerated section: ${sectionKey}`,
         },
       }),
