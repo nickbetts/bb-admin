@@ -60,15 +60,18 @@ export async function GET() {
       try {
         const serviceToken = await getGoogleAccessToken();
         const properties = await fetchGa4Properties(serviceToken);
-        return NextResponse.json(properties, {
-          headers: { "x-google-auth-source": "service-account" },
-        });
+        if (properties.length > 0) {
+          return NextResponse.json(properties, {
+            headers: { "x-google-auth-source": "service-account" },
+          });
+        }
+        console.warn("GA4 service account returned zero properties, trying user OAuth fallback");
       } catch (serviceError) {
         console.warn("GA4 service account failed, trying user OAuth fallback:", serviceError);
       }
     }
 
-    const { token: userToken, email } = await getGoogleUserAccessToken();
+    const { token: userToken, email } = await getGoogleUserAccessToken(session.user.email);
     const properties = await fetchGa4Properties(userToken);
     return NextResponse.json(properties, {
       headers: {

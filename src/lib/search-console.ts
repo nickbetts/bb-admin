@@ -34,7 +34,7 @@ async function getGscAccessToken(): Promise<string> {
   return tokenResponse.token;
 }
 
-async function getGscAuthCandidates(): Promise<GscAuthCandidate[]> {
+async function getGscAuthCandidates(preferredEmail?: string): Promise<GscAuthCandidate[]> {
   const candidates: GscAuthCandidate[] = [];
 
   if (hasGoogleServiceAccountCredentials()) {
@@ -47,7 +47,7 @@ async function getGscAuthCandidates(): Promise<GscAuthCandidate[]> {
   }
 
   try {
-    const user = await getGoogleUserAccessToken();
+    const user = await getGoogleUserAccessToken(preferredEmail);
     candidates.push({ source: "user-oauth", token: user.token, email: user.email });
   } catch {
     // optional fallback; ignore
@@ -124,18 +124,32 @@ export interface GSCSite {
   permissionLevel: string;
 }
 
-export async function getGSCSites(): Promise<GSCSite[]> {
-  const authCandidates = await getGscAuthCandidates();
+export async function getGSCSitesWithSource(preferredEmail?: string): Promise<{
+  sites: GSCSite[];
+  source: "service-account" | "user-oauth";
+  email?: string;
+}> {
+  const authCandidates = await getGscAuthCandidates(preferredEmail);
   let lastErr = "Search Console auth failed";
 
-  for (const candidate of authCandidates) {
+  for (let i = 0; i < authCandidates.length; i++) {
+    const candidate = authCandidates[i];
+    const isLastCandidate = i === authCandidates.length - 1;
     const res = await fetch("https://www.googleapis.com/webmasters/v3/sites", {
       headers: { Authorization: `Bearer ${candidate.token}` },
       cache: "no-store",
     });
     if (res.ok) {
       const data = await res.json();
-      return (data.siteEntry ?? []) as GSCSite[];
+      const sites = (data.siteEntry ?? []) as GSCSite[];
+      if (sites.length > 0 || isLastCandidate) {
+        return {
+          sites,
+          source: candidate.source,
+          email: candidate.email,
+        };
+      }
+      continue;
     }
     lastErr = await res.text();
     if (res.status !== 401 && res.status !== 403) {
@@ -144,6 +158,11 @@ export async function getGSCSites(): Promise<GSCSite[]> {
   }
 
   throw new Error(`Search Console sites error: ${lastErr}`);
+}
+
+export async function getGSCSites(preferredEmail?: string): Promise<GSCSite[]> {
+  const { sites } = await getGSCSitesWithSource(preferredEmail);
+  return sites;
 }
 
 export async function getGSCOverview(

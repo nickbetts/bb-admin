@@ -31,7 +31,9 @@ export async function getGoogleAccessToken(): Promise<string> {
   return tokenResponse.token;
 }
 
-export async function getGoogleUserAccessToken(): Promise<{ token: string; email: string }> {
+export async function getGoogleUserAccessToken(
+  preferredEmail?: string,
+): Promise<{ token: string; email: string }> {
   const clientId = process.env.GOOGLE_ADS_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_ADS_CLIENT_SECRET;
   if (!clientId || !clientSecret) {
@@ -41,10 +43,18 @@ export async function getGoogleUserAccessToken(): Promise<{ token: string; email
   const connections = await prisma.googleConnection.findMany({
     select: { email: true, refreshToken: true, createdAt: true },
     orderBy: { createdAt: "desc" },
-    take: 5,
+    take: 25,
   });
 
-  for (const connection of connections) {
+  const normalisedPreferred = preferredEmail?.trim().toLowerCase();
+  const orderedConnections = normalisedPreferred
+    ? [
+        ...connections.filter((c) => c.email.trim().toLowerCase() === normalisedPreferred),
+        ...connections.filter((c) => c.email.trim().toLowerCase() !== normalisedPreferred),
+      ]
+    : connections;
+
+  for (const connection of orderedConnections) {
     const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },

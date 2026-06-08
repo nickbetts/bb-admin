@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { getGSCSites } from "@/lib/search-console";
-import { getGoogleUserAccessToken, hasGoogleServiceAccountCredentials } from "@/lib/google-auth";
+import { getGSCSitesWithSource } from "@/lib/search-console";
 
 export const dynamic = "force-dynamic";
 
@@ -12,25 +11,13 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const sites = await getGSCSites();
-
-    if (hasGoogleServiceAccountCredentials()) {
-      return NextResponse.json(sites, {
-        headers: { "x-google-auth-source": "service-account" },
-      });
-    }
-
-    try {
-      const { email } = await getGoogleUserAccessToken();
-      return NextResponse.json(sites, {
-        headers: {
-          "x-google-auth-source": "user-oauth",
-          "x-google-auth-email": email,
-        },
-      });
-    } catch {
-      return NextResponse.json(sites);
-    }
+    const { sites, source, email } = await getGSCSitesWithSource(session.user.email);
+    return NextResponse.json(sites, {
+      headers: {
+        "x-google-auth-source": source,
+        ...(source === "user-oauth" && email ? { "x-google-auth-email": email } : {}),
+      },
+    });
   } catch (error) {
     console.error("Search Console sites error:", error);
     const message = error instanceof Error ? error.message : "Failed to fetch sites";
