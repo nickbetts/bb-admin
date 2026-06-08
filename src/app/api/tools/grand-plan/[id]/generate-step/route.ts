@@ -360,7 +360,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           id,
           `Researching ${suggestResult.adGroups.reduce((s, g) => s + g.keywords.length, 0)} keywords via SEO data...`,
         );
-        const ideas = await researchKeywords(suggestResult.adGroups);
+        const ideas = await researchKeywords(suggestResult.adGroups, {
+          location: "2826",
+          // strict: false — fall back to SEO volume data if Google Ads
+          // Keyword Planner is unavailable (no account, API outage, etc.)
+          strict: false,
+        });
 
         const adGroupsWithVolumes = suggestResult.adGroups.map((g) => ({
           name: g.name,

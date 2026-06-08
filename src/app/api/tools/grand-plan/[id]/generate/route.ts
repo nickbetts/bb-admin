@@ -156,7 +156,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           const ideas = await researchKeywords(suggestResult.adGroups, {
             location: "2826",
             customerId: plan.client?.googleAdsCustomerId ?? undefined,
-            strict: true,
+            // strict: false — fall back to SEO volume data if Google Ads
+            // Keyword Planner is unavailable (no account, API outage, etc.)
+            strict: false,
           });
 
           // Convert ad groups with volumes into the format the generator expects

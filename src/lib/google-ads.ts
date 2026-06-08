@@ -1,7 +1,8 @@
 const GOOGLE_ADS_API_VERSION = "v20";
-// KeywordPlanIdeaService was removed from v19+ — pin it to v18 which is the
-// last version that supports the generateKeywordIdeas REST endpoint.
-const KEYWORD_IDEAS_API_VERSION = "v18";
+// Keep the Keyword Planner endpoint on the same version as the rest of the
+// API. v18 was sunset in early 2026 and returns 404; v20 still exposes
+// keywordPlanIdeas:generateKeywordIdeas via REST.
+const KEYWORD_IDEAS_API_VERSION = "v20";
 const TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
 const ADS_BASE_URL = `https://googleads.googleapis.com/${GOOGLE_ADS_API_VERSION}`;
 const KEYWORD_IDEAS_BASE_URL = `https://googleads.googleapis.com/${KEYWORD_IDEAS_API_VERSION}`;
@@ -39,7 +40,9 @@ async function getAccessToken(): Promise<string> {
   }
 
   if (candidates.length === 0) {
-    throw new Error("No Google Ads refresh token configured. Connect a Google account in Settings.");
+    throw new Error(
+      "No Google Ads refresh token configured. Connect a Google account in Settings.",
+    );
   }
 
   let lastError = "";
@@ -72,7 +75,7 @@ async function getAccessToken(): Promise<string> {
   if (lastError.includes("invalid_grant")) {
     throw new Error(
       `invalid_grant: All Google Ads refresh tokens have expired or been revoked. ` +
-      `Go to Settings and reconnect your Google account.`
+        `Go to Settings and reconnect your Google account.`,
     );
   }
   throw new Error(`Token refresh failed: ${lastError}`);
@@ -96,7 +99,7 @@ async function searchGoogleAds(
   customerId: string,
   query: string,
   accessToken: string,
-  mccId?: string | null
+  mccId?: string | null,
 ) {
   const cid = customerId.replace(/-/g, "");
   const res = await fetch(`${ADS_BASE_URL}/customers/${cid}/googleAds:search`, {
@@ -146,14 +149,14 @@ export interface GoogleAdsAdGroup {
 
 /** Enriched campaign data including budget, bidding strategy, and impression share */
 export interface GoogleAdsCampaignEnriched extends GoogleAdsCampaign {
-  channelType: string;               // SEARCH | DISPLAY | SHOPPING | PERFORMANCE_MAX etc.
-  biddingStrategyType: string;       // TARGET_CPA | TARGET_ROAS | ENHANCED_CPC etc.
-  dailyBudgetMicros: number;         // Daily budget in micros
-  searchImpressionShare: number | null;           // 0–1 (null for non-search campaigns)
+  channelType: string; // SEARCH | DISPLAY | SHOPPING | PERFORMANCE_MAX etc.
+  biddingStrategyType: string; // TARGET_CPA | TARGET_ROAS | ENHANCED_CPC etc.
+  dailyBudgetMicros: number; // Daily budget in micros
+  searchImpressionShare: number | null; // 0–1 (null for non-search campaigns)
   searchBudgetLostImpressionShare: number | null; // 0–1 share lost due to budget
-  searchRankLostImpressionShare: number | null;   // 0–1 share lost due to ad rank
-  absoluteTopImpressionPct: number | null;        // 0–1 % of impressions as absolute #1
-  topImpressionPct: number | null;                // 0–1 % of impressions in top 3
+  searchRankLostImpressionShare: number | null; // 0–1 share lost due to ad rank
+  absoluteTopImpressionPct: number | null; // 0–1 % of impressions as absolute #1
+  topImpressionPct: number | null; // 0–1 % of impressions in top 3
 }
 
 /** A unique landing page URL observed in ads during the period */
@@ -196,7 +199,7 @@ export interface GoogleAdsInvalidClicks {
 export async function getGoogleAdsOverview(
   customerId: string,
   startDate: string,
-  endDate: string
+  endDate: string,
 ): Promise<GoogleAdsOverview> {
   const token = await getAccessToken();
   const mccId = await getMccId();
@@ -235,7 +238,7 @@ export async function getGoogleAdsOverview(
 export async function getGoogleAdsCampaigns(
   customerId: string,
   startDate: string,
-  endDate: string
+  endDate: string,
 ): Promise<GoogleAdsCampaign[]> {
   const token = await getAccessToken();
   const mccId = await getMccId();
@@ -272,7 +275,7 @@ export async function getGoogleAdsCampaigns(
 export async function getGoogleAdsCampaignsEnriched(
   customerId: string,
   startDate: string,
-  endDate: string
+  endDate: string,
 ): Promise<GoogleAdsCampaignEnriched[]> {
   const token = await getAccessToken();
   const mccId = await getMccId();
@@ -336,7 +339,7 @@ export async function getGoogleAdsCampaignsEnriched(
 export async function getGoogleAdsLandingPages(
   customerId: string,
   startDate: string,
-  endDate: string
+  endDate: string,
 ): Promise<GoogleAdsLandingPage[]> {
   const token = await getAccessToken();
   const mccId = await getMccId();
@@ -370,7 +373,7 @@ export async function getGoogleAdsLandingPages(
 export async function getGoogleAdsAdGroups(
   customerId: string,
   startDate: string,
-  endDate: string
+  endDate: string,
 ): Promise<GoogleAdsAdGroup[]> {
   const token = await getAccessToken();
   const mccId = await getMccId();
@@ -407,7 +410,7 @@ export async function getGoogleAdsAdGroups(
 export async function getGoogleAdsDailyData(
   customerId: string,
   startDate: string,
-  endDate: string
+  endDate: string,
 ): Promise<GoogleAdsDailyPoint[]> {
   const token = await getAccessToken();
   const mccId = await getMccId();
@@ -448,7 +451,7 @@ export async function getGoogleAdsSearchTerms(
   customerId: string,
   startDate: string,
   endDate: string,
-  limit: number = 25
+  limit: number = 25,
 ): Promise<GoogleAdsSearchTerm[]> {
   const token = await getAccessToken();
   const mccId = await getMccId();
@@ -471,9 +474,12 @@ export async function getGoogleAdsSearchTerms(
   return (data.results ?? []).map((row: Record<string, Record<string, unknown>>) => ({
     searchTerm: String(row.searchTermView?.searchTerm ?? ""),
     matchType: String(
-      (((row.segments as Record<string, unknown>)?.keyword as Record<string, unknown>)?.info as Record<string, unknown>)?.matchType ??
-      (row.segments as Record<string, unknown>)?.matchType ??
-      "UNSPECIFIED"
+      (
+        ((row.segments as Record<string, unknown>)?.keyword as Record<string, unknown>)
+          ?.info as Record<string, unknown>
+      )?.matchType ??
+        (row.segments as Record<string, unknown>)?.matchType ??
+        "UNSPECIFIED",
     ),
     clicks: Number(row.metrics?.clicks ?? 0),
     costMicros: Number(row.metrics?.costMicros ?? 0),
@@ -488,9 +494,7 @@ export async function getGoogleAdsSearchTerms(
  * Quality Score is only available for active keywords on Search campaigns.
  * Returns null if no quality scores are available for the account.
  */
-export async function getGoogleAdsAvgQualityScore(
-  customerId: string
-): Promise<number | null> {
+export async function getGoogleAdsAvgQualityScore(customerId: string): Promise<number | null> {
   const token = await getAccessToken();
   const mccId = await getMccId();
   const query = `
@@ -511,7 +515,9 @@ export async function getGoogleAdsAvgQualityScore(
     type GadsQsRow = Record<string, Record<string, unknown>>;
     const scores = (data.results ?? [])
       .map((row: GadsQsRow) => {
-        const qualityInfo = row.adGroupCriterion?.qualityInfo as Record<string, unknown> | undefined;
+        const qualityInfo = row.adGroupCriterion?.qualityInfo as
+          | Record<string, unknown>
+          | undefined;
         return Number(qualityInfo?.qualityScore ?? 0);
       })
       .filter((s: number) => s > 0);
@@ -550,7 +556,7 @@ export interface GoogleAdsKeywordQualityScore {
 export async function getGoogleAdsKeywordQualityScores(
   customerId: string,
   startDate: string,
-  endDate: string
+  endDate: string,
 ): Promise<GoogleAdsKeywordQualityScore[]> {
   const token = await getAccessToken();
   const mccId = await getMccId();
@@ -587,17 +593,26 @@ export async function getGoogleAdsKeywordQualityScores(
     };
     const normalise = (v: unknown) => labelMap[String(v ?? "")] ?? "UNKNOWN";
     return (data.results ?? []).map((row: GadsQsRow) => {
-      const qualityInfo = (row.adGroupCriterion?.qualityInfo ?? row.adGroupCriterion?.quality_info) as Record<string, unknown> | undefined;
+      const qualityInfo = (row.adGroupCriterion?.qualityInfo ??
+        row.adGroupCriterion?.quality_info) as Record<string, unknown> | undefined;
       const qs = qualityInfo?.qualityScore ?? qualityInfo?.quality_score;
       const score = qs != null && Number(qs) > 0 ? Number(qs) : null;
       return {
-        keyword: String((row.adGroupCriterion as Record<string, Record<string, unknown>>)?.keyword?.text ?? ""),
+        keyword: String(
+          (row.adGroupCriterion as Record<string, Record<string, unknown>>)?.keyword?.text ?? "",
+        ),
         campaignName: String(row.campaign?.name ?? ""),
         adGroupName: String(row.adGroup?.name ?? ""),
         qualityScore: score,
-        expectedCtr: normalise(qualityInfo?.searchPredictedCtr ?? qualityInfo?.search_predicted_ctr),
-        adRelevance: normalise(qualityInfo?.creativeQualityScore ?? qualityInfo?.creative_quality_score),
-        landingPageExperience: normalise(qualityInfo?.postClickQualityScore ?? qualityInfo?.post_click_quality_score),
+        expectedCtr: normalise(
+          qualityInfo?.searchPredictedCtr ?? qualityInfo?.search_predicted_ctr,
+        ),
+        adRelevance: normalise(
+          qualityInfo?.creativeQualityScore ?? qualityInfo?.creative_quality_score,
+        ),
+        landingPageExperience: normalise(
+          qualityInfo?.postClickQualityScore ?? qualityInfo?.post_click_quality_score,
+        ),
         clicks: Number(row.metrics?.clicks ?? 0),
         costMicros: Number(row.metrics?.costMicros ?? 0),
         impressions: Number(row.metrics?.impressions ?? 0),
@@ -623,7 +638,7 @@ export interface GoogleAdsAudienceCriterion {
 }
 
 export async function getGoogleAdsAudienceCriteria(
-  customerId: string
+  customerId: string,
 ): Promise<GoogleAdsAudienceCriterion[]> {
   const token = await getAccessToken();
   const mccId = await getMccId();
@@ -659,9 +674,7 @@ export async function getGoogleAdsAudienceCriteria(
       displayName: String(row.adGroupCriterion?.displayName ?? ""),
       negative: Boolean(row.adGroupCriterion?.negative ?? false),
       bidModifier:
-        row.adGroupCriterion?.bidModifier != null
-          ? Number(row.adGroupCriterion.bidModifier)
-          : null,
+        row.adGroupCriterion?.bidModifier != null ? Number(row.adGroupCriterion.bidModifier) : null,
     }));
   } catch {
     return [];
@@ -693,7 +706,7 @@ export interface GoogleAdsRSAAsset {
 export async function getGoogleAdsRSAAssets(
   customerId: string,
   startDate: string,
-  endDate: string
+  endDate: string,
 ): Promise<GoogleAdsRSAAsset[]> {
   const token = await getAccessToken();
   const mccId = await getMccId();
@@ -726,8 +739,8 @@ export async function getGoogleAdsRSAAssets(
     type GadsRow = Record<string, Record<string, unknown>>;
     type AssetRow = { text?: string };
     return (data.results ?? []).map((row: GadsRow) => {
-      const ad = row.adGroupAd?.ad as Record<string, unknown> ?? {};
-      const rsa = ad.responsiveSearchAd as Record<string, AssetRow[]> ?? {};
+      const ad = (row.adGroupAd?.ad as Record<string, unknown>) ?? {};
+      const rsa = (ad.responsiveSearchAd as Record<string, AssetRow[]>) ?? {};
       const headlines = (rsa.headlines ?? []).map((h) => h.text ?? "").filter(Boolean);
       const descriptions = (rsa.descriptions ?? []).map((d) => d.text ?? "").filter(Boolean);
       const finalUrls = (ad.finalUrls as string[] | undefined) ?? [];
@@ -813,7 +826,7 @@ async function getAccessTokenForRefreshToken(refreshToken: string): Promise<stri
 
 // Core implementation that accepts an already-resolved access token
 async function listAccessibleCustomersWithToken(
-  accessToken: string
+  accessToken: string,
 ): Promise<{ id: string; name: string; isManager: boolean }[]> {
   const res = await fetch(`${ADS_BASE_URL}/customers:listAccessibleCustomers`, {
     headers: {
@@ -828,7 +841,7 @@ async function listAccessibleCustomersWithToken(
     throw new Error(`listAccessibleCustomers failed: ${text}`);
   }
 
-  const { resourceNames } = await res.json() as { resourceNames: string[] };
+  const { resourceNames } = (await res.json()) as { resourceNames: string[] };
   if (!resourceNames?.length) return [];
 
   const results = await Promise.allSettled(
@@ -846,11 +859,14 @@ async function listAccessibleCustomersWithToken(
       } catch {
         return { id, name: id, isManager: false };
       }
-    })
+    }),
   );
 
   return results
-    .filter((r): r is PromiseFulfilledResult<{ id: string; name: string; isManager: boolean }> => r.status === "fulfilled")
+    .filter(
+      (r): r is PromiseFulfilledResult<{ id: string; name: string; isManager: boolean }> =>
+        r.status === "fulfilled",
+    )
     .map((r) => r.value)
     .sort((a, b) => {
       if (a.isManager !== b.isManager) return a.isManager ? -1 : 1;
@@ -861,7 +877,7 @@ async function listAccessibleCustomersWithToken(
 // Fetch direct sub-accounts of a manager account using a provided access token
 async function getMccSubAccountsWithToken(
   mccId: string,
-  accessToken: string
+  accessToken: string,
 ): Promise<GoogleAdsAccount[]> {
   const query = `
     SELECT
@@ -919,7 +935,12 @@ export async function getAllGoogleAdsAccounts(): Promise<GoogleAdsAccount[]> {
 
         for (const acc of directAccounts) {
           if (!allAccounts.has(acc.id)) {
-            allAccounts.set(acc.id, { id: acc.id, name: acc.name, currencyCode: "USD", isManager: acc.isManager });
+            allAccounts.set(acc.id, {
+              id: acc.id,
+              name: acc.name,
+              currencyCode: "USD",
+              isManager: acc.isManager,
+            });
           }
           // Drill into any manager accounts to get their sub-clients
           if (acc.isManager) {
@@ -938,7 +959,7 @@ export async function getAllGoogleAdsAccounts(): Promise<GoogleAdsAccount[]> {
       } catch (err) {
         console.error("getAllGoogleAdsAccounts: failed for a connection:", err);
       }
-    })
+    }),
   );
 
   return Array.from(allAccounts.values()).sort((a, b) => {
@@ -948,7 +969,9 @@ export async function getAllGoogleAdsAccounts(): Promise<GoogleAdsAccount[]> {
 }
 
 // Lists all accounts accessible to the authenticated user (requires Basic Access)
-export async function listAccessibleCustomers(): Promise<{ id: string; name: string; isManager: boolean }[]> {
+export async function listAccessibleCustomers(): Promise<
+  { id: string; name: string; isManager: boolean }[]
+> {
   const token = await getAccessToken();
   return listAccessibleCustomersWithToken(token);
 }
@@ -975,9 +998,9 @@ export async function generateKeywordIdeas(
   customerId: string,
   keywords: string[],
   url: string,
-  locationIds: string[] = ["2826"],       // 2826 = United Kingdom
+  locationIds: string[] = ["2826"], // 2826 = United Kingdom
   languageCode: string = "languageConstants/1000", // 1000 = English
-  pageSize = 50
+  pageSize = 50,
 ): Promise<KeywordIdeaMetric[]> {
   const token = await getAccessToken();
   const mccId = await getMccId();
@@ -1008,7 +1031,7 @@ export async function generateKeywordIdeas(
       headers: buildHeaders(token, mccId),
       body: JSON.stringify(body),
       cache: "no-store",
-    }
+    },
   );
 
   if (!res.ok) {
@@ -1016,7 +1039,7 @@ export async function generateKeywordIdeas(
     throw new Error(`Keyword Planner API error (${res.status}): ${text}`);
   }
 
-  const data = await res.json() as { results?: unknown[] };
+  const data = (await res.json()) as { results?: unknown[] };
 
   type RawResult = {
     text?: string;
@@ -1057,7 +1080,7 @@ export async function generateKeywordIdeas(
 export async function getGoogleAdsInvalidClicks(
   customerId: string,
   startDate: string,
-  endDate: string
+  endDate: string,
 ): Promise<GoogleAdsInvalidClicks> {
   // Validate date format to prevent injection into the GAQL query string
   const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
@@ -1123,7 +1146,7 @@ export interface GoogleAdsDeviceBreakdown {
 export async function getGoogleAdsDeviceBreakdown(
   customerId: string,
   startDate: string,
-  endDate: string
+  endDate: string,
 ): Promise<GoogleAdsDeviceBreakdown[]> {
   const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
   if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
@@ -1150,7 +1173,9 @@ export async function getGoogleAdsDeviceBreakdown(
   // Aggregate per device across all campaigns
   const deviceMap = new Map<string, GoogleAdsDeviceBreakdown>();
   for (const row of data.results ?? []) {
-    const device = String((row as Record<string, Record<string, unknown>>).segments?.device ?? "UNKNOWN");
+    const device = String(
+      (row as Record<string, Record<string, unknown>>).segments?.device ?? "UNKNOWN",
+    );
     const m = (row as Record<string, Record<string, unknown>>).metrics ?? {};
     const existing = deviceMap.get(device) ?? {
       device,
@@ -1193,7 +1218,7 @@ export interface GoogleAdsPMaxInsight {
 export async function getGoogleAdsPMaxInsights(
   customerId: string,
   startDate: string,
-  endDate: string
+  endDate: string,
 ): Promise<GoogleAdsPMaxInsight[]> {
   const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
   if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
@@ -1260,7 +1285,7 @@ export interface GoogleAdsPMaxSearchTerm {
 export async function getGoogleAdsPMaxSearchTerms(
   customerId: string,
   startDate: string,
-  endDate: string
+  endDate: string,
 ): Promise<GoogleAdsPMaxSearchTerm[]> {
   const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
   if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
@@ -1317,7 +1342,7 @@ export interface GoogleAdsGeoPerformance {
 export async function getGoogleAdsGeoPerformance(
   customerId: string,
   startDate: string,
-  endDate: string
+  endDate: string,
 ): Promise<GoogleAdsGeoPerformance[]> {
   const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
   if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
@@ -1377,7 +1402,7 @@ export interface GoogleAdsSchedulePerformance {
 export async function getGoogleAdsSchedulePerformance(
   customerId: string,
   startDate: string,
-  endDate: string
+  endDate: string,
 ): Promise<GoogleAdsSchedulePerformance[]> {
   const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
   if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
@@ -1438,7 +1463,7 @@ export interface GoogleAdsBidSimulation {
  * not always available — returns an empty array on error.
  */
 export async function getGoogleAdsBidSimulator(
-  customerId: string
+  customerId: string,
 ): Promise<GoogleAdsBidSimulation[]> {
   const token = await getAccessToken();
   const mccId = await getMccId();
@@ -1493,7 +1518,7 @@ export interface GoogleAdsNegativeKeyword {
 }
 
 export async function getGoogleAdsNegativeKeywords(
-  customerId: string
+  customerId: string,
 ): Promise<GoogleAdsNegativeKeyword[]> {
   const token = await getAccessToken();
   const mccId = await getMccId();
@@ -1515,8 +1540,12 @@ export async function getGoogleAdsNegativeKeywords(
     return (data.results ?? []).map((row: GadsRow) => ({
       sharedSetId: String(row.sharedSet?.id ?? ""),
       sharedSetName: String(row.sharedSet?.name ?? ""),
-      keyword: String((row.sharedCriterion as Record<string, Record<string, unknown>>)?.keyword?.text ?? ""),
-      matchType: String((row.sharedCriterion as Record<string, Record<string, unknown>>)?.keyword?.matchType ?? ""),
+      keyword: String(
+        (row.sharedCriterion as Record<string, Record<string, unknown>>)?.keyword?.text ?? "",
+      ),
+      matchType: String(
+        (row.sharedCriterion as Record<string, Record<string, unknown>>)?.keyword?.matchType ?? "",
+      ),
     }));
   } catch {
     return [];
@@ -1537,7 +1566,7 @@ export interface GoogleAdsDemographic {
 export async function getGoogleAdsDemographics(
   customerId: string,
   startDate: string,
-  endDate: string
+  endDate: string,
 ): Promise<GoogleAdsDemographic[]> {
   const token = await getAccessToken();
   const mccId = await getMccId();
@@ -1576,7 +1605,9 @@ export async function getGoogleAdsDemographics(
     for (const row of (ageData.results ?? []) as GadsRow[]) {
       results.push({
         type: "age",
-        segment: String((row.adGroupCriterion as Record<string, Record<string, unknown>>)?.ageRange?.type ?? ""),
+        segment: String(
+          (row.adGroupCriterion as Record<string, Record<string, unknown>>)?.ageRange?.type ?? "",
+        ),
         clicks: Number(row.metrics?.clicks ?? 0),
         impressions: Number(row.metrics?.impressions ?? 0),
         costMicros: Number(row.metrics?.costMicros ?? 0),
@@ -1587,7 +1618,9 @@ export async function getGoogleAdsDemographics(
     for (const row of (genderData.results ?? []) as GadsRow[]) {
       results.push({
         type: "gender",
-        segment: String((row.adGroupCriterion as Record<string, Record<string, unknown>>)?.gender?.type ?? ""),
+        segment: String(
+          (row.adGroupCriterion as Record<string, Record<string, unknown>>)?.gender?.type ?? "",
+        ),
         clicks: Number(row.metrics?.clicks ?? 0),
         impressions: Number(row.metrics?.impressions ?? 0),
         costMicros: Number(row.metrics?.costMicros ?? 0),
@@ -1617,7 +1650,7 @@ export interface GoogleAdsShoppingProduct {
 export async function getGoogleAdsShoppingPerformance(
   customerId: string,
   startDate: string,
-  endDate: string
+  endDate: string,
 ): Promise<GoogleAdsShoppingProduct[]> {
   const token = await getAccessToken();
   const mccId = await getMccId();
@@ -1670,7 +1703,7 @@ export interface GoogleAdsConversionAction {
 export async function getGoogleAdsConversionActions(
   customerId: string,
   startDate: string,
-  endDate: string
+  endDate: string,
 ): Promise<GoogleAdsConversionAction[]> {
   const token = await getAccessToken();
   const mccId = await getMccId();
@@ -1720,7 +1753,7 @@ export interface GoogleAdsCallExtension {
 export async function getGoogleAdsCallExtensions(
   customerId: string,
   startDate: string,
-  endDate: string
+  endDate: string,
 ): Promise<GoogleAdsCallExtension[]> {
   const token = await getAccessToken();
   const mccId = await getMccId();
@@ -1765,7 +1798,7 @@ export interface GoogleAdsSitelinkPerformance {
 export async function getGoogleAdsSitelinkPerformance(
   customerId: string,
   startDate: string,
-  endDate: string
+  endDate: string,
 ): Promise<GoogleAdsSitelinkPerformance[]> {
   const token = await getAccessToken();
   const mccId = await getMccId();
@@ -1787,7 +1820,9 @@ export async function getGoogleAdsSitelinkPerformance(
     const data = await searchGoogleAds(customerId, query, token, mccId);
     type GadsRow = Record<string, Record<string, unknown>>;
     return (data.results ?? []).map((row: GadsRow) => ({
-      sitelinkText: String((row.asset as Record<string, Record<string, unknown>>)?.sitelinkAsset?.linkText ?? ""),
+      sitelinkText: String(
+        (row.asset as Record<string, Record<string, unknown>>)?.sitelinkAsset?.linkText ?? "",
+      ),
       clicks: Number(row.metrics?.clicks ?? 0),
       impressions: Number(row.metrics?.impressions ?? 0),
       costMicros: Number(row.metrics?.costMicros ?? 0),
@@ -1815,7 +1850,7 @@ export interface GoogleAdsDisplayVideoData {
 export async function getGoogleAdsDisplayVideoData(
   customerId: string,
   startDate: string,
-  endDate: string
+  endDate: string,
 ): Promise<GoogleAdsDisplayVideoData[]> {
   const token = await getAccessToken();
   const mccId = await getMccId();
@@ -1866,7 +1901,7 @@ export interface GoogleAdsRecommendation {
 }
 
 export async function getGoogleAdsRecommendations(
-  customerId: string
+  customerId: string,
 ): Promise<GoogleAdsRecommendation[]> {
   const token = await getAccessToken();
   const mccId = await getMccId();
@@ -1906,7 +1941,7 @@ export interface GoogleAdsBudgetUtilisation {
 export async function getGoogleAdsBudgetUtilisation(
   customerId: string,
   startDate: string,
-  endDate: string
+  endDate: string,
 ): Promise<GoogleAdsBudgetUtilisation[]> {
   const token = await getAccessToken();
   const mccId = await getMccId();
@@ -1930,14 +1965,18 @@ export async function getGoogleAdsBudgetUtilisation(
     return (data.results ?? []).map((row: GadsRow) => {
       const budgetMicros = Number(row.campaignBudget?.amountMicros ?? 0);
       const spendMicros = Number(row.metrics?.costMicros ?? 0);
-      const daysInRange = Math.max(1, Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / 86400000));
+      const daysInRange = Math.max(
+        1,
+        Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / 86400000),
+      );
       const totalBudgetMicros = budgetMicros * daysInRange;
       return {
         campaignId: String(row.campaign?.id ?? ""),
         campaignName: String(row.campaign?.name ?? ""),
         dailyBudgetMicros: budgetMicros,
         spendMicros,
-        utilisationPercent: totalBudgetMicros > 0 ? Math.round((spendMicros / totalBudgetMicros) * 100) : 0,
+        utilisationPercent:
+          totalBudgetMicros > 0 ? Math.round((spendMicros / totalBudgetMicros) * 100) : 0,
         budgetStatus: String(row.campaignBudget?.status ?? ""),
       };
     });
