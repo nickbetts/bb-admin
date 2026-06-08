@@ -8,6 +8,7 @@
 
 import { jsonrepair } from "jsonrepair";
 import { getAnthropicClient } from "@/lib/anthropic-client";
+import { generateKeywordIdeas } from "@/lib/google-ads";
 import { getKeywordVolumeMetrics, type KeywordVolumeResult } from "@/lib/seo-retired-defaults";
 import { crawlSiteForKeywordContext } from "@/lib/landing-page-analyzer";
 
@@ -28,6 +29,13 @@ export interface SuggestResult {
 
 export interface KeywordIdea extends KeywordVolumeResult {
   adGroup: string;
+}
+
+export interface KeywordResearchOptions {
+  location?: string;
+  language?: string;
+  customerId?: string;
+  strict?: boolean;
 }
 
 // ─── Suggest ad groups from website + brief (Claude) ────────────────────────
@@ -158,8 +166,14 @@ const LOCATION_TO_SEO_DB: Record<string, string> = {
 
 export async function researchKeywords(
   adGroups: AdGroupSeed[],
-  location: string = "2826",
+  options: KeywordResearchOptions = {},
 ): Promise<KeywordIdea[]> {
+  const {
+    location = "2826",
+    language = "languageConstants/1000",
+    customerId,
+    strict = true,
+  } = options;
   const kwGroupMap = new Map<string, string>();
   const allKeywords: string[] = [];
 
@@ -174,6 +188,50 @@ export async function researchKeywords(
   }
 
   if (!allKeywords.length) return [];
+
+  if (strict && !customerId) {
+    throw new Error(
+      "Google Ads customer ID is required for strict keyword metrics. Connect Google Ads and try again.",
+    );
+  }
+
+  if (customerId) {
+    const uniqueKeywords = Array.from(new Set(allKeywords.map((k) => k.trim()).filter(Boolean)));
+    const batches: string[][] = [];
+    const batchSize = 20;
+    for (let i = 0; i < uniqueKeywords.length; i += batchSize) {
+      batches.push(uniqueKeywords.slice(i, i + batchSize));
+    }
+
+    const googleIdeas = (
+      await Promise.all(
+        batches.map((batch) =>
+          generateKeywordIdeas(
+            customerId,
+            batch,
+            "",
+            [location],
+            language,
+            Math.max(batch.length, 20),
+          ),
+        ),
+      )
+    ).flat();
+
+    const originalKeySet = new Set(allKeywords.map((k) => k.toLowerCase().trim()));
+    return googleIdeas
+      .filter((idea) => originalKeySet.has(idea.text.toLowerCase().trim()))
+      .map((idea) => ({
+        ...idea,
+        adGroup: kwGroupMap.get(idea.text.toLowerCase().trim()) ?? "Other",
+      }));
+  }
+
+  if (strict) {
+    throw new Error(
+      "Strict mode requires Google Ads keyword metrics, but no Google Ads account was provided.",
+    );
+  }
 
   const database = LOCATION_TO_SEO_DB[location] ?? "uk";
   const rawIdeas = await getKeywordVolumeMetrics(allKeywords, database);

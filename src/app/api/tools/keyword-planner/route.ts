@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { getKeywordVolumeMetrics } from "@/lib/seo-retired-defaults";
 import { crawlSiteForKeywordContext } from "@/lib/landing-page-analyzer";
 import { getOpenAiClient, logOpenAiUsage } from "@/lib/openai-client";
 import { prisma } from "@/lib/prisma";
+import { researchKeywords } from "@/lib/keyword-planner-pipeline";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -24,10 +24,10 @@ interface ResearchBody {
   action: "research";
   adGroups?: AdGroupSeed[];
   keywords?: string[]; // legacy fallback
-  website?: string;
   customerId?: string;
   location?: string;
   language?: string;
+  strict?: boolean;
 }
 
 interface SmartDefaultsBody {
@@ -38,19 +38,6 @@ interface SmartDefaultsBody {
 }
 
 type RequestBody = SuggestBody | ResearchBody | SmartDefaultsBody;
-
-// ── Google Ads location ID → SEO database code ──────────────────────────────
-
-const LOCATION_TO_SEO_DB: Record<string, string> = {
-  "2826": "uk",
-  "2840": "us",
-  "2036": "au",
-  "2124": "ca",
-  "2276": "de",
-  "2250": "fr",
-  "2724": "es",
-  "2380": "it",
-};
 
 export async function POST(request: NextRequest) {
   try {
@@ -181,47 +168,41 @@ Return ONLY this JSON (no markdown, no explanation):
     // ── action: research ───────────────────────────────────────────────────────
     if (body.action === "research") {
       const resBody = body as ResearchBody;
-      const { website, location } = resBody;
+      const { location, language, customerId } = resBody;
+      const strict = resBody.strict ?? true;
+
+      if (strict && !customerId) {
+        return NextResponse.json(
+          {
+            error:
+              "Strict keyword metrics require a Google Ads customer ID. Connect a Google Ads account and try again.",
+            code: "GOOGLE_ADS_CUSTOMER_REQUIRED",
+          },
+          { status: 400 },
+        );
+      }
 
       // Build flat keyword list + group map from adGroups (or legacy keywords)
-      const kwGroupMap = new Map<string, string>(); // lowercased keyword text → group name
-      let allKeywords: string[] = [];
+      const normalizedAdGroups: AdGroupSeed[] = [];
 
       if (resBody.adGroups?.length) {
         for (const group of resBody.adGroups) {
-          for (const kw of group.keywords) {
-            const key = kw.toLowerCase().trim();
-            if (!kwGroupMap.has(key)) {
-              kwGroupMap.set(key, group.name);
-              allKeywords.push(kw);
-            }
-          }
+          normalizedAdGroups.push({ name: group.name, keywords: group.keywords });
         }
       } else if (resBody.keywords?.length) {
-        // Legacy flat keywords — no group info
-        allKeywords = resBody.keywords;
-        for (const kw of allKeywords) kwGroupMap.set(kw.toLowerCase().trim(), "Keywords");
+        normalizedAdGroups.push({ name: "Keywords", keywords: resBody.keywords });
       }
 
-      if (!allKeywords.length) {
+      if (!normalizedAdGroups.length || !normalizedAdGroups.some((g) => g.keywords.length > 0)) {
         return NextResponse.json({ error: "No keywords provided." }, { status: 400 });
       }
 
-      // Map location ID to SEO database
-      const database = LOCATION_TO_SEO_DB[location ?? "2826"] ?? "uk";
-
-      // Fetch keyword volume data via SEO data provider
-      const rawIdeas = await getKeywordVolumeMetrics(allKeywords, database);
-
-      // Filter to keywords that match our original keyword list (volume filter already applied inside)
-      const originalKeySet = new Set(allKeywords.map((k) => k.toLowerCase().trim()));
-
-      const ideas = rawIdeas
-        .filter((idea) => originalKeySet.has(idea.text.toLowerCase().trim()))
-        .map((idea) => ({
-          ...idea,
-          adGroup: kwGroupMap.get(idea.text.toLowerCase().trim()) ?? "Other",
-        }));
+      const ideas = await researchKeywords(normalizedAdGroups, {
+        location,
+        language,
+        customerId,
+        strict,
+      });
 
       return NextResponse.json({ ideas });
     }

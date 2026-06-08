@@ -27,7 +27,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     where: { id },
     include: {
       client: {
-        select: { id: true, name: true, slug: true, website: true, searchConsoleSiteUrl: true },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          website: true,
+          searchConsoleSiteUrl: true,
+          googleAdsCustomerId: true,
+        },
       },
       proposal: {
         select: {
@@ -141,14 +148,24 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       let keywordResearchData = plan.keywordResearch;
       const kwBriefText = config.kwBrief?.brief || brief;
       if (!keywordResearchData && website && kwBriefText) {
+        if (!plan.client?.googleAdsCustomerId) {
+          throw new Error(
+            "Strict keyword metrics require a connected Google Ads account (missing googleAdsCustomerId on client).",
+          );
+        }
+
         await setProgress("Crawling website and suggesting ad groups...");
         const suggestResult = await suggestAdGroups(website, kwBriefText);
 
         if (suggestResult.adGroups.length > 0) {
           await setProgress(
-            `Researching ${suggestResult.adGroups.reduce((s, g) => s + g.keywords.length, 0)} keywords via SEO...`,
+            `Researching ${suggestResult.adGroups.reduce((s, g) => s + g.keywords.length, 0)} keywords via Google Ads Keyword Planner...`,
           );
-          const ideas = await researchKeywords(suggestResult.adGroups);
+          const ideas = await researchKeywords(suggestResult.adGroups, {
+            location: "2826",
+            customerId: plan.client.googleAdsCustomerId,
+            strict: true,
+          });
 
           // Convert ad groups with volumes into the format the generator expects
           const adGroupsWithVolumes = suggestResult.adGroups.map((g) => ({
