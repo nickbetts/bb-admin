@@ -3363,7 +3363,15 @@ ${context}${buildSharedContextBlocks(sources)}`,
 // ─── Anthropic helper ───────────────────────────────────────────────────────
 
 function extractText(response: Anthropic.Message): string {
-  const block = response.content.find((b) => b.type === "text");
+  // When tool use is involved the model emits text blocks in this order:
+  //   1. prose intro  (e.g. "I'll search for...")
+  //   2. tool_use blocks
+  //   3. tool_result blocks
+  //   4. final text block containing the structured JSON output
+  // Using find() returns the first (prose) block instead of the JSON.
+  // Reverse the content array and take the last text block instead.
+  const blocks = [...response.content].reverse();
+  const block = blocks.find((b) => b.type === "text");
   const raw = block && block.type === "text" ? block.text.trim() : "";
   // Strip markdown fencing if present (any language: json, html, markdown, etc.)
   const stripped = raw.replace(/^```(?:\w+)?\s*/i, "").replace(/\s*```$/i, "");

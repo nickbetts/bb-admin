@@ -2333,7 +2333,9 @@ function evaluateInputQuality(
     const msg = "Client brief is missing.";
     if (strict) blockers.push(msg);
     else warnings.push(msg);
-  } else if (briefWordCount < 18 || hasWeakBriefMarker) {
+  } else if (briefWordCount < 30 || hasWeakBriefMarker) {
+    // 30 words is the practical minimum for Claude to produce specific copy.
+    // Below this threshold sections tend to be generic and unfocused.
     warnings.push("Client brief is very short or generic and may produce weak section copy.");
   }
 
