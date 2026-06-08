@@ -1236,13 +1236,13 @@ export default function GrandPlanViewPage({ params }: Props) {
         .slice(0, 4)
         .map((line) => `• ${line}`)
         .join("\n");
-      const proceed = await confirm({
+      await confirm({
         title: `Critical QA failures detected before ${actionLabel}`,
         description: `Second-pass QA flagged hard failures. Resolve these before publishing.\n\n${hardPreview}${secondPassHardFailures.length > 4 ? `\n…plus ${secondPassHardFailures.length - 4} more.` : ""}`,
-        confirmLabel: "Proceed anyway",
+        confirmLabel: "Understood",
         danger: true,
       });
-      if (!proceed) return false;
+      return false;
     }
 
     if (!publishQualitySummary.hasIssues) return true;
@@ -2697,11 +2697,13 @@ export default function GrandPlanViewPage({ params }: Props) {
                 className="btn btn-ghost btn-sm"
                 style={{ gap: 5 }}
                 onClick={handleGeneratePresentation}
-                disabled={presentationBusy}
+                disabled={presentationBusy || secondPassHardFailures.length > 0}
                 title={
-                  plan.presentationGeneratedAt
-                    ? "Regenerate the client-facing presentation deck"
-                    : "Create a top-level client-facing presentation deck"
+                  secondPassHardFailures.length > 0
+                    ? "Blocked: resolve second-pass hard failures before generating presentation"
+                    : plan.presentationGeneratedAt
+                      ? "Regenerate the client-facing presentation deck"
+                      : "Create a top-level client-facing presentation deck"
                 }
               >
                 {presentationBusy ? (
@@ -2716,7 +2718,12 @@ export default function GrandPlanViewPage({ params }: Props) {
                   className="btn btn-ghost btn-sm"
                   style={{ gap: 5 }}
                   onClick={() => setShareModalOpen(true)}
-                  title="Create a share link"
+                  disabled={secondPassHardFailures.length > 0}
+                  title={
+                    secondPassHardFailures.length > 0
+                      ? "Blocked: resolve second-pass hard failures before sharing"
+                      : "Create a share link"
+                  }
                 >
                   <Share2 style={{ width: 13, height: 13 }} aria-hidden /> Share
                 </button>
@@ -3739,6 +3746,28 @@ export default function GrandPlanViewPage({ params }: Props) {
         }
       >
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {secondPassHardFailures.length > 0 && (
+            <div
+              style={{
+                padding: "8px 10px",
+                border: "1px solid var(--danger)",
+                background: "var(--danger-bg)",
+                borderRadius: 8,
+              }}
+            >
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "var(--danger)" }}>
+                Sharing blocked by critical QA failures
+              </p>
+              {secondPassHardFailures.slice(0, 3).map((line, idx) => (
+                <p
+                  key={`share-hard-failure-${idx}`}
+                  style={{ margin: "3px 0 0", fontSize: 11.5, color: "var(--danger)" }}
+                >
+                  • {line}
+                </p>
+              ))}
+            </div>
+          )}
           {publishQualitySummary.hasIssues && (
             <div
               style={{
@@ -4600,7 +4629,6 @@ function PresentationEditorModal(props: PresentationEditorModalProps) {
   );
 
   const fieldInput = (
-    label: string,
     value: string | undefined,
     onSave: (v: string) => void,
     rows = 2,

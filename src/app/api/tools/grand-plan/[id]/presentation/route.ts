@@ -14,6 +14,31 @@ import type { GrandPlanData } from "@/lib/grand-plan-generator";
 export const dynamic = "force-dynamic";
 export const maxDuration = 120; // single Anthropic call, ~10–25s typical
 
+function getSecondPassHardFailures(planDataJson: string): string[] {
+  try {
+    const parsed = JSON.parse(planDataJson) as {
+      secondPassQa?: {
+        results?: Array<{ sectionKey?: string; hardFailures?: string[]; error?: string }>;
+      };
+    };
+    const lines = new Set<string>();
+    for (const result of parsed.secondPassQa?.results ?? []) {
+      const section = result.sectionKey ?? "section";
+      for (const failure of result.hardFailures ?? []) {
+        if (typeof failure === "string" && failure.trim().length > 0) {
+          lines.add(`${section}: ${failure}`);
+        }
+      }
+      if (typeof result.error === "string" && result.error.trim().length > 0) {
+        lines.add(`${section}: ${result.error}`);
+      }
+    }
+    return Array.from(lines);
+  } catch {
+    return [];
+  }
+}
+
 /**
  * GET — return the latest stored presentation HTML for iframe rendering.
  * Returns 404 if no presentation has been generated yet.
@@ -111,6 +136,17 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     planData = JSON.parse(plan.planDataJson) as GrandPlanData;
   } catch {
     return NextResponse.json({ error: "Plan data is corrupted" }, { status: 500 });
+  }
+
+  const hardFailures = getSecondPassHardFailures(plan.planDataJson);
+  if (hardFailures.length > 0) {
+    return NextResponse.json(
+      {
+        error: "Presentation generation blocked by critical second-pass QA failures.",
+        blockers: hardFailures.slice(0, 8),
+      },
+      { status: 409 },
+    );
   }
 
   // Detect plan mode from configJson (defaults to "annual")

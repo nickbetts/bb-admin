@@ -7,6 +7,33 @@ import crypto from "crypto";
 
 const SHARE_PASSWORD_VERSION = "s2";
 
+function getSecondPassHardFailures(planDataJson: string | null): string[] {
+  if (!planDataJson) return [];
+  try {
+    const parsed = JSON.parse(planDataJson) as {
+      secondPassQa?: {
+        results?: Array<{ sectionKey?: string; hardFailures?: string[]; error?: string }>;
+      };
+    };
+    const results = parsed.secondPassQa?.results ?? [];
+    const lines = new Set<string>();
+    for (const result of results) {
+      const section = result.sectionKey ?? "section";
+      for (const failure of result.hardFailures ?? []) {
+        if (typeof failure === "string" && failure.trim().length > 0) {
+          lines.add(`${section}: ${failure}`);
+        }
+      }
+      if (typeof result.error === "string" && result.error.trim().length > 0) {
+        lines.add(`${section}: ${result.error}`);
+      }
+    }
+    return Array.from(lines);
+  } catch {
+    return [];
+  }
+}
+
 function hashSharePassword(password: string): string {
   const salt = crypto.randomBytes(16).toString("hex");
   const hash = crypto.scryptSync(password, salt, 64).toString("hex");
@@ -296,6 +323,17 @@ export async function PATCH(request: NextRequest) {
     }
 
     if (action === "share") {
+      const hardFailures = getSecondPassHardFailures(existing.planDataJson);
+      if (hardFailures.length > 0) {
+        return NextResponse.json(
+          {
+            error: "Sharing is blocked due to critical second-pass QA failures.",
+            blockers: hardFailures.slice(0, 8),
+          },
+          { status: 409 },
+        );
+      }
+
       if (existing.presentationDataJson) {
         const freshness = checkPresentationFreshness({
           planDataJson: existing.planDataJson,
