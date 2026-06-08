@@ -38,14 +38,53 @@ export interface KeywordResearchOptions {
   strict?: boolean;
 }
 
-async function resolveGoogleAdsCustomerId(inputCustomerId?: string): Promise<string | null> {
-  if (inputCustomerId?.trim()) return inputCustomerId.trim();
+function normaliseCustomerId(value: string): string {
+  return value.replace(/-/g, "").trim();
+}
+
+async function getPinnedDefaultCustomerId(): Promise<string | null> {
+  if (process.env.GOOGLE_ADS_DEFAULT_CUSTOMER_ID?.trim()) {
+    return normaliseCustomerId(process.env.GOOGLE_ADS_DEFAULT_CUSTOMER_ID);
+  }
+
+  try {
+    const { prisma } = await import("@/lib/prisma");
+    const setting = await prisma.appSetting.findUnique({
+      where: { key: "googleAdsDefaultCustomerId" },
+    });
+    if (!setting?.value?.trim()) return null;
+    return normaliseCustomerId(setting.value);
+  } catch {
+    return null;
+  }
+}
+
+async function resolveGoogleAdsCustomerCandidates(inputCustomerId?: string): Promise<string[]> {
+  const candidates: string[] = [];
+
+  if (inputCustomerId?.trim()) {
+    candidates.push(normaliseCustomerId(inputCustomerId));
+  }
+
+  const pinned = await getPinnedDefaultCustomerId();
+  if (pinned) {
+    candidates.push(pinned);
+  }
 
   const accounts = await listAccessibleCustomers();
-  if (!accounts.length) return null;
+  if (!accounts.length) return Array.from(new Set(candidates));
 
-  // Prefer a non-manager account when available.
-  return (accounts.find((a) => !a.isManager)?.id ?? accounts[0]?.id ?? null)?.replace(/-/g, "");
+  // Prefer a non-manager account when available, then include all discovered accounts.
+  const orderedAccounts = [
+    ...(accounts.find((a) => !a.isManager) ? [accounts.find((a) => !a.isManager)!] : []),
+    ...accounts,
+  ];
+
+  for (const account of orderedAccounts) {
+    if (account?.id) candidates.push(normaliseCustomerId(account.id));
+  }
+
+  return Array.from(new Set(candidates));
 }
 
 // ─── Suggest ad groups from website + brief (Claude) ────────────────────────
@@ -199,9 +238,9 @@ export async function researchKeywords(
 
   if (!allKeywords.length) return [];
 
-  const resolvedCustomerId = await resolveGoogleAdsCustomerId(customerId);
+  const candidateCustomerIds = await resolveGoogleAdsCustomerCandidates(customerId);
 
-  if (resolvedCustomerId) {
+  if (candidateCustomerIds.length > 0) {
     const uniqueKeywords = Array.from(new Set(allKeywords.map((k) => k.trim()).filter(Boolean)));
     const batches: string[][] = [];
     const batchSize = 20;
@@ -209,28 +248,54 @@ export async function researchKeywords(
       batches.push(uniqueKeywords.slice(i, i + batchSize));
     }
 
-    const googleIdeas = (
-      await Promise.all(
-        batches.map((batch) =>
-          generateKeywordIdeas(
-            resolvedCustomerId,
-            batch,
-            "",
-            [location],
-            language,
-            Math.max(batch.length, 20),
-          ),
-        ),
-      )
-    ).flat();
+    let googleIdeas: Awaited<ReturnType<typeof generateKeywordIdeas>> = [];
+    let lastGoogleAdsError: unknown = null;
 
-    const originalKeySet = new Set(allKeywords.map((k) => k.toLowerCase().trim()));
-    return googleIdeas
-      .filter((idea) => originalKeySet.has(idea.text.toLowerCase().trim()))
-      .map((idea) => ({
-        ...idea,
-        adGroup: kwGroupMap.get(idea.text.toLowerCase().trim()) ?? "Other",
-      }));
+    for (const candidateCustomerId of candidateCustomerIds) {
+      try {
+        googleIdeas = (
+          await Promise.all(
+            batches.map((batch) =>
+              generateKeywordIdeas(
+                candidateCustomerId,
+                batch,
+                "",
+                [location],
+                language,
+                Math.max(batch.length, 20),
+              ),
+            ),
+          )
+        ).flat();
+        lastGoogleAdsError = null;
+        break;
+      } catch (error) {
+        lastGoogleAdsError = error;
+      }
+    }
+
+    if (lastGoogleAdsError) {
+      if (strict) {
+        const message =
+          lastGoogleAdsError instanceof Error
+            ? lastGoogleAdsError.message
+            : String(lastGoogleAdsError);
+        throw new Error(
+          `Strict mode requires live Google Ads keyword metrics, but all candidate accounts failed. Last error: ${message}`,
+        );
+      }
+      googleIdeas = [];
+    }
+
+    if (googleIdeas.length > 0) {
+      const originalKeySet = new Set(allKeywords.map((k) => k.toLowerCase().trim()));
+      return googleIdeas
+        .filter((idea) => originalKeySet.has(idea.text.toLowerCase().trim()))
+        .map((idea) => ({
+          ...idea,
+          adGroup: kwGroupMap.get(idea.text.toLowerCase().trim()) ?? "Other",
+        }));
+    }
   }
 
   if (strict) {
