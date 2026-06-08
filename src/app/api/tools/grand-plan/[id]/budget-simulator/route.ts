@@ -14,6 +14,12 @@ function parseBudget(value: unknown, fallback = 0): number {
   return Number.isFinite(num) && num > 0 ? num : fallback;
 }
 
+function clampPercentage(value: unknown, fallback = 15): number {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return fallback;
+  return Math.max(-60, Math.min(300, num));
+}
+
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -51,9 +57,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       budgetPercentage?: number;
     };
     const scenario = body.scenario && SCENARIO_FACTORS[body.scenario] ? body.scenario : "base";
-    const budgetPercentage = Number.isFinite(body.budgetPercentage)
-      ? Number(body.budgetPercentage)
-      : 15;
+    const budgetPercentage = clampPercentage(body.budgetPercentage, 15);
 
     const planData = JSON.parse(plan.planDataJson) as GrandPlanData;
     const strategy = planData.sections.strategyIntelligence;

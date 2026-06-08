@@ -263,6 +263,23 @@ interface WarningLine {
   actionLabel?: string;
 }
 
+interface BudgetSimulationResult {
+  scenario: "conservative" | "base" | "aggressive";
+  budgetPercentage: number;
+  baseBudget: number;
+  adjustedBudget: number;
+  budgetDelta: number;
+  estimatedConversions: number;
+  estimatedCpa: number;
+  estimatedRoas: number;
+  estimatedClicks: number;
+  assumptions?: {
+    baselineConversions?: number;
+    factor?: number;
+    source?: string;
+  };
+}
+
 // ─── Page ───────────────────────────────────────────────────────────────────
 
 export default function GrandPlanViewPage({ params }: Props) {
@@ -353,6 +370,10 @@ export default function GrandPlanViewPage({ params }: Props) {
 
   // Per-section regeneration
   const [regeneratingSection, setRegeneratingSection] = useState<string | null>(null);
+  const [simulatingBudget, setSimulatingBudget] = useState(false);
+  const [simScenario, setSimScenario] = useState<"conservative" | "base" | "aggressive">("base");
+  const [simBudgetPct, setSimBudgetPct] = useState(15);
+  const [simResult, setSimResult] = useState<BudgetSimulationResult | null>(null);
 
   // AbortController so the user can cancel a hung generation step. We also
   // attach a per-step hard timeout so the UI never gets stuck if the underlying
@@ -1348,6 +1369,40 @@ export default function GrandPlanViewPage({ params }: Props) {
     }
   }
 
+  async function handleRunBudgetSimulation() {
+    if (!plan) return;
+    setSimulatingBudget(true);
+    try {
+      const res = await fetch(`/api/tools/grand-plan/${id}/budget-simulator`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scenario: simScenario,
+          budgetPercentage: simBudgetPct,
+        }),
+      });
+      const payload = (await res.json().catch(() => ({}))) as
+        | ({ error?: string } & BudgetSimulationResult)
+        | { error?: string };
+      if (!res.ok) {
+        throw new Error((payload as { error?: string }).error ?? "Simulation failed");
+      }
+      setSimResult(payload as BudgetSimulationResult);
+      toast("Budget simulation updated", "success");
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "Simulation failed", "error");
+    } finally {
+      setSimulatingBudget(false);
+    }
+  }
+
+  async function handleCopyDiagnostics() {
+    if (!warningLines.length) return;
+    const payload = warningLines.map((line) => `- ${line.text}`).join("\n");
+    await navigator.clipboard.writeText(payload);
+    toast("Diagnostics copied", "success");
+  }
+
   async function handleImportContext(file: File) {
     setImportingContext(true);
     try {
@@ -2025,6 +2080,121 @@ export default function GrandPlanViewPage({ params }: Props) {
               />
             )}
           </div>
+        </div>
+      )}
+
+      {isComplete && (
+        <div className="card" style={{ padding: "12px 16px", marginBottom: 14 }}>
+          <div className="flex items-center" style={{ gap: 8, marginBottom: 8 }}>
+            <BarChart3 style={{ width: 14, height: 14, color: "var(--text-3)" }} aria-hidden />
+            <p
+              style={{
+                margin: 0,
+                fontSize: 12,
+                fontWeight: 600,
+                color: "var(--text-4)",
+                textTransform: "uppercase",
+                letterSpacing: 0.6,
+              }}
+            >
+              Strategy simulator
+            </p>
+          </div>
+          <div className="flex flex-wrap items-end" style={{ gap: 8 }}>
+            <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <span style={{ fontSize: 11, color: "var(--text-3)" }}>Scenario</span>
+              <select
+                className="input"
+                value={simScenario}
+                onChange={(e) =>
+                  setSimScenario(e.target.value as "conservative" | "base" | "aggressive")
+                }
+                style={{ minWidth: 160, height: 34, fontSize: 12 }}
+              >
+                <option value="conservative">Conservative</option>
+                <option value="base">Base case</option>
+                <option value="aggressive">Aggressive</option>
+              </select>
+            </label>
+            <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <span style={{ fontSize: 11, color: "var(--text-3)" }}>Budget shift (%)</span>
+              <input
+                className="input"
+                type="number"
+                min={-60}
+                max={300}
+                step={5}
+                value={simBudgetPct}
+                onChange={(e) => {
+                  const next = Number(e.target.value);
+                  setSimBudgetPct(Number.isFinite(next) ? next : 0);
+                }}
+                style={{ width: 130, height: 34, fontSize: 12 }}
+              />
+            </label>
+            <button
+              className="btn btn-primary btn-sm"
+              style={{ gap: 5 }}
+              onClick={() => {
+                void handleRunBudgetSimulation();
+              }}
+              disabled={simulatingBudget}
+            >
+              {simulatingBudget ? (
+                <Loader2 style={{ width: 13, height: 13 }} className="animate-spin" />
+              ) : (
+                <Sparkles style={{ width: 13, height: 13 }} aria-hidden />
+              )}
+              Run simulation
+            </button>
+          </div>
+          {simResult && (
+            <div
+              style={{
+                marginTop: 10,
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))",
+                gap: 8,
+              }}
+            >
+              <div className="card" style={{ padding: "8px 10px" }}>
+                <p style={{ margin: 0, fontSize: 10.5, color: "var(--text-4)" }}>Adjusted budget</p>
+                <p
+                  style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 700, color: "var(--text)" }}
+                >
+                  £{simResult.adjustedBudget.toLocaleString("en-GB", { maximumFractionDigits: 0 })}
+                </p>
+              </div>
+              <div className="card" style={{ padding: "8px 10px" }}>
+                <p style={{ margin: 0, fontSize: 10.5, color: "var(--text-4)" }}>
+                  Estimated conversions
+                </p>
+                <p
+                  style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 700, color: "var(--text)" }}
+                >
+                  {simResult.estimatedConversions.toLocaleString("en-GB", {
+                    maximumFractionDigits: 1,
+                  })}
+                </p>
+              </div>
+              <div className="card" style={{ padding: "8px 10px" }}>
+                <p style={{ margin: 0, fontSize: 10.5, color: "var(--text-4)" }}>Estimated CPA</p>
+                <p
+                  style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 700, color: "var(--text)" }}
+                >
+                  £{simResult.estimatedCpa.toLocaleString("en-GB", { maximumFractionDigits: 2 })}
+                </p>
+              </div>
+              <div className="card" style={{ padding: "8px 10px" }}>
+                <p style={{ margin: 0, fontSize: 10.5, color: "var(--text-4)" }}>Estimated ROAS</p>
+                <p
+                  style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 700, color: "var(--text)" }}
+                >
+                  {simResult.estimatedRoas.toLocaleString("en-GB", { maximumFractionDigits: 2 })}x
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -2882,6 +3052,18 @@ export default function GrandPlanViewPage({ params }: Props) {
             >
               Warnings
             </p>
+            <button
+              className="btn btn-ghost btn-sm"
+              style={{ marginLeft: "auto", fontSize: 11, gap: 4, color: "var(--warning)" }}
+              onClick={() => {
+                void handleCopyDiagnostics();
+              }}
+              disabled={warningFixing !== null}
+              title="Copy warning diagnostics"
+            >
+              <Copy style={{ width: 11, height: 11 }} aria-hidden />
+              Copy diagnostics
+            </button>
           </div>
           <div style={{ display: "grid", gap: 6 }}>
             {warningLines.map((line) => {

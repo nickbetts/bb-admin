@@ -126,10 +126,22 @@ function parseView(req: NextRequest): "plan" | "presentation" {
   return v === "presentation" ? "presentation" : "plan";
 }
 
+function shareJson(body: unknown, status = 200): NextResponse {
+  return NextResponse.json(body, {
+    status,
+    headers: {
+      "Cache-Control": "private, no-store, max-age=0",
+      Pragma: "no-cache",
+      "X-Robots-Tag": "noindex, nofollow, noarchive, nosnippet",
+      "Referrer-Policy": "no-referrer",
+    },
+  });
+}
+
 export async function GET(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
   if (!token || token.length < 10) {
-    return NextResponse.json({ error: "Invalid token" }, { status: 400 });
+    return shareJson({ error: "Invalid token" }, 400);
   }
   const view = parseView(req);
 
@@ -151,11 +163,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
   });
 
   if (!plan) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return shareJson({ error: "Not found" }, 404);
   }
 
   if (plan.shareExpiresAt && new Date(plan.shareExpiresAt) < new Date()) {
-    return NextResponse.json({ error: "This share link has expired" }, { status: 410 });
+    return shareJson({ error: "This share link has expired" }, 410);
   }
 
   if (view === "presentation") {
@@ -164,12 +176,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
       presentationDataJson: plan.presentationDataJson,
     });
     if (!freshness.fresh) {
-      return NextResponse.json(
+      return shareJson(
         {
           error:
             "This presentation is being updated and is not available yet. Please ask your strategist to regenerate it.",
         },
-        { status: 409 },
+        409,
       );
     }
   }
@@ -177,7 +189,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
   const displayName = plan.client?.name ?? plan.prospectName ?? null;
 
   if (plan.sharePassword) {
-    return NextResponse.json({
+    return shareJson({
       id: plan.id,
       title: plan.title,
       clientName: displayName,
@@ -195,7 +207,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
     },
   });
 
-  return NextResponse.json({
+  return shareJson({
     id: plan.id,
     title: plan.title,
     clientName: displayName,
@@ -213,7 +225,7 @@ export async function POST(
 ) {
   const { token } = await params;
   if (!token || token.length < 10) {
-    return NextResponse.json({ error: "Invalid token" }, { status: 400 });
+    return shareJson({ error: "Invalid token" }, 400);
   }
   const view = parseView(request);
 
@@ -235,11 +247,11 @@ export async function POST(
   });
 
   if (!plan) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return shareJson({ error: "Not found" }, 404);
   }
 
   if (plan.shareExpiresAt && new Date(plan.shareExpiresAt) < new Date()) {
-    return NextResponse.json({ error: "This share link has expired" }, { status: 410 });
+    return shareJson({ error: "This share link has expired" }, 410);
   }
 
   if (view === "presentation") {
@@ -248,12 +260,12 @@ export async function POST(
       presentationDataJson: plan.presentationDataJson,
     });
     if (!freshness.fresh) {
-      return NextResponse.json(
+      return shareJson(
         {
           error:
             "This presentation is being updated and is not available yet. Please ask your strategist to regenerate it.",
         },
-        { status: 409 },
+        409,
       );
     }
   }
@@ -261,7 +273,7 @@ export async function POST(
   const displayName = plan.client?.name ?? plan.prospectName ?? null;
 
   if (!plan.sharePassword) {
-    return NextResponse.json({
+    return shareJson({
       id: plan.id,
       title: plan.title,
       clientName: displayName,
@@ -273,14 +285,17 @@ export async function POST(
   }
 
   const payload = (await request.json().catch(() => ({}))) as { password?: string };
-  const password = payload.password;
-  if (typeof password !== "string" || !password) {
-    return NextResponse.json({ error: "Password required" }, { status: 401 });
+  const password = typeof payload.password === "string" ? payload.password.trim() : "";
+  if (!password) {
+    return shareJson({ error: "Password required" }, 401);
+  }
+  if (password.length > 256) {
+    return shareJson({ error: "Password is too long" }, 400);
   }
 
   const verification = verifySharePassword(password, plan.sharePassword);
   if (!verification.valid) {
-    return NextResponse.json({ error: "Incorrect password" }, { status: 401 });
+    return shareJson({ error: "Incorrect password" }, 401);
   }
 
   if (verification.needsUpgrade) {
@@ -298,7 +313,7 @@ export async function POST(
     },
   });
 
-  return NextResponse.json({
+  return shareJson({
     id: plan.id,
     title: plan.title,
     clientName: displayName,

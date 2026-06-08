@@ -115,6 +115,31 @@ describe("POST /api/share/grand-plan/[token]", () => {
     expect(payload.error).toBe("Incorrect password");
   });
 
+  it("rejects oversized password payloads", async () => {
+    prismaMock.grandPlan.findUnique.mockResolvedValue(makePlan(makeLegacyHash(PASSWORD)));
+
+    const response = await POST(makeRequest("x".repeat(300)), {
+      params: Promise.resolve({ token: SHARE_TOKEN }),
+    });
+
+    expect(response.status).toBe(400);
+    const payload = await response.json();
+    expect(payload.error).toBe("Password is too long");
+  });
+
+  it("returns no-store noindex headers", async () => {
+    prismaMock.grandPlan.findUnique.mockResolvedValue(makePlan(makeS2Hash(PASSWORD)));
+
+    const response = await POST(makeRequest(PASSWORD), {
+      params: Promise.resolve({ token: SHARE_TOKEN }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toContain("no-store");
+    expect(response.headers.get("x-robots-tag")).toContain("noindex");
+    expect(response.headers.get("referrer-policy")).toBe("no-referrer");
+  });
+
   it("strips inline edit controls from fallback plan HTML", async () => {
     prismaMock.grandPlan.findUnique.mockResolvedValue({
       ...makePlan(makeLegacyHash(PASSWORD)),
@@ -139,7 +164,7 @@ describe("POST /api/share/grand-plan/[token]", () => {
     expect(payload.html).not.toContain("editable-inline");
   });
 
-  it("strips inline edit controls from fallback presentation HTML", async () => {
+  it("blocks presentation view when deck freshness cannot be verified", async () => {
     prismaMock.grandPlan.findUnique.mockResolvedValue({
       ...makePlan(makeLegacyHash(PASSWORD)),
       presentationDataJson: null,
@@ -152,11 +177,8 @@ describe("POST /api/share/grand-plan/[token]", () => {
       params: Promise.resolve({ token: SHARE_TOKEN }),
     });
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(409);
     const payload = await response.json();
-    expect(payload.view).toBe("presentation");
-    expect(payload.html).not.toContain('contenteditable="true"');
-    expect(payload.html).not.toContain("data-edit-path=");
-    expect(payload.html).not.toContain("gp-edit");
+    expect(payload.error).toContain("presentation is being updated");
   });
 });
