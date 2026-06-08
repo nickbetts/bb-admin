@@ -72,6 +72,12 @@ function SettingsPanelInner() {
   const [selectedMcc, setSelectedMcc] = useState<string>("");
   const [mccSaving, setMccSaving] = useState(false);
   const [mccSaved, setMccSaved] = useState(false);
+  const [currentDefaultKeywordCustomerId, setCurrentDefaultKeywordCustomerId] =
+    useState<string>("");
+  const [selectedDefaultKeywordCustomerId, setSelectedDefaultKeywordCustomerId] =
+    useState<string>("");
+  const [defaultKeywordCustomerSaving, setDefaultKeywordCustomerSaving] = useState(false);
+  const [defaultKeywordCustomerSaved, setDefaultKeywordCustomerSaved] = useState(false);
 
   const [connections, setConnections] = useState<Connection[]>([]);
   const [connectionsLoading, setConnectionsLoading] = useState(true);
@@ -221,6 +227,9 @@ function SettingsPanelInner() {
       const mcc = settings.googleAdsMccId ?? "";
       setCurrentMcc(mcc);
       setSelectedMcc(mcc);
+      const defaultKeywordCustomerId = settings.googleAdsDefaultCustomerId ?? "";
+      setCurrentDefaultKeywordCustomerId(defaultKeywordCustomerId);
+      setSelectedDefaultKeywordCustomerId(defaultKeywordCustomerId);
       const storedKey = settings.openaiApiKey ?? "";
       setOpenaiKey(storedKey);
       setOpenaiKeyInput(storedKey ? "sk-…redacted" : "");
@@ -333,6 +342,26 @@ function SettingsPanelInner() {
       setMccError(err instanceof Error ? err.message : "Failed to save");
     } finally {
       setMccSaving(false);
+    }
+  }
+
+  async function handleDefaultKeywordCustomerSave() {
+    setDefaultKeywordCustomerSaving(true);
+    setDefaultKeywordCustomerSaved(false);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ googleAdsDefaultCustomerId: selectedDefaultKeywordCustomerId }),
+      });
+      if (!res.ok) throw new Error("Failed to save");
+      setCurrentDefaultKeywordCustomerId(selectedDefaultKeywordCustomerId);
+      setDefaultKeywordCustomerSaved(true);
+      setTimeout(() => setDefaultKeywordCustomerSaved(false), 3000);
+    } catch (err) {
+      setMccError(err instanceof Error ? err.message : "Failed to save");
+    } finally {
+      setDefaultKeywordCustomerSaving(false);
     }
   }
 
@@ -2273,6 +2302,84 @@ function SettingsPanelInner() {
                 disabled={mccSaving || selectedMcc === currentMcc || !selectedMcc}
               >
                 {mccSaving ? "Saving…" : mccSaved ? "Saved ✓" : "Save"}
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Default Keyword Metrics Customer */}
+      <div className="card" style={{ marginTop: 24 }}>
+        <div className="card-header">
+          <div>
+            <h2 className="card-title">Default Keyword Metrics Account</h2>
+            <p className="card-subtitle">
+              Choose the customer account to use first for keyword volume/CPC research when a plan
+              or request does not provide a specific customer ID.
+            </p>
+          </div>
+        </div>
+        <div className="card-body">
+          {mccLoading && <p style={{ fontSize: 13, color: "var(--text-3)" }}>Loading accounts…</p>}
+          {mccError && <p style={{ fontSize: 13, color: "var(--danger)" }}>{mccError}</p>}
+          {!mccLoading && !mccError && (
+            <>
+              <Select
+                value={selectedDefaultKeywordCustomerId}
+                onChange={(e) => setSelectedDefaultKeywordCustomerId(e.target.value)}
+                className="mb-3"
+                style={{ marginBottom: 12 }}
+              >
+                <option value="">Auto-resolve from accessible accounts</option>
+                {standardAccounts.length > 0 && (
+                  <optgroup label="Standard accounts">
+                    {standardAccounts.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name !== a.id ? `${a.name} (${a.id})` : a.id}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                {managerAccounts.length > 0 && (
+                  <optgroup label="Manager accounts (MCC)">
+                    {managerAccounts.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name !== a.id ? `${a.name} (${a.id})` : a.id}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+              </Select>
+              {currentDefaultKeywordCustomerId && (
+                <p style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 16 }}>
+                  Current default keyword account:{" "}
+                  <code
+                    style={{
+                      fontFamily: "monospace",
+                      fontSize: 11,
+                      background: "var(--border-subtle)",
+                      padding: "2px 6px",
+                      borderRadius: 4,
+                      color: "var(--text-2)",
+                    }}
+                  >
+                    {currentDefaultKeywordCustomerId}
+                  </code>
+                </p>
+              )}
+              <Button
+                type="button"
+                onClick={handleDefaultKeywordCustomerSave}
+                disabled={
+                  defaultKeywordCustomerSaving ||
+                  selectedDefaultKeywordCustomerId === currentDefaultKeywordCustomerId
+                }
+              >
+                {defaultKeywordCustomerSaving
+                  ? "Saving…"
+                  : defaultKeywordCustomerSaved
+                    ? "Saved ✓"
+                    : "Save"}
               </Button>
             </>
           )}
