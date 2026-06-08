@@ -8,10 +8,7 @@ import type { GrandPlanData } from "@/lib/grand-plan-generator";
 export const dynamic = "force-dynamic";
 
 // GET /api/tools/grand-plan/[id] — get plan with versions + linked records
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -92,10 +89,7 @@ export async function GET(
 }
 
 // PATCH /api/tools/grand-plan/[id] — update plan metadata
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -119,8 +113,14 @@ export async function PATCH(
       prospectWebsite?: string | null;
       enquiryFormEnabled?: boolean;
       period?: string | null;
-      campaignFocusPeriods?: { startMonth: number; endMonth: number; label: string; description?: string }[];
+      campaignFocusPeriods?: {
+        startMonth: number;
+        endMonth: number;
+        label: string;
+        description?: string;
+      }[];
       config?: Record<string, unknown>;
+      sectionVisibility?: Record<string, boolean>;
     };
 
     const data: Record<string, unknown> = {};
@@ -141,6 +141,15 @@ export async function PATCH(
       data.campaignFocusPeriodsJson = JSON.stringify(body.campaignFocusPeriods);
     }
     if (body.config !== undefined) data.configJson = JSON.stringify(body.config);
+    if (body.sectionVisibility !== undefined && existing.planDataJson) {
+      const planData = JSON.parse(existing.planDataJson) as GrandPlanData;
+      planData.sectionVisibility = {
+        ...(planData.sectionVisibility ?? {}),
+        ...body.sectionVisibility,
+      };
+      data.planDataJson = JSON.stringify(planData);
+      data.generatedHtml = renderGrandPlanHtml(planData);
+    }
 
     const updated = await prisma.grandPlan.update({
       where: { id },
@@ -157,10 +166,7 @@ export async function PATCH(
 }
 
 // DELETE /api/tools/grand-plan/[id]
-export async function DELETE(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 

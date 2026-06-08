@@ -2,6 +2,7 @@ import { getAnthropicClient } from "@/lib/anthropic-client";
 import type Anthropic from "@anthropic-ai/sdk";
 import { jsonrepair } from "jsonrepair";
 import { AsyncLocalStorage } from "node:async_hooks";
+import { getSeasonalityContext } from "@/lib/seasonality";
 
 // Default models. Opus 4.7 is the default for all heavy reasoning, Haiku 4.5
 // stays as the cheap structural model. The override mechanism is kept for
@@ -608,6 +609,9 @@ export interface GrandPlanData {
     suggestedFix: string;
     severity: "low" | "medium" | "high";
   }>;
+  /** Optional section-level visibility controls for public share links.
+   *  true/undefined = visible, false = hidden in public view. */
+  sectionVisibility?: Partial<Record<keyof GrandPlanData["sections"], boolean>>;
   sections: {
     audiences?: AudienceItem[];
     executiveSummary?: string;
@@ -654,6 +658,49 @@ export interface GrandPlanData {
     competitorIntel?: CompetitorInsight[];
     /** Prioritised list of next-step actions, surfaced under Strategy. */
     quickWins?: QuickWinAction[];
+    /** Strategy intelligence hub: diagnostics + simulations + creative kits. */
+    strategyIntelligence?: {
+      dataTrust: {
+        status: "real" | "partial" | "ai-only";
+        completenessScore: number;
+        confidenceBand: { low: number; base: number; high: number };
+        assumptionLock: string;
+        staleComponents: string[];
+      };
+      outliers: { keyword: string; reason: string }[];
+      ppcIntelligence: {
+        intentHeatmap: { intent: string; count: number }[];
+        elasticityCurve: { budget: number; conversions: number }[];
+        auctionPressureScore: number;
+        negativeKeywordRisks: { keyword: string; reason: string }[];
+        expansionIdeas: { keyword: string; marginPotential: "high" | "medium" | "low" }[];
+        matchTypeSimulator: {
+          matchType: "exact" | "phrase" | "broad";
+          expectedCpaDeltaPct: number;
+        }[];
+      };
+      creativeStudio: {
+        adCopyAngles: string[];
+        conceptBoard: { concept: string; rationale: string }[];
+        hookLibrary: string[];
+        headlineStressTest: { headline: string; score: number; note: string }[];
+        offerArchitecture: { stage: string; offer: string }[];
+        personaVariants: { audience: string; angle: string; cta: string }[];
+        visualStyleDirection: string[];
+      };
+      strategySimulation: {
+        whatIfScenarios: { name: string; budgetShift: string; expectedOutcome: string }[];
+        seasonalityOverlay: string;
+        rampPlan90: { dayRange: string; focus: string }[];
+        breakeven: { cpaTarget: number; conversionValue: number; breakEvenRoas: number };
+      };
+      clientDelivery: {
+        executiveOnePager: string;
+        storytellingMode: { beat: string; narration: string }[];
+        meetingPrepPack: string[];
+        winNarrative: string;
+      };
+    };
   };
   /** Per-section grounding flags + source labels — used by the renderer to
    * surface badges next to each section heading. Keyed by the same keys as
@@ -1403,6 +1450,15 @@ export async function generateGrandPlan(
     ],
   );
 
+  const strategyIntelligence = buildStrategyIntelligence(
+    sources,
+    adGroups,
+    googleAdsCampaigns,
+    audiences?.value,
+    generationReport,
+    grounding,
+  );
+
   // Aggregate the data sources actually consulted across the plan, for the
   // "Data Sources Used" panel rendered near the top of the report.
   const dataSources: NonNullable<GrandPlanData["dataSources"]> = [];
@@ -1439,6 +1495,18 @@ export async function generateGrandPlan(
     brief: sources.clientBrief,
     campaignPeriods:
       sources.campaignFocusPeriods.length > 0 ? sources.campaignFocusPeriods : undefined,
+    sectionVisibility: {
+      audiences: true,
+      executiveSummary: true,
+      googleAdsCampaigns: true,
+      metaCampaigns: true,
+      contentStrategy: true,
+      seoFoundations: true,
+      contentCalendar: true,
+      linkedInAds: true,
+      competitorIntel: true,
+      strategyIntelligence: true,
+    },
     sections: {
       audiences: audiences?.value,
       executiveSummary,
@@ -1449,11 +1517,311 @@ export async function generateGrandPlan(
       contentCalendar,
       linkedInAds: linkedInAds?.value,
       competitorIntel: competitorIntel?.value,
+      strategyIntelligence,
     },
     grounding: Object.keys(grounding).length ? grounding : undefined,
     dataSources: dataSources.length ? dataSources : undefined,
     generationReport,
     strategyBrain: sources.strategyBrain,
+  };
+}
+
+function buildStrategyIntelligence(
+  sources: GrandPlanSources,
+  adGroups: AdGroup[],
+  googleAdsCampaigns: GrandPlanData["sections"]["googleAdsCampaigns"] | undefined,
+  audiences: AudienceItem[] | undefined,
+  generationReport: Record<string, { status: "ok" | "skipped" | "failed"; error?: string }>,
+  grounding: NonNullable<GrandPlanData["grounding"]>,
+): NonNullable<GrandPlanData["sections"]>["strategyIntelligence"] {
+  const allKeywords = adGroups.flatMap((g) => g.keywords ?? []);
+  const volumes = allKeywords.map((k) => Number(k.volume ?? 0)).filter((n) => n > 0);
+  const cpcs = allKeywords.map((k) => Number(k.cpc ?? 0)).filter((n) => n > 0);
+  const avgVol = volumes.length ? volumes.reduce((a, b) => a + b, 0) / volumes.length : 0;
+  const avgCpc = cpcs.length ? cpcs.reduce((a, b) => a + b, 0) / cpcs.length : 0;
+
+  const outliers = allKeywords
+    .filter((k) => Number(k.volume ?? 0) > avgVol * 2 || Number(k.cpc ?? 0) > avgCpc * 2)
+    .slice(0, 12)
+    .map((k) => ({
+      keyword: k.keyword,
+      reason:
+        Number(k.volume ?? 0) > avgVol * 2
+          ? "Search volume significantly above cluster mean"
+          : "CPC significantly above cluster mean",
+    }));
+
+  const intentCount: Record<string, number> = {
+    transactional: 0,
+    commercial: 0,
+    informational: 0,
+  };
+  for (const kw of allKeywords.map((k) => k.keyword.toLowerCase())) {
+    if (/buy|quote|price|near me|hire|book|cost/.test(kw)) intentCount.transactional++;
+    else if (/best|top|compare|review|service/.test(kw)) intentCount.commercial++;
+    else intentCount.informational++;
+  }
+
+  const monthlyBudget = Number(sources.keywordResearch?.monthlyBudget ?? 0) || 2000;
+  const convRate = Number(sources.keywordResearch?.conversionRate ?? 3) / 100;
+  const estClicks = avgCpc > 0 ? monthlyBudget / avgCpc : monthlyBudget / 2;
+  const baseConversions = Math.max(0, estClicks * convRate);
+
+  const allGrounding = Object.values(grounding ?? {}).map((g) => g?.grounding ?? "ai-only");
+  const status = allGrounding.every((g) => g === "real")
+    ? "real"
+    : allGrounding.some((g) => g === "real" || g === "partial")
+      ? "partial"
+      : "ai-only";
+
+  const requiredSections = [
+    "audiences",
+    "googleAdsCampaigns",
+    "contentStrategy",
+    "competitorIntel",
+  ];
+  const availableCount = requiredSections.filter((key) => {
+    if (key === "audiences") return Boolean(audiences?.length);
+    if (key === "googleAdsCampaigns") return Boolean(googleAdsCampaigns?.adGroups?.length);
+    return Boolean((sources as unknown as Record<string, unknown>)[key]);
+  }).length;
+  const completenessScore = Math.round((availableCount / requiredSections.length) * 100);
+
+  const staleFromReport = Object.entries(generationReport)
+    .filter(([, r]) => r.status === "failed")
+    .map(([key]) => key);
+  const staleFromGrounding = Object.entries(grounding)
+    .filter(([, g]) => g?.grounding === "ai-only")
+    .map(([key]) => key);
+  const staleComponents = Array.from(new Set([...staleFromReport, ...staleFromGrounding]));
+
+  const assumptions = [
+    `budget:${monthlyBudget}`,
+    `avgCpc:${avgCpc.toFixed(2)}`,
+    `convRate:${convRate.toFixed(4)}`,
+    `keywords:${allKeywords.length}`,
+  ].join("|");
+  const assumptionLock = Buffer.from(assumptions).toString("base64").slice(0, 24);
+
+  const seedPhrases = (googleAdsCampaigns?.seedSuggestions ?? [])
+    .flatMap((s) => s.phrases ?? [])
+    .slice(0, 12);
+  const expansionIdeas = seedPhrases.map((kw) => ({
+    keyword: kw,
+    marginPotential: /premium|enterprise|consultancy|urgent/.test(kw.toLowerCase())
+      ? "high"
+      : /service|agency|management/.test(kw.toLowerCase())
+        ? "medium"
+        : "low",
+  }));
+
+  const negatives = googleAdsCampaigns?.aiNegativesWithReason ?? [];
+  const negativeKeywordRisks = negatives
+    .filter((n) =>
+      allKeywords.some((k) => k.keyword.toLowerCase().includes(n.keyword.toLowerCase())),
+    )
+    .slice(0, 10)
+    .map((n) => ({
+      keyword: n.keyword,
+      reason: `Potential conflict with target terms: ${n.reason}`,
+    }));
+
+  const audiencesList = audiences?.slice(0, 4) ?? [];
+  const adCopyAngles = audiencesList.map(
+    (a) =>
+      `${a.name}: lead with ${a.painPoints?.[0] ?? "clear outcomes"} and fast implementation proof`,
+  );
+  const conceptBoard = [
+    {
+      concept: "Proof-First",
+      rationale: "Lead with quantified outcomes early to reduce risk perception.",
+    },
+    {
+      concept: "Pain-to-Plan",
+      rationale: "Mirror customer frustrations and map each to a specific delivery action.",
+    },
+    {
+      concept: "Fast-Start Sprint",
+      rationale: "Emphasise 30-day visible wins and accountability cadence.",
+    },
+  ];
+  const hookLibrary = [
+    "Stop burning budget on low-intent clicks.",
+    "Turn demand into predictable pipeline in 90 days.",
+    "One strategic plan, clear owners, measurable outcomes.",
+    "Scale what converts, cut what doesn’t.",
+  ];
+  const headlineStressTest = hookLibrary.map((h) => ({
+    headline: h,
+    score: Math.min(
+      10,
+      Math.max(6, Math.round((h.length < 58 ? 8 : 7) + (h.includes("90") ? 1 : 0))),
+    ),
+    note:
+      h.length > 58
+        ? "Consider shortening for tighter ad placements."
+        : "Length and clarity are ad-safe.",
+  }));
+
+  const offerArchitecture = [
+    { stage: "Lead Magnet", offer: "Channel audit + opportunity map" },
+    { stage: "Tripwire", offer: "30-day paid search sprint with weekly optimisation" },
+    { stage: "Core Offer", offer: "Full-funnel GTM management retainer" },
+  ];
+  const personaVariants = audiencesList.map((a) => ({
+    audience: a.name,
+    angle: a.personaQuote ?? a.description,
+    cta: "Book a strategy call",
+  }));
+  const visualStyleDirection = [
+    "Confident editorial grid with evidence callouts",
+    "High-contrast KPI chips for decision scanning",
+    "Proof-led visual hierarchy with short copy blocks",
+  ];
+
+  const seasonality = getSeasonalityContext();
+  const whatIfScenarios = [
+    {
+      name: "Reallocate +15% to highest-converting ad groups",
+      budgetShift: "Move 15% from broad coverage to high-intent clusters",
+      expectedOutcome: "Higher conversion density with tighter CPA control",
+    },
+    {
+      name: "Defensive mode",
+      budgetShift: "Reduce exploratory spend by 20%",
+      expectedOutcome: "Lower variance and steadier weekly lead flow",
+    },
+    {
+      name: "Growth burst",
+      budgetShift: "Increase spend by 25% during peak season windows",
+      expectedOutcome: "Capture incremental demand while auction pressure rises",
+    },
+  ];
+
+  const rampPlan90 = [
+    {
+      dayRange: "Days 1–30",
+      focus: "Stabilise tracking, tighten negatives, launch high-intent ad groups.",
+    },
+    {
+      dayRange: "Days 31–60",
+      focus: "Scale winners, expand seed coverage, iterate creative angles.",
+    },
+    {
+      dayRange: "Days 61–90",
+      focus: "Optimise by persona and match type, prepare next-quarter scale plan.",
+    },
+  ];
+
+  const conversionValue = Number(
+    sources.mediaPlan?.totalBudget && baseConversions > 0
+      ? (sources.mediaPlan.totalBudget * 1.8) / baseConversions
+      : 120,
+  );
+  const cpaTarget = baseConversions > 0 ? monthlyBudget / baseConversions : monthlyBudget;
+
+  const executiveOnePager = [
+    `Objective: ${sources.purpose}.`,
+    `Primary commercial target: ${Math.round(baseConversions)} monthly conversions at c. £${Math.round(cpaTarget)} CPA.`,
+    `Data trust: ${status.toUpperCase()} with completeness score ${completenessScore}%.`,
+    `Immediate focus: keyword intent concentration, negative keyword hygiene, and 30-day execution discipline.`,
+  ].join(" ");
+
+  const storytellingMode = [
+    {
+      beat: "Problem",
+      narration: "Current spend and demand are not fully aligned, creating avoidable inefficiency.",
+    },
+    {
+      beat: "Insight",
+      narration:
+        "Keyword and audience signals show where intent is strongest and where waste occurs.",
+    },
+    {
+      beat: "Plan",
+      narration:
+        "This roadmap reallocates effort to high-yield segments with explicit 30/60/90 checkpoints.",
+    },
+    {
+      beat: "Proof",
+      narration: `Forecast corridor indicates ${Math.round(baseConversions)} monthly conversions at baseline assumptions.`,
+    },
+    {
+      beat: "Decision",
+      narration: "Approve launch scope and lock assumptions to move from strategy to execution.",
+    },
+  ];
+
+  const meetingPrepPack = [
+    "Open with desired commercial outcome and risk appetite.",
+    "Confirm assumption lock values before discussing tactics.",
+    "Review outliers and negative-keyword conflicts first.",
+    "Choose one scenario (defensive/base/growth) for the next sprint.",
+    "Assign owners for first 30-day milestones.",
+  ];
+
+  const winNarrative = `This plan wins by combining intent-led keyword architecture, accountable 90-day delivery, and persona-specific messaging that translates strategy into measurable commercial movement.`;
+
+  return {
+    dataTrust: {
+      status,
+      completenessScore,
+      confidenceBand: {
+        low: Math.round(baseConversions * 0.75),
+        base: Math.round(baseConversions),
+        high: Math.round(baseConversions * 1.25),
+      },
+      assumptionLock,
+      staleComponents,
+    },
+    outliers,
+    ppcIntelligence: {
+      intentHeatmap: Object.entries(intentCount).map(([intent, count]) => ({ intent, count })),
+      elasticityCurve: [
+        {
+          budget: Math.round(monthlyBudget * 0.75),
+          conversions: Math.round(baseConversions * 0.8),
+        },
+        { budget: monthlyBudget, conversions: Math.round(baseConversions) },
+        {
+          budget: Math.round(monthlyBudget * 1.25),
+          conversions: Math.round(baseConversions * 1.18),
+        },
+      ],
+      auctionPressureScore: Math.max(1, Math.min(10, Math.round((avgCpc > 0 ? avgCpc : 1) * 2))),
+      negativeKeywordRisks,
+      expansionIdeas,
+      matchTypeSimulator: [
+        { matchType: "exact", expectedCpaDeltaPct: -12 },
+        { matchType: "phrase", expectedCpaDeltaPct: -4 },
+        { matchType: "broad", expectedCpaDeltaPct: 9 },
+      ],
+    },
+    creativeStudio: {
+      adCopyAngles,
+      conceptBoard,
+      hookLibrary,
+      headlineStressTest,
+      offerArchitecture,
+      personaVariants,
+      visualStyleDirection,
+    },
+    strategySimulation: {
+      whatIfScenarios,
+      seasonalityOverlay: `${new Date().toLocaleString("en-GB", { month: "long" })} (${seasonality.quarter}) — ${seasonality.season}.`,
+      rampPlan90,
+      breakeven: {
+        cpaTarget: Number(cpaTarget.toFixed(2)),
+        conversionValue: Number(conversionValue.toFixed(2)),
+        breakEvenRoas: Number((conversionValue / Math.max(cpaTarget, 1)).toFixed(2)),
+      },
+    },
+    clientDelivery: {
+      executiveOnePager,
+      storytellingMode,
+      meetingPrepPack,
+      winNarrative,
+    },
   };
 }
 

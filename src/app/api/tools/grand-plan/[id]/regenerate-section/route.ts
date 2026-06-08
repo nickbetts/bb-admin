@@ -25,6 +25,7 @@ const VALID_SECTIONS = [
   "competitorIntel",
   "googleAdsForecast",
   "audiences",
+  "strategyIntelligence",
 ];
 
 // POST /api/tools/grand-plan/[id]/regenerate-section — regenerate a single section
@@ -84,8 +85,16 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (!plan.planDataJson)
     return NextResponse.json({ error: "Plan has not been generated yet" }, { status: 400 });
 
-  const body = (await request.json()) as { sectionKey: string };
-  if (!body.sectionKey || !VALID_SECTIONS.includes(body.sectionKey)) {
+  const body = (await request.json()) as { sectionKey?: string; smart?: boolean };
+  let sectionKey = body.sectionKey;
+
+  const existingPlanData: GrandPlanData = JSON.parse(plan.planDataJson);
+  if ((!sectionKey || sectionKey.trim().length === 0) && body.smart) {
+    const stale = existingPlanData.sections.strategyIntelligence?.dataTrust.staleComponents ?? [];
+    sectionKey = stale.find((key) => VALID_SECTIONS.includes(key));
+  }
+
+  if (!sectionKey || !VALID_SECTIONS.includes(sectionKey)) {
     return NextResponse.json(
       { error: `Invalid sectionKey. Must be one of: ${VALID_SECTIONS.join(", ")}` },
       { status: 400 },
@@ -93,7 +102,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
 
   try {
-    const existingPlanData: GrandPlanData = JSON.parse(plan.planDataJson);
     const config = safeJsonParse<{
       sector?: string;
       sections?: string[];
@@ -173,14 +181,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     };
 
     // Re-generate only the requested section
-    const partial = await generateGrandPlan(sources, undefined, [body.sectionKey]);
+    const partial = await generateGrandPlan(sources, undefined, [sectionKey]);
 
     // Merge: overwrite only the regenerated section
-    const sectionKey = body.sectionKey as keyof typeof existingPlanData.sections;
-    const newSectionValue = partial.sections[sectionKey];
+    const key = sectionKey as keyof typeof existingPlanData.sections;
+    const newSectionValue = partial.sections[key];
     if (newSectionValue !== undefined) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (existingPlanData.sections as any)[sectionKey] = newSectionValue;
+      (existingPlanData.sections as any)[key] = newSectionValue;
     }
 
     const html = renderGrandPlanHtml(existingPlanData);
@@ -196,7 +204,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           versionNumber: nextVersion,
           generatedHtml: html,
           planDataJson: JSON.stringify(existingPlanData),
-          prompt: `Regenerated section: ${body.sectionKey}`,
+          prompt: `Regenerated section: ${sectionKey}`,
         },
       }),
       prisma.grandPlan.update({
@@ -214,7 +222,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       action: "grand_plan_refined",
       resourceType: "GrandPlan",
       resourceId: id,
-      description: `Regenerated section "${body.sectionKey}" (v${version.versionNumber})`,
+      description: `Regenerated section "${sectionKey}" (v${version.versionNumber})`,
     });
 
     return NextResponse.json({
@@ -223,7 +231,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         versionNumber: version.versionNumber,
         createdAt: version.createdAt,
       },
-      sectionKey: body.sectionKey,
+      sectionKey,
       html,
     });
   } catch (error) {

@@ -148,6 +148,8 @@ function delBtn(
 export function renderGrandPlanHtml(plan: GrandPlanData, isPublicView = false): string {
   gpEditMode = !isPublicView;
   const s = plan.sections;
+  const sectionVisibility = plan.sectionVisibility ?? {};
+  const isVisible = (key: string) => !isPublicView || sectionVisibility[key] !== false;
 
   // ── Build chapter-grouped nav ──────────────────────────────────────────────
   type NavItem = { id: string; label: string; isChapter?: boolean };
@@ -162,10 +164,16 @@ export function renderGrandPlanHtml(plan: GrandPlanData, isPublicView = false): 
   void hasContext; // Context chapter removed — brief & audiences now surface inside the Strategy Brain panel.
   // Strategy chapter removed — Strategy Plan, Quick Wins (Action Plan) and Strategic Foundation
   // are no longer rendered. Channel sections carry the strategy through directly.
-  const hasPaidSearch = !!s.googleAdsCampaigns;
-  const hasPaidSocial = s.metaCampaigns?.length || s.linkedInAds?.length;
-  const hasContent = s.contentStrategy || s.contentCalendar?.length;
-  const hasResearch = s.competitorIntel?.length;
+  const hasPaidSearch = isVisible("googleAdsCampaigns") && !!s.googleAdsCampaigns;
+  const hasPaidSocial =
+    (isVisible("metaCampaigns") && !!s.metaCampaigns?.length) ||
+    (isVisible("linkedInAds") && !!s.linkedInAds?.length);
+  const hasContent =
+    (isVisible("contentStrategy") && !!s.contentStrategy) ||
+    (isVisible("seoFoundations") && !!s.seoFoundations) ||
+    (isVisible("contentCalendar") && !!s.contentCalendar?.length);
+  const hasResearch = isVisible("competitorIntel") && !!s.competitorIntel?.length;
+  const hasStrategyIntelligence = isVisible("strategyIntelligence") && !!s.strategyIntelligence;
 
   if (hasPaidSearch) {
     addChapter("Paid Search");
@@ -187,6 +195,10 @@ export function renderGrandPlanHtml(plan: GrandPlanData, isPublicView = false): 
     addChapter("Research");
     if (s.competitorIntel?.length)
       navItems.push({ id: "competitor-intel", label: "Competitor Intel" });
+  }
+  if (hasStrategyIntelligence) {
+    addChapter("Strategy Intelligence");
+    navItems.push({ id: "strategy-intelligence", label: "Strategy Intelligence" });
   }
 
   // ── Stats band ─────────────────────────────────────────────────────────────
@@ -346,7 +358,7 @@ ${renderStrategyBrainPanel(plan.strategyBrain)}
 ${isPublicView ? "" : renderCoherencePanel(plan.coherenceIssues)}
 
 <!-- Main Content -->
-${buildChapteredSections(s, plan.clientName, plan.brief, plan.campaignPeriods, plan.generationReport, plan.grounding, plan.dataSources, plan.clientWebsite, plan.sectionIntros, plan.audienceRationales, isPublicView)}
+${buildChapteredSections(s, plan.clientName, plan.brief, plan.campaignPeriods, plan.generationReport, plan.grounding, plan.dataSources, plan.clientWebsite, plan.sectionIntros, plan.audienceRationales, isPublicView, sectionVisibility)}
 
 <!-- Closing CTA -->
 ${renderCtaClose(plan.clientName)}
@@ -415,6 +427,7 @@ function buildChapteredSections(
   sectionIntros?: GrandPlanData["sectionIntros"],
   audienceRationales?: GrandPlanData["audienceRationales"],
   isPublicView = false,
+  sectionVisibility: Record<string, boolean> = {},
 ): string {
   let chapterNum = 0;
   const ch = (title: string, sub: string) => {
@@ -425,10 +438,17 @@ function buildChapteredSections(
   const hasContext = brief || s.audiences?.length || campaignPeriods?.length;
   void hasContext; // Context chapter removed — brief lives in the brain panel; audiences appear inline per channel.
   // Strategy chapter (Strategy Plan + Quick Wins) removed — channel chapters open the plan directly.
-  const hasPaidSearch = !!s.googleAdsCampaigns;
-  const hasPaidSocial = s.metaCampaigns?.length || s.linkedInAds?.length;
-  const hasContent = s.contentStrategy || s.contentCalendar?.length;
-  const hasResearch = s.competitorIntel?.length;
+  const isVisible = (key: string) => !isPublicView || sectionVisibility[key] !== false;
+  const hasPaidSearch = isVisible("googleAdsCampaigns") && !!s.googleAdsCampaigns;
+  const hasPaidSocial =
+    (isVisible("metaCampaigns") && !!s.metaCampaigns?.length) ||
+    (isVisible("linkedInAds") && !!s.linkedInAds?.length);
+  const hasContent =
+    (isVisible("contentStrategy") && !!s.contentStrategy) ||
+    (isVisible("seoFoundations") && !!s.seoFoundations) ||
+    (isVisible("contentCalendar") && !!s.contentCalendar?.length);
+  const hasResearch = isVisible("competitorIntel") && !!s.competitorIntel?.length;
+  const hasStrategyIntelligence = isVisible("strategyIntelligence") && !!s.strategyIntelligence;
 
   // grounding badge wrapper — no-op in public view
   const wb = (html: string, g?: { grounding: string; sourceLabels: string[] } | null) =>
@@ -440,7 +460,7 @@ function buildChapteredSections(
   // the foundation. Internal teams can inspect plan.dataSources via the API.
   void dataSources;
 
-  if (s.audiences?.length) {
+  if (isVisible("audiences") && s.audiences?.length) {
     parts.push(
       ch(
         "Audiences",
@@ -454,7 +474,7 @@ function buildChapteredSections(
     parts.push(
       ch("Paid Search", "Google Ads campaign structure, ad groups, and keyword targeting."),
     );
-    if (s.googleAdsCampaigns)
+    if (isVisible("googleAdsCampaigns") && s.googleAdsCampaigns)
       parts.push(
         wb(
           renderGoogleAdsCampaigns(
@@ -475,14 +495,14 @@ function buildChapteredSections(
         "Facebook, Instagram, and LinkedIn campaign structures with audience targeting and ad creative.",
       ),
     );
-    if (s.metaCampaigns?.length)
+    if (isVisible("metaCampaigns") && s.metaCampaigns?.length)
       parts.push(
         wb(
           renderMetaCampaigns(s.metaCampaigns, clientWebsite, sectionIntros?.metaCampaigns),
           grounding?.metaCampaigns,
         ),
       );
-    if (s.linkedInAds?.length)
+    if (isVisible("linkedInAds") && s.linkedInAds?.length)
       parts.push(wb(renderLinkedInAds(s.linkedInAds), grounding?.linkedInAds));
   }
 
@@ -490,7 +510,7 @@ function buildChapteredSections(
     parts.push(
       ch("Content & SEO", "Content strategy, publishing calendar, and example content assets."),
     );
-    if (s.contentStrategy)
+    if (isVisible("contentStrategy") && s.contentStrategy)
       parts.push(
         wb(
           renderContentStrategy(
@@ -501,21 +521,31 @@ function buildChapteredSections(
           grounding?.contentStrategy,
         ),
       );
-    if (s.seoFoundations)
+    if (isVisible("seoFoundations") && s.seoFoundations)
       parts.push(wb(renderSeoFoundations(s.seoFoundations), grounding?.seoFoundations));
-    if (s.contentCalendar?.length)
+    if (isVisible("contentCalendar") && s.contentCalendar?.length)
       parts.push(wb(renderContentCalendar(s.contentCalendar), grounding?.contentCalendar));
   }
 
   if (hasResearch) {
     parts.push(ch("Research", "Competitor intelligence across all target areas."));
-    if (s.competitorIntel?.length)
+    if (isVisible("competitorIntel") && s.competitorIntel?.length)
       parts.push(
         wb(
           renderCompetitorIntel(s.competitorIntel, grounding?.competitorIntel?.grounding),
           grounding?.competitorIntel,
         ),
       );
+  }
+
+  if (hasStrategyIntelligence) {
+    parts.push(
+      ch(
+        "Strategy Intelligence",
+        "Trust, diagnostics, simulations, creative direction, and stakeholder-ready delivery assets.",
+      ),
+    );
+    parts.push(renderStrategyIntelligence(s.strategyIntelligence));
   }
 
   return parts.join("\n");
@@ -560,6 +590,81 @@ function renderCtaClose(clientName: string): string {
 }
 
 // ─── Section renderers ──────────────────────────────────────────────────────
+
+function renderStrategyIntelligence(
+  data: NonNullable<GrandPlanData["sections"]["strategyIntelligence"]>,
+): string {
+  const trust = data.dataTrust;
+  const confidence = trust.confidenceBand;
+
+  return `
+<section id="strategy-intelligence" class="section">
+  <div class="section-inner">
+    <div class="section-kicker">Strategy Intelligence</div>
+    <h2>Decision Layer</h2>
+    <p class="section-intro">This layer consolidates data quality, PPC diagnostics, creative direction, simulation outputs, and stakeholder-ready delivery notes into one place.</p>
+
+    <div class="stats-grid" style="margin-bottom:1.25rem">
+      <div class="stat-card"><div class="stat-label">Trust Status</div><div class="stat-val">${esc(trust.status.toUpperCase())}</div></div>
+      <div class="stat-card"><div class="stat-label">Completeness</div><div class="stat-val">${trust.completenessScore}%</div></div>
+      <div class="stat-card"><div class="stat-label">Confidence Band</div><div class="stat-val">${confidence.low} - ${confidence.base} - ${confidence.high}</div></div>
+      <div class="stat-card"><div class="stat-label">Assumption Lock</div><div class="stat-val" style="font-size:.92rem">${esc(trust.assumptionLock)}</div></div>
+    </div>
+
+    ${trust.staleComponents.length ? `<div class="panel panel-danger"><h3>Stale Components</h3><ul>${trust.staleComponents.map((s) => `<li>${esc(s)}</li>`).join("")}</ul></div>` : ""}
+
+    ${data.outliers.length ? `<div class="panel"><h3>Outlier Detector</h3><ul>${data.outliers.map((o) => `<li><strong>${esc(o.keyword)}</strong> - ${esc(o.reason)}</li>`).join("")}</ul></div>` : ""}
+
+    <div class="grid two-col" style="margin-top:1.2rem;gap:1rem">
+      <div class="panel">
+        <h3>Intent Heatmap</h3>
+        <ul>${data.ppcIntelligence.intentHeatmap.map((x) => `<li>${esc(x.intent)}: ${x.count}</li>`).join("")}</ul>
+        <p style="margin-top:.6rem"><strong>Auction pressure:</strong> ${data.ppcIntelligence.auctionPressureScore}/10</p>
+      </div>
+      <div class="panel">
+        <h3>Match Type Simulator</h3>
+        <ul>${data.ppcIntelligence.matchTypeSimulator.map((x) => `<li>${esc(x.matchType)}: ${x.expectedCpaDeltaPct > 0 ? "+" : ""}${x.expectedCpaDeltaPct}% CPA delta</li>`).join("")}</ul>
+      </div>
+    </div>
+
+    ${data.ppcIntelligence.negativeKeywordRisks.length ? `<div class="panel"><h3>Negative Keyword Risk Scanner</h3><ul>${data.ppcIntelligence.negativeKeywordRisks.map((x) => `<li><strong>${esc(x.keyword)}</strong> - ${esc(x.reason)}</li>`).join("")}</ul></div>` : ""}
+
+    ${data.ppcIntelligence.expansionIdeas.length ? `<div class="panel"><h3>Search-Term Expansion Ideas</h3><ul>${data.ppcIntelligence.expansionIdeas.map((x) => `<li>${esc(x.keyword)} <span class="badge">${esc(x.marginPotential)}</span></li>`).join("")}</ul></div>` : ""}
+
+    <div class="grid two-col" style="margin-top:1rem;gap:1rem">
+      <div class="panel">
+        <h3>Creative Studio</h3>
+        <p><strong>Ad copy angles</strong></p>
+        <ul>${data.creativeStudio.adCopyAngles.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>
+        <p style="margin-top:.6rem"><strong>Hook library</strong></p>
+        <ul>${data.creativeStudio.hookLibrary.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>
+      </div>
+      <div class="panel">
+        <h3>Headline Stress Test</h3>
+        <ul>${data.creativeStudio.headlineStressTest.map((x) => `<li><strong>${esc(x.headline)}</strong> (${x.score}/10): ${esc(x.note)}</li>`).join("")}</ul>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:1rem">
+      <h3>What-If & Ramp Plan</h3>
+      <ul>${data.strategySimulation.whatIfScenarios.map((x) => `<li><strong>${esc(x.name)}</strong>: ${esc(x.expectedOutcome)}</li>`).join("")}</ul>
+      <p style="margin-top:.6rem"><strong>Seasonality:</strong> ${esc(data.strategySimulation.seasonalityOverlay)}</p>
+      <ul style="margin-top:.6rem">${data.strategySimulation.rampPlan90.map((x) => `<li>${esc(x.dayRange)} - ${esc(x.focus)}</li>`).join("")}</ul>
+      <p style="margin-top:.6rem"><strong>Break-even ROAS:</strong> ${data.strategySimulation.breakeven.breakEvenRoas}</p>
+    </div>
+
+    <div class="panel" style="margin-top:1rem">
+      <h3>Client Delivery Pack</h3>
+      <p>${esc(data.clientDelivery.executiveOnePager)}</p>
+      <p style="margin-top:.6rem"><strong>Win narrative:</strong> ${esc(data.clientDelivery.winNarrative)}</p>
+      <p style="margin-top:.6rem"><strong>Interactive storytelling beats</strong></p>
+      <ul>${data.clientDelivery.storytellingMode.map((x) => `<li><strong>${esc(x.beat)}:</strong> ${esc(x.narration)}</li>`).join("")}</ul>
+      <p style="margin-top:.6rem"><strong>Meeting prep pack</strong></p>
+      <ul>${data.clientDelivery.meetingPrepPack.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>
+    </div>
+  </div>
+</section>`;
+}
 
 function renderContext(
   brief: string | undefined,
