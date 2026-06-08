@@ -27,6 +27,10 @@ interface ResearchBody {
   location?: string;
   language?: string;
   strict?: boolean;
+  /** When true, run an AI-driven second expansion pass via the Keyword Planner */
+  expandWithAI?: boolean;
+  /** Campaign brief passed to Claude for AI-expansion seed generation */
+  brief?: string;
 }
 
 interface SmartDefaultsBody {
@@ -190,6 +194,8 @@ Return ONLY this JSON (no markdown, no explanation):
         language,
         customerId,
         strict,
+        expandWithAI: resBody.expandWithAI ?? false,
+        brief: resBody.brief,
       });
 
       return NextResponse.json({ ideas });

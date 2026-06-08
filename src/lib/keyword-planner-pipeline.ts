@@ -36,6 +36,13 @@ export interface KeywordResearchOptions {
   language?: string;
   customerId?: string;
   strict?: boolean;
+  /**
+   * When true, after the first Keyword Planner pass Claude suggests additional
+   * seed phrases and a second Planner call is made to discover more volume.
+   */
+  expandWithAI?: boolean;
+  /** Brief text passed to Claude for the AI-expansion second pass. */
+  brief?: string;
 }
 
 function normaliseCustomerId(value: string): string {
@@ -200,6 +207,45 @@ ${userContent}`,
   };
 }
 
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+/**
+ * Returns a function that assigns an expanded/discovered keyword to the most
+ * relevant ad group using word-token overlap against each group's seed keywords.
+ */
+function makeAdGroupAssigner(adGroups: AdGroupSeed[]): (keyword: string) => string {
+  const seedMap = new Map<string, string>(); // exact seed -> group name
+  const groupTokens = new Map<string, Set<string>>(); // group name -> all word tokens
+
+  for (const group of adGroups) {
+    const tokens = new Set<string>();
+    for (const kw of group.keywords) {
+      const lower = kw.toLowerCase().trim();
+      seedMap.set(lower, group.name);
+      lower.split(/\s+/).forEach((w) => tokens.add(w));
+    }
+    groupTokens.set(group.name, tokens);
+  }
+
+  return function assignToAdGroup(keyword: string): string {
+    const lower = keyword.toLowerCase().trim();
+    if (seedMap.has(lower)) return seedMap.get(lower)!;
+
+    const kwWords = lower.split(/\s+/);
+    let bestGroup = adGroups[0]?.name ?? "Other";
+    let bestScore = -1;
+
+    for (const [groupName, tokens] of groupTokens) {
+      const score = kwWords.filter((w) => tokens.has(w)).length;
+      if (score > bestScore) {
+        bestScore = score;
+        bestGroup = groupName;
+      }
+    }
+    return bestGroup;
+  };
+}
+
 // ─── Research keywords via SEO data provider (volumes, CPCs) ─────────────────
 
 const LOCATION_TO_SEO_DB: Record<string, string> = {
@@ -222,15 +268,17 @@ export async function researchKeywords(
     language = "languageConstants/1000",
     customerId,
     strict = true,
+    expandWithAI = false,
+    brief,
   } = options;
-  const kwGroupMap = new Map<string, string>();
-  const allKeywords: string[] = [];
 
+  const allKeywords: string[] = [];
+  const seen = new Set<string>();
   for (const group of adGroups) {
     for (const kw of group.keywords) {
       const key = kw.toLowerCase().trim();
-      if (!kwGroupMap.has(key)) {
-        kwGroupMap.set(key, group.name);
+      if (!seen.has(key)) {
+        seen.add(key);
         allKeywords.push(kw);
       }
     }
@@ -238,14 +286,19 @@ export async function researchKeywords(
 
   if (!allKeywords.length) return [];
 
+  const assignToAdGroup = makeAdGroupAssigner(adGroups);
   const candidateCustomerIds = await resolveGoogleAdsCustomerCandidates(customerId);
 
   if (candidateCustomerIds.length > 0) {
     const uniqueKeywords = Array.from(new Set(allKeywords.map((k) => k.trim()).filter(Boolean)));
+
+    // Use larger batches and a high pageSize so the Keyword Planner returns
+    // its full set of expanded keyword ideas — not just the seed keywords back.
+    const BATCH_SIZE = 50;
+    const PAGE_SIZE = 500;
     const batches: string[][] = [];
-    const batchSize = 20;
-    for (let i = 0; i < uniqueKeywords.length; i += batchSize) {
-      batches.push(uniqueKeywords.slice(i, i + batchSize));
+    for (let i = 0; i < uniqueKeywords.length; i += BATCH_SIZE) {
+      batches.push(uniqueKeywords.slice(i, i + BATCH_SIZE));
     }
 
     let googleIdeas: Awaited<ReturnType<typeof generateKeywordIdeas>> = [];
@@ -256,14 +309,7 @@ export async function researchKeywords(
         googleIdeas = (
           await Promise.all(
             batches.map((batch) =>
-              generateKeywordIdeas(
-                candidateCustomerId,
-                batch,
-                "",
-                [location],
-                language,
-                Math.max(batch.length, 20),
-              ),
+              generateKeywordIdeas(candidateCustomerId, batch, "", [location], language, PAGE_SIZE),
             ),
           )
         ).flat();
@@ -271,6 +317,88 @@ export async function researchKeywords(
         break;
       } catch (error) {
         lastGoogleAdsError = error;
+      }
+    }
+
+    // AI-driven second-pass expansion: ask Claude for more seed phrases, then
+    // run those through the Keyword Planner to discover additional volume.
+    if (expandWithAI && !lastGoogleAdsError && googleIdeas.length > 0) {
+      try {
+        const topTerms = [...googleIdeas]
+          .sort((a, b) => b.avgMonthlySearches - a.avgMonthlySearches)
+          .slice(0, 40)
+          .map((i) => i.text);
+
+        const anthropic = await getAnthropicClient();
+        const expansionRes = await anthropic.messages.create({
+          model: "claude-haiku-4-5",
+          max_tokens: 2000,
+          messages: [
+            {
+              role: "user",
+              content: `You are a Google Ads keyword strategist. Based on the information below, generate 100 additional seed keyword phrases to discover more search volume through the Google Ads Keyword Planner.
+
+Focus on:
+- Synonyms and alternative phrasings not already listed
+- Long-tail commercial-intent variations (buy, hire, cost, quote, near me)
+- UK-specific modifiers where relevant
+- Problem/solution queries the target audience uses
+- Related service/product terms that the Planner would expand from
+
+Do NOT repeat any existing keywords. Return ONLY a JSON array of strings, no markdown or explanation.
+
+${brief ? `Brief: ${brief}\n` : ""}Ad groups: ${adGroups.map((g) => g.name).join(", ")}
+Top keywords by volume so far: ${topTerms.join(", ")}
+
+Return: ["seed phrase 1", "seed phrase 2", ...]`,
+            },
+          ],
+        });
+
+        const textBlock = expansionRes.content.find((b) => b.type === "text");
+        const raw = textBlock?.type === "text" ? textBlock.text.trim() : "[]";
+        let aiSeeds: string[] = [];
+        try {
+          const candidate = raw.match(/\[[\s\S]*\]/)?.[0] ?? raw;
+          aiSeeds = JSON.parse(jsonrepair(candidate));
+        } catch {
+          /* ignore parse errors — expansion is best-effort */
+        }
+
+        if (Array.isArray(aiSeeds) && aiSeeds.length > 0) {
+          const uniqueAiSeeds = [
+            ...new Set(aiSeeds.map((k) => String(k).trim()).filter(Boolean)),
+          ].slice(0, 100);
+          const aiBatches: string[][] = [];
+          for (let i = 0; i < uniqueAiSeeds.length; i += BATCH_SIZE) {
+            aiBatches.push(uniqueAiSeeds.slice(i, i + BATCH_SIZE));
+          }
+
+          for (const candidateCustomerId of candidateCustomerIds) {
+            try {
+              const aiIdeas = (
+                await Promise.all(
+                  aiBatches.map((batch) =>
+                    generateKeywordIdeas(
+                      candidateCustomerId,
+                      batch,
+                      "",
+                      [location],
+                      language,
+                      PAGE_SIZE,
+                    ),
+                  ),
+                )
+              ).flat();
+              googleIdeas = [...googleIdeas, ...aiIdeas];
+              break;
+            } catch {
+              /* expansion errors are non-fatal */
+            }
+          }
+        }
+      } catch {
+        /* AI expansion is best-effort — never block the main result */
       }
     }
 
@@ -288,12 +416,24 @@ export async function researchKeywords(
     }
 
     if (googleIdeas.length > 0) {
-      const originalKeySet = new Set(allKeywords.map((k) => k.toLowerCase().trim()));
-      return googleIdeas
-        .filter((idea) => originalKeySet.has(idea.text.toLowerCase().trim()))
+      // Deduplicate: for each unique keyword text keep the entry with highest
+      // reported monthly search volume (Planner can return dupes across batches).
+      const deduped = new Map<string, (typeof googleIdeas)[0]>();
+      for (const idea of googleIdeas) {
+        const key = idea.text.toLowerCase().trim();
+        const existing = deduped.get(key);
+        if (!existing || idea.avgMonthlySearches > existing.avgMonthlySearches) {
+          deduped.set(key, idea);
+        }
+      }
+
+      // Return ALL keyword ideas from the Planner — not just the seeds —
+      // sorted by volume descending so the highest-traffic terms appear first.
+      return Array.from(deduped.values())
+        .sort((a, b) => b.avgMonthlySearches - a.avgMonthlySearches)
         .map((idea) => ({
           ...idea,
-          adGroup: kwGroupMap.get(idea.text.toLowerCase().trim()) ?? "Other",
+          adGroup: assignToAdGroup(idea.text),
         }));
     }
   }
@@ -304,15 +444,11 @@ export async function researchKeywords(
     );
   }
 
+  // Fallback: SEO volume data (may be stubbed to an empty array in this environment)
   const database = LOCATION_TO_SEO_DB[location] ?? "uk";
   const rawIdeas = await getKeywordVolumeMetrics(allKeywords, database);
-
-  const originalKeySet = new Set(allKeywords.map((k) => k.toLowerCase().trim()));
-
-  return rawIdeas
-    .filter((idea) => originalKeySet.has(idea.text.toLowerCase().trim()))
-    .map((idea) => ({
-      ...idea,
-      adGroup: kwGroupMap.get(idea.text.toLowerCase().trim()) ?? "Other",
-    }));
+  return rawIdeas.map((idea) => ({
+    ...idea,
+    adGroup: assignToAdGroup(idea.text),
+  }));
 }
