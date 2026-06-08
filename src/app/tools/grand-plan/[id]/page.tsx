@@ -101,6 +101,16 @@ const ALL_SECTIONS: { key: string; label: string; description: string; aiPowered
   },
 ];
 
+const PUBLIC_VISIBILITY_SECTIONS = [
+  ...ALL_SECTIONS,
+  {
+    key: "strategyIntelligence",
+    label: "Strategy Intelligence",
+    description: "Trust, simulations, creative direction and delivery assets",
+    aiPowered: true,
+  },
+];
+
 const REMOVABLE_SUBSECTIONS: Record<string, { path: string; label: string }[]> = {
   googleAdsCampaigns: [
     { path: "overview", label: "Overview" },
@@ -270,6 +280,7 @@ export default function GrandPlanViewPage({ params }: Props) {
 
   const [deleting, setDeleting] = useState(false);
   const [exportingActions, setExportingActions] = useState(false);
+  const [exportingSummary, setExportingSummary] = useState(false);
   const [importingContext, setImportingContext] = useState(false);
   const [refiningBriefFromSite, setRefiningBriefFromSite] = useState(false);
   const [warningFixing, setWarningFixing] = useState<WarningFixActionId | null>(null);
@@ -330,6 +341,7 @@ export default function GrandPlanViewPage({ params }: Props) {
   );
   const [showSectionConfig, setShowSectionConfig] = useState(false);
   const [savingSections, setSavingSections] = useState(false);
+  const [savingVisibility, setSavingVisibility] = useState(false);
   const [removingPath, setRemovingPath] = useState<string | null>(null);
   const [quickRemoveSectionKey, setQuickRemoveSectionKey] = useState("");
   const [quickRemoveSubPath, setQuickRemoveSubPath] = useState("");
@@ -1026,6 +1038,96 @@ export default function GrandPlanViewPage({ params }: Props) {
     }
   }
 
+  async function handleSaveSectionVisibility(sectionKey: string, visible: boolean) {
+    setSavingVisibility(true);
+    try {
+      const res = await fetch(`/api/tools/grand-plan/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sectionVisibility: { [sectionKey]: visible } }),
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(data.error ?? "Failed to update visibility");
+      }
+      await loadPlan();
+      toast(`${visible ? "Shown" : "Hidden"} in public view`, "success");
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "Failed to update visibility", "error");
+    } finally {
+      setSavingVisibility(false);
+    }
+  }
+
+  async function handleExportExecutiveSummary() {
+    if (!plan) return;
+    setExportingSummary(true);
+    try {
+      const res = await fetch(`/api/tools/grand-plan/${id}/executive-summary?format=markdown`);
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(data.error ?? "Failed to export executive summary");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${plan.title || "grand-plan"}-executive-summary.md`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast("Executive summary exported", "success");
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "Failed to export executive summary", "error");
+    } finally {
+      setExportingSummary(false);
+    }
+  }
+
+  async function handleSmartRegenerateStaleSections() {
+    if (!plan?.planDataJson) return;
+    try {
+      const parsed = JSON.parse(plan.planDataJson || "{}") as {
+        sections?: {
+          strategyIntelligence?: {
+            dataTrust?: { staleComponents?: string[] };
+          };
+        };
+      };
+      const stale = parsed.sections?.strategyIntelligence?.dataTrust?.staleComponents ?? [];
+      if (!stale.length) {
+        toast("No stale sections found", "info");
+        return;
+      }
+
+      setRegeneratingSection("__smart__");
+      let regenerated = 0;
+      for (let i = 0; i < stale.length && i < 5; i++) {
+        const res = await fetch(`/api/tools/grand-plan/${id}/regenerate-section`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ smart: true }),
+        });
+        if (!res.ok) {
+          const data = (await res.json().catch(() => ({}))) as { error?: string };
+          throw new Error(data.error ?? "Smart regeneration failed");
+        }
+        regenerated += 1;
+        await loadPlan();
+      }
+
+      toast(
+        `Smart regenerated ${regenerated} stale section${regenerated === 1 ? "" : "s"}`,
+        "success",
+      );
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "Smart regeneration failed", "error");
+    } finally {
+      setRegeneratingSection(null);
+    }
+  }
+
   // ─── Title ───────────────────────────────────────────────────────────────
 
   async function handleSaveTitle() {
@@ -1697,6 +1799,18 @@ export default function GrandPlanViewPage({ params }: Props) {
     }
   }, [plan?.planDataJson]);
 
+  const sectionVisibility = useMemo(() => {
+    if (!plan?.planDataJson) return {} as Record<string, boolean>;
+    try {
+      const data = JSON.parse(plan.planDataJson || "{}") as {
+        sectionVisibility?: Record<string, boolean>;
+      };
+      return data.sectionVisibility ?? {};
+    } catch {
+      return {} as Record<string, boolean>;
+    }
+  }, [plan?.planDataJson]);
+
   const removableSections = useMemo(() => {
     return ALL_SECTIONS.reduce(
       (acc, section) => {
@@ -1752,7 +1866,7 @@ export default function GrandPlanViewPage({ params }: Props) {
   if (loading) {
     return (
       <div className="page" style={{ maxWidth: 1280 }}>
-        <div className="flex items-center justify-center py-24 text-sm text-[color:var(--text-3)]">
+        <div className="flex items-center justify-center py-24 text-sm text-(--text-3)">
           <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading plan…
         </div>
       </div>
@@ -1777,7 +1891,7 @@ export default function GrandPlanViewPage({ params }: Props) {
       {/* Back link */}
       <Link
         href="/tools/grand-plan"
-        className="inline-flex items-center gap-1.5 text-[13px] text-[color:var(--text-3)] no-underline hover:text-[color:var(--text)]"
+        className="inline-flex items-center gap-1.5 text-[13px] text-(--text-3) no-underline hover:text-(--text)"
         style={{ marginBottom: 18 }}
       >
         <ArrowLeft style={{ width: 14, height: 14 }} /> Grand Plans
@@ -2151,6 +2265,89 @@ export default function GrandPlanViewPage({ params }: Props) {
                 Save
               </button>
             </div>
+
+            <div
+              style={{
+                marginTop: 14,
+                paddingTop: 14,
+                borderTop: "1px solid var(--border)",
+              }}
+            >
+              <div className="flex items-center" style={{ gap: 8, marginBottom: 8 }}>
+                <Share2 style={{ width: 14, height: 14, color: "var(--text-3)" }} aria-hidden />
+                <span
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: "var(--text-3)",
+                    textTransform: "uppercase",
+                    letterSpacing: 0.6,
+                  }}
+                >
+                  Public share visibility
+                </span>
+              </div>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+                  gap: 6,
+                }}
+              >
+                {PUBLIC_VISIBILITY_SECTIONS.map((section) => {
+                  const visible = sectionVisibility[section.key] !== false;
+                  return (
+                    <div
+                      key={section.key}
+                      className="flex items-start"
+                      style={{
+                        gap: 8,
+                        padding: "8px 10px",
+                        borderRadius: 8,
+                        background: visible ? "var(--accent-bg)" : "var(--bg-2)",
+                        border: `1px solid ${visible ? "var(--accent)" : "var(--border)"}`,
+                        opacity: visible ? 1 : 0.75,
+                      }}
+                    >
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div className="flex items-center" style={{ gap: 6 }}>
+                          <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text)" }}>
+                            {section.label}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: 9,
+                              padding: "1px 5px",
+                              borderRadius: 4,
+                              background: visible ? "rgba(34,197,94,.12)" : "rgba(148,163,184,.16)",
+                              color: visible ? "#166534" : "var(--text-3)",
+                              fontWeight: 700,
+                            }}
+                          >
+                            {visible ? "Visible" : "Hidden"}
+                          </span>
+                          <button
+                            className="btn btn-ghost btn-sm"
+                            style={{ marginLeft: "auto", fontSize: 10, padding: "2px 6px", gap: 3 }}
+                            onClick={() => void handleSaveSectionVisibility(section.key, !visible)}
+                            disabled={savingVisibility}
+                            title={visible ? "Hide in public view" : "Show in public view"}
+                          >
+                            {savingVisibility ? (
+                              <Loader2 style={{ width: 11, height: 11 }} className="animate-spin" />
+                            ) : null}
+                            {visible ? "Hide" : "Show"}
+                          </button>
+                        </div>
+                        <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>
+                          {section.description}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -2187,6 +2384,34 @@ export default function GrandPlanViewPage({ params }: Props) {
 
           {isComplete && (
             <>
+              <button
+                className="btn btn-ghost btn-sm"
+                style={{ gap: 6 }}
+                onClick={handleSmartRegenerateStaleSections}
+                disabled={regeneratingSection === "__smart__"}
+                title="Regenerate stale sections detected by the strategy intelligence layer"
+              >
+                {regeneratingSection === "__smart__" ? (
+                  <Loader2 style={{ width: 13, height: 13 }} className="animate-spin" aria-hidden />
+                ) : (
+                  <RefreshCw style={{ width: 13, height: 13 }} aria-hidden />
+                )}
+                Smart fix stale
+              </button>
+              <button
+                className="btn btn-ghost btn-sm"
+                style={{ gap: 6 }}
+                onClick={handleExportExecutiveSummary}
+                disabled={exportingSummary}
+                title="Download the one-page executive summary"
+              >
+                {exportingSummary ? (
+                  <Loader2 style={{ width: 13, height: 13 }} className="animate-spin" aria-hidden />
+                ) : (
+                  <Download style={{ width: 13, height: 13 }} aria-hidden />
+                )}
+                Executive summary
+              </button>
               {publishQualitySummary.hasIssues && (
                 <span
                   className="inline-flex items-center"
