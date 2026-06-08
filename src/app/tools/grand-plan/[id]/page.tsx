@@ -4746,9 +4746,9 @@ function PipelineStepper({
       >
         {steps.map((step) => {
           const statusKey = step.statusKey ?? step.sectionKey ?? step.key ?? step.label;
-          const status = sectionKeys.includes(step.sectionKey ?? step.key ?? "")
-            ? (statusMap[statusKey] ?? "pending")
-            : "skipped";
+          const isSectionStep = !!step.sectionKey;
+          const isDisabledSection = isSectionStep && !sectionKeys.includes(step.sectionKey);
+          const status = isDisabledSection ? "skipped" : (statusMap[statusKey] ?? "pending");
           return <StepperRow key={statusKey} label={step.label} status={status} />;
         })}
       </div>
