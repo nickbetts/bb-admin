@@ -1,0 +1,86 @@
+{\rtf1\ansi\deff0
+{\fonttbl{\f0 Arial;}{\f1 Courier New;}}
+\fs24
+\b Google Ads API Design Documentation\b0\par
+\par
+Company: Betts & Burton (i3Media platform)\par
+Product: Internal Reporting and Planning Platform\par
+Version: 1.0\par
+Date: 2026-06-09\par
+Requested Access: Basic Access\par
+Primary MCC: 636-059-2142\par
+\par
+\b 1. Application Overview\b0\par
+This platform is used by Betts & Burton staff to manage paid media reporting and planning across client accounts. It aggregates campaign data into internal dashboards and client-facing reports. The system is web-based and hosted on Vercel, with a Next.js backend and PostgreSQL database.\par
+\par
+The Google Ads API is used for read-focused analytics and planning workflows, including campaign performance retrieval and keyword research/planning support for strategy generation. No bulk autonomous campaign mutations are performed by this tool.\par
+\par
+\b 2. Intended Users and Access Model\b0\par
+Access is controlled by authenticated user sessions. The tool is primarily operated by internal employees and approved contractors. Selected outputs are shared with external clients through controlled report views and share links.\par
+\par
+User roles are permission-based. Sensitive configuration values are not exposed to client viewers. API credentials are stored server-side only.\par
+\par
+\b 3. Google Ads API Usage\b0\par
+\b 3.1 Core Use Cases\b0\par
+- Retrieve account and campaign performance metrics for reporting\par
+- Retrieve ad group and keyword performance metrics\par
+- Retrieve account hierarchy and account metadata\par
+- Execute keyword planning and idea generation workflows for strategy drafting\par
+\par
+\b 3.2 Data Scope\b0\par
+- Customer and campaign identifiers\par
+- Performance metrics (clicks, impressions, cost, conversions, values)\par
+- Keyword and planning outputs (where access is permitted)\par
+- Account-level metadata needed for UI display and reconciliation\par
+\par
+\b 3.3 Access Pattern\b0\par
+All Google Ads API calls are made from secure backend routes. Frontend clients never call Google Ads directly and never receive refresh tokens.\par
+\par
+\b 4. High-Level Architecture\b0\par
+\b Client Browser\b0 -> \b Backend API (Next.js)\b0 -> \b Google Ads API\b0\par
+\b Client Browser\b0 -> \b Backend API\b0 -> \b PostgreSQL Cache/Storage\b0\par
+\par
+\b Components\b0\par
+- Next.js API routes for authenticated requests\par
+- Server-side Google Ads integration layer\par
+- PostgreSQL for metadata, report state, and controlled persistence\par
+- Environment-managed secrets in Vercel\par
+\par
+\b 5. Authentication and Security\b0\par
+OAuth refresh tokens are stored encrypted/server-side and exchanged for access tokens on the backend. Developer token and client credentials are provided via environment variables.\par
+\par
+Security controls include:\par
+- Server-side secret management only\par
+- Session-based authentication and authorization\par
+- Principle of least privilege for operational users\par
+- Error handling without exposing secrets\par
+- Auditability through application logs and activity events\par
+\par
+\b 6. Data Handling and Retention\b0\par
+Only required reporting/planning data is stored. Sensitive token material is not returned to the UI. Data is retained according to operational reporting needs and can be removed when no longer required.\par
+\par
+\b 7. Compliance and Policy Alignment\b0\par
+The tool is designed for legitimate account reporting and planning use. It does not provide open public API access and is not intended for unauthorized scraping or policy-violating automation.\par
+\par
+Contact email for Google Ads API communication is maintained as an active monitored address.\par
+\par
+\b 8. Operational Controls\b0\par
+- Controlled deployment through CI/CD\par
+- Environment separation (development, preview, production)\par
+- Monitoring of API failures and degraded states\par
+- Manual operator oversight for account configuration changes\par
+\par
+\b 9. Example Technical Flow\b0\par
+1) User initiates report/planning request\par
+2) Backend validates session and account permissions\par
+3) Backend queries Google Ads API for required resources\par
+4) Backend normalizes response data\par
+5) Result is persisted and rendered in dashboard/report outputs\par
+\par
+\b 10. Support and Ownership\b0\par
+Organization: Betts & Burton\par
+Primary contact: nick@bettsandburton.com\par
+Primary website: https://bettsandburton.com\par
+\par
+End of document.\par
+}
