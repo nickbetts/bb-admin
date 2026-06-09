@@ -2939,7 +2939,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src="/primary-logo.svg"
+                    src="/primary-logo-dark.svg"
                     alt="Betts & Burton"
                     style={{ height: 36, marginBottom: 24 }}
                   />
@@ -4610,7 +4610,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/primary-logo.svg"
+              src="/primary-logo-dark.svg"
               alt="Betts & Burton"
               style={{ height: 28, filter: "brightness(0)" }}
             />

@@ -67,7 +67,7 @@ export default async function SharedReportPage({ params }: { params: Promise<{ t
         }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/primary-logo.svg" alt="Betts & Burton" style={{ height: 28 }} />
+        <img src="/primary-logo-dark.svg" alt="Betts & Burton" style={{ height: 28 }} />
         <p style={{ fontSize: 12, color: "#94a3b8" }}>Confidential · Shared Report</p>
       </div>
 

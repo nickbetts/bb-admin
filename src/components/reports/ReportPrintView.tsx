@@ -344,7 +344,7 @@ export function ReportPrintView({
             <div>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/primary-logo.svg"
+                src="/primary-logo-dark.svg"
                 alt="Betts & Burton"
                 style={{ height: 32, marginBottom: 20 }}
               />

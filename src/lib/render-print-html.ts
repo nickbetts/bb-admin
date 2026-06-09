@@ -29,7 +29,7 @@ export function renderPrintHtml(report: ReportData, baseUrl: string): string {
     month: "long",
     year: "numeric",
   });
-  const logoSrc = `${baseUrl}/primary-logo.svg`;
+  const logoSrc = `${baseUrl}/primary-logo-dark.svg`;
 
   const screenshotHtml = (ss: ReportData["screenshots"][number]) => `
     <div class="screenshot-item">

@@ -91,7 +91,7 @@ export function PrintReportContent({ report, baseUrl = "", showToolbar = false }
     month: "long",
     year: "numeric",
   });
-  const logoSrc = baseUrl ? `${baseUrl}/primary-logo.svg` : "/primary-logo.svg";
+  const logoSrc = baseUrl ? `${baseUrl}/primary-logo-dark.svg` : "/primary-logo-dark.svg";
 
   return (
     <>
