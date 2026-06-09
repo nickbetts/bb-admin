@@ -1024,15 +1024,15 @@ export async function generateKeywordIdeas(
     throw new Error("Provide at least one keyword or a URL");
   }
 
-  const res = await fetch(
-    `${KEYWORD_IDEAS_BASE_URL}/customers/${cid}/keywordPlanIdeas:generateKeywordIdeas`,
-    {
-      method: "POST",
-      headers: buildHeaders(token, mccId),
-      body: JSON.stringify(body),
-      cache: "no-store",
-    },
-  );
+  // Keyword idea generation uses the customer-level RPC path:
+  // POST /customers/{customerId}:generateKeywordIdeas
+  // The legacy /keywordPlanIdeas:generateKeywordIdeas path returns 404.
+  const res = await fetch(`${KEYWORD_IDEAS_BASE_URL}/customers/${cid}:generateKeywordIdeas`, {
+    method: "POST",
+    headers: buildHeaders(token, mccId),
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
 
   if (!res.ok) {
     const text = await res.text();
