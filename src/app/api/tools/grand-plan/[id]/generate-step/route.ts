@@ -163,6 +163,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           name: true,
           slug: true,
           website: true,
+          googleAdsCustomerId: true,
           searchConsoleSiteUrl: true,
           ga4PropertyId: true,
         },
