@@ -2758,7 +2758,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
           <button
             onClick={() => {
               setSettingsTitle(lp.title);
-              setSettingsSubdomain(lp.customSubdomain ?? lp.client?.slug ?? "");
+              setSettingsSubdomain(lp.customSubdomain ?? "");
               setSettingsSlug(lp.slug);
               setSettingsClientId(lp.clientId ?? null);
               try {
@@ -5637,8 +5637,8 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                   ))}
                 </select>
                 <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 4 }}>
-                  Assigning to a client will use their slug as the public URL subdomain. Leave empty
-                  to use a custom subdomain label.
+                  Assigning to a client uses their slug by default. Set a Client subdomain value
+                  below to override it for this landing page only.
                 </p>
               </div>
               <div>
@@ -5667,7 +5667,6 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                     }
                     style={{ ...inputStyle, flex: 1 }}
                     placeholder="e.g. inspired-gaming-lounge"
-                    disabled={!!settingsClientId}
                   />
                   <span style={{ fontSize: 12, color: "var(--text-4)", whiteSpace: "nowrap" }}>
                     .{LP_ROOT_DOMAIN}/
@@ -5675,8 +5674,8 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                 </div>
                 {settingsClientId && (
                   <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 4 }}>
-                    Client subdomain is set by the assigned client. Unassign the client to use a
-                    custom subdomain label.
+                    Leave blank to use the assigned client slug. Set a value to override the
+                    subdomain for this landing page.
                   </p>
                 )}
               </div>
@@ -5863,10 +5862,8 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                       slug: settingsSlug,
                       platforms: settingsPlatforms,
                       clientId: settingsClientId || null,
+                      customSubdomain: settingsSubdomain || null,
                     };
-                    if (!settingsClientId) {
-                      body.customSubdomain = settingsSubdomain || null;
-                    }
                     const res = await fetch(`/api/tools/landing-pages/${lp.id}`, {
                       method: "PUT",
                       headers: { "Content-Type": "application/json" },
