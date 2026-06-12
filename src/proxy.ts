@@ -6,8 +6,9 @@ import { NextRequest, NextResponse } from "next/server";
  *      public share-link page (/share/report/<token>). Subsequent client-side
  *      fetches to /api/* automatically send the cookie, allowing channel data
  *      routes to authenticate the unauthenticated browser via the share token.
- *   2) Hosts public LP pages on LP_DOMAIN using path routing:
- *      `LP_DOMAIN/client/<client-slug>/<lp-slug>` → `/lp/<client-slug>/<lp-slug>`.
+ *   2) Hosts public LP pages with both legacy and canonical routing:
+ *      - Legacy: `LP_DOMAIN/client/<client-slug>/<lp-slug>` → `/lp/<client-slug>/<lp-slug>`
+ *      - Canonical: `<subdomain>.LP_BASE_DOMAIN/<lp-slug>` → `/lp/<subdomain>/<lp-slug>`
  *
  * The token validity itself is checked server-side in each API route via
  * `getShareTokenAuth` in src/lib/auth.ts. This middleware merely propagates
@@ -15,6 +16,8 @@ import { NextRequest, NextResponse } from "next/server";
  */
 
 const LP_DOMAIN = (process.env.LP_DOMAIN?.trim() || "lp.bettsandburton.com").toLowerCase();
+const LP_BASE_DOMAIN = (process.env.LP_BASE_DOMAIN?.trim() || "bettsandburton.com").toLowerCase();
+const RESERVED_LP_SUBDOMAINS = new Set(["admin", "api", "lp", "www"]);
 const LEGACY_PUBLIC_PATH_PREFIXES = [
   "/ad-traffic-protection",
   "/ai-analyst",
@@ -47,7 +50,7 @@ export default function middleware(request: NextRequest) {
 
   // ── 2) LP domain routing ───────────────────────────────────────────────────
   // Skip Next internals + API + static so they always resolve normally.
-  const isInternal =
+  const isInternalPath =
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
     pathname.startsWith("/lp/") ||
@@ -62,6 +65,27 @@ export default function middleware(request: NextRequest) {
       const url = request.nextUrl.clone();
       url.pathname = `/lp/${clientSlug}/${lpSlug}`;
       return NextResponse.rewrite(url);
+    }
+  }
+
+  // Canonical wildcard LP host routing:
+  // <subdomain>.bettsandburton.com/<lpSlug> -> /lp/<subdomain>/<lpSlug>
+  const baseSuffix = `.${LP_BASE_DOMAIN}`;
+  if (!isInternalPath && host.endsWith(baseSuffix)) {
+    const candidateSubdomain = host.slice(0, -baseSuffix.length);
+    const isSingleLabel = candidateSubdomain.length > 0 && !candidateSubdomain.includes(".");
+
+    if (
+      isSingleLabel &&
+      !RESERVED_LP_SUBDOMAINS.has(candidateSubdomain) &&
+      pathname.startsWith("/")
+    ) {
+      const lpSlug = pathname.slice(1);
+      if (lpSlug && !lpSlug.includes("/")) {
+        const url = request.nextUrl.clone();
+        url.pathname = `/lp/${candidateSubdomain}/${lpSlug}`;
+        return NextResponse.rewrite(url);
+      }
     }
   }
 

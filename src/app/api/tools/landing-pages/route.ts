@@ -254,6 +254,22 @@ export async function POST(request: NextRequest) {
         }
 
         const brandContext = await brandContextPromise;
+        const primaryImageCount = brandContext.imageryUrls.length;
+
+        send({
+          type: "progress",
+          message: `Primary page extracted: ${primaryImageCount} image URL${primaryImageCount === 1 ? "" : "s"}, ${brandContext.colors.length} colour${brandContext.colors.length === 1 ? "" : "s"}, ${brandContext.fonts.length} font${brandContext.fonts.length === 1 ? "" : "s"}.`,
+        });
+
+        if (primaryImageCount === 0) {
+          const warning = `No image URLs were detected on the primary URL: ${normalisedPrimaryUrl}`;
+          scrapeWarnings.push(warning);
+          send({
+            type: "progress",
+            message:
+              "No primary-page images were detected from the supplied URL. Add additional URLs or upload reference images to guarantee visual assets.",
+          });
+        }
 
         // Merge images from additional pages into brandContext (deduplicated)
         const seenImages = new Set(brandContext.imageryUrls);
@@ -265,6 +281,13 @@ export async function POST(request: NextRequest) {
               seenImages.add(imgUrl);
             }
           }
+        }
+
+        if (extraPageResults.length > 0) {
+          send({
+            type: "progress",
+            message: `Total extracted imagery after additional pages: ${brandContext.imageryUrls.length} image URL${brandContext.imageryUrls.length === 1 ? "" : "s"}.`,
+          });
         }
 
         const additionalPageContents = extraPageResults

@@ -86,9 +86,8 @@ import {
 import { applyConfiguredFormFields } from "@/lib/lp-form-fields-html";
 import { useToast } from "@/components/ui/Toast";
 
-// Public hosting domain for landing pages. Set via NEXT_PUBLIC_LP_DOMAIN at
-// build time; falls back to lp.bettsandburton.com.
-const LP_DOMAIN = process.env.NEXT_PUBLIC_LP_DOMAIN || "lp.bettsandburton.com";
+// Canonical links use <subdomain>.<NEXT_PUBLIC_LP_ROOT_DOMAIN>/<slug>.
+const LP_ROOT_DOMAIN = process.env.NEXT_PUBLIC_LP_ROOT_DOMAIN || "bettsandburton.com";
 
 function toSubLabel(input: string | null | undefined): string {
   return (
@@ -101,7 +100,7 @@ function toSubLabel(input: string | null | undefined): string {
   );
 }
 
-/** Best public URL for a landing page — uses LP_DOMAIN/client/<client>/<slug>. */
+/** Best public URL for a landing page — uses subdomain host routing. */
 function buildLpUrl(opts: {
   clientSlug?: string | null;
   customSubdomain?: string | null;
@@ -111,14 +110,14 @@ function buildLpUrl(opts: {
   testMode?: boolean;
 }): string {
   const qs = opts.testMode ? "?test=1" : "";
-  // Prefer clientSlug, then customSubdomain for the /client/<slug>/ path segment
+  // Prefer clientSlug, then customSubdomain for the hostname subdomain label.
   const clientPathSegment = opts.clientSlug
     ? toSubLabel(opts.clientSlug)
     : opts.customSubdomain
       ? toSubLabel(opts.customSubdomain)
       : null;
   if (opts.lpSlug && clientPathSegment) {
-    return `https://${LP_DOMAIN}/client/${clientPathSegment}/${opts.lpSlug}${qs}`;
+    return `https://${clientPathSegment}.${LP_ROOT_DOMAIN}/${opts.lpSlug}${qs}`;
   }
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   if (opts.publicSlug) return `${origin}/lp/${opts.publicSlug}${qs}`;
@@ -2826,7 +2825,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                   style={{ color: "var(--accent)", textDecoration: "none" }}
                   title="Open live URL"
                 >
-                  {LP_DOMAIN}/client/{subdomain}/{lp.slug}
+                  {subdomain}.{LP_ROOT_DOMAIN}/{lp.slug}
                 </a>
               </p>
             ) : (
@@ -3027,7 +3026,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
               title={(() => {
                 const sub = lp.client?.slug ? toSubLabel(lp.client.slug) : lp.customSubdomain;
                 return lp.status === "published" && sub
-                  ? `Open live: ${LP_DOMAIN}/client/${toSubLabel(sub)}/${lp.slug}`
+                  ? `Open live: ${toSubLabel(sub)}.${LP_ROOT_DOMAIN}/${lp.slug}`
                   : "Open preview";
               })()}
             >
@@ -5630,8 +5629,8 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                   ))}
                 </select>
                 <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 4 }}>
-                  Assigning to a client will use their slug in the public URL path. Leave empty to
-                  use a custom client path segment.
+                  Assigning to a client will use their slug as the public URL subdomain. Leave empty
+                  to use a custom subdomain label.
                 </p>
               </div>
               <div>
@@ -5644,14 +5643,14 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                     marginBottom: 4,
                   }}
                 >
-                  Client path segment{" "}
+                  Client subdomain{" "}
                   <span style={{ fontWeight: 400, color: "var(--text-4)" }}>
-                    — the part after /client/
+                    — the part before .{LP_ROOT_DOMAIN}
                   </span>
                 </label>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <span style={{ fontSize: 12, color: "var(--text-4)", whiteSpace: "nowrap" }}>
-                    {LP_DOMAIN}/client/
+                    https://
                   </span>
                   <input
                     value={settingsSubdomain}
@@ -5662,11 +5661,14 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                     placeholder="e.g. inspired-gaming-lounge"
                     disabled={!!settingsClientId}
                   />
+                  <span style={{ fontSize: 12, color: "var(--text-4)", whiteSpace: "nowrap" }}>
+                    .{LP_ROOT_DOMAIN}/
+                  </span>
                 </div>
                 {settingsClientId && (
                   <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 4 }}>
-                    Client path segment is set by the assigned client. Unassign the client to use a
-                    custom path segment.
+                    Client subdomain is set by the assigned client. Unassign the client to use a
+                    custom subdomain label.
                   </p>
                 )}
               </div>
@@ -5682,7 +5684,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                 >
                   Page slug{" "}
                   <span style={{ fontWeight: 400, color: "var(--text-4)" }}>
-                    — the path after /client/&lt;slug&gt;/
+                    — the path after /
                   </span>
                 </label>
                 <input
@@ -5820,8 +5822,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                     fontFamily: "monospace",
                   }}
                 >
-                  {LP_DOMAIN}/client/{toSubLabel(lp.client?.slug ?? settingsSubdomain)}/
-                  {settingsSlug}
+                  {toSubLabel(lp.client?.slug ?? settingsSubdomain)}.{LP_ROOT_DOMAIN}/{settingsSlug}
                 </p>
               )}
             </div>

@@ -1,13 +1,18 @@
-// URL helpers for LP.bettsandburton.com landing-page hosting.
+// URL helpers for landing-page hosting.
 //
 // Server: reads LP_DOMAIN (no NEXT_PUBLIC_ prefix needed when only used in
 // server components / route handlers). Falls back to LP.bettsandburton.com.
 
 const DEFAULT_LP_DOMAIN = "lp.bettsandburton.com";
+const DEFAULT_LP_BASE_DOMAIN = "bettsandburton.com";
 const FALLBACK_SUBDOMAIN = "demo";
 
 export function getLpDomain(): string {
   return process.env.LP_DOMAIN?.trim() || DEFAULT_LP_DOMAIN;
+}
+
+export function getLpBaseDomain(): string {
+  return process.env.LP_BASE_DOMAIN?.trim() || DEFAULT_LP_BASE_DOMAIN;
 }
 
 /**
@@ -30,6 +35,7 @@ export function toSubdomainLabel(input: string | null | undefined): string {
 
 export interface LpUrlOpts {
   clientSlug?: string | null;
+  customSubdomain?: string | null;
   lpSlug?: string | null;
   publicSlug?: string | null;
   shareToken?: string | null;
@@ -39,17 +45,25 @@ export interface LpUrlOpts {
 
 /**
  * Build the canonical public URL for a landing page, preferring (in order):
- *   1. https://<LP_DOMAIN>/client/<client>/<lp-slug>  — when LP slug exists
- *   2. /lp/<publicSlug>                                — legacy pretty URL
- *   3. /api/share/landing-page/<shareToken>            — internal magic link
+ *   1. https://<subdomain>.<LP_BASE_DOMAIN>/<lp-slug>  — canonical URL
+ *   2. /lp/<publicSlug>                                 — legacy pretty URL
+ *   3. /api/share/landing-page/<shareToken>             — internal magic link
  */
 export function getLandingPageUrl(opts: LpUrlOpts): string | null {
+  const baseDomain = getLpBaseDomain();
   const domain = getLpDomain();
-  const sub = opts.clientSlug ? toSubdomainLabel(opts.clientSlug) : FALLBACK_SUBDOMAIN;
+  const sub = opts.clientSlug
+    ? toSubdomainLabel(opts.clientSlug)
+    : opts.customSubdomain
+      ? toSubdomainLabel(opts.customSubdomain)
+      : null;
   const qs = opts.testMode ? "?test=1" : "";
 
+  if (opts.lpSlug && sub) {
+    return `https://${sub}.${baseDomain}/${opts.lpSlug}${qs}`;
+  }
   if (opts.lpSlug) {
-    return `https://${domain}/client/${sub}/${opts.lpSlug}${qs}`;
+    return `https://${domain}/client/${FALLBACK_SUBDOMAIN}/${opts.lpSlug}${qs}`;
   }
   const base = (opts.appUrl || process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/$/, "");
   if (opts.publicSlug && base) return `${base}/lp/${opts.publicSlug}${qs}`;
