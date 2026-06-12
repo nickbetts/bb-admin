@@ -52,10 +52,10 @@ export interface LpUrlOpts {
 export function getLandingPageUrl(opts: LpUrlOpts): string | null {
   const baseDomain = getLpBaseDomain();
   const domain = getLpDomain();
-  const sub = opts.clientSlug
-    ? toSubdomainLabel(opts.clientSlug)
-    : opts.customSubdomain
-      ? toSubdomainLabel(opts.customSubdomain)
+  const sub = opts.customSubdomain
+    ? toSubdomainLabel(opts.customSubdomain)
+    : opts.clientSlug
+      ? toSubdomainLabel(opts.clientSlug)
       : null;
   const qs = opts.testMode ? "?test=1" : "";
 

@@ -110,11 +110,11 @@ function buildLpUrl(opts: {
   testMode?: boolean;
 }): string {
   const qs = opts.testMode ? "?test=1" : "";
-  // Prefer clientSlug, then customSubdomain for the hostname subdomain label.
-  const clientPathSegment = opts.clientSlug
-    ? toSubLabel(opts.clientSlug)
-    : opts.customSubdomain
-      ? toSubLabel(opts.customSubdomain)
+  // Prefer customSubdomain, then clientSlug for the hostname subdomain label.
+  const clientPathSegment = opts.customSubdomain
+    ? toSubLabel(opts.customSubdomain)
+    : opts.clientSlug
+      ? toSubLabel(opts.clientSlug)
       : null;
   if (opts.lpSlug && clientPathSegment) {
     return `https://${clientPathSegment}.${LP_ROOT_DOMAIN}/${opts.lpSlug}${qs}`;
@@ -2793,7 +2793,11 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
             </h1>
           </button>
           {(() => {
-            const subdomain = lp.client?.slug ? toSubLabel(lp.client.slug) : lp.customSubdomain;
+            const subdomain = lp.customSubdomain
+              ? toSubLabel(lp.customSubdomain)
+              : lp.client?.slug
+                ? toSubLabel(lp.client.slug)
+                : null;
             const liveUrl =
               lp.status === "published" && subdomain
                 ? buildLpUrl({
@@ -3024,7 +3028,11 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
               rel="noopener noreferrer"
               style={{ ...toolbarBtn, textDecoration: "none" }}
               title={(() => {
-                const sub = lp.client?.slug ? toSubLabel(lp.client.slug) : lp.customSubdomain;
+                const sub = lp.customSubdomain
+                  ? toSubLabel(lp.customSubdomain)
+                  : lp.client?.slug
+                    ? toSubLabel(lp.client.slug)
+                    : null;
                 return lp.status === "published" && sub
                   ? `Open live: ${toSubLabel(sub)}.${LP_ROOT_DOMAIN}/${lp.slug}`
                   : "Open preview";
@@ -5822,7 +5830,8 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                     fontFamily: "monospace",
                   }}
                 >
-                  {toSubLabel(lp.client?.slug ?? settingsSubdomain)}.{LP_ROOT_DOMAIN}/{settingsSlug}
+                  {toSubLabel(settingsSubdomain || lp.customSubdomain || lp.client?.slug)}.
+                  {LP_ROOT_DOMAIN}/{settingsSlug}
                 </p>
               )}
             </div>
@@ -5853,10 +5862,8 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                       title: settingsTitle,
                       slug: settingsSlug,
                       platforms: settingsPlatforms,
+                      clientId: settingsClientId || null,
                     };
-                    if (settingsClientId) {
-                      body.clientId = settingsClientId;
-                    }
                     if (!settingsClientId) {
                       body.customSubdomain = settingsSubdomain || null;
                     }
@@ -5873,16 +5880,24 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                               ...prev,
                               title: data.landingPage.title,
                               slug: data.landingPage.slug,
-                              customSubdomain:
-                                data.landingPage.customSubdomain ?? prev.customSubdomain,
-                              clientId: data.landingPage.clientId ?? prev.clientId,
-                              client: data.landingPage.client ?? prev.client,
-                              platforms: data.landingPage.platforms ?? prev.platforms,
+                              customSubdomain: data.landingPage.customSubdomain ?? null,
+                              clientId: data.landingPage.clientId ?? null,
+                              client: data.landingPage.client,
+                              platforms: data.landingPage.platforms,
                             }
                           : prev,
                       );
                       setShowPageSettings(false);
+                    } else {
+                      const data = await res.json().catch(() => ({}));
+                      const error =
+                        typeof data?.error === "string"
+                          ? data.error
+                          : "Could not save landing page settings.";
+                      toast(error, "error");
                     }
+                  } catch {
+                    toast("Could not save landing page settings.", "error");
                   } finally {
                     setSavingSettings(false);
                   }
