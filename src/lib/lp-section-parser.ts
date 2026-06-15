@@ -3,18 +3,19 @@
  */
 
 export interface LPSection {
-  id: string;          // Stable identifier (index-based)
-  tagName: string;     // e.g. "SECTION", "HEADER", "FOOTER", "NAV", "DIV"
-  label: string;       // Human-readable label from heading or class/id
-  outerHtml: string;   // Full HTML of this section
-  animation?: string;  // data-animate value if present
+  id: string; // Stable identifier (index-based)
+  tagName: string; // e.g. "SECTION", "HEADER", "FOOTER", "NAV", "DIV"
+  label: string; // Human-readable label from heading or class/id
+  outerHtml: string; // Full HTML of this section
+  animation?: string; // data-animate value if present
 }
 
 // Tags that are treated as top-level sections
 const SECTION_TAGS = new Set(["SECTION", "HEADER", "FOOTER", "NAV", "MAIN", "ARTICLE", "ASIDE"]);
 
 // Class/ID patterns that hint at a section
-const SECTION_HINTS = /hero|banner|cta|features|benefits|testimonials|pricing|faq|contact|about|stats|team|gallery|process|how-it-works|social-proof|footer|header|nav/i;
+const SECTION_HINTS =
+  /hero|banner|cta|features|benefits|testimonials|pricing|faq|contact|about|stats|team|gallery|process|how-it-works|social-proof|footer|header|nav/i;
 
 /**
  * Parse HTML to find top-level landmark sections.
@@ -30,7 +31,8 @@ export function parseSections(html: string): LPSection[] {
   // Use a simple regex-based approach to find top-level landmark elements in the body
   // This regex finds opening tags of landmark elements at the top level
   // tagRegex kept here as reference for the pattern used in extractTopLevelElements
-  const _tagRegex = /<(section|header|footer|nav|main|article|aside|div)(\s[^>]*)?>[\s\S]*?<\/\1>/gi;
+  const _tagRegex =
+    /<(section|header|footer|nav|main|article|aside|div)(\s[^>]*)?>[\s\S]*?<\/\1>/gi;
   void _tagRegex;
 
   let idx = 0;
@@ -66,6 +68,42 @@ export function parseSections(html: string): LPSection[] {
     idx++;
   }
 
+  // Fallback: if no semantic sections were detected, expose top-level body blocks
+  // so the section organiser still works for div-heavy pages.
+  if (sections.length === 0) {
+    for (const el of elements) {
+      const tagMatch = el.match(/^<(\w+)(\s[^>]*)?>/i);
+      if (!tagMatch) continue;
+
+      const tagName = tagMatch[1].toUpperCase();
+      const attrs = tagMatch[2] || "";
+      if (["SCRIPT", "STYLE", "NOSCRIPT", "META", "LINK"].includes(tagName)) continue;
+
+      const text = el
+        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, " ")
+        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, " ")
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      // Skip tiny/structural nodes that don't represent meaningful sections.
+      if (text.length < 20 && !attrs.match(/id=|class=/i)) continue;
+
+      const label = extractLabel(el, tagName, attrs, idx);
+      const animMatch = el.match(/data-animate="([^"]+)"/);
+      sections.push({
+        id: `section-${idx}`,
+        tagName,
+        label,
+        outerHtml: el.trim(),
+        animation: animMatch ? animMatch[1] : undefined,
+      });
+      idx++;
+
+      if (sections.length >= 16) break;
+    }
+  }
+
   return sections;
 }
 
@@ -94,9 +132,14 @@ function extractLabel(html: string, tagName: string, attrs: string, idx: number)
 
   // Fallback: use tag name + index
   const friendly: Record<string, string> = {
-    HEADER: "Header", FOOTER: "Footer", NAV: "Navigation",
-    MAIN: "Main Content", ARTICLE: "Article", ASIDE: "Sidebar",
-    SECTION: `Section ${idx + 1}`, DIV: `Block ${idx + 1}`,
+    HEADER: "Header",
+    FOOTER: "Footer",
+    NAV: "Navigation",
+    MAIN: "Main Content",
+    ARTICLE: "Article",
+    ASIDE: "Sidebar",
+    SECTION: `Section ${idx + 1}`,
+    DIV: `Block ${idx + 1}`,
   };
   return friendly[tagName] || `Section ${idx + 1}`;
 }
@@ -115,8 +158,21 @@ function formatLabel(raw: string): string {
  */
 function extractTopLevelElements(bodyContent: string): string[] {
   const elements: string[] = [];
-  const openTagRegex = /<(\w+)(\s[^>]*)?\/?>/g;
-  const selfClosingTags = new Set(["BR", "HR", "IMG", "INPUT", "META", "LINK", "AREA", "BASE", "COL", "EMBED", "SOURCE", "TRACK", "WBR"]);
+  const selfClosingTags = new Set([
+    "BR",
+    "HR",
+    "IMG",
+    "INPUT",
+    "META",
+    "LINK",
+    "AREA",
+    "BASE",
+    "COL",
+    "EMBED",
+    "SOURCE",
+    "TRACK",
+    "WBR",
+  ]);
 
   let depth = 0;
   let currentStart = -1;
@@ -247,7 +303,9 @@ function extractTopLevelElements(bodyContent: string): string[] {
  * Reorder sections in the HTML. Takes the current order and new order as arrays of section ids.
  */
 export function reorderSections(html: string, sections: LPSection[], newOrder: string[]): string {
-  const ordered = newOrder.map((id) => sections.find((s) => s.id === id)).filter(Boolean) as LPSection[];
+  const ordered = newOrder
+    .map((id) => sections.find((s) => s.id === id))
+    .filter(Boolean) as LPSection[];
 
   let result = html;
   // Remove all existing sections from body
@@ -294,7 +352,11 @@ export function replaceSection(html: string, section: LPSection, newOuterHtml: s
 /**
  * Set an animation attribute on a section.
  */
-export function setSectionAnimation(html: string, section: LPSection, animation: string | null): string {
+export function setSectionAnimation(
+  html: string,
+  section: LPSection,
+  animation: string | null,
+): string {
   const oldHtml = section.outerHtml;
   let newHtml: string;
 

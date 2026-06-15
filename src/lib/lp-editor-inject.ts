@@ -20,6 +20,10 @@ export function getEditorInjectionScript(): string {
   var EDITABLE_TAGS = ['H1','H2','H3','H4','H5','H6','P','SPAN','A','BUTTON','LI','TD','TH','LABEL','FIGCAPTION','BLOCKQUOTE'];
   var SKIP_DELETE_TAGS = ['HTML','BODY','HEAD','SCRIPT','STYLE','META','LINK','TITLE'];
 
+  function isReplaceableImage(el) {
+    return !!(el && el.tagName === 'IMG');
+  }
+
   function isEditable(el) {
     if (!el || !el.tagName) return false;
     if (EDITABLE_TAGS.indexOf(el.tagName) === -1) return false;
@@ -114,6 +118,11 @@ export function getEditorInjectionScript(): string {
   document.addEventListener('mouseover', function(e) {
     var el = e.target;
     if (el && el.getAttribute && el.getAttribute('data-lp-delete-btn')) return;
+    if (isReplaceableImage(el)) {
+      el.style.outline = '2px solid rgba(16,185,129,0.55)';
+      el.style.outlineOffset = '2px';
+      el.style.cursor = 'pointer';
+    }
     if (isEditable(el) && el !== currentEditing) {
       el.style.outline = '2px solid rgba(59,130,246,0.5)';
       el.style.outlineOffset = '2px';
@@ -143,6 +152,19 @@ export function getEditorInjectionScript(): string {
     var el = e.target;
     // Let the delete button's own handler fire — don't intercept it here
     if (el && el.getAttribute && el.getAttribute('data-lp-delete-btn')) return;
+
+    if (isReplaceableImage(el)) {
+      e.preventDefault();
+      e.stopPropagation();
+      removeDeleteBtn();
+      window.parent.postMessage({
+        type: 'lp-replace-image',
+        selector: cssPath(el),
+        currentSrc: el.getAttribute('src') || ''
+      }, '*');
+      return;
+    }
+
     // Let accordion / disclosure widgets toggle natively (details/summary, aria-expanded)
     var node = el;
     while (node && node !== document.documentElement) {
@@ -228,6 +250,29 @@ export function injectEditorScript(html: string): string {
 
 export function removeEditorScript(html: string): string {
   return html.replace(/<script data-lp-editor="true">[\s\S]*?<\/script>/g, "");
+}
+
+export function replaceImageSrcByCssSelector(
+  html: string,
+  selector: string,
+  newSrc: string,
+): string {
+  if (typeof window === "undefined") return html;
+  if (!selector || !newSrc) return html;
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, "text/html");
+    const target = doc.querySelector(selector);
+    if (!target || target.tagName.toLowerCase() !== "img") return html;
+
+    target.setAttribute("src", newSrc);
+    // Remove srcset so the replacement is deterministic across breakpoints.
+    target.removeAttribute("srcset");
+
+    return "<!DOCTYPE html>\n" + doc.documentElement.outerHTML;
+  } catch {
+    return html;
+  }
 }
 
 /**

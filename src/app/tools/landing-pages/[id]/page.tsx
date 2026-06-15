@@ -58,6 +58,7 @@ import {
   removeEditorScript,
   applyTextEdit,
   deleteElementByCssSelector,
+  replaceImageSrcByCssSelector,
 } from "@/lib/lp-editor-inject";
 import {
   parseSections,
@@ -1032,6 +1033,9 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
   // ── NEW: Edit mode (live text editing) ────────────────────────────────────
   const [editMode, setEditMode] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const imageReplaceInputRef = useRef<HTMLInputElement>(null);
+  const [pendingImageSelector, setPendingImageSelector] = useState<string | null>(null);
+  const [replacingImage, setReplacingImage] = useState(false);
 
   // ── NEW: Undo/redo ────────────────────────────────────────────────────────
   const [htmlHistory, setHtmlHistory] = useState<string[]>([]);
@@ -1285,8 +1289,59 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
   }, [previewHtml, showTrackingSettings]);
 
   // ── NEW: Listen for text-edit / delete messages from iframe ─────────────
+  const handleReplaceImageSelect = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      e.target.value = "";
+      if (!file || !pendingImageSelector || replacingImage) return;
+
+      setReplacingImage(true);
+      try {
+        const fd = new FormData();
+        fd.append("file", file);
+
+        const uploadRes = await fetch("/api/tools/landing-pages/upload-image", {
+          method: "POST",
+          body: fd,
+        });
+
+        if (!uploadRes.ok) {
+          const data = (await uploadRes.json().catch(() => ({}))) as { error?: string };
+          toast(data.error ?? "Failed to upload replacement image.", "error");
+          return;
+        }
+
+        const uploadData = (await uploadRes.json()) as { url?: string };
+        if (!uploadData.url) {
+          toast("Failed to upload replacement image.", "error");
+          return;
+        }
+
+        const updated = replaceImageSrcByCssSelector(
+          previewHtml,
+          pendingImageSelector,
+          uploadData.url,
+        );
+        if (updated !== previewHtml) {
+          updateHtml(updated);
+          toast("Image replaced.", "success");
+        } else {
+          toast("Could not replace that image. Try selecting it again.", "error");
+        }
+      } catch (err) {
+        toast(err instanceof Error ? err.message : "Failed to replace image.", "error");
+      } finally {
+        setReplacingImage(false);
+        setPendingImageSelector(null);
+      }
+    },
+    [pendingImageSelector, previewHtml, replacingImage, toast, updateHtml],
+  );
+
   useEffect(() => {
     const handler = (e: MessageEvent) => {
+      if (e.source !== iframeRef.current?.contentWindow) return;
+
       if (e.data?.type === "lp-text-edit") {
         const { oldText, newText } = e.data;
         if (oldText && newText && oldText !== newText) {
@@ -1300,10 +1355,16 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
         const updated = deleteElementByCssSelector(previewHtml, selector);
         if (updated !== previewHtml) updateHtml(updated);
       }
+      if (e.data?.type === "lp-replace-image") {
+        const { selector } = e.data as { selector?: string };
+        if (!selector || replacingImage) return;
+        setPendingImageSelector(selector);
+        imageReplaceInputRef.current?.click();
+      }
     };
     window.addEventListener("message", handler);
     return () => window.removeEventListener("message", handler);
-  }, [previewHtml, updateHtml]);
+  }, [previewHtml, replacingImage, updateHtml]);
 
   const previewHtmlWithFormConfig = useMemo(
     () => applyConfiguredFormFields(previewHtml, formConfig.fields ?? []),
@@ -3247,7 +3308,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                   borderRadius: 99,
                 }}
               >
-                EDIT MODE — Click text to edit
+                EDIT MODE — Click text to edit or click images to replace
               </span>
             )}
           </div>
@@ -3283,6 +3344,13 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                 sandbox="allow-scripts allow-same-origin"
                 style={{ width: "100%", height: "100%", border: "none" }}
                 title="Landing page preview"
+              />
+              <input
+                ref={imageReplaceInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                onChange={handleReplaceImageSelect}
+                style={{ display: "none" }}
               />
             </div>
           </div>
