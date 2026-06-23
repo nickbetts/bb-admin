@@ -555,30 +555,17 @@ export async function POST(
     },
   };
 
-  if (hasSuccessfulChannel) {
-    return NextResponse.json({ success: true, leadId: lead.id, delivery });
-  }
+  const warning = hasSuccessfulChannel
+    ? null
+    : !hasConfiguredChannel
+      ? "This page is not configured to route enquiries yet. Please contact us directly."
+      : "We captured your enquiry, but notification delivery failed. Please contact us directly if needed.";
 
-  if (!hasConfiguredChannel) {
-    return NextResponse.json(
-      {
-        error: "This page is not configured to route enquiries yet. Please contact us directly.",
-        captured: true,
-        leadId: lead.id,
-        delivery,
-      },
-      { status: 503 },
-    );
-  }
-
-  return NextResponse.json(
-    {
-      error:
-        "We could not deliver your enquiry right now. Please try again or contact us directly.",
-      captured: true,
-      leadId: lead.id,
-      delivery,
-    },
-    { status: 502 },
-  );
+  return NextResponse.json({
+    success: true,
+    captured: true,
+    leadId: lead.id,
+    delivery,
+    warning,
+  });
 }

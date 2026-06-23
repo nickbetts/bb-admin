@@ -11,7 +11,9 @@ async function seedTurnstileToken(page: Page) {
     const form = document.querySelector('form[data-lp-form="true"], form');
     if (!form) return;
 
-    let tokenInput = form.querySelector('input[name="cf-turnstile-response"]') as HTMLInputElement | null;
+    let tokenInput = form.querySelector(
+      'input[name="cf-turnstile-response"]',
+    ) as HTMLInputElement | null;
     if (!tokenInput) {
       tokenInput = document.createElement("input");
       tokenInput.type = "hidden";
@@ -188,7 +190,7 @@ test("returns success when webhook succeeds and email fails", async ({ request }
   }
 });
 
-test("returns failure when both channels fail", async ({ request }) => {
+test("returns success when both channels fail but lead is captured", async ({ request }) => {
   await setTurnstileMode(request, "pass");
   await setEmailMode(request, "fail");
 
@@ -204,17 +206,20 @@ test("returns failure when both channels fail", async ({ request }) => {
       message: "Need support",
     });
 
-    expect(submission.status()).toBe(502);
+    expect(submission.status()).toBe(200);
     const body = (await submission.json()) as {
+      success: boolean;
       captured: boolean;
-      error: string;
+      warning: string | null;
       delivery: {
         email: { status: string };
         webhook: { status: string };
       };
     };
 
+    expect(body.success).toBeTruthy();
     expect(body.captured).toBeTruthy();
+    expect(body.warning).toBeTruthy();
     expect(body.delivery.email.status).toBe("failed");
     expect(body.delivery.webhook.status).toBe("failed");
 
@@ -268,7 +273,10 @@ test("blocks submission when Turnstile fails", async ({ request }) => {
   }
 });
 
-test("submits successfully from both share-token URL and pretty public URL", async ({ page, request }) => {
+test("submits successfully from both share-token URL and pretty public URL", async ({
+  page,
+  request,
+}) => {
   await setTurnstileMode(request, "pass");
   await setEmailMode(request, "success");
 
